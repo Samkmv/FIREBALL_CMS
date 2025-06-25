@@ -226,13 +226,50 @@
                 </ul>
             </div>
 
+            <?php if (MULTILANGS): ?>
+
+            <!-- Country switcher -->
+            <div class="dropdown">
+                <button type="button" class="btn btn-icon btn-outline-secondary fs-lg border-0 rounded-circle animate-scale" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Toggle theme (light)">
+                  <span class="d-flex animate-target">
+                    <i class="ci-flag"></i>
+                  </span>
+                </button>
+                <ul class="dropdown-menu" style="--cz-dropdown-min-width: 9rem">
+
+                    <?php $request_uri = uri_without_lang(); ?>
+
+                    <?php foreach (LANGS as $key => $val): ?>
+
+                        <?php if (app()->get('lang')['code'] == $key) continue; ?>
+
+                        <?php if ($val['base'] == 1): ?>
+
+                            <li>
+                                <a href="<?= base_url("{$request_uri}"); ?>" type="button" class="dropdown-item" data-bs-theme-value="light" aria-pressed="true"><?= $val['title']; ?></a>
+                            </li>
+
+                        <?php else: ?>
+
+                            <li>
+                                <a href="<?= base_url("/{$key}{$request_uri}"); ?>" type="button" class="dropdown-item" data-bs-theme-value="light" aria-pressed="true"><?= $val['title']; ?></a>
+                            </li>
+
+                        <?php endif; ?>
+
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+
+            <?php endif; ?>
+
             <!-- Search toggle button visible on screens < 768px wide (md breakpoint) -->
-            <button type="button" class="btn btn-icon fs-xl btn-outline-secondary border-0 rounded-circle animate-shake d-md-none" data-bs-toggle="collapse" data-bs-target="#searchBar" aria-controls="searchBar" aria-label="Toggle search bar">
+            <button type="button" class="btn btn-icon fs-xl btn-outline-secondary border-0 rounded-circle animate-scale d-md-none" data-bs-toggle="collapse" data-bs-target="#searchBar" aria-controls="searchBar" aria-label="Toggle search bar">
                 <i class="ci-search animate-target"></i>
             </button>
 
             <!-- Account button visible on screens > 768px wide (md breakpoint) -->
-            <a class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle animate-shake d-none d-md-inline-flex" href="account-signin.html">
+            <a class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle animate-scale d-none d-md-inline-flex" href="account-signin.html">
                 <i class="ci-user animate-target"></i>
                 <span class="visually-hidden">Account</span>
             </a>
