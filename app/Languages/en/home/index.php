@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'home_index_title' => 'Home',
+    'home_index_title' => 'Home page',
 ];

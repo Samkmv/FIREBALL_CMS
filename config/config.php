@@ -54,7 +54,7 @@ const PAGINATION_SETTINGS = [
     'tpl' => 'pagination/base',
 ];
 
-const MULTILANGS = 0;
+const MULTILANGS = 1;
 const LANGS = [
     'ru' => [
         'id' => 1,
