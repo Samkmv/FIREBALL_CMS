@@ -258,7 +258,8 @@
     </div>
 </header>
 
-<?php //get_alerts(); ?>
+<!-- Вызов быстрых flash уведомлений -->
+<?php get_alerts(); ?>
 
 <?= $this->content; ?>
 
