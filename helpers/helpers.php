@@ -219,5 +219,5 @@ function send_mail(array $to, string $subject, string $tpl, array $data = [], ar
 function get_image($path): string
 {
 //    return $path ? base_href("/$path") : base_href("/assets/img/no-image.png");
-    return $path ? base_url("/$path") : base_href("/assets/img/no-image.png");
+    return $path ? base_url("/$path") : base_url("/assets/img/no-image.png");
 }
