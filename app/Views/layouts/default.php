@@ -228,38 +228,39 @@
 
             <?php if (MULTILANGS): ?>
 
-            <!-- Country switcher -->
-            <div class="dropdown">
-                <button type="button" class="btn btn-icon btn-outline-secondary fs-lg border-0 rounded-circle animate-scale" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Toggle theme (light)">
-                  <span class="d-flex animate-target">
-                    <i class="ci-flag"></i>
-                  </span>
-                </button>
-                <ul class="dropdown-menu" style="--cz-dropdown-min-width: 9rem">
+                <!-- Language switcher -->
+                <div class="dropdown">
+                    <button type="button" class="btn btn-icon btn-outline-secondary fs-lg border-0 rounded-circle animate-scale" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="d-flex animate-target">
+                            <i class="ci-globe"></i>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
 
-                    <?php $request_uri = uri_without_lang(); ?>
+                <?php $request_uri = uri_without_lang(); ?>
 
-                    <?php foreach (LANGS as $key => $val): ?>
+                <?php foreach (LANGS as $key => $val): ?>
 
-                        <?php if (app()->get('lang')['code'] == $key) continue; ?>
+                    <?php if (app()->get('lang')['code'] == $key) continue; ?>
 
-                        <?php if ($val['base'] == 1): ?>
+                    <?php if ($val['base'] == 1): ?>
 
-                            <li>
-                                <a href="<?= base_url("{$request_uri}"); ?>" type="button" class="dropdown-item" data-bs-theme-value="light" aria-pressed="true"><?= $val['title']; ?></a>
-                            </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= base_url("{$request_uri}"); ?>"><?= $val['title']; ?></a>
+                        </li>
 
-                        <?php else: ?>
+                    <?php else: ?>
 
-                            <li>
-                                <a href="<?= base_url("/{$key}{$request_uri}"); ?>" type="button" class="dropdown-item" data-bs-theme-value="light" aria-pressed="true"><?= $val['title']; ?></a>
-                            </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= base_url("/{$key}{$request_uri}"); ?>"><?= $val['title']; ?></a>
+                        </li>
 
-                        <?php endif; ?>
+                    <?php endif; ?>
 
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+                <?php endforeach; ?>
+
+                    </ul>
+                </div>
 
             <?php endif; ?>
 
