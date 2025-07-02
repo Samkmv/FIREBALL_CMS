@@ -19,12 +19,14 @@ $app->router->get('/product/(?P<slug>[a-z0-9-]+)/?', function () {
     return 'Product ' . get_route_param('slug');
 });
 
-// Shop pages
+// Site pages ---------- //
 $app->router->get('/', [HomeController::class, 'index']);
+
+// Store pages ---------- //
 $app->router->get('/add-to-cart', [CartController::class, 'addToCart']);
 $app->router->get('/remove-from-cart', [CartController::class, 'removeFromCart']);
 
-// Blog pages
+// Blog pages ---------- //
 
 // Seed
 $app->router->get('/seed', function () {

@@ -62,7 +62,7 @@
 
 <nav class="offcanvas offcanvas-start" id="navbarNav" tabindex="-1" aria-labelledby="navbarNavLabel">
     <div class="offcanvas-header py-3">
-        <h5 class="offcanvas-title" id="navbarNavLabel">Навигация</h5>
+        <h5 class="offcanvas-title" id="navbarNavLabel"><?= _e('tpl_menu_nav') ?></h5>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body pt-0 pb-3">
@@ -75,7 +75,7 @@
                 <div class="accordion-header" id="headingCategories">
                     <button type="button" class="accordion-button animate-underline fw-medium collapsed py-2" data-bs-toggle="collapse" data-bs-target="#categoriesMenu" aria-expanded="false" aria-controls="categoriesMenu">
                         <i class="ci-grid fs-lg me-2"></i>
-                        <span class="d-block animate-target py-1">Каталог</span>
+                        <span class="d-block animate-target py-1"><?= _e('tpl_menu_btn_catalog') ?></span>
                     </button>
                 </div>
                 <div class="accordion-collapse collapse" id="categoriesMenu" aria-labelledby="headingCategories" data-bs-parent="#navigation">
@@ -128,7 +128,7 @@
     <!-- Header -->
     <div class="offcanvas-header flex-column align-items-start py-3 pt-lg-4">
         <div class="d-flex align-items-center justify-content-between w-100 mb-3 mb-lg-4">
-            <h4 class="offcanvas-title" id="shoppingCartLabel">Корзина</h4>
+            <h4 class="offcanvas-title" id="shoppingCartLabel"><?= _e('tpl_menu_cart') ?></h4>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
     </div>
@@ -151,13 +151,13 @@
         </button>
 
         <!-- Navbar brand (Logo) -->
-        <a class="navbar-brand fs-2 p-0 pe-lg-2 pe-xxl-0 me-0 me-sm-3 me-md-4 me-xxl-5" href="<?= base_href('/')?>">Cartzilla</a>
+        <a class="navbar-brand fs-2 p-0 pe-lg-2 pe-xxl-0 me-0 me-sm-3 me-md-4 me-xxl-5" href="<?= base_href('/')?>"><?= _e('tpl_menu_logo') ?></a>
 
         <!-- Categories dropdown visible on screens > 991px wide (lg breakpoint) -->
         <div class="dropdown d-none d-lg-block w-100 me-4" style="max-width: 200px">
             <button type="button" class="btn btn-lg btn-secondary w-100 border-0 rounded-pill" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <i class="ci-grid fs-lg me-2 ms-n1"></i>
-                Каталог
+                <?= _e('tpl_menu_btn_catalog') ?>
                 <i class="ci-chevron-down fs-lg me-2 ms-auto me-n1"></i>
             </button>
 
@@ -201,7 +201,7 @@
                   <span class="theme-icon d-flex fs-base me-2">
                     <i class="ci-sun"></i>
                   </span>
-                            <span class="theme-label">Светлая</span>
+                            <span class="theme-label"><?= _e('tpl_menu_btn_switch_light') ?></span>
                             <i class="item-active-indicator ci-check ms-auto"></i>
                         </button>
                     </li>
@@ -210,7 +210,7 @@
                   <span class="theme-icon d-flex fs-base me-2">
                     <i class="ci-moon"></i>
                   </span>
-                            <span class="theme-label">Тёмная</span>
+                            <span class="theme-label"><?= _e('tpl_menu_btn_switch_dark') ?></span>
                             <i class="item-active-indicator ci-check ms-auto"></i>
                         </button>
                     </li>
@@ -219,7 +219,7 @@
                   <span class="theme-icon d-flex fs-base me-2">
                     <i class="ci-auto"></i>
                   </span>
-                            <span class="theme-label">Авто</span>
+                            <span class="theme-label"><?= _e('tpl_menu_btn_switch_auto') ?></span>
                             <i class="item-active-indicator ci-check ms-auto"></i>
                         </button>
                     </li>
@@ -290,7 +290,7 @@
         <div class="container pt-2 pb-3">
             <div class="position-relative">
                 <i class="ci-search position-absolute top-50 translate-middle-y d-flex fs-lg ms-3"></i>
-                <input type="search" class="form-control form-icon-start rounded-pill" placeholder="Search for products" data-autofocus="collapse">
+                <input type="search" class="form-control form-icon-start rounded-pill" placeholder="Поиск..." data-autofocus="collapse">
             </div>
         </div>
     </div>

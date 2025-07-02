@@ -132,10 +132,10 @@
 
         <!-- Heading -->
         <div class="d-flex align-items-center justify-content-between border-bottom pb-3 pb-md-4" style="margin-top: 96px;">
-            <h2 class="h3 mb-0">Популярные продукты</h2>
+            <h2 class="h3 mb-0"><?= _e('home_index_sale') ?></h2>
             <div class="nav ms-3">
                 <a class="nav-link animate-underline px-0 py-2" href="shop-catalog-furniture.html">
-                    <span class="animate-target">Смотреть все</span>
+                    <span class="animate-target"><?= _e('home_index_sale_btn') ?></span>
                     <i class="ci-chevron-right fs-base ms-1"></i>
                 </a>
             </div>
