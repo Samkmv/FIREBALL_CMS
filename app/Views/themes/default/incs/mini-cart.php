@@ -38,7 +38,7 @@
     <!-- Footer -->
     <div class="offcanvas-header flex-column align-items-start">
         <div class="d-flex align-items-center justify-content-between w-100 mb-3 mb-md-4">
-            <span class="text-light-emphasis">Итого:</span>
+            <span class="text-light-emphasis"><?= _e('tpl_menu_cart_total') ?></span>
             <span class="h6 mb-0">$<?= \App\Helpers\Cart\Cart::getCartSum() ?></span>
         </div>
         <div class="d-flex w-100 gap-3">

@@ -175,7 +175,7 @@
 
         <!-- Search bar visible on screens > 768px wide (md breakpoint) -->
         <div class="position-relative w-100 d-none d-md-block me-3 me-xl-4">
-            <input type="search" class="form-control form-control-lg rounded-pill" placeholder="Поиск..." aria-label="Search">
+            <input type="search" class="form-control form-control-lg rounded-pill" placeholder="<?= _e('tpl_menu_search') ?>" aria-label="Search">
             <button type="button" class="btn btn-icon btn-ghost fs-lg btn-secondary text-bo border-0 position-absolute top-0 end-0 rounded-circle mt-1 me-1" aria-label="Search button">
                 <i class="ci-search"></i>
             </button>
@@ -286,7 +286,7 @@
         <div class="container pt-2 pb-3">
             <div class="position-relative">
                 <i class="ci-search position-absolute top-50 translate-middle-y d-flex fs-lg ms-3"></i>
-                <input type="search" class="form-control form-icon-start rounded-pill" placeholder="Поиск..." data-autofocus="collapse">
+                <input type="search" class="form-control form-icon-start rounded-pill" placeholder="<?= _e('tpl_menu_search') ?>" data-autofocus="collapse">
             </div>
         </div>
     </div>
