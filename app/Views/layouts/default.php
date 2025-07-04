@@ -89,7 +89,6 @@
                                         'tpl' => 'shop_mobile_menu_tpl',
                                         'container' => 'ul',
                                         'class' => 'nav flex-column gap-2 mt-n2',
-                                        'append' => '</ul>',
                                         'cacheTime' => 20,
                                         'cacheKey' => 'mobile-catalog-menu'
                                     ]);
@@ -101,16 +100,10 @@
                 </div>
             </div>
         </div>
-        <div class="h6 fw-medium py-1 mb-0">
-            <a class="d-block animate-underline py-1" href="<?= base_href('/')?>">
-                <span class="d-inline-block animate-target py-1">Главная</span>
-            </a>
-        </div>
-        <div class="h6 fw-medium py-1 mb-0">
-            <a class="d-block animate-underline py-1" href="<?= base_href('/posts')?>">
-                <span class="d-inline-block animate-target py-1">Новости</span>
-            </a>
-        </div>
+
+        <!-- Main menu -->
+        <?php echo view()->renderPartial('incs/main_menu_tpl'); ?>
+
     </div>
 
     <!-- Account button visible on screens < 768px wide (md breakpoint) -->
