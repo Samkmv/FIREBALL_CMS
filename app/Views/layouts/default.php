@@ -1,6 +1,8 @@
 <!DOCTYPE html><html lang="en" data-bs-theme="light" data-pwa="true"><head>
     <meta charset="utf-8">
 
+    <?= get_csrf_meta() ?>
+
     <!-- Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover">
 
@@ -46,6 +48,7 @@
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/css/style.css') ?>">
 
+    <!-- Header scripts -->
     <?php if (!empty($header_scripts)): ?>
         <?php foreach ($header_scripts as $header_script): ?>
 
@@ -102,7 +105,7 @@
         </div>
 
         <!-- Main menu -->
-        <?php echo view()->renderPartial('incs/main_menu_tpl'); ?>
+        <?php echo view()->renderPartial('incs/main_menu_tpl') ?>
 
     </div>
 
@@ -219,9 +222,9 @@
                 </ul>
             </div>
 
+            <!-- Language switcher -->
             <?php if (MULTILANGS): ?>
 
-                <!-- Language switcher -->
                 <div class="dropdown">
                     <button type="button" class="btn btn-icon btn-outline-secondary fs-lg border-0 rounded-circle animate-scale" data-bs-toggle="dropdown" aria-expanded="false">
                         <span class="d-flex animate-target">
