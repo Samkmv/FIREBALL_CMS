@@ -1,0 +1,114 @@
+a:2:{s:4:"data";s:5867:"<div class="dropdown-menu rounded-4 p-4"  style="--cz-dropdown-spacer: .75rem; margin-left: -75px; min-width: 1000px;" ><div class="row" style=" overflow: scroll; max-height: 600px;"><div class="col-md-3">
+    <div class="pt-4 h6">Женская обувь</div>
+
+    <ul class="nav gap-2 mt-n2">
+            <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/tufli-5">Туфли</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/sapogi-6">Сапоги</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/krossovki-7">Кроссовки</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/bosonozhki-8">Босоножки</a>
+    </li>
+
+
+    </ul>
+
+</div>
+<div class="col-md-3">
+    <div class="pt-4 h6">Мужская обувь</div>
+
+    <ul class="nav gap-2 mt-n2">
+            <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/tufli-9">Туфли</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/sapogi-10">Сапоги</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/krossovki-11">Кроссовки</a>
+    </li>
+
+
+    </ul>
+
+</div>
+<div class="col-md-3">
+    <div class="pt-4 h6">Женская одежда</div>
+
+    <ul class="nav gap-2 mt-n2">
+            <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/kurtki-12">Куртки</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/shuby-13">Шубы</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/platya-14">Платья</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/sportivnye-kostyumy-15">Спортивные костюмы</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/dzhinsy-16">Джинсы</a>
+    </li>
+
+
+    </ul>
+
+</div>
+<div class="col-md-3">
+    <div class="pt-4 h6">Мужская одежда</div>
+
+    <ul class="nav gap-2 mt-n2">
+            <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/kurtki-17">Куртки</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/sportivnye-kostyumy-18">Спортивные костюмы</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/kostyumy-19">Костюмы</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/bryuki-20">Брюки</a>
+    </li>
+
+
+    <li class="d-flex w-100 pt-1"> <!-- классы d-flex w-100 - для отображения по списку -->
+        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="http://localhost:8888/category/futbolki-21">Футболки</a>
+    </li>
+
+
+    </ul>
+
+</div>
+</div></div>";s:8:"end_time";i:1751961715;}
