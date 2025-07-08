@@ -10,6 +10,10 @@ class Cache
         $content['data'] = $data;
         $content['end_time'] = time() + $seconds;
 
+        if (!is_dir(CACHE)) {
+            mkdir(CACHE, 0755, true);
+        }
+
         $cache_file = CACHE . '/' . md5($key) . '.txt';
         file_put_contents($cache_file, serialize($content));
     }
