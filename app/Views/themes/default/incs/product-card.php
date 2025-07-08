@@ -13,11 +13,11 @@
 
         <?php if ($product['in_stock']): ?>
 
-            <span class="badge text-body-emphasis bg-secondary-subtle">В наличии</span>
+            <span class="badge text-body-emphasis bg-secondary-subtle"><?= print_translation('home_index_product_card_in_stock') ?></span>
 
         <?php else: ?>
 
-            <span class="badge text-body-emphasis bg-secondary-subtle">Нет в наличии</span>
+            <span class="badge text-body-emphasis bg-secondary-subtle"><?= print_translation('home_index_product_card_no_stock') ?></span>
 
         <?php endif; ?>
 
@@ -43,7 +43,7 @@
         <?php if ($product['in_stock']): ?>
         <div class="d-flex gap-2">
             <button type="button" class="btn <?= \App\Helpers\Cart\Cart::hasProductInCart($product['id']) ? 'btn-secondary' : 'btn-dark' ?> w-100 rounded-pill px-3 add-to-cart" data-id="<?= $product['id'] ?>">
-                <span class="text"><?= \App\Helpers\Cart\Cart::hasProductInCart($product['id']) ? 'В корзине' : 'В корзину' ?></span>
+                <span class="text"><?= \App\Helpers\Cart\Cart::hasProductInCart($product['id']) ? print_translation('home_index_product_card_added_to_card') : print_translation('home_index_product_card_add_to_card') ?></span>
                 <span class="loader spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
             </button>
             <button type="button" class="btn btn-icon btn-secondary rounded-circle animate-pulse" aria-label="Add to wishlist">

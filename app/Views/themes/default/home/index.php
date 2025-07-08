@@ -135,7 +135,7 @@
             <h2 class="h3 mb-0"><?= print_translation('home_index_sale') ?></h2>
             <div class="nav ms-3">
                 <a class="nav-link animate-underline px-0 py-2" href="shop-catalog-furniture.html">
-                    <span class="animate-target"><?= print_translation('home_index_sale_btn') ?></span>
+                    <span class="animate-target"><?= print_translation('home_index_btn_sale') ?></span>
                     <i class="ci-chevron-right fs-base ms-1"></i>
                 </a>
             </div>
