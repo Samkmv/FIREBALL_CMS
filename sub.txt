@@ -22,3 +22,8 @@ vless://479809bf-064a-4667-88b3-c561096c9448@37.139.33.15:443/?flow=xtls-rprx-vi
 vless://479809bf-064a-4667-88b3-c561096c9448@84.23.52.70:443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=2715592069f36fe7#%F0%9F%87%AD%F0%9F%87%BAHungary 2
 vless://479809bf-064a-4667-88b3-c561096c9448@84.23.52.70:8443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary 3
 vless://f8a2c7b5-616b-48b0-833b-ea59bce29351@37.139.33.15:8443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=f4b4a6365558ea2e#%F0%9F%87%AD%F0%9F%87%BAHungary 4
+# Венгрия end
+
+# Россия start
+vless://30c04389-bbcb-431f-9d47-a8ad24406bd4@51.250.92.100:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=ads.x5.ru&pbk=OBR2JYROQB8odK5glVW_KLnsWl3UZ-voyGq_9ihQgTI&sid=d49d578f280fd83a#%F0%9F%87%B7%F0%9F%87%BARussia 1%20%7C%20%F0%9F%8C%90%20Anycast-IP
+# Россия end
