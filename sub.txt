@@ -26,4 +26,5 @@ vless://f8a2c7b5-616b-48b0-833b-ea59bce29351@37.139.33.15:8443/?flow=xtls-rprx-v
 
 # Россия start
 vless://30c04389-bbcb-431f-9d47-a8ad24406bd4@51.250.92.100:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=ads.x5.ru&pbk=OBR2JYROQB8odK5glVW_KLnsWl3UZ-voyGq_9ihQgTI&sid=d49d578f280fd83a#%F0%9F%87%B7%F0%9F%87%BARussia 1%20%7C%20%F0%9F%8C%90%20Anycast-IP
+vless://b39aca97-e9f2-4a94-b87f-8748299846cd@51.250.12.100:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=api-maps.yandex.ru&pbk=66kZLshj9fxAIQA7NsABohNwgiOcY71enc6as_Frqw0&sid=3c1523da43287ec4&spx=/#%F0%9F%87%B7%F0%9F%87%BARussia 2
 # Россия end
