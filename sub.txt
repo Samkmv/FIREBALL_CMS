@@ -5,7 +5,7 @@
 # Германия Anycast end
 
 # Германия start
-vless://ba230ae8-6671-4001-8494-5001945b5057@51.250.99.149:8443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=st-im.kinopoisk.ru&pbk=JCb_XSqs5RX1ABXUECpDz5HZ5gzzFAJoO9IBs9ETqkE&sid=7ccbcb93b59845de#%F0%9F%87%A9%F0%9F%87%AAGermany 1
+
 vless://a88ea8bf-7001-4e29-a9bb-379f6778195c@178.250.243.83:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=max.ru&pbk=n7PbThf3Y4O9x0Ya1sENteFwg7k4INOTnI64MxVz5UQ&sid=0123456789abcdef#%F0%9F%87%A9%F0%9F%87%AAGermany%20%5B*CIDR%5D
 vless://a88ea8bf-7001-4e29-a9bb-379f6778195c@178.250.243.83:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=n7PbThf3Y4O9x0Ya1sENteFwg7k4INOTnI64MxVz5UQ&sid=0123456789abcdef#%F0%9F%87%A9%F0%9F%87%AAGermany%20%5B*CIDR%5D
 vless://da11d62c-1996-4d2c-b2e6-e89c7a1265e9@95.163.209.21:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=api-maps.yandex.ru&pbk=5bGFIWSo4vlrd9Tv1yFcpdpSjrjYYN20SOWHYfighHc&sid=e5f67890#%F0%9F%87%A9%F0%9F%87%AAGermany%20%5B*CIDR%5D%20VK
@@ -13,12 +13,12 @@ vless://94a03e9a-74d5-4036-95e9-563cc19355de@95.163.209.21:443?flow=xtls-rprx-vi
 # Германия end
 
 # Австрия Anycast start
-vless://b39aca97-e9f2-4a94-b87f-8748299846cd@81.200.151.139:443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=_clqzJ8ZkSG71dSLu5KfRB9NJf63uBbdlDFZ4hp1uBE&sid=3d9bfa9202efd228#%F0%9F%87%A6%F0%9F%87%B9Austria 1%20%7C%20%F0%9F%8C%90%20Anycast-IP
-vless://b39aca97-e9f2-4a94-b87f-8748299846cd@81.200.151.158:443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=eh1.vk.com&pbk=UZ2NoBGMbrUpBav3lcqN-E43SxZTIvkjJuHNy-Yk_go&sid=d26763126a7cf4fe#%F0%9F%87%A6%F0%9F%87%B9Austria 2%20%7C%20%F0%9F%8C%90%20Anycast-IP
-vless://b39aca97-e9f2-4a94-b87f-8748299846cd@81.200.151.199:443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=_clqzJ8ZkSG71dSLu5KfRB9NJf63uBbdlDFZ4hp1uBE&sid=3d9bfa9202efd228#%F0%9F%87%A6%F0%9F%87%B9Austria 3%20%7C%20%F0%9F%8C%90%20Anycast-IP
-vless://b39aca97-e9f2-4a94-b87f-8748299846cd@84.201.128.76:443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=smartcaptcha.yandexcloud.net&pbk=66kZLshj9fxAIQA7NsABohNwgiOcY71enc6as_Frqw0&sid=3c1523da43287ec4#%F0%9F%87%A6%F0%9F%87%B9Austria 4%20%7C%20%F0%9F%8C%90%20Anycast-IP
-vless://b39aca97-e9f2-4a94-b87f-8748299846cd@178.154.224.33:443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=ads.x5.ru&pbk=66kZLshj9fxAIQA7NsABohNwgiOcY71enc6as_Frqw0&sid=3c1523da43287ec4&spx=/#%F0%9F%87%A6%F0%9F%87%B9Austria 5%20%7C%20%F0%9F%8C%90%20Anycast-IP
-vless://b39aca97-e9f2-4a94-b87f-8748299846cd@81.denditop.site:443/?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=eh1.vk.com&pbk=UZ2NoBGMbrUpBav3lcqN-E43SxZTIvkjJuHNy-Yk_go&sid=d26763126a7cf4fe#%F0%9F%87%A6%F0%9F%87%B9Austria 6%20%7C%20%F0%9F%8C%90%20Anycast-IP
+
+
+
+
+
+
 # Австрия Anycast end
 
 # Венгрия start
