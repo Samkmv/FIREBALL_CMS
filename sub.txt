@@ -23,7 +23,11 @@ vless://94a03e9a-74d5-4036-95e9-563cc19355de@95.163.209.21:443?flow=xtls-rprx-vi
 
 # Венгрия start
 
-
+vless://3f8e8529-9cb9-42a7-9a02-533ab8838114@89.169.128.105:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=f4b4a6365558ea2e#%F0%9F%87%AD%F0%9F%87%BAHungary 1
+vless://3f8e8529-9cb9-42a7-9a02-533ab8838114@84.23.52.70:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary 2
+vless://3f8e8529-9cb9-42a7-9a02-533ab8838114@178.154.253.80:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=2715592069f36fe7#%F0%9F%87%AD%F0%9F%87%BAHungary 3
+vless://3f8e8529-9cb9-42a7-9a02-533ab8838114@89.169.128.105:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary 4
+vless://3f8e8529-9cb9-42a7-9a02-533ab8838114@178.154.253.80:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=f4b4a6365558ea2e#%F0%9F%87%AD%F0%9F%87%BAHungary 5
 
 # Венгрия end
 
