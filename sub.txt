@@ -26,15 +26,12 @@ vless://4c67a3fa-65bd-482b-b13b-820122ea0048@51.250.24.94:443?flow=xtls-rprx-vis
 
 # Венгрия start
 
-
+vless://36316bec-8976-4b1f-8042-b87db88faa25@178.154.253.80:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20YA
+vless://36316bec-8976-4b1f-8042-b87db88faa25@89.169.128.105:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20YA
+vless://182a355e-8ffc-4735-84b6-afbd83c98ff2@84.23.52.70:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=f4b4a6365558ea2e#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
+vless://36316bec-8976-4b1f-8042-b87db88faa25@37.139.33.15:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
 
 # Венгрия end
-
-# Россия start
-
-
-
-# Россия end
 
 vless://eb071647-72a6-46be-8e89-ff3d228d52f6@84.252.130.60:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=sun6-21.userapi.com&pbk=FkmYFobwxLMLEktYXywmjthuEYCZggITsxwPNasTKUg&sid=4b523a98e1bbd15b#%F0%9F%87%B3%F0%9F%87%B1The%20Netherlands%20%7C%20%F0%9F%8C%90%20%7C%20%5BD%5D%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
 vless://eb071647-72a6-46be-8e89-ff3d228d52f6@84.252.130.60:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=sun6-21.userapi.com&pbk=FkmYFobwxLMLEktYXywmjthuEYCZggITsxwPNasTKUg&sid=4b523a98e1bbd15b#%F0%9F%87%B3%F0%9F%87%B1The%20Netherlands%20%7C%20%F0%9F%8C%90%20%7C%20%5BD%5D%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
