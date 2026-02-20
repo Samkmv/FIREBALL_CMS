@@ -6,12 +6,7 @@
 
 # Германия start
 
-vless://89dac4a8-550e-404c-a4b7-ebbd776a6e4c@51.250.24.94:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=web.max.ru&pbk=XZy_l7TWfeFsUvIwrVopegsFOQY83hWSbPRW1-ZaWnY&sid=a8fba89822f8#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
-vless://89dac4a8-550e-404c-a4b7-ebbd776a6e4c@51.250.110.17:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=ads.x5.ru&pbk=XZy_l7TWfeFsUvIwrVopegsFOQY83hWSbPRW1-ZaWnY&sid=cb4e#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
-vless://4c67a3fa-65bd-482b-b13b-820122ea0048@51.250.110.17:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=ads.x5.ru&pbk=XZy_l7TWfeFsUvIwrVopegsFOQY83hWSbPRW1-ZaWnY&sid=cb4e#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
-vless://4c67a3fa-65bd-482b-b13b-820122ea0048@51.250.110.17:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=ads.x5.ru&pbk=XZy_l7TWfeFsUvIwrVopegsFOQY83hWSbPRW1-ZaWnY&sid=cb4e#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
-vless://4c67a3fa-65bd-482b-b13b-820122ea0048@51.250.24.94:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=Pj4M8dTJY9qWcvW4WwtC8yljO6rAKAcoy8KMamZ2c1M&sid=13c4b2#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
-vless://4c67a3fa-65bd-482b-b13b-820122ea0048@51.250.24.94:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=web.max.ru&pbk=XZy_l7TWfeFsUvIwrVopegsFOQY83hWSbPRW1-ZaWnY&sid=a8fba89822f8#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv4%5D%20%5B*CIDR%5D%20YA
+
 
 # Германия end
 
