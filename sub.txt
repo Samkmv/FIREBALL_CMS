@@ -8,6 +8,10 @@ vless://047d8b86-0ce9-4571-b59f-39533ba69d15@51.250.117.173:5443?flow=xtls-rprx-
 vless://0b795392-7198-42a4-9a07-77d2e9b190aa@51.250.117.173:5443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=yandex.ru&pbk=Z1PBEkRcz_GSf4D3452Y_PdZeEVr0XZ3pGZkMBleI3U&sid=f16927958981f934#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
 vless://2ee9a7e8-0f1c-4581-ae94-a2cd6291e224@51.250.75.178:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=max.ru&pbk=iobA_bK3A-Mj4IF65agM5VbKQdbI1FDtq4WaOPkRwU4&sid=1bbbfaf553e63d8c#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
 vless://3678f932-716c-478f-84e1-582f0f166e66@158.160.188.11:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=iobA_bK3A-Mj4IF65agM5VbKQdbI1FDtq4WaOPkRwU4&sid=1bbbfaf553e63d8c#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
+vless://d8d50f74-d1c2-4bcf-a24c-360e1fdb1458@51.250.117.173:5443?flow=xtls-rprx-vision&type=tcp&security=reality&fp=qq&sni=yandex.ru&pbk=Z1PBEkRcz_GSf4D3452Y_PdZeEVr0XZ3pGZkMBleI3U&sid=f16927958981f934#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20YA
+vless://23082165-6a60-40c9-bd2b-1e72d11e8931@51.250.117.173:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=max.ru&pbk=nP-Z3hGqLZyA_XcSs9FVwIQol3epnT6wvZYQ4SsO9Rk&sid=c45abdac2394a869#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
+vless://df3b640c-e868-4a74-b70c-147c5f31a168@158.160.188.11:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=iobA_bK3A-Mj4IF65agM5VbKQdbI1FDtq4WaOPkRwU4&sid=1bbbfaf553e63d8c#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
+vless://e8f7b224-c756-4500-a0f0-308fadd3fc95@51.250.117.173:4443?flow=xtls-rprx-vision&type=tcp&security=reality&fp=qq&sni=ads.x5.ru&pbk=ef9Xx816A-obDKokFDIV5acO4E8A23MErXdh5ki4wj4&sid=63d703b12f253ffb#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv4%206%5D%20%5B*CIDR%5D%20YA
 
 
 # Германия Anycast end
