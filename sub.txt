@@ -1,9 +1,7 @@
 # Германия Anycast start
 
-vless://b5fdd62c-75b5-44d4-b4c4-7e48a5b4268a@158.160.188.11:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=iobA_bK3A-Mj4IF65agM5VbKQdbI1FDtq4WaOPkRwU4&sid=1bbbfaf553e63d8c#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
-vless://a59e15b3-f55c-40b2-9238-6d04ee7b0649@51.250.75.178:4443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=EQszgdCF6wZeEc0GmXLZcj6dNedc-PF9WUu5MXsP8Uk&sid=4e2dc2056ed45d12#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv4%206%5D%20%5B*CIDR%5D%20YA
-vless://b5fdd62c-75b5-44d4-b4c4-7e48a5b4268a@158.160.188.11:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=iobA_bK3A-Mj4IF65agM5VbKQdbI1FDtq4WaOPkRwU4&sid=1bbbfaf553e63d8c#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
-vless://03dd7e7c-8d2a-4cd2-b920-f5ed564fc8c4@144.31.139.184:443?type=grpc&mode=gun&serviceName=&security=reality&fp=chrome&sni=stats.vk-portal.net&pbk=YD5WWrYv-qy2P6Hu9dtImndERQBhf9uC928NigPOIjg#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv4%206%5D%20%5B*CIDR%5D
+vless://42cd70c5-fcdf-4295-a269-72c67972afa0@37.139.42.131:4443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=google.com&pbk=dZhZUzUZazKuWXXVfDk5Vm1X7rMDlTLiGCVq1OechlY&sid=1421a22b7618d51d#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
+
 vless://16958ba9-fd17-4910-986e-f32d079b3528@212.233.98.214:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=eh.vk.com&pbk=RJETAkoZ6lowmwc5f0HtPy00c3dfojqQuypriLExXRE&sid=abbcd128#%F0%9F%87%A9%F0%9F%87%AAGermany%20%5B*CIDR%5D%20VK
 
 
