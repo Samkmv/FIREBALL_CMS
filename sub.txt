@@ -23,6 +23,8 @@ vless://16958ba9-fd17-4910-986e-f32d079b3528@212.233.98.214:443?flow=xtls-rprx-v
 
 # Венгрия start
 
+vless://7825f2d1-cdc2-4186-9ad5-377afa912104@37.139.33.15:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=2715592069f36fe7#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
+vless://7825f2d1-cdc2-4186-9ad5-377afa912104@37.139.33.15:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=f4b4a6365558ea2e#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
 
 
 # Венгрия end
@@ -33,3 +35,8 @@ vless://75548701-95d7-4a26-a78e-eea77851a782@nl.sky-vault.top:443?type=xhttp&hos
 vless://75548701-95d7-4a26-a78e-eea77851a782@144.31.123.70:443?type=xhttp&host=&path=/path&mode=auto&security=reality&fp=random&sni=nl.sky-vault.top&pbk=_KTsOFhGnC0W28ZqO8_FApozMp7tJ9cVBTLKLAA_OR0&sid=ae64c9b46bff174a#%F0%9F%87%B3%F0%9F%87%B1The%20Netherlands%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
 
 # Нидерланды end
+
+vless://b4f272ea-cd4f-4df9-9929-1c6b49c0b6ac@51.250.83.255:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=ads.x5.ru&pbk=FkmYFobwxLMLEktYXywmjthuEYCZggITsxwPNasTKUg&sid=a76ea384b29a4f79#%F0%9F%87%B7%F0%9F%87%BARussia%20%5B*CIDR%5D%20YA
+vless://b4f272ea-cd4f-4df9-9929-1c6b49c0b6ac@51.250.86.102:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=ads.x5.ru&pbk=FkmYFobwxLMLEktYXywmjthuEYCZggITsxwPNasTKUg&sid=65ce6cee3941af69#%F0%9F%87%B7%F0%9F%87%BARussia%20%5B*CIDR%5D%20YA
+vless://b8a44195-0860-4312-a0df-dae178585a48@51.250.26.75:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=eh.vk.com&pbk=7IOtSp0-n2_uNS5nMO9ywZbn2HibMRGy0KbLad3szXc&sid=b8cf9578640a9edf#%F0%9F%87%B7%F0%9F%87%BARussia%20%5B*CIDR%5D%20YA
+vless://eb071647-72a6-46be-8e89-ff3d228d52f6@51.250.65.209:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=api-maps.yandex.ru&pbk=FkmYFobwxLMLEktYXywmjthuEYCZggITsxwPNasTKUg&sid=2476f063981ffd92#%F0%9F%87%B7%F0%9F%87%BARussia%20%5B*CIDR%5D%20YA
