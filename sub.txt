@@ -1,12 +1,5 @@
 # Германия Anycast start
 
-vless://30c04389-bbcb-431f-9d47-a8ad24406bd4@37.139.33.216:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=max.ru&pbk=eQXsYV276NoiN9SDwuloNrJkX-NU2tDtkMK6ntKQwlg&sid=e9967082664482b7#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
-vless://400c1f85-9d3a-444a-8a50-81b11f3b4c20@84.201.128.76:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=smartcaptcha.yandexcloud.net&pbk=66kZLshj9fxAIQA7NsABohNwgiOcY71enc6as_Frqw0&sid=3c1523da43287ec4#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
-vless://5841eaaa-7a3f-4ded-8ac4-039de73973c2@51.250.7.185:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
-vless://5841eaaa-7a3f-4ded-8ac4-039de73973c2@51.250.75.17:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
-vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
-vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
-vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
 
 
 # Германия Anycast end
