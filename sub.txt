@@ -29,7 +29,10 @@ vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-v
 vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@37.139.33.15:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=2715592069f36fe7#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
 vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@37.139.33.15:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
 vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@37.139.33.15:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
-
+vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@89.169.128.105:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20YA
+vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@89.169.128.105:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20YA
+vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@89.169.128.105:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=yandex.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=2715592069f36fe7#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20YA
+vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@37.139.33.15:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
 
 # Венгрия end
 
