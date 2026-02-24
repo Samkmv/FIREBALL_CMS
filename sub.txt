@@ -5,6 +5,8 @@ vless://400c1f85-9d3a-444a-8a50-81b11f3b4c20@84.201.128.76:443?flow=xtls-rprx-vi
 vless://5841eaaa-7a3f-4ded-8ac4-039de73973c2@51.250.7.185:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
 vless://5841eaaa-7a3f-4ded-8ac4-039de73973c2@51.250.75.17:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
 vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
+vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
+vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&sni=ads.x5.ru&pbk=QHkXBS2ENHV0khgY9VBYi8_9bpfqnUYDcfQN4cW5Qg0&sid=4326#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%5B*CIDR%5D%20YA
 
 
 # Германия Anycast end
@@ -24,7 +26,9 @@ vless://de07e152-8a9e-4fad-b3d1-5fe09b8c6ed7@51.250.90.137:8081?flow=xtls-rprx-v
 # Венгрия start
 
 
-
+vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@37.139.33.15:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=2715592069f36fe7#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
+vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@37.139.33.15:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=chrome&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
+vless://5787d9c1-d2cc-4171-a3c9-014bcd49c30b@37.139.33.15:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=m.vk.ru&pbk=7zd9mJilgjOrg_ohtw23Vmio-pdnYqeP_r-kiWt87Cg&sid=8ba12e75110b7a9c#%F0%9F%87%AD%F0%9F%87%BAHungary%20%5B*CIDR%5D%20VK
 
 
 # Венгрия end
