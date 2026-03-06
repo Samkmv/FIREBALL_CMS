@@ -1,49 +1,9 @@
-# Германия Anycast start
 
-vless://0d3e2d21-f31b-03e8-b418-54cacd0be7c4@212.193.153.187:443?type=ws&host=lk-cdn.deploy-assure.ru&path=//&security=tls&sni=lk-cdn.deploy-assure.ru&alpn=h2,http/1.1&fp=chrome&allowInsecure=0#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
-vless://dbcdd65d-637b-4d93-b0c3-11707ff08e00@5-gaming.harknmav.fun:6443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=firefox&sni=ads.x5.ru&pbk=20kWWWp6YwJujT1penAu1FD_uvm6dcJoj2w-ZZ-JVSk&sid=9dfefbaf7319b348#%F0%9F%87%A9%F0%9F%87%AAGermany%20%5B*CIDR%5D%20VK
-vless://dbcdd65d-637b-4d93-b0c3-11707ff08e00@5.188.143.115:6443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=firefox&sni=ads.x5.ru&pbk=20kWWWp6YwJujT1penAu1FD_uvm6dcJoj2w-ZZ-JVSk&sid=9dfefbaf7319b348#%F0%9F%87%A9%F0%9F%87%AAGermany%20%5B*CIDR%5D%20VK
-
-# Германия Anycast end
-
-# Германия start
-
-
-
-# Германия end
-
-# Австрия Anycast start
-
-
-
-# Австрия Anycast end
-
-# Венгрия start
-
-
-
-# Венгрия end
-
-vless://0d3e2d21-f31b-0bb8-b418-54cacd0be7c4@146.185.240.38:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
-vless://0d3e2d21-f31b-0bb8-b418-54cacd0be7c4@146.185.240.94:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
-vless://0d3e2d21-f31b-0bb8-b418-54cacd0be7c4@37.139.33.12:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
-vless://0d3e2d21-f31b-0bb8-b418-54cacd0be7c4@37.139.35.173:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
-vless://0d3e2d21-f31b-0bb8-b418-54cacd0be7c4@5.188.140.39:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
-
-
-# Нидерланды start
-
-
-
-# Нидерланды end
-
-vless://bf77f272-4220-4655-ab76-5ccdf0d2a60f@45.144.52.208:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=fl.raketa-balance.com&pbk=JaP4bhvIMW-l7T0_RkLra59DeBYI6W9XemKa8MyRPSY&sid=6c6082a2223c1d03#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
-vless://bf77f272-4220-4655-ab76-5ccdf0d2a60f@45.144.52.74:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=fl.raketa-balance.com&pbk=JaP4bhvIMW-l7T0_RkLra59DeBYI6W9XemKa8MyRPSY&sid=6c6082a2223c1d03#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
-vless://bf77f272-4220-4655-ab76-5ccdf0d2a60f@45.144.53.13:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=fl.raketa-balance.com&pbk=JaP4bhvIMW-l7T0_RkLra59DeBYI6W9XemKa8MyRPSY&sid=6c6082a2223c1d03#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
-vless://bf77f272-4220-4655-ab76-5ccdf0d2a60f@fl.raketa-balance.com:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=random&sni=fl.raketa-balance.com&pbk=JaP4bhvIMW-l7T0_RkLra59DeBYI6W9XemKa8MyRPSY&sid=6c6082a2223c1d03#%F0%9F%87%AB%F0%9F%87%AEFinland%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
-
-
-vless://0d3e2d21-f31b-07d0-b418-54cacd0be7c4@109.120.188.145:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%B7%F0%9F%87%BARussia%20%5B*CIDR%5D%20VK
-vless://0d3e2d21-f31b-07d0-b418-54cacd0be7c4@146.185.240.4:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%B7%F0%9F%87%BARussia%20%5B*CIDR%5D%20VK
-vless://0d3e2d21-f31b-07d0-b418-54cacd0be7c4@5.188.140.37:443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%B7%F0%9F%87%BARussia%20%5B*CIDR%5D%20VK
-
+vless://0d3e2d21-f31b-03e8-b418-54cacd0be7c4@212.193.157.118:443?type=ws&host=lk-cdn.deploy-assure.ru&path=//&security=tls&sni=lk-cdn.deploy-assure.ru&alpn=h2,http/1.1&fp=chrome&allowInsecure=0#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
+vless://14bb4afc-22d6-4421-8063-4e3cee16f80c@176.108.246.13:10443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=randomized&sni=pimg.mycdn.me&pbk=4jkTVxhDBqn2B-jBylY8zUEQg2VbDtmmYX2nz2kdgz8&sid=e6b3a1d7f02c9e54&spx=/#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
+vless://14bb4afc-22d6-4421-8063-4e3cee16f80c@176.108.246.13:11443?type=xhttp&host=&path=/xhttp&mode=stream-up&extra=%257B%250A%2520%2520%2522downloadSettings%2522%2520:%2520null,%250A%2520%2520%2522extra%2522%2520:%2520null,%250A%2520%2520%2522headers%2522%2520:%2520null,%250A%2520%2520%2522host%2522%2520:%2520%2522%2522,%250A%2520%2520%2522mode%2522%2520:%2520%2522%2522,%250A%2520%2520%2522noGRPCHeader%2522%2520:%2520false,%250A%2520%2520%2522noSSEHeader%2522%2520:%2520false,%250A%2520%2520%2522path%2522%2520:%2520%2522%2522,%250A%2520%2520%2522scMaxBufferedPosts%2522%2520:%25200,%250A%2520%2520%2522scMaxEachPostBytes%2522%2520:%2520%25220%2522,%250A%2520%2520%2522scMinPostsIntervalMs%2522%2520:%2520%25220%2522,%250A%2520%2520%2522scStreamUpServerSecs%2522%2520:%2520%25220%2522,%250A%2520%2520%2522seqKey%2522%2520:%2520%2522%2522,%250A%2520%2520%2522seqPlacement%2522%2520:%2520%2522%2522,%250A%2520%2520%2522sessionKey%2522%2520:%2520%2522%2522,%250A%2520%2520%2522sessionPlacement%2522%2520:%2520%2522%2522,%250A%2520%2520%2522uplinkChunkSize%2522%2520:%25200,%250A%2520%2520%2522uplinkDataKey%2522%2520:%2520%2522%2522,%250A%2520%2520%2522uplinkDataPlacement%2522%2520:%2520%2522%2522,%250A%2520%2520%2522uplinkHTTPMethod%2522%2520:%2520%2522%2522,%250A%2520%2520%2522xmux%2522%2520:%2520%257B%250A%2520%2520%2520%2520%2522cMaxReuseTimes%2522%2520:%2520%25220%2522,%250A%2520%2520%2520%2520%2522hKeepAlivePeriod%2522%2520:%25200,%250A%2520%2520%2520%2520%2522hMaxRequestTimes%2522%2520:%2520%2522600-900%2522,%250A%2520%2520%2520%2520%2522hMaxReusableSecs%2522%2520:%2520%25221800-3000%2522,%250A%2520%2520%2520%2520%2522maxConcurrency%2522%2520:%2520%25224-7%2522,%250A%2520%2520%2520%2520%2522maxConnections%2522%2520:%2520%25220%2522%250A%2520%2520%257D,%250A%2520%2520%2522xPaddingBytes%2522%2520:%2520%2522100-1000%2522,%250A%2520%2520%2522xPaddingHeader%2522%2520:%2520%2522%2522,%250A%2520%2520%2522xPaddingKey%2522%2520:%2520%2522%2522,%250A%2520%2520%2522xPaddingMethod%2522%2520:%2520%2522%2522,%250A%2520%2520%2522xPaddingObfsMode%2522%2520:%2520false,%250A%2520%2520%2522xPaddingPlacement%2522%2520:%2520%2522%2522%250A%257D&security=reality&fp=randomized&sni=pimg.mycdn.me&pbk=1vn9JJl5P8uZrPRuwHaJCTanhIVcxfrMxd0QnjkvCF4&sid=54a8c1e3b7f2096d&spx=/#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
+vless://14bb4afc-22d6-4421-8063-4e3cee16f80c@176.108.246.23:10443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=randomized&sni=pimg.mycdn.me&pbk=4jkTVxhDBqn2B-jBylY8zUEQg2VbDtmmYX2nz2kdgz8&sid=e6b3a1d7f02c9e54&spx=/#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
+vless://30de0562-9174-40d0-b71d-e123e6833405@185.144.70.35:8443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=ign.dev&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwB-ed4eEE7YnRc&sid=6ba85179e30d4fc2#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
+vless://30de0562-9174-40d0-b71d-e123e6833405@45.139.184.100:9443?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=ign.dev&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwB-ed4eEE7YnRc&sid=6ba85179e30d4fc2#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
+vless://a5ca6aa5-0354-03e8-b094-741b1dfe4daa@212.193.153.187:443?type=ws&host=lk-cdn.deploy-assure.ru&path=//&security=tls&sni=lk-cdn.deploy-assure.ru&alpn=h2,http/1.1&fp=chrome&allowInsecure=0#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D
+vless://4fd2d5f6-d417-03e8-9331-e20afde2fcd2@146.185.241.48:52006?flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=qq&sni=max.ru&pbk=4CH3o5zOMcFNMbnwXnkAg0FFepmsc0QzhahXkUzb1ik&sid=d8c6b58bcbb0c323#%F0%9F%87%A9%F0%9F%87%AAGermany%20%7C%20%F0%9F%8C%90%20%7C%20%5BIPv6%5D%20%5B*CIDR%5D%20VK
