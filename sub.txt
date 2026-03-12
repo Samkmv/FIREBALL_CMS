@@ -1,4 +1,0 @@
-
-
-vless://2fa668c6-7910-47b3-bae8-0e0b0756b9d5@212.233.78.11:58960/?type=xhttp&encryption=none&path=%2F&host=&mode=packet-up&security=reality&pbk=lY2L4MDQt1Izqzph50q6SViqbPrRoTX9B7bodqCpe2o&fp=qq&sni=www.max.ru&sid=24531381&spx=%2F#%F0%9F%87%A9%F0%9F%87%AAGermany%20%5B*CIDR%5D%20Reserve
-
