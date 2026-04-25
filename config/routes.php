@@ -96,12 +96,6 @@ $app->router->get('/remove-from-cart', [CartController::class, 'removeFromCart']
 $app->router->get('/', [HomeController::class, 'index']);
 
 // Seed
-$app->router->get('/seed', function () {
-    require_once __DIR__ . '/seeders/categories.php';
-    require_once __DIR__ . '/seeders/products.php';
-    return 'OK';
-});
-
 $app->router->get('/seed-full', function () {
     $result = require __DIR__ . '/seeders/full_database.php';
     return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

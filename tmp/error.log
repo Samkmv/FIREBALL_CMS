@@ -1,0 +1,171 @@
+[2026-04-25 23:23:49] Database query error
+Request URI: /seed-full
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[HY093]: Invalid parameter number: number of bound variables does not match number of tokens
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php(256): FBL\Database->query('INSERT INTO pos...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(106): require('/Applications/M...')
+#3 [internal function]: {closure}()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Object(Closure))
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
+#7 {main}
+SQL: INSERT INTO posts (
+        title,
+        slug,
+        category_id,
+        category,
+        excerpt,
+        content,
+        image,
+        hide_placeholder_image,
+        show_on_home,
+        seo_title,
+        seo_description,
+        seo_keywords,
+        seo_image,
+        author_id,
+        author_name,
+        author_role,
+        views_count,
+        published_at,
+        is_published
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Params: ["Добро пожаловать!","dobro-pozhalovat",1,"Новости","Первая запись после установки FIREBALL CMS.","<p>Добро пожаловать в FIREBALL CMS.</p><p>Это стартовая запись, созданная сидером полной базы данных.</p>",null,0,1,"Добро пожаловать в FIREBALL CMS","Стартовая запись FIREBALL CMS после полной инициализации базы.","fireball cms, старт","",1,"Administrator","admin",0,"2026-04-25 23:23:48",1,"Как устроена админка","kak-ustroena-adminka",2,"Гайды","Короткий обзор разделов административной панели.","<p>В админке доступны посты, категории, пользователи, роли, чат, файловый менеджер и центр обновлений.</p>",null,0,1,"Как устроена админка FIREBALL CMS","Краткий обзор разделов административной панели FIREBALL CMS.","fireball cms, админка, гайд","",1,"Administrator","admin",0,"2026-04-25 23:23:48",1]
+========================================================================
+[2026-04-25 23:23:49] Unhandled application exception
+Request URI: /seed-full
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[HY093]: Invalid parameter number: number of bound variables does not match number of tokens
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php(256): FBL\Database->query('INSERT INTO pos...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(106): require('/Applications/M...')
+#3 [internal function]: {closure}()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Object(Closure))
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-04-25 23:25:20] Database query error
+Request URI: /seed-full
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[HY093]: Invalid parameter number: number of bound variables does not match number of tokens
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php(256): FBL\Database->query('INSERT INTO pos...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(106): require('/Applications/M...')
+#3 [internal function]: {closure}()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Object(Closure))
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
+#7 {main}
+SQL: INSERT INTO posts (
+        title,
+        slug,
+        category_id,
+        category,
+        excerpt,
+        content,
+        image,
+        hide_placeholder_image,
+        show_on_home,
+        seo_title,
+        seo_description,
+        seo_keywords,
+        seo_image,
+        author_id,
+        author_name,
+        author_role,
+        views_count,
+        published_at,
+        is_published
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Params: ["Добро пожаловать!","dobro-pozhalovat",1,"Новости","Первая запись после установки FIREBALL CMS.","<p>Добро пожаловать в FIREBALL CMS.</p><p>Это стартовая запись, созданная сидером полной базы данных.</p>",null,0,1,"Добро пожаловать в FIREBALL CMS","Стартовая запись FIREBALL CMS после полной инициализации базы.","fireball cms, старт","",1,"Administrator","admin",0,"2026-04-25 23:25:19",1,"Как устроена админка","kak-ustroena-adminka",2,"Гайды","Короткий обзор разделов административной панели.","<p>В админке доступны посты, категории, пользователи, роли, чат, файловый менеджер и центр обновлений.</p>",null,0,1,"Как устроена админка FIREBALL CMS","Краткий обзор разделов административной панели FIREBALL CMS.","fireball cms, админка, гайд","",1,"Administrator","admin",0,"2026-04-25 23:25:19",1]
+========================================================================
+[2026-04-25 23:25:20] Unhandled application exception
+Request URI: /seed-full
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[HY093]: Invalid parameter number: number of bound variables does not match number of tokens
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php(256): FBL\Database->query('INSERT INTO pos...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(106): require('/Applications/M...')
+#3 [internal function]: {closure}()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Object(Closure))
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-04-25 23:32:38] Database query error
+Request URI: /seed-full
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[HY093]: Invalid parameter number: number of bound variables does not match number of tokens
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php(256): FBL\Database->query('INSERT INTO pos...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(106): require('/Applications/M...')
+#3 [internal function]: {closure}()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Object(Closure))
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
+#7 {main}
+SQL: INSERT INTO posts (
+        title,
+        slug,
+        category_id,
+        category,
+        excerpt,
+        content,
+        image,
+        hide_placeholder_image,
+        show_on_home,
+        seo_title,
+        seo_description,
+        seo_keywords,
+        seo_image,
+        author_id,
+        author_name,
+        author_role,
+        views_count,
+        published_at,
+        is_published
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Params: ["Добро пожаловать!","dobro-pozhalovat",1,"Новости","Первая запись после установки FIREBALL CMS.","<p>Добро пожаловать в FIREBALL CMS.</p><p>Это стартовая запись, созданная сидером полной базы данных.</p>",null,0,1,"Добро пожаловать в FIREBALL CMS","Стартовая запись FIREBALL CMS после полной инициализации базы.","fireball cms, старт","",1,"Administrator","admin",0,"2026-04-25 23:32:38",1,"Как устроена админка","kak-ustroena-adminka",2,"Гайды","Короткий обзор разделов административной панели.","<p>В админке доступны посты, категории, пользователи, роли, чат, файловый менеджер и центр обновлений.</p>",null,0,1,"Как устроена админка FIREBALL CMS","Краткий обзор разделов административной панели FIREBALL CMS.","fireball cms, админка, гайд","",1,"Administrator","admin",0,"2026-04-25 23:32:38",1]
+========================================================================
+[2026-04-25 23:32:38] Unhandled application exception
+Request URI: /seed-full
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[HY093]: Invalid parameter number: number of bound variables does not match number of tokens
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php(256): FBL\Database->query('INSERT INTO pos...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(106): require('/Applications/M...')
+#3 [internal function]: {closure}()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Object(Closure))
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
+#7 {main}
+========================================================================
