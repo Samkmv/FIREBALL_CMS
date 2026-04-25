@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'auth_register_title' => 'Register',
+    'auth_register_heading' => 'Create account',
+    'auth_register_subtitle' => 'Fill out the form to get your personal profile.',
+    'auth_register_name' => 'Name',
+    'auth_register_login_field' => 'Login',
+    'auth_register_email' => 'Email',
+    'auth_register_password' => 'Password',
+    'auth_register_password_confirmation' => 'Confirm password',
+    'auth_register_submit' => 'Register',
+    'auth_register_login_text' => 'Already have an account?',
+    'auth_register_login_link' => 'Sign in',
+    'auth_register_success' => 'Account created successfully.',
+    'auth_validation_name_required' => 'Enter your name.',
+    'auth_validation_name_length' => 'Name must be at least 2 characters long.',
+    'auth_validation_login_required' => 'Enter your login.',
+    'auth_validation_login_format' => 'Login must be at least 3 characters long and contain only Latin letters, numbers and hyphens.',
+    'auth_validation_login_exists' => 'A user with this login already exists.',
+    'auth_validation_email_required' => 'Enter your email.',
+    'auth_validation_email_invalid' => 'Enter a valid email.',
+    'auth_validation_email_exists' => 'A user with this email already exists.',
+    'auth_validation_password_required' => 'Enter your password.',
+    'auth_validation_password_length' => 'Password must be at least 8 characters long.',
+    'auth_validation_password_confirmation_required' => 'Confirm your password.',
+    'auth_validation_password_confirmation_match' => 'Passwords do not match.',
+];
