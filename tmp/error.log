@@ -169,3 +169,22 @@ Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOState
 #6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
 #7 {main}
 ========================================================================
+[2026-04-26 08:13:23] Database connection error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[HY000] [1049] Unknown database 'fbl'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 25
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(25): PDO->__construct('mysql:host=loca...', 'root', Object(SensitiveParameterValue), Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(38): FBL\Database->__construct()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(47): FBL\Application->__construct()
+#3 {main}
+Driver: mysql
+Host: localhost
+Port: 8889
+Database: FBL
+Username: root
+DSN: mysql:host=localhost;dbname=FBL;charset=utf8mb4;port=8889
+========================================================================
