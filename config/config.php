@@ -37,7 +37,7 @@ if (!defined('CACHE')) {
 }
 
 $defaults = [
-    'DEBUG' => 0,
+    'DEBUG' => 1,
     'LAYOUT' => 'default',
     'THEME' => 'default',
     'PATH' => 'http://localhost:8888',
