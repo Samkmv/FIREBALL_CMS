@@ -140,4 +140,4 @@ foreach ($arrayKeys as $key) {
     }
 }
 
-date_default_timezone_set(APP_TIMEZONE);
+date_default_timezone_set($defaults['APP_TIMEZONE']);
