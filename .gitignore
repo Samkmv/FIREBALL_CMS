@@ -3,5 +3,6 @@
 .gigaide
 .gigacode
 public/uploads/*
+tmp/*
 config/config.local.php
 UPDATE_CHEATSHEET.md
