@@ -136,5 +136,83 @@ $shareLink = rawurlencode($shareUrl);
                 <?php endif; ?>
             </div>
         </aside>
+
+        <div class="container pb-5 mb-1 mb-sm-2 mb-md-3 mb-lg-4 mb-xl-5">
+            <h2 class="h3 text-center pb-2 pb-sm-3">Популярные</h2>
+            <div class="swiper swiper-initialized swiper-horizontal swiper-backface-hidden" data-swiper="{
+          &quot;slidesPerView&quot;: 1,
+          &quot;spaceBetween&quot;: 24,
+          &quot;pagination&quot;: {
+            &quot;el&quot;: &quot;.swiper-pagination&quot;,
+            &quot;clickable&quot;: true
+          },
+          &quot;breakpoints&quot;: {
+            &quot;500&quot;: {
+              &quot;slidesPerView&quot;: 2
+            },
+            &quot;900&quot;: {
+              &quot;slidesPerView&quot;: 3
+            }
+          }
+        }">
+                <div class="swiper-wrapper" id="swiper-wrapper-0a49d257939271bd" aria-live="polite">
+
+                    <!-- Article -->
+                    <article class="swiper-slide swiper-slide-active" style="width: 416px; margin-right: 24px;" role="group" aria-label="1 / 3">
+                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
+                            <img src="assets/img/blog/grid/v1/07.jpg" class="hover-effect-target" alt="Image">
+                        </a>
+                        <div class="pt-4">
+                            <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
+                                <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">IoT</a>
+                                <hr class="vr my-1 mx-1">
+                                <span class="text-body-tertiary fs-xs">August 23, 2024</span>
+                            </div>
+                            <h3 class="h5 mb-0">
+                                <a class="hover-effect-underline" href="#!">Connecting the dots: How IoT technology is transforming everyday life</a>
+                            </h3>
+                        </div>
+                    </article>
+
+                    <!-- Article -->
+                    <article class="swiper-slide swiper-slide-next" style="width: 416px; margin-right: 24px;" role="group" aria-label="2 / 3">
+                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
+                            <img src="assets/img/blog/grid/v1/08.jpg" class="hover-effect-target" alt="Image">
+                        </a>
+                        <div class="pt-4">
+                            <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
+                                <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Buying guides</a>
+                                <hr class="vr my-1 mx-1">
+                                <span class="text-body-tertiary fs-xs">August 18, 2024</span>
+                            </div>
+                            <h3 class="h5 mb-0">
+                                <a class="hover-effect-underline" href="#!">How to find the best deals and make secure transactions online</a>
+                            </h3>
+                        </div>
+                    </article>
+
+                    <!-- Article -->
+                    <article class="swiper-slide" style="width: 416px; margin-right: 24px;" role="group" aria-label="3 / 3">
+                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
+                            <img src="assets/img/blog/grid/v1/10.jpg" class="hover-effect-target" alt="Image">
+                        </a>
+                        <div class="pt-4">
+                            <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
+                                <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Gaming</a>
+                                <hr class="vr my-1 mx-1">
+                                <span class="text-body-tertiary fs-xs">July 27, 2024</span>
+                            </div>
+                            <h3 class="h5 mb-0">
+                                <a class="hover-effect-underline" href="#!">Immersive worlds: A dive into the latest VR gear and experiences</a>
+                            </h3>
+                        </div>
+                    </article>
+                </div>
+
+                <!-- Pagination (Bullets) -->
+                <div class="swiper-pagination position-static mt-4 swiper-pagination-clickable swiper-pagination-bullets swiper-pagination-horizontal swiper-pagination-lock"><span class="swiper-pagination-bullet swiper-pagination-bullet-active" tabindex="0" role="button" aria-label="Go to slide 1" aria-current="true"></span></div>
+                <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span></div>
+        </div>
+
     </div>
 </section>

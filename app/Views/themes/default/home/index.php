@@ -95,6 +95,173 @@
         </div>
     </section>
 
+    <section class="container py-5 mt-1 my-sm-2 my-md-3 my-lg-4 my-xl-5">
+        <div class="row py-2 py-xxl-3">
+            <div class="col-lg-3 pb-2 mb-4">
+                <h2 class="text-center text-lg-start mb-lg-5">Записи на главной странице</h2>
+
+                <!-- External slider prev/next buttons -->
+                <div class="d-flex justify-content-center justify-content-lg-start gap-2">
+                    <button type="button" id="prev" class="btn btn-lg btn-icon btn-outline-secondary rounded-circle animate-slide-start me-1 swiper-button-disabled" aria-label="Previous slide" tabindex="-1" aria-controls="swiper-wrapper-210aecc7abecb4e75" aria-disabled="true" disabled="">
+                        <i class="ci-chevron-left fs-xl animate-target"></i>
+                    </button>
+                    <button type="button" id="next" class="btn btn-lg btn-icon btn-outline-secondary rounded-circle animate-slide-end" aria-label="Next slide" tabindex="0" aria-controls="swiper-wrapper-210aecc7abecb4e75" aria-disabled="false">
+                        <i class="ci-chevron-right fs-xl animate-target"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-lg-9">
+
+                <!-- Slider -->
+                <div class="swiper swiper-initialized swiper-horizontal swiper-backface-hidden" data-swiper="{
+              &quot;slidesPerView&quot;: 1,
+              &quot;spaceBetween&quot;: 24,
+              &quot;navigation&quot;: {
+                &quot;prevEl&quot;: &quot;#prev&quot;,
+                &quot;nextEl&quot;: &quot;#next&quot;
+              },
+              &quot;scrollbar&quot;: {
+                &quot;el&quot;: &quot;.swiper-scrollbar&quot;
+              },
+              &quot;breakpoints&quot;: {
+                &quot;500&quot;: {
+                  &quot;slidesPerView&quot;: 2
+                },
+                &quot;768&quot;: {
+                  &quot;slidesPerView&quot;: 3
+                }
+              }
+            }">
+                    <div class="swiper-wrapper pb-3 mb-2 mb-sm-3 mb-md-4" id="swiper-wrapper-210aecc7abecb4e75" aria-live="polite" style="transition-duration: 0ms; transform: translate3d(0px, 0px, 0px); transition-delay: 0ms;">
+
+                        <!-- Article -->
+                        <article class="swiper-slide swiper-slide-active" style="width: 306px; margin-right: 24px;" role="group" aria-label="1 / 6">
+                            <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
+                                <img src="assets/img/blog/grid/v2/09.jpg" class="hover-effect-target" alt="Image">
+                            </a>
+                            <div class="pt-4">
+                                <div class="nav pb-2 mb-1">
+                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Home decoration</a>
+                                </div>
+                                <h3 class="h6 mb-3">
+                                    <a class="hover-effect-underline" href="#!">Decorate your home for the festive season in 3 easy steps</a>
+                                </h3>
+                                <div class="nav align-items-center gap-2 fs-xs">
+                                    <a class="nav-link text-body-secondary fs-xs fw-normal p-0" href="#!">Ava Johnson</a>
+                                    <hr class="vr my-1 mx-1">
+                                    <span class="text-body-secondary">September 11, 2024</span>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Article -->
+                        <article class="swiper-slide swiper-slide-next" style="width: 306px; margin-right: 24px;" role="group" aria-label="2 / 6">
+                            <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
+                                <img src="assets/img/blog/grid/v2/10.jpg" class="hover-effect-target" alt="Image">
+                            </a>
+                            <div class="pt-4">
+                                <div class="nav pb-2 mb-1">
+                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Furniture</a>
+                                </div>
+                                <h3 class="h6 mb-3">
+                                    <a class="hover-effect-underline" href="#!">Furnishing your space: a guide to choosing the perfect furniture pieces</a>
+                                </h3>
+                                <div class="nav align-items-center gap-2 fs-xs">
+                                    <a class="nav-link text-body-secondary fs-xs fw-normal p-0" href="#!">Oliver Harris</a>
+                                    <hr class="vr my-1 mx-1">
+                                    <span class="text-body-secondary">September 5, 2024</span>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Article -->
+                        <article class="swiper-slide" style="width: 306px; margin-right: 24px;" role="group" aria-label="3 / 6">
+                            <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
+                                <img src="assets/img/blog/grid/v2/11.jpg" class="hover-effect-target" alt="Image">
+                            </a>
+                            <div class="pt-4">
+                                <div class="nav pb-2 mb-1">
+                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Interior design</a>
+                                </div>
+                                <h3 class="h6 mb-3">
+                                    <a class="hover-effect-underline" href="#!">Transform your living space with these chic interior design tips</a>
+                                </h3>
+                                <div class="nav align-items-center gap-2 fs-xs">
+                                    <a class="nav-link text-body-secondary fs-xs fw-normal p-0" href="#!">Ethan Miller</a>
+                                    <hr class="vr my-1 mx-1">
+                                    <span class="text-body-secondary">August 23, 2024</span>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Article -->
+                        <article class="swiper-slide" style="width: 306px; margin-right: 24px;" role="group" aria-label="4 / 6">
+                            <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
+                                <img src="assets/img/blog/grid/v2/12.jpg" class="hover-effect-target" alt="Image">
+                            </a>
+                            <div class="pt-4">
+                                <div class="nav pb-2 mb-1">
+                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Lighting</a>
+                                </div>
+                                <h3 class="h6 mb-3">
+                                    <a class="hover-effect-underline" href="#!">Brighten up your home with these stunning lighting hacks</a>
+                                </h3>
+                                <div class="nav align-items-center gap-2 fs-xs">
+                                    <a class="nav-link text-body-secondary fs-xs fw-normal p-0" href="#!">Emily Davies</a>
+                                    <hr class="vr my-1 mx-1">
+                                    <span class="text-body-secondary">August 18, 2024</span>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Article -->
+                        <article class="swiper-slide" style="width: 306px; margin-right: 24px;" role="group" aria-label="5 / 6">
+                            <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
+                                <img src="assets/img/blog/grid/v2/13.jpg" class="hover-effect-target" alt="Image">
+                            </a>
+                            <div class="pt-4">
+                                <div class="nav pb-2 mb-1">
+                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Home decoration</a>
+                                </div>
+                                <h3 class="h6 mb-3">
+                                    <a class="hover-effect-underline" href="#!">Elevate your space with trendy home decoration ideas</a>
+                                </h3>
+                                <div class="nav align-items-center gap-2 fs-xs">
+                                    <a class="nav-link text-body-secondary fs-xs fw-normal p-0" href="#!">Olivia Anderson</a>
+                                    <hr class="vr my-1 mx-1">
+                                    <span class="text-body-secondary">August 9, 2024</span>
+                                </div>
+                            </div>
+                        </article>
+
+                        <!-- Article -->
+                        <article class="swiper-slide" style="width: 306px; margin-right: 24px;" role="group" aria-label="6 / 6">
+                            <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
+                                <img src="assets/img/blog/grid/v2/14.jpg" class="hover-effect-target" alt="Image">
+                            </a>
+                            <div class="pt-4">
+                                <div class="nav pb-2 mb-1">
+                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Design trends</a>
+                                </div>
+                                <h3 class="h6 mb-3">
+                                    <a class="hover-effect-underline" href="#!">Discover the latest captivating home design trends shaping spaces</a>
+                                </h3>
+                                <div class="nav align-items-center gap-2 fs-xs">
+                                    <a class="nav-link text-body-secondary fs-xs fw-normal p-0" href="#!">Harry Mitchell</a>
+                                    <hr class="vr my-1 mx-1">
+                                    <span class="text-body-secondary">July 27, 2024</span>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <!-- Slider scrollbar -->
+                    <div class="swiper-scrollbar position-static swiper-scrollbar-horizontal" style="height: .125rem"><div class="swiper-scrollbar-drag" style="transform: translate3d(0px, 0px, 0px); width: 467.690184px; transition-duration: 0ms;"></div></div>
+                    <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span></div>
+            </div>
+        </div>
+    </section>
+
     <?php if (!empty($featured_posts)): ?>
         <section class="container py-5 my-2 my-md-4 my-lg-5">
             <div class="d-flex align-items-end justify-content-between flex-wrap gap-3 mb-4">
