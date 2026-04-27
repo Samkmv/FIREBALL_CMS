@@ -184,7 +184,6 @@ $buildManagerUrl = static function (?string $dir = null) use ($pickerMode, $pick
                                         </div>
                                         <div class="min-w-0">
                                             <div class="fw-medium"><?= htmlSC($item['name']) ?></div>
-                                            <div class="text-body-tertiary small text-break"><?= htmlSC($item['public_path']) ?></div>
                                         </div>
                                     </a>
                                 <?php else: ?>
@@ -208,7 +207,6 @@ $buildManagerUrl = static function (?string $dir = null) use ($pickerMode, $pick
                                         <div class="min-w-0">
                                             <div class="fw-medium"><?= htmlSC($item['name']) ?></div>
                                         </div>
-                                        <div class="text-body-tertiary small text-break"><?= htmlSC($item['public_path']) ?></div>
                                     </div>
                                 <?php endif; ?>
                             </td>
