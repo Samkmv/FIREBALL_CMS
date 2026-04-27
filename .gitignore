@@ -2,5 +2,6 @@
 .DS_Store
 .gigaide
 .gigacode
+public/uploads
 config/config.local.php
 UPDATE_CHEATSHEET.md
