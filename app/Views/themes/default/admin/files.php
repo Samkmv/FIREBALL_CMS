@@ -55,36 +55,6 @@ $buildManagerUrl = static function (?string $dir = null) use ($pickerMode, $pick
     <?= view()->renderPartial('admin/nav') ?>
 
     <div class="border rounded-5 p-3 p-md-4 mb-4">
-        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-            <div>
-                <div class="fw-semibold"><?= print_translation('admin_files_root') ?></div>
-                <div class="small text-body-secondary text-break">
-                    /<?= htmlSC($currentDir !== '' ? $currentDir : return_translation('admin_files_root')) ?>
-                </div>
-            </div>
-            <?php if ($parentDir !== null): ?>
-                <div class="flex-shrink-0">
-                    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= $buildManagerUrl($parentDir) ?>">
-                        <i class="ci-arrow-up"></i><?= print_translation('admin_files_up') ?>
-                    </a>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <div class="d-flex flex-wrap align-items-center gap-2 pt-3">
-            <?php foreach (($manager['breadcrumbs'] ?? []) as $index => $crumb): ?>
-                <?php if ($index > 0): ?>
-                    <span class="text-body-secondary">/</span>
-                <?php endif; ?>
-                <a class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= $buildManagerUrl($crumb['dir']) ?>">
-                    <i class="ci-folder"></i>
-                    <?= htmlSC($crumb['label']) ?>
-                </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
-    <div class="border rounded-5 p-3 p-md-4 mb-4">
         <div class="row g-4">
             <div class="col-md-7">
                 <form action="<?= base_href('/admin/files/upload') ?>" method="post" enctype="multipart/form-data">
@@ -124,6 +94,36 @@ $buildManagerUrl = static function (?string $dir = null) use ($pickerMode, $pick
                     </div>
                 </form>
             </div>
+        </div>
+    </div>
+
+    <div class="border rounded-5 p-3 p-md-4 mb-4">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div>
+                <div class="fw-semibold"><?= print_translation('admin_files_root') ?></div>
+                <div class="small text-body-secondary text-break">
+                    /<?= htmlSC($currentDir !== '' ? $currentDir : return_translation('admin_files_root')) ?>
+                </div>
+            </div>
+            <?php if ($parentDir !== null): ?>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= $buildManagerUrl($parentDir) ?>">
+                        <i class="ci-arrow-up"></i><?= print_translation('admin_files_up') ?>
+                    </a>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2 pt-3">
+            <?php foreach (($manager['breadcrumbs'] ?? []) as $index => $crumb): ?>
+                <?php if ($index > 0): ?>
+                    <span class="text-body-secondary">/</span>
+                <?php endif; ?>
+                <a class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= $buildManagerUrl($crumb['dir']) ?>">
+                    <i class="ci-folder"></i>
+                    <?= htmlSC($crumb['label']) ?>
+                </a>
+            <?php endforeach; ?>
         </div>
     </div>
 
