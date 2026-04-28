@@ -31,6 +31,13 @@ class UpdateCenter
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
         $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
         $lastCheck = $this->decodeLastCheck((string)($settings['updater_last_check_payload'] ?? ''));
+        $storedCommit = $this->getStoredInstalledCommit($settings);
+        $displayCommit = (string)($localGitState['commit_hash'] ?? '') !== ''
+            ? (string)$localGitState['commit_hash']
+            : $storedCommit;
+        $displayShortCommit = (string)($localGitState['short_commit'] ?? '') !== ''
+            ? (string)$localGitState['short_commit']
+            : ($storedCommit !== '' ? substr($storedCommit, 0, 7) : '');
 
         return [
             'config' => [
@@ -48,8 +55,8 @@ class UpdateCenter
                 'changes' => is_array($this->engineRelease['changes'] ?? null) ? $this->engineRelease['changes'] : [],
                 'origin_url' => $localGitState['origin_url'],
                 'branch' => $branch,
-                'commit_hash' => $localGitState['commit_hash'],
-                'short_commit' => $localGitState['short_commit'],
+                'commit_hash' => $displayCommit,
+                'short_commit' => $displayShortCommit,
                 'git_tag' => $localGitState['git_tag'],
                 'git_describe' => $localGitState['git_describe'],
                 'is_git_repo' => $localGitState['is_git_repo'],
@@ -74,6 +81,10 @@ class UpdateCenter
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
         $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
+        $storedCommit = $this->getStoredInstalledCommit($settings);
+        $localCommit = !empty($localGitState['is_git_repo'])
+            ? (string)($localGitState['commit_hash'] ?? '')
+            : $storedCommit;
 
         $basePayload = [
             'status' => 'error',
@@ -82,7 +93,7 @@ class UpdateCenter
             'repository' => $repository,
             'branch' => $branch,
             'local_version' => (string)($this->engineRelease['version'] ?? '0.0.0'),
-            'local_commit' => (string)($localGitState['commit_hash'] ?? ''),
+            'local_commit' => $localCommit,
             'remote_version' => '',
             'remote_commit' => '',
             'branch_status' => 'not_applicable',
@@ -124,16 +135,42 @@ class UpdateCenter
 
                 $updateAvailable = $gitUpdateAvailable;
             } else {
-                $release = $this->fetchLatestRelease($repository, (string)($settings['updater_github_token'] ?? ''));
-                $remoteVersion = $this->extractReleaseVersion($release);
+                $remoteVersionFile = $this->fetchRemoteVersionMetadata(
+                    $repository,
+                    $branch,
+                    (string)($settings['updater_github_token'] ?? '')
+                );
+                $branchState = $this->fetchBranchState(
+                    $repository,
+                    $branch,
+                    $storedCommit,
+                    (string)($settings['updater_github_token'] ?? '')
+                );
+                if ($storedCommit === '') {
+                    $branchState['status'] = 'not_applicable';
+                }
+
+                $release = $this->buildBranchRelease(
+                    $repository,
+                    $branch,
+                    $remoteVersionFile,
+                    (string)($branchState['remote_commit_hash'] ?? '')
+                );
+                $remoteVersion = trim((string)($remoteVersionFile['version'] ?? ''));
                 $comparison = $this->compareVersions(
                     (string)($this->engineRelease['version'] ?? '0.0.0'),
                     $remoteVersion
                 );
                 $versionUpdateAvailable = $comparison === null
-                    ? $this->fallbackReleaseComparison((string)($this->engineRelease['released_at'] ?? ''), (string)($release['published_at'] ?? ''))
+                    ? $this->fallbackReleaseComparison(
+                        (string)($this->engineRelease['released_at'] ?? ''),
+                        (string)($remoteVersionFile['released_at'] ?? '')
+                    )
                     : $comparison < 0;
-                $updateAvailable = $versionUpdateAvailable;
+
+                $branchUpdateAvailable = $storedCommit !== ''
+                    && in_array((string)($branchState['status'] ?? 'unknown'), ['behind', 'no_local_commit'], true);
+                $updateAvailable = $versionUpdateAvailable || $branchUpdateAvailable;
             }
 
             $payload = array_merge($basePayload, [
@@ -199,7 +236,7 @@ class UpdateCenter
     }
 
     /**
-     * Обновляет код сайта через fast-forward pull из git-репозитория.
+     * Обновляет код сайта через git pull или branch ZIP fallback.
      */
     public function runUpdate(): array
     {
@@ -210,6 +247,14 @@ class UpdateCenter
 
         foreach ($this->buildUpdateBlockers($repository, $localGitState) as $blocker) {
             throw new RuntimeException($blocker);
+        }
+
+        if (empty($localGitState['is_git_repo'])) {
+            return $this->runArchiveUpdate(
+                $repository,
+                $branch,
+                (string)($settings['updater_github_token'] ?? '')
+            );
         }
 
         $previousCommit = (string)($localGitState['commit_hash'] ?? '');
@@ -252,6 +297,7 @@ class UpdateCenter
 
         $this->siteSettings->setMany([
             'updater_last_updated_at' => date('Y-m-d H:i:s'),
+            'updater_last_installed_commit' => $currentCommit,
         ]);
         $this->refreshLastCheckAfterUpdate();
 
@@ -273,38 +319,129 @@ class UpdateCenter
     {
         $blockers = [];
         $canRunProcesses = $this->canRunProcesses();
+        $isGitRepo = !empty($localGitState['is_git_repo']);
 
-        if (!$canRunProcesses) {
-            $blockers[] = return_translation('admin_update_process_disabled');
-        }
         if ($repository === '') {
             $blockers[] = return_translation('admin_update_repository_required');
         }
-        if ($canRunProcesses && empty($localGitState['git_available'])) {
-            $blockers[] = return_translation('admin_update_git_missing');
-        }
-        if (empty($localGitState['is_git_repo'])) {
-            $blockers[] = return_translation('admin_update_git_repo_required');
-        }
-        $localBranch = trim((string)($localGitState['branch'] ?? ''));
-        $targetBranch = $this->resolveBranch($this->siteSettings->all(), $localBranch);
-        if (!empty($localGitState['is_git_repo']) && ($localBranch === '' || $localBranch !== $targetBranch)) {
-            $blockers[] = str_replace(
-                [':local', ':target'],
-                [$localBranch !== '' ? $localBranch : 'HEAD', $targetBranch],
-                return_translation('admin_update_branch_mismatch')
-            );
-        }
-        if (!empty($localGitState['is_git_repo']) && !($localGitState['is_update_clean'] ?? false)) {
-            $dirtyPreview = implode(', ', array_slice($localGitState['blocking_dirty_files'] ?? [], 0, 5));
-            $message = return_translation('admin_update_dirty_worktree');
-            if ($dirtyPreview !== '') {
-                $message .= ' ' . $dirtyPreview;
+
+        if ($isGitRepo) {
+            if (!$canRunProcesses) {
+                $blockers[] = return_translation('admin_update_process_disabled');
             }
-            $blockers[] = $message;
+            if ($canRunProcesses && empty($localGitState['git_available'])) {
+                $blockers[] = return_translation('admin_update_git_missing');
+            }
+
+            $localBranch = trim((string)($localGitState['branch'] ?? ''));
+            $targetBranch = $this->resolveBranch($this->siteSettings->all(), $localBranch);
+            if ($localBranch === '' || $localBranch !== $targetBranch) {
+                $blockers[] = str_replace(
+                    [':local', ':target'],
+                    [$localBranch !== '' ? $localBranch : 'HEAD', $targetBranch],
+                    return_translation('admin_update_branch_mismatch')
+                );
+            }
+            if (!($localGitState['is_update_clean'] ?? false)) {
+                $dirtyPreview = implode(', ', array_slice($localGitState['blocking_dirty_files'] ?? [], 0, 5));
+                $message = return_translation('admin_update_dirty_worktree');
+                if ($dirtyPreview !== '') {
+                    $message .= ' ' . $dirtyPreview;
+                }
+                $blockers[] = $message;
+            }
+
+            return $blockers;
+        }
+
+        if (!$this->supportsZipUpdates()) {
+            $blockers[] = return_translation('admin_update_zip_missing');
+        }
+        if (!$this->isWritablePath(ROOT . '/tmp')) {
+            $blockers[] = return_translation('admin_update_tmp_not_writable');
+        }
+        if (!$this->isWritablePath(ROOT)) {
+            $blockers[] = return_translation('admin_update_root_not_writable');
+        }
+        if (!$this->isWritablePath(CONFIG)) {
+            $blockers[] = return_translation('admin_update_config_not_writable');
         }
 
         return $blockers;
+    }
+
+    /**
+     * Обновляет ZIP-установку архивом исходников целевой ветки.
+     */
+    protected function runArchiveUpdate(string $repository, string $branch, string $token = ''): array
+    {
+        $workspace = ROOT . '/tmp/update-' . date('YmdHis') . '-' . bin2hex(random_bytes(4));
+        $archivePath = $workspace . '/package.zip';
+        $extractPath = $workspace . '/extract';
+        $remoteCommit = '';
+        $composerFingerprintBefore = $this->captureDependencyFingerprint();
+        $storedCommit = $this->getStoredInstalledCommit($this->siteSettings->all());
+
+        try {
+            $this->ensureDirectory($workspace);
+            $this->ensureDirectory($extractPath);
+
+            $branchState = $this->fetchBranchState(
+                $repository,
+                $branch,
+                $storedCommit,
+                $token
+            );
+            $remoteCommit = (string)($branchState['remote_commit_hash'] ?? '');
+            $release = $this->buildBranchRelease(
+                $repository,
+                $branch,
+                $this->fetchRemoteVersionMetadata($repository, $branch, $token),
+                $remoteCommit
+            );
+
+            if ($storedCommit !== '' && ($branchState['status'] ?? '') === 'identical') {
+                $this->refreshLastCheckAfterUpdate();
+
+                return [
+                    'status' => 'success',
+                    'message' => return_translation('admin_update_already_latest'),
+                    'release' => $release,
+                ];
+            }
+
+            $archive = $this->resolveReleaseArchive($release, $repository);
+
+            $this->downloadFile(
+                (string)($archive['download_url'] ?? ''),
+                $archivePath,
+                $this->buildGithubDownloadHeaders($token, (bool)($archive['api_authenticated'] ?? false))
+            );
+
+            $packageRoot = $this->extractArchive($archivePath, $extractPath);
+            $this->ensureLocalConfigExists();
+            $this->copyPackageToRoot($packageRoot, ROOT);
+
+            $composerResult = $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
+
+            $this->siteSettings->setMany([
+                'updater_last_updated_at' => date('Y-m-d H:i:s'),
+                'updater_last_installed_commit' => $remoteCommit,
+            ]);
+            $this->refreshLastCheckAfterUpdate();
+
+            if (is_array($composerResult)) {
+                return $composerResult;
+            }
+
+            return [
+                'status' => 'success',
+                'message' => return_translation('admin_update_success'),
+                'release' => $release,
+            ];
+        } finally {
+            $this->deleteDirectory($workspace);
+        }
     }
 
     /**
@@ -417,6 +554,104 @@ class UpdateCenter
             'body' => '',
             'excerpt' => return_translation('admin_update_using_tag_fallback'),
             'zipball_url' => $this->buildGithubApiUrl($repository, '/zipball/' . rawurlencode($tagName)),
+            'assets' => [],
+        ];
+    }
+
+    /**
+     * Загружает metadata из config/version.php выбранной ветки GitHub.
+     */
+    protected function fetchRemoteVersionMetadata(string $repository, string $branch, string $token = ''): array
+    {
+        $response = $this->httpGet(
+            $this->buildGithubApiUrl($repository, '/contents/config/version.php?ref=' . rawurlencode($branch)),
+            $this->buildGithubHeaders($token)
+        );
+        $payload = json_decode($response['body'], true);
+
+        if ($response['status_code'] === 404) {
+            throw new RuntimeException(return_translation('admin_update_repository_not_found'));
+        }
+
+        if ($response['status_code'] < 200 || $response['status_code'] >= 300 || !is_array($payload)) {
+            $message = is_array($payload) ? (string)($payload['message'] ?? '') : '';
+            throw new RuntimeException(trim(return_translation('admin_update_release_fetch_failed') . ' ' . $message));
+        }
+
+        $content = (string)($payload['content'] ?? '');
+        $encoding = trim((string)($payload['encoding'] ?? ''));
+        if ($content === '' || $encoding !== 'base64') {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        $decodedContent = base64_decode(str_replace(["\r", "\n"], '', $content), true);
+        if ($decodedContent === false || trim($decodedContent) === '') {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        return $this->parseVersionPhpPayload($decodedContent);
+    }
+
+    /**
+     * Преобразует содержимое config/version.php в массив metadata.
+     */
+    protected function parseVersionPhpPayload(string $contents): array
+    {
+        $tmpDirectory = is_dir(ROOT . '/tmp') ? ROOT . '/tmp' : sys_get_temp_dir();
+        $tmpFile = tempnam($tmpDirectory, 'fb-version-');
+        if ($tmpFile === false) {
+            throw new RuntimeException(return_translation('admin_update_workspace_failed'));
+        }
+
+        try {
+            if (@file_put_contents($tmpFile, $contents) === false) {
+                throw new RuntimeException(return_translation('admin_update_workspace_failed'));
+            }
+
+            $payload = require $tmpFile;
+        } finally {
+            @unlink($tmpFile);
+        }
+
+        if (!is_array($payload)) {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        return [
+            'name' => trim((string)($payload['name'] ?? 'FIREBALL_CMS')),
+            'version' => trim((string)($payload['version'] ?? '')),
+            'released_at' => trim((string)($payload['released_at'] ?? '')),
+            'summary' => trim((string)($payload['summary'] ?? '')),
+            'changes' => is_array($payload['changes'] ?? null) ? array_values($payload['changes']) : [],
+        ];
+    }
+
+    /**
+     * Собирает псевдо-release для обновления напрямую из ветки репозитория.
+     */
+    protected function buildBranchRelease(string $repository, string $branch, array $versionFile, string $remoteCommitHash = ''): array
+    {
+        $changes = array_values(array_filter(array_map('trim', is_array($versionFile['changes'] ?? null) ? $versionFile['changes'] : [])));
+        $body = implode("\n", $changes);
+        $excerpt = trim((string)($versionFile['summary'] ?? ''));
+
+        if ($excerpt === '' && $body !== '') {
+            $excerpt = $this->buildReleaseExcerpt($body);
+        }
+        if ($excerpt === '') {
+            $excerpt = return_translation('admin_update_source_repo_fallback');
+        }
+
+        return [
+            'name' => trim((string)($versionFile['version'] ?? '')) !== ''
+                ? trim((string)$versionFile['version'])
+                : ($remoteCommitHash !== '' ? substr($remoteCommitHash, 0, 7) : $branch),
+            'tag_name' => '',
+            'html_url' => 'https://github.com/' . $repository . '/tree/' . rawurlencode($branch),
+            'published_at' => trim((string)($versionFile['released_at'] ?? '')),
+            'body' => $body,
+            'excerpt' => $excerpt,
+            'zipball_url' => $this->buildGithubApiUrl($repository, '/zipball/' . rawurlencode($branch)),
             'assets' => [],
         ];
     }
@@ -1078,6 +1313,62 @@ class UpdateCenter
     }
 
     /**
+     * Фиксирует текущее состояние composer-файлов для ZIP-обновления.
+     */
+    protected function captureDependencyFingerprint(): array
+    {
+        return [
+            'composer_json' => is_file(ROOT . '/composer.json') ? sha1_file(ROOT . '/composer.json') : '',
+            'composer_lock' => is_file(ROOT . '/composer.lock') ? sha1_file(ROOT . '/composer.lock') : '',
+        ];
+    }
+
+    /**
+     * При изменении composer-файлов запускает Composer либо возвращает warning.
+     */
+    protected function runComposerIfDependencyFilesChanged(array $before): ?array
+    {
+        $after = $this->captureDependencyFingerprint();
+        if (($before['composer_json'] ?? '') === ($after['composer_json'] ?? '')
+            && ($before['composer_lock'] ?? '') === ($after['composer_lock'] ?? '')
+        ) {
+            return null;
+        }
+
+        if (!$this->canRunProcesses()) {
+            return [
+                'status' => 'warning',
+                'message' => return_translation('admin_update_composer_required'),
+            ];
+        }
+
+        $composerBinary = $this->detectComposerBinary();
+        if ($composerBinary === '') {
+            return [
+                'status' => 'warning',
+                'message' => return_translation('admin_update_composer_required'),
+            ];
+        }
+
+        $installResult = $this->runCommand(
+            $composerBinary . ' install --no-interaction --prefer-dist --optimize-autoloader',
+            ROOT
+        );
+
+        if ($installResult['exit_code'] !== 0) {
+            return [
+                'status' => 'warning',
+                'message' => $this->formatCommandError($installResult, return_translation('admin_update_composer_failed')),
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => return_translation('admin_update_success'),
+        ];
+    }
+
+    /**
      * Определяет доступную команду Composer в окружении.
      */
     protected function detectComposerBinary(): string
@@ -1408,7 +1699,10 @@ class UpdateCenter
     protected function resolveCheckMessage(string $branchStatus, bool $updateAvailable): string
     {
         return match ($branchStatus) {
-            'behind', 'no_local_commit' => return_translation('admin_update_check_available'),
+            'behind' => return_translation('admin_update_check_available'),
+            'no_local_commit' => $updateAvailable
+                ? return_translation('admin_update_check_available')
+                : return_translation('admin_update_check_none'),
             'ahead' => return_translation('admin_update_branch_ahead'),
             'diverged' => return_translation('admin_update_branch_diverged'),
             'not_applicable' => $updateAvailable
@@ -1447,6 +1741,14 @@ class UpdateCenter
         }
 
         return $headers;
+    }
+
+    /**
+     * Возвращает сохранённый commit последнего успешного ZIP/git-обновления.
+     */
+    protected function getStoredInstalledCommit(array $settings): string
+    {
+        return trim((string)($settings['updater_last_installed_commit'] ?? ''));
     }
 
     /**
