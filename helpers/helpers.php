@@ -346,6 +346,10 @@ function get_user_role_label(?string $role = null): string
         $label = (new \App\Models\User())->getRoleLabel($role);
     }
 
+    if ($role === 'creator' && ($label === null || $label === 'Creator' || $label === 'Создатель')) {
+        return $roleLabels[$role] = return_translation('tpl_auth_role_creator');
+    }
+
     if ($role === 'admin' && ($label === null || $label === 'Admin')) {
         return $roleLabels[$role] = return_translation('tpl_auth_role_admin');
     }

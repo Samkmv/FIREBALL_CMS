@@ -181,7 +181,7 @@ class ChatController extends BaseController
             return true;
         }
 
-        return ($contact['role'] ?? 'user') === 'admin';
+        return in_array(($contact['role'] ?? 'user'), ['creator', 'admin'], true);
     }
 
     /**

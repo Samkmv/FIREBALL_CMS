@@ -67,15 +67,23 @@ db()->query("TRUNCATE TABLE site_metrics");
 db()->query("SET FOREIGN_KEY_CHECKS = 1");
 
 db()->query(
-    "INSERT INTO user_roles (name, slug, is_system, created_at)
+    "INSERT INTO user_roles (id, name, slug, is_system, created_at)
      VALUES
-        (?, ?, ?, ?),
-        (?, ?, ?, ?)",
+        (?, ?, ?, ?, ?),
+        (?, ?, ?, ?, ?),
+        (?, ?, ?, ?, ?)",
     [
+        1,
+        'Creator',
+        'creator',
+        1,
+        $now,
+        2,
         'Admin',
         'admin',
         1,
         $now,
+        3,
         'User',
         'user',
         1,
@@ -88,6 +96,14 @@ db()->query(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?),
             (?, ?, ?, ?, ?, ?, ?, ?)",
     [
+        'Creator',
+        'creator',
+        'creator@admin.com',
+        $adminPassword,
+        null,
+        'creator',
+        $now,
+        $now,
         'Administrator',
         'admin',
         'admin@admin.com',

@@ -131,7 +131,7 @@ class ChatMessage
         $contacts = db()->query(
             "SELECT id, name, email, avatar, role, last_seen_at
              FROM users
-             WHERE role = 'admin'
+             WHERE role IN ('creator', 'admin')
              ORDER BY id ASC"
         )->get() ?: [];
 
@@ -279,7 +279,7 @@ class ChatMessage
         $contacts = array_map(function (array $contact) use ($unreadCounts, $users, $currentUserId): array {
             $contact['unread_count'] = $unreadCounts[(int)$contact['id']] ?? 0;
             $contact['is_online'] = $users->isOnline($contact['last_seen_at'] ?? null);
-            $contact['chat_group'] = ($contact['role'] ?? 'user') === 'admin' ? 'admins' : 'clients';
+            $contact['chat_group'] = in_array(($contact['role'] ?? 'user'), ['creator', 'admin'], true) ? 'admins' : 'clients';
             $lastMessage = $this->getLastMessageMeta($currentUserId, (int)$contact['id']);
             $contact['last_message_preview'] = $lastMessage['preview'];
             $contact['last_message_at'] = $lastMessage['created_at'];

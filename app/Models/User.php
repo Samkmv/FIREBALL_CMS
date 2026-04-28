@@ -10,11 +10,15 @@ use FBL\Pagination;
  */
 class User
 {
+    public const ROLE_CREATOR = 'creator';
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_USER = 'user';
+    public const CREATOR_ROLE_ID = 1;
 
     protected string $usersTable = 'users';
     protected string $passwordResetsTable = 'password_resets';
     protected string $rolesTable = 'user_roles';
-    protected array $roles = ['admin', 'user'];
+    protected array $roles = [self::ROLE_CREATOR, self::ROLE_ADMIN, self::ROLE_USER];
     protected static bool $schemaReady = false;
 
     /**
@@ -49,6 +53,7 @@ class User
         $this->ensureRoleColumnExists();
         $this->ensureAvatarColumnExists();
         $this->ensureLastSeenColumnExists();
+        $this->ensureCreatorUserExists();
         $this->syncRolesFromUsers();
         self::$schemaReady = true;
     }
@@ -78,6 +83,30 @@ class User
     {
         $this->ensureUsersTableExists();
         return db()->findOne($this->usersTable, $id);
+    }
+
+    /**
+     * Проверяет, относится ли роль к полному административному доступу.
+     */
+    public function isAdministrativeRole(?string $role): bool
+    {
+        return in_array(trim((string)$role), [self::ROLE_CREATOR, self::ROLE_ADMIN], true);
+    }
+
+    /**
+     * Проверяет, защищён ли пользователь ролью создателя.
+     */
+    public function isProtectedUser(array|false $user): bool
+    {
+        return is_array($user) && trim((string)($user['role'] ?? '')) === self::ROLE_CREATOR;
+    }
+
+    /**
+     * Проверяет, защищена ли системная роль создателя от изменений.
+     */
+    public function isProtectedRole(array|false $role): bool
+    {
+        return is_array($role) && trim((string)($role['slug'] ?? '')) === self::ROLE_CREATOR;
     }
 
     /**
@@ -164,10 +193,10 @@ class User
                     u.created_at,
                     r.name AS role_name,
                     CASE
-                        WHEN u.role = 'admin' THEN (
+                        WHEN u.role IN ('creator', 'admin') THEN (
                             SELECT COUNT(*)
                             FROM {$this->usersTable} admins
-                            WHERE admins.role = 'admin'
+                            WHERE admins.role IN ('creator', 'admin')
                               AND admins.id != u.id
                         )
                         ELSE 0
@@ -270,10 +299,10 @@ class User
                     u.created_at,
                     r.name AS role_name,
                     CASE
-                        WHEN u.role = 'admin' THEN (
+                        WHEN u.role IN ('creator', 'admin') THEN (
                             SELECT COUNT(*)
                             FROM {$this->usersTable} admins
-                            WHERE admins.role = 'admin'
+                            WHERE admins.role IN ('creator', 'admin')
                               AND admins.id != u.id
                         )
                         ELSE 0
@@ -303,6 +332,10 @@ class User
     public function updateFromAdmin(int $id, array $data): void
     {
         $this->ensureUsersTableExists();
+        $currentUser = $this->findById($id);
+        if ($this->isProtectedUser($currentUser)) {
+            return;
+        }
 
         $params = [
             'id' => $id,
@@ -448,11 +481,15 @@ class User
             return 'not_found';
         }
 
+        if ($this->isProtectedUser($user)) {
+            return 'protected';
+        }
+
         if ($currentUserId !== null && $id === $currentUserId) {
             return 'self';
         }
 
-        if (($user['role'] ?? 'user') === 'admin' && $this->countAdmins($id) === 0) {
+        if ($this->isAdministrativeRole($user['role'] ?? self::ROLE_USER) && $this->countAdmins($id) === 0) {
             return 'last_admin';
         }
 
@@ -572,6 +609,8 @@ class User
             $errors['role'][] = $this->translate('admin_validation_role_required');
         } elseif (!$this->findRoleBySlug($role)) {
             $errors['role'][] = $this->translate('admin_validation_role_invalid');
+        } elseif ($role === self::ROLE_CREATOR && ($this->findById($userId)['role'] ?? self::ROLE_USER) !== self::ROLE_CREATOR) {
+            $errors['role'][] = $this->translate('admin_role_creator_assignment_blocked');
         }
 
         if ($password !== '' && mb_strlen($password) < 8) {
@@ -583,7 +622,11 @@ class User
         }
 
         $currentUser = $this->findById($userId);
-        if ($currentUser && ($currentUser['role'] ?? 'user') === 'admin' && $role !== 'admin' && $this->countAdmins($userId) === 0) {
+        if ($this->isProtectedUser($currentUser)) {
+            $errors['role'][] = $this->translate('admin_users_creator_protected');
+        }
+
+        if ($currentUser && $this->isAdministrativeRole($currentUser['role'] ?? self::ROLE_USER) && !$this->isAdministrativeRole($role) && $this->countAdmins($userId) === 0) {
             $errors['role'][] = $this->translate('admin_users_last_admin');
         }
 
@@ -905,7 +948,7 @@ class User
         $this->ensureUsersTableExists();
 
         $role = $this->findRoleById($id);
-        if (!$role) {
+        if (!$role || $this->isProtectedRole($role)) {
             return;
         }
 
@@ -960,6 +1003,16 @@ class User
             $errors['slug'][] = $this->translate('admin_roles_system_slug_locked');
         }
 
+        if ($this->isProtectedRole($role)) {
+            if ($name !== trim((string)($role['name'] ?? ''))) {
+                $errors['name'][] = $this->translate('admin_roles_creator_protected');
+            }
+
+            if ($slug !== trim((string)($role['slug'] ?? ''))) {
+                $errors['slug'][] = $this->translate('admin_roles_creator_protected');
+            }
+        }
+
         return $errors;
     }
 
@@ -973,6 +1026,10 @@ class User
         $role = $this->findRoleById($id);
         if (!$role) {
             return 'not_found';
+        }
+
+        if ($this->isProtectedRole($role)) {
+            return 'protected';
         }
 
         if ((int)($role['is_system'] ?? 0) === 1) {
@@ -1024,13 +1081,19 @@ class User
         }
 
         foreach ($this->roles as $slug) {
+            $name = match ($slug) {
+                self::ROLE_CREATOR => 'Creator',
+                self::ROLE_ADMIN => 'Admin',
+                default => 'User',
+            };
             db()->query(
                 "INSERT IGNORE INTO {$this->rolesTable} (name, slug, is_system, created_at) VALUES (?, ?, 1, ?)",
-                [ucfirst($slug), $slug, date('Y-m-d H:i:s')]
+                [$name, $slug, date('Y-m-d H:i:s')]
             );
         }
 
-        db()->query("UPDATE {$this->rolesTable} SET is_system = 1 WHERE slug IN ('admin', 'user')");
+        db()->query("UPDATE {$this->rolesTable} SET is_system = 1 WHERE slug IN ('creator', 'admin', 'user')");
+        $this->ensureCreatorRoleFirst();
     }
 
     /**
@@ -1115,7 +1178,7 @@ class User
         db()->query("UPDATE {$this->usersTable} SET role = 'user' WHERE role IS NULL OR role = ''");
 
         if (!$this->hasAdmin()) {
-            db()->query("UPDATE {$this->usersTable} SET role = 'admin' ORDER BY id ASC LIMIT 1");
+            db()->query("UPDATE {$this->usersTable} SET role = 'creator' ORDER BY id ASC LIMIT 1");
         }
     }
 
@@ -1148,7 +1211,9 @@ class User
      */
     protected function hasAdmin(): bool
     {
-        return (int)db()->query("SELECT COUNT(*) FROM {$this->usersTable} WHERE role = 'admin'")->getColumn() > 0;
+        return (int)db()->query(
+            "SELECT COUNT(*) FROM {$this->usersTable} WHERE role IN ('creator', 'admin')"
+        )->getColumn() > 0;
     }
 
     /**
@@ -1244,10 +1309,10 @@ class User
     protected function resolveRoleForNewUser(): string
     {
         if (!$this->hasAdmin()) {
-            return 'admin';
+            return self::ROLE_CREATOR;
         }
 
-        return 'user';
+        return self::ROLE_USER;
     }
 
     /**
@@ -1304,12 +1369,14 @@ class User
     {
         if ($excludeUserId) {
             return (int)db()->query(
-                "SELECT COUNT(*) FROM {$this->usersTable} WHERE role = 'admin' AND id != ?",
+                "SELECT COUNT(*) FROM {$this->usersTable} WHERE role IN ('creator', 'admin') AND id != ?",
                 [$excludeUserId]
             )->getColumn();
         }
 
-        return (int)db()->query("SELECT COUNT(*) FROM {$this->usersTable} WHERE role = 'admin'")->getColumn();
+        return (int)db()->query(
+            "SELECT COUNT(*) FROM {$this->usersTable} WHERE role IN ('creator', 'admin')"
+        )->getColumn();
     }
 
     /**
@@ -1337,6 +1404,84 @@ class User
                     date('Y-m-d H:i:s'),
                 ]
             );
+        }
+    }
+
+    /**
+     * Гарантирует системной роли creator первый идентификатор в таблице ролей.
+     */
+    protected function ensureCreatorRoleFirst(): void
+    {
+        $creatorRole = db()->query(
+            "SELECT id, slug FROM {$this->rolesTable} WHERE slug = ? LIMIT 1",
+            [self::ROLE_CREATOR]
+        )->getOne();
+
+        if (!$creatorRole || (int)($creatorRole['id'] ?? 0) === self::CREATOR_ROLE_ID) {
+            return;
+        }
+
+        $firstRole = db()->query(
+            "SELECT id, slug FROM {$this->rolesTable} WHERE id = ? LIMIT 1",
+            [self::CREATOR_ROLE_ID]
+        )->getOne();
+
+        if ($firstRole && trim((string)($firstRole['slug'] ?? '')) !== self::ROLE_CREATOR) {
+            $temporaryId = (int)db()->query("SELECT COALESCE(MAX(id), 0) + 1 FROM {$this->rolesTable}")->getColumn();
+            db()->query(
+                "UPDATE {$this->rolesTable} SET id = ? WHERE id = ?",
+                [$temporaryId, self::CREATOR_ROLE_ID]
+            );
+        }
+
+        db()->query(
+            "UPDATE {$this->rolesTable} SET id = ? WHERE slug = ?",
+            [self::CREATOR_ROLE_ID, self::ROLE_CREATOR]
+        );
+    }
+
+    /**
+     * Назначает роль creator самому раннему привилегированному пользователю, если её ещё никто не получил.
+     */
+    protected function ensureCreatorUserExists(): void
+    {
+        $creatorExists = (int)db()->query(
+            "SELECT COUNT(*) FROM {$this->usersTable} WHERE role = ?",
+            [self::ROLE_CREATOR]
+        )->getColumn() > 0;
+
+        if ($creatorExists) {
+            return;
+        }
+
+        $candidateId = (int)db()->query(
+            "SELECT id
+             FROM {$this->usersTable}
+             WHERE role IN ('creator', 'admin')
+             ORDER BY id ASC
+             LIMIT 1"
+        )->getColumn();
+
+        if ($candidateId <= 0) {
+            $candidateId = (int)db()->query(
+                "SELECT id FROM {$this->usersTable} ORDER BY id ASC LIMIT 1"
+            )->getColumn();
+        }
+
+        if ($candidateId > 0) {
+            db()->query(
+                "UPDATE {$this->usersTable} SET role = ? WHERE id = ?",
+                [self::ROLE_CREATOR, $candidateId]
+            );
+
+            $creatorUser = $this->findById($candidateId);
+            if ($creatorUser) {
+                $this->syncUserContent(
+                    $candidateId,
+                    trim((string)($creatorUser['name'] ?? '')),
+                    self::ROLE_CREATOR
+                );
+            }
         }
     }
 

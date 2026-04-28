@@ -283,6 +283,11 @@ class AdminController extends BaseController
             abort();
         }
 
+        if (request()->isPost() && $this->users->isProtectedUser($user)) {
+            session()->setFlash('error', return_translation('admin_users_creator_protected'));
+            response()->redirect(base_href('/admin/users'));
+        }
+
         if (request()->isPost()) {
             $data = $this->normalizeUserData(request()->getData());
             $errors = $this->users->validateAdminUpdate($data, $userId);
@@ -337,6 +342,7 @@ class AdminController extends BaseController
         $error = $this->users->deleteUser($userId, (int)(get_user()['id'] ?? 0));
         if ($error !== null) {
             $message = match ($error) {
+                'protected' => return_translation('admin_users_creator_protected'),
                 'self' => return_translation('admin_users_delete_self_blocked'),
                 'last_admin' => return_translation('admin_users_delete_last_admin_blocked'),
                 default => return_translation('admin_users_not_found'),
@@ -394,6 +400,11 @@ class AdminController extends BaseController
             abort();
         }
 
+        if ($isEdit && request()->isPost() && $this->users->isProtectedRole($role)) {
+            session()->setFlash('error', return_translation('admin_roles_creator_protected'));
+            response()->redirect(base_href('/admin/roles'));
+        }
+
         if (request()->isPost()) {
             $data = $this->normalizeRoleData(request()->getData(), $role ?: []);
             $errors = $this->users->validateRoleData($data, $isEdit ? $roleId : null);
@@ -437,6 +448,7 @@ class AdminController extends BaseController
         $error = $this->users->deleteRole($roleId);
         if ($error !== null) {
             $message = match ($error) {
+                'protected' => return_translation('admin_roles_creator_protected'),
                 'system' => return_translation('admin_roles_delete_system_blocked'),
                 'assigned' => return_translation('admin_roles_delete_assigned_blocked'),
                 default => return_translation('admin_roles_not_found'),

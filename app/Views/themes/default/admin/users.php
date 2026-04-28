@@ -46,10 +46,13 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                     <?php foreach ($users as $item): ?>
                         <?php
                         $isCurrentUser = (int)$item['id'] === (int)(get_user()['id'] ?? 0);
-                        $isLastAdmin = ($item['role'] ?? 'user') === 'admin' && (int)($item['other_admins_count'] ?? 0) === 0;
+                        $isProtectedCreator = ($item['role'] ?? 'user') === 'creator';
+                        $isLastAdmin = in_array(($item['role'] ?? 'user'), ['creator', 'admin'], true) && (int)($item['other_admins_count'] ?? 0) === 0;
                         $deleteBlockedMessage = $isCurrentUser
                             ? return_translation('admin_users_delete_self_blocked')
-                            : return_translation('admin_users_delete_last_admin_blocked');
+                            : ($isProtectedCreator
+                                ? return_translation('admin_users_creator_protected')
+                                : return_translation('admin_users_delete_last_admin_blocked'));
                         ?>
                         <tr>
                             <th class="text-nowrap" scope="row"><?= (int)$item['id'] ?></th>
@@ -70,16 +73,26 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             <td class="text-nowrap"><?= date('d.m.Y H:i', strtotime($item['created_at'])) ?></td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">
-                                    <a
-                                        class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
-                                        href="<?= base_href('/admin/users/edit/' . (int)$item['id']) ?>"
-                                        aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        data-bs-toggle="tooltip"
-                                    >
-                                        <i class="ci-edit"></i>
-                                    </a>
-                                    <?php if (!$isCurrentUser && !$isLastAdmin): ?>
+                                    <?php if (!$isProtectedCreator): ?>
+                                        <a
+                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
+                                            href="<?= base_href('/admin/users/edit/' . (int)$item['id']) ?>"
+                                            aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
+                                            title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
+                                            data-bs-toggle="tooltip"
+                                        >
+                                            <i class="ci-edit"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <button
+                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle disabled"
+                                            type="button"
+                                            aria-label="<?= htmlSC(return_translation('admin_users_creator_protected')) ?>"
+                                            title="<?= htmlSC(return_translation('admin_users_creator_protected')) ?>"
+                                            data-bs-toggle="tooltip"
+                                        ><i class="ci-lock"></i></button>
+                                    <?php endif; ?>
+                                    <?php if (!$isCurrentUser && !$isLastAdmin && !$isProtectedCreator): ?>
                                         <form
                                             action="<?= base_href('/admin/users/delete') ?>"
                                             method="post"

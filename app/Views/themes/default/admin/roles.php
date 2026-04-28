@@ -46,10 +46,13 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                     <?php foreach ($roles as $role): ?>
                         <?php
                         $isSystemRole = (int)($role['is_system'] ?? 0) === 1;
+                        $isProtectedCreatorRole = ($role['slug'] ?? '') === 'creator';
                         $hasAssignedUsers = (int)($role['users_count'] ?? 0) > 0;
-                        $deleteBlockedMessage = $isSystemRole
+                        $deleteBlockedMessage = $isProtectedCreatorRole
+                            ? return_translation('admin_roles_creator_protected')
+                            : ($isSystemRole
                             ? return_translation('admin_roles_delete_system_blocked')
-                            : return_translation('admin_roles_delete_assigned_blocked');
+                            : return_translation('admin_roles_delete_assigned_blocked'));
                         ?>
                         <tr>
                             <th class="text-nowrap" scope="row"><?= (int)$role['id'] ?></th>
@@ -65,16 +68,26 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">
-                                    <a
-                                        class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
-                                        href="<?= base_href('/admin/roles/edit/' . (int)$role['id']) ?>"
-                                        aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        data-bs-toggle="tooltip"
-                                    >
-                                        <i class="ci-edit"></i>
-                                    </a>
-                                    <?php if (!$isSystemRole && !$hasAssignedUsers): ?>
+                                    <?php if (!$isProtectedCreatorRole): ?>
+                                        <a
+                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
+                                            href="<?= base_href('/admin/roles/edit/' . (int)$role['id']) ?>"
+                                            aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
+                                            title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
+                                            data-bs-toggle="tooltip"
+                                        >
+                                            <i class="ci-edit"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <button
+                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle disabled"
+                                            type="button"
+                                            aria-label="<?= htmlSC(return_translation('admin_roles_creator_protected')) ?>"
+                                            title="<?= htmlSC(return_translation('admin_roles_creator_protected')) ?>"
+                                            data-bs-toggle="tooltip"
+                                        ><i class="ci-lock"></i></button>
+                                    <?php endif; ?>
+                                    <?php if (!$isSystemRole && !$hasAssignedUsers && !$isProtectedCreatorRole): ?>
                                         <form
                                             action="<?= base_href('/admin/roles/delete') ?>"
                                             method="post"

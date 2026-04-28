@@ -87,7 +87,9 @@ class Auth
      */
     public static function isAdmin(): bool
     {
-        return self::hasRole('admin');
+        $role = self::user()['role'] ?? 'user';
+
+        return in_array($role, ['creator', 'admin'], true);
     }
 
     /**
