@@ -27,7 +27,7 @@ $shareLink = rawurlencode($shareUrl);
 
             <h1 class="display-6 mb-4"><?= htmlSC($post['title']) ?></h1>
 
-            <?php if (!empty($post['has_image']) || (int)($post['hide_placeholder_image'] ?? 0) !== 1): ?>
+            <?php if (!empty($post['show_post_image'])): ?>
                 <div class="ratio rounded-5 overflow-hidden mb-4" style="--cz-aspect-ratio: calc(560 / 856 * 100%)">
                     <img src="<?= get_image($post['image']) ?>" alt="<?= htmlSC($post['title']) ?>" style="object-fit: cover;">
                 </div>

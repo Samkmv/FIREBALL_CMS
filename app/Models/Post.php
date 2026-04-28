@@ -602,6 +602,7 @@ class Post extends Model
         $post['original_image'] = ltrim((string)($post['image'] ?? ''), '/');
         $post['has_image'] = $post['original_image'] !== '';
         $post['hide_placeholder_image'] = max(0, (int)($post['hide_placeholder_image'] ?? 0));
+        $post['show_post_image'] = $post['hide_placeholder_image'] !== 1;
         $post['show_on_home'] = max(0, (int)($post['show_on_home'] ?? 0));
         $post['image'] = $post['has_image'] ? $post['original_image'] : 'assets/img/no-image.png';
         $post['seo_title'] = trim((string)($post['seo_title'] ?? ''));

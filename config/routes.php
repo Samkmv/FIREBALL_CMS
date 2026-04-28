@@ -85,6 +85,7 @@ $app->router->get('/admin/files', [FileManagerController::class, 'index'])->midd
 $app->router->post('/admin/files/upload', [FileManagerController::class, 'upload'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/folder/create', [FileManagerController::class, 'createDirectory'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/rename', [FileManagerController::class, 'rename'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/files/action', [FileManagerController::class, 'bulkAction'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/delete', [FileManagerController::class, 'delete'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/folder/delete', [FileManagerController::class, 'deleteDirectory'])->middleware(['auth', 'admin']);
 

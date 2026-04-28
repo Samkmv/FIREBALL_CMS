@@ -9,6 +9,7 @@ use FBL\Pagination;
  */
 class FileManager
 {
+    protected const MAX_UPLOAD_SIZE_BYTES = 209715200;
 
     protected string $rootPath;
     protected string $rootUrl;
@@ -92,29 +93,39 @@ class FileManager
      */
     public function upload(string $relativeDir, \FBL\File $file): string
     {
-        if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
+        return $this->storeUploadedFile(
+            $relativeDir,
+            $file->getName(),
+            $file->getTmpName(),
+            $file->getError(),
+            $file->getSize()
+        );
+    }
+
+    /**
+     * Загружает несколько файлов в выбранную директорию.
+     */
+    public function uploadMany(string $relativeDir, array $files): int
+    {
+        $normalizedFiles = $this->normalizeUploadedFiles($files);
+        if ($normalizedFiles === []) {
             throw new \RuntimeException(return_translation('admin_files_upload_error'));
         }
 
-        if ($file->getSize() > 25 * 1024 * 1024) {
-            throw new \RuntimeException(return_translation('admin_files_size_error'));
+        $uploadedCount = 0;
+
+        foreach ($normalizedFiles as $file) {
+            $this->storeUploadedFile(
+                $relativeDir,
+                (string)($file['name'] ?? ''),
+                (string)($file['tmp_name'] ?? ''),
+                (int)($file['error'] ?? UPLOAD_ERR_NO_FILE),
+                (int)($file['size'] ?? 0)
+            );
+            $uploadedCount++;
         }
 
-        $extension = strtolower($file->getExt());
-        if (!in_array($extension, $this->allowedExtensions, true)) {
-            throw new \RuntimeException(return_translation('admin_files_type_error'));
-        }
-
-        $relativeDir = $this->normalizeRelativePath($relativeDir);
-        $absoluteDir = $this->ensureDirectoryExists($relativeDir);
-        $fileName = $this->generateFileName($file->getName(), $extension, $absoluteDir);
-        $absolutePath = $absoluteDir . '/' . $fileName;
-
-        if (!move_uploaded_file($file->getTmpName(), $absolutePath)) {
-            throw new \RuntimeException(return_translation('admin_files_upload_error'));
-        }
-
-        return '/uploads/' . ltrim($relativeDir . '/' . $fileName, '/');
+        return $uploadedCount;
     }
 
     /**
@@ -166,6 +177,38 @@ class FileManager
     }
 
     /**
+     * Удаляет несколько файлов и папок по относительным путям.
+     */
+    public function deleteMany(array $items): int
+    {
+        $deletedCount = 0;
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $type = trim((string)($item['type'] ?? ''));
+            $path = trim((string)($item['path'] ?? ''));
+
+            if ($path === '') {
+                continue;
+            }
+
+            if ($type === 'directory') {
+                $this->deleteDirectory($path);
+                $deletedCount++;
+                continue;
+            }
+
+            $this->delete($path);
+            $deletedCount++;
+        }
+
+        return $deletedCount;
+    }
+
+    /**
      * Удаляет папку по относительному пути вместе с её содержимым.
      */
     public function deleteDirectory(string $relativePath): void
@@ -192,7 +235,7 @@ class FileManager
     }
 
     /**
-     * Переименовывает файл, сохраняя его расширение.
+     * Переименовывает файл или папку, сохраняя расширение файла при необходимости.
      */
     public function rename(string $relativePath, string $newName): string
     {
@@ -202,7 +245,7 @@ class FileManager
         }
 
         $absolutePath = $this->resolveExistingPath($relativePath);
-        if (!is_file($absolutePath)) {
+        if (!is_file($absolutePath) && !is_dir($absolutePath)) {
             throw new \RuntimeException(return_translation('admin_files_rename_error'));
         }
 
@@ -214,8 +257,9 @@ class FileManager
         $relativeDir = dirname($relativePath);
         $relativeDir = $relativeDir === '.' ? '' : $relativeDir;
         $absoluteDir = $relativeDir === '' ? $this->rootPath : $this->rootPath . '/' . $relativeDir;
-        $extension = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
-        $baseName = make_slug(pathinfo($newName, PATHINFO_FILENAME), 'file');
+        $isDirectory = is_dir($absolutePath);
+        $extension = $isDirectory ? '' : strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
+        $baseName = make_slug(pathinfo($newName, PATHINFO_FILENAME), $isDirectory ? 'folder' : 'file');
         $targetName = $extension !== '' ? ($baseName . '.' . $extension) : $baseName;
         $targetRelativePath = ltrim($relativeDir . '/' . $targetName, '/');
         $targetAbsolutePath = $absoluteDir . '/' . $targetName;
@@ -357,6 +401,70 @@ class FileManager
         }
 
         return $candidate;
+    }
+
+    /**
+     * Сохраняет один загруженный файл после валидации.
+     */
+    protected function storeUploadedFile(string $relativeDir, string $originalName, string $tmpName, int $error, int $size): string
+    {
+        if ($error !== UPLOAD_ERR_OK || $tmpName === '') {
+            throw new \RuntimeException(return_translation('admin_files_upload_error'));
+        }
+
+        if ($size > self::MAX_UPLOAD_SIZE_BYTES) {
+            throw new \RuntimeException(return_translation('admin_files_size_error'));
+        }
+
+        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if ($extension === '' || !in_array($extension, $this->allowedExtensions, true)) {
+            throw new \RuntimeException(return_translation('admin_files_type_error'));
+        }
+
+        $relativeDir = $this->normalizeRelativePath($relativeDir);
+        $absoluteDir = $this->ensureDirectoryExists($relativeDir);
+        $fileName = $this->generateFileName($originalName, $extension, $absoluteDir);
+        $absolutePath = $absoluteDir . '/' . $fileName;
+
+        if (!move_uploaded_file($tmpName, $absolutePath)) {
+            throw new \RuntimeException(return_translation('admin_files_upload_error'));
+        }
+
+        return '/uploads/' . ltrim($relativeDir . '/' . $fileName, '/');
+    }
+
+    /**
+     * Нормализует массив $_FILES к списку отдельных файлов.
+     */
+    protected function normalizeUploadedFiles(array $files): array
+    {
+        if (!isset($files['name'])) {
+            return [];
+        }
+
+        if (!is_array($files['name'])) {
+            return [[
+                'name' => (string)($files['name'] ?? ''),
+                'tmp_name' => (string)($files['tmp_name'] ?? ''),
+                'error' => (int)($files['error'] ?? UPLOAD_ERR_NO_FILE),
+                'size' => (int)($files['size'] ?? 0),
+            ]];
+        }
+
+        $normalized = [];
+
+        foreach ($files['name'] as $index => $name) {
+            $normalized[] = [
+                'name' => (string)$name,
+                'tmp_name' => (string)($files['tmp_name'][$index] ?? ''),
+                'error' => (int)($files['error'][$index] ?? UPLOAD_ERR_NO_FILE),
+                'size' => (int)($files['size'][$index] ?? 0),
+            ];
+        }
+
+        return array_values(array_filter($normalized, static function (array $file): bool {
+            return trim((string)($file['name'] ?? '')) !== '' || (int)($file['size'] ?? 0) > 0;
+        }));
     }
 
     /**

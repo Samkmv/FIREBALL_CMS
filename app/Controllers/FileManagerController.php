@@ -3,8 +3,6 @@
 namespace App\Controllers;
 
 use App\Models\FileManager;
-use FBL\File;
-
 /**
  * Управляет файловым менеджером административной панели.
  */
@@ -26,17 +24,22 @@ class FileManagerController extends BaseController
      */
     public function index()
     {
-        $currentDir = trim((string)request()->get('dir', ''));
-        $pickerMode = request()->get('picker', '') === '1';
-        $field = trim((string)request()->get('field', ''));
-        $tableParams = $this->getTableParams('modified', 'desc');
-        $directoryData = $this->files->getDirectoryData($currentDir, $tableParams);
+        $state = $this->getManagerStateFromGet();
+        $directoryData = $this->files->getDirectoryData($state['current_dir'], $state['table_params']);
+
+        if (request()->isAjax()) {
+            response()->json([
+                'status' => 'success',
+                'html' => $this->renderBrowser($directoryData, $state['picker_mode'], $state['picker_field']),
+                'current_dir' => $directoryData['current_dir'] ?? '',
+            ]);
+        }
 
         return view('admin/files', [
             'title' => return_translation('admin_files_title'),
             'manager' => $directoryData,
-            'picker_mode' => $pickerMode,
-            'picker_field' => $field,
+            'picker_mode' => $state['picker_mode'],
+            'picker_field' => $state['picker_field'],
             'footer_scripts' => [
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
             ],
@@ -48,20 +51,16 @@ class FileManagerController extends BaseController
      */
     public function upload()
     {
-        $currentDir = trim((string)request()->post('dir', ''));
-        $pickerMode = request()->post('picker', '') === '1';
-        $field = trim((string)request()->post('field', ''));
-        $tableParams = $this->getRedirectTableParams();
-        $file = new File('upload_file');
+        $state = $this->getManagerStateFromPost();
+        $files = request()->files['upload_files'] ?? [];
 
         try {
-            $this->files->upload($currentDir, $file);
-            session()->setFlash('success', return_translation('admin_files_uploaded'));
+            $uploadedCount = $this->files->uploadMany($state['current_dir'], $files);
+            $message = str_replace(':count', (string)$uploadedCount, return_translation('admin_files_uploaded_count'));
+            $this->respondWithManagerState($state, 'success', $message);
         } catch (\RuntimeException $exception) {
-            session()->setFlash('error', $exception->getMessage());
+            $this->respondWithManagerState($state, 'error', $exception->getMessage());
         }
-
-        response()->redirect($this->buildUrl($currentDir, $pickerMode, $field, $tableParams));
     }
 
     /**
@@ -69,20 +68,15 @@ class FileManagerController extends BaseController
      */
     public function createDirectory()
     {
-        $currentDir = trim((string)request()->post('dir', ''));
-        $pickerMode = request()->post('picker', '') === '1';
-        $field = trim((string)request()->post('field', ''));
-        $tableParams = $this->getRedirectTableParams();
+        $state = $this->getManagerStateFromPost();
         $directoryName = trim((string)request()->post('directory_name', ''));
 
         try {
-            $this->files->createDirectory($currentDir, $directoryName);
-            session()->setFlash('success', return_translation('admin_files_folder_created'));
+            $this->files->createDirectory($state['current_dir'], $directoryName);
+            $this->respondWithManagerState($state, 'success', return_translation('admin_files_folder_created'));
         } catch (\RuntimeException $exception) {
-            session()->setFlash('error', $exception->getMessage());
+            $this->respondWithManagerState($state, 'error', $exception->getMessage());
         }
-
-        response()->redirect($this->buildUrl($currentDir, $pickerMode, $field, $tableParams));
     }
 
     /**
@@ -90,20 +84,15 @@ class FileManagerController extends BaseController
      */
     public function delete()
     {
-        $currentDir = trim((string)request()->post('dir', ''));
-        $pickerMode = request()->post('picker', '') === '1';
-        $field = trim((string)request()->post('field', ''));
-        $tableParams = $this->getRedirectTableParams();
+        $state = $this->getManagerStateFromPost();
         $path = trim((string)request()->post('path', ''));
 
         try {
             $this->files->delete($path);
-            session()->setFlash('success', return_translation('admin_files_deleted'));
+            $this->respondWithManagerState($state, 'success', return_translation('admin_files_deleted'));
         } catch (\RuntimeException $exception) {
-            session()->setFlash('error', $exception->getMessage());
+            $this->respondWithManagerState($state, 'error', $exception->getMessage());
         }
-
-        response()->redirect($this->buildUrl($currentDir, $pickerMode, $field, $tableParams));
     }
 
     /**
@@ -111,42 +100,74 @@ class FileManagerController extends BaseController
      */
     public function deleteDirectory()
     {
-        $currentDir = trim((string)request()->post('dir', ''));
-        $pickerMode = request()->post('picker', '') === '1';
-        $field = trim((string)request()->post('field', ''));
-        $tableParams = $this->getRedirectTableParams();
+        $state = $this->getManagerStateFromPost();
         $path = trim((string)request()->post('path', ''));
 
         try {
             $this->files->deleteDirectory($path);
-            session()->setFlash('success', return_translation('admin_files_folder_deleted'));
+            $this->respondWithManagerState($state, 'success', return_translation('admin_files_folder_deleted'));
         } catch (\RuntimeException $exception) {
-            session()->setFlash('error', $exception->getMessage());
+            $this->respondWithManagerState($state, 'error', $exception->getMessage());
         }
-
-        response()->redirect($this->buildUrl($currentDir, $pickerMode, $field, $tableParams));
     }
 
     /**
-     * Переименовывает выбранный файл.
+     * Переименовывает выбранный файл или папку.
      */
     public function rename()
     {
-        $currentDir = trim((string)request()->post('dir', ''));
-        $pickerMode = request()->post('picker', '') === '1';
-        $field = trim((string)request()->post('field', ''));
-        $tableParams = $this->getRedirectTableParams();
+        $state = $this->getManagerStateFromPost();
         $path = trim((string)request()->post('path', ''));
         $newName = trim((string)request()->post('new_name', ''));
 
         try {
             $this->files->rename($path, $newName);
-            session()->setFlash('success', return_translation('admin_files_renamed'));
+            $this->respondWithManagerState($state, 'success', return_translation('admin_files_renamed'));
         } catch (\RuntimeException $exception) {
-            session()->setFlash('error', $exception->getMessage());
+            $this->respondWithManagerState($state, 'error', $exception->getMessage());
+        }
+    }
+
+    /**
+     * Выполняет групповое действие над выбранными файлами и папками.
+     */
+    public function bulkAction()
+    {
+        $state = $this->getManagerStateFromPost();
+        $action = trim((string)request()->post('action_name', ''));
+        $paths = request()->post['selected_paths'] ?? [];
+        $types = request()->post['selected_types'] ?? [];
+        $items = [];
+
+        if (is_array($paths)) {
+            foreach ($paths as $index => $path) {
+                $path = trim((string)$path);
+                if ($path === '') {
+                    continue;
+                }
+
+                $items[] = [
+                    'path' => $path,
+                    'type' => is_array($types) ? trim((string)($types[$index] ?? 'file')) : 'file',
+                ];
+            }
         }
 
-        response()->redirect($this->buildUrl($currentDir, $pickerMode, $field, $tableParams));
+        try {
+            if ($action !== 'delete') {
+                throw new \RuntimeException(return_translation('admin_files_action_invalid'));
+            }
+
+            if ($items === []) {
+                throw new \RuntimeException(return_translation('admin_files_selection_required'));
+            }
+
+            $deletedCount = $this->files->deleteMany($items);
+            $message = str_replace(':count', (string)$deletedCount, return_translation('admin_files_bulk_deleted'));
+            $this->respondWithManagerState($state, 'success', $message);
+        } catch (\RuntimeException $exception) {
+            $this->respondWithManagerState($state, 'error', $exception->getMessage());
+        }
     }
 
     /**
@@ -195,7 +216,7 @@ class FileManagerController extends BaseController
     protected function getTableParams(string $defaultSort, string $defaultDirection = 'desc'): array
     {
         return [
-            'per_page' => 15,
+            'per_page' => 30,
             'search' => request()->get('q', ''),
             'sort' => request()->get('sort', $defaultSort),
             'direction' => request()->get('direction', $defaultDirection),
@@ -212,6 +233,68 @@ class FileManagerController extends BaseController
             'sort' => request()->post('sort', 'modified'),
             'direction' => request()->post('direction', 'desc'),
         ];
+    }
+
+    /**
+     * Возвращает полное состояние менеджера для GET-запроса.
+     */
+    protected function getManagerStateFromGet(): array
+    {
+        return [
+            'current_dir' => trim((string)request()->get('dir', '')),
+            'picker_mode' => request()->get('picker', '') === '1',
+            'picker_field' => trim((string)request()->get('field', '')),
+            'table_params' => $this->getTableParams('modified', 'desc'),
+        ];
+    }
+
+    /**
+     * Возвращает полное состояние менеджера для POST-запроса.
+     */
+    protected function getManagerStateFromPost(): array
+    {
+        return [
+            'current_dir' => trim((string)request()->post('dir', '')),
+            'picker_mode' => request()->post('picker', '') === '1',
+            'picker_field' => trim((string)request()->post('field', '')),
+            'table_params' => $this->getRedirectTableParams(),
+        ];
+    }
+
+    /**
+     * Рендерит динамическую часть файлового менеджера.
+     */
+    protected function renderBrowser(array $directoryData, bool $pickerMode, string $pickerField): string
+    {
+        return view()->renderPartial('admin/_file_manager_browser', [
+            'manager' => $directoryData,
+            'picker_mode' => $pickerMode,
+            'picker_field' => $pickerField,
+        ]);
+    }
+
+    /**
+     * Возвращает обновлённое состояние менеджера в JSON или делает редирект для обычной формы.
+     */
+    protected function respondWithManagerState(array $state, string $status, string $message): void
+    {
+        if (request()->isAjax()) {
+            $directoryData = $this->files->getDirectoryData($state['current_dir'], $state['table_params']);
+            response()->json([
+                'status' => $status,
+                'message' => $message,
+                'html' => $this->renderBrowser($directoryData, $state['picker_mode'], $state['picker_field']),
+                'current_dir' => $directoryData['current_dir'] ?? '',
+            ], $status === 'success' ? 200 : 422);
+        }
+
+        session()->setFlash($status === 'success' ? 'success' : 'error', $message);
+        response()->redirect($this->buildUrl(
+            $state['current_dir'],
+            $state['picker_mode'],
+            $state['picker_field'],
+            $state['table_params']
+        ));
     }
 
 }

@@ -14,7 +14,448 @@ $publishedAtSource = old('published_at') ?: ($post['published_at'] ?? '');
 $publishedAtValue = $publishedAtSource !== '' && strtotime($publishedAtSource)
     ? date('Y-m-d H:i:S', strtotime($publishedAtSource))
     : date('Y-m-d H:i:S');
+$editorConfig = [
+    'fileManagerUrl' => base_href('/admin/files'),
+    'defaultDirectory' => 'posts',
+    'fonts' => [
+        ['value' => '"Helvetica Neue", Arial, sans-serif', 'label' => 'Helvetica'],
+        ['value' => 'Georgia, serif', 'label' => 'Georgia'],
+        ['value' => '"Times New Roman", serif', 'label' => 'Times'],
+        ['value' => '"Trebuchet MS", sans-serif', 'label' => 'Trebuchet'],
+        ['value' => 'Verdana, sans-serif', 'label' => 'Verdana'],
+        ['value' => '"Courier New", monospace', 'label' => 'Courier'],
+    ],
+    'sizes' => [
+        ['value' => '14px', 'label' => '14'],
+        ['value' => '16px', 'label' => '16'],
+        ['value' => '18px', 'label' => '18'],
+        ['value' => '20px', 'label' => '20'],
+        ['value' => '24px', 'label' => '24'],
+        ['value' => '32px', 'label' => '32'],
+    ],
+    'labels' => [
+        'builderHint' => return_translation('admin_post_builder_hint'),
+        'addText' => return_translation('admin_post_builder_add_text'),
+        'addHeading' => return_translation('admin_post_builder_add_heading'),
+        'addImage' => return_translation('admin_post_builder_add_image'),
+        'addVideo' => return_translation('admin_post_builder_add_video'),
+        'addCode' => return_translation('admin_post_builder_add_code'),
+        'textBlock' => return_translation('admin_post_builder_block_text'),
+        'headingBlock' => return_translation('admin_post_builder_block_heading'),
+        'imageBlock' => return_translation('admin_post_builder_block_image'),
+        'videoBlock' => return_translation('admin_post_builder_block_video'),
+        'codeBlock' => return_translation('admin_post_builder_block_code'),
+        'moveUp' => return_translation('admin_post_builder_move_up'),
+        'moveDown' => return_translation('admin_post_builder_move_down'),
+        'remove' => return_translation('admin_post_builder_remove'),
+        'duplicate' => return_translation('admin_post_builder_duplicate'),
+        'drag' => return_translation('admin_post_builder_drag'),
+        'chooseFile' => return_translation('admin_post_builder_choose_file'),
+        'sourceLink' => return_translation('admin_post_builder_source_link'),
+        'imageAlt' => return_translation('admin_post_builder_image_alt'),
+        'imageCaption' => return_translation('admin_post_builder_image_caption'),
+        'imageLink' => return_translation('admin_post_builder_image_link'),
+        'videoPoster' => return_translation('admin_post_builder_video_poster'),
+        'videoCaption' => return_translation('admin_post_builder_video_caption'),
+        'headingLevel' => return_translation('admin_post_builder_heading_level'),
+        'codeLanguage' => return_translation('admin_post_builder_code_language'),
+        'codePlaceholder' => return_translation('admin_post_builder_code_placeholder'),
+        'textPlaceholder' => return_translation('admin_post_builder_text_placeholder'),
+        'headingPlaceholder' => return_translation('admin_post_builder_heading_placeholder'),
+        'font' => return_translation('admin_post_builder_font'),
+        'size' => return_translation('admin_post_builder_size'),
+        'textColor' => return_translation('admin_post_builder_text_color'),
+        'background' => return_translation('admin_post_builder_background'),
+        'linkPrompt' => return_translation('admin_post_builder_link_prompt'),
+        'empty' => return_translation('admin_post_builder_empty'),
+        'bulletList' => return_translation('admin_post_builder_bullet_list'),
+        'quote' => return_translation('admin_post_builder_quote'),
+        'inserter' => return_translation('admin_post_builder_inserter'),
+        'inspector' => return_translation('admin_post_builder_inspector'),
+        'canvasTitle' => return_translation('admin_post_builder_canvas_title'),
+        'addBlock' => return_translation('admin_post_builder_add_block'),
+        'outline' => return_translation('admin_post_builder_outline'),
+        'selectBlock' => return_translation('admin_post_builder_select_block'),
+        'blockSettings' => return_translation('admin_post_builder_block_settings'),
+        'contentSettings' => return_translation('admin_post_builder_content_settings'),
+        'mediaSettings' => return_translation('admin_post_builder_media_settings'),
+        'blockCount' => return_translation('admin_post_builder_block_count'),
+    ],
+];
 ?>
+
+<style>
+    .fb-post-editor {
+        border: 1px solid #dcdcde;
+        border-radius: 1rem;
+        background: #f0f0f1;
+        overflow: hidden;
+    }
+
+    .fb-post-editor__topbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .85rem 1rem;
+        background: #fff;
+        border-bottom: 1px solid #dcdcde;
+    }
+
+    .fb-post-editor__hint {
+        color: #646970;
+        font-size: .9rem;
+        margin: 0;
+    }
+
+    .fb-post-editor__topbar-meta {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        color: #1e1e1e;
+        font-size: .88rem;
+        font-weight: 500;
+    }
+
+    .fb-post-editor__workspace {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr) 300px;
+        min-height: 720px;
+    }
+
+    .fb-post-editor__sidebar,
+    .fb-post-editor__inspector {
+        background: #f6f7f7;
+    }
+
+    .fb-post-editor__sidebar {
+        border-right: 1px solid #dcdcde;
+        padding: 1rem;
+    }
+
+    .fb-post-editor__inspector {
+        border-left: 1px solid #dcdcde;
+        padding: 1rem;
+    }
+
+    .fb-post-editor__panel-title {
+        margin: 0 0 .85rem;
+        font-size: .82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: #50575e;
+    }
+
+    .fb-post-editor__inserter-buttons {
+        display: grid;
+        gap: .55rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .fb-post-editor__inserter-btn {
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+        width: 100%;
+        border: 1px solid #dcdcde;
+        border-radius: .85rem;
+        background: #fff;
+        padding: .8rem .9rem;
+        text-align: left;
+        transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+    }
+
+    .fb-post-editor__inserter-btn:hover {
+        border-color: #3858e9;
+        background: #f7f8ff;
+        transform: translateY(-1px);
+    }
+
+    .fb-post-editor__inserter-icon {
+        width: 2rem;
+        height: 2rem;
+        border-radius: .65rem;
+        background: #1e1e1e;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .95rem;
+        font-weight: 700;
+        flex: 0 0 auto;
+    }
+
+    .fb-post-editor__outline {
+        display: grid;
+        gap: .4rem;
+    }
+
+    .fb-post-editor__outline-item {
+        width: 100%;
+        border: 1px solid transparent;
+        border-radius: .75rem;
+        background: transparent;
+        padding: .65rem .8rem;
+        text-align: left;
+        font-size: .92rem;
+        color: #1e1e1e;
+    }
+
+    .fb-post-editor__outline-item.is-active {
+        border-color: #3858e9;
+        background: #eef2ff;
+        color: #2145e6;
+    }
+
+    .fb-post-editor__canvas {
+        background: #fff;
+        padding: 1.25rem;
+    }
+
+    .fb-post-editor__canvas-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .fb-post-editor__canvas-title {
+        margin: 0;
+        font-size: .95rem;
+        font-weight: 700;
+        color: #1e1e1e;
+    }
+
+    .fb-post-editor__list {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .fb-post-editor__empty {
+        border: 1px dashed #c3c4c7;
+        border-radius: 1rem;
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: #646970;
+        background: #fff;
+    }
+
+    .fb-post-editor__block {
+        border: 1px solid #dcdcde;
+        border-radius: .9rem;
+        background: #fff;
+        overflow: hidden;
+        transition: box-shadow .15s ease, border-color .15s ease;
+    }
+
+    .fb-post-editor__block.is-selected {
+        border-color: #3858e9;
+        box-shadow: 0 0 0 1px #3858e9;
+    }
+
+    .fb-post-editor__block.is-drop-target {
+        outline: 2px solid rgba(56, 88, 233, .24);
+    }
+
+    .fb-post-editor__block-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        padding: .7rem .85rem;
+        background: #fff;
+        border-bottom: 1px solid #f0f0f1;
+    }
+
+    .fb-post-editor__block-title {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        font-weight: 600;
+        color: #1e1e1e;
+    }
+
+    .fb-post-editor__drag {
+        cursor: grab;
+        border: 0;
+        background: transparent;
+        color: #646970;
+        padding: 0;
+        font-size: 1rem;
+    }
+
+    .fb-post-editor__block-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+    }
+
+    .fb-post-editor__body {
+        padding: 1rem;
+    }
+
+    .fb-post-editor__body .form-label {
+        font-size: .84rem;
+        color: #646970;
+    }
+
+    .fb-post-editor__grid {
+        display: grid;
+        gap: .85rem;
+    }
+
+    .fb-post-editor__grid--media {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .fb-post-editor__formatbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        margin-bottom: .85rem;
+        padding: .85rem;
+        border: 1px solid #dcdcde;
+        border-radius: 1rem;
+        background: #f6f7f7;
+    }
+
+    .fb-post-editor__formatbar .btn,
+    .fb-post-editor__formatbar .form-select,
+    .fb-post-editor__formatbar .form-control-color {
+        min-height: 2.35rem;
+    }
+
+    .fb-post-editor__rich {
+        min-height: 180px;
+        padding: 1rem;
+        border: 1px solid #dcdcde;
+        border-radius: 1rem;
+        background: #fff;
+        outline: none;
+        line-height: 1.7;
+    }
+
+    .fb-post-editor__rich:empty::before,
+    .fb-post-editor__heading-input:empty::before {
+        content: attr(data-placeholder);
+        color: rgba(108, 117, 125, .82);
+    }
+
+    .fb-post-editor__heading-input {
+        padding: .9rem 1rem;
+        border: 1px solid #dcdcde;
+        border-radius: 1rem;
+        min-height: 3.4rem;
+        outline: none;
+        font-weight: 700;
+        background: #fff;
+    }
+
+    .fb-post-editor__preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 170px;
+        border: 1px dashed #c3c4c7;
+        border-radius: 1rem;
+        background: #f6f7f7;
+        overflow: hidden;
+    }
+
+    .fb-post-editor__preview img,
+    .fb-post-editor__preview iframe,
+    .fb-post-editor__preview video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border: 0;
+    }
+
+    .fb-post-editor__preview-text {
+        padding: 1rem;
+        text-align: center;
+        color: #646970;
+        font-size: .92rem;
+    }
+
+    .fb-post-editor__code {
+        min-height: 220px;
+        font: 400 .95rem/1.65 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        border-radius: 1rem;
+        background: #111827;
+        color: #f3f4f6;
+        border-color: #111827;
+    }
+
+    .fb-post-editor__media-summary {
+        display: grid;
+        gap: .55rem;
+    }
+
+    .fb-post-editor__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+        margin-top: .75rem;
+    }
+
+    .fb-post-editor__chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #f0f0f1;
+        color: #50575e;
+        padding: .3rem .6rem;
+        font-size: .78rem;
+        line-height: 1;
+    }
+
+    .fb-post-editor__inspector-card {
+        border: 1px solid #dcdcde;
+        border-radius: .9rem;
+        background: #fff;
+        padding: .9rem;
+        margin-bottom: .85rem;
+    }
+
+    .fb-post-editor__inspector-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .fb-post-editor__inspector-note {
+        color: #646970;
+        font-size: .9rem;
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    .fb-post-editor__block-label {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        font-size: .78rem;
+        color: #646970;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+    }
+
+    @media (max-width: 767.98px) {
+        .fb-post-editor__workspace {
+            grid-template-columns: 1fr;
+        }
+
+        .fb-post-editor__sidebar,
+        .fb-post-editor__canvas,
+        .fb-post-editor__inspector {
+            border: 0;
+            border-bottom: 1px solid #dcdcde;
+            padding: .85rem;
+        }
+    }
+</style>
 
 <section class="container py-5 my-2 my-md-4 my-lg-5">
     <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
@@ -72,12 +513,17 @@ $publishedAtValue = $publishedAtSource !== '' && strtotime($publishedAtSource)
             <div class="col-12">
                 <label class="form-label"><?= print_translation('admin_post_content') ?></label>
                 <textarea
-                    class="form-control <?= get_validation_class('content') ?>"
+                    class="form-control <?= get_validation_class('content') ?> d-none"
                     id="post_content"
                     name="content"
                     rows="10"
                     data-post-editor
                 ><?= old('content') ?: htmlSC($post['content'] ?? '') ?></textarea>
+                <div
+                    class="fb-post-editor"
+                    data-post-editor-app
+                    data-post-editor-config="<?= htmlSC(json_encode($editorConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+                ></div>
                 <?= get_errors('content') ?>
             </div>
             <div class="col-12">

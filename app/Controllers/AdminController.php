@@ -142,11 +142,9 @@ class AdminController extends BaseController
             'is_edit' => $isEdit,
             'styles' => [
                 base_url('/assets/default/vendor/flatpickr/flatpickr.min.css?v=' . filemtime(WWW . '/assets/default/vendor/flatpickr/flatpickr.min.css')),
-                base_url('/assets/default/vendor/jodit/jodit.min.css?v=' . filemtime(WWW . '/assets/default/vendor/jodit/jodit.min.css')),
             ],
             'footer_scripts' => [
                 base_url('/assets/default/vendor/flatpickr/flatpickr.min.js?v=' . filemtime(WWW . '/assets/default/vendor/flatpickr/flatpickr.min.js')),
-                base_url('/assets/default/vendor/jodit/jodit.min.js?v=' . filemtime(WWW . '/assets/default/vendor/jodit/jodit.min.js')),
                 base_url('/assets/default/js/admin-post-editor.js?v=' . filemtime(WWW . '/assets/default/js/admin-post-editor.js')),
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
             ],

@@ -274,12 +274,12 @@ function get_validation_class($field_name): string
 
 function old($field_name): string
 {
-    return isset(session()->get('form_data')[$field_name]) ? htmlSC(session()->get('form_data')[$field_name]) : '';
+    return isset(session()->get('form_data')[$field_name]) ? htmlSC((string)session()->get('form_data')[$field_name]) : '';
 }
 
 function htmlSC($str): string
 {
-    return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
 }
 
 function make_slug(string $value, string $fallback = 'item'): string

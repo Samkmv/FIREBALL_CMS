@@ -1,48 +1,4 @@
 $(function () {
-    const editorFontFamily = 'Roboto, "Helvetica Neue", Arial, sans-serif';
-    const defaultFontControls = (
-        typeof Jodit !== 'undefined'
-        && Jodit.defaultOptions
-        && Jodit.defaultOptions.controls
-        && Jodit.defaultOptions.controls.font
-        && Jodit.defaultOptions.controls.font.list
-    ) ? Jodit.defaultOptions.controls.font.list : {};
-    const fontList = Object.assign(
-        {
-            [editorFontFamily]: 'Roboto'
-        },
-        defaultFontControls
-    );
-    const defaultButtons = (
-        typeof Jodit !== 'undefined'
-        && Jodit.defaultOptions
-        && Array.isArray(Jodit.defaultOptions.buttons)
-    ) ? Jodit.defaultOptions.buttons.slice() : [];
-
-    if (defaultButtons.length) {
-        if (defaultButtons.indexOf('font') === -1) {
-            defaultButtons.unshift('font');
-        }
-
-        if (defaultButtons.indexOf('fontsize') === -1) {
-            defaultButtons.splice(Math.min(defaultButtons.length, 1), 0, 'fontsize');
-        }
-    }
-
-    const prefersNativeSourceEditor = (function () {
-        if (typeof window === 'undefined') {
-            return false;
-        }
-
-        const hasCoarsePointer = typeof window.matchMedia === 'function'
-            && window.matchMedia('(pointer: coarse)').matches;
-        const hasTouchPoints = Number(
-            (window.navigator && (window.navigator.maxTouchPoints || window.navigator.msMaxTouchPoints)) || 0
-        ) > 0;
-
-        return hasCoarsePointer || hasTouchPoints || 'ontouchstart' in window;
-    }());
-
     const publishedAtField = document.querySelector('[data-post-datepicker]');
     if (publishedAtField && typeof flatpickr !== 'undefined') {
         flatpickr(publishedAtField, {
@@ -58,57 +14,1070 @@ $(function () {
     }
 
     const editorField = document.querySelector('[data-post-editor]');
-    if (!editorField || typeof Jodit === 'undefined') {
+    const editorApp = document.querySelector('[data-post-editor-app]');
+    if (!editorField || !editorApp) {
         return;
     }
 
-    const editor = Jodit.make(editorField, {
-        height: 500,
-        toolbarAdaptive: false,
-        buttonsSticky: false,
-        buttons: defaultButtons.length ? defaultButtons : undefined,
-        showCharsCounter: false,
-        showWordsCounter: false,
-        askBeforePasteHTML: false,
-        askBeforePasteFromWord: false,
-        defaultMode: Jodit.MODE_WYSIWYG,
-        sourceEditor: prefersNativeSourceEditor ? 'area' : 'ace',
-        beautifyHTML: !prefersNativeSourceEditor,
-        controls: {
-            font: {
-                list: fontList
-            }
-        },
-        style: {
-            font: `400 16px ${editorFontFamily}`
-        }
-    });
-
-    const applyEditorFont = function () {
-        if (editor.container) {
-            editor.container.style.fontFamily = editorFontFamily;
-        }
-
-        if (editor.workplace) {
-            editor.workplace.style.fontFamily = editorFontFamily;
-        }
-
-        if (editor.editor) {
-            editor.editor.style.fontFamily = editorFontFamily;
-            editor.editor.style.fontSize = '16px';
-        }
+    let config = {
+        fileManagerUrl: '',
+        defaultDirectory: 'posts',
+        fonts: [],
+        sizes: [],
+        labels: {}
     };
 
-    applyEditorFont();
-    editor.e.on('afterSetMode', applyEditorFont);
-    editor.e.on('afterInit', applyEditorFont);
-
-    const form = editorField.form;
-    if (!form) {
-        return;
+    try {
+        config = Object.assign(config, JSON.parse(String(editorApp.getAttribute('data-post-editor-config') || '{}')));
+    } catch (error) {
+        config = Object.assign({}, config);
     }
 
-    form.addEventListener('submit', function () {
-        editor.synchronizeValues();
+    const labels = Object.assign({
+        builderHint: 'Build the post from blocks and reorder them.',
+        addText: 'Text',
+        addHeading: 'Heading',
+        addImage: 'Image',
+        addVideo: 'Video',
+        addCode: 'Code',
+        textBlock: 'Text block',
+        headingBlock: 'Heading block',
+        imageBlock: 'Image block',
+        videoBlock: 'Video block',
+        codeBlock: 'Code block',
+        moveUp: 'Move up',
+        moveDown: 'Move down',
+        remove: 'Remove',
+        duplicate: 'Duplicate',
+        drag: 'Drag block',
+        chooseFile: 'Choose file',
+        sourceLink: 'Source link',
+        imageAlt: 'Alt text',
+        imageCaption: 'Caption',
+        imageLink: 'Image link',
+        videoPoster: 'Poster',
+        videoCaption: 'Caption',
+        headingLevel: 'Level',
+        codeLanguage: 'Language',
+        codePlaceholder: 'Paste your code here',
+        textPlaceholder: 'Write text here. Use the toolbar for font, size, colors and lists.',
+        headingPlaceholder: 'Heading text',
+        font: 'Font',
+        size: 'Size',
+        textColor: 'Text color',
+        background: 'Background',
+        linkPrompt: 'Enter a link URL',
+        empty: 'Add the first block to start building the post.',
+        bulletList: 'Bullet list',
+        quote: 'Quote',
+        inserter: 'Block inserter',
+        inspector: 'Block settings',
+        canvasTitle: 'Post content',
+        addBlock: 'Add block',
+        outline: 'Outline',
+        selectBlock: 'Select a block in the canvas to open its settings.',
+        blockSettings: 'Block options',
+        contentSettings: 'Content editing',
+        mediaSettings: 'Media settings',
+        blockCount: 'Blocks'
+    }, config.labels || {});
+
+    const fonts = Array.isArray(config.fonts) ? config.fonts : [];
+    const sizes = Array.isArray(config.sizes) ? config.sizes : [];
+    const popupName = 'fireball_file_manager';
+    const blockTypeIcons = {
+        text: 'T',
+        heading: 'H',
+        image: 'I',
+        video: 'V',
+        code: '</>'
+    };
+    const fontSizeCommandMap = {
+        '10px': '1',
+        '12px': '2',
+        '14px': '3',
+        '16px': '4',
+        '18px': '5',
+        '24px': '6',
+        '32px': '7'
+    };
+    const fontSizeCssMap = {
+        '1': '10px',
+        '2': '12px',
+        '3': '14px',
+        '4': '16px',
+        '5': '18px',
+        '6': '24px',
+        '7': '32px'
+    };
+
+    const state = {
+        blocks: [],
+        selectedId: null,
+        draggedId: null,
+        picker: null
+    };
+
+    function makeId() {
+        return 'block_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    function cloneData(data) {
+        return JSON.parse(JSON.stringify(data || {}));
+    }
+
+    function escapeHtml(value) {
+        return $('<div>').text(String(value == null ? '' : value)).html();
+    }
+
+    function escapeAttr(value) {
+        return escapeHtml(value).replace(/"/g, '&quot;');
+    }
+
+    function sanitizeHtml(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString('<div data-root="1">' + String(html || '') + '</div>', 'text/html');
+        const root = doc.body.querySelector('[data-root="1"]');
+        if (!root) {
+            return '';
+        }
+
+        root.querySelectorAll('script,style,object,embed,form,input,button,textarea,select').forEach(function (node) {
+            node.remove();
+        });
+
+        root.querySelectorAll('*').forEach(function (node) {
+            Array.from(node.attributes).forEach(function (attribute) {
+                const name = attribute.name.toLowerCase();
+                const value = String(attribute.value || '');
+
+                if (name.indexOf('on') === 0) {
+                    node.removeAttribute(attribute.name);
+                    return;
+                }
+
+                if ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(value)) {
+                    node.removeAttribute(attribute.name);
+                }
+            });
+        });
+
+        return root.innerHTML.trim();
+    }
+
+    function defaultBlockData(type) {
+        if (type === 'heading') {
+            return { level: 'h2', html: '' };
+        }
+        if (type === 'image') {
+            return { src: '', alt: '', caption: '', link: '' };
+        }
+        if (type === 'video') {
+            return { src: '', poster: '', caption: '' };
+        }
+        if (type === 'code') {
+            return { language: 'html', code: '' };
+        }
+
+        return { html: '' };
+    }
+
+    function createBlock(type, data) {
+        return {
+            id: makeId(),
+            type: type,
+            data: Object.assign(defaultBlockData(type), cloneData(data))
+        };
+    }
+
+    function textBlockFromHtml(html) {
+        return createBlock('text', { html: sanitizeHtml(html) });
+    }
+
+    function parseImageBlock(node) {
+        const image = node.tagName && node.tagName.toLowerCase() === 'img'
+            ? node
+            : node.querySelector('img');
+        const link = node.querySelector('a');
+        const caption = node.querySelector('figcaption');
+
+        return createBlock('image', {
+            src: image ? String(image.getAttribute('src') || '') : '',
+            alt: image ? String(image.getAttribute('alt') || '') : '',
+            caption: caption ? String(caption.textContent || '') : '',
+            link: link ? String(link.getAttribute('href') || '') : ''
+        });
+    }
+
+    function parseVideoBlock(node) {
+        let source = '';
+        let poster = '';
+
+        if (node.matches('iframe')) {
+            source = String(node.getAttribute('src') || '');
+        } else {
+            const video = node.matches('video') ? node : node.querySelector('video');
+            const sourceNode = video ? video.querySelector('source') : null;
+            source = sourceNode
+                ? String(sourceNode.getAttribute('src') || '')
+                : (video ? String(video.getAttribute('src') || '') : '');
+            poster = video ? String(video.getAttribute('poster') || '') : '';
+        }
+
+        return createBlock('video', {
+            src: source,
+            poster: poster,
+            caption: ''
+        });
+    }
+
+    function parseCodeBlock(node) {
+        const codeNode = node.querySelector('code');
+        let language = String(node.getAttribute('data-language') || '');
+
+        if (!language && codeNode) {
+            const className = String(codeNode.getAttribute('class') || '');
+            const match = className.match(/language-([a-z0-9_-]+)/i);
+            language = match ? match[1] : '';
+        }
+
+        return createBlock('code', {
+            language: language || 'html',
+            code: codeNode ? String(codeNode.textContent || '') : String(node.textContent || '')
+        });
+    }
+
+    function importBlocks(html) {
+        const cleanHtml = String(html || '').trim();
+        if (!cleanHtml) {
+            return [createBlock('text')];
+        }
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString('<div data-import-root="1">' + cleanHtml + '</div>', 'text/html');
+        const root = doc.body.querySelector('[data-import-root="1"]');
+        if (!root) {
+            return [createBlock('text')];
+        }
+
+        const blocks = [];
+        let richBuffer = [];
+
+        function flushRichBuffer() {
+            if (!richBuffer.length) {
+                return;
+            }
+
+            blocks.push(textBlockFromHtml(richBuffer.join('')));
+            richBuffer = [];
+        }
+
+        Array.from(root.childNodes).forEach(function (node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = String(node.textContent || '').trim();
+                if (text !== '') {
+                    richBuffer.push('<p>' + escapeHtml(text) + '</p>');
+                }
+                return;
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return;
+            }
+
+            const tag = node.tagName.toLowerCase();
+
+            if (/^h[1-6]$/.test(tag)) {
+                flushRichBuffer();
+                blocks.push(createBlock('heading', {
+                    level: tag,
+                    html: sanitizeHtml(node.innerHTML)
+                }));
+                return;
+            }
+
+            if (tag === 'pre') {
+                flushRichBuffer();
+                blocks.push(parseCodeBlock(node));
+                return;
+            }
+
+            if (tag === 'img' || tag === 'figure') {
+                flushRichBuffer();
+                blocks.push(parseImageBlock(node));
+                return;
+            }
+
+            if (tag === 'iframe' || tag === 'video' || node.matches('[data-plyr-player-wrap]')) {
+                flushRichBuffer();
+                blocks.push(parseVideoBlock(node));
+                return;
+            }
+
+            richBuffer.push(node.outerHTML);
+        });
+
+        flushRichBuffer();
+
+        return blocks.length ? blocks : [createBlock('text')];
+    }
+
+    function normalizeFontTags(scope) {
+        scope.querySelectorAll('font[size]').forEach(function (fontNode) {
+            const size = String(fontNode.getAttribute('size') || '');
+            const span = document.createElement('span');
+            if (fontSizeCssMap[size]) {
+                span.style.fontSize = fontSizeCssMap[size];
+            }
+            span.innerHTML = fontNode.innerHTML;
+            fontNode.replaceWith(span);
+        });
+    }
+
+    function getBlockIndex(blockId) {
+        return state.blocks.findIndex(function (block) {
+            return block.id === blockId;
+        });
+    }
+
+    function getBlock(blockId) {
+        const index = getBlockIndex(blockId);
+        return index >= 0 ? state.blocks[index] : null;
+    }
+
+    function ensureSelection() {
+        if (!state.blocks.length) {
+            state.selectedId = null;
+            return;
+        }
+
+        if (!state.selectedId || getBlockIndex(state.selectedId) === -1) {
+            state.selectedId = state.blocks[0].id;
+        }
+    }
+
+    function getVideoEmbedUrl(source) {
+        const url = String(source || '').trim();
+        const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]+)/i);
+        if (youtubeMatch) {
+            return 'https://www.youtube.com/embed/' + youtubeMatch[1];
+        }
+
+        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/i);
+        if (vimeoMatch) {
+            return 'https://player.vimeo.com/video/' + vimeoMatch[1];
+        }
+
+        return '';
+    }
+
+    function getVideoMimeType(source) {
+        const url = String(source || '').toLowerCase();
+        if (/\.m3u8(?:$|\?)/.test(url)) {
+            return 'application/vnd.apple.mpegurl';
+        }
+        if (/\.webm(?:$|\?)/.test(url)) {
+            return 'video/webm';
+        }
+        if (/\.ogg(?:$|\?)/.test(url) || /\.ogv(?:$|\?)/.test(url)) {
+            return 'video/ogg';
+        }
+        return 'video/mp4';
+    }
+
+    function serializeBlocks() {
+        const parts = state.blocks.map(function (block) {
+            if (block.type === 'heading') {
+                const level = /^h[1-6]$/.test(String(block.data.level || '')) ? String(block.data.level) : 'h2';
+                const html = sanitizeHtml(block.data.html || '');
+                return html ? '<' + level + '>' + html + '</' + level + '>' : '';
+            }
+
+            if (block.type === 'image') {
+                const src = String(block.data.src || '').trim();
+                if (src === '') {
+                    return '';
+                }
+
+                const alt = escapeAttr(block.data.alt || '');
+                const caption = String(block.data.caption || '').trim();
+                const link = String(block.data.link || '').trim();
+                let imageTag = '<img src="' + escapeAttr(src) + '" alt="' + alt + '">';
+
+                if (link !== '') {
+                    imageTag = '<a href="' + escapeAttr(link) + '" target="_blank" rel="noopener noreferrer">' + imageTag + '</a>';
+                }
+
+                if (caption !== '') {
+                    return '<figure>' + imageTag + '<figcaption>' + escapeHtml(caption) + '</figcaption></figure>';
+                }
+
+                return imageTag;
+            }
+
+            if (block.type === 'video') {
+                const src = String(block.data.src || '').trim();
+                if (src === '') {
+                    return '';
+                }
+
+                const embedUrl = getVideoEmbedUrl(src);
+                const caption = String(block.data.caption || '').trim();
+
+                if (embedUrl !== '') {
+                    return '<div class="ratio ratio-16x9"><iframe src="' + escapeAttr(embedUrl) + '" title="' + escapeAttr(caption || 'Video') + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>' +
+                        (caption !== '' ? '<p>' + escapeHtml(caption) + '</p>' : '');
+                }
+
+                const poster = String(block.data.poster || '').trim();
+                const posterAttribute = poster !== '' ? ' poster="' + escapeAttr(poster) + '"' : '';
+                const mimeType = getVideoMimeType(src);
+
+                return '<div data-plyr-player-wrap=""><video controls playsinline data-plyr-player=""' + posterAttribute + '><source src="' + escapeAttr(src) + '" type="' + escapeAttr(mimeType) + '"></video></div>' +
+                    (caption !== '' ? '<p>' + escapeHtml(caption) + '</p>' : '');
+            }
+
+            if (block.type === 'code') {
+                const code = String(block.data.code || '');
+                if (code.trim() === '') {
+                    return '';
+                }
+
+                const language = String(block.data.language || 'html').trim() || 'html';
+                return '<pre class="fb-code-block" data-language="' + escapeAttr(language) + '"><code class="language-' + escapeAttr(language) + '">' + escapeHtml(code) + '</code></pre>';
+            }
+
+            const html = sanitizeHtml(block.data.html || '');
+            return html;
+        }).filter(function (item) {
+            return String(item || '').trim() !== '';
+        });
+
+        return parts.join('\n');
+    }
+
+    function syncTextarea() {
+        editorField.value = serializeBlocks();
+    }
+
+    function renderOptions(items, selectedValue) {
+        return items.map(function (item) {
+            const value = String(item.value || '');
+            const label = String(item.label || value);
+            return '<option value="' + escapeAttr(value) + '"' + (value === selectedValue ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        }).join('');
+    }
+
+    function renderMediaPreview(block) {
+        if (block.type === 'image' && block.data.src) {
+            return '<img src="' + escapeAttr(block.data.src) + '" alt="' + escapeAttr(block.data.alt || '') + '">';
+        }
+
+        if (block.type === 'video' && block.data.src) {
+            const embedUrl = getVideoEmbedUrl(block.data.src);
+            if (embedUrl !== '') {
+                return '<iframe src="' + escapeAttr(embedUrl) + '" allowfullscreen loading="lazy"></iframe>';
+            }
+
+            return '<video controls playsinline' + (block.data.poster ? ' poster="' + escapeAttr(block.data.poster) + '"' : '') + '><source src="' + escapeAttr(block.data.src) + '" type="' + escapeAttr(getVideoMimeType(block.data.src)) + '"></video>';
+        }
+
+        return '<div class="fb-post-editor__preview-text">' + escapeHtml(labels.sourceLink) + '</div>';
+    }
+
+    function renderTextCanvas(block) {
+        return '' +
+            '<div class="fb-post-editor__formatbar">' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="bold"><strong>B</strong></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="italic"><em>I</em></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="underline"><u>U</u></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="insertUnorderedList" title="' + escapeAttr(labels.bulletList) + '">• List</button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="formatBlock" data-editor-value="blockquote" title="' + escapeAttr(labels.quote) + '">"</button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="createLink">Link</button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="unlink">Unlink</button>' +
+                '<select class="form-select form-select-sm" data-editor-command="fontName" aria-label="' + escapeAttr(labels.font) + '">' +
+                    '<option value="">' + escapeHtml(labels.font) + '</option>' +
+                    renderOptions(fonts, '') +
+                '</select>' +
+                '<select class="form-select form-select-sm" data-editor-font-size aria-label="' + escapeAttr(labels.size) + '">' +
+                    '<option value="">' + escapeHtml(labels.size) + '</option>' +
+                    renderOptions(sizes, '') +
+                '</select>' +
+                '<label class="d-inline-flex align-items-center gap-2 small text-body-secondary">' +
+                    '<span>' + escapeHtml(labels.textColor) + '</span>' +
+                    '<input class="form-control form-control-color" type="color" value="#111827" data-editor-command="foreColor" aria-label="' + escapeAttr(labels.textColor) + '">' +
+                '</label>' +
+                '<label class="d-inline-flex align-items-center gap-2 small text-body-secondary">' +
+                    '<span>' + escapeHtml(labels.background) + '</span>' +
+                    '<input class="form-control form-control-color" type="color" value="#fff1a8" data-editor-command="hiliteColor" aria-label="' + escapeAttr(labels.background) + '">' +
+                '</label>' +
+            '</div>' +
+            '<div class="fb-post-editor__rich" contenteditable="true" data-block-rich data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.textPlaceholder) + '">' + sanitizeHtml(block.data.html || '') + '</div>';
+    }
+
+    function renderHeadingCanvas(block) {
+        return '' +
+            '<div class="fb-post-editor__meta"><span class="fb-post-editor__chip">' + escapeHtml(String(block.data.level || 'h2').toUpperCase()) + '</span></div>' +
+            '<div class="fb-post-editor__heading-input mt-3" contenteditable="true" data-block-heading data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.headingPlaceholder) + '">' + sanitizeHtml(block.data.html || '') + '</div>';
+    }
+
+    function renderImageCanvas(block) {
+        const source = String(block.data.src || '').trim();
+        const caption = String(block.data.caption || '').trim();
+
+        return '' +
+            '<div class="fb-post-editor__media-summary">' +
+                '<div class="fb-post-editor__preview">' + renderMediaPreview(block) + '</div>' +
+                '<div class="fb-post-editor__meta">' +
+                    (source ? '<span class="fb-post-editor__chip">' + escapeHtml(source.split('/').pop()) + '</span>' : '') +
+                    (caption ? '<span class="fb-post-editor__chip">' + escapeHtml(caption) + '</span>' : '') +
+                '</div>' +
+            '</div>';
+    }
+
+    function renderVideoCanvas(block) {
+        const source = String(block.data.src || '').trim();
+        const caption = String(block.data.caption || '').trim();
+
+        return '' +
+            '<div class="fb-post-editor__media-summary">' +
+                '<div class="fb-post-editor__preview">' + renderMediaPreview(block) + '</div>' +
+                '<div class="fb-post-editor__meta">' +
+                    (source ? '<span class="fb-post-editor__chip">' + escapeHtml(source.split('/').pop()) + '</span>' : '') +
+                    (caption ? '<span class="fb-post-editor__chip">' + escapeHtml(caption) + '</span>' : '') +
+                '</div>' +
+            '</div>';
+    }
+
+    function renderCodeCanvas(block) {
+        return '' +
+            '<div class="fb-post-editor__meta"><span class="fb-post-editor__chip">' + escapeHtml(String(block.data.language || 'html')) + '</span></div>' +
+            '<textarea class="form-control fb-post-editor__code mt-3" data-block-field="code" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.codePlaceholder) + '">' + escapeHtml(block.data.code || '') + '</textarea>';
+    }
+
+    function renderCanvasBlockBody(block) {
+        if (block.type === 'heading') {
+            return renderHeadingCanvas(block);
+        }
+        if (block.type === 'image') {
+            return renderImageCanvas(block);
+        }
+        if (block.type === 'video') {
+            return renderVideoCanvas(block);
+        }
+        if (block.type === 'code') {
+            return renderCodeCanvas(block);
+        }
+        return renderTextCanvas(block);
+    }
+
+    function blockTitle(type) {
+        if (type === 'heading') {
+            return labels.headingBlock;
+        }
+        if (type === 'image') {
+            return labels.imageBlock;
+        }
+        if (type === 'video') {
+            return labels.videoBlock;
+        }
+        if (type === 'code') {
+            return labels.codeBlock;
+        }
+        return labels.textBlock;
+    }
+
+    function blockIcon(type) {
+        return blockTypeIcons[type] || '?';
+    }
+
+    function renderInspector(selectedBlock) {
+        if (!selectedBlock) {
+            return '' +
+                '<h3 class="fb-post-editor__panel-title">' + escapeHtml(labels.inspector) + '</h3>' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<p class="fb-post-editor__inspector-note">' + escapeHtml(labels.selectBlock) + '</p>' +
+                '</div>';
+        }
+
+        let settingsHtml = '' +
+            '<div class="fb-post-editor__inspector-card">' +
+                '<div class="fb-post-editor__block-label"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon(selectedBlock.type)) + '</span><span>' + escapeHtml(blockTitle(selectedBlock.type)) + '</span></div>' +
+            '</div>';
+
+        if (selectedBlock.type === 'heading') {
+            settingsHtml += '' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.blockSettings) + '</h4>' +
+                    '<label class="form-label">' + escapeHtml(labels.headingLevel) + '</label>' +
+                    '<select class="form-select" data-block-field="level" data-block-id="' + escapeAttr(selectedBlock.id) + '">' +
+                        renderOptions([
+                            { value: 'h1', label: 'H1' },
+                            { value: 'h2', label: 'H2' },
+                            { value: 'h3', label: 'H3' },
+                            { value: 'h4', label: 'H4' }
+                        ], String(selectedBlock.data.level || 'h2')) +
+                    '</select>' +
+                '</div>';
+        } else if (selectedBlock.type === 'image') {
+            settingsHtml += '' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.mediaSettings) + '</h4>' +
+                    '<div class="mb-3"><label class="form-label">' + escapeHtml(labels.sourceLink) + '</label><div class="input-group"><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.src || '') + '" data-block-field="src" data-block-id="' + escapeAttr(selectedBlock.id) + '"><button class="btn btn-outline-secondary" type="button" data-block-picker="src" data-block-id="' + escapeAttr(selectedBlock.id) + '">' + escapeHtml(labels.chooseFile) + '</button></div></div>' +
+                    '<div class="mb-3"><label class="form-label">' + escapeHtml(labels.imageAlt) + '</label><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.alt || '') + '" data-block-field="alt" data-block-id="' + escapeAttr(selectedBlock.id) + '"></div>' +
+                    '<div class="mb-3"><label class="form-label">' + escapeHtml(labels.imageCaption) + '</label><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.caption || '') + '" data-block-field="caption" data-block-id="' + escapeAttr(selectedBlock.id) + '"></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.imageLink) + '</label><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.link || '') + '" data-block-field="link" data-block-id="' + escapeAttr(selectedBlock.id) + '"></div>' +
+                '</div>';
+        } else if (selectedBlock.type === 'video') {
+            settingsHtml += '' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.mediaSettings) + '</h4>' +
+                    '<div class="mb-3"><label class="form-label">' + escapeHtml(labels.sourceLink) + '</label><div class="input-group"><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.src || '') + '" data-block-field="src" data-block-id="' + escapeAttr(selectedBlock.id) + '"><button class="btn btn-outline-secondary" type="button" data-block-picker="src" data-block-id="' + escapeAttr(selectedBlock.id) + '">' + escapeHtml(labels.chooseFile) + '</button></div></div>' +
+                    '<div class="mb-3"><label class="form-label">' + escapeHtml(labels.videoPoster) + '</label><div class="input-group"><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.poster || '') + '" data-block-field="poster" data-block-id="' + escapeAttr(selectedBlock.id) + '"><button class="btn btn-outline-secondary" type="button" data-block-picker="poster" data-block-id="' + escapeAttr(selectedBlock.id) + '">' + escapeHtml(labels.chooseFile) + '</button></div></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.videoCaption) + '</label><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.caption || '') + '" data-block-field="caption" data-block-id="' + escapeAttr(selectedBlock.id) + '"></div>' +
+                '</div>';
+        } else if (selectedBlock.type === 'code') {
+            settingsHtml += '' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.blockSettings) + '</h4>' +
+                    '<label class="form-label">' + escapeHtml(labels.codeLanguage) + '</label>' +
+                    '<input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.language || '') + '" data-block-field="language" data-block-id="' + escapeAttr(selectedBlock.id) + '">' +
+                '</div>';
+        } else {
+            settingsHtml += '' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.contentSettings) + '</h4>' +
+                    '<p class="fb-post-editor__inspector-note">' + escapeHtml(labels.textPlaceholder) + '</p>' +
+                '</div>';
+        }
+
+        return '<h3 class="fb-post-editor__panel-title">' + escapeHtml(labels.inspector) + '</h3>' + settingsHtml;
+    }
+
+    function renderOutline() {
+        return state.blocks.map(function (block, index) {
+            const isActive = block.id === state.selectedId;
+            return '' +
+                '<button class="fb-post-editor__outline-item' + (isActive ? ' is-active' : '') + '" type="button" data-select-block="' + escapeAttr(block.id) + '">' +
+                    '<span class="d-flex align-items-center gap-2"><strong>' + escapeHtml(String(index + 1)) + '.</strong><span>' + escapeHtml(blockTitle(block.type)) + '</span></span>' +
+                '</button>';
+        }).join('');
+    }
+
+    function renderEditor() {
+        ensureSelection();
+        const selectedBlock = getBlock(state.selectedId);
+        const blocksHtml = state.blocks.map(function (block, index) {
+            const isSelected = block.id === state.selectedId;
+            return '' +
+                '<article class="fb-post-editor__block' + (isSelected ? ' is-selected' : '') + '" data-block-card data-block-id="' + escapeAttr(block.id) + '">' +
+                    '<div class="fb-post-editor__block-header">' +
+                        '<div class="fb-post-editor__block-title">' +
+                            '<button class="fb-post-editor__drag" type="button" draggable="true" data-block-drag-handle data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.drag) + '">⋮⋮</button>' +
+                            '<span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon(block.type)) + '</span>' +
+                            '<span>' + escapeHtml(blockTitle(block.type)) + ' #' + escapeHtml(String(index + 1)) + '</span>' +
+                        '</div>' +
+                        '<div class="fb-post-editor__block-actions">' +
+                            '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="move-up" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.moveUp) + '">↑</button>' +
+                            '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="move-down" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.moveDown) + '">↓</button>' +
+                            '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="duplicate" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.duplicate) + '">+</button>' +
+                            '<button class="btn btn-outline-danger btn-sm" type="button" data-block-action="remove" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.remove) + '">×</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="fb-post-editor__body" data-block-selectable data-block-id="' + escapeAttr(block.id) + '">' + renderCanvasBlockBody(block) + '</div>' +
+                '</article>';
+        }).join('');
+
+        editorApp.innerHTML = '' +
+            '<div class="fb-post-editor__topbar">' +
+                '<p class="fb-post-editor__hint">' + escapeHtml(labels.builderHint) + '</p>' +
+                '<div class="fb-post-editor__topbar-meta"><span>' + escapeHtml(labels.blockCount) + ': ' + escapeHtml(String(state.blocks.length)) + '</span></div>' +
+            '</div>' +
+            '<div class="fb-post-editor__workspace">' +
+                '<aside class="fb-post-editor__sidebar">' +
+                    '<h3 class="fb-post-editor__panel-title">' + escapeHtml(labels.inserter) + '</h3>' +
+                    '<div class="fb-post-editor__inserter-buttons">' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="text"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('text')) + '</span><span>' + escapeHtml(labels.addText) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="heading"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('heading')) + '</span><span>' + escapeHtml(labels.addHeading) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="image"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('image')) + '</span><span>' + escapeHtml(labels.addImage) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="video"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('video')) + '</span><span>' + escapeHtml(labels.addVideo) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="code"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('code')) + '</span><span>' + escapeHtml(labels.addCode) + '</span></button>' +
+                    '</div>' +
+                    '<h3 class="fb-post-editor__panel-title">' + escapeHtml(labels.outline) + '</h3>' +
+                    '<div class="fb-post-editor__outline">' + renderOutline() + '</div>' +
+                '</aside>' +
+                '<div class="fb-post-editor__canvas">' +
+                    '<div class="fb-post-editor__canvas-header">' +
+                        '<h3 class="fb-post-editor__canvas-title">' + escapeHtml(labels.canvasTitle) + '</h3>' +
+                        '<button class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-editor-add="text">' + escapeHtml(labels.addBlock) + '</button>' +
+                    '</div>' +
+                    '<div class="fb-post-editor__list">' + (blocksHtml || ('<div class="fb-post-editor__empty">' + escapeHtml(labels.empty) + '</div>')) + '</div>' +
+                '</div>' +
+                '<aside class="fb-post-editor__inspector">' + renderInspector(selectedBlock) + '</aside>' +
+            '</div>';
+    }
+
+    function renderAndSync() {
+        renderEditor();
+        syncTextarea();
+    }
+
+    function selectBlock(blockId) {
+        if (getBlockIndex(blockId) === -1) {
+            return;
+        }
+        if (state.selectedId === blockId) {
+            return;
+        }
+        state.selectedId = blockId;
+        renderEditor();
+    }
+
+    function addBlock(type) {
+        const block = createBlock(type);
+        state.blocks.push(block);
+        state.selectedId = block.id;
+        renderAndSync();
+    }
+
+    function removeBlock(blockId) {
+        const index = getBlockIndex(blockId);
+        if (index === -1) {
+            return;
+        }
+
+        state.blocks = state.blocks.filter(function (block) {
+            return block.id !== blockId;
+        });
+
+        if (!state.blocks.length) {
+            const fallback = createBlock('text');
+            state.blocks.push(fallback);
+            state.selectedId = fallback.id;
+        } else if (state.selectedId === blockId) {
+            const nextIndex = Math.min(index, state.blocks.length - 1);
+            state.selectedId = state.blocks[nextIndex].id;
+        }
+
+        renderAndSync();
+    }
+
+    function duplicateBlock(blockId) {
+        const index = getBlockIndex(blockId);
+        if (index < 0) {
+            return;
+        }
+
+        const source = state.blocks[index];
+        const clone = createBlock(source.type, source.data);
+        state.blocks.splice(index + 1, 0, clone);
+        state.selectedId = clone.id;
+        renderAndSync();
+    }
+
+    function moveBlock(blockId, direction) {
+        const index = getBlockIndex(blockId);
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+        if (index < 0 || targetIndex < 0 || targetIndex >= state.blocks.length) {
+            return;
+        }
+
+        const moved = state.blocks.splice(index, 1)[0];
+        state.blocks.splice(targetIndex, 0, moved);
+        state.selectedId = moved.id;
+        renderAndSync();
+    }
+
+    function reorderBlocks(sourceId, targetId) {
+        const sourceIndex = getBlockIndex(sourceId);
+        const targetIndex = getBlockIndex(targetId);
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+            return;
+        }
+
+        const moved = state.blocks.splice(sourceIndex, 1)[0];
+        state.blocks.splice(targetIndex, 0, moved);
+        state.selectedId = moved.id;
+        renderAndSync();
+    }
+
+    function updateBlockField(blockId, field, value) {
+        const block = getBlock(blockId);
+        if (!block) {
+            return;
+        }
+
+        block.data[field] = value;
+        syncTextarea();
+    }
+
+    function syncRichEditor(editor) {
+        const blockId = String(editor.getAttribute('data-block-id') || '');
+        const block = getBlock(blockId);
+        if (!block) {
+            return;
+        }
+
+        normalizeFontTags(editor);
+        block.data.html = sanitizeHtml(editor.innerHTML);
+        syncTextarea();
+    }
+
+    function applyCommand(editor, command, value) {
+        if (!editor) {
+            return;
+        }
+
+        editor.focus();
+        document.execCommand('styleWithCSS', false, true);
+
+        if (command === 'createLink') {
+            const url = window.prompt(labels.linkPrompt, 'https://');
+            if (!url) {
+                return;
+            }
+            document.execCommand('createLink', false, url);
+        } else if (command === 'formatBlock') {
+            document.execCommand('formatBlock', false, value);
+        } else if (command === 'hiliteColor') {
+            document.execCommand('hiliteColor', false, value);
+            document.execCommand('backColor', false, value);
+        } else if (command === 'fontSize') {
+            document.execCommand('fontSize', false, fontSizeCommandMap[value] || '4');
+        } else {
+            document.execCommand(command, false, value);
+        }
+
+        syncRichEditor(editor);
+    }
+
+    function openPicker(blockId, field) {
+        if (!config.fileManagerUrl) {
+            return;
+        }
+
+        const token = 'post_builder_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+        const url = new URL(config.fileManagerUrl, window.location.origin);
+        url.searchParams.set('picker', '1');
+        url.searchParams.set('field', token);
+        url.searchParams.set('dir', String(config.defaultDirectory || 'posts'));
+
+        state.picker = {
+            token: token,
+            blockId: blockId,
+            field: field
+        };
+
+        window.open(url.toString(), popupName, 'width=1280,height=860,resizable=yes,scrollbars=yes');
+    }
+
+    editorApp.addEventListener('click', function (event) {
+        const addButton = event.target.closest('[data-editor-add]');
+        if (addButton) {
+            addBlock(String(addButton.getAttribute('data-editor-add') || 'text'));
+            return;
+        }
+
+        const selectButton = event.target.closest('[data-select-block]');
+        if (selectButton) {
+            selectBlock(String(selectButton.getAttribute('data-select-block') || ''));
+            return;
+        }
+
+        const blockAction = event.target.closest('[data-block-action]');
+        if (blockAction) {
+            const blockId = String(blockAction.getAttribute('data-block-id') || '');
+            const action = String(blockAction.getAttribute('data-block-action') || '');
+
+            if (action === 'remove') {
+                removeBlock(blockId);
+                return;
+            }
+            if (action === 'duplicate') {
+                duplicateBlock(blockId);
+                return;
+            }
+            if (action === 'move-up') {
+                moveBlock(blockId, 'up');
+                return;
+            }
+            if (action === 'move-down') {
+                moveBlock(blockId, 'down');
+            }
+            return;
+        }
+
+        const pickerButton = event.target.closest('[data-block-picker]');
+        if (pickerButton) {
+            openPicker(
+                String(pickerButton.getAttribute('data-block-id') || ''),
+                String(pickerButton.getAttribute('data-block-picker') || 'src')
+            );
+            return;
+        }
+
+        const commandButton = event.target.closest('[data-editor-command]');
+        if (commandButton) {
+            const blockCard = commandButton.closest('[data-block-card]');
+            const editor = blockCard ? blockCard.querySelector('[data-block-rich]') : null;
+            const command = String(commandButton.getAttribute('data-editor-command') || '');
+            const value = String(commandButton.getAttribute('data-editor-value') || '');
+            applyCommand(editor, command, value);
+            return;
+        }
+
+        const selectable = event.target.closest('[data-block-selectable]');
+        if (selectable) {
+            selectBlock(String(selectable.getAttribute('data-block-id') || ''));
+        }
     });
+
+    editorApp.addEventListener('mousedown', function (event) {
+        const commandButton = event.target.closest('button[data-editor-command]');
+        if (commandButton) {
+            event.preventDefault();
+        }
+    });
+
+    editorApp.addEventListener('input', function (event) {
+        const richEditor = event.target.closest('[data-block-rich]');
+        if (richEditor) {
+            syncRichEditor(richEditor);
+            return;
+        }
+
+        const headingInput = event.target.closest('[data-block-heading]');
+        if (headingInput) {
+            updateBlockField(
+                String(headingInput.getAttribute('data-block-id') || ''),
+                'html',
+                sanitizeHtml(headingInput.innerHTML)
+            );
+            return;
+        }
+
+        const field = event.target.closest('[data-block-field]');
+        if (field) {
+            updateBlockField(
+                String(field.getAttribute('data-block-id') || ''),
+                String(field.getAttribute('data-block-field') || ''),
+                field.value
+            );
+        }
+    });
+
+    editorApp.addEventListener('change', function (event) {
+        const field = event.target.closest('[data-block-field]');
+        if (field) {
+            updateBlockField(
+                String(field.getAttribute('data-block-id') || ''),
+                String(field.getAttribute('data-block-field') || ''),
+                field.value
+            );
+            renderAndSync();
+            return;
+        }
+
+        const commandSelect = event.target.closest('[data-editor-command]');
+        if (commandSelect) {
+            const blockCard = commandSelect.closest('[data-block-card]');
+            const editor = blockCard ? blockCard.querySelector('[data-block-rich]') : null;
+            const command = String(commandSelect.getAttribute('data-editor-command') || '');
+            const value = String(commandSelect.value || '');
+            if (value !== '') {
+                applyCommand(editor, command, value);
+            }
+            commandSelect.value = '';
+            return;
+        }
+
+        const sizeSelect = event.target.closest('[data-editor-font-size]');
+        if (sizeSelect) {
+            const blockCard = sizeSelect.closest('[data-block-card]');
+            const editor = blockCard ? blockCard.querySelector('[data-block-rich]') : null;
+            const value = String(sizeSelect.value || '');
+            if (value !== '') {
+                applyCommand(editor, 'fontSize', value);
+            }
+            sizeSelect.value = '';
+        }
+    });
+
+    editorApp.addEventListener('keydown', function (event) {
+        const headingInput = event.target.closest('[data-block-heading]');
+        if (headingInput && event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    editorApp.addEventListener('dragstart', function (event) {
+        const handle = event.target.closest('[data-block-drag-handle]');
+        if (!handle) {
+            return;
+        }
+
+        state.draggedId = String(handle.getAttribute('data-block-id') || '');
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', state.draggedId);
+        }
+    });
+
+    editorApp.addEventListener('dragover', function (event) {
+        const card = event.target.closest('[data-block-card]');
+        if (!card || !state.draggedId) {
+            return;
+        }
+
+        event.preventDefault();
+        editorApp.querySelectorAll('[data-block-card]').forEach(function (item) {
+            item.classList.remove('is-drop-target');
+        });
+        card.classList.add('is-drop-target');
+    });
+
+    editorApp.addEventListener('drop', function (event) {
+        const card = event.target.closest('[data-block-card]');
+        if (!card || !state.draggedId) {
+            return;
+        }
+
+        event.preventDefault();
+        reorderBlocks(state.draggedId, String(card.getAttribute('data-block-id') || ''));
+        state.draggedId = null;
+    });
+
+    editorApp.addEventListener('dragend', function () {
+        state.draggedId = null;
+        editorApp.querySelectorAll('[data-block-card]').forEach(function (item) {
+            item.classList.remove('is-drop-target');
+        });
+    });
+
+    window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin || !event.data || event.data.type !== 'fireball:file:selected' || !state.picker) {
+            return;
+        }
+
+        if (String(event.data.field || '') !== state.picker.token) {
+            return;
+        }
+
+        updateBlockField(state.picker.blockId, state.picker.field, String(event.data.value || ''));
+        state.selectedId = state.picker.blockId;
+        state.picker = null;
+        renderAndSync();
+    });
+
+    const form = editorField.form;
+    if (form) {
+        form.addEventListener('submit', function () {
+            syncTextarea();
+        });
+    }
+
+    state.blocks = importBlocks(editorField.value);
+    ensureSelection();
+    renderAndSync();
 });
