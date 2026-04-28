@@ -6,7 +6,7 @@ use App\Models\SiteSetting;
 use RuntimeException;
 
 /**
- * Проверяет GitHub Release и обновляет CMS из ZIP-архива релиза.
+ * Проверяет удалённую ветку Git-репозитория и обновляет CMS из source code.
  */
 class UpdateCenter
 {
@@ -66,7 +66,7 @@ class UpdateCenter
     }
 
     /**
-     * Проверяет наличие новой версии на GitHub и сохраняет результат.
+     * Проверяет наличие новой версии в удалённой ветке и сохраняет результат.
      */
     public function checkForUpdates(): array
     {
@@ -97,32 +97,44 @@ class UpdateCenter
                 throw new RuntimeException(return_translation('admin_update_repository_required'));
             }
 
-            $release = $this->fetchLatestRelease($repository, (string)($settings['updater_github_token'] ?? ''));
+            $release = null;
             $branchState = [
                 'status' => 'not_applicable',
                 'remote_commit_hash' => '',
             ];
+            $remoteVersion = '';
+            $versionUpdateAvailable = false;
+            $gitUpdateAvailable = false;
 
             if (!empty($localGitState['is_git_repo'])) {
-                $branchState = $this->fetchBranchState(
-                    $repository,
-                    $branch,
-                    (string)($localGitState['commit_hash'] ?? ''),
-                    (string)($settings['updater_github_token'] ?? '')
-                );
-            }
+                $this->fetchRemoteBranch($branch);
+                $branchState = $this->getBranchStateFromGit($branch);
+                $gitUpdateAvailable = in_array((string)($branchState['status'] ?? 'unknown'), ['behind', 'no_local_commit'], true);
 
-            $remoteVersion = $this->extractReleaseVersion($release);
-            $comparison = $this->compareVersions(
-                (string)($this->engineRelease['version'] ?? '0.0.0'),
-                $remoteVersion
-            );
-            $versionUpdateAvailable = $comparison === null
-                ? $this->fallbackReleaseComparison((string)($this->engineRelease['released_at'] ?? ''), (string)($release['published_at'] ?? ''))
-                : $comparison < 0;
-            $gitUpdateAvailable = !empty($localGitState['is_git_repo'])
-                && in_array((string)($branchState['status'] ?? 'unknown'), ['behind', 'no_local_commit'], true);
-            $updateAvailable = $gitUpdateAvailable || $versionUpdateAvailable;
+                $release = $this->tryFetchLatestRelease($repository, (string)($settings['updater_github_token'] ?? ''), $branch);
+                $remoteVersion = $this->resolveRemoteVersion($release, $branch, (string)($branchState['remote_commit_hash'] ?? ''));
+
+                if ($remoteVersion !== '') {
+                    $comparison = $this->compareVersions(
+                        (string)($this->engineRelease['version'] ?? '0.0.0'),
+                        $remoteVersion
+                    );
+                    $versionUpdateAvailable = $comparison !== null && $comparison < 0;
+                }
+
+                $updateAvailable = $gitUpdateAvailable;
+            } else {
+                $release = $this->fetchLatestRelease($repository, (string)($settings['updater_github_token'] ?? ''));
+                $remoteVersion = $this->extractReleaseVersion($release);
+                $comparison = $this->compareVersions(
+                    (string)($this->engineRelease['version'] ?? '0.0.0'),
+                    $remoteVersion
+                );
+                $versionUpdateAvailable = $comparison === null
+                    ? $this->fallbackReleaseComparison((string)($this->engineRelease['released_at'] ?? ''), (string)($release['published_at'] ?? ''))
+                    : $comparison < 0;
+                $updateAvailable = $versionUpdateAvailable;
+            }
 
             $payload = array_merge($basePayload, [
                 'status' => 'ok',
@@ -187,44 +199,70 @@ class UpdateCenter
     }
 
     /**
-     * Скачивает ZIP-архив релиза и обновляет файлы CMS поверх текущей установки.
+     * Обновляет код сайта через fast-forward pull из git-репозитория.
      */
     public function runUpdate(): array
     {
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
-        $token = (string)($settings['updater_github_token'] ?? '');
+        $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
 
         foreach ($this->buildUpdateBlockers($repository, $localGitState) as $blocker) {
             throw new RuntimeException($blocker);
         }
 
-        $release = $this->fetchLatestRelease($repository, $token);
-        $archive = $this->resolveReleaseArchive($release, $repository);
-        $workspace = ROOT . '/tmp/update-center/' . date('YmdHis') . '-' . bin2hex(random_bytes(4));
-        $archivePath = $workspace . '/release.zip';
-        $extractPath = $workspace . '/extract';
+        $previousCommit = (string)($localGitState['commit_hash'] ?? '');
+        $this->fetchRemoteBranch($branch);
+        $branchState = $this->getBranchStateFromGit($branch);
 
-        try {
-            $this->ensureDirectory($workspace);
-            $this->ensureDirectory($extractPath);
-            $this->downloadFile($archive['download_url'], $archivePath, $this->buildGithubDownloadHeaders($token, !empty($archive['api_authenticated'])));
-            $packageRoot = $this->extractArchive($archivePath, $extractPath);
-            $this->ensureLocalConfigExists();
-            $this->copyPackageToRoot($packageRoot, ROOT);
-        } finally {
-            $this->deleteDirectory($workspace);
+        if (($branchState['status'] ?? '') === 'identical') {
+            $this->refreshLastCheckAfterUpdate();
+
+            return [
+                'status' => 'success',
+                'message' => return_translation('admin_update_already_latest'),
+                'release' => $this->tryFetchLatestRelease($repository, (string)($settings['updater_github_token'] ?? ''), $branch),
+            ];
+        }
+
+        if (($branchState['status'] ?? '') === 'ahead') {
+            throw new RuntimeException(return_translation('admin_update_branch_ahead'));
+        }
+
+        if (($branchState['status'] ?? '') === 'diverged') {
+            throw new RuntimeException(return_translation('admin_update_branch_diverged'));
+        }
+
+        $pullResult = $this->runCommand(
+            'git pull --ff-only origin ' . escapeshellarg($branch),
+            ROOT
+        );
+
+        if ($pullResult['exit_code'] !== 0) {
+            throw new RuntimeException($this->formatCommandError($pullResult, return_translation('admin_update_pull_failed')));
+        }
+
+        $currentCommit = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
+        $composerResult = null;
+
+        if ($previousCommit !== '' && $currentCommit !== '' && $previousCommit !== $currentCommit) {
+            $composerResult = $this->runComposerIfNeeded($previousCommit, $currentCommit);
         }
 
         $this->siteSettings->setMany([
             'updater_last_updated_at' => date('Y-m-d H:i:s'),
         ]);
+        $this->refreshLastCheckAfterUpdate();
+
+        if (is_array($composerResult)) {
+            return $composerResult;
+        }
 
         return [
             'status' => 'success',
             'message' => return_translation('admin_update_success'),
-            'release' => $release,
+            'release' => $this->tryFetchLatestRelease($repository, (string)($settings['updater_github_token'] ?? ''), $branch),
         ];
     }
 
@@ -234,21 +272,28 @@ class UpdateCenter
     protected function buildUpdateBlockers(string $repository, array $localGitState): array
     {
         $blockers = [];
+        $canRunProcesses = $this->canRunProcesses();
 
+        if (!$canRunProcesses) {
+            $blockers[] = return_translation('admin_update_process_disabled');
+        }
         if ($repository === '') {
             $blockers[] = return_translation('admin_update_repository_required');
         }
-        if (!$this->supportsZipUpdates()) {
-            $blockers[] = return_translation('admin_update_zip_missing');
+        if ($canRunProcesses && empty($localGitState['git_available'])) {
+            $blockers[] = return_translation('admin_update_git_missing');
         }
-        if (!$this->isWritablePath(ROOT . '/tmp')) {
-            $blockers[] = return_translation('admin_update_tmp_not_writable');
+        if (empty($localGitState['is_git_repo'])) {
+            $blockers[] = return_translation('admin_update_git_repo_required');
         }
-        if (!$this->isWritablePath(ROOT)) {
-            $blockers[] = return_translation('admin_update_root_not_writable');
-        }
-        if (!$this->isWritablePath(CONFIG)) {
-            $blockers[] = return_translation('admin_update_config_not_writable');
+        $localBranch = trim((string)($localGitState['branch'] ?? ''));
+        $targetBranch = $this->resolveBranch($this->siteSettings->all(), $localBranch);
+        if (!empty($localGitState['is_git_repo']) && ($localBranch === '' || $localBranch !== $targetBranch)) {
+            $blockers[] = str_replace(
+                [':local', ':target'],
+                [$localBranch !== '' ? $localBranch : 'HEAD', $targetBranch],
+                return_translation('admin_update_branch_mismatch')
+            );
         }
         if (!empty($localGitState['is_git_repo']) && !($localGitState['is_update_clean'] ?? false)) {
             $dirtyPreview = implode(', ', array_slice($localGitState['blocking_dirty_files'] ?? [], 0, 5));
@@ -260,6 +305,46 @@ class UpdateCenter
         }
 
         return $blockers;
+    }
+
+    /**
+     * Пытается получить релиз GitHub, но не валит git-based проверку, если API недоступен.
+     */
+    protected function tryFetchLatestRelease(string $repository, string $token, string $branch): ?array
+    {
+        if ($repository === '') {
+            return null;
+        }
+
+        try {
+            return $this->fetchLatestRelease($repository, $token);
+        } catch (\Throwable) {
+            return [
+                'name' => $branch,
+                'tag_name' => '',
+                'html_url' => 'https://github.com/' . $repository . '/tree/' . rawurlencode($branch),
+                'published_at' => '',
+                'body' => '',
+                'excerpt' => return_translation('admin_update_source_repo_fallback'),
+                'zipball_url' => '',
+                'assets' => [],
+            ];
+        }
+    }
+
+    /**
+     * Обновляет сохранённый результат последней проверки после попытки обновления.
+     */
+    protected function refreshLastCheckAfterUpdate(): void
+    {
+        try {
+            $this->checkForUpdates();
+        } catch (\Throwable) {
+            $this->siteSettings->setMany([
+                'updater_last_check_payload' => '',
+                'updater_last_checked_at' => '',
+            ]);
+        }
     }
 
     /**
@@ -391,6 +476,79 @@ class UpdateCenter
 
         return [
             'status' => 'unknown',
+            'remote_commit_hash' => $remoteCommitHash,
+        ];
+    }
+
+    /**
+     * Обновляет локальные refs для целевой ветки и тегов.
+     */
+    protected function fetchRemoteBranch(string $branch): void
+    {
+        $fetchResult = $this->runCommand(
+            'git fetch --tags origin ' . escapeshellarg($branch),
+            ROOT
+        );
+
+        if ($fetchResult['exit_code'] !== 0) {
+            throw new RuntimeException($this->formatCommandError($fetchResult, return_translation('admin_update_branch_fetch_failed')));
+        }
+    }
+
+    /**
+     * Определяет состояние локальной ветки относительно origin/branch после git fetch.
+     */
+    protected function getBranchStateFromGit(string $branch): array
+    {
+        $remoteRef = 'refs/remotes/origin/' . $branch;
+        $remoteCommitResult = $this->runCommand(
+            'git rev-parse --verify ' . escapeshellarg($remoteRef),
+            ROOT
+        );
+
+        if ($remoteCommitResult['exit_code'] !== 0) {
+            throw new RuntimeException(return_translation('admin_update_branch_fetch_failed'));
+        }
+
+        $remoteCommitHash = trim($remoteCommitResult['stdout']);
+        $localCommitHash = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
+
+        if ($localCommitHash === '') {
+            return [
+                'status' => 'no_local_commit',
+                'remote_commit_hash' => $remoteCommitHash,
+            ];
+        }
+
+        if ($localCommitHash === $remoteCommitHash) {
+            return [
+                'status' => 'identical',
+                'remote_commit_hash' => $remoteCommitHash,
+            ];
+        }
+
+        $mergeBaseResult = $this->runCommand(
+            'git merge-base HEAD ' . escapeshellarg($remoteRef),
+            ROOT
+        );
+        $mergeBase = trim($mergeBaseResult['stdout']);
+
+        if ($mergeBase !== '' && $mergeBase === $localCommitHash) {
+            return [
+                'status' => 'behind',
+                'remote_commit_hash' => $remoteCommitHash,
+            ];
+        }
+
+        if ($mergeBase !== '' && $mergeBase === $remoteCommitHash) {
+            return [
+                'status' => 'ahead',
+                'remote_commit_hash' => $remoteCommitHash,
+            ];
+        }
+
+        return [
+            'status' => 'diverged',
             'remote_commit_hash' => $remoteCommitHash,
         ];
     }
@@ -935,6 +1093,30 @@ class UpdateCenter
         }
 
         return '';
+    }
+
+    /**
+     * Возвращает удалённую версию по release/tag или, если их нет, по ближайшему тегу и коммиту ветки.
+     */
+    protected function resolveRemoteVersion(?array $release, string $branch, string $remoteCommitHash): string
+    {
+        if (is_array($release)) {
+            $releaseVersion = $this->extractReleaseVersion($release);
+            if ($releaseVersion !== '0.0.0') {
+                return $releaseVersion;
+            }
+        }
+
+        $tagResult = $this->runCommand(
+            'git describe --tags --abbrev=0 ' . escapeshellarg('origin/' . $branch),
+            ROOT
+        );
+        $tag = trim($tagResult['stdout']);
+        if ($tag !== '') {
+            return $tag;
+        }
+
+        return $remoteCommitHash !== '' ? substr($remoteCommitHash, 0, 7) : '';
     }
 
     /**
