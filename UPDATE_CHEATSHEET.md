@@ -101,6 +101,102 @@
 - `1.6.0` — новые функции без ломающих изменений
 - `2.0.0` — ломающие изменения
 
+## Seeders и быстрый сброс базы
+
+В проекте есть два отдельных сценария заполнения базы:
+
+- `http://localhost:8888/seed-reset-creator`
+- `http://localhost:8888/seed-demo`
+
+Файлы сидеров:
+
+- [config/seeders/reset_creator.php](/Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/reset_creator.php:1)
+- [config/seeders/reset_demo.php](/Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/reset_demo.php:1)
+- [config/seeders/full_database.php](/Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php:1)
+
+### `seed-reset-creator`
+
+Использовать, когда нужна чистая база без демо-контента, но с рабочим входом в админку.
+
+Что делает:
+
+- создаёт отсутствующие таблицы, если их ещё нет
+- полностью очищает данные проекта
+- заново создаёт системные роли (название и логин и пароль):
+  - `creator`
+  - `admin`
+  - `user`
+- создаёт только одного пользователя `Creator`
+- заполняет минимальные `site_settings`
+- заполняет `site_metrics`
+
+Какие таблицы очищаются:
+
+- `chat_messages`
+- `contact_requests`
+- `password_resets`
+- `posts`
+- `post_categories`
+- `users`
+- `user_roles`
+- `site_settings`
+- `products`
+- `categories`
+- `site_metrics`
+
+Создаваемый пользователь:
+
+- login: `creator`
+- email: `creator@admin.com`
+- password: `creator`
+- role: `creator`
+
+### `seed-demo`
+
+Использовать, когда нужна полностью готовая демо-база для тестов, презентации или локальной разработки.
+
+Что делает:
+
+- очищает базу так же, как `seed-reset-creator`
+- создаёт системные роли
+- создаёт трёх пользователей
+- создаёт демо-категории магазина
+- создаёт демо-товары
+- создаёт категории блога
+- создаёт демо-посты
+- создаёт одну демо-заявку
+- создаёт одно демо-сообщение в чате
+- заполняет `site_settings`
+- заполняет `site_metrics`
+
+Создаваемые пользователи:
+
+- `creator / creator@admin.com / creator`
+- `admin / admin@admin.com / admin`
+- `user / user@example.com / user`
+
+Демо-маршрут `seed-demo` использует:
+
+- [config/seeders/reset_demo.php](/Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/reset_demo.php:1)
+
+А тот, в свою очередь, подключает:
+
+- [config/seeders/full_database.php](/Applications/MAMP/htdocs/FIREBALL_CMS/config/seeders/full_database.php:1)
+
+### Важно перед запуском сидеров
+
+- сидеры удаляют текущие данные без восстановления
+- не запускать их на рабочей клиентской базе без бэкапа
+- после `seed-reset-creator` демо-контента не будет
+- после `seed-demo` в базе появятся тестовые пользователи, посты, товары и обращения
+
+### Когда что использовать
+
+- нужен чистый старт для проекта: `seed-reset-creator`
+- нужен быстрый демонстрационный стенд: `seed-demo`
+- нужен только один защищённый вход в админку после полной очистки: `seed-reset-creator`
+- нужно проверить блог, чат, уведомления, товары и публичную часть: `seed-demo`
+
 ## Мини-чеклист перед публикацией
 
 1. Изменения завершены.

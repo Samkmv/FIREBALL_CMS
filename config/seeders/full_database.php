@@ -8,10 +8,10 @@ use App\Models\SiteSetting;
 use App\Models\User;
 
 $now = date('Y-m-d H:i:s');
+$creatorPassword = password_hash('creator', PASSWORD_DEFAULT);
 $adminPassword = password_hash('admin', PASSWORD_DEFAULT);
 $demoUserPassword = password_hash('user', PASSWORD_DEFAULT);
 
-// Legacy shop tables used by the home controller.
 db()->query(
     "CREATE TABLE IF NOT EXISTS categories (
         id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -44,7 +44,6 @@ db()->query(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 );
 
-// CMS tables from current models.
 (new User())->ensureUsersTableExists();
 (new SiteSetting())->ensureTableExists();
 (new ContactRequest())->ensureTableExists();
@@ -73,63 +72,31 @@ db()->query(
         (?, ?, ?, ?, ?),
         (?, ?, ?, ?, ?)",
     [
-        1,
-        'Creator',
-        'creator',
-        1,
-        $now,
-        2,
-        'Admin',
-        'admin',
-        1,
-        $now,
-        3,
-        'User',
-        'user',
-        1,
-        $now,
+        1, 'Creator', 'creator', 1, $now,
+        2, 'Admin', 'admin', 1, $now,
+        3, 'User', 'user', 1, $now,
     ]
 );
 
 db()->query(
     "INSERT INTO users (name, login, email, password, avatar, role, last_seen_at, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?),
+            (?, ?, ?, ?, ?, ?, ?, ?),
             (?, ?, ?, ?, ?, ?, ?, ?)",
     [
-        'Creator',
-        'creator',
-        'creator@admin.com',
-        $adminPassword,
-        null,
-        'creator',
-        $now,
-        $now,
-        'Administrator',
-        'admin',
-        'admin@admin.com',
-        $adminPassword,
-        null,
-        'admin',
-        $now,
-        $now,
-        'Demo User',
-        'user',
-        'user@example.com',
-        $demoUserPassword,
-        null,
-        'user',
-        $now,
-        $now,
+        'Creator', 'creator', 'creator@admin.com', $creatorPassword, null, 'creator', $now, $now,
+        'Administrator', 'admin', 'admin@admin.com', $adminPassword, null, 'admin', $now, $now,
+        'Demo User', 'user', 'user@example.com', $demoUserPassword, null, 'user', $now, $now,
     ]
 );
 
 $siteSettings = [
     'site_title' => 'FIREBALL CMS',
-    'site_description' => 'Базовая установка FIREBALL CMS с демо-контентом для сайта и админки.',
+    'site_description' => 'Демо-установка FIREBALL CMS.',
     'seo_home_title' => 'FIREBALL CMS',
     'seo_default_title_suffix' => ' | FIREBALL CMS',
-    'seo_meta_description' => 'Стартовый демо-сайт на FIREBALL CMS.',
-    'seo_meta_keywords' => 'cms, fireball, demo',
+    'seo_meta_description' => 'Демо-установка FIREBALL CMS.',
+    'seo_meta_keywords' => 'fireball cms, demo',
     'seo_meta_author' => 'FIREBALL CMS',
     'seo_robots' => 'index,follow',
     'seo_og_image' => '',
@@ -172,36 +139,10 @@ $products = [
         'category_id' => 1,
         'price' => 8900,
         'old_price' => 9900,
-        'excerpt' => 'Базовая демо-модель для главной страницы и поиска.',
+        'excerpt' => 'Базовая демо-модель для главной страницы.',
         'content' => '<p>Универсальные кожаные кеды для демонстрации каталога FIREBALL CMS.</p>',
         'image' => 'assets/img/products/1.jpg',
         'gallery' => json_encode(['assets/img/products/1.jpg', 'assets/img/products/2.jpg'], JSON_UNESCAPED_SLASHES),
-        'is_sale' => 1,
-        'in_stock' => 1,
-    ],
-    [
-        'title' => 'Замшевые ботинки Atlas',
-        'slug' => 'zamhevye-botinki-atlas',
-        'category_id' => 2,
-        'price' => 12400,
-        'old_price' => 0,
-        'excerpt' => 'Демо-товар для мужского раздела магазина.',
-        'content' => '<p>Плотные ботинки с лаконичным описанием для наполнения демо-каталога.</p>',
-        'image' => 'assets/img/products/3.jpg',
-        'gallery' => json_encode(['assets/img/products/3.jpg'], JSON_UNESCAPED_SLASHES),
-        'is_sale' => 0,
-        'in_stock' => 1,
-    ],
-    [
-        'title' => 'Пальто Aurora',
-        'slug' => 'palto-aurora',
-        'category_id' => 3,
-        'price' => 15900,
-        'old_price' => 17900,
-        'excerpt' => 'Демо-товар для блока акций на главной.',
-        'content' => '<p>Тёплое пальто для демонстрации карточек товаров и акционных цен.</p>',
-        'image' => 'assets/img/products/4.jpg',
-        'gallery' => json_encode(['assets/img/products/4.jpg', 'assets/img/products/5.jpg'], JSON_UNESCAPED_SLASHES),
         'is_sale' => 1,
         'in_stock' => 1,
     ],
@@ -211,7 +152,7 @@ $products = [
         'category_id' => 4,
         'price' => 5200,
         'old_price' => 0,
-        'excerpt' => 'Базовый демо-товар для мужской одежды.',
+        'excerpt' => 'Демо-товар для мужской одежды.',
         'content' => '<p>Худи для наполнения демо-каталога и проверки поиска по товарам.</p>',
         'image' => 'assets/img/products/6.jpg',
         'gallery' => json_encode(['assets/img/products/6.jpg'], JSON_UNESCAPED_SLASHES),
@@ -245,90 +186,56 @@ db()->query(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?),
             (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
-        'Новости',
-        'Новости',
-        'News',
-        'news',
-        'Новости FIREBALL CMS',
-        'Демо-рубрика новостей FIREBALL CMS.',
-        'fireball cms, новости',
-        '',
-        $now,
-        'Гайды',
-        'Гайды',
-        'Guides',
-        'guides',
-        'Гайды FIREBALL CMS',
-        'Демо-рубрика для обучающих материалов.',
-        'fireball cms, гайды',
-        '',
-        $now,
+        'Новости', 'Новости', 'News', 'news', 'Новости FIREBALL CMS', 'Демо-рубрика новостей FIREBALL CMS.', 'fireball cms, новости', '', $now,
+        'Гайды', 'Гайды', 'Guides', 'guides', 'Гайды FIREBALL CMS', 'Демо-рубрика гайдов FIREBALL CMS.', 'fireball cms, guides', '', $now,
     ]
 );
 
-$newsCategoryId = (int)db()->getInsertId();
-$guidesCategoryId = $newsCategoryId + 1;
+$newsCategoryId = (int)db()->query("SELECT id FROM post_categories WHERE slug = ? LIMIT 1", ['news'])->getColumn();
+$guidesCategoryId = (int)db()->query("SELECT id FROM post_categories WHERE slug = ? LIMIT 1", ['guides'])->getColumn();
 
 db()->query(
-    "INSERT INTO posts (
-        title,
-        slug,
-        category_id,
-        category,
-        excerpt,
-        content,
-        image,
-        hide_placeholder_image,
-        show_on_home,
-        seo_title,
-        seo_description,
-        seo_keywords,
-        seo_image,
-        author_id,
-        author_name,
-        author_role,
-        views_count,
-        published_at,
-        is_published
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO posts
+     (title, slug, category, category_id, excerpt, content, image, seo_title, seo_description, seo_keywords, seo_image, hide_placeholder_image, show_on_home, author_id, author_name, author_role, views_count, published_at, is_published)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
-        'Добро пожаловать!',
+        'Добро пожаловать в FIREBALL CMS',
         'dobro-pozhalovat',
-        $newsCategoryId,
         'Новости',
-        'Первая запись после установки FIREBALL CMS.',
-        '<p>Добро пожаловать в FIREBALL CMS.</p><p>Это стартовая запись, созданная сидером полной базы данных.</p>',
-        null,
+        $newsCategoryId,
+        'Короткое знакомство с демо-установкой FIREBALL CMS.',
+        '<p>Это стартовая демо-публикация. Здесь можно проверить блог, карточку записи и публичную часть сайта.</p>',
+        '',
+        'Добро пожаловать в FIREBALL CMS',
+        'Стартовая демо-публикация FIREBALL CMS.',
+        'fireball cms, demo, post',
+        '',
         0,
         1,
-        'Добро пожаловать в FIREBALL CMS',
-        'Стартовая запись FIREBALL CMS после полной инициализации базы.',
-        'fireball cms, старт',
-        '',
-        1,
+        2,
         'Administrator',
         'admin',
-        0,
+        12,
         $now,
         1,
         'Как устроена админка',
         'kak-ustroena-adminka',
-        $guidesCategoryId,
         'Гайды',
+        $guidesCategoryId,
         'Короткий обзор разделов административной панели.',
         '<p>В админке доступны посты, категории, пользователи, роли, чат, файловый менеджер и центр обновлений.</p>',
-        null,
-        0,
-        1,
+        '',
         'Как устроена админка FIREBALL CMS',
         'Краткий обзор разделов административной панели FIREBALL CMS.',
         'fireball cms, админка, гайд',
         '',
+        0,
         1,
+        2,
         'Administrator',
         'admin',
-        0,
+        7,
         $now,
         1,
     ]
@@ -341,7 +248,7 @@ db()->query(
         'Иван Клиент',
         'client@example.com',
         'Демо-заявка',
-        'Это тестовая заявка, созданная сидером полной базы данных.',
+        'Это тестовая заявка, созданная сидером демо-базы.',
         0,
         $now,
     ]
@@ -368,17 +275,16 @@ db()->query(
      VALUES (?, ?, ?),
             (?, ?, ?)",
     [
-        'site_visits',
-        0,
-        $now,
-        'page_views',
-        0,
-        $now,
+        'site_visits', 0, $now,
+        'page_views', 0, $now,
     ]
 );
 
 return [
     'status' => 'ok',
+    'creator_login' => 'creator',
+    'creator_email' => 'creator@admin.com',
+    'creator_password' => 'creator',
     'admin_login' => 'admin',
     'admin_email' => 'admin@admin.com',
     'admin_password' => 'admin',
