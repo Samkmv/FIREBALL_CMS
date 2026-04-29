@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost:8889
--- Время создания: Апр 24 2026 г., 11:18
+-- Время создания: Апр 28 2026 г., 21:18
 -- Версия сервера: 5.7.39
 -- Версия PHP: 8.2.0
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- База данных: `FBL`
+-- База данных: `fbl`
 --
 
 -- --------------------------------------------------------
@@ -87,7 +87,8 @@ CREATE TABLE `chat_messages` (
 
 INSERT INTO `chat_messages` (`id`, `sender_id`, `receiver_id`, `message_ciphertext`, `attachment_path`, `attachment_name`, `attachment_type`, `attachment_size`, `is_read`, `created_at`) VALUES
 (36, 6, 1, 'ksMIeqiytTg9Au3fLKzKa/V19Sv+EkBwRo7pmYPd4xNE7XHiGnkrOxQo+0CasjxDJNPTfXob9Dvfef9cDLDVnA==', NULL, NULL, NULL, NULL, 1, '2026-04-23 16:54:16'),
-(37, 1, 6, 'AInbFy4lF3nsLa7wcllJbvYuiye00yMpjxW9CFLSCk0=', NULL, NULL, NULL, NULL, 0, '2026-04-23 22:21:26');
+(37, 1, 6, 'AInbFy4lF3nsLa7wcllJbvYuiye00yMpjxW9CFLSCk0=', NULL, NULL, NULL, NULL, 0, '2026-04-23 22:21:26'),
+(38, 1, 5, '', 'uploads/chat/2026/04/27/9925645bd0ba96e4be89591c8a990077.jpg', '01.jpg', 'image/jpeg', 65951, 0, '2026-04-27 21:59:35');
 
 -- --------------------------------------------------------
 
@@ -164,9 +165,9 @@ CREATE TABLE `posts` (
 --
 
 INSERT INTO `posts` (`id`, `title`, `slug`, `category`, `category_id`, `excerpt`, `content`, `video_embed`, `image`, `seo_title`, `seo_description`, `seo_keywords`, `seo_image`, `hide_placeholder_image`, `show_on_home`, `author_id`, `author_name`, `author_role`, `views_count`, `published_at`, `reading_time`, `is_published`) VALUES
-(10, 'Дом по ул. Космонавтов, 35, Подъезд 1-4', 'dom-po-ul-kosmonavtov-35-podezd-1-4', 'Железноводск', 1594, '', '<div data-plyr-player-wrap=\"\">\r\n    <video controls=\"\" playsinline=\"\" data-plyr-player=\"\">\r\n        <source src=\"https://rtsp.ddns.net/rtsp/stream-14-02/index.m3u8\" type=\"application/vnd.apple.mpegurl\">\r\n    </video>\r\n</div>\r\n<br>\r\n<div data-plyr-player-wrap=\"\">\r\n    <video controls=\"\" playsinline=\"\" data-plyr-player=\"\" data-poster=\"https://rtsp.ddns.net/rtsp/tn-14-03.jpg\">\r\n        <source src=\"https://rtsp.ddns.net/rtsp/stream-14-03/index.m3u8\" type=\"application/vnd.apple.mpegurl\">\r\n    </video>\r\n</div>', NULL, '', NULL, NULL, NULL, NULL, 1, 0, 1, 'Kirill', 'admin', 91, '2026-04-21 22:36:00', 5, 1),
-(12, 'Ваш агент страхования рядом и онлайн', 'vash-agent-strahovaniya-ryadom-i-onlayn', 'Железноводск', 1594, '', '<div data-plyr-player-wrap=\"\">\r\n    <video controls=\"\" playsinline=\"\" data-plyr-player=\"\">\r\n        <source src=\"https://rtsp.ddns.net/rtsp/stream-13-01/index.m3u8\" type=\"application/vnd.apple.mpegurl\">\r\n    </video>\r\n</div>', '<div data-plyr-player-wrap=\"\">     <video controls=\"\" playsinline=\"\" data-plyr-player=\"\">         <source src=\"https://rtsp.ddns.net/rtsp/stream-13-01/index.m3u8\" type=\"application/vnd.apple.mpegurl\">     </video> </div>', '', 'Ваш агент страхования рядом и онлайн', '', '', '', 1, 1, 1, 'Kirill', 'admin', 56, '2026-04-21 22:42:00', 5, 1),
-(16, 'Запись с картинкой', 'zapis-s-kartinkoy', 'Пятигорск', 1593, 'Suspendisse vitae turpis eros. Donec a laoreet turpis. Pellentesque ligula dolor, volutpat eu iaculis sit amet, congue ac diam. Duis metus velit, eleifend quis ullamcorper eu, semper ut sapien. Mauris hendrerit lacinia dolor, vel luctus ligula pellentesque quis.', '<p><span style=\"font-family: Helvetica, sans-serif;\">Немного напишем на русском!!! Что за шрифт!</span></p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Helvetica, sans-serif; font-size: 16px;\">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam at sapien dolor. Fusce diam mi, dictum vel pretium et, aliquet eget erat. Maecenas turpis quam, lobortis vel dapibus id, sodales eget felis. Sed sed odio sed magna accumsan varius non non augue. Cras sed risus accumsan, blandit erat eget, suscipit ante. Suspendisse ac tempor orci, sit amet vestibulum dui. Aliquam et massa a ante ornare pretium scelerisque quis eros. Etiam sodales fermentum ex, ut mollis turpis vulputate sed. Cras auctor turpis ut felis ultricies cursus. Pellentesque sit amet odio nunc. Sed elit felis, eleifend in placerat et, ultrices ac ante. In mollis velit ut commodo euismod.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Helvetica, sans-serif; font-size: 16px;\">Suspendisse vitae turpis eros. Donec a laoreet turpis. Pellentesque ligula dolor, volutpat eu iaculis sit amet, congue ac diam. Duis metus velit, eleifend quis ullamcorper eu, semper ut sapien. Mauris hendrerit lacinia dolor, vel luctus ligula pellentesque quis. Maecenas varius molestie accumsan. Vestibulum finibus dui at mollis blandit. Proin sed consequat diam. Nunc orci turpis, egestas ac accumsan eget, iaculis sed nisi.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Helvetica, sans-serif; font-size: 16px;\">Phasellus neque mi, fringilla a massa non, facilisis commodo risus. Fusce non lorem vitae justo fermentum blandit. Donec ut dui tincidunt sem aliquam convallis eget et tortor. Vestibulum in lacus lobortis, porttitor urna sed, dignissim diam. Suspendisse ac nisl id tortor tincidunt auctor. Vivamus luctus risus et lectus malesuada pretium. Vestibulum euismod magna ipsum, eget iaculis leo hendrerit sed. Ut non maximus augue, id aliquet lorem. Mauris scelerisque diam dolor, nec commodo lacus fringilla quis. Fusce at ultricies eros. Donec eleifend dui et nibh convallis viverra. Proin pulvinar, ex ut imperdiet semper, ante augue sodales massa, eget venenatis velit nibh sed libero. Cras volutpat ligula vel dapibus hendrerit. Suspendisse bibendum lacus at ex rhoncus, sed venenatis neque malesuada.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Helvetica, sans-serif; font-size: 16px;\">Nulla tincidunt rutrum sem. Sed a egestas nisi. Praesent finibus metus vel tempor condimentum. Donec sodales nec diam sit amet facilisis. Donec vulputate lectus vel dui elementum ultrices. Donec eleifend, dui sed rhoncus laoreet, ipsum dui consequat dolor, eu placerat ligula nulla at ante. Cras sit amet massa a felis consequat efficitur. Maecenas feugiat finibus mauris sed scelerisque. Maecenas sit amet nulla sed libero semper euismod ut sit amet arcu. Nam ornare nibh quis sodales dictum. Maecenas at ultricies tellus, id fermentum ante. Vestibulum scelerisque enim erat, et posuere felis luctus in. Fusce sit amet neque nec elit sagittis suscipit id quis nunc. Quisque semper libero felis. Quisque vulputate aliquam metus sit amet ullamcorper.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Helvetica, sans-serif; font-size: 16px;\">Cras rhoncus lacus eu orci pharetra lobortis. Integer vulputate aliquam risus, vel efficitur libero tincidunt non. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Vestibulum dignissim ut nunc eu aliquet. Donec condimentum scelerisque sollicitudin. Fusce sit amet erat porta, tincidunt metus eget, convallis ipsum. Fusce consectetur erat nisi, vel ultrices lorem placerat vel. Nam pellentesque arcu malesuada orci semper, eget facilisis lectus fermentum. Sed accumsan nisi mi, a efficitur lorem condimentum at. Morbi sit amet convallis velit. Phasellus efficitur dolor a enim rhoncus ullamcorper. Fusce ac diam tempus, scelerisque sem eget, accumsan libero.</p>', NULL, '/uploads/posts/2026/04/23/demo3.jpg', '', '', '', '', 0, 1, 1, 'Kirill', 'admin', 7, '2026-04-23 17:21:00', 5, 1);
+(10, 'Дом по ул. Космонавтов, 35, Подъезд 1-4', 'dom-po-ul-kosmonavtov-35-podezd-1-4', 'Железноводск', 1594, '', '<div data-plyr-player-wrap=\"\">\r\n    <video controls=\"\" playsinline=\"\" data-plyr-player=\"\">\r\n        <source src=\"https://rtsp.ddns.net/rtsp/stream-14-02/index.m3u8\" type=\"application/vnd.apple.mpegurl\">\r\n    </video>\r\n</div>\r\n<br>\r\n<div data-plyr-player-wrap=\"\">\r\n    <video controls=\"\" playsinline=\"\" data-plyr-player=\"\" data-poster=\"https://rtsp.ddns.net/rtsp/tn-14-03.jpg\">\r\n        <source src=\"https://rtsp.ddns.net/rtsp/stream-14-03/index.m3u8\" type=\"application/vnd.apple.mpegurl\">\r\n    </video>\r\n</div>', NULL, '', NULL, NULL, NULL, NULL, 1, 0, 1, 'Kirill', 'creator', 93, '2026-04-21 22:36:00', 5, 1),
+(12, 'Ваш агент страхования рядом и онлайн', 'vash-agent-strahovaniya-ryadom-i-onlayn', 'Железноводск', 1594, '', '<div data-plyr-player-wrap=\"\"><video controls playsinline data-plyr-player=\"\"><source src=\"https://rtsp.ddns.net/rtsp/stream-13-01/index.m3u8\" type=\"application/vnd.apple.mpegurl\"></video></div><p>111</p>', '<div data-plyr-player-wrap=\"\">     <video controls=\"\" playsinline=\"\" data-plyr-player=\"\">         <source src=\"https://rtsp.ddns.net/rtsp/stream-13-01/index.m3u8\" type=\"application/vnd.apple.mpegurl\">     </video> </div>', '', 'Ваш агент страхования рядом и онлайн', '', '', '', 1, 1, 1, 'Kirill', 'creator', 64, '2026-04-21 22:42:00', 5, 1),
+(16, 'Запись с картинкой', 'zapis-s-kartinkoy', 'Пятигорск', 1593, 'Suspendisse vitae turpis eros. Donec a laoreet turpis. Pellentesque ligula dolor, volutpat eu iaculis sit amet, congue ac diam. Duis metus velit, eleifend quis ullamcorper eu, semper ut sapien. Mauris hendrerit lacinia dolor, vel luctus ligula pellentesque quis.', '<p><span style=\"font-family: Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif;\">Немного напишем на русском!!! Что за шрифт!</span></p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-size: 16px;\">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam at sapien dolor. Fusce diam mi, dictum vel pretium et, aliquet eget erat. Maecenas turpis quam, lobortis vel dapibus id, sodales eget felis. Sed sed odio sed magna accumsan varius non non augue. Cras sed risus accumsan, blandit erat eget, suscipit ante. Suspendisse ac tempor orci, sit amet vestibulum dui. Aliquam et massa a ante ornare pretium scelerisque quis eros. Etiam sodales fermentum ex, ut mollis turpis vulputate sed. Cras auctor turpis ut felis ultricies cursus. Pellentesque sit amet odio nunc. Sed elit felis, eleifend in placerat et, ultrices ac ante. In mollis velit ut commodo euismod.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-size: 16px;\">Suspendisse vitae turpis eros. Donec a laoreet turpis. Pellentesque ligula dolor, volutpat eu iaculis sit amet, congue ac diam. Duis metus velit, eleifend quis ullamcorper eu, semper ut sapien. Mauris hendrerit lacinia dolor, vel luctus ligula pellentesque quis. Maecenas varius molestie accumsan. Vestibulum finibus dui at mollis blandit. Proin sed consequat diam. Nunc orci turpis, egestas ac accumsan eget, iaculis sed nisi.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-size: 16px;\">Phasellus neque mi, fringilla a massa non, facilisis commodo risus. Fusce non lorem vitae justo fermentum blandit. Donec ut dui tincidunt sem aliquam convallis eget et tortor. Vestibulum in lacus lobortis, porttitor urna sed, dignissim diam. Suspendisse ac nisl id tortor tincidunt auctor. Vivamus luctus risus et lectus malesuada pretium. Vestibulum euismod magna ipsum, eget iaculis leo hendrerit sed. Ut non maximus augue, id aliquet lorem. Mauris scelerisque diam dolor, nec commodo lacus fringilla quis. Fusce at ultricies eros. Donec eleifend dui et nibh convallis viverra. Proin pulvinar, ex ut imperdiet semper, ante augue sodales massa, eget venenatis velit nibh sed libero. Cras volutpat ligula vel dapibus hendrerit. Suspendisse bibendum lacus at ex rhoncus, sed venenatis neque malesuada.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-size: 16px;\">Nulla tincidunt rutrum sem. Sed a egestas nisi. Praesent finibus metus vel tempor condimentum. Donec sodales nec diam sit amet facilisis. Donec vulputate lectus vel dui elementum ultrices. Donec eleifend, dui sed rhoncus laoreet, ipsum dui consequat dolor, eu placerat ligula nulla at ante. Cras sit amet massa a felis consequat efficitur. Maecenas feugiat finibus mauris sed scelerisque. Maecenas sit amet nulla sed libero semper euismod ut sit amet arcu. Nam ornare nibh quis sodales dictum. Maecenas at ultricies tellus, id fermentum ante. Vestibulum scelerisque enim erat, et posuere felis luctus in. Fusce sit amet neque nec elit sagittis suscipit id quis nunc. Quisque semper libero felis. Quisque vulputate aliquam metus sit amet ullamcorper.</p><p style=\"font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-indent: 0px; text-transform: none; white-space: normal; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; margin: 0px 0px 15px; padding: 0px; text-align: justify; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); font-family: Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-size: 16px;\">Cras rhoncus lacus eu orci pharetra lobortis. Integer vulputate aliquam risus, vel efficitur libero tincidunt non. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Vestibulum dignissim ut nunc eu aliquet. Donec condimentum scelerisque sollicitudin. Fusce sit amet erat porta, tincidunt metus eget, convallis ipsum. Fusce consectetur erat nisi, vel ultrices lorem placerat vel. Nam pellentesque arcu malesuada orci semper, eget facilisis lectus fermentum. Sed accumsan nisi mi, a efficitur lorem condimentum at. Morbi sit amet convallis velit. Phasellus efficitur dolor a enim rhoncus ullamcorper. Fusce ac diam tempus, scelerisque sem eget, accumsan libero.</p>', NULL, '/uploads/video04.jpg', '', '', '', '', 1, 1, 1, 'Kirill', 'creator', 20, '2026-04-23 17:21:00', 5, 1);
 
 -- --------------------------------------------------------
 
@@ -456,8 +457,8 @@ CREATE TABLE `site_metrics` (
 --
 
 INSERT INTO `site_metrics` (`id`, `metric_key`, `metric_value`, `updated_at`) VALUES
-(1, 'page_views', 77, '2026-04-24 14:01:06'),
-(2, 'site_visits', 17, '2026-04-24 14:01:06');
+(1, 'page_views', 176, '2026-04-29 00:18:17'),
+(2, 'site_visits', 29, '2026-04-29 00:18:00');
 
 -- --------------------------------------------------------
 
@@ -500,9 +501,13 @@ INSERT INTO `site_settings` (`id`, `setting_key`, `setting_value`, `updated_at`)
 (6934, 'updater_github_repository', 'Samkmv/FIREBALL_CMS', '2026-04-24 09:39:34'),
 (6935, 'updater_github_branch', 'main', '2026-04-24 09:39:34'),
 (6936, 'updater_github_token', '', '2026-04-24 09:39:34'),
-(6937, 'updater_last_check_payload', '{\"status\":\"ok\",\"checked_at\":\"2026-04-24 14:00:39\",\"message\":\"Новых релизов не найдено.\",\"repository\":\"Samkmv/FIREBALL_CMS\",\"branch\":\"main\",\"local_version\":\"1.5.1\",\"local_commit\":\"c6fc941254fa3b1c012d8c9283a571ee2a403d5e\",\"remote_version\":\"1.5.1\",\"remote_commit\":\"c6fc941254fa3b1c012d8c9283a571ee2a403d5e\",\"branch_status\":\"identical\",\"git_update_available\":false,\"version_update_available\":false,\"update_available\":false,\"release\":{\"name\":\"1.5.1\",\"tag_name\":\"1.5.1\",\"html_url\":\"https://github.com/Samkmv/FIREBALL_CMS/releases/tag/1.5.1\",\"published_at\":\"2026-04-24T10:53:53Z\",\"body\":\"- fixed updater ZIP download from GitHub releases\\r\\n- fixed update URL fallback for real domain usage\\r\\n- fixed update blockers for tmp and vendor runtime files\\r\\n- improved admin update screen labels\\r\\n- removed engine version from site settings\\r\\n- dashboard now shows the actual installed version\",\"excerpt\":\"fixed updater ZIP download from GitHub releases fixed update URL fallback for real domain usage fixed update blockers for tmp and vendor runtime files improved admin update screen labels removed engine version from site settings dashboard n\",\"zipball_url\":\"https://api.github.com/repos/Samkmv/FIREBALL_CMS/zipball/1.5.1\",\"assets\":[{\"name\":\"FIREBALL_CMS-1.5.1.zip\",\"download_url\":\"https://github.com/Samkmv/FIREBALL_CMS/releases/download/1.5.1/FIREBALL_CMS-1.5.1.zip\",\"api_url\":\"https://api.github.com/repos/Samkmv/FIREBALL_CMS/releases/assets/404351925\",\"content_type\":\"application/zip\"}]}}', '2026-04-24 14:00:40'),
-(6938, 'updater_last_checked_at', '2026-04-24 14:00:39', '2026-04-24 14:00:40'),
-(6939, 'updater_last_updated_at', '2026-04-24 12:44:23', '2026-04-24 12:44:23');
+(6937, 'updater_last_check_payload', '{\"status\":\"ok\",\"checked_at\":\"2026-04-29 00:02:01\",\"message\":\"Удалённая ветка уже синхронизирована с текущей установкой.\",\"repository\":\"Samkmv/FIREBALL_CMS\",\"branch\":\"main\",\"local_version\":\"1.2.1\",\"local_commit\":\"e9bed8daa3b014905dc220f7bfdb10b798aee098\",\"remote_version\":\"1.2.0\",\"remote_commit\":\"e9bed8daa3b014905dc220f7bfdb10b798aee098\",\"branch_status\":\"identical\",\"git_update_available\":false,\"version_update_available\":false,\"update_available\":false,\"release\":{\"name\":\"1.2.0\",\"tag_name\":\"1.2.0\",\"html_url\":\"https://github.com/Samkmv/FIREBALL_CMS/releases/tag/1.2.0\",\"published_at\":\"2026-04-28T20:37:56Z\",\"body\":\"\",\"excerpt\":\"\",\"zipball_url\":\"https://api.github.com/repos/Samkmv/FIREBALL_CMS/zipball/1.2.0\",\"assets\":[{\"name\":\"FIREBALL_CMS_1.2.0.zip\",\"download_url\":\"https://github.com/Samkmv/FIREBALL_CMS/releases/download/1.2.0/FIREBALL_CMS_1.2.0.zip\",\"api_url\":\"https://api.github.com/repos/Samkmv/FIREBALL_CMS/releases/assets/407671803\",\"content_type\":\"application/zip\"}]}}', '2026-04-29 00:02:03'),
+(6938, 'updater_last_checked_at', '2026-04-29 00:02:01', '2026-04-29 00:02:03'),
+(6939, 'updater_last_updated_at', '2026-04-24 12:44:23', '2026-04-24 12:44:23'),
+(9894, 'social_telegram', '', '2026-04-26 08:13:57'),
+(9895, 'social_instagram', '', '2026-04-26 08:13:57'),
+(9896, 'social_facebook', '', '2026-04-26 08:13:57'),
+(9897, 'social_youtube', '', '2026-04-26 08:13:57');
 
 -- --------------------------------------------------------
 
@@ -527,7 +532,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `login`, `email`, `password`, `avatar`, `role`, `last_seen_at`, `created_at`) VALUES
-(1, 'Kirill', 'admin', 'samkmv@yandex.ru', '$2y$10$fI4Rj5.vF3A1b1e2brdEG.ZPMI1dFy89E5v2w1zTOIknaOWVxROzO', 'uploads/avatars/2026/04/22/3ac2e46d6ba4513792b93d9045b1483c.jpg', 'admin', '2026-04-23 23:03:46', '2026-04-19 19:02:30'),
+(1, 'Kirill', 'admin', 'samkmv@yandex.ru', '$2y$10$fI4Rj5.vF3A1b1e2brdEG.ZPMI1dFy89E5v2w1zTOIknaOWVxROzO', 'uploads/avatars/2026/04/27/103c7c40a3eb9d842785cb569ed18de0.jpg', 'creator', '2026-04-28 21:58:37', '2026-04-19 19:02:30'),
 (5, 'Мария', 'mary', 'mary@mail.ru', '$2y$10$1tG/zBwaeUYhBKq3Rrbn1eqQfq1ws8XCn4XLDiosZQvnwDWQ.Vphu', NULL, 'admin', NULL, '2026-04-22 00:46:25'),
 (6, 'Олег', 'oleg', 'qwerty@qwerty.com', '$2y$10$E75QxfSD6tdtQ4Z.IucZtuLFPXZbrdTHUI1gcPBpoKNKkuyAq..Ca', NULL, 'user', '2026-04-23 17:54:22', '2026-04-23 11:06:43');
 
@@ -550,8 +555,10 @@ CREATE TABLE `user_roles` (
 --
 
 INSERT INTO `user_roles` (`id`, `name`, `slug`, `is_system`, `created_at`) VALUES
-(1, 'Admin', 'admin', 1, '2026-04-21 21:18:46'),
-(2, 'User', 'user', 1, '2026-04-21 21:18:46');
+(1, 'Creator', 'creator', 1, '2026-04-28 21:55:28'),
+(2, 'User', 'user', 1, '2026-04-21 21:18:46'),
+(19295, 'Admin', 'admin', 1, '2026-04-21 21:18:46'),
+(19582, '111', '111', 0, '2026-04-28 23:12:12');
 
 --
 -- Индексы сохранённых таблиц
@@ -657,7 +664,7 @@ ALTER TABLE `categories`
 -- AUTO_INCREMENT для таблицы `chat_messages`
 --
 ALTER TABLE `chat_messages`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT для таблицы `contact_requests`
@@ -675,7 +682,7 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT для таблицы `posts`
 --
 ALTER TABLE `posts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT для таблицы `post_categories`
@@ -693,13 +700,13 @@ ALTER TABLE `products`
 -- AUTO_INCREMENT для таблицы `site_metrics`
 --
 ALTER TABLE `site_metrics`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=95;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=206;
 
 --
 -- AUTO_INCREMENT для таблицы `site_settings`
 --
 ALTER TABLE `site_settings`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9892;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51214;
 
 --
 -- AUTO_INCREMENT для таблицы `users`
@@ -711,7 +718,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `user_roles`
 --
 ALTER TABLE `user_roles`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18901;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19751;
 
 --
 -- Ограничения внешнего ключа сохраненных таблиц
