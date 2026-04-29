@@ -415,7 +415,7 @@ class UpdateCenter
             $this->downloadFile(
                 (string)($archive['download_url'] ?? ''),
                 $archivePath,
-                $this->buildGithubDownloadHeaders($token, (bool)($archive['api_authenticated'] ?? false))
+                $this->buildGithubDownloadHeaders($token, (string)($archive['download_mode'] ?? 'direct'))
             );
 
             $packageRoot = $this->extractArchive($archivePath, $extractPath);
@@ -829,7 +829,7 @@ class UpdateCenter
                 return [
                     'name' => $name,
                     'download_url' => $downloadUrl !== '' ? $downloadUrl : $apiUrl,
-                    'api_authenticated' => $downloadUrl === '' && $apiUrl !== '',
+                    'download_mode' => $downloadUrl === '' && $apiUrl !== '' ? 'release_asset_api' : 'direct',
                 ];
             }
         }
@@ -841,7 +841,7 @@ class UpdateCenter
             return [
                 'name' => $tagName . '.zip',
                 'download_url' => $zipballUrl,
-                'api_authenticated' => true,
+                'download_mode' => 'repository_zipball_api',
             ];
         }
 
@@ -1754,14 +1754,17 @@ class UpdateCenter
     /**
      * Собирает заголовки для скачивания ZIP-архива релиза.
      */
-    protected function buildGithubDownloadHeaders(string $token = '', bool $apiAuthenticated = false): array
+    protected function buildGithubDownloadHeaders(string $token = '', string $downloadMode = 'direct'): array
     {
         $headers = [
             'User-Agent: FIREBALL_CMS-Updater',
         ];
 
-        if ($apiAuthenticated) {
+        if ($downloadMode === 'release_asset_api') {
             $headers[] = 'Accept: application/octet-stream';
+            $headers[] = 'X-GitHub-Api-Version: 2022-11-28';
+        } elseif ($downloadMode === 'repository_zipball_api') {
+            $headers[] = 'Accept: application/vnd.github+json';
             $headers[] = 'X-GitHub-Api-Version: 2022-11-28';
         }
 
