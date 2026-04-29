@@ -37,9 +37,11 @@ $shareLink = rawurlencode($shareUrl);
                 <p class="fs-lg text-body-secondary mb-4"><?= htmlSC($post['excerpt']) ?></p>
             <?php endif; ?>
 
-            <div class="fs-base lh-lg">
-                <?= $post['content'] ?>
-            </div>
+            <?php if (!empty($post['content'])): ?>
+                <div class="fs-base lh-lg">
+                    <?= $post['content'] ?>
+                </div>
+            <?php endif; ?>
 
             <div class="d-sm-flex align-items-center justify-content-between py-4 py-md-5 mt-n2 mt-md-n3 mb-2 mb-sm-3 mb-md-0">
                 <div class="d-flex flex-wrap gap-2 mb-4 mb-sm-0 me-sm-4">
@@ -136,10 +138,12 @@ $shareLink = rawurlencode($shareUrl);
                 <?php endif; ?>
             </div>
         </aside>
+    </div>
 
-        <div class="container pb-5 mb-1 mb-sm-2 mb-md-3 mb-lg-4 mb-xl-5">
+    <?php if (!empty($popular_posts)): ?>
+        <div class="pt-5 pb-5 mb-1 mb-sm-2 mb-md-3 mb-lg-4 mb-xl-5">
             <h2 class="h3 text-center pb-2 pb-sm-3">Популярные</h2>
-            <div class="swiper swiper-initialized swiper-horizontal swiper-backface-hidden" data-swiper="{
+            <div class="swiper" data-swiper="{
           &quot;slidesPerView&quot;: 1,
           &quot;spaceBetween&quot;: 24,
           &quot;pagination&quot;: {
@@ -155,64 +159,28 @@ $shareLink = rawurlencode($shareUrl);
             }
           }
         }">
-                <div class="swiper-wrapper" id="swiper-wrapper-0a49d257939271bd" aria-live="polite">
-
-                    <!-- Article -->
-                    <article class="swiper-slide swiper-slide-active" style="width: 416px; margin-right: 24px;" role="group" aria-label="1 / 3">
-                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                            <img src="assets/img/blog/grid/v1/07.jpg" class="hover-effect-target" alt="Image">
+                <div class="swiper-wrapper">
+                    <?php foreach ($popular_posts as $item): ?>
+                    <article class="swiper-slide">
+                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= $postUrl($item) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
+                            <img src="<?= get_image($item['image']) ?>" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($item['title']) ?>">
                         </a>
                         <div class="pt-4">
                             <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
-                                <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">IoT</a>
+                                <a class="nav-link text-body fs-xs text-uppercase p-0" href="<?= $categoryUrl($item['category_slug'] ?? $item['category']) ?>"><?= htmlSC($item['category_label'] ?? $item['category']) ?></a>
                                 <hr class="vr my-1 mx-1">
-                                <span class="text-body-tertiary fs-xs">August 23, 2024</span>
+                                <span class="text-body-tertiary fs-xs"><?= date('d.m.Y', strtotime($item['published_at'])) ?></span>
                             </div>
                             <h3 class="h5 mb-0">
-                                <a class="hover-effect-underline" href="#!">Connecting the dots: How IoT technology is transforming everyday life</a>
+                                <a class="hover-effect-underline" href="<?= $postUrl($item) ?>"><?= htmlSC($item['title']) ?></a>
                             </h3>
                         </div>
                     </article>
-
-                    <!-- Article -->
-                    <article class="swiper-slide swiper-slide-next" style="width: 416px; margin-right: 24px;" role="group" aria-label="2 / 3">
-                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                            <img src="assets/img/blog/grid/v1/08.jpg" class="hover-effect-target" alt="Image">
-                        </a>
-                        <div class="pt-4">
-                            <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
-                                <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Buying guides</a>
-                                <hr class="vr my-1 mx-1">
-                                <span class="text-body-tertiary fs-xs">August 18, 2024</span>
-                            </div>
-                            <h3 class="h5 mb-0">
-                                <a class="hover-effect-underline" href="#!">How to find the best deals and make secure transactions online</a>
-                            </h3>
-                        </div>
-                    </article>
-
-                    <!-- Article -->
-                    <article class="swiper-slide" style="width: 416px; margin-right: 24px;" role="group" aria-label="3 / 3">
-                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="#!" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                            <img src="assets/img/blog/grid/v1/10.jpg" class="hover-effect-target" alt="Image">
-                        </a>
-                        <div class="pt-4">
-                            <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
-                                <a class="nav-link text-body fs-xs text-uppercase p-0" href="#!">Gaming</a>
-                                <hr class="vr my-1 mx-1">
-                                <span class="text-body-tertiary fs-xs">July 27, 2024</span>
-                            </div>
-                            <h3 class="h5 mb-0">
-                                <a class="hover-effect-underline" href="#!">Immersive worlds: A dive into the latest VR gear and experiences</a>
-                            </h3>
-                        </div>
-                    </article>
+                    <?php endforeach; ?>
                 </div>
 
-                <!-- Pagination (Bullets) -->
-                <div class="swiper-pagination position-static mt-4 swiper-pagination-clickable swiper-pagination-bullets swiper-pagination-horizontal swiper-pagination-lock"><span class="swiper-pagination-bullet swiper-pagination-bullet-active" tabindex="0" role="button" aria-label="Go to slide 1" aria-current="true"></span></div>
-                <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span></div>
+                <div class="swiper-pagination position-static mt-4"></div>
+            </div>
         </div>
-
-    </div>
+    <?php endif; ?>
 </section>

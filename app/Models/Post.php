@@ -138,6 +138,41 @@ class Post extends Model
     }
 
     /**
+     * Возвращает самые просматриваемые опубликованные посты.
+     */
+    public function getPopularPosts(int $limit = 6, ?string $excludeSlug = null): array
+    {
+        $this->ensureSchema();
+        $limit = max(1, (int)$limit);
+        $params = [];
+        $where = 'WHERE p.is_published = 1';
+
+        if ($excludeSlug) {
+            $where .= ' AND p.slug != ?';
+            $params[] = $excludeSlug;
+        }
+
+        $categoryNameSql = $this->categoryNameSql('c');
+        $posts = db()->query(
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.author_name, p.author_role, p.published_at, p.views_count,
+                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
+                    c.slug AS category_slug,
+                    c.seo_title AS category_seo_title,
+                    c.seo_description AS category_seo_description,
+                    c.seo_keywords AS category_seo_keywords,
+                    c.seo_image AS category_seo_image
+             FROM {$this->table} p
+             LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
+             {$where}
+             ORDER BY p.views_count DESC, p.published_at DESC, p.id DESC
+             LIMIT {$limit}",
+            $params
+        )->get() ?: [];
+
+        return $this->normalizePosts($posts);
+    }
+
+    /**
      * Возвращает категории для навигации по блогу.
      */
     public function getNavigationCategories(): array
@@ -622,9 +657,7 @@ class Post extends Model
         $excerpt = trim((string)($post['excerpt'] ?? ''));
         $content = trim((string)($post['content'] ?? ''));
 
-        if ($content === '') {
-            $content = '<p>' . htmlSC($excerpt ?: $post['title']) . '</p>';
-        } elseif ($content === strip_tags($content)) {
+        if ($content !== '' && $content === strip_tags($content)) {
             $content = '<p>' . nl2br(htmlSC($content)) . '</p>';
         }
 

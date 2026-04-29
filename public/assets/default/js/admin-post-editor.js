@@ -1,4 +1,5 @@
 $(function () {
+    const fileSelectionStorageKey = 'fireball:file:selected';
     const publishedAtField = document.querySelector('[data-post-datepicker]');
     if (publishedAtField && typeof flatpickr !== 'undefined') {
         flatpickr(publishedAtField, {
@@ -115,7 +116,8 @@ $(function () {
         blocks: [],
         selectedId: null,
         draggedId: null,
-        picker: null
+        picker: null,
+        selection: null
     };
 
     function makeId() {
@@ -345,6 +347,52 @@ $(function () {
         return index >= 0 ? state.blocks[index] : null;
     }
 
+    function saveSelection(editor) {
+        if (!editor) {
+            return;
+        }
+
+        const selection = window.getSelection ? window.getSelection() : null;
+        if (!selection || selection.rangeCount === 0) {
+            return;
+        }
+
+        const range = selection.getRangeAt(0);
+        const commonAncestor = range.commonAncestorContainer;
+        if (!editor.contains(commonAncestor) && commonAncestor !== editor) {
+            return;
+        }
+
+        state.selection = {
+            blockId: String(editor.getAttribute('data-block-id') || ''),
+            range: range.cloneRange()
+        };
+    }
+
+    function restoreSelection(editor) {
+        if (!editor || !state.selection) {
+            return false;
+        }
+
+        const blockId = String(editor.getAttribute('data-block-id') || '');
+        if (state.selection.blockId !== blockId || !state.selection.range) {
+            return false;
+        }
+
+        const selection = window.getSelection ? window.getSelection() : null;
+        if (!selection) {
+            return false;
+        }
+
+        try {
+            selection.removeAllRanges();
+            selection.addRange(state.selection.range.cloneRange());
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
     function ensureSelection() {
         if (!state.blocks.length) {
             state.selectedId = null;
@@ -503,12 +551,12 @@ $(function () {
                     '<option value="">' + escapeHtml(labels.size) + '</option>' +
                     renderOptions(sizes, '') +
                 '</select>' +
-                '<label class="d-inline-flex align-items-center gap-2 small text-body-secondary">' +
-                    '<span>' + escapeHtml(labels.textColor) + '</span>' +
+                '<label class="fb-post-editor__color-control">' +
+                    '<span class="fb-post-editor__color-label">' + escapeHtml(labels.textColor) + '</span>' +
                     '<input class="form-control form-control-color" type="color" value="#111827" data-editor-command="foreColor" aria-label="' + escapeAttr(labels.textColor) + '">' +
                 '</label>' +
-                '<label class="d-inline-flex align-items-center gap-2 small text-body-secondary">' +
-                    '<span>' + escapeHtml(labels.background) + '</span>' +
+                '<label class="fb-post-editor__color-control">' +
+                    '<span class="fb-post-editor__color-label">' + escapeHtml(labels.background) + '</span>' +
                     '<input class="form-control form-control-color" type="color" value="#fff1a8" data-editor-command="hiliteColor" aria-label="' + escapeAttr(labels.background) + '">' +
                 '</label>' +
             '</div>' +
@@ -830,6 +878,7 @@ $(function () {
         }
 
         editor.focus();
+        restoreSelection(editor);
         document.execCommand('styleWithCSS', false, true);
 
         if (command === 'createLink') {
@@ -918,7 +967,7 @@ $(function () {
         }
 
         const commandButton = event.target.closest('[data-editor-command]');
-        if (commandButton) {
+        if (commandButton && commandButton.tagName === 'BUTTON') {
             const blockCard = commandButton.closest('[data-block-card]');
             const editor = blockCard ? blockCard.querySelector('[data-block-rich]') : null;
             const command = String(commandButton.getAttribute('data-editor-command') || '');
@@ -936,6 +985,21 @@ $(function () {
     editorApp.addEventListener('mousedown', function (event) {
         const commandButton = event.target.closest('button[data-editor-command]');
         if (commandButton) {
+            event.preventDefault();
+        }
+    });
+
+    editorApp.addEventListener('pointerdown', function (event) {
+        const toolbarControl = event.target.closest('[data-editor-command], [data-editor-font-size]');
+        if (!toolbarControl) {
+            return;
+        }
+
+        const blockCard = toolbarControl.closest('[data-block-card]');
+        const editor = blockCard ? blockCard.querySelector('[data-block-rich]') : null;
+        saveSelection(editor);
+
+        if (toolbarControl.tagName === 'BUTTON') {
             event.preventDefault();
         }
     });
@@ -964,6 +1028,15 @@ $(function () {
                 String(field.getAttribute('data-block-field') || ''),
                 field.value
             );
+            return;
+        }
+
+        const colorInput = event.target.closest('input[type="color"][data-editor-command]');
+        if (colorInput) {
+            const blockCard = colorInput.closest('[data-block-card]');
+            const editor = blockCard ? blockCard.querySelector('[data-block-rich]') : null;
+            const command = String(colorInput.getAttribute('data-editor-command') || '');
+            applyCommand(editor, command, String(colorInput.value || ''));
         }
     });
 
@@ -979,7 +1052,7 @@ $(function () {
             return;
         }
 
-        const commandSelect = event.target.closest('[data-editor-command]');
+        const commandSelect = event.target.closest('select[data-editor-command]');
         if (commandSelect) {
             const blockCard = commandSelect.closest('[data-block-card]');
             const editor = blockCard ? blockCard.querySelector('[data-block-rich]') : null;
@@ -1004,10 +1077,52 @@ $(function () {
         }
     });
 
+    document.addEventListener('selectionchange', function () {
+        const selection = window.getSelection ? window.getSelection() : null;
+        if (!selection || selection.rangeCount === 0) {
+            return;
+        }
+
+        const anchorNode = selection.anchorNode;
+        if (!anchorNode) {
+            return;
+        }
+
+        const anchorElement = anchorNode.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode.parentElement;
+        if (!anchorElement || !editorApp.contains(anchorElement)) {
+            return;
+        }
+
+        const richEditor = anchorElement.closest('[data-block-rich]');
+        if (richEditor) {
+            saveSelection(richEditor);
+        }
+    });
+
     editorApp.addEventListener('keydown', function (event) {
         const headingInput = event.target.closest('[data-block-heading]');
         if (headingInput && event.key === 'Enter') {
             event.preventDefault();
+            return;
+        }
+
+        const richEditor = event.target.closest('[data-block-rich]');
+        if (richEditor) {
+            saveSelection(richEditor);
+        }
+    });
+
+    editorApp.addEventListener('keyup', function (event) {
+        const richEditor = event.target.closest('[data-block-rich]');
+        if (richEditor) {
+            saveSelection(richEditor);
+        }
+    });
+
+    editorApp.addEventListener('mouseup', function (event) {
+        const richEditor = event.target.closest('[data-block-rich]');
+        if (richEditor) {
+            saveSelection(richEditor);
         }
     });
 
@@ -1068,6 +1183,70 @@ $(function () {
         state.selectedId = state.picker.blockId;
         state.picker = null;
         renderAndSync();
+    });
+
+    window.addEventListener('storage', function (event) {
+        if (event.key !== fileSelectionStorageKey || !event.newValue || !state.picker) {
+            return;
+        }
+
+        let payload = null;
+
+        try {
+            payload = JSON.parse(String(event.newValue || ''));
+        } catch (error) {
+            payload = null;
+        }
+
+        if (!payload || payload.type !== 'fireball:file:selected') {
+            return;
+        }
+
+        if (String(payload.field || '') !== state.picker.token) {
+            return;
+        }
+
+        updateBlockField(state.picker.blockId, state.picker.field, String(payload.value || ''));
+        state.selectedId = state.picker.blockId;
+        state.picker = null;
+        renderAndSync();
+
+        try {
+            localStorage.removeItem(fileSelectionStorageKey);
+        } catch (error) {
+        }
+    });
+
+    window.addEventListener('focus', function () {
+        if (!state.picker) {
+            return;
+        }
+
+        let payload = null;
+
+        try {
+            payload = JSON.parse(String(localStorage.getItem(fileSelectionStorageKey) || ''));
+        } catch (error) {
+            payload = null;
+        }
+
+        if (!payload || payload.type !== 'fireball:file:selected') {
+            return;
+        }
+
+        if (String(payload.field || '') !== state.picker.token) {
+            return;
+        }
+
+        updateBlockField(state.picker.blockId, state.picker.field, String(payload.value || ''));
+        state.selectedId = state.picker.blockId;
+        state.picker = null;
+        renderAndSync();
+
+        try {
+            localStorage.removeItem(fileSelectionStorageKey);
+        } catch (error) {
+        }
     });
 
     const form = editorField.form;

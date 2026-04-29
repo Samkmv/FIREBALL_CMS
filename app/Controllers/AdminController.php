@@ -600,6 +600,7 @@ class AdminController extends BaseController
 
     /**
      * Проверяет обязательные поля поста и корректность SEO-изображения.
+     * Содержимое и основное изображение могут отсутствовать.
      */
     protected function validatePostData(array $data): array
     {
@@ -613,9 +614,6 @@ class AdminController extends BaseController
         }
         if ((int)$data['category_id'] <= 0 || $data['category_name'] === '') {
             $errors['category_id'][] = return_translation('admin_validation_category_required');
-        }
-        if ($data['content'] === '') {
-            $errors['content'][] = return_translation('admin_validation_content_required');
         }
         if ($data['seo_image'] !== '' && !$this->isValidSeoImage($data['seo_image'])) {
             $errors['seo_image'][] = return_translation('admin_validation_seo_image_invalid');

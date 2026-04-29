@@ -4,6 +4,11 @@ $formAction = $is_edit
     : base_href('/admin/posts/create');
 $formData = session()->get('form_data') ?: [];
 $currentImage = $formData['image'] ?? ($post['image'] ?? '');
+$selectedFileField = trim((string)request()->get('fireball_file_field', ''));
+$selectedFileValue = trim((string)request()->get('fireball_file_value', ''));
+if ($selectedFileField === 'post_image' && $selectedFileValue !== '') {
+    $currentImage = $selectedFileValue;
+}
 $hidePlaceholderImage = array_key_exists('hide_placeholder_image', $formData)
     ? (int)$formData['hide_placeholder_image']
     : (int)($post['hide_placeholder_image'] ?? 0);
@@ -14,6 +19,15 @@ $publishedAtSource = old('published_at') ?: ($post['published_at'] ?? '');
 $publishedAtValue = $publishedAtSource !== '' && strtotime($publishedAtSource)
     ? date('Y-m-d H:i:S', strtotime($publishedAtSource))
     : date('Y-m-d H:i:S');
+$excerptValue = array_key_exists('excerpt', $formData)
+    ? (string)$formData['excerpt']
+    : (string)($post['excerpt'] ?? '');
+$contentValue = array_key_exists('content', $formData)
+    ? (string)$formData['content']
+    : (string)($post['content'] ?? '');
+$postImageDropTitle = return_translation('admin_post_image_drop_title');
+$postImageDropHint = return_translation('admin_post_image_drop_hint');
+$postImageLocalHint = return_translation('admin_post_image_local_hint');
 $editorConfig = [
     'fileManagerUrl' => base_href('/admin/files'),
     'defaultDirectory' => 'posts',
@@ -366,6 +380,53 @@ $editorConfig = [
         padding-inline: .7rem;
     }
 
+    .fb-post-editor__color-control {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        min-height: 2.75rem;
+        min-width: 10.75rem;
+        padding: .45rem .55rem .45rem .8rem;
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: .95rem;
+        background: rgba(255, 255, 255, .9);
+        color: #4f5b5d;
+        box-shadow: 0 8px 22px rgba(28, 37, 38, .04);
+    }
+
+    .fb-post-editor__color-label {
+        font-size: .8rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #4f5b5d;
+    }
+
+    .fb-post-editor__color-control .form-control-color {
+        width: 3rem;
+        min-width: 3rem;
+        height: 2.2rem;
+        padding: .18rem;
+        border: 1px solid rgba(26, 33, 36, .12);
+        background: #fff;
+        cursor: pointer;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .6);
+    }
+
+    .fb-post-editor__color-control .form-control-color::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+
+    .fb-post-editor__color-control .form-control-color::-webkit-color-swatch {
+        border: 0;
+        border-radius: .7rem;
+    }
+
+    .fb-post-editor__color-control .form-control-color::-moz-color-swatch {
+        border: 0;
+        border-radius: .7rem;
+    }
+
     .fb-post-editor__rich {
         min-height: 180px;
         padding: 1rem;
@@ -489,6 +550,102 @@ $editorConfig = [
         letter-spacing: .04em;
     }
 
+    .fb-post-media-picker {
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: 1.1rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .95) 0%, rgba(248, 245, 240, .92) 100%);
+        box-shadow: 0 16px 36px rgba(28, 37, 38, .05);
+        overflow: hidden;
+    }
+
+    .fb-post-media-picker.is-invalid {
+        border-color: rgba(220, 53, 69, .38);
+        box-shadow: 0 0 0 1px rgba(220, 53, 69, .08), 0 16px 36px rgba(220, 53, 69, .06);
+    }
+
+    .fb-post-media-picker__dropzone {
+        display: grid;
+        grid-template-columns: 112px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    }
+
+    .fb-post-media-picker.is-dragover .fb-post-media-picker__dropzone {
+        background: rgba(31, 92, 79, .08);
+        box-shadow: inset 0 0 0 1px rgba(31, 92, 79, .18);
+    }
+
+    .fb-post-media-picker__figure {
+        width: 112px;
+        height: 84px;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid rgba(26, 33, 36, .08);
+        background: #f4efe7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+
+    .fb-post-media-picker__figure img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .fb-post-media-picker__placeholder {
+        width: 100%;
+        height: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #8a9597;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .5) 0%, rgba(242, 238, 231, .95) 100%);
+        font-size: 1.45rem;
+    }
+
+    .fb-post-media-picker__content {
+        min-width: 0;
+    }
+
+    .fb-post-media-picker__title {
+        color: #182225;
+        font-size: .98rem;
+        font-weight: 700;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .fb-post-media-picker__note {
+        margin-top: .35rem;
+        color: #5d6668;
+        font-size: .88rem;
+        line-height: 1.5;
+    }
+
+    .fb-post-media-picker__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: .6rem;
+    }
+
+    .fb-post-media-picker__actions .btn {
+        white-space: nowrap;
+    }
+
+    .fb-post-media-picker__file-input-wrap {
+        padding: 0 1rem 1rem;
+    }
+
+    .fb-post-media-picker__file-input {
+        width: 100%;
+    }
+
     @media (max-width: 767.98px) {
         .fb-post-editor {
             border-radius: 1rem;
@@ -525,9 +682,26 @@ $editorConfig = [
             gap: .45rem;
         }
 
-        .fb-post-editor__formatbar label {
+        .fb-post-editor__formatbar .form-select,
+        .fb-post-editor__formatbar .fb-post-editor__color-control {
             width: 100%;
-            justify-content: space-between;
+            min-width: 0;
+        }
+
+        .fb-post-editor__formatbar .btn {
+            min-width: 2.6rem;
+            min-height: 2.6rem;
+        }
+
+        .fb-post-editor__color-control {
+            min-height: 3rem;
+            padding: .5rem .65rem .5rem .8rem;
+        }
+
+        .fb-post-editor__color-control .form-control-color {
+            width: 3.25rem;
+            min-width: 3.25rem;
+            height: 2.35rem;
         }
 
         .fb-post-editor__block-header {
@@ -538,6 +712,30 @@ $editorConfig = [
         .fb-post-editor__block-actions {
             width: 100%;
             justify-content: flex-end;
+        }
+
+        .fb-post-media-picker__dropzone {
+            grid-template-columns: 1fr;
+            justify-items: stretch;
+            text-align: center;
+        }
+
+        .fb-post-media-picker__figure {
+            width: 100%;
+            max-width: 12rem;
+            height: auto;
+            aspect-ratio: 4 / 3;
+            margin-inline: auto;
+        }
+
+        .fb-post-media-picker__actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .fb-post-media-picker__actions .btn {
+            flex: 1 1 100%;
+            justify-content: center;
         }
     }
 </style>
@@ -593,7 +791,7 @@ $editorConfig = [
             </div>
             <div class="col-12">
                 <label class="form-label"><?= print_translation('admin_post_excerpt') ?></label>
-                <textarea class="form-control" name="excerpt" rows="2"><?= old('excerpt') ?: htmlSC($post['excerpt'] ?? '') ?></textarea>
+                <textarea class="form-control" name="excerpt" rows="2"><?= htmlSC($excerptValue) ?></textarea>
             </div>
             <div class="col-12">
                 <label class="form-label"><?= print_translation('admin_post_content') ?></label>
@@ -603,7 +801,7 @@ $editorConfig = [
                     name="content"
                     rows="10"
                     data-post-editor
-                ><?= old('content') ?: htmlSC($post['content'] ?? '') ?></textarea>
+                ><?= htmlSC($contentValue) ?></textarea>
                 <div
                     class="fb-post-editor"
                     data-post-editor-app
@@ -613,39 +811,70 @@ $editorConfig = [
             </div>
             <div class="col-12">
                 <label class="form-label"><?= print_translation('admin_post_image') ?></label>
-                <div class="input-group mb-2">
-                    <input
-                        class="form-control"
-                        type="text"
-                        id="post_image"
-                        name="image"
-                        value="<?= htmlSC($currentImage) ?>"
-                        placeholder="/uploads/posts/cover.jpg"
-                        data-file-preview-image="#post_image_preview"
-                        data-file-preview-text="#post_image_path"
-                    >
-                    <button
-                        class="btn btn-outline-secondary"
-                        type="button"
-                        data-file-manager-open
-                        data-file-manager-input="post_image"
-                        data-file-manager-dir="posts"
-                        data-file-manager-url="<?= base_href('/admin/files') ?>"
-                    ><i class="ci-folder me-2"></i><?= print_translation('admin_btn_choose_file') ?></button>
+                <input
+                    class="d-none"
+                    type="text"
+                    id="post_image"
+                    name="image"
+                    value="<?= htmlSC($currentImage) ?>"
+                    data-file-preview-image="#post_image_preview"
+                    data-file-preview-text="#post_image_path"
+                    data-file-preview-note="#post_image_note"
+                    data-file-preview-placeholder="#post_image_placeholder"
+                    data-file-preview-root="#post_image_media_picker"
+                    data-file-preview-empty-text="<?= htmlSC($postImageDropTitle) ?>"
+                    data-file-preview-empty-note="<?= htmlSC($postImageDropHint) ?>"
+                    data-file-preview-base="<?= htmlSC(rtrim(base_url('/'), '/')) ?>"
+                    data-file-upload-input="#post_image_file"
+                >
+                <div
+                    class="fb-post-media-picker<?= get_validation_class('image_file') ? ' is-invalid' : '' ?>"
+                    id="post_image_media_picker"
+                    data-file-dropzone
+                    data-file-input="#post_image_file"
+                    data-file-path-input="#post_image"
+                    data-file-empty-text="<?= htmlSC($postImageDropTitle) ?>"
+                    data-file-empty-note="<?= htmlSC($postImageDropHint) ?>"
+                    data-file-local-note="<?= htmlSC($postImageLocalHint) ?>"
+                >
+                    <div class="fb-post-media-picker__dropzone" tabindex="0" role="button" aria-label="<?= htmlSC($postImageDropTitle) ?>">
+                        <div class="fb-post-media-picker__figure">
+                            <img
+                                src="<?= $currentImage ? get_image($currentImage) : '' ?>"
+                                alt=""
+                                id="post_image_preview"
+                                class="<?= $currentImage ? '' : 'd-none' ?>"
+                            >
+                            <div class="fb-post-media-picker__placeholder <?= $currentImage ? 'd-none' : '' ?>" id="post_image_placeholder">
+                                <i class="ci-upload"></i>
+                            </div>
+                        </div>
+                        <div class="fb-post-media-picker__content">
+                            <div class="fb-post-media-picker__title" id="post_image_path"><?= htmlSC($currentImage ?: $postImageDropTitle) ?></div>
+                            <div class="fb-post-media-picker__note" id="post_image_note"><?= htmlSC($currentImage ? print_translation('admin_files_picker_hint') : $postImageDropHint) ?></div>
+                        </div>
+                        <div class="fb-post-media-picker__actions">
+                            <label class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" for="post_image_file">
+                                <i class="ci-upload"></i><?= print_translation('admin_btn_choose_file') ?>
+                            </label>
+                            <a
+                                class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2"
+                                href="<?= base_href('/admin/files') ?>?picker=1&amp;field=post_image&amp;dir=posts&amp;return_url=<?= rawurlencode(current_url_with_query()) ?>"
+                                target="fireball_file_manager"
+                            ><i class="ci-folder"></i><?= print_translation('admin_nav_files') ?></a>
+                        </div>
+                    </div>
+                    <div class="fb-post-media-picker__file-input-wrap">
+                        <input
+                            class="form-control fb-post-media-picker__file-input <?= get_validation_class('image_file') ?>"
+                            type="file"
+                            id="post_image_file"
+                            name="image_file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                        >
+                    </div>
                 </div>
-                <input class="form-control <?= get_validation_class('image_file') ?>" type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/gif">
                 <?= get_errors('image_file') ?>
-                <div class="form-text"><?= print_translation('admin_files_picker_hint') ?></div>
-                <div class="d-flex align-items-center gap-3 mt-3 <?= $currentImage ? '' : 'd-none' ?>" id="post_image_preview_wrap">
-                    <img
-                        src="<?= $currentImage ? get_image($currentImage) : '' ?>"
-                        alt=""
-                        id="post_image_preview"
-                        class="rounded-3 object-fit-cover"
-                        style="width: 96px; height: 72px;"
-                    >
-                    <div class="small text-body-secondary" id="post_image_path"><?= htmlSC($currentImage) ?></div>
-                </div>
             </div>
             <div class="col-12 pt-2">
                 <div class="border rounded-4 p-3 p-md-4">
@@ -716,3 +945,297 @@ $editorConfig = [
         </div>
     </form>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const fileSelectionStorageKey = 'fireball:file:selected';
+    const popupName = 'fireball_file_manager';
+    let localPreviewUrl = null;
+
+    function clearLocalPreviewUrl() {
+        if (localPreviewUrl) {
+            URL.revokeObjectURL(localPreviewUrl);
+            localPreviewUrl = null;
+        }
+    }
+
+    function setPickerPreview(input, options) {
+        if (!input) {
+            return;
+        }
+
+        const value = String(options && options.value ? options.value : '');
+        const imageSrc = String(options && options.imageSrc ? options.imageSrc : value);
+        const noteText = String(options && options.note ? options.note : '');
+        const imageSelector = input.getAttribute('data-file-preview-image');
+        const textSelector = input.getAttribute('data-file-preview-text');
+        const noteSelector = input.getAttribute('data-file-preview-note');
+        const placeholderSelector = input.getAttribute('data-file-preview-placeholder');
+        const rootSelector = input.getAttribute('data-file-preview-root');
+        const emptyText = String(input.getAttribute('data-file-preview-empty-text') || '');
+        const emptyNote = String(input.getAttribute('data-file-preview-empty-note') || '');
+        const previewBase = String(input.getAttribute('data-file-preview-base') || '');
+        const image = imageSelector ? document.querySelector(imageSelector) : null;
+        const text = textSelector ? document.querySelector(textSelector) : null;
+        const note = noteSelector ? document.querySelector(noteSelector) : null;
+        const placeholder = placeholderSelector ? document.querySelector(placeholderSelector) : null;
+        const root = rootSelector ? document.querySelector(rootSelector) : null;
+        const hasValue = value !== '';
+        const resolvedImageSrc = hasValue && imageSrc !== '' && !/^(?:https?:)?\/\//i.test(imageSrc) && !/^(?:blob:|data:)/i.test(imageSrc)
+            ? (imageSrc.charAt(0) === '/' ? previewBase + imageSrc : previewBase + '/' + imageSrc.replace(/^\/+/, ''))
+            : imageSrc;
+
+        if (text) {
+            text.textContent = hasValue ? value : emptyText;
+        }
+
+        if (note) {
+            note.textContent = hasValue ? noteText : emptyNote;
+        }
+
+        if (image) {
+            image.classList.toggle('d-none', !hasValue);
+            image.setAttribute('src', hasValue ? resolvedImageSrc : '');
+        }
+
+        if (placeholder) {
+            placeholder.classList.toggle('d-none', hasValue);
+        }
+
+        if (root) {
+            root.classList.toggle('is-empty', !hasValue);
+            root.classList.toggle('is-local-file', Boolean(options && options.isLocalFile));
+        }
+    }
+
+    function applySelectedFile(payload) {
+        if (!payload || payload.type !== 'fireball:file:selected') {
+            return;
+        }
+
+        const input = document.getElementById(String(payload.field || ''));
+        if (!input) {
+            return;
+        }
+
+        input.value = String(payload.value || '');
+
+        const uploadInputSelector = input.getAttribute('data-file-upload-input');
+        const uploadInput = uploadInputSelector ? document.querySelector(uploadInputSelector) : null;
+        if (uploadInput) {
+            uploadInput.value = '';
+            clearLocalPreviewUrl();
+        }
+
+        setPickerPreview(input, {
+            value: String(payload.value || ''),
+            imageSrc: String(payload.value || ''),
+            note: <?= json_encode(print_translation('admin_files_picker_hint'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+        });
+
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+        try {
+            localStorage.removeItem(fileSelectionStorageKey);
+        } catch (error) {
+        }
+    }
+
+    function consumeStoredFileSelection() {
+        let payload = null;
+
+        try {
+            payload = JSON.parse(String(localStorage.getItem(fileSelectionStorageKey) || ''));
+        } catch (error) {
+            payload = null;
+        }
+
+        applySelectedFile(payload);
+    }
+
+    function consumeQueryFileSelection() {
+        const url = new URL(window.location.href);
+        const field = String(url.searchParams.get('fireball_file_field') || '');
+        const value = String(url.searchParams.get('fireball_file_value') || '');
+
+        if (!field || !value) {
+            return;
+        }
+
+        applySelectedFile({
+            type: 'fireball:file:selected',
+            field: field,
+            value: value
+        });
+
+        url.searchParams.delete('fireball_file_field');
+        url.searchParams.delete('fireball_file_value');
+        window.history.replaceState({}, document.title, url.toString());
+    }
+
+    document.querySelectorAll('[data-file-manager-open]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const inputId = String(button.getAttribute('data-file-manager-input') || '');
+            const baseUrl = String(button.getAttribute('data-file-manager-url') || '');
+            const directory = String(button.getAttribute('data-file-manager-dir') || '');
+
+            if (!inputId || !baseUrl) {
+                return;
+            }
+
+            const url = new URL(baseUrl, window.location.origin);
+            url.searchParams.set('picker', '1');
+            url.searchParams.set('field', inputId);
+
+            if (directory) {
+                url.searchParams.set('dir', directory);
+            }
+
+            window.open(url.toString(), popupName, 'width=1280,height=860,resizable=yes,scrollbars=yes');
+        });
+    });
+
+    window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin || !event.data || event.data.type !== 'fireball:file:selected') {
+            return;
+        }
+        applySelectedFile(event.data);
+    });
+
+    window.addEventListener('storage', function (event) {
+        if (event.key !== fileSelectionStorageKey || !event.newValue) {
+            return;
+        }
+
+        let payload = null;
+
+        try {
+            payload = JSON.parse(String(event.newValue || ''));
+        } catch (error) {
+            payload = null;
+        }
+
+        applySelectedFile(payload);
+    });
+
+    window.addEventListener('pageshow', function () {
+        consumeStoredFileSelection();
+    });
+
+    window.addEventListener('focus', function () {
+        consumeStoredFileSelection();
+    });
+
+    document.querySelectorAll('[data-file-dropzone]').forEach(function (dropzone) {
+        const inputSelector = String(dropzone.getAttribute('data-file-input') || '');
+        const pathInputSelector = String(dropzone.getAttribute('data-file-path-input') || '');
+        const fileInput = inputSelector ? document.querySelector(inputSelector) : null;
+        const pathInput = pathInputSelector ? document.querySelector(pathInputSelector) : null;
+        const emptyNote = String(dropzone.getAttribute('data-file-empty-note') || '');
+        const localNote = String(dropzone.getAttribute('data-file-local-note') || '');
+
+        if (!fileInput || !pathInput) {
+            return;
+        }
+
+        function showPathPreview() {
+            clearLocalPreviewUrl();
+            setPickerPreview(pathInput, {
+                value: String(pathInput.value || ''),
+                imageSrc: String(pathInput.value || ''),
+                note: <?= json_encode(print_translation('admin_files_picker_hint'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+            });
+        }
+
+        function showLocalFilePreview(file) {
+            if (!file) {
+                showPathPreview();
+                return;
+            }
+
+            clearLocalPreviewUrl();
+            localPreviewUrl = file.type && file.type.indexOf('image/') === 0 ? URL.createObjectURL(file) : null;
+            setPickerPreview(pathInput, {
+                value: file.name,
+                imageSrc: localPreviewUrl || '',
+                note: localNote,
+                isLocalFile: true
+            });
+        }
+
+        fileInput.addEventListener('change', function () {
+            const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+            showLocalFilePreview(file);
+        });
+
+        dropzone.addEventListener('click', function (event) {
+            if (event.target.closest('button, label, a, input')) {
+                return;
+            }
+            fileInput.click();
+        });
+
+        dropzone.addEventListener('keydown', function (event) {
+            if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button, label, a, input')) {
+                event.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach(function (eventName) {
+            dropzone.addEventListener(eventName, function (event) {
+                event.preventDefault();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'dragend'].forEach(function (eventName) {
+            dropzone.addEventListener(eventName, function (event) {
+                if (event.target === dropzone) {
+                    dropzone.classList.remove('is-dragover');
+                }
+            });
+        });
+
+        dropzone.addEventListener('drop', function (event) {
+            event.preventDefault();
+            dropzone.classList.remove('is-dragover');
+
+            const files = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files : null;
+            if (!files || !files.length) {
+                return;
+            }
+
+            if (typeof DataTransfer !== 'undefined') {
+                const transfer = new DataTransfer();
+                Array.from(files).forEach(function (file) {
+                    transfer.items.add(file);
+                });
+                fileInput.files = transfer.files;
+            } else {
+                fileInput.files = files;
+            }
+
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        if (!String(pathInput.value || '').trim()) {
+            setPickerPreview(pathInput, {
+                value: '',
+                imageSrc: '',
+                note: emptyNote
+            });
+        } else {
+            setPickerPreview(pathInput, {
+                value: String(pathInput.value || ''),
+                imageSrc: String(pathInput.value || ''),
+                note: <?= json_encode(print_translation('admin_files_picker_hint'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+            });
+        }
+    });
+
+    consumeStoredFileSelection();
+    consumeQueryFileSelection();
+});
+</script>

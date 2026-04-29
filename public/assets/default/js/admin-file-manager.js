@@ -1,4 +1,5 @@
 $(function () {
+    const fileSelectionStorageKey = 'fireball:file:selected';
     const page = $('[data-file-manager-page]');
     if (!page.length) {
         return;
@@ -515,15 +516,76 @@ $(function () {
         const field = String(button.data('fileSelectField') || '');
         const value = String(button.data('fileSelectValue') || '');
 
-        if (!field || !window.opener) {
+        if (!field) {
             return;
         }
 
-        window.opener.postMessage({
+        const payload = {
             type: 'fireball:file:selected',
             field: field,
             value: value
-        }, window.location.origin);
+        };
+        const currentUrl = new URL(window.location.href);
+        const returnUrl = String(currentUrl.searchParams.get('return_url') || '');
+        let redirectUrl = null;
+
+        if (returnUrl) {
+            try {
+                const candidateUrl = new URL(returnUrl, window.location.origin);
+                if (candidateUrl.origin === window.location.origin) {
+                    candidateUrl.searchParams.set('fireball_file_field', field);
+                    candidateUrl.searchParams.set('fireball_file_value', value);
+                    redirectUrl = candidateUrl.toString();
+                }
+            } catch (error) {
+            }
+        }
+
+        try {
+            localStorage.setItem(fileSelectionStorageKey, JSON.stringify(Object.assign({}, payload, {
+                timestamp: Date.now()
+            })));
+        } catch (error) {
+        }
+
+        if (window.opener) {
+            try {
+                if (redirectUrl) {
+                    window.opener.location.href = redirectUrl;
+                } else {
+                    window.opener.postMessage(payload, window.location.origin);
+                }
+            } catch (error) {
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                    return;
+                }
+            }
+
+            window.close();
+            return;
+        }
+
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
+            return;
+        }
+
+        if (window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+
+        if (document.referrer) {
+            try {
+                const referrerUrl = new URL(document.referrer);
+                if (referrerUrl.origin === window.location.origin) {
+                    window.location.href = referrerUrl.toString();
+                    return;
+                }
+            } catch (error) {
+            }
+        }
 
         window.close();
     });
