@@ -53,6 +53,7 @@
         [data-file-manager-content] {
             background: var(--fm-panel);
             backdrop-filter: blur(16px);
+            min-width: 0;
         }
 
         [data-file-manager-toolbar] {
@@ -62,6 +63,7 @@
             background: rgba(255, 255, 255, .8);
             backdrop-filter: blur(18px);
             border-bottom: 1px solid rgba(28, 37, 38, .08);
+            min-width: 0;
         }
 
         [data-file-manager-table] tbody tr {
@@ -95,6 +97,15 @@
             color: var(--fm-accent);
         }
 
+        [data-file-manager-breadcrumbs] {
+            scrollbar-width: thin;
+        }
+
+        [data-file-manager-search-form] {
+            max-width: 320px;
+            width: 100%;
+        }
+
         [data-file-manager-sidebar] .list-group-item {
             border: 0;
             background: transparent;
@@ -117,6 +128,106 @@
                 border-bottom: 1px solid var(--fm-border);
             }
         }
+
+        @media (max-width: 767.98px) {
+            [data-file-manager-page] {
+                overflow-x: clip;
+            }
+
+            [data-file-manager-shell] {
+                width: 100%;
+                max-width: 100%;
+                border-radius: 24px;
+            }
+
+            [data-file-manager-browser],
+            [data-file-manager-workspace] {
+                min-height: auto;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            [data-file-manager-toolbar] {
+                position: static;
+                width: 100%;
+            }
+
+            [data-file-manager-toolbar-actions] {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                min-width: 0;
+            }
+
+            [data-file-manager-toolbar-actions] .dropdown,
+            [data-file-manager-toolbar-actions] .dropdown > button {
+                width: 100%;
+            }
+
+            [data-file-manager-breadcrumbs] {
+                flex-wrap: nowrap !important;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: .15rem;
+            }
+
+            [data-file-manager-breadcrumbs] > * {
+                flex: 0 0 auto;
+            }
+
+            [data-file-manager-status] {
+                align-items: stretch !important;
+                min-width: 0;
+            }
+
+            [data-file-manager-search-form] {
+                max-width: none;
+                min-width: 0;
+            }
+
+            [data-file-manager-table-wrap] {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            [data-file-manager-table] {
+                min-width: 620px;
+            }
+
+            [data-file-manager-table] th,
+            [data-file-manager-table] td {
+                padding: .65rem .55rem;
+                font-size: .86rem;
+            }
+
+            [data-file-manager-table] .btn {
+                font-size: .8rem;
+            }
+
+            [data-file-manager-actions-menu] > button {
+                min-width: 2.5rem;
+                padding-inline: .7rem;
+            }
+
+            [data-file-manager-name-cell] img,
+            [data-file-manager-name-cell] .rounded-4.border.bg-body-tertiary {
+                width: 44px !important;
+                height: 44px !important;
+            }
+
+            [data-file-manager-name-cell] .fw-medium {
+                font-size: .88rem;
+            }
+
+            [data-file-manager-name-cell] .small {
+                font-size: .74rem;
+            }
+        }
     </style>
 
     <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
@@ -134,7 +245,7 @@
 
     <div class="position-relative" data-file-manager-shell>
         <div data-file-manager-browser>
-            <?= view()->renderPartial('admin/_file_manager_browser', [
+            <?= view()->renderPartial('admin/file_manager_browser', [
                 'manager' => $manager ?? [],
                 'picker_mode' => $picker_mode ?? false,
                 'picker_field' => $picker_field ?? '',

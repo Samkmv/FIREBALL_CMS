@@ -8,6 +8,7 @@ use App\Models\ContactRequest;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\UpdateCenter;
+use FBL\Auth;
 use FBL\File;
 
 /**
@@ -498,6 +499,11 @@ class AdminController extends BaseController
     public function updates()
     {
         if (request()->isPost()) {
+            if (!Auth::hasRole('creator')) {
+                session()->setFlash('error', return_translation('admin_updates_creator_only'));
+                response()->redirect(base_href('/admin/updates'));
+            }
+
             $data = $this->normalizeUpdateSettingsData(request()->getData());
             $errors = $this->validateUpdateSettingsData($data);
 

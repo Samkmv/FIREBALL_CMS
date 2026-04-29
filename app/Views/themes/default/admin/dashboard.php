@@ -2,22 +2,7 @@
     <?php
     $updateCenter = $update_center ?? [];
     $updateLocal = $updateCenter['local'] ?? [];
-    $gitTag = trim((string)($updateLocal['git_tag'] ?? ''));
-    $gitDescribe = trim((string)($updateLocal['git_describe'] ?? ''));
-    $shortCommit = trim((string)($updateLocal['short_commit'] ?? ''));
-    $installedVersionLabel = $engine_release['version'] ?? '0.0.0';
-
-    if ($gitTag !== '') {
-        $installedVersionLabel = $gitTag;
-    } elseif ($gitDescribe !== '' && preg_match('/^(.+)-\d+-g([0-9a-f]+)$/i', $gitDescribe, $matches) === 1) {
-        $installedVersionLabel = $matches[1] . ' + ' . $matches[2];
-    } elseif ($gitDescribe !== '') {
-        $installedVersionLabel = $gitDescribe;
-    } elseif ($shortCommit !== '') {
-        $installedVersionLabel = $shortCommit;
-    } elseif (($updateLocal['version'] ?? '') !== '') {
-        $installedVersionLabel = (string)$updateLocal['version'];
-    }
+    $installedVersionLabel = (string)($updateLocal['version'] ?? ($engine_release['version'] ?? '0.0.0'));
     ?>
     <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
         <div>

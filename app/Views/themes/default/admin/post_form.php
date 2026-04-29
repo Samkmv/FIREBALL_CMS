@@ -86,9 +86,10 @@ $editorConfig = [
 
 <style>
     .fb-post-editor {
-        border: 1px solid #dcdcde;
-        border-radius: 1rem;
-        background: #f0f0f1;
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, #f4efe7 0%, #fbfaf8 100%);
+        box-shadow: 0 24px 60px rgba(24, 33, 37, .08);
         overflow: hidden;
     }
 
@@ -98,14 +99,16 @@ $editorConfig = [
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        padding: .85rem 1rem;
-        background: #fff;
-        border-bottom: 1px solid #dcdcde;
+        padding: 1rem 1.15rem;
+        background: rgba(255, 255, 255, .86);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(26, 33, 36, .08);
     }
 
     .fb-post-editor__hint {
-        color: #646970;
-        font-size: .9rem;
+        color: #5d6668;
+        font-size: .92rem;
+        line-height: 1.55;
         margin: 0;
     }
 
@@ -113,9 +116,9 @@ $editorConfig = [
         display: flex;
         align-items: center;
         gap: .75rem;
-        color: #1e1e1e;
+        color: #173a34;
         font-size: .88rem;
-        font-weight: 500;
+        font-weight: 700;
     }
 
     .fb-post-editor__workspace {
@@ -126,16 +129,16 @@ $editorConfig = [
 
     .fb-post-editor__sidebar,
     .fb-post-editor__inspector {
-        background: #f6f7f7;
+        background: rgba(250, 248, 244, .92);
     }
 
     .fb-post-editor__sidebar {
-        border-right: 1px solid #dcdcde;
+        border-right: 1px solid rgba(26, 33, 36, .08);
         padding: 1rem;
     }
 
     .fb-post-editor__inspector {
-        border-left: 1px solid #dcdcde;
+        border-left: 1px solid rgba(26, 33, 36, .08);
         padding: 1rem;
     }
 
@@ -144,8 +147,8 @@ $editorConfig = [
         font-size: .82rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: .06em;
-        color: #50575e;
+        letter-spacing: .04em;
+        color: #5b6769;
     }
 
     .fb-post-editor__inserter-buttons {
@@ -159,26 +162,28 @@ $editorConfig = [
         align-items: center;
         gap: .7rem;
         width: 100%;
-        border: 1px solid #dcdcde;
+        border: 1px solid rgba(26, 33, 36, .08);
         border-radius: .85rem;
-        background: #fff;
+        background: rgba(255, 255, 255, .9);
         padding: .8rem .9rem;
         text-align: left;
-        transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+        box-shadow: 0 10px 26px rgba(28, 37, 38, .04);
+        transition: border-color .15s ease, background-color .15s ease, transform .15s ease, box-shadow .15s ease;
     }
 
     .fb-post-editor__inserter-btn:hover {
-        border-color: #3858e9;
-        background: #f7f8ff;
+        border-color: rgba(31, 92, 79, .28);
+        background: #ffffff;
         transform: translateY(-1px);
+        box-shadow: 0 14px 28px rgba(28, 37, 38, .08);
     }
 
     .fb-post-editor__inserter-icon {
-        width: 2rem;
-        height: 2rem;
+        width: 2.2rem;
+        height: 2.2rem;
         border-radius: .65rem;
-        background: #1e1e1e;
-        color: #fff;
+        background: rgba(31, 92, 79, .12);
+        color: #1f5c4f;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -194,24 +199,31 @@ $editorConfig = [
 
     .fb-post-editor__outline-item {
         width: 100%;
-        border: 1px solid transparent;
+        border: 1px solid rgba(26, 33, 36, .06);
         border-radius: .75rem;
-        background: transparent;
+        background: rgba(255, 255, 255, .78);
         padding: .65rem .8rem;
         text-align: left;
         font-size: .92rem;
         color: #1e1e1e;
+        transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+    }
+
+    .fb-post-editor__outline-item:hover {
+        border-color: rgba(31, 92, 79, .18);
+        background: #fff;
     }
 
     .fb-post-editor__outline-item.is-active {
-        border-color: #3858e9;
-        background: #eef2ff;
-        color: #2145e6;
+        border-color: rgba(31, 92, 79, .26);
+        background: rgba(31, 92, 79, .1);
+        color: #173a34;
+        transform: translateY(-1px);
     }
 
     .fb-post-editor__canvas {
-        background: #fff;
-        padding: 1.25rem;
+        background: rgba(255, 255, 255, .72);
+        padding: 1.35rem;
     }
 
     .fb-post-editor__canvas-header {
@@ -220,13 +232,15 @@ $editorConfig = [
         justify-content: space-between;
         gap: 1rem;
         margin-bottom: 1rem;
+        padding-bottom: .9rem;
+        border-bottom: 1px solid rgba(26, 33, 36, .06);
     }
 
     .fb-post-editor__canvas-title {
         margin: 0;
-        font-size: .95rem;
+        font-size: 1rem;
         font-weight: 700;
-        color: #1e1e1e;
+        color: #182225;
     }
 
     .fb-post-editor__list {
@@ -235,29 +249,31 @@ $editorConfig = [
     }
 
     .fb-post-editor__empty {
-        border: 1px dashed #c3c4c7;
-        border-radius: 1rem;
-        padding: 2rem 1.25rem;
+        border: 1px dashed rgba(31, 92, 79, .22);
+        border-radius: 1.1rem;
+        padding: 2.4rem 1.4rem;
         text-align: center;
-        color: #646970;
-        background: #fff;
+        color: #5d6668;
+        background: rgba(255, 255, 255, .78);
     }
 
     .fb-post-editor__block {
-        border: 1px solid #dcdcde;
-        border-radius: .9rem;
-        background: #fff;
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, .96);
+        box-shadow: 0 16px 36px rgba(28, 37, 38, .06);
         overflow: hidden;
-        transition: box-shadow .15s ease, border-color .15s ease;
+        transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
     }
 
     .fb-post-editor__block.is-selected {
-        border-color: #3858e9;
-        box-shadow: 0 0 0 1px #3858e9;
+        border-color: rgba(31, 92, 79, .32);
+        box-shadow: 0 0 0 1px rgba(31, 92, 79, .22), 0 18px 40px rgba(31, 92, 79, .08);
+        transform: translateY(-1px);
     }
 
     .fb-post-editor__block.is-drop-target {
-        outline: 2px solid rgba(56, 88, 233, .24);
+        outline: 2px solid rgba(31, 92, 79, .24);
     }
 
     .fb-post-editor__block-header {
@@ -265,9 +281,9 @@ $editorConfig = [
         align-items: center;
         justify-content: space-between;
         gap: .75rem;
-        padding: .7rem .85rem;
-        background: #fff;
-        border-bottom: 1px solid #f0f0f1;
+        padding: .8rem .95rem;
+        background: rgba(249, 247, 243, .96);
+        border-bottom: 1px solid rgba(26, 33, 36, .06);
     }
 
     .fb-post-editor__block-title {
@@ -282,7 +298,7 @@ $editorConfig = [
         cursor: grab;
         border: 0;
         background: transparent;
-        color: #646970;
+        color: #687476;
         padding: 0;
         font-size: 1rem;
     }
@@ -293,13 +309,27 @@ $editorConfig = [
         gap: .4rem;
     }
 
+    .fb-post-editor__block-actions .btn,
+    .fb-post-editor__formatbar .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .8rem;
+    }
+
+    .fb-post-editor__block-actions .btn {
+        width: 2.25rem;
+        height: 2.25rem;
+        padding: 0;
+    }
+
     .fb-post-editor__body {
-        padding: 1rem;
+        padding: 1.05rem;
     }
 
     .fb-post-editor__body .form-label {
         font-size: .84rem;
-        color: #646970;
+        color: #5d6668;
     }
 
     .fb-post-editor__grid {
@@ -315,27 +345,36 @@ $editorConfig = [
         display: flex;
         flex-wrap: wrap;
         gap: .5rem;
-        margin-bottom: .85rem;
+        align-items: center;
+        margin-bottom: .95rem;
         padding: .85rem;
-        border: 1px solid #dcdcde;
+        border: 1px solid rgba(26, 33, 36, .08);
         border-radius: 1rem;
-        background: #f6f7f7;
+        background: rgba(248, 245, 240, .9);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65);
     }
 
     .fb-post-editor__formatbar .btn,
     .fb-post-editor__formatbar .form-select,
     .fb-post-editor__formatbar .form-control-color {
         min-height: 2.35rem;
+        border-radius: .85rem;
+    }
+
+    .fb-post-editor__formatbar .btn {
+        min-width: 2.35rem;
+        padding-inline: .7rem;
     }
 
     .fb-post-editor__rich {
         min-height: 180px;
         padding: 1rem;
-        border: 1px solid #dcdcde;
+        border: 1px solid rgba(26, 33, 36, .1);
         border-radius: 1rem;
         background: #fff;
         outline: none;
         line-height: 1.7;
+        box-shadow: inset 0 1px 2px rgba(17, 24, 39, .04);
     }
 
     .fb-post-editor__rich:empty::before,
@@ -344,9 +383,16 @@ $editorConfig = [
         color: rgba(108, 117, 125, .82);
     }
 
+    .fb-post-editor__rich:focus,
+    .fb-post-editor__heading-input:focus,
+    .fb-post-editor__code:focus {
+        border-color: rgba(31, 92, 79, .32);
+        box-shadow: 0 0 0 4px rgba(31, 92, 79, .08);
+    }
+
     .fb-post-editor__heading-input {
         padding: .9rem 1rem;
-        border: 1px solid #dcdcde;
+        border: 1px solid rgba(26, 33, 36, .1);
         border-radius: 1rem;
         min-height: 3.4rem;
         outline: none;
@@ -359,9 +405,9 @@ $editorConfig = [
         align-items: center;
         justify-content: center;
         min-height: 170px;
-        border: 1px dashed #c3c4c7;
+        border: 1px dashed rgba(31, 92, 79, .18);
         border-radius: 1rem;
-        background: #f6f7f7;
+        background: linear-gradient(180deg, #fbf8f3 0%, #f2eee7 100%);
         overflow: hidden;
     }
 
@@ -377,7 +423,7 @@ $editorConfig = [
     .fb-post-editor__preview-text {
         padding: 1rem;
         text-align: center;
-        color: #646970;
+        color: #5d6668;
         font-size: .92rem;
     }
 
@@ -406,17 +452,18 @@ $editorConfig = [
         display: inline-flex;
         align-items: center;
         border-radius: 999px;
-        background: #f0f0f1;
-        color: #50575e;
+        background: rgba(31, 92, 79, .1);
+        color: #173a34;
         padding: .3rem .6rem;
         font-size: .78rem;
         line-height: 1;
     }
 
     .fb-post-editor__inspector-card {
-        border: 1px solid #dcdcde;
-        border-radius: .9rem;
-        background: #fff;
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, .94);
+        box-shadow: 0 12px 30px rgba(28, 37, 38, .04);
         padding: .9rem;
         margin-bottom: .85rem;
     }
@@ -426,7 +473,7 @@ $editorConfig = [
     }
 
     .fb-post-editor__inspector-note {
-        color: #646970;
+        color: #5d6668;
         font-size: .9rem;
         line-height: 1.55;
         margin: 0;
@@ -437,22 +484,60 @@ $editorConfig = [
         align-items: center;
         gap: .45rem;
         font-size: .78rem;
-        color: #646970;
+        color: #5d6668;
         text-transform: uppercase;
-        letter-spacing: .05em;
+        letter-spacing: .04em;
     }
 
     @media (max-width: 767.98px) {
+        .fb-post-editor {
+            border-radius: 1rem;
+        }
+
+        .fb-post-editor__topbar {
+            padding: .9rem;
+        }
+
         .fb-post-editor__workspace {
             grid-template-columns: 1fr;
+            min-height: auto;
         }
 
         .fb-post-editor__sidebar,
         .fb-post-editor__canvas,
         .fb-post-editor__inspector {
             border: 0;
-            border-bottom: 1px solid #dcdcde;
+            border-bottom: 1px solid rgba(26, 33, 36, .08);
             padding: .85rem;
+        }
+
+        .fb-post-editor__canvas-header {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .fb-post-editor__canvas-header .btn {
+            width: 100%;
+        }
+
+        .fb-post-editor__formatbar {
+            padding: .7rem;
+            gap: .45rem;
+        }
+
+        .fb-post-editor__formatbar label {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .fb-post-editor__block-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .fb-post-editor__block-actions {
+            width: 100%;
+            justify-content: flex-end;
         }
     }
 </style>

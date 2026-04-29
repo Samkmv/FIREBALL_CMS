@@ -11,29 +11,14 @@ $updaterToken = $formData['updater_github_token'] ?? ($settings['updater_github_
 $release = is_array($lastCheck['release'] ?? null) ? $lastCheck['release'] : [];
 $statusVariant = 'secondary';
 $statusLabel = return_translation('admin_update_status_unknown');
+$isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
 $isGitRepo = !empty($updateLocal['is_git_repo']);
 $gitStatusLabel = !$isGitRepo
     ? return_translation('admin_update_git_not_applicable')
     : (!empty($updateLocal['is_update_clean'])
         ? return_translation('admin_update_git_clean')
         : return_translation('admin_update_git_dirty'));
-$gitTag = trim((string)($updateLocal['git_tag'] ?? ''));
-$gitDescribe = trim((string)($updateLocal['git_describe'] ?? ''));
-$shortCommit = trim((string)($updateLocal['short_commit'] ?? ''));
-$installedGitLabel = '';
-
-if ($gitTag !== '') {
-    $installedGitLabel = $gitTag;
-} elseif ($gitDescribe !== '' && preg_match('/^(.+)-\d+-g([0-9a-f]+)$/i', $gitDescribe, $matches) === 1) {
-    $installedGitLabel = $matches[1] . ' + ' . $matches[2];
-} elseif ($gitDescribe !== '') {
-    $installedGitLabel = $gitDescribe;
-} elseif ($shortCommit !== '') {
-    $installedGitLabel = $shortCommit;
-}
-$installedVersionLabel = $installedGitLabel !== ''
-    ? $installedGitLabel
-    : (string)($updateLocal['version'] ?? ($engine_release['version'] ?? '0.0.0'));
+$installedVersionLabel = (string)($updateLocal['version'] ?? ($engine_release['version'] ?? '0.0.0'));
 $remoteCommitLabel = trim((string)($lastCheck['remote_commit'] ?? '')) !== ''
     ? substr((string)$lastCheck['remote_commit'], 0, 7)
     : '—';
@@ -77,32 +62,34 @@ if (is_array($lastCheck)) {
 
     <?= view()->renderPartial('admin/nav') ?>
 
-    <form class="border rounded-5 p-3 p-md-4 mb-4" action="<?= base_href('/admin/updates') ?>" method="post">
-        <?= get_csrf_field() ?>
-        <div class="row g-3">
-            <div class="col-md-7">
-                <label class="form-label"><?= print_translation('admin_settings_update_repository') ?></label>
-                <input class="form-control <?= get_validation_class('updater_github_repository') ?>" type="text" name="updater_github_repository" value="<?= htmlSC($updaterRepository) ?>" placeholder="owner/repository">
-                <div class="form-text"><?= print_translation('admin_settings_update_repository_hint') ?></div>
-                <?= get_errors('updater_github_repository') ?>
+    <?php if ($isCreator): ?>
+        <form class="border rounded-5 p-3 p-md-4 mb-4" action="<?= base_href('/admin/updates') ?>" method="post">
+            <?= get_csrf_field() ?>
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <label class="form-label"><?= print_translation('admin_settings_update_repository') ?></label>
+                    <input class="form-control <?= get_validation_class('updater_github_repository') ?>" type="text" name="updater_github_repository" value="<?= htmlSC($updaterRepository) ?>" placeholder="owner/repository">
+                    <div class="form-text"><?= print_translation('admin_settings_update_repository_hint') ?></div>
+                    <?= get_errors('updater_github_repository') ?>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label"><?= print_translation('admin_settings_update_branch') ?></label>
+                    <input class="form-control <?= get_validation_class('updater_github_branch') ?>" type="text" name="updater_github_branch" value="<?= htmlSC($updaterBranch) ?>" placeholder="main">
+                    <div class="form-text"><?= print_translation('admin_settings_update_branch_hint') ?></div>
+                    <?= get_errors('updater_github_branch') ?>
+                </div>
+                <div class="col-12">
+                    <label class="form-label"><?= print_translation('admin_settings_update_token') ?></label>
+                    <input class="form-control" type="password" name="updater_github_token" value="<?= htmlSC($updaterToken) ?>" autocomplete="off" placeholder="ghp_...">
+                    <div class="form-text"><?= print_translation('admin_settings_update_token_hint') ?></div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
+                    <div class="form-text align-self-center mb-0"><?= print_translation('admin_settings_update_save_hint') ?></div>
+                </div>
             </div>
-            <div class="col-md-5">
-                <label class="form-label"><?= print_translation('admin_settings_update_branch') ?></label>
-                <input class="form-control <?= get_validation_class('updater_github_branch') ?>" type="text" name="updater_github_branch" value="<?= htmlSC($updaterBranch) ?>" placeholder="main">
-                <div class="form-text"><?= print_translation('admin_settings_update_branch_hint') ?></div>
-                <?= get_errors('updater_github_branch') ?>
-            </div>
-            <div class="col-12">
-                <label class="form-label"><?= print_translation('admin_settings_update_token') ?></label>
-                <input class="form-control" type="password" name="updater_github_token" value="<?= htmlSC($updaterToken) ?>" autocomplete="off" placeholder="ghp_...">
-                <div class="form-text"><?= print_translation('admin_settings_update_token_hint') ?></div>
-            </div>
-            <div class="col-12 d-flex gap-2">
-                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
-                <div class="form-text align-self-center mb-0"><?= print_translation('admin_settings_update_save_hint') ?></div>
-            </div>
-        </div>
-    </form>
+        </form>
+    <?php endif; ?>
 
     <div id="update-center" class="border rounded-5 p-3 p-md-4">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">

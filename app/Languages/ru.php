@@ -332,6 +332,7 @@ return [
     'admin_updates_heading' => 'Обновления',
     'admin_updates_subtitle' => 'Панель для GitHub-канала, проверки удалённой ветки и гибридного обновления git + ZIP.',
     'admin_updates_saved' => 'Настройки центра обновления сохранены.',
+    'admin_updates_creator_only' => 'Настройки центра обновления может изменять только пользователь с ролью Создатель.',
     'admin_update_center_heading' => 'Обновление',
     'admin_update_center_subtitle' => 'Проверяйте состояние удалённой ветки и запускайте обновление через git или ZIP-архив исходников.',
     'admin_update_status_unknown' => 'Проверка не выполнялась',

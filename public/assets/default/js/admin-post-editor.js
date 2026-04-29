@@ -488,13 +488,13 @@ $(function () {
     function renderTextCanvas(block) {
         return '' +
             '<div class="fb-post-editor__formatbar">' +
-                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="bold"><strong>B</strong></button>' +
-                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="italic"><em>I</em></button>' +
-                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="underline"><u>U</u></button>' +
-                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="insertUnorderedList" title="' + escapeAttr(labels.bulletList) + '">• List</button>' +
-                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="formatBlock" data-editor-value="blockquote" title="' + escapeAttr(labels.quote) + '">"</button>' +
-                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="createLink">Link</button>' +
-                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="unlink">Unlink</button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="bold" title="Bold" aria-label="Bold"><strong>B</strong></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="italic" title="Italic" aria-label="Italic"><em>I</em></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="underline" title="Underline" aria-label="Underline"><u>U</u></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="insertUnorderedList" title="' + escapeAttr(labels.bulletList) + '" aria-label="' + escapeAttr(labels.bulletList) + '"><i class="ci-list"></i></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="formatBlock" data-editor-value="blockquote" title="' + escapeAttr(labels.quote) + '" aria-label="' + escapeAttr(labels.quote) + '">&ldquo;</button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="createLink" title="Link" aria-label="Link"><i class="ci-link"></i></button>' +
+                '<button class="btn btn-outline-secondary btn-sm" type="button" data-editor-command="unlink" title="Unlink" aria-label="Unlink">/</button>' +
                 '<select class="form-select form-select-sm" data-editor-command="fontName" aria-label="' + escapeAttr(labels.font) + '">' +
                     '<option value="">' + escapeHtml(labels.font) + '</option>' +
                     renderOptions(fonts, '') +
@@ -678,10 +678,10 @@ $(function () {
                             '<span>' + escapeHtml(blockTitle(block.type)) + ' #' + escapeHtml(String(index + 1)) + '</span>' +
                         '</div>' +
                         '<div class="fb-post-editor__block-actions">' +
-                            '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="move-up" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.moveUp) + '">↑</button>' +
-                            '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="move-down" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.moveDown) + '">↓</button>' +
-                            '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="duplicate" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.duplicate) + '">+</button>' +
-                            '<button class="btn btn-outline-danger btn-sm" type="button" data-block-action="remove" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.remove) + '">×</button>' +
+                            '<button class="btn btn-outline-secondary btn-sm btn-icon rounded-circle" type="button" data-block-action="move-up" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.moveUp) + '" aria-label="' + escapeAttr(labels.moveUp) + '"><i class="ci-arrow-up"></i></button>' +
+                            '<button class="btn btn-outline-secondary btn-sm btn-icon rounded-circle" type="button" data-block-action="move-down" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.moveDown) + '" aria-label="' + escapeAttr(labels.moveDown) + '"><i class="ci-arrow-down"></i></button>' +
+                            '<button class="btn btn-outline-secondary btn-sm btn-icon rounded-circle" type="button" data-block-action="duplicate" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.duplicate) + '" aria-label="' + escapeAttr(labels.duplicate) + '"><i class="ci-copy"></i></button>' +
+                            '<button class="btn btn-outline-danger btn-sm btn-icon rounded-circle" type="button" data-block-action="remove" data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.remove) + '" aria-label="' + escapeAttr(labels.remove) + '"><i class="ci-trash"></i></button>' +
                         '</div>' +
                     '</div>' +
                     '<div class="fb-post-editor__body" data-block-selectable data-block-id="' + escapeAttr(block.id) + '">' + renderCanvasBlockBody(block) + '</div>' +
@@ -709,7 +709,7 @@ $(function () {
                 '<div class="fb-post-editor__canvas">' +
                     '<div class="fb-post-editor__canvas-header">' +
                         '<h3 class="fb-post-editor__canvas-title">' + escapeHtml(labels.canvasTitle) + '</h3>' +
-                        '<button class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-editor-add="text">' + escapeHtml(labels.addBlock) + '</button>' +
+                        '<button class="btn btn-outline-secondary btn-sm rounded-pill d-inline-flex align-items-center gap-2" type="button" data-editor-add="text"><i class="ci-plus"></i>' + escapeHtml(labels.addBlock) + '</button>' +
                     '</div>' +
                     '<div class="fb-post-editor__list">' + (blocksHtml || ('<div class="fb-post-editor__empty">' + escapeHtml(labels.empty) + '</div>')) + '</div>' +
                 '</div>' +

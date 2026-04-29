@@ -104,7 +104,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div class="min-w-0">
                         <div class="small text-uppercase text-body-secondary fw-semibold mb-1"><?= print_translation('admin_files_heading') ?></div>
-                        <div class="d-flex flex-wrap align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2" data-file-manager-breadcrumbs>
                             <?php foreach ($breadcrumbs as $index => $crumb): ?>
                                 <?php if ($index > 0): ?>
                                     <span class="text-body-secondary">/</span>
@@ -114,7 +114,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                         </div>
                     </div>
 
-                    <div class="d-flex flex-wrap align-items-center gap-2">
+                    <div class="d-flex flex-wrap align-items-center gap-2" data-file-manager-toolbar-actions>
                         <div class="dropdown">
                             <button class="btn btn-dark rounded-pill dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="ci-plus"></i><?= print_translation('admin_files_add_btn') ?>
@@ -160,14 +160,14 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 </div>
 
                 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
+                    <div class="d-flex flex-wrap align-items-center gap-2" data-file-manager-status>
                         <span class="badge rounded-pill px-3 py-2 fw-medium" data-file-manager-selection-badge>
                             <?= print_translation('admin_files_selected_count') ?>: <span data-file-manager-selection-count>0</span>
                         </span>
                         <span class="small text-body-secondary"><?= str_replace(':size', '200', return_translation('admin_files_upload_limit_hint')) ?></span>
                     </div>
 
-                    <form method="get" class="position-relative" data-fm-search-form style="max-width: 320px; width: 100%;">
+                    <form method="get" class="position-relative" data-fm-search-form data-file-manager-search-form>
                         <input type="hidden" name="dir" value="<?= htmlSC($currentDir) ?>">
                         <?php if ($pickerMode): ?>
                             <input type="hidden" name="picker" value="1">
@@ -203,7 +203,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
                     <input type="hidden" name="action_name" value="" data-file-manager-action-name>
 
-                    <div class="table-responsive overflow-auto admin-table-scroll">
+                    <div class="table-responsive overflow-auto admin-table-scroll" data-file-manager-table-wrap>
                         <table class="table align-middle mb-0" data-file-manager-table>
                             <thead class="position-sticky top-0">
                             <tr>
@@ -252,11 +252,11 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     data-preview-url="<?= htmlSC((string)($item['url'] ?? '')) ?>"
                                     data-can-preview="<?= $previewable ? '1' : '0' ?>"
                                 >
-                                    <td>
+                                    <td data-file-manager-select-cell>
                                         <input class="form-check-input" type="checkbox" name="selected_paths[]" value="<?= htmlSC((string)($item['relative_path'] ?? '')) ?>" data-file-manager-select>
                                         <input type="hidden" name="selected_types[]" value="<?= htmlSC((string)($item['type'] ?? 'file')) ?>" data-file-manager-select-type disabled>
                                     </td>
-                                    <td>
+                                    <td data-file-manager-name-cell>
                                         <div class="d-flex align-items-center gap-3 min-w-0">
                                             <?php if ($previewable): ?>
                                                 <button type="button" class="btn p-0 border-0 bg-transparent flex-shrink-0" data-file-preview data-file-preview-url="<?= htmlSC((string)$item['url']) ?>" data-file-preview-name="<?= htmlSC((string)$item['name']) ?>" style="cursor: zoom-in;">
@@ -289,15 +289,35 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     <td class="text-nowrap text-body-secondary small"><?= $isDirectory ? '—' : htmlSC((string)($item['size'] ?? '')) ?></td>
                                     <td class="text-nowrap text-body-secondary small"><?= htmlSC((string)($item['modified_at'] ?? '')) ?></td>
                                     <td class="text-end text-nowrap">
-                                        <div class="d-inline-flex align-items-center gap-2">
-                                            <?php if ($isDirectory): ?>
-                                                <a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="<?= $buildManagerUrl((string)$item['relative_path']) ?>" data-fm-nav-link aria-label="<?= htmlSC(return_translation('admin_btn_open')) ?>" title="<?= htmlSC(return_translation('admin_btn_open')) ?>" data-bs-toggle="tooltip"><i class="ci-folder"></i></a>
-                                            <?php else: ?>
-                                                <a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="<?= htmlSC((string)($item['url'] ?? '#')) ?>" target="_blank" rel="noopener noreferrer" aria-label="<?= htmlSC(return_translation('admin_btn_view')) ?>" title="<?= htmlSC(return_translation('admin_btn_view')) ?>" data-bs-toggle="tooltip"><i class="ci-eye"></i></a>
-                                                <?php if ($pickerMode && $pickerField !== ''): ?>
-                                                    <button class="btn btn-sm btn-dark btn-icon rounded-circle" type="button" data-file-select data-file-select-field="<?= htmlSC($pickerField) ?>" data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>" aria-label="<?= htmlSC(return_translation('admin_files_select')) ?>" title="<?= htmlSC(return_translation('admin_files_select')) ?>" data-bs-toggle="tooltip"><i class="ci-check"></i></button>
+                                        <div class="dropdown d-inline-block" data-file-manager-actions-menu>
+                                            <button class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="ci-settings"></i><?= print_translation('admin_files_actions_btn') ?>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4">
+                                                <?php if ($pickerMode && $pickerField !== '' && !$isDirectory): ?>
+                                                    <li>
+                                                        <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-select data-file-select-field="<?= htmlSC($pickerField) ?>" data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>">
+                                                            <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
+                                                        </button>
+                                                    </li>
                                                 <?php endif; ?>
-                                            <?php endif; ?>
+                                                <li>
+                                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="open">
+                                                        <i class="<?= $isDirectory ? 'ci-folder' : 'ci-eye' ?>"></i><?= $isDirectory ? print_translation('admin_btn_open') : print_translation('admin_btn_view') ?>
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="rename">
+                                                        <i class="ci-edit"></i><?= print_translation('admin_files_rename') ?>
+                                                    </button>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="delete">
+                                                        <i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?>
+                                                    </button>
+                                                </li>
+                                            </ul>
                                         </div>
                                     </td>
                                 </tr>
@@ -437,6 +457,33 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <i class="ci-eye"></i><?= print_translation('admin_btn_view') ?>
                 </a>
                 <button type="button" class="btn btn-dark rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="fileDeleteModal" tabindex="-1" aria-hidden="true" data-file-delete-modal>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-5 overflow-hidden">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h2 class="modal-title fs-5"><?= print_translation('admin_delete_modal_title') ?></h2>
+                    <p class="text-body-secondary small mb-0" data-file-delete-modal-message><?= print_translation('admin_delete_modal_default_message') ?></p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div class="border rounded-4 bg-body-tertiary px-3 py-2 d-none" data-file-delete-modal-item-wrap>
+                    <div class="small text-body-secondary mb-1"><?= print_translation('admin_delete_modal_item_label') ?></div>
+                    <div class="fw-semibold text-break" data-file-delete-modal-item></div>
+                </div>
+                <p class="small text-body-secondary mb-0 mt-3"><?= print_translation('admin_delete_modal_hint') ?></p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                <button type="button" class="btn btn-danger rounded-pill d-inline-flex align-items-center gap-2" data-file-delete-modal-confirm>
+                    <i class="ci-trash"></i><?= print_translation('admin_btn_delete') ?>
+                </button>
             </div>
         </div>
     </div>

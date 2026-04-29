@@ -21,6 +21,8 @@ $(function () {
         return element ? bootstrapApi.Modal.getOrCreateInstance(element) : null;
     }
 
+    let pendingDelete = null;
+
     function setLoading(isLoading) {
         getBrowser().toggleClass('is-loading', isLoading);
     }
@@ -117,6 +119,75 @@ $(function () {
 
             renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
         });
+    }
+
+    function submitRowDelete(row) {
+        const form = $('[data-file-manager-bulk-form]')[0];
+        if (!form || !row.length) {
+            return;
+        }
+
+        const formData = new FormData(form);
+        formData.delete('selected_paths[]');
+        formData.delete('selected_types[]');
+        formData.set('action_name', 'delete');
+        formData.append('selected_paths[]', String(row.data('path') || ''));
+        formData.append('selected_types[]', String(row.data('type') || 'file'));
+
+        requestManager(form.action, {
+            method: String(form.method || 'POST').toUpperCase(),
+            body: formData
+        }).then(function (payload) {
+            hideVisibleModals();
+            replaceBrowser(payload.html || '');
+            renderFeedback(payload.status || 'success', payload.message || '');
+        }).catch(function (payload) {
+            if (payload && payload.html) {
+                replaceBrowser(payload.html);
+            }
+
+            renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
+        });
+    }
+
+    function openDeleteModal(options) {
+        const modal = getModal('[data-file-delete-modal]');
+        if (!modal) {
+            return false;
+        }
+
+        const messageElement = $('[data-file-delete-modal-message]');
+        const itemWrap = $('[data-file-delete-modal-item-wrap]');
+        const itemElement = $('[data-file-delete-modal-item]');
+        const message = String(options && options.message ? options.message : '').trim();
+        const item = String(options && options.item ? options.item : '').trim();
+
+        messageElement.text(message);
+        itemElement.text(item);
+        itemWrap.toggleClass('d-none', item === '');
+        pendingDelete = options || null;
+        modal.show();
+
+        return true;
+    }
+
+    function submitPendingDelete() {
+        if (!pendingDelete) {
+            return;
+        }
+
+        const activeDelete = pendingDelete;
+        pendingDelete = null;
+
+        if (activeDelete.type === 'row' && activeDelete.row) {
+            submitRowDelete(activeDelete.row);
+            return;
+        }
+
+        if (activeDelete.type === 'bulk' && activeDelete.form) {
+            $(activeDelete.form).find('[data-file-manager-action-name]').val('delete');
+            submitAsyncForm(activeDelete.form);
+        }
     }
 
     function selectedRows() {
@@ -368,13 +439,16 @@ $(function () {
                 return;
             }
 
-            const message = messages.deleteConfirm.replace(':count', String(rows.length));
-            if (!window.confirm(message)) {
+            const opened = openDeleteModal({
+                type: 'bulk',
+                form: form,
+                message: messages.deleteConfirm.replace(':count', String(rows.length)),
+                item: rows.length === 1 ? String(rows.first().data('name') || '') : ''
+            });
+
+            if (!opened) {
                 return;
             }
-
-            $(form).find('[data-file-manager-action-name]').val('delete');
-            submitAsyncForm(form);
         }
     });
 
@@ -383,6 +457,57 @@ $(function () {
             String($(this).data('filePreviewUrl') || ''),
             String($(this).data('filePreviewName') || '')
         );
+    });
+
+    page.on('click', '[data-file-manager-row-action]', function () {
+        const button = $(this);
+        const action = String(button.data('fileManagerRowAction') || '');
+        const row = button.closest('[data-file-manager-row]');
+        const messages = currentMessages();
+
+        if (!row.length) {
+            return;
+        }
+
+        if (action === 'rename') {
+            openRenameModal(row);
+            return;
+        }
+
+        if (action === 'delete') {
+            const opened = openDeleteModal({
+                type: 'row',
+                row: row,
+                message: messages.deleteConfirm.replace(':count', '1'),
+                item: String(row.data('name') || '')
+            });
+
+            if (!opened) {
+                return;
+            }
+            return;
+        }
+
+        if (action === 'open') {
+            const type = String(row.data('type') || '');
+            const url = String(row.data('openUrl') || '');
+
+            if (!url) {
+                return;
+            }
+
+            if (type === 'directory') {
+                loadUrl(url, true);
+                return;
+            }
+
+            if (String(row.data('canPreview') || '0') === '1') {
+                openPreviewModal(String(row.data('previewUrl') || ''), String(row.data('name') || ''));
+                return;
+            }
+
+            window.open(url, '_blank', 'noopener');
+        }
     });
 
     page.on('click', '[data-file-select]', function () {
@@ -419,6 +544,21 @@ $(function () {
         $('[data-file-rename-current-name]').text('');
         $('[data-file-rename-extension]').text('');
         $('[data-file-rename-extension-wrap]').removeClass('d-none');
+    });
+
+    $(document).on('hidden.bs.modal', '[data-file-delete-modal]', function () {
+        pendingDelete = null;
+        $('[data-file-delete-modal-message]').text('');
+        $('[data-file-delete-modal-item]').text('');
+        $('[data-file-delete-modal-item-wrap]').addClass('d-none');
+    });
+
+    page.on('click', '[data-file-delete-modal-confirm]', function () {
+        const modal = getModal('[data-file-delete-modal]');
+        submitPendingDelete();
+        if (modal) {
+            modal.hide();
+        }
     });
 
     window.addEventListener('message', function (event) {

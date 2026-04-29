@@ -266,7 +266,7 @@ class FileManagerController extends BaseController
      */
     protected function renderBrowser(array $directoryData, bool $pickerMode, string $pickerField): string
     {
-        return view()->renderPartial('admin/_file_manager_browser', [
+        return view()->renderPartial('admin/file_manager_browser', [
             'manager' => $directoryData,
             'picker_mode' => $pickerMode,
             'picker_field' => $pickerField,

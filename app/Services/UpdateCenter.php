@@ -18,7 +18,7 @@ class UpdateCenter
     public function __construct(?SiteSetting $siteSettings = null)
     {
         $this->siteSettings = $siteSettings ?? new SiteSetting();
-        $this->engineRelease = require CONFIG . '/version.php';
+        $this->reloadEngineRelease();
     }
 
     /**
@@ -26,6 +26,8 @@ class UpdateCenter
      */
     public function getDashboardData(): array
     {
+        $this->reloadEngineRelease();
+
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
@@ -77,6 +79,8 @@ class UpdateCenter
      */
     public function checkForUpdates(): array
     {
+        $this->reloadEngineRelease();
+
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
@@ -482,6 +486,16 @@ class UpdateCenter
                 'updater_last_checked_at' => '',
             ]);
         }
+    }
+
+    /**
+     * Перечитывает локальный metadata-файл движка после обновления файлов.
+     */
+    protected function reloadEngineRelease(): void
+    {
+        $payload = require CONFIG . '/version.php';
+
+        $this->engineRelease = is_array($payload) ? $payload : [];
     }
 
     /**

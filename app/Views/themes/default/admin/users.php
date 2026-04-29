@@ -46,8 +46,14 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                     <?php foreach ($users as $item): ?>
                         <?php
                         $isCurrentUser = (int)$item['id'] === (int)(get_user()['id'] ?? 0);
-                        $isProtectedCreator = ($item['role'] ?? 'user') === 'creator';
-                        $isLastAdmin = in_array(($item['role'] ?? 'user'), ['creator', 'admin'], true) && (int)($item['other_admins_count'] ?? 0) === 0;
+                        $roleSlug = (string)($item['role'] ?? 'user');
+                        $isProtectedCreator = $roleSlug === 'creator';
+                        $isLastAdmin = in_array($roleSlug, ['creator', 'admin'], true) && (int)($item['other_admins_count'] ?? 0) === 0;
+                        $roleBadgeClass = match ($roleSlug) {
+                            'creator' => 'text-success bg-success-subtle',
+                            'admin' => 'text-warning bg-warning-subtle',
+                            default => 'text-secondary bg-secondary-subtle',
+                        };
                         $deleteBlockedMessage = $isCurrentUser
                             ? return_translation('admin_users_delete_self_blocked')
                             : ($isProtectedCreator
@@ -69,7 +75,9 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             </td>
                             <td><?= htmlSC($item['login'] ?? '') ?></td>
                             <td><?= htmlSC($item['email']) ?></td>
-                            <td><?= htmlSC(get_user_role_label($item['role'] ?? 'user')) ?></td>
+                            <td>
+                                <span class="badge fs-xs rounded-pill <?= $roleBadgeClass ?>"><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
+                            </td>
                             <td class="text-nowrap"><?= date('d.m.Y H:i', strtotime($item['created_at'])) ?></td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">

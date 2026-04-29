@@ -332,6 +332,7 @@ return [
     'admin_updates_heading' => 'Update',
     'admin_updates_subtitle' => 'A dedicated screen for the GitHub channel, remote branch checks and hybrid git + ZIP updates.',
     'admin_updates_saved' => 'Update center settings saved.',
+    'admin_updates_creator_only' => 'Only the user with the Creator role can change update center settings.',
     'admin_update_center_heading' => 'Update',
     'admin_update_center_subtitle' => 'Check the remote branch state and run updates through git or a source ZIP fallback.',
     'admin_update_status_unknown' => 'No check has been run',
