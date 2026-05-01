@@ -2,7 +2,7 @@
 
 return [
     'name' => 'FIREBALL_CMS',
-    'version' => '1.2.7.a',
+    'version' => '1.2.8',
     'released_at' => '2026-05-01',
     'summary' => 'Обновление системы тест',
     'changes' => [
