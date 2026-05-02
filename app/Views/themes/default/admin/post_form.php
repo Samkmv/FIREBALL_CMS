@@ -61,11 +61,13 @@ $editorConfig = [
         'addHeading' => return_translation('admin_post_builder_add_heading'),
         'addImage' => return_translation('admin_post_builder_add_image'),
         'addVideo' => return_translation('admin_post_builder_add_video'),
+        'addHtml' => return_translation('admin_post_builder_add_html'),
         'addCode' => return_translation('admin_post_builder_add_code'),
         'textBlock' => return_translation('admin_post_builder_block_text'),
         'headingBlock' => return_translation('admin_post_builder_block_heading'),
         'imageBlock' => return_translation('admin_post_builder_block_image'),
         'videoBlock' => return_translation('admin_post_builder_block_video'),
+        'htmlBlock' => return_translation('admin_post_builder_block_html'),
         'codeBlock' => return_translation('admin_post_builder_block_code'),
         'moveUp' => return_translation('admin_post_builder_move_up'),
         'moveDown' => return_translation('admin_post_builder_move_down'),
@@ -81,6 +83,8 @@ $editorConfig = [
         'videoCaption' => return_translation('admin_post_builder_video_caption'),
         'headingLevel' => return_translation('admin_post_builder_heading_level'),
         'codeLanguage' => return_translation('admin_post_builder_code_language'),
+        'htmlPlaceholder' => return_translation('admin_post_builder_html_placeholder'),
+        'htmlPreview' => return_translation('admin_post_builder_html_preview'),
         'codePlaceholder' => return_translation('admin_post_builder_code_placeholder'),
         'textPlaceholder' => return_translation('admin_post_builder_text_placeholder'),
         'headingPlaceholder' => return_translation('admin_post_builder_heading_placeholder'),
@@ -497,12 +501,50 @@ $editorConfig = [
     }
 
     .fb-post-editor__code {
-        min-height: 220px;
+        min-height: 420px;
+        resize: vertical;
         font: 400 .95rem/1.65 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
         border-radius: 1rem;
         background: #111827;
         color: #f3f4f6;
         border-color: #111827;
+    }
+
+    .fb-post-editor__code--html {
+        min-height: 620px;
+    }
+
+    .fb-post-editor__html-preview {
+        overflow-x: auto;
+    }
+
+    .fb-post-editor__html-preview * {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+
+    .fb-post-editor__html-preview img,
+    .fb-post-editor__html-preview video,
+    .fb-post-editor__html-preview canvas,
+    .fb-post-editor__html-preview svg {
+        display: block;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    .fb-post-editor__html-preview iframe,
+    .fb-post-editor__html-preview embed,
+    .fb-post-editor__html-preview object {
+        display: block;
+        width: 100% !important;
+        max-width: 100% !important;
+        border: 0;
+    }
+
+    .fb-post-editor__html-preview table {
+        display: block;
+        width: 100% !important;
+        overflow-x: auto;
     }
 
     .fb-post-editor__media-summary {

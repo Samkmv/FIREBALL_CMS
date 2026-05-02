@@ -40,11 +40,13 @@ $(function () {
         addHeading: 'Heading',
         addImage: 'Image',
         addVideo: 'Video',
+        addHtml: 'HTML',
         addCode: 'Code',
         textBlock: 'Text block',
         headingBlock: 'Heading block',
         imageBlock: 'Image block',
         videoBlock: 'Video block',
+        htmlBlock: 'HTML block',
         codeBlock: 'Code block',
         moveUp: 'Move up',
         moveDown: 'Move down',
@@ -60,6 +62,8 @@ $(function () {
         videoCaption: 'Caption',
         headingLevel: 'Level',
         codeLanguage: 'Language',
+        htmlPlaceholder: 'Paste HTML markup. Scripts and unsafe event handlers will be removed.',
+        htmlPreview: 'HTML preview',
         codePlaceholder: 'Paste your code here',
         textPlaceholder: 'Write text here. Use the toolbar for font, size, colors and lists.',
         headingPlaceholder: 'Heading text',
@@ -91,8 +95,11 @@ $(function () {
         heading: 'H',
         image: 'I',
         video: 'V',
+        html: '<>',
         code: '</>'
     };
+    const htmlBlockStartMarker = 'fb-html-block:start';
+    const htmlBlockEndMarker = 'fb-html-block:end';
     const fontSizeCommandMap = {
         '10px': '1',
         '12px': '2',
@@ -167,6 +174,72 @@ $(function () {
         return root.innerHTML.trim();
     }
 
+    function extractDimensionValue(value) {
+        const match = String(value || '').match(/(\d+(?:\.\d+)?)/);
+        return match ? parseFloat(match[1]) : 0;
+    }
+
+    function getNodeDimension(node, attributeName, styleName) {
+        const attributeValue = extractDimensionValue(node.getAttribute(attributeName));
+        if (attributeValue > 0) {
+            return attributeValue;
+        }
+
+        return extractDimensionValue(node.style[styleName]);
+    }
+
+    function buildAdaptivePreviewHtml(html) {
+        const cleanHtml = sanitizeHtml(html || '');
+        if (cleanHtml === '') {
+            return '';
+        }
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString('<div data-preview-root="1">' + cleanHtml + '</div>', 'text/html');
+        const root = doc.body.querySelector('[data-preview-root="1"]');
+        if (!root) {
+            return cleanHtml;
+        }
+
+        root.querySelectorAll('*').forEach(function (node) {
+            node.style.maxWidth = '100%';
+            node.style.boxSizing = 'border-box';
+
+            if (node.querySelector('iframe,video,embed,object')) {
+                node.style.width = '100%';
+                node.style.marginLeft = 'auto';
+                node.style.marginRight = 'auto';
+            }
+
+            if (node.matches('img,video,canvas,svg')) {
+                node.style.maxWidth = '100%';
+                node.style.height = 'auto';
+            }
+
+            if (node.matches('iframe,embed,object')) {
+                const width = getNodeDimension(node, 'width', 'width');
+                const height = getNodeDimension(node, 'height', 'height');
+
+                node.style.width = '100%';
+                node.style.maxWidth = '100%';
+
+                if (width > 0 && height > 0) {
+                    node.style.aspectRatio = width + ' / ' + height;
+                    node.style.height = 'auto';
+                } else if (!node.style.height) {
+                    node.style.minHeight = '320px';
+                }
+            }
+
+            if (node.matches('table')) {
+                node.style.width = '100%';
+                node.style.display = 'block';
+            }
+        });
+
+        return root.innerHTML.trim();
+    }
+
     function defaultBlockData(type) {
         if (type === 'heading') {
             return { level: 'h2', html: '' };
@@ -176,6 +249,9 @@ $(function () {
         }
         if (type === 'video') {
             return { src: '', poster: '', caption: '' };
+        }
+        if (type === 'html') {
+            return { html: '' };
         }
         if (type === 'code') {
             return { language: 'html', code: '' };
@@ -249,6 +325,26 @@ $(function () {
         });
     }
 
+    function parseHtmlBlock(html) {
+        return createBlock('html', { html: sanitizeHtml(html) });
+    }
+
+    function nodeToHtml(node) {
+        if (!node) {
+            return '';
+        }
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            return escapeHtml(String(node.textContent || ''));
+        }
+
+        if (node.nodeType === Node.COMMENT_NODE) {
+            return '<!--' + String(node.nodeValue || '') + '-->';
+        }
+
+        return String(node.outerHTML || '');
+    }
+
     function importBlocks(html) {
         const cleanHtml = String(html || '').trim();
         if (!cleanHtml) {
@@ -264,6 +360,7 @@ $(function () {
 
         const blocks = [];
         let richBuffer = [];
+        let htmlBuffer = null;
 
         function flushRichBuffer() {
             if (!richBuffer.length) {
@@ -274,7 +371,36 @@ $(function () {
             richBuffer = [];
         }
 
+        function flushHtmlBuffer() {
+            if (htmlBuffer === null) {
+                return;
+            }
+
+            blocks.push(parseHtmlBlock(htmlBuffer.join('')));
+            htmlBuffer = null;
+        }
+
         Array.from(root.childNodes).forEach(function (node) {
+            if (node.nodeType === Node.COMMENT_NODE) {
+                const commentValue = String(node.nodeValue || '').trim();
+
+                if (commentValue === htmlBlockStartMarker) {
+                    flushRichBuffer();
+                    htmlBuffer = [];
+                    return;
+                }
+
+                if (commentValue === htmlBlockEndMarker) {
+                    flushHtmlBuffer();
+                    return;
+                }
+            }
+
+            if (htmlBuffer !== null) {
+                htmlBuffer.push(nodeToHtml(node));
+                return;
+            }
+
             if (node.nodeType === Node.TEXT_NODE) {
                 const text = String(node.textContent || '').trim();
                 if (text !== '') {
@@ -319,6 +445,7 @@ $(function () {
             richBuffer.push(node.outerHTML);
         });
 
+        flushHtmlBuffer();
         flushRichBuffer();
 
         return blocks.length ? blocks : [createBlock('text')];
@@ -485,6 +612,11 @@ $(function () {
                     (caption !== '' ? '<p>' + escapeHtml(caption) + '</p>' : '');
             }
 
+            if (block.type === 'html') {
+                const html = sanitizeHtml(block.data.html || '');
+                return html ? '<!--' + htmlBlockStartMarker + '-->\n' + html + '\n<!--' + htmlBlockEndMarker + '-->' : '';
+            }
+
             if (block.type === 'code') {
                 const code = String(block.data.code || '');
                 if (code.trim() === '') {
@@ -597,6 +729,16 @@ $(function () {
             '</div>';
     }
 
+    function renderHtmlCanvas(block) {
+        const htmlPreview = buildAdaptivePreviewHtml(block.data.html || '');
+
+        return '' +
+            '<div class="fb-post-editor__meta"><span class="fb-post-editor__chip">HTML</span></div>' +
+            '<textarea class="form-control fb-post-editor__code fb-post-editor__code--html mt-3" data-block-field="html" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.htmlPlaceholder) + '">' + escapeHtml(block.data.html || '') + '</textarea>' +
+            '<div class="fb-post-editor__meta mt-3"><span class="fb-post-editor__chip">' + escapeHtml(labels.htmlPreview) + '</span></div>' +
+            '<div class="fb-post-editor__rich fb-post-editor__html-preview mt-3" data-block-html-preview>' + htmlPreview + '</div>';
+    }
+
     function renderCodeCanvas(block) {
         return '' +
             '<div class="fb-post-editor__meta"><span class="fb-post-editor__chip">' + escapeHtml(String(block.data.language || 'html')) + '</span></div>' +
@@ -613,6 +755,9 @@ $(function () {
         if (block.type === 'video') {
             return renderVideoCanvas(block);
         }
+        if (block.type === 'html') {
+            return renderHtmlCanvas(block);
+        }
         if (block.type === 'code') {
             return renderCodeCanvas(block);
         }
@@ -628,6 +773,9 @@ $(function () {
         }
         if (type === 'video') {
             return labels.videoBlock;
+        }
+        if (type === 'html') {
+            return labels.htmlBlock;
         }
         if (type === 'code') {
             return labels.codeBlock;
@@ -683,6 +831,12 @@ $(function () {
                     '<div class="mb-3"><label class="form-label">' + escapeHtml(labels.sourceLink) + '</label><div class="input-group"><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.src || '') + '" data-block-field="src" data-block-id="' + escapeAttr(selectedBlock.id) + '"><button class="btn btn-outline-secondary" type="button" data-block-picker="src" data-block-id="' + escapeAttr(selectedBlock.id) + '">' + escapeHtml(labels.chooseFile) + '</button></div></div>' +
                     '<div class="mb-3"><label class="form-label">' + escapeHtml(labels.videoPoster) + '</label><div class="input-group"><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.poster || '') + '" data-block-field="poster" data-block-id="' + escapeAttr(selectedBlock.id) + '"><button class="btn btn-outline-secondary" type="button" data-block-picker="poster" data-block-id="' + escapeAttr(selectedBlock.id) + '">' + escapeHtml(labels.chooseFile) + '</button></div></div>' +
                     '<div><label class="form-label">' + escapeHtml(labels.videoCaption) + '</label><input class="form-control" type="text" value="' + escapeAttr(selectedBlock.data.caption || '') + '" data-block-field="caption" data-block-id="' + escapeAttr(selectedBlock.id) + '"></div>' +
+                '</div>';
+        } else if (selectedBlock.type === 'html') {
+            settingsHtml += '' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.blockSettings) + '</h4>' +
+                    '<p class="fb-post-editor__inspector-note">' + escapeHtml(labels.htmlPlaceholder) + '</p>' +
                 '</div>';
         } else if (selectedBlock.type === 'code') {
             settingsHtml += '' +
@@ -749,6 +903,7 @@ $(function () {
                         '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="heading"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('heading')) + '</span><span>' + escapeHtml(labels.addHeading) + '</span></button>' +
                         '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="image"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('image')) + '</span><span>' + escapeHtml(labels.addImage) + '</span></button>' +
                         '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="video"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('video')) + '</span><span>' + escapeHtml(labels.addVideo) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="html"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('html')) + '</span><span>' + escapeHtml(labels.addHtml) + '</span></button>' +
                         '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="code"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('code')) + '</span><span>' + escapeHtml(labels.addCode) + '</span></button>' +
                     '</div>' +
                     '<h3 class="fb-post-editor__panel-title">' + escapeHtml(labels.outline) + '</h3>' +
@@ -1023,11 +1178,20 @@ $(function () {
 
         const field = event.target.closest('[data-block-field]');
         if (field) {
+            const fieldName = String(field.getAttribute('data-block-field') || '');
             updateBlockField(
                 String(field.getAttribute('data-block-id') || ''),
-                String(field.getAttribute('data-block-field') || ''),
+                fieldName,
                 field.value
             );
+
+            if (fieldName === 'html') {
+                const blockCard = field.closest('[data-block-card]');
+                const preview = blockCard ? blockCard.querySelector('[data-block-html-preview]') : null;
+                if (preview) {
+                    preview.innerHTML = buildAdaptivePreviewHtml(field.value);
+                }
+            }
             return;
         }
 
