@@ -33,6 +33,12 @@
                 data-file-too-large-text="<?= htmlSC(return_translation('chat_file_size_error')) ?>"
                 data-download-image-text="<?= htmlSC(return_translation('chat_download_image')) ?>"
                 data-image-modal-title="<?= htmlSC(return_translation('chat_image_modal_title')) ?>"
+                data-preview-text="<?= htmlSC(return_translation('chat_preview_file')) ?>"
+                data-open-file-text="<?= htmlSC(return_translation('chat_open_file')) ?>"
+                data-download-file-text="<?= htmlSC(return_translation('chat_download_file')) ?>"
+                data-preview-unavailable-text="<?= htmlSC(return_translation('chat_preview_unavailable')) ?>"
+                data-preview-loading-text="<?= htmlSC(return_translation('chat_preview_loading')) ?>"
+                data-search-empty-text="<?= htmlSC(return_translation('chat_search_empty')) ?>"
                 data-online-text="<?= htmlSC(return_translation('chat_status_online')) ?>"
                 data-offline-text="<?= htmlSC(return_translation('chat_status_offline')) ?>"
             >
@@ -42,6 +48,17 @@
                             <strong class="d-block"><?= print_translation('chat_contacts_title') ?></strong>
                         </div>
                         <div class="card-body p-0 bg-body-tertiary">
+                            <div class="p-3 border-bottom bg-body">
+                                <div class="position-relative">
+                                    <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"></i>
+                                    <input
+                                        type="search"
+                                        class="form-control form-icon-start rounded-pill"
+                                        placeholder="<?= print_translation('chat_search_placeholder') ?>"
+                                        data-chat-contact-search
+                                    >
+                                </div>
+                            </div>
                             <div style="max-height: 640px; overflow-y: auto;">
                                 <?php foreach ($contactsByGroup as $groupKey => $groupContacts): ?>
                                     <?php if (empty($groupContacts)): ?>
@@ -100,6 +117,9 @@
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
+                                <div class="px-4 py-4 text-center text-body-secondary d-none" data-chat-search-empty>
+                                    <?= print_translation('chat_search_empty') ?>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -142,7 +162,7 @@
                                     <label class="btn btn-outline-secondary mb-0" for="chat_attachment">
                                         <i class="ci-paperclip"></i>
                                     </label>
-                                    <input class="d-none" id="chat_attachment" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.zip,.rar" data-chat-attachment>
+                                    <input class="d-none" id="chat_attachment" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.svg,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm,.mov,.avi,.mkv,.mpeg,.mpg,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.md,.json,.xml,.zip,.rar,.7z" data-chat-attachment>
                                     <button class="btn btn-dark" type="submit"><?= print_translation('chat_send_btn') ?></button>
                                 </div>
                                 <div class="small text-body-secondary d-none" data-chat-attachment-name></div>
@@ -153,28 +173,26 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="chatImageModal" tabindex="-1" role="dialog" aria-hidden="true" data-chat-image-modal>
+            <div class="modal fade" id="chatAttachmentModal" tabindex="-1" role="dialog" aria-hidden="true" data-chat-preview-modal>
                 <div class="modal-dialog modal-fullscreen" role="document">
                     <div class="modal-content border-0 rounded-5 overflow-hidden">
                         <div class="modal-header border-0 pb-0">
-                            <h2 class="modal-title fs-5" data-chat-image-modal-title><?= print_translation('chat_image_modal_title') ?></h2>
+                            <h2 class="modal-title fs-5 text-truncate" data-chat-preview-modal-title><?= print_translation('chat_image_modal_title') ?></h2>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body pt-3">
-                            <div class="rounded-4 bg-body-tertiary d-flex align-items-center justify-content-center p-2 p-md-3" style="min-height: 320px;">
-                                <img
-                                    src=""
-                                    alt=""
-                                    class="img-fluid rounded-4"
-                                    style="max-height: 75vh; width: auto;"
-                                    data-chat-image-modal-image
-                                >
+                            <div class="rounded-4 bg-body-tertiary d-flex align-items-center justify-content-center p-2 p-md-3" style="min-height: 320px;" data-chat-preview-modal-body>
+                                <p class="text-body-secondary mb-0"><?= print_translation('chat_preview_loading') ?></p>
                             </div>
                         </div>
                         <div class="modal-footer border-0 pt-0">
-                            <a class="btn btn-outline-secondary rounded-pill" href="" download data-chat-image-modal-download>
+                            <a class="btn btn-outline-secondary rounded-pill" href="" target="_blank" rel="noopener noreferrer" data-chat-preview-modal-open>
+                                <i class="ci-external-link me-2"></i>
+                                <?= print_translation('chat_open_file') ?>
+                            </a>
+                            <a class="btn btn-outline-secondary rounded-pill" href="" download data-chat-preview-modal-download>
                                 <i class="ci-download me-2"></i>
-                                <?= print_translation('chat_download_image') ?>
+                                <?= print_translation('chat_download_file') ?>
                             </a>
                             <button type="button" class="btn btn-dark rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
                         </div>

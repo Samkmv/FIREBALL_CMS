@@ -31,7 +31,7 @@ class Post extends Model
         [$whereSql, $params] = $this->buildPublishedWhereClause($category);
         $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.author_name, p.author_role, p.published_at, p.views_count,
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
                     COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                     c.slug AS category_slug,
                     c.seo_title AS category_seo_title,
@@ -41,7 +41,7 @@ class Post extends Model
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$whereSql}
-             ORDER BY p.published_at DESC, p.id DESC
+             ORDER BY p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit} OFFSET {$offset}",
             $params
         )->get() ?: [];
@@ -64,7 +64,7 @@ class Post extends Model
         $this->ensureSchema();
         $categoryNameSql = $this->categoryNameSql('c');
         $post = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.author_name, p.author_role, p.published_at, p.views_count,
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
                     COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                     c.slug AS category_slug,
                     c.seo_title AS category_seo_title,
@@ -119,7 +119,7 @@ class Post extends Model
         $limit = max(1, (int)$limit);
         $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.show_on_home, p.author_name, p.author_role, p.published_at, p.views_count,
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.show_on_home, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
                     COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                     c.slug AS category_slug,
                     c.seo_title AS category_seo_title,
@@ -130,7 +130,7 @@ class Post extends Model
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.is_published = 1
                AND p.show_on_home = 1
-             ORDER BY p.published_at DESC, p.id DESC
+             ORDER BY p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit}"
         )->get() ?: [];
 
@@ -154,7 +154,7 @@ class Post extends Model
 
         $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.author_name, p.author_role, p.published_at, p.views_count,
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
                     COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                     c.slug AS category_slug,
                     c.seo_title AS category_seo_title,
@@ -164,7 +164,7 @@ class Post extends Model
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
-             ORDER BY p.views_count DESC, p.published_at DESC, p.id DESC
+             ORDER BY p.views_count DESC, p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit}",
             $params
         )->get() ?: [];
@@ -215,7 +215,7 @@ class Post extends Model
         $limit = (int)$limit;
         $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.author_name, p.author_role, p.published_at, p.views_count,
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
                     COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                     c.slug AS category_slug,
                     c.seo_title AS category_seo_title,
@@ -233,7 +233,7 @@ class Post extends Model
                    OR p.excerpt LIKE ?
                    OR p.content LIKE ?
                )
-             ORDER BY p.published_at DESC, p.id DESC
+             ORDER BY p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit}",
             [$like, $like, $like, $like, $like, $like]
         )->get() ?: [];
@@ -265,7 +265,7 @@ class Post extends Model
         $categoryNameSql = $this->categoryNameSql('c');
 
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.author_name, p.author_role, p.published_at, p.views_count,
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
                     COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                     c.slug AS category_slug,
                     c.seo_title AS category_seo_title,
@@ -283,7 +283,7 @@ class Post extends Model
                    OR p.excerpt LIKE ?
                    OR p.content LIKE ?
                )
-             ORDER BY p.published_at DESC, p.id DESC
+             ORDER BY p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit} OFFSET {$offset}",
             [$like, $like, $like, $like, $like, $like]
         )->get() ?: [];
@@ -340,6 +340,7 @@ class Post extends Model
                 seo_image VARCHAR(255) NULL,
                 hide_placeholder_image TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
                 show_on_home TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+                priority INT(10) UNSIGNED NOT NULL DEFAULT 0,
                 author_id INT(10) UNSIGNED NULL,
                 author_name VARCHAR(100) NULL,
                 author_role VARCHAR(20) NOT NULL DEFAULT 'user',
@@ -363,6 +364,7 @@ class Post extends Model
         $this->ensurePostSeoColumns();
         $this->ensureHidePlaceholderImageColumn();
         $this->ensureShowOnHomeColumn();
+        $this->ensurePriorityColumn();
 
         $oldCategoryExists = (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE 'category'")->getColumn();
         if ($oldCategoryExists) {
@@ -489,7 +491,7 @@ class Post extends Model
 
         $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.author_name, p.author_role, p.published_at, p.views_count,
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
                     COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                     c.slug AS category_slug,
                     c.seo_title AS category_seo_title,
@@ -499,7 +501,7 @@ class Post extends Model
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
-             ORDER BY p.published_at DESC, p.id DESC
+             ORDER BY p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit}",
             $params
         )->get() ?: [];
@@ -639,6 +641,7 @@ class Post extends Model
         $post['hide_placeholder_image'] = max(0, (int)($post['hide_placeholder_image'] ?? 0));
         $post['show_post_image'] = $post['hide_placeholder_image'] !== 1;
         $post['show_on_home'] = max(0, (int)($post['show_on_home'] ?? 0));
+        $post['priority'] = max(0, (int)($post['priority'] ?? 0));
         $post['image'] = $post['has_image'] ? $post['original_image'] : 'assets/img/no-image.png';
         $post['seo_title'] = trim((string)($post['seo_title'] ?? ''));
         $post['seo_description'] = trim((string)($post['seo_description'] ?? ''));
@@ -734,7 +737,10 @@ class Post extends Model
     protected function categoryNameSql(string $alias = ''): string
     {
         $prefix = $alias !== '' ? "{$alias}." : '';
-        $column = (app()->get('lang')['code'] ?? 'ru') === 'en' ? 'name_en' : 'name_ru';
+        $column = match (app()->get('lang')['code'] ?? 'ru') {
+            'en', 'de' => 'name_en',
+            default => 'name_ru',
+        };
 
         return "COALESCE(NULLIF({$prefix}{$column}, ''), {$prefix}name)";
     }
@@ -823,6 +829,17 @@ class Post extends Model
         $columnExists = (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE 'show_on_home'")->getColumn();
         if (!$columnExists) {
             db()->query("ALTER TABLE {$this->table} ADD COLUMN show_on_home TINYINT(3) UNSIGNED NOT NULL DEFAULT 0 AFTER hide_placeholder_image");
+        }
+    }
+
+    /**
+     * Добавляет поле приоритета поста.
+     */
+    protected function ensurePriorityColumn(): void
+    {
+        $columnExists = (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE 'priority'")->getColumn();
+        if (!$columnExists) {
+            db()->query("ALTER TABLE {$this->table} ADD COLUMN priority INT(10) UNSIGNED NOT NULL DEFAULT 0 AFTER show_on_home");
         }
     }
 

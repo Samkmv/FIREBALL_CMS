@@ -202,16 +202,13 @@ class ChatController extends BaseController
         }
 
         $extension = strtolower($file->getExt());
-        $allowedExtensions = [
-            'jpg', 'jpeg', 'png', 'webp', 'gif',
-            'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar',
-        ];
+        $allowedExtensions = $this->getAllowedAttachmentExtensions();
 
         if (!in_array($extension, $allowedExtensions, true)) {
             return [return_translation('chat_file_type_error')];
         }
 
-        if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true) && !@getimagesize($file->getTmpName())) {
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true) && !@getimagesize($file->getTmpName())) {
             return [return_translation('chat_file_type_error')];
         }
 
@@ -234,9 +231,7 @@ class ChatController extends BaseController
 
         $type = $file->getType();
         $extension = strtolower($file->getExt());
-        if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
-            $type = in_array($extension, ['jpg', 'jpeg'], true) ? 'image/jpeg' : "image/{$extension}";
-        }
+        $type = $this->resolveAttachmentMimeType($extension, $type);
 
         return [
             'path' => ltrim((string)$savedPath, '/'),
@@ -244,6 +239,70 @@ class ChatController extends BaseController
             'type' => $type,
             'size' => $file->getSize(),
         ];
+    }
+
+    /**
+     * Возвращает список разрешённых расширений вложений.
+     */
+    protected function getAllowedAttachmentExtensions(): array
+    {
+        return [
+            'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg',
+            'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac',
+            'mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'mpg',
+            'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'md', 'json', 'xml',
+            'zip', 'rar', '7z',
+        ];
+    }
+
+    /**
+     * Нормализует MIME-тип вложения по расширению файла.
+     */
+    protected function resolveAttachmentMimeType(string $extension, string $fallbackType): string
+    {
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'bmp' => 'image/bmp',
+            'svg' => 'image/svg+xml',
+            'mp3' => 'audio/mpeg',
+            'wav' => 'audio/wav',
+            'ogg' => 'audio/ogg',
+            'm4a' => 'audio/mp4',
+            'flac' => 'audio/flac',
+            'aac' => 'audio/aac',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov' => 'video/quicktime',
+            'avi' => 'video/x-msvideo',
+            'mkv' => 'video/x-matroska',
+            'mpeg' => 'video/mpeg',
+            'mpg' => 'video/mpeg',
+            'pdf' => 'application/pdf',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
+            'md' => 'text/markdown',
+            'json' => 'application/json',
+            'xml' => 'application/xml',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt' => 'application/vnd.ms-powerpoint',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'rtf' => 'application/rtf',
+            'odt' => 'application/vnd.oasis.opendocument.text',
+            'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
+            'odp' => 'application/vnd.oasis.opendocument.presentation',
+            'zip' => 'application/zip',
+            'rar' => 'application/vnd.rar',
+            '7z' => 'application/x-7z-compressed',
+        ];
+
+        return $mimeTypes[$extension] ?? $fallbackType;
     }
 
 }

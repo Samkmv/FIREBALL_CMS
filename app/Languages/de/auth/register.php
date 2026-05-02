@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'auth_register_title' => 'Registrierung',
+    'auth_register_heading' => 'Konto erstellen',
+    'auth_register_subtitle' => 'Fuellen Sie das Formular aus, um Ihr persoenliches Profil zu erhalten.',
+    'auth_register_name' => 'Name',
+    'auth_register_login_field' => 'Login',
+    'auth_register_email' => 'E-Mail',
+    'auth_register_password' => 'Passwort',
+    'auth_register_password_confirmation' => 'Passwort bestaetigen',
+    'auth_register_submit' => 'Registrieren',
+    'auth_register_login_text' => 'Sie haben bereits ein Konto?',
+    'auth_register_login_link' => 'Anmelden',
+    'auth_register_success' => 'Konto erfolgreich erstellt.',
+    'auth_validation_name_required' => 'Geben Sie Ihren Namen ein.',
+    'auth_validation_name_length' => 'Der Name muss mindestens 2 Zeichen lang sein.',
+    'auth_validation_login_required' => 'Geben Sie Ihren Login ein.',
+    'auth_validation_login_format' => 'Der Login muss mindestens 3 Zeichen lang sein und darf nur lateinische Buchstaben, Zahlen und Bindestriche enthalten.',
+    'auth_validation_login_exists' => 'Ein Benutzer mit diesem Login existiert bereits.',
+    'auth_validation_email_required' => 'Geben Sie Ihre E-Mail-Adresse ein.',
+    'auth_validation_email_invalid' => 'Geben Sie eine gueltige E-Mail-Adresse ein.',
+    'auth_validation_email_exists' => 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.',
+    'auth_validation_password_required' => 'Geben Sie Ihr Passwort ein.',
+    'auth_validation_password_length' => 'Das Passwort muss mindestens 8 Zeichen lang sein.',
+    'auth_validation_password_confirmation_required' => 'Bestaetigen Sie Ihr Passwort.',
+    'auth_validation_password_confirmation_match' => 'Die Passwoerter stimmen nicht ueberein.',
+];

@@ -53,6 +53,7 @@ $app->router->get('/posts', [PostsController::class, 'index']);
 // Admin pages ---------- //
 $app->router->get('/admin', [AdminController::class, 'dashboard'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/contact-requests', [AdminController::class, 'contactRequests'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/contact-requests/delete', [AdminController::class, 'contactRequestDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/posts', [AdminController::class, 'posts'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/posts/create', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/posts/create', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
@@ -97,17 +98,18 @@ $app->router->get('/remove-from-cart', [CartController::class, 'removeFromCart']
 $app->router->get('/', [HomeController::class, 'index']);
 
 // Seed
-$app->router->get('/seed-full', function () {
-    $result = require __DIR__ . '/seeders/full_database.php';
-    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-});
-
-$app->router->get('/seed-reset-creator', function () {
-    $result = require __DIR__ . '/seeders/reset_creator.php';
-    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-});
-
-$app->router->get('/seed-demo', function () {
-    $result = require __DIR__ . '/seeders/reset_demo.php';
-    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-});
+//$app->router->get('/seed-full', function () {
+//    $result = require __DIR__ . '/seeders/full_database.php';
+//    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+//});
+//
+//$app->router->get('/seed-reset-creator', function () {
+//    $result = require __DIR__ . '/seeders/reset_creator.php';
+//    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+//});
+//
+//$app->router->get('/seed-demo', function () {
+//    $result = require __DIR__ . '/seeders/reset_demo.php';
+//    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+//}
+//);

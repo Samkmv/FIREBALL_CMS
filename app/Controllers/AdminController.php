@@ -74,6 +74,20 @@ class AdminController extends BaseController
     }
 
     /**
+     * Удаляет заявку по идентификатору и возвращает в список заявок.
+     */
+    public function contactRequestDelete()
+    {
+        $requestId = (int)request()->post('id');
+        if ($requestId > 0) {
+            $this->contactRequests->deleteById($requestId);
+            session()->setFlash('success', return_translation('admin_contact_deleted'));
+        }
+
+        response()->redirect(base_href('/admin/contact-requests'));
+    }
+
+    /**
      * Показывает таблицу постов в административной панели.
      */
     public function posts()
@@ -101,8 +115,9 @@ class AdminController extends BaseController
 
         if (request()->isPost()) {
             $data = $this->normalizePostData(request()->getData());
-            $errors = $this->validatePostData($data);
             $imageFile = new File('image_file');
+            $hasUploadedImage = $imageFile->isFile && $imageFile->getError() !== UPLOAD_ERR_NO_FILE;
+            $errors = $this->validatePostData($data, $hasUploadedImage);
             $errors = array_merge_recursive($errors, $this->validatePostImageFile($imageFile));
 
             if (!empty($errors)) {
@@ -574,6 +589,7 @@ class AdminController extends BaseController
         $category = $this->blog->findCategoryById($categoryId);
         $title = trim((string)($data['title'] ?? ''));
         $slug = trim((string)($data['slug'] ?? ''));
+        $imageUrl = trim((string)($data['image_url'] ?? ''));
         $user = get_user() ?: [];
 
         return [
@@ -581,9 +597,11 @@ class AdminController extends BaseController
             'slug' => $slug !== '' ? $slug : $title,
             'category_id' => $categoryId,
             'category_name' => $category['name'] ?? '',
+            'priority' => max(0, (int)($data['priority'] ?? 0)),
             'excerpt' => trim((string)($data['excerpt'] ?? '')),
             'content' => trim((string)($data['content'] ?? '')),
-            'image' => trim((string)($data['image'] ?? '')),
+            'image' => $imageUrl !== '' ? $imageUrl : trim((string)($data['image'] ?? '')),
+            'image_url' => $imageUrl,
             'seo_title' => trim((string)($data['seo_title'] ?? '')),
             'seo_description' => trim((string)($data['seo_description'] ?? '')),
             'seo_keywords' => trim((string)($data['seo_keywords'] ?? '')),
@@ -602,7 +620,7 @@ class AdminController extends BaseController
      * Проверяет обязательные поля поста и корректность SEO-изображения.
      * Содержимое и основное изображение могут отсутствовать.
      */
-    protected function validatePostData(array $data): array
+    protected function validatePostData(array $data, bool $hasUploadedImage = false): array
     {
         $errors = [];
 
@@ -614,6 +632,9 @@ class AdminController extends BaseController
         }
         if ((int)$data['category_id'] <= 0 || $data['category_name'] === '') {
             $errors['category_id'][] = return_translation('admin_validation_category_required');
+        }
+        if (!$hasUploadedImage && $data['image'] !== '' && !$this->isValidSeoImage($data['image'])) {
+            $errors['image_url'][] = return_translation('admin_validation_image_url_invalid');
         }
         if ($data['seo_image'] !== '' && !$this->isValidSeoImage($data['seo_image'])) {
             $errors['seo_image'][] = return_translation('admin_validation_seo_image_invalid');

@@ -4,10 +4,12 @@ $formAction = $is_edit
     : base_href('/admin/posts/create');
 $formData = session()->get('form_data') ?: [];
 $currentImage = $formData['image'] ?? ($post['image'] ?? '');
+$currentImageUrl = $formData['image_url'] ?? $currentImage;
 $selectedFileField = trim((string)request()->get('fireball_file_field', ''));
 $selectedFileValue = trim((string)request()->get('fireball_file_value', ''));
 if ($selectedFileField === 'post_image' && $selectedFileValue !== '') {
     $currentImage = $selectedFileValue;
+    $currentImageUrl = $selectedFileValue;
 }
 $hidePlaceholderImage = array_key_exists('hide_placeholder_image', $formData)
     ? (int)$formData['hide_placeholder_image']
@@ -15,6 +17,9 @@ $hidePlaceholderImage = array_key_exists('hide_placeholder_image', $formData)
 $showOnHome = array_key_exists('show_on_home', $formData)
     ? (int)$formData['show_on_home']
     : (int)($post['show_on_home'] ?? 0);
+$priorityValue = array_key_exists('priority', $formData)
+    ? (int)$formData['priority']
+    : (int)($post['priority'] ?? 0);
 $publishedAtSource = old('published_at') ?: ($post['published_at'] ?? '');
 $publishedAtValue = $publishedAtSource !== '' && strtotime($publishedAtSource)
     ? date('Y-m-d H:i:S', strtotime($publishedAtSource))
@@ -25,9 +30,12 @@ $excerptValue = array_key_exists('excerpt', $formData)
 $contentValue = array_key_exists('content', $formData)
     ? (string)$formData['content']
     : (string)($post['content'] ?? '');
+$postImagePreviewLabel = return_translation('admin_post_image_preview');
 $postImageDropTitle = return_translation('admin_post_image_drop_title');
 $postImageDropHint = return_translation('admin_post_image_drop_hint');
+$postImagePickerHint = return_translation('admin_files_picker_hint');
 $postImageLocalHint = return_translation('admin_post_image_local_hint');
+$postImageUrlHint = return_translation('admin_post_image_url_hint');
 $editorConfig = [
     'fileManagerUrl' => base_href('/admin/files'),
     'defaultDirectory' => 'posts',
@@ -552,9 +560,9 @@ $editorConfig = [
 
     .fb-post-media-picker {
         border: 1px solid rgba(26, 33, 36, .08);
-        border-radius: 1.1rem;
-        background: linear-gradient(180deg, rgba(255, 255, 255, .95) 0%, rgba(248, 245, 240, .92) 100%);
-        box-shadow: 0 16px 36px rgba(28, 37, 38, .05);
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .98) 0%, rgba(248, 245, 240, .94) 100%);
+        box-shadow: 0 18px 38px rgba(28, 37, 38, .06);
         overflow: hidden;
     }
 
@@ -565,10 +573,11 @@ $editorConfig = [
 
     .fb-post-media-picker__dropzone {
         display: grid;
-        grid-template-columns: 112px minmax(0, 1fr) auto;
+        grid-template-columns: 168px minmax(0, 1fr) auto;
         align-items: center;
-        gap: 1rem;
-        padding: 1rem;
+        gap: 1.1rem;
+        padding: 1.1rem;
+        border-bottom: 1px solid rgba(26, 33, 36, .06);
         transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease, transform .15s ease;
     }
 
@@ -578,16 +587,17 @@ $editorConfig = [
     }
 
     .fb-post-media-picker__figure {
-        width: 112px;
-        height: 84px;
+        width: 168px;
+        aspect-ratio: 4 / 3;
         border-radius: 1rem;
         overflow: hidden;
         border: 1px solid rgba(26, 33, 36, .08);
-        background: #f4efe7;
+        background: linear-gradient(180deg, #f6f1e8 0%, #efe7da 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75);
     }
 
     .fb-post-media-picker__figure img {
@@ -605,16 +615,29 @@ $editorConfig = [
         justify-content: center;
         color: #8a9597;
         background: linear-gradient(180deg, rgba(255, 255, 255, .5) 0%, rgba(242, 238, 231, .95) 100%);
-        font-size: 1.45rem;
+        font-size: 1.6rem;
     }
 
     .fb-post-media-picker__content {
         min-width: 0;
+        display: grid;
+        gap: .45rem;
+    }
+
+    .fb-post-media-picker__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        font-size: .76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: #6b7577;
     }
 
     .fb-post-media-picker__title {
         color: #182225;
-        font-size: .98rem;
+        font-size: 1rem;
         font-weight: 700;
         line-height: 1.35;
         word-break: break-word;
@@ -628,22 +651,276 @@ $editorConfig = [
     }
 
     .fb-post-media-picker__actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
+        display: grid;
         gap: .6rem;
+        align-self: stretch;
+        min-width: 12rem;
     }
 
     .fb-post-media-picker__actions .btn {
+        min-height: 2.75rem;
+        justify-content: center;
         white-space: nowrap;
+        border-radius: .9rem;
+    }
+
+    .fb-post-media-picker__sources {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .fb-post-media-picker__source {
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, .82);
+        padding: 1rem;
+        box-shadow: 0 10px 24px rgba(28, 37, 38, .04);
+    }
+
+    .fb-post-media-picker__source-head {
+        display: flex;
+        align-items: flex-start;
+        gap: .8rem;
+        margin-bottom: .85rem;
+    }
+
+    .fb-post-media-picker__source-icon {
+        width: 2.35rem;
+        height: 2.35rem;
+        border-radius: .8rem;
+        background: rgba(31, 92, 79, .12);
+        color: #1f5c4f;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        font-size: 1rem;
+    }
+
+    .fb-post-media-picker__source-title {
+        color: #182225;
+        font-size: .95rem;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .fb-post-media-picker__source-note {
+        margin-top: .2rem;
+        color: #5d6668;
+        font-size: .84rem;
+        line-height: 1.5;
     }
 
     .fb-post-media-picker__file-input-wrap {
-        padding: 0 1rem 1rem;
+        padding: 0;
     }
 
-    .fb-post-media-picker__file-input {
+    .fb-post-media-picker__file-input,
+    .fb-post-media-picker__source .form-control {
         width: 100%;
+        min-height: 2.9rem;
+        border-radius: .9rem;
+    }
+
+    .fb-post-media-picker__source .form-text {
+        margin-top: .55rem;
+    }
+
+    .fb-post-media-picker__source .invalid-feedback,
+    .fb-post-media-picker__source .is-invalid ~ .invalid-feedback {
+        display: block;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor {
+        border-color: rgba(255, 255, 255, .08);
+        background: linear-gradient(180deg, #1e2530 0%, #181d25 100%);
+        box-shadow: 0 24px 60px rgba(6, 10, 16, .34);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__topbar {
+        background: rgba(29, 36, 46, .9);
+        border-bottom-color: rgba(255, 255, 255, .08);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__hint,
+    [data-bs-theme=dark] .fb-post-editor__inspector-note,
+    [data-bs-theme=dark] .fb-post-editor__note,
+    [data-bs-theme=dark] .fb-post-editor__preview-text,
+    [data-bs-theme=dark] .fb-post-editor__body .form-label,
+    [data-bs-theme=dark] .fb-post-editor__panel-title,
+    [data-bs-theme=dark] .fb-post-editor__block-label {
+        color: #9ca3af;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__topbar-meta,
+    [data-bs-theme=dark] .fb-post-editor__canvas-title,
+    [data-bs-theme=dark] .fb-post-editor__block-title {
+        color: #eef1f6;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__sidebar,
+    [data-bs-theme=dark] .fb-post-editor__inspector {
+        background: rgba(24, 29, 37, .92);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__sidebar {
+        border-right-color: rgba(255, 255, 255, .08);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__inspector {
+        border-left-color: rgba(255, 255, 255, .08);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__inserter-btn,
+    [data-bs-theme=dark] .fb-post-editor__outline-item,
+    [data-bs-theme=dark] .fb-post-editor__inspector-card,
+    [data-bs-theme=dark] .fb-post-editor__color-control {
+        border-color: rgba(255, 255, 255, .08);
+        background: rgba(39, 46, 58, .9);
+        box-shadow: 0 12px 28px rgba(8, 11, 18, .22);
+        color: #cad0d9;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__inserter-btn:hover,
+    [data-bs-theme=dark] .fb-post-editor__outline-item:hover {
+        border-color: rgba(124, 197, 175, .28);
+        background: rgba(46, 57, 70, .96);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__outline-item.is-active {
+        border-color: rgba(124, 197, 175, .32);
+        background: rgba(31, 92, 79, .22);
+        color: #eef1f6;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__inserter-icon,
+    [data-bs-theme=dark] .fb-post-editor__source-icon,
+    [data-bs-theme=dark] .fb-post-editor__chip,
+    [data-bs-theme=dark] .fb-post-media-picker__source-icon {
+        background: rgba(124, 197, 175, .14);
+        color: #9ae6d2;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__canvas {
+        background: rgba(24, 29, 37, .78);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__canvas-header {
+        border-bottom-color: rgba(255, 255, 255, .08);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__empty,
+    [data-bs-theme=dark] .fb-post-editor__preview {
+        border-color: rgba(124, 197, 175, .2);
+        background: linear-gradient(180deg, #222934 0%, #1b222d 100%);
+        color: #9ca3af;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__block {
+        border-color: rgba(255, 255, 255, .08);
+        background: rgba(34, 41, 52, .96);
+        box-shadow: 0 18px 36px rgba(8, 11, 18, .2);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__block.is-selected {
+        border-color: rgba(124, 197, 175, .34);
+        box-shadow: 0 0 0 1px rgba(124, 197, 175, .18), 0 18px 40px rgba(8, 11, 18, .28);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__block-header {
+        background: rgba(27, 34, 45, .96);
+        border-bottom-color: rgba(255, 255, 255, .08);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__drag {
+        color: #9ca3af;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__formatbar {
+        border-color: rgba(255, 255, 255, .08);
+        background: rgba(27, 34, 45, .94);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__color-label {
+        color: #cad0d9;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__color-control .form-control-color {
+        border-color: rgba(255, 255, 255, .12);
+        background: #222934;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__rich,
+    [data-bs-theme=dark] .fb-post-editor__heading-input {
+        border-color: rgba(255, 255, 255, .08);
+        background: rgba(24, 29, 37, .92);
+        color: #eef1f6;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, .2);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__rich:empty::before,
+    [data-bs-theme=dark] .fb-post-editor__heading-input:empty::before {
+        color: rgba(156, 163, 175, .78);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__rich:focus,
+    [data-bs-theme=dark] .fb-post-editor__heading-input:focus,
+    [data-bs-theme=dark] .fb-post-editor__code:focus {
+        border-color: rgba(124, 197, 175, .34);
+        box-shadow: 0 0 0 4px rgba(124, 197, 175, .12);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__code {
+        background: #111827;
+        color: #f3f4f6;
+        border-color: #111827;
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker {
+        border-color: rgba(255, 255, 255, .08);
+        background: linear-gradient(180deg, rgba(34, 41, 52, .98) 0%, rgba(24, 29, 37, .96) 100%);
+        box-shadow: 0 20px 42px rgba(8, 11, 18, .24);
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker__dropzone {
+        border-bottom-color: rgba(255, 255, 255, .08);
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker.is-dragover .fb-post-media-picker__dropzone {
+        background: rgba(124, 197, 175, .08);
+        box-shadow: inset 0 0 0 1px rgba(124, 197, 175, .18);
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker__figure {
+        border-color: rgba(255, 255, 255, .08);
+        background: linear-gradient(180deg, #2a3340 0%, #222934 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker__placeholder {
+        color: #9ca3af;
+        background: linear-gradient(180deg, rgba(43, 52, 65, .78) 0%, rgba(34, 41, 52, .96) 100%);
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker__eyebrow,
+    [data-bs-theme=dark] .fb-post-media-picker__note,
+    [data-bs-theme=dark] .fb-post-media-picker__source-note {
+        color: #9ca3af;
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker__title,
+    [data-bs-theme=dark] .fb-post-media-picker__source-title {
+        color: #eef1f6;
+    }
+
+    [data-bs-theme=dark] .fb-post-media-picker__source {
+        border-color: rgba(255, 255, 255, .08);
+        background: rgba(39, 46, 58, .88);
+        box-shadow: 0 12px 26px rgba(8, 11, 18, .18);
     }
 
     @media (max-width: 767.98px) {
@@ -717,25 +994,26 @@ $editorConfig = [
         .fb-post-media-picker__dropzone {
             grid-template-columns: 1fr;
             justify-items: stretch;
-            text-align: center;
+            text-align: left;
         }
 
         .fb-post-media-picker__figure {
             width: 100%;
-            max-width: 12rem;
-            height: auto;
+            max-width: none;
             aspect-ratio: 4 / 3;
-            margin-inline: auto;
         }
 
         .fb-post-media-picker__actions {
             width: 100%;
-            justify-content: stretch;
+            min-width: 0;
         }
 
         .fb-post-media-picker__actions .btn {
-            flex: 1 1 100%;
-            justify-content: center;
+            width: 100%;
+        }
+
+        .fb-post-media-picker__sources {
+            grid-template-columns: 1fr;
         }
     }
 </style>
@@ -776,6 +1054,18 @@ $editorConfig = [
                     <?php endforeach; ?>
                 </select>
                 <?= get_errors('category_id') ?>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><?= print_translation('admin_posts_col_priority') ?></label>
+                <input
+                    class="form-control"
+                    type="number"
+                    name="priority"
+                    value="<?= $priorityValue ?>"
+                    min="0"
+                    step="1"
+                >
+                <div class="form-text"><?= print_translation('admin_post_priority_hint') ?></div>
             </div>
             <div class="col-md-3">
                 <label class="form-label"><?= print_translation('admin_posts_col_date') ?></label>
@@ -825,7 +1115,10 @@ $editorConfig = [
                     data-file-preview-empty-text="<?= htmlSC($postImageDropTitle) ?>"
                     data-file-preview-empty-note="<?= htmlSC($postImageDropHint) ?>"
                     data-file-preview-base="<?= htmlSC(rtrim(base_url('/'), '/')) ?>"
+                    data-file-picker-note="<?= htmlSC($postImagePickerHint) ?>"
                     data-file-upload-input="#post_image_file"
+                    data-file-url-input="#post_image_url"
+                    data-file-url-note="<?= htmlSC($postImageUrlHint) ?>"
                 >
                 <div
                     class="fb-post-media-picker<?= get_validation_class('image_file') ? ' is-invalid' : '' ?>"
@@ -850,8 +1143,12 @@ $editorConfig = [
                             </div>
                         </div>
                         <div class="fb-post-media-picker__content">
+                            <div class="fb-post-media-picker__eyebrow">
+                                <i class="ci-image"></i>
+                                <?= htmlSC($postImagePreviewLabel) ?>
+                            </div>
                             <div class="fb-post-media-picker__title" id="post_image_path"><?= htmlSC($currentImage ?: $postImageDropTitle) ?></div>
-                            <div class="fb-post-media-picker__note" id="post_image_note"><?= htmlSC($currentImage ? print_translation('admin_files_picker_hint') : $postImageDropHint) ?></div>
+                            <div class="fb-post-media-picker__note" id="post_image_note"><?= htmlSC($currentImage ? $postImagePickerHint : $postImageDropHint) ?></div>
                         </div>
                         <div class="fb-post-media-picker__actions">
                             <label class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" for="post_image_file">
@@ -864,7 +1161,27 @@ $editorConfig = [
                             ><i class="ci-folder"></i><?= print_translation('admin_nav_files') ?></a>
                         </div>
                     </div>
-                    <div class="fb-post-media-picker__file-input-wrap">
+                    <div class="fb-post-media-picker__sources">
+                        <div class="fb-post-media-picker__source">
+                            <div class="fb-post-media-picker__source-head">
+                                <span class="fb-post-media-picker__source-icon"><i class="ci-link-2"></i></span>
+                                <div>
+                                    <div class="fb-post-media-picker__source-title"><?= print_translation('admin_post_image_url') ?></div>
+                                    <div class="fb-post-media-picker__source-note"><?= print_translation('admin_post_image_url_hint') ?></div>
+                                </div>
+                            </div>
+                            <input
+                                class="form-control <?= get_validation_class('image_url') ?>"
+                                type="text"
+                                id="post_image_url"
+                                name="image_url"
+                                value="<?= old('image_url') ?: htmlSC($currentImageUrl) ?>"
+                                placeholder="https://example.com/image.jpg"
+                            >
+                            <?= get_errors('image_url') ?>
+                        </div>
+                    </div>
+                    <div class="fb-post-media-picker__file-input-wrap d-none">
                         <input
                             class="form-control fb-post-media-picker__file-input <?= get_validation_class('image_file') ?>"
                             type="file"
@@ -1019,8 +1336,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         input.value = String(payload.value || '');
+        const urlInputSelector = input.getAttribute('data-file-url-input');
+        const urlInput = urlInputSelector ? document.querySelector(urlInputSelector) : null;
+        if (urlInput) {
+            urlInput.value = String(payload.value || '');
+        }
 
         const uploadInputSelector = input.getAttribute('data-file-upload-input');
+        const pickerNote = String(input.getAttribute('data-file-picker-note') || '');
         const uploadInput = uploadInputSelector ? document.querySelector(uploadInputSelector) : null;
         if (uploadInput) {
             uploadInput.value = '';
@@ -1030,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setPickerPreview(input, {
             value: String(payload.value || ''),
             imageSrc: String(payload.value || ''),
-            note: <?= json_encode(print_translation('admin_files_picker_hint'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+            note: pickerNote
         });
 
         input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1132,6 +1455,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const pathInputSelector = String(dropzone.getAttribute('data-file-path-input') || '');
         const fileInput = inputSelector ? document.querySelector(inputSelector) : null;
         const pathInput = pathInputSelector ? document.querySelector(pathInputSelector) : null;
+        const urlInputSelector = pathInput ? String(pathInput.getAttribute('data-file-url-input') || '') : '';
+        const urlInput = urlInputSelector ? document.querySelector(urlInputSelector) : null;
+        const pickerNote = pathInput ? String(pathInput.getAttribute('data-file-picker-note') || '') : '';
+        const urlNote = pathInput ? String(pathInput.getAttribute('data-file-url-note') || '') : '';
         const emptyNote = String(dropzone.getAttribute('data-file-empty-note') || '');
         const localNote = String(dropzone.getAttribute('data-file-local-note') || '');
 
@@ -1144,8 +1471,18 @@ document.addEventListener('DOMContentLoaded', function () {
             setPickerPreview(pathInput, {
                 value: String(pathInput.value || ''),
                 imageSrc: String(pathInput.value || ''),
-                note: <?= json_encode(print_translation('admin_files_picker_hint'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                note: urlInput && String(urlInput.value || '').trim() !== '' ? urlNote : pickerNote
             });
+        }
+
+        function syncUrlToPath() {
+            if (!urlInput) {
+                return;
+            }
+
+            pathInput.value = String(urlInput.value || '').trim();
+            fileInput.value = '';
+            showPathPreview();
         }
 
         function showLocalFilePreview(file) {
@@ -1168,6 +1505,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
             showLocalFilePreview(file);
         });
+
+        if (urlInput) {
+            urlInput.addEventListener('input', syncUrlToPath);
+            urlInput.addEventListener('change', syncUrlToPath);
+        }
 
         dropzone.addEventListener('click', function (event) {
             if (event.target.closest('button, label, a, input')) {
@@ -1230,8 +1572,12 @@ document.addEventListener('DOMContentLoaded', function () {
             setPickerPreview(pathInput, {
                 value: String(pathInput.value || ''),
                 imageSrc: String(pathInput.value || ''),
-                note: <?= json_encode(print_translation('admin_files_picker_hint'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                note: urlInput && String(urlInput.value || '').trim() !== '' ? urlNote : pickerNote
             });
+        }
+
+        if (urlInput && !String(urlInput.value || '').trim() && String(pathInput.value || '').trim()) {
+            urlInput.value = String(pathInput.value || '');
         }
     });
 

@@ -73,7 +73,12 @@ $normalizeSeoImage = static function (string $value): string {
     return get_image(ltrim($value, '/'));
 };
 $metaImage = $normalizeSeoImage($pageSeoImage !== '' ? $pageSeoImage : $seoOgImage);
-$ogLocale = (app()->get('lang')['code'] ?? 'ru') === 'en' ? 'en_US' : 'ru_RU';
+$currentLangCode = app()->get('lang')['code'] ?? 'ru';
+$ogLocale = match ($currentLangCode) {
+    'en' => 'en_US',
+    'de' => 'de_DE',
+    default => 'ru_RU',
+};
 $currentUser = check_auth() ? get_user() : null;
 $isAdmin = check_admin();
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');

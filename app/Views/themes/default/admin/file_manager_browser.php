@@ -211,22 +211,22 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     <input class="form-check-input" type="checkbox" data-file-manager-toggle-all>
                                 </th>
                                 <th scope="col">
-                                    <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('name') ?>" data-fm-nav-link>
+                                    <a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('name') ?>" data-fm-nav-link>
                                         <?= print_translation('admin_files_col_name') ?><?= $sortIndicator('name') ?>
                                     </a>
                                 </th>
                                 <th scope="col">
-                                    <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('type') ?>" data-fm-nav-link>
+                                    <a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('type') ?>" data-fm-nav-link>
                                         <?= print_translation('admin_files_col_type') ?><?= $sortIndicator('type') ?>
                                     </a>
                                 </th>
                                 <th scope="col">
-                                    <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('size') ?>" data-fm-nav-link>
+                                    <a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('size') ?>" data-fm-nav-link>
                                         <?= print_translation('admin_files_size') ?><?= $sortIndicator('size') ?>
                                     </a>
                                 </th>
                                 <th scope="col">
-                                    <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('modified') ?>" data-fm-nav-link>
+                                    <a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $buildSortUrl('modified') ?>" data-fm-nav-link>
                                         <?= print_translation('admin_files_modified') ?><?= $sortIndicator('modified') ?>
                                     </a>
                                 </th>
@@ -282,7 +282,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                         </div>
                                     </td>
                                     <td class="text-nowrap">
-                                        <span class="badge fs-xs rounded-pill <?= $isDirectory ? 'text-secondary bg-secondary-subtle' : 'text-dark bg-light' ?>">
+                                        <span class="badge fs-xs rounded-pill <?= $isDirectory ? 'text-secondary bg-secondary-subtle' : 'text-body-emphasis bg-body-tertiary' ?>">
                                             <?= $isDirectory ? print_translation('admin_files_type_directory') : print_translation('admin_files_type_file') ?>
                                         </span>
                                     </td>

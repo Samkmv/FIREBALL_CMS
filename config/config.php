@@ -65,6 +65,12 @@ $defaults = [
             'title' => 'English',
             'base' => 0,
         ],
+        'de' => [
+            'id' => 3,
+            'code' => 'de',
+            'title' => 'Deutsch',
+            'base' => 0,
+        ],
     ],
     'DB_SETTINGS' => [
         'driver' => 'mysql',

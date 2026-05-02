@@ -60,6 +60,7 @@ class Admin
                 seo_image VARCHAR(255) NULL,
                 hide_placeholder_image TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
                 show_on_home TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+                priority INT(10) UNSIGNED NOT NULL DEFAULT 0,
                 author_id INT(10) UNSIGNED NULL,
                 author_name VARCHAR(100) NULL,
                 author_role VARCHAR(20) NOT NULL DEFAULT 'user',
@@ -84,6 +85,7 @@ class Admin
         $this->ensurePostSeoColumns();
         $this->ensureHidePlaceholderImageColumn();
         $this->ensureShowOnHomeColumn();
+        $this->ensurePriorityColumn();
         $this->syncLegacyCategoryColumn();
         $this->schemaReady = true;
     }
@@ -113,7 +115,7 @@ class Admin
             "SELECT p.*, c.name AS category_name
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
-             ORDER BY p.id DESC"
+             ORDER BY p.priority DESC, p.published_at DESC, p.id DESC"
         )->get() ?: [];
     }
 
@@ -133,6 +135,7 @@ class Admin
             'id' => 'p.id',
             'title' => 'p.title',
             'category' => 'category_name',
+            'priority' => 'p.priority',
             'author' => 'p.author_name',
             'views' => 'p.views_count',
             'status' => 'p.is_published',
@@ -165,7 +168,7 @@ class Admin
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
-             ORDER BY {$orderBy} {$direction}, p.id DESC
+             ORDER BY {$orderBy} {$direction}, p.priority DESC, p.id DESC
              LIMIT {$offset}, {$perPage}",
             $params
         )->get() ?: [];
@@ -209,8 +212,8 @@ class Admin
 
         db()->query(
             "INSERT INTO {$this->postsTable}
-             (title, slug, category, category_id, excerpt, content, image, seo_title, seo_description, seo_keywords, seo_image, hide_placeholder_image, show_on_home, author_id, author_name, author_role, published_at, is_published)
-             VALUES (:title, :slug, :category, :category_id, :excerpt, :content, :image, :seo_title, :seo_description, :seo_keywords, :seo_image, :hide_placeholder_image, :show_on_home, :author_id, :author_name, :author_role, :published_at, :is_published)",
+             (title, slug, category, category_id, excerpt, content, image, seo_title, seo_description, seo_keywords, seo_image, hide_placeholder_image, show_on_home, priority, author_id, author_name, author_role, published_at, is_published)
+             VALUES (:title, :slug, :category, :category_id, :excerpt, :content, :image, :seo_title, :seo_description, :seo_keywords, :seo_image, :hide_placeholder_image, :show_on_home, :priority, :author_id, :author_name, :author_role, :published_at, :is_published)",
             [
                 'title' => trim((string)$data['title']),
                 'slug' => $slug,
@@ -225,6 +228,7 @@ class Admin
                 'seo_image' => trim((string)($data['seo_image'] ?? '')),
                 'hide_placeholder_image' => !empty($data['hide_placeholder_image']) ? 1 : 0,
                 'show_on_home' => !empty($data['show_on_home']) ? 1 : 0,
+                'priority' => max(0, (int)($data['priority'] ?? 0)),
                 'author_id' => $data['author_id'] ? (int)$data['author_id'] : null,
                 'author_name' => trim((string)$data['author_name']),
                 'author_role' => trim((string)$data['author_role']) ?: 'user',
@@ -260,6 +264,7 @@ class Admin
                  seo_image = :seo_image,
                  hide_placeholder_image = :hide_placeholder_image,
                  show_on_home = :show_on_home,
+                 priority = :priority,
                  published_at = :published_at,
                  is_published = :is_published
              WHERE id = :id",
@@ -278,6 +283,7 @@ class Admin
                 'seo_image' => trim((string)($data['seo_image'] ?? '')),
                 'hide_placeholder_image' => !empty($data['hide_placeholder_image']) ? 1 : 0,
                 'show_on_home' => !empty($data['show_on_home']) ? 1 : 0,
+                'priority' => max(0, (int)($data['priority'] ?? 0)),
                 'published_at' => $this->normalizePublishedAt((string)$data['published_at']),
                 'is_published' => !empty($data['is_published']) ? 1 : 0,
             ]
@@ -647,6 +653,17 @@ class Admin
         $columnExists = (bool)db()->query("SHOW COLUMNS FROM {$this->postsTable} LIKE 'show_on_home'")->getColumn();
         if (!$columnExists) {
             db()->query("ALTER TABLE {$this->postsTable} ADD COLUMN show_on_home TINYINT(3) UNSIGNED NOT NULL DEFAULT 0 AFTER hide_placeholder_image");
+        }
+    }
+
+    /**
+     * Добавляет поле приоритета поста.
+     */
+    protected function ensurePriorityColumn(): void
+    {
+        $columnExists = (bool)db()->query("SHOW COLUMNS FROM {$this->postsTable} LIKE 'priority'")->getColumn();
+        if (!$columnExists) {
+            db()->query("ALTER TABLE {$this->postsTable} ADD COLUMN priority INT(10) UNSIGNED NOT NULL DEFAULT 0 AFTER show_on_home");
         }
     }
 

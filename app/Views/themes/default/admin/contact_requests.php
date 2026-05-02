@@ -33,13 +33,14 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                 <table class="table align-middle mb-0">
                     <thead class="position-sticky top-0">
                     <tr>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_name') ?><?= $sortIndicator('name') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('email', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_email') ?><?= $sortIndicator('email') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('subject', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_subject') ?><?= $sortIndicator('subject') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_name') ?><?= $sortIndicator('name') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('email', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_email') ?><?= $sortIndicator('email') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('subject', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_subject') ?><?= $sortIndicator('subject') ?></a></th>
                         <th scope="col"><?= print_translation('admin_contacts_col_message') ?></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('status', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_status') ?><?= $sortIndicator('status') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('created_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_date') ?><?= $sortIndicator('created_at') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('status', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_status') ?><?= $sortIndicator('status') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('created_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_date') ?><?= $sortIndicator('created_at') ?></a></th>
+                        <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
                     </tr>
                     </thead>
                     <tbody class="table-list">
@@ -60,6 +61,26 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                                 <?php endif; ?>
                             </td>
                             <td class="text-nowrap"><?= date('d.m.Y H:i', strtotime($request['created_at'])) ?></td>
+                            <td class="text-nowrap">
+                                <form
+                                    action="<?= base_href('/admin/contact-requests/delete') ?>"
+                                    method="post"
+                                    class="d-inline-flex"
+                                    data-admin-delete-form
+                                    data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_contact')) ?>"
+                                    data-delete-item="<?= htmlSC($request['name'] . ' <' . $request['email'] . '>') ?>"
+                                >
+                                    <?= get_csrf_field() ?>
+                                    <input type="hidden" name="id" value="<?= (int)$request['id'] ?>">
+                                    <button
+                                        class="btn btn-sm btn-outline-danger btn-icon rounded-circle"
+                                        type="submit"
+                                        aria-label="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
+                                        title="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
+                                        data-bs-toggle="tooltip"
+                                    ><i class="ci-trash"></i></button>
+                                </form>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

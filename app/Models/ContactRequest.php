@@ -198,4 +198,23 @@ class ContactRequest
              WHERE is_viewed = 0"
         );
     }
+
+    /**
+     * Удаляет заявку по идентификатору.
+     */
+    public function deleteById(int $id): void
+    {
+        $this->ensureTableExists();
+
+        if ($id <= 0) {
+            return;
+        }
+
+        db()->query(
+            "DELETE FROM {$this->table}
+             WHERE id = :id
+             LIMIT 1",
+            ['id' => $id]
+        );
+    }
 }

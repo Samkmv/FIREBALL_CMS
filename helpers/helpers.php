@@ -436,9 +436,22 @@ function send_mail(array $to, string $subject, string $tpl, array $data = [], ar
 
 function get_image($path): string
 {
-//    return $path ? base_href("/$path") : base_href("/assets/img/no-image.png");
-    $normalizedPath = ltrim((string)$path, '/');
-    return $normalizedPath !== '' ? base_url('/' . $normalizedPath) : base_url("/assets/img/no-image.png");
+    $path = trim((string)$path);
+
+    if ($path === '') {
+        return base_url('/assets/img/no-image.png');
+    }
+
+    if (filter_var($path, FILTER_VALIDATE_URL)) {
+        return $path;
+    }
+
+    if (str_starts_with($path, '//')) {
+        return $path;
+    }
+
+    $normalizedPath = ltrim($path, '/');
+    return base_url('/' . $normalizedPath);
 }
 
 function get_user_avatar(?string $path = null, string $size = 'default'): string

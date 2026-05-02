@@ -44,6 +44,9 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('category', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_category') ?><?= $sortIndicator('category') ?></a>
                         </th>
                         <th scope="col">
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('priority', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_priority') ?><?= $sortIndicator('priority') ?></a>
+                        </th>
+                        <th scope="col">
                             <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('author', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_author') ?><?= $sortIndicator('author') ?></a>
                         </th>
                         <th scope="col">
@@ -67,6 +70,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                                 <div class="text-body-tertiary small"><?= htmlSC($post['slug']) ?></div>
                             </td>
                             <td><?= htmlSC($post['category_name'] ?? $post['category'] ?? '-') ?></td>
+                            <td class="text-nowrap"><?= (int)($post['priority'] ?? 0) ?></td>
                             <td>
                                 <?php
                                 $authorRole = trim((string)($post['author_role'] ?? 'admin')) ?: 'user';

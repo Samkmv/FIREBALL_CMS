@@ -258,6 +258,9 @@ class ChatMessage
         }
 
         $type = trim((string)($message['attachment_type'] ?? ''));
+        $extension = strtolower((string)pathinfo($path, PATHINFO_EXTENSION));
+        $previewKind = self::detectAttachmentPreviewKind($type, $extension);
+        $kind = self::detectAttachmentKind($type, $extension);
 
         return [
             'path' => ltrim($path, '/'),
@@ -265,7 +268,11 @@ class ChatMessage
             'name' => trim((string)($message['attachment_name'] ?? basename($path))),
             'type' => $type,
             'size' => (int)($message['attachment_size'] ?? 0),
-            'is_image' => str_starts_with($type, 'image/'),
+            'extension' => $extension,
+            'kind' => $kind,
+            'preview_kind' => $previewKind,
+            'is_previewable' => $previewKind !== null,
+            'is_image' => $previewKind === 'image',
         ];
     }
 
@@ -367,7 +374,63 @@ class ChatMessage
     protected function isImageAttachmentPath(string $path): bool
     {
         $extension = strtolower((string)pathinfo($path, PATHINFO_EXTENSION));
-        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'], true);
+    }
+
+    /**
+     * Определяет общий тип вложения для отображения на клиенте.
+     */
+    protected static function detectAttachmentKind(string $type, string $extension): string
+    {
+        if (str_starts_with($type, 'image/')) {
+            return 'image';
+        }
+
+        if (str_starts_with($type, 'audio/')) {
+            return 'audio';
+        }
+
+        if (str_starts_with($type, 'video/')) {
+            return 'video';
+        }
+
+        if (in_array($extension, ['zip', 'rar', '7z'], true)) {
+            return 'archive';
+        }
+
+        if (in_array($extension, ['pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp'], true)) {
+            return 'document';
+        }
+
+        return 'file';
+    }
+
+    /**
+     * Определяет вариант предпросмотра вложения.
+     */
+    protected static function detectAttachmentPreviewKind(string $type, string $extension): ?string
+    {
+        if (str_starts_with($type, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'], true)) {
+            return 'image';
+        }
+
+        if (str_starts_with($type, 'audio/') || in_array($extension, ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'], true)) {
+            return 'audio';
+        }
+
+        if (str_starts_with($type, 'video/') || in_array($extension, ['mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'mpg'], true)) {
+            return 'video';
+        }
+
+        if ($type === 'application/pdf' || $extension === 'pdf') {
+            return 'pdf';
+        }
+
+        if (str_starts_with($type, 'text/') || in_array($extension, ['txt', 'csv', 'json', 'log', 'xml', 'html', 'md'], true)) {
+            return 'text';
+        }
+
+        return null;
     }
 
 }
