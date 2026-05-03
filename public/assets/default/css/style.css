@@ -52,6 +52,71 @@
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+.fb-social-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+}
+
+.fb-social-buttons__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid rgba(26, 33, 36, 0.1);
+    border-radius: 999px;
+    background: #ffffff;
+    color: #1b2430;
+    text-decoration: none;
+    line-height: 1.2;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    box-shadow: 0 10px 22px rgba(17, 24, 39, 0.06);
+}
+
+.fb-social-buttons__item:hover,
+.fb-social-buttons__item:focus {
+    color: #1f5c4f;
+    border-color: rgba(31, 92, 79, 0.28);
+    box-shadow: 0 14px 28px rgba(17, 24, 39, 0.1);
+    transform: translateY(-1px);
+}
+
+.fb-social-buttons__icon {
+    font-size: 1rem;
+    flex: 0 0 auto;
+}
+
+.fb-social-buttons__label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+    .fb-social-buttons {
+        gap: 0.6rem;
+    }
+
+    .fb-social-buttons__item {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+[data-bs-theme="dark"] .fb-social-buttons__item {
+    background: #1f2937;
+    border-color: rgba(148, 163, 184, 0.18);
+    color: #eef1f6;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+}
+
+[data-bs-theme="dark"] .fb-social-buttons__item:hover,
+[data-bs-theme="dark"] .fb-social-buttons__item:focus {
+    color: #9ae6d2;
+    border-color: rgba(124, 197, 175, 0.32);
+}
+
 .chat-messages-surface {
     background: #e3eaf3 !important;
     border-color: #c7d3e1 !important;
@@ -317,6 +382,11 @@
     vertical-align: middle;
 }
 
+[data-admin-users-table] td:nth-child(3),
+[data-admin-users-table] th:nth-child(3) {
+    min-width: 140px;
+}
+
 @media (max-width: 767.98px) {
     [data-admin-users-table] {
         min-width: 700px;
@@ -344,6 +414,11 @@
 
     [data-admin-users-table] td:nth-child(2) {
         min-width: 200px;
+    }
+
+    [data-admin-users-table] td:nth-child(3),
+    [data-admin-users-table] th:nth-child(3) {
+        min-width: 150px;
     }
 
     [data-admin-users-table] td:nth-child(4) {

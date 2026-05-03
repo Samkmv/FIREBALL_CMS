@@ -77,8 +77,8 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                                     </div>
                                 </div>
                             </td>
-                            <td>
-                                <span class="text-break"><?= htmlSC($item['login'] ?? '') ?></span>
+                            <td class="text-nowrap">
+                                <span><?= htmlSC($item['login'] ?? '') ?></span>
                             </td>
                             <td>
                                 <span class="text-break"><?= htmlSC($item['email']) ?></span>

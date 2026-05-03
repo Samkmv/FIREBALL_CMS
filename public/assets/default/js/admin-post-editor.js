@@ -41,12 +41,14 @@ $(function () {
         addImage: 'Image',
         addVideo: 'Video',
         addHtml: 'HTML',
+        addSocial: 'Social buttons',
         addCode: 'Code',
         textBlock: 'Text block',
         headingBlock: 'Heading block',
         imageBlock: 'Image block',
         videoBlock: 'Video block',
         htmlBlock: 'HTML block',
+        socialBlock: 'Social buttons block',
         codeBlock: 'Code block',
         moveUp: 'Move up',
         moveDown: 'Move down',
@@ -64,6 +66,13 @@ $(function () {
         codeLanguage: 'Language',
         htmlPlaceholder: 'Paste HTML markup. Scripts and unsafe event handlers will be removed.',
         htmlPreview: 'HTML preview',
+        socialNetwork: 'Network',
+        socialIcon: 'Icon',
+        socialLabel: 'Label',
+        socialUrl: 'Link',
+        socialAddItem: 'Add button',
+        socialRemoveItem: 'Remove button',
+        socialItemsHint: 'Add buttons, choose a network and icon, then set the target URL.',
         codePlaceholder: 'Paste your code here',
         textPlaceholder: 'Write text here. Use the toolbar for font, size, colors and lists.',
         headingPlaceholder: 'Heading text',
@@ -96,10 +105,49 @@ $(function () {
         image: 'I',
         video: 'V',
         html: '<>',
+        social: '@',
         code: '</>'
     };
     const htmlBlockStartMarker = 'fb-html-block:start';
     const htmlBlockEndMarker = 'fb-html-block:end';
+    const socialBlockStartMarker = 'fb-social-block:start';
+    const socialBlockEndMarker = 'fb-social-block:end';
+    const socialNetworkOptions = [
+        { value: 'telegram', label: 'Telegram', icon: 'ci-telegram' },
+        { value: 'instagram', label: 'Instagram', icon: 'ci-instagram' },
+        { value: 'facebook', label: 'Facebook', icon: 'ci-facebook' },
+        { value: 'youtube', label: 'YouTube', icon: 'ci-youtube' },
+        { value: 'whatsapp', label: 'WhatsApp', icon: 'ci-whatsapp' },
+        { value: 'vk', label: 'VK', icon: 'ci-vk' },
+        { value: 'linkedin', label: 'LinkedIn', icon: 'ci-linkedin' },
+        { value: 'x', label: 'X', icon: 'ci-x' },
+        { value: 'tiktok', label: 'TikTok', icon: 'ci-tiktok' },
+        { value: 'discord', label: 'Discord', icon: 'ci-discord' },
+        { value: 'github', label: 'GitHub', icon: 'ci-github' },
+        { value: 'viber', label: 'Viber', icon: 'ci-viber' },
+        { value: 'messenger', label: 'Messenger', icon: 'ci-messenger' },
+        { value: 'custom', label: 'Custom', icon: 'ci-share-2' }
+    ];
+    const socialIconOptions = [
+        { value: 'ci-telegram', label: 'Telegram' },
+        { value: 'ci-instagram', label: 'Instagram' },
+        { value: 'ci-facebook', label: 'Facebook' },
+        { value: 'ci-youtube', label: 'YouTube' },
+        { value: 'ci-whatsapp', label: 'WhatsApp' },
+        { value: 'ci-vk', label: 'VK' },
+        { value: 'ci-linkedin', label: 'LinkedIn' },
+        { value: 'ci-x', label: 'X' },
+        { value: 'ci-tiktok', label: 'TikTok' },
+        { value: 'ci-discord', label: 'Discord' },
+        { value: 'ci-github', label: 'GitHub' },
+        { value: 'ci-viber', label: 'Viber' },
+        { value: 'ci-messenger', label: 'Messenger' },
+        { value: 'ci-globe', label: 'Globe' },
+        { value: 'ci-share-2', label: 'Share' },
+        { value: 'ci-external-link', label: 'External link' },
+        { value: 'ci-phone', label: 'Phone' },
+        { value: 'ci-message-circle', label: 'Message' }
+    ];
     const fontSizeCommandMap = {
         '10px': '1',
         '12px': '2',
@@ -240,6 +288,66 @@ $(function () {
         return root.innerHTML.trim();
     }
 
+    function getSocialNetworkMeta(network) {
+        const networkValue = String(network || '').trim().toLowerCase();
+        for (let index = 0; index < socialNetworkOptions.length; index += 1) {
+            if (socialNetworkOptions[index].value === networkValue) {
+                return socialNetworkOptions[index];
+            }
+        }
+
+        return socialNetworkOptions[socialNetworkOptions.length - 1];
+    }
+
+    function getSocialIconMeta(icon) {
+        const iconValue = String(icon || '').trim().toLowerCase();
+        for (let index = 0; index < socialIconOptions.length; index += 1) {
+            if (socialIconOptions[index].value === iconValue) {
+                return socialIconOptions[index];
+            }
+        }
+
+        return {
+            value: iconValue || 'ci-share-2',
+            label: iconValue || 'Icon'
+        };
+    }
+
+    function getDefaultSocialItem(network) {
+        const meta = getSocialNetworkMeta(network || 'telegram');
+
+        return {
+            network: meta.value,
+            icon: meta.icon,
+            label: meta.label,
+            url: ''
+        };
+    }
+
+    function normalizeSocialItems(items) {
+        if (!Array.isArray(items) || !items.length) {
+            return [getDefaultSocialItem('telegram')];
+        }
+
+        const normalized = items.map(function (item) {
+            const source = item && typeof item === 'object' ? item : {};
+            const meta = getSocialNetworkMeta(source.network || 'custom');
+            const icon = String(source.icon || '').trim();
+            const label = String(source.label || '').trim();
+
+            return {
+                network: meta.value,
+                icon: icon !== '' ? icon : meta.icon,
+                label: label !== '' ? label : meta.label,
+                url: String(source.url || '').trim()
+            };
+        }).filter(function (item) {
+            return item.label !== '' || item.url !== '' || item.icon !== '';
+        });
+
+        return normalized.length ? normalized : [getDefaultSocialItem('telegram')];
+    }
+
     function defaultBlockData(type) {
         if (type === 'heading') {
             return { level: 'h2', html: '' };
@@ -252,6 +360,9 @@ $(function () {
         }
         if (type === 'html') {
             return { html: '' };
+        }
+        if (type === 'social') {
+            return { items: [getDefaultSocialItem('telegram')] };
         }
         if (type === 'code') {
             return { language: 'html', code: '' };
@@ -329,6 +440,38 @@ $(function () {
         return createBlock('html', { html: sanitizeHtml(html) });
     }
 
+    function parseSocialBlock(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString('<div data-social-root="1">' + String(html || '') + '</div>', 'text/html');
+        const root = doc.body.querySelector('[data-social-root="1"]');
+        const wrapper = root
+            ? (root.querySelector('[data-fb-social-buttons="1"]') || root.querySelector('.fb-social-buttons'))
+            : null;
+
+        if (!wrapper) {
+            return createBlock('social');
+        }
+
+        const items = Array.from(wrapper.querySelectorAll('a')).map(function (linkNode) {
+            const meta = getSocialNetworkMeta(linkNode.getAttribute('data-network') || 'custom');
+            const iconNode = linkNode.querySelector('i[class*="ci-"]');
+            const iconClass = iconNode ? String(iconNode.className || '').match(/ci-[a-z0-9-]+/i) : null;
+            const labelNode = linkNode.querySelector('.fb-social-buttons__label');
+            const label = labelNode
+                ? String(labelNode.textContent || '').trim()
+                : String(linkNode.textContent || '').trim();
+
+            return {
+                network: meta.value,
+                icon: iconClass ? iconClass[0] : meta.icon,
+                label: label,
+                url: String(linkNode.getAttribute('href') || '').trim()
+            };
+        });
+
+        return createBlock('social', { items: normalizeSocialItems(items) });
+    }
+
     function nodeToHtml(node) {
         if (!node) {
             return '';
@@ -361,6 +504,7 @@ $(function () {
         const blocks = [];
         let richBuffer = [];
         let htmlBuffer = null;
+        let socialBuffer = null;
 
         function flushRichBuffer() {
             if (!richBuffer.length) {
@@ -380,12 +524,34 @@ $(function () {
             htmlBuffer = null;
         }
 
+        function flushSocialBuffer() {
+            if (socialBuffer === null) {
+                return;
+            }
+
+            blocks.push(parseSocialBlock(socialBuffer.join('')));
+            socialBuffer = null;
+        }
+
         Array.from(root.childNodes).forEach(function (node) {
             if (node.nodeType === Node.COMMENT_NODE) {
                 const commentValue = String(node.nodeValue || '').trim();
 
+                if (commentValue === socialBlockStartMarker) {
+                    flushRichBuffer();
+                    flushHtmlBuffer();
+                    socialBuffer = [];
+                    return;
+                }
+
+                if (commentValue === socialBlockEndMarker) {
+                    flushSocialBuffer();
+                    return;
+                }
+
                 if (commentValue === htmlBlockStartMarker) {
                     flushRichBuffer();
+                    flushSocialBuffer();
                     htmlBuffer = [];
                     return;
                 }
@@ -394,6 +560,11 @@ $(function () {
                     flushHtmlBuffer();
                     return;
                 }
+            }
+
+            if (socialBuffer !== null) {
+                socialBuffer.push(nodeToHtml(node));
+                return;
             }
 
             if (htmlBuffer !== null) {
@@ -445,6 +616,7 @@ $(function () {
             richBuffer.push(node.outerHTML);
         });
 
+        flushSocialBuffer();
         flushHtmlBuffer();
         flushRichBuffer();
 
@@ -617,6 +789,26 @@ $(function () {
                 return html ? '<!--' + htmlBlockStartMarker + '-->\n' + html + '\n<!--' + htmlBlockEndMarker + '-->' : '';
             }
 
+            if (block.type === 'social') {
+                const items = normalizeSocialItems(block.data.items).filter(function (item) {
+                    return String(item.url || '').trim() !== '';
+                });
+
+                if (!items.length) {
+                    return '';
+                }
+
+                const buttonsHtml = items.map(function (item) {
+                    return '' +
+                        '<a class="fb-social-buttons__item" href="' + escapeAttr(item.url) + '" target="_blank" rel="noopener noreferrer" data-network="' + escapeAttr(item.network) + '" data-icon="' + escapeAttr(item.icon) + '">' +
+                            '<i class="fb-social-buttons__icon ' + escapeAttr(item.icon) + '" aria-hidden="true"></i>' +
+                            '<span class="fb-social-buttons__label">' + escapeHtml(item.label) + '</span>' +
+                        '</a>';
+                }).join('');
+
+                return '<!--' + socialBlockStartMarker + '-->\n<div class="fb-social-buttons" data-fb-social-buttons="1">' + buttonsHtml + '</div>\n<!--' + socialBlockEndMarker + '-->';
+            }
+
             if (block.type === 'code') {
                 const code = String(block.data.code || '');
                 if (code.trim() === '') {
@@ -739,6 +931,21 @@ $(function () {
             '<div class="fb-post-editor__rich fb-post-editor__html-preview mt-3" data-block-html-preview>' + htmlPreview + '</div>';
     }
 
+    function renderSocialCanvas(block) {
+        const items = normalizeSocialItems(block.data.items);
+        const previewHtml = items.map(function (item) {
+            return '' +
+                '<div class="fb-social-buttons__item' + (String(item.url || '').trim() === '' ? ' is-disabled' : '') + '">' +
+                    '<i class="fb-social-buttons__icon ' + escapeAttr(item.icon) + '" aria-hidden="true"></i>' +
+                    '<span class="fb-social-buttons__label">' + escapeHtml(item.label) + '</span>' +
+                '</div>';
+        }).join('');
+
+        return '' +
+            '<div class="fb-post-editor__meta"><span class="fb-post-editor__chip">' + escapeHtml(String(items.length)) + '</span></div>' +
+            '<div class="fb-social-buttons fb-social-buttons--editor mt-3">' + previewHtml + '</div>';
+    }
+
     function renderCodeCanvas(block) {
         return '' +
             '<div class="fb-post-editor__meta"><span class="fb-post-editor__chip">' + escapeHtml(String(block.data.language || 'html')) + '</span></div>' +
@@ -757,6 +964,9 @@ $(function () {
         }
         if (block.type === 'html') {
             return renderHtmlCanvas(block);
+        }
+        if (block.type === 'social') {
+            return renderSocialCanvas(block);
         }
         if (block.type === 'code') {
             return renderCodeCanvas(block);
@@ -777,6 +987,9 @@ $(function () {
         if (type === 'html') {
             return labels.htmlBlock;
         }
+        if (type === 'social') {
+            return labels.socialBlock;
+        }
         if (type === 'code') {
             return labels.codeBlock;
         }
@@ -785,6 +998,14 @@ $(function () {
 
     function blockIcon(type) {
         return blockTypeIcons[type] || '?';
+    }
+
+    function renderBlockIcon(type) {
+        if (type === 'social') {
+            return '<i class="ci-share-2" aria-hidden="true"></i>';
+        }
+
+        return escapeHtml(blockIcon(type));
     }
 
     function renderInspector(selectedBlock) {
@@ -798,7 +1019,7 @@ $(function () {
 
         let settingsHtml = '' +
             '<div class="fb-post-editor__inspector-card">' +
-                '<div class="fb-post-editor__block-label"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon(selectedBlock.type)) + '</span><span>' + escapeHtml(blockTitle(selectedBlock.type)) + '</span></div>' +
+                '<div class="fb-post-editor__block-label"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon(selectedBlock.type) + '</span><span>' + escapeHtml(blockTitle(selectedBlock.type)) + '</span></div>' +
             '</div>';
 
         if (selectedBlock.type === 'heading') {
@@ -838,6 +1059,36 @@ $(function () {
                     '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.blockSettings) + '</h4>' +
                     '<p class="fb-post-editor__inspector-note">' + escapeHtml(labels.htmlPlaceholder) + '</p>' +
                 '</div>';
+        } else if (selectedBlock.type === 'social') {
+            const items = normalizeSocialItems(selectedBlock.data.items);
+            settingsHtml += '' +
+                '<div class="fb-post-editor__inspector-card">' +
+                    '<h4 class="fb-post-editor__panel-title">' + escapeHtml(labels.blockSettings) + '</h4>' +
+                    '<p class="fb-post-editor__inspector-note mb-3">' + escapeHtml(labels.socialItemsHint) + '</p>' +
+                    '<div class="fb-post-editor__grid">';
+
+            items.forEach(function (item, index) {
+                const networkMeta = getSocialNetworkMeta(item.network);
+                const iconMeta = getSocialIconMeta(item.icon);
+                settingsHtml += '' +
+                    '<div class="fb-post-editor__social-item">' +
+                        '<div class="fb-post-editor__social-item-head">' +
+                            '<div class="fb-post-editor__social-item-preview"><i class="' + escapeAttr(item.icon) + '" aria-hidden="true"></i><span>' + escapeHtml(item.label) + '</span></div>' +
+                            '<button class="btn btn-outline-danger btn-sm" type="button" data-social-remove-item data-block-id="' + escapeAttr(selectedBlock.id) + '" data-item-index="' + escapeAttr(String(index)) + '">' + escapeHtml(labels.socialRemoveItem) + '</button>' +
+                        '</div>' +
+                        '<div class="fb-post-editor__social-fields">' +
+                            '<div><label class="form-label fb-post-editor__field-label" for="social-network-' + escapeAttr(selectedBlock.id + '-' + index) + '"><span>' + escapeHtml(labels.socialNetwork) + '</span><span class="fb-post-editor__social-meta"><i class="' + escapeAttr(networkMeta.icon) + '" aria-hidden="true"></i><span>' + escapeHtml(networkMeta.label) + '</span></span></label><select class="form-select" id="social-network-' + escapeAttr(selectedBlock.id + '-' + index) + '" data-social-field="network" data-block-id="' + escapeAttr(selectedBlock.id) + '" data-item-index="' + escapeAttr(String(index)) + '">' + renderOptions(socialNetworkOptions.map(function (networkOption) { return { value: networkOption.value, label: networkOption.label }; }), item.network) + '</select></div>' +
+                            '<div><label class="form-label fb-post-editor__field-label" for="social-icon-' + escapeAttr(selectedBlock.id + '-' + index) + '"><span>' + escapeHtml(labels.socialIcon) + '</span><span class="fb-post-editor__social-meta"><i class="' + escapeAttr(item.icon) + '" aria-hidden="true"></i><span>' + escapeHtml(iconMeta.label) + '</span></span></label><select class="form-select" id="social-icon-' + escapeAttr(selectedBlock.id + '-' + index) + '" data-social-field="icon" data-block-id="' + escapeAttr(selectedBlock.id) + '" data-item-index="' + escapeAttr(String(index)) + '">' + renderOptions(socialIconOptions.map(function (iconOption) { return { value: iconOption.value, label: iconOption.label + ' (' + iconOption.value + ')' }; }), item.icon) + '</select></div>' +
+                            '<div><label class="form-label">' + escapeHtml(labels.socialLabel) + '</label><input class="form-control" type="text" value="' + escapeAttr(item.label) + '" data-social-field="label" data-block-id="' + escapeAttr(selectedBlock.id) + '" data-item-index="' + escapeAttr(String(index)) + '"></div>' +
+                            '<div><label class="form-label">' + escapeHtml(labels.socialUrl) + '</label><input class="form-control" type="text" value="' + escapeAttr(item.url) + '" data-social-field="url" data-block-id="' + escapeAttr(selectedBlock.id) + '" data-item-index="' + escapeAttr(String(index)) + '"></div>' +
+                        '</div>' +
+                    '</div>';
+            });
+
+            settingsHtml += '' +
+                    '</div>' +
+                    '<button class="btn btn-outline-secondary rounded-pill mt-3" type="button" data-social-add-item data-block-id="' + escapeAttr(selectedBlock.id) + '">' + escapeHtml(labels.socialAddItem) + '</button>' +
+                '</div>';
         } else if (selectedBlock.type === 'code') {
             settingsHtml += '' +
                 '<div class="fb-post-editor__inspector-card">' +
@@ -876,7 +1127,7 @@ $(function () {
                     '<div class="fb-post-editor__block-header">' +
                         '<div class="fb-post-editor__block-title">' +
                             '<button class="fb-post-editor__drag" type="button" draggable="true" data-block-drag-handle data-block-id="' + escapeAttr(block.id) + '" title="' + escapeAttr(labels.drag) + '">⋮⋮</button>' +
-                            '<span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon(block.type)) + '</span>' +
+                            '<span class="fb-post-editor__inserter-icon">' + renderBlockIcon(block.type) + '</span>' +
                             '<span>' + escapeHtml(blockTitle(block.type)) + ' #' + escapeHtml(String(index + 1)) + '</span>' +
                         '</div>' +
                         '<div class="fb-post-editor__block-actions">' +
@@ -899,12 +1150,13 @@ $(function () {
                 '<aside class="fb-post-editor__sidebar">' +
                     '<h3 class="fb-post-editor__panel-title">' + escapeHtml(labels.inserter) + '</h3>' +
                     '<div class="fb-post-editor__inserter-buttons">' +
-                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="text"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('text')) + '</span><span>' + escapeHtml(labels.addText) + '</span></button>' +
-                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="heading"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('heading')) + '</span><span>' + escapeHtml(labels.addHeading) + '</span></button>' +
-                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="image"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('image')) + '</span><span>' + escapeHtml(labels.addImage) + '</span></button>' +
-                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="video"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('video')) + '</span><span>' + escapeHtml(labels.addVideo) + '</span></button>' +
-                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="html"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('html')) + '</span><span>' + escapeHtml(labels.addHtml) + '</span></button>' +
-                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="code"><span class="fb-post-editor__inserter-icon">' + escapeHtml(blockIcon('code')) + '</span><span>' + escapeHtml(labels.addCode) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="text"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon('text') + '</span><span>' + escapeHtml(labels.addText) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="heading"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon('heading') + '</span><span>' + escapeHtml(labels.addHeading) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="image"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon('image') + '</span><span>' + escapeHtml(labels.addImage) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="video"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon('video') + '</span><span>' + escapeHtml(labels.addVideo) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="html"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon('html') + '</span><span>' + escapeHtml(labels.addHtml) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="social"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon('social') + '</span><span>' + escapeHtml(labels.addSocial) + '</span></button>' +
+                        '<button class="fb-post-editor__inserter-btn" type="button" data-editor-add="code"><span class="fb-post-editor__inserter-icon">' + renderBlockIcon('code') + '</span><span>' + escapeHtml(labels.addCode) + '</span></button>' +
                     '</div>' +
                     '<h3 class="fb-post-editor__panel-title">' + escapeHtml(labels.outline) + '</h3>' +
                     '<div class="fb-post-editor__outline">' + renderOutline() + '</div>' +
@@ -1015,6 +1267,71 @@ $(function () {
         syncTextarea();
     }
 
+    function updateSocialItemField(blockId, itemIndex, field, value) {
+        const block = getBlock(blockId);
+        const index = Number(itemIndex);
+        if (!block || block.type !== 'social' || Number.isNaN(index)) {
+            return;
+        }
+
+        const items = normalizeSocialItems(block.data.items);
+        if (index < 0 || index >= items.length) {
+            return;
+        }
+
+        const item = items[index];
+        if (field === 'network') {
+            const oldMeta = getSocialNetworkMeta(item.network);
+            const newMeta = getSocialNetworkMeta(value);
+            item.network = newMeta.value;
+
+            if (!item.label || item.label === oldMeta.label) {
+                item.label = newMeta.label;
+            }
+
+            if (!item.icon || item.icon === oldMeta.icon) {
+                item.icon = newMeta.icon;
+            }
+        } else if (field === 'icon') {
+            item.icon = String(value || '').trim() || getSocialNetworkMeta(item.network).icon;
+        } else if (field === 'label' || field === 'url') {
+            item[field] = String(value || '');
+        }
+
+        block.data.items = items;
+        syncTextarea();
+    }
+
+    function addSocialItem(blockId) {
+        const block = getBlock(blockId);
+        if (!block || block.type !== 'social') {
+            return;
+        }
+
+        const items = normalizeSocialItems(block.data.items);
+        items.push(getDefaultSocialItem('custom'));
+        block.data.items = items;
+        renderAndSync();
+    }
+
+    function removeSocialItem(blockId, itemIndex) {
+        const block = getBlock(blockId);
+        const index = Number(itemIndex);
+        if (!block || block.type !== 'social' || Number.isNaN(index)) {
+            return;
+        }
+
+        let items = normalizeSocialItems(block.data.items);
+        if (items.length <= 1) {
+            items = [getDefaultSocialItem('telegram')];
+        } else {
+            items.splice(index, 1);
+        }
+
+        block.data.items = items;
+        renderAndSync();
+    }
+
     function syncRichEditor(editor) {
         const blockId = String(editor.getAttribute('data-block-id') || '');
         const block = getBlock(blockId);
@@ -1121,6 +1438,21 @@ $(function () {
             return;
         }
 
+        const addSocialButton = event.target.closest('[data-social-add-item]');
+        if (addSocialButton) {
+            addSocialItem(String(addSocialButton.getAttribute('data-block-id') || ''));
+            return;
+        }
+
+        const removeSocialButton = event.target.closest('[data-social-remove-item]');
+        if (removeSocialButton) {
+            removeSocialItem(
+                String(removeSocialButton.getAttribute('data-block-id') || ''),
+                String(removeSocialButton.getAttribute('data-item-index') || '-1')
+            );
+            return;
+        }
+
         const commandButton = event.target.closest('[data-editor-command]');
         if (commandButton && commandButton.tagName === 'BUTTON') {
             const blockCard = commandButton.closest('[data-block-card]');
@@ -1176,6 +1508,17 @@ $(function () {
             return;
         }
 
+        const socialField = event.target.closest('[data-social-field]');
+        if (socialField) {
+            updateSocialItemField(
+                String(socialField.getAttribute('data-block-id') || ''),
+                String(socialField.getAttribute('data-item-index') || '-1'),
+                String(socialField.getAttribute('data-social-field') || ''),
+                socialField.value
+            );
+            return;
+        }
+
         const field = event.target.closest('[data-block-field]');
         if (field) {
             const fieldName = String(field.getAttribute('data-block-field') || '');
@@ -1205,6 +1548,18 @@ $(function () {
     });
 
     editorApp.addEventListener('change', function (event) {
+        const socialField = event.target.closest('[data-social-field]');
+        if (socialField) {
+            updateSocialItemField(
+                String(socialField.getAttribute('data-block-id') || ''),
+                String(socialField.getAttribute('data-item-index') || '-1'),
+                String(socialField.getAttribute('data-social-field') || ''),
+                socialField.value
+            );
+            renderAndSync();
+            return;
+        }
+
         const field = event.target.closest('[data-block-field]');
         if (field) {
             updateBlockField(

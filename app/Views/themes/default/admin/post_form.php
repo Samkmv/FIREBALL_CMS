@@ -62,12 +62,14 @@ $editorConfig = [
         'addImage' => return_translation('admin_post_builder_add_image'),
         'addVideo' => return_translation('admin_post_builder_add_video'),
         'addHtml' => return_translation('admin_post_builder_add_html'),
+        'addSocial' => return_translation('admin_post_builder_add_social'),
         'addCode' => return_translation('admin_post_builder_add_code'),
         'textBlock' => return_translation('admin_post_builder_block_text'),
         'headingBlock' => return_translation('admin_post_builder_block_heading'),
         'imageBlock' => return_translation('admin_post_builder_block_image'),
         'videoBlock' => return_translation('admin_post_builder_block_video'),
         'htmlBlock' => return_translation('admin_post_builder_block_html'),
+        'socialBlock' => return_translation('admin_post_builder_block_social'),
         'codeBlock' => return_translation('admin_post_builder_block_code'),
         'moveUp' => return_translation('admin_post_builder_move_up'),
         'moveDown' => return_translation('admin_post_builder_move_down'),
@@ -85,6 +87,13 @@ $editorConfig = [
         'codeLanguage' => return_translation('admin_post_builder_code_language'),
         'htmlPlaceholder' => return_translation('admin_post_builder_html_placeholder'),
         'htmlPreview' => return_translation('admin_post_builder_html_preview'),
+        'socialNetwork' => return_translation('admin_post_builder_social_network'),
+        'socialIcon' => return_translation('admin_post_builder_social_icon'),
+        'socialLabel' => return_translation('admin_post_builder_social_label'),
+        'socialUrl' => return_translation('admin_post_builder_social_url'),
+        'socialAddItem' => return_translation('admin_post_builder_social_add_item'),
+        'socialRemoveItem' => return_translation('admin_post_builder_social_remove_item'),
+        'socialItemsHint' => return_translation('admin_post_builder_social_items_hint'),
         'codePlaceholder' => return_translation('admin_post_builder_code_placeholder'),
         'textPlaceholder' => return_translation('admin_post_builder_text_placeholder'),
         'headingPlaceholder' => return_translation('admin_post_builder_heading_placeholder'),
@@ -154,8 +163,10 @@ $editorConfig = [
     }
 
     .fb-post-editor__sidebar,
-    .fb-post-editor__inspector {
+    .fb-post-editor__inspector,
+    .fb-post-editor__canvas {
         background: rgba(250, 248, 244, .92);
+        min-width: 0;
     }
 
     .fb-post-editor__sidebar {
@@ -318,6 +329,12 @@ $editorConfig = [
         gap: .6rem;
         font-weight: 600;
         color: #1e1e1e;
+        min-width: 0;
+    }
+
+    .fb-post-editor__block-title span:last-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
     }
 
     .fb-post-editor__drag {
@@ -356,6 +373,13 @@ $editorConfig = [
     .fb-post-editor__body .form-label {
         font-size: .84rem;
         color: #5d6668;
+    }
+
+    .fb-post-editor__field-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
     }
 
     .fb-post-editor__grid {
@@ -440,7 +464,7 @@ $editorConfig = [
     }
 
     .fb-post-editor__rich {
-        min-height: 180px;
+        min-height: 280px;
         padding: 1rem;
         border: 1px solid rgba(26, 33, 36, .1);
         border-radius: 1rem;
@@ -511,7 +535,8 @@ $editorConfig = [
     }
 
     .fb-post-editor__code--html {
-        min-height: 620px;
+        height: 300px !important;
+        min-height: 300px;
     }
 
     .fb-post-editor__html-preview {
@@ -545,6 +570,113 @@ $editorConfig = [
         display: block;
         width: 100% !important;
         overflow-x: auto;
+    }
+
+    .fb-social-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .fb-social-buttons__item {
+        display: inline-flex;
+        align-items: center;
+        gap: .55rem;
+        min-width: 0;
+        padding: .8rem 1rem;
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .94);
+        color: #173a34;
+        text-decoration: none;
+        line-height: 1.2;
+        box-shadow: 0 10px 24px rgba(28, 37, 38, .05);
+    }
+
+    .fb-social-buttons__item.is-disabled {
+        opacity: .72;
+    }
+
+    .fb-social-buttons__icon {
+        font-size: 1rem;
+        flex: 0 0 auto;
+    }
+
+    .fb-social-buttons__label {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .fb-post-editor__social-item {
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: 1rem;
+        background: rgba(248, 245, 240, .8);
+        padding: .9rem;
+    }
+
+    .fb-post-editor__social-item-head {
+        display: flex;
+        align-items: stretch;
+        justify-content: flex-start;
+        flex-direction: column;
+        gap: .75rem;
+        margin-bottom: .85rem;
+    }
+
+    .fb-post-editor__social-item-preview {
+        display: inline-flex;
+        align-items: center;
+        gap: .55rem;
+        flex: 0 0 auto;
+        min-width: 0;
+        min-height: 3rem;
+        padding: .65rem .85rem;
+        border: 1px solid rgba(26, 33, 36, .08);
+        border-radius: .9rem;
+        background: rgba(255, 255, 255, .92);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .68);
+        color: #173a34;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .fb-post-editor__social-item-preview i {
+        width: 2rem;
+        height: 2rem;
+        border-radius: .7rem;
+        background: rgba(31, 92, 79, .12);
+        color: #1f5c4f;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        font-size: .95rem;
+    }
+
+    .fb-post-editor__social-fields {
+        display: grid;
+        gap: .85rem;
+        grid-template-columns: 1fr;
+    }
+
+    .fb-post-editor__social-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        min-width: 0;
+        padding: .32rem .55rem;
+        border-radius: 999px;
+        background: rgba(31, 92, 79, .1);
+        color: #173a34;
+        font-size: .76rem;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .fb-post-editor__social-meta i,
+    .fb-post-editor__inserter-icon i {
+        font-size: .95rem;
+        line-height: 1;
     }
 
     .fb-post-editor__media-summary {
@@ -860,6 +992,31 @@ $editorConfig = [
         color: #9ca3af;
     }
 
+    [data-bs-theme=dark] .fb-social-buttons__item,
+    [data-bs-theme=dark] .fb-post-editor__social-item {
+        border-color: rgba(255, 255, 255, .08);
+        background: rgba(39, 46, 58, .92);
+        color: #eef1f6;
+        box-shadow: 0 12px 26px rgba(8, 11, 18, .18);
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__social-item-preview {
+        border-color: rgba(255, 255, 255, .08);
+        background: rgba(27, 34, 45, .94);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+        color: #eef1f6;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__social-item-preview i {
+        background: rgba(124, 197, 175, .14);
+        color: #9ae6d2;
+    }
+
+    [data-bs-theme=dark] .fb-post-editor__social-meta {
+        background: rgba(124, 197, 175, .14);
+        color: #9ae6d2;
+    }
+
     [data-bs-theme=dark] .fb-post-editor__block {
         border-color: rgba(255, 255, 255, .08);
         background: rgba(34, 41, 52, .96);
@@ -965,9 +1122,32 @@ $editorConfig = [
         box-shadow: 0 12px 26px rgba(8, 11, 18, .18);
     }
 
+    @media (max-width: 1199.98px) {
+        .fb-post-editor__workspace {
+            grid-template-columns: 1fr;
+            min-height: auto;
+        }
+
+        .fb-post-editor__sidebar,
+        .fb-post-editor__canvas,
+        .fb-post-editor__inspector {
+            border: 0;
+            border-bottom: 1px solid rgba(26, 33, 36, .08);
+        }
+
+        .fb-post-editor__canvas {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+    }
+
     @media (max-width: 767.98px) {
         .fb-post-editor {
             border-radius: 1rem;
+        }
+
+        .fb-post-editor__rich {
+            min-height: 240px;
         }
 
         .fb-post-editor__topbar {
@@ -1031,6 +1211,19 @@ $editorConfig = [
         .fb-post-editor__block-actions {
             width: 100%;
             justify-content: flex-end;
+        }
+
+        .fb-post-editor__social-item-head {
+            align-items: stretch;
+        }
+
+        .fb-post-editor__social-item-head .btn {
+            width: 100%;
+        }
+
+        .fb-post-editor__field-label {
+            align-items: flex-start;
+            flex-direction: column;
         }
 
         .fb-post-media-picker__dropzone {
