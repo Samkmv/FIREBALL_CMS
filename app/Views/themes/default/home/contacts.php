@@ -1,8 +1,29 @@
+<?php
+$contactsHeading = site_setting('contacts_page_heading', return_translation('contacts_heading'));
+$contactsSubheading = site_setting('contacts_page_subheading', return_translation('contacts_subheading'));
+$contactsImage = site_setting('contacts_page_image', '/assets/img/slider/2.png');
+$contactsPhoneCustomers = site_setting('contacts_phone_customers', '+1 50 537 53 082');
+$contactsPhoneFranchise = site_setting('contacts_phone_franchise', '+1 50 537 53 000');
+$contactsEmailCustomers = site_setting('contacts_email_customers', 'info@cartzilla.com');
+$contactsEmailFranchise = site_setting('contacts_email_franchise', 'franchise@cartzilla.com');
+$contactsLocationCity = site_setting('contacts_location_city', return_translation('contacts_location_city'));
+$contactsLocationAddress = site_setting('contacts_location_address', return_translation('contacts_location_address'));
+$contactsHoursWeekdays = site_setting('contacts_hours_weekdays', return_translation('contacts_hours_weekdays'));
+$contactsHoursWeekends = site_setting('contacts_hours_weekends', return_translation('contacts_hours_weekends'));
+$contactsSupportTitle = site_setting('contacts_support_title', return_translation('contacts_support_title'));
+$contactsSupportText = site_setting('contacts_support_text', return_translation('contacts_support_text'));
+$contactsImageUrl = filter_var($contactsImage, FILTER_VALIDATE_URL) ? $contactsImage : base_url($contactsImage);
+$phoneHref = static function (string $value): string {
+    $sanitized = preg_replace('/[^0-9+]/', '', $value) ?? '';
+
+    return $sanitized !== '' ? $sanitized : $value;
+};
+?>
 <main class="content-wrapper">
     <div class="container py-5 mb-2 mb-sm-3 mb-md-4 mb-lg-5 mt-lg-3 mt-xl-4">
 
-        <h1 class="text-center"><?= print_translation('contacts_heading') ?></h1>
-        <p class="text-center pb-2 pb-sm-3"><?= print_translation('contacts_subheading') ?></p>
+        <h1 class="text-center"><?= htmlSC($contactsHeading) ?></h1>
+        <p class="text-center pb-2 pb-sm-3"><?= htmlSC($contactsSubheading) ?></p>
 
         <section class="row row-cols-1 row-cols-md-2 g-0 overflow-hidden rounded-5">
             <div class="col bg-body-tertiary py-5 px-4 px-xl-5">
@@ -49,7 +70,7 @@
             </div>
 
             <div class="col position-relative bg-body-tertiary" style="min-height: 320px;">
-                <img src="<?= base_url('/assets/img/slider/2.png') ?>" class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover" alt="<?= htmlSC(return_translation('contacts_image_alt')) ?>">
+                <img src="<?= htmlSC($contactsImageUrl) ?>" class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover" alt="<?= htmlSC(return_translation('contacts_image_alt')) ?>">
             </div>
         </section>
 
@@ -62,11 +83,11 @@
                 <ul class="list-unstyled m-0">
                     <li class="nav animate-underline justify-content-center">
                         <?= print_translation('contacts_label_customers') ?>:
-                        <a class="nav-link animate-target fs-base ms-1 p-0" href="tel:+15053753082">+1&nbsp;50&nbsp;537&nbsp;53&nbsp;082</a>
+                        <a class="nav-link animate-target fs-base ms-1 p-0" href="tel:<?= htmlSC($phoneHref($contactsPhoneCustomers)) ?>"><?= htmlSC($contactsPhoneCustomers) ?></a>
                     </li>
                     <li class="nav animate-underline justify-content-center">
                         <?= print_translation('contacts_label_franchise') ?>:
-                        <a class="nav-link animate-target fs-base ms-1 p-0" href="tel:+15053753000">+1&nbsp;50&nbsp;537&nbsp;53&nbsp;000</a>
+                        <a class="nav-link animate-target fs-base ms-1 p-0" href="tel:<?= htmlSC($phoneHref($contactsPhoneFranchise)) ?>"><?= htmlSC($contactsPhoneFranchise) ?></a>
                     </li>
                 </ul>
             </div>
@@ -78,11 +99,11 @@
                 <ul class="list-unstyled m-0">
                     <li class="nav animate-underline justify-content-center">
                         <?= print_translation('contacts_label_customers') ?>:
-                        <a class="nav-link animate-target fs-base ms-1 p-0" href="mailto:info@cartzilla.com">info@cartzilla.com</a>
+                        <a class="nav-link animate-target fs-base ms-1 p-0" href="mailto:<?= htmlSC($contactsEmailCustomers) ?>"><?= htmlSC($contactsEmailCustomers) ?></a>
                     </li>
                     <li class="nav animate-underline justify-content-center">
                         <?= print_translation('contacts_label_franchise') ?>:
-                        <a class="nav-link animate-target fs-base ms-1 p-0" href="mailto:franchise@cartzilla.com">franchise@cartzilla.com</a>
+                        <a class="nav-link animate-target fs-base ms-1 p-0" href="mailto:<?= htmlSC($contactsEmailFranchise) ?>"><?= htmlSC($contactsEmailFranchise) ?></a>
                     </li>
                 </ul>
             </div>
@@ -92,8 +113,8 @@
                 </div>
                 <h3 class="h6"><?= print_translation('contacts_block_location_title') ?></h3>
                 <ul class="list-unstyled m-0">
-                    <li><?= print_translation('contacts_location_city') ?></li>
-                    <li><?= print_translation('contacts_location_address') ?></li>
+                    <li><?= htmlSC($contactsLocationCity) ?></li>
+                    <li><?= htmlSC($contactsLocationAddress) ?></li>
                 </ul>
             </div>
             <div class="col text-center pt-1 pt-sm-2 pt-md-3">
@@ -102,8 +123,8 @@
                 </div>
                 <h3 class="h6"><?= print_translation('contacts_block_hours_title') ?></h3>
                 <ul class="list-unstyled m-0">
-                    <li><?= print_translation('contacts_hours_weekdays') ?></li>
-                    <li><?= print_translation('contacts_hours_weekends') ?></li>
+                    <li><?= htmlSC($contactsHoursWeekdays) ?></li>
+                    <li><?= htmlSC($contactsHoursWeekends) ?></li>
                 </ul>
             </div>
         </section>
@@ -111,8 +132,8 @@
         <hr class="my-lg-5">
 
         <section class="text-center pb-xxl-3 pt-4 pt-lg-3">
-            <h2 class="pt-md-2 pt-lg-0"><?= print_translation('contacts_support_title') ?></h2>
-            <p class="pb-2 pb-sm-3"><?= print_translation('contacts_support_text') ?></p>
+            <h2 class="pt-md-2 pt-lg-0"><?= htmlSC($contactsSupportTitle) ?></h2>
+            <p class="pb-2 pb-sm-3"><?= htmlSC($contactsSupportText) ?></p>
             <a class="btn btn-lg btn-outline-dark rounded-pill" href="<?= check_auth() ? base_href('/chat') : base_href('/login') ?>"><?= print_translation('contacts_support_button') ?></a>
         </section>
     </div>

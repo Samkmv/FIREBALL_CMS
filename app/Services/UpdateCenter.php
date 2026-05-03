@@ -1498,9 +1498,9 @@ class UpdateCenter
      */
     protected function resolveBranch(array $settings, string $localBranch = ''): string
     {
-        $branch = trim((string)($settings['updater_github_branch'] ?? ''));
+        $branch = $this->normalizeBranch((string)($settings['updater_github_branch'] ?? ''));
         if ($branch === '') {
-            $branch = trim($localBranch);
+            $branch = $this->normalizeBranch($localBranch);
         }
 
         return $branch !== '' ? $branch : 'main';
@@ -1526,6 +1526,23 @@ class UpdateCenter
         }
 
         return '';
+    }
+
+    /**
+     * Приводит имя ветки к безопасному формату для git-команд.
+     */
+    protected function normalizeBranch(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('~^(?!-)[A-Za-z0-9._/-]+$~', $value) !== 1) {
+            return '';
+        }
+
+        return $value;
     }
 
     /**

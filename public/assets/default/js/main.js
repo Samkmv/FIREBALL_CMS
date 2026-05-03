@@ -3,6 +3,7 @@ $(function(){
     let addToCart = $('.add-to-cart');
 
     const escapeHtml = (text) => $('<div>').text(text).html();
+    const getCsrfToken = () => $('meta[name="needCSRFToken"]').attr('content') || '';
     const searchForms = $('[data-search-suggest]');
     const unreadBadges = $('[data-chat-unread-badge]');
     const notificationCenter = $('[data-notifications-center]').first();
@@ -369,9 +370,10 @@ $(function(){
 
         $.ajax({
             url: baseUrl + '/remove-from-cart',
-            method: 'GET',
+            method: 'POST',
             data: {
                 'product_id': productId,
+                'needCSRFToken': getCsrfToken(),
             },
             beforeSend: function () {
                 // btn.prop('disabled', true);
@@ -389,6 +391,11 @@ $(function(){
             error: function (request) {
                 toastr.error(request.responseText);
                 console.log(request);
+            },
+            complete: function () {
+                $('.btn-remove').prop('disabled', false);
+                btnText.removeClass('d-none');
+                loader.addClass('d-none');
             }
         });
     });
@@ -403,9 +410,10 @@ $(function(){
 
         $.ajax({
             url: baseUrl + '/add-to-cart',
-            method: 'GET',
+            method: 'POST',
             data: {
                 'product_id': productId,
+                'needCSRFToken': getCsrfToken(),
             },
             beforeSend: function () {
                 // btn.prop('disabled', true);

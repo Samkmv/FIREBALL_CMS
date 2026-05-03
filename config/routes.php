@@ -42,7 +42,7 @@ $app->router->get('/chat/messages', [ChatController::class, 'messages'])->middle
 $app->router->get('/chat/unread-count', [ChatController::class, 'unreadCount'])->middleware(['auth']);
 $app->router->post('/chat/send', [ChatController::class, 'send'])->middleware(['auth']);
 $app->router->get('/notifications/feed', [NotificationController::class, 'feed'])->middleware(['auth']);
-$app->router->get('/logout', [AuthController::class, 'logout'])->middleware(['auth']);
+$app->router->post('/logout', [AuthController::class, 'logout'])->middleware(['auth']);
 $app->router->get('/search/suggest', [SearchController::class, 'suggest']);
 $app->router->get('/search', [SearchController::class, 'index']);
 $app->router->get('/contacts', [HomeController::class, 'contacts']);
@@ -91,8 +91,8 @@ $app->router->post('/admin/files/delete', [FileManagerController::class, 'delete
 $app->router->post('/admin/files/folder/delete', [FileManagerController::class, 'deleteDirectory'])->middleware(['auth', 'admin']);
 
 // Store pages ---------- //
-$app->router->get('/add-to-cart', [CartController::class, 'addToCart']);
-$app->router->get('/remove-from-cart', [CartController::class, 'removeFromCart']);
+$app->router->post('/add-to-cart', [CartController::class, 'addToCart']);
+$app->router->post('/remove-from-cart', [CartController::class, 'removeFromCart']);
 
 // Home (keep last among dynamic routes to avoid locale false-positive)
 $app->router->get('/', [HomeController::class, 'index']);

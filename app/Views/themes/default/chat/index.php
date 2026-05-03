@@ -162,7 +162,7 @@
                                     <label class="btn btn-outline-secondary mb-0" for="chat_attachment">
                                         <i class="ci-paperclip"></i>
                                     </label>
-                                    <input class="d-none" id="chat_attachment" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.svg,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm,.mov,.avi,.mkv,.mpeg,.mpg,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.md,.json,.xml,.zip,.rar,.7z" data-chat-attachment>
+                                    <input class="d-none" id="chat_attachment" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm,.mov,.avi,.mkv,.mpeg,.mpg,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.md,.json,.xml,.zip,.rar,.7z" data-chat-attachment>
                                     <button class="btn btn-dark" type="submit"><?= print_translation('chat_send_btn') ?></button>
                                 </div>
                                 <div class="small text-body-secondary d-none" data-chat-attachment-name></div>

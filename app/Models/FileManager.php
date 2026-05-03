@@ -166,7 +166,7 @@ class FileManager
     public function delete(string $relativePath): void
     {
         $relativePath = $this->normalizeRelativePath($relativePath);
-        if ($relativePath === '') {
+        if ($relativePath === '' || $this->isProtectedPath($relativePath)) {
             throw new \RuntimeException(return_translation('admin_files_delete_error'));
         }
 

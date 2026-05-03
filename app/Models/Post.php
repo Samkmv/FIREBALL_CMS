@@ -738,7 +738,7 @@ class Post extends Model
     {
         $prefix = $alias !== '' ? "{$alias}." : '';
         $column = match (app()->get('lang')['code'] ?? 'ru') {
-            'en', 'de' => 'name_en',
+            'en', 'de', 'zh-cn' => 'name_en',
             default => 'name_ru',
         };
 

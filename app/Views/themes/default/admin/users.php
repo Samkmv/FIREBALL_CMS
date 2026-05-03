@@ -29,8 +29,8 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
         <?php if (empty($users)): ?>
             <p class="text-body-secondary mb-0"><?= ($search ?? '') !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_users_empty') ?></p>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll">
-                <table class="table align-middle mb-0">
+            <div class="table-responsive overflow-auto admin-table-scroll admin-users-table-wrap" data-admin-users-table-wrap>
+                <table class="table align-middle mb-0 admin-users-table" data-admin-users-table>
                     <thead class="position-sticky top-0">
                     <tr>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
@@ -61,24 +61,34 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                                 : return_translation('admin_users_delete_last_admin_blocked'));
                         ?>
                         <tr>
-                            <th class="text-nowrap" scope="row"><?= (int)$item['id'] ?></th>
+                            <th class="text-nowrap" scope="row">
+                                <span><?= (int)$item['id'] ?></span>
+                            </th>
                             <td>
-                                <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-3 min-w-0">
                                     <img
                                         src="<?= get_user_avatar($item['avatar'] ?? null, 'sm') ?>"
                                         alt="<?= htmlSC($item['name']) ?>"
                                         class="rounded-circle border object-fit-cover"
                                         style="width: 40px; height: 40px;"
                                     >
-                                    <div><?= htmlSC($item['name']) ?></div>
+                                    <div class="min-w-0">
+                                        <div class="text-truncate"><?= htmlSC($item['name']) ?></div>
+                                    </div>
                                 </div>
                             </td>
-                            <td><?= htmlSC($item['login'] ?? '') ?></td>
-                            <td><?= htmlSC($item['email']) ?></td>
+                            <td>
+                                <span class="text-break"><?= htmlSC($item['login'] ?? '') ?></span>
+                            </td>
+                            <td>
+                                <span class="text-break"><?= htmlSC($item['email']) ?></span>
+                            </td>
                             <td>
                                 <span class="badge fs-xs rounded-pill <?= $roleBadgeClass ?>"><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
                             </td>
-                            <td class="text-nowrap"><?= date('d.m.Y H:i', strtotime($item['created_at'])) ?></td>
+                            <td class="text-nowrap">
+                                <span><?= date('d.m.Y H:i', strtotime($item['created_at'])) ?></span>
+                            </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">
                                     <?php if (!$isProtectedCreator): ?>

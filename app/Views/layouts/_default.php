@@ -101,7 +101,12 @@
 
                                 <li><a class="dropdown-item" href="<?= base_href('/dashboard') ?>"><?php _e('menu_dashboard'); ?></a></li>
 
-                                <li><a class="dropdown-item" href="<?= base_href('/logout') ?>"><?php _e('menu_logout'); ?></a></li>
+                                <li>
+                                    <form action="<?= base_href('/logout') ?>" method="post" class="px-2 py-1">
+                                        <?= get_csrf_field() ?>
+                                        <button class="dropdown-item" type="submit"><?php _e('menu_logout'); ?></button>
+                                    </form>
+                                </li>
 
                             </ul>
                         </li>

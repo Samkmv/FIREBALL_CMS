@@ -71,6 +71,12 @@ $defaults = [
             'title' => 'Deutsch',
             'base' => 0,
         ],
+        'zh-cn' => [
+            'id' => 4,
+            'code' => 'zh-cn',
+            'title' => '简体中文',
+            'base' => 0,
+        ],
     ],
     'DB_SETTINGS' => [
         'driver' => 'mysql',
@@ -146,4 +152,4 @@ foreach ($arrayKeys as $key) {
     }
 }
 
-date_default_timezone_set($defaults['APP_TIMEZONE']);
+date_default_timezone_set((string)($config['APP_TIMEZONE'] ?? $defaults['APP_TIMEZONE']));

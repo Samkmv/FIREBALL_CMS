@@ -7,8 +7,12 @@ $lastCheck = $updateCenter['last_check'] ?? null;
 $updateBlockers = $updateCenter['update_blockers'] ?? [];
 $updaterRepository = $formData['updater_github_repository'] ?? ($settings['updater_github_repository'] ?? ($updateConfig['repository'] ?? ''));
 $updaterBranch = $formData['updater_github_branch'] ?? ($settings['updater_github_branch'] ?? ($updateConfig['branch'] ?? 'main'));
-$updaterToken = $formData['updater_github_token'] ?? ($settings['updater_github_token'] ?? '');
+$updaterToken = $formData['updater_github_token'] ?? '';
 $release = is_array($lastCheck['release'] ?? null) ? $lastCheck['release'] : [];
+$localReleaseName = trim((string)($updateLocal['name'] ?? ($engine_release['name'] ?? 'FIREBALL_CMS')));
+$localReleaseSummary = trim((string)($updateLocal['summary'] ?? ($engine_release['summary'] ?? '')));
+$localReleaseChanges = array_values(array_filter(array_map('trim', is_array($updateLocal['changes'] ?? null) ? $updateLocal['changes'] : (is_array($engine_release['changes'] ?? null) ? $engine_release['changes'] : []))));
+$remoteReleaseLines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string)($release['body'] ?? '')) ?: [])));
 $statusVariant = 'secondary';
 $statusLabel = return_translation('admin_update_status_unknown');
 $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
@@ -81,7 +85,7 @@ if (is_array($lastCheck)) {
                 <div class="col-12">
                     <label class="form-label"><?= print_translation('admin_settings_update_token') ?></label>
                     <input class="form-control" type="password" name="updater_github_token" value="<?= htmlSC($updaterToken) ?>" autocomplete="off" placeholder="ghp_...">
-                    <div class="form-text"><?= print_translation('admin_settings_update_token_hint') ?></div>
+                    <div class="form-text"><?= print_translation('admin_settings_update_token_hint') ?><?php if (($settings['updater_github_token'] ?? '') !== ''): ?> <?= print_translation('admin_settings_update_token_keep_hint') ?><?php endif; ?></div>
                 </div>
                 <div class="col-12 d-flex gap-2">
                     <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
@@ -111,8 +115,14 @@ if (is_array($lastCheck)) {
                 <div class="border rounded-4 p-3 h-100">
                     <div class="text-body-secondary fs-sm mb-1"><?= print_translation('admin_update_current_version') ?></div>
                     <div class="fw-semibold"><?= htmlSC($installedVersionLabel !== '' ? $installedVersionLabel : '—') ?></div>
+                    <?php if ($localReleaseName !== ''): ?>
+                        <div class="text-body-secondary fs-sm mt-2"><?= htmlSC($localReleaseName) ?></div>
+                    <?php endif; ?>
                     <?php if (($updateLocal['released_at'] ?? '') !== ''): ?>
                         <div class="text-body-secondary fs-sm mt-2"><?= print_translation('admin_update_published_at') ?>: <?= htmlSC((string)$updateLocal['released_at']) ?></div>
+                    <?php endif; ?>
+                    <?php if ($localReleaseSummary !== ''): ?>
+                        <div class="small mt-2"><?= htmlSC($localReleaseSummary) ?></div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -120,10 +130,16 @@ if (is_array($lastCheck)) {
                 <div class="border rounded-4 p-3 h-100">
                     <div class="text-body-secondary fs-sm mb-1"><?= print_translation('admin_update_latest_version') ?></div>
                     <div class="fw-semibold"><?= htmlSC((string)($lastCheck['remote_version'] ?? '—')) ?></div>
+                    <?php if (($release['name'] ?? '') !== '' || ($release['tag_name'] ?? '') !== ''): ?>
+                        <div class="text-body-secondary fs-sm mt-2"><?= htmlSC((string)(($release['name'] ?? '') !== '' ? $release['name'] : ($release['tag_name'] ?? ''))) ?></div>
+                    <?php endif; ?>
                     <div class="text-body-secondary fs-sm mt-2"><?= print_translation('admin_update_remote_commit') ?></div>
                     <div class="fs-sm"><?= htmlSC($remoteCommitLabel) ?></div>
                     <?php if (($release['published_at'] ?? '') !== ''): ?>
                         <div class="text-body-secondary fs-sm mt-2"><?= print_translation('admin_update_published_at') ?>: <?= htmlSC((string)$release['published_at']) ?></div>
+                    <?php endif; ?>
+                    <?php if (($release['excerpt'] ?? '') !== ''): ?>
+                        <div class="small mt-2"><?= htmlSC((string)$release['excerpt']) ?></div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -147,32 +163,71 @@ if (is_array($lastCheck)) {
 
         <div class="row g-4">
             <div class="col-lg-7">
-                <div class="border rounded-4 p-3 h-100">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-4 text-body-secondary"><?= print_translation('admin_update_repository_label') ?></dt>
-                        <dd class="col-sm-8"><?= htmlSC((string)($updateConfig['repository'] ?? '—')) ?></dd>
-                        <dt class="col-sm-4 text-body-secondary"><?= print_translation('admin_update_branch_label') ?></dt>
-                        <dd class="col-sm-8"><?= htmlSC((string)($updateConfig['branch'] ?? 'main')) ?></dd>
-                        <dt class="col-sm-4 text-body-secondary"><?= print_translation('admin_update_origin_label') ?></dt>
-                        <dd class="col-sm-8 text-break"><?= htmlSC((string)($updateLocal['origin_url'] ?? '—')) ?></dd>
-                    </dl>
-
-                    <hr class="my-4">
-
-                    <h3 class="h6 mb-2"><?= print_translation('admin_update_release_notes') ?></h3>
-                    <?php if (!empty($release)): ?>
-                        <div class="fw-semibold mb-2"><?= htmlSC((string)(($release['name'] ?? '') !== '' ? $release['name'] : ($release['tag_name'] ?? ''))) ?></div>
-                        <p class="text-body-secondary mb-3"><?= htmlSC((string)($release['excerpt'] ?? '')) ?></p>
-                        <?php if (($release['html_url'] ?? '') !== ''): ?>
-                            <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC((string)$release['html_url']) ?>" target="_blank" rel="noopener noreferrer"><?= print_translation('admin_update_release_link') ?></a>
+                <div class="border rounded-4 p-3 h-100 d-flex flex-column gap-4">
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                            <h3 class="h6 mb-0"><?= print_translation('admin_update_installed_metadata') ?></h3>
+                            <span class="badge text-bg-secondary"><?= print_translation('admin_update_version_source_file') ?></span>
+                        </div>
+                        <div class="fw-semibold mb-1">
+                            <?= htmlSC($localReleaseName !== '' ? $localReleaseName : 'FIREBALL_CMS') ?>
+                            <?php if ($installedVersionLabel !== ''): ?>
+                                <span class="text-body-secondary">v<?= htmlSC($installedVersionLabel) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($localReleaseSummary !== ''): ?>
+                            <p class="text-body-secondary mb-3"><?= htmlSC($localReleaseSummary) ?></p>
                         <?php endif; ?>
-                    <?php else: ?>
-                        <p class="text-body-secondary mb-0"><?= print_translation('admin_update_no_release_data') ?></p>
-                    <?php endif; ?>
+                        <div class="text-body-secondary fs-sm mb-1"><?= print_translation('admin_update_changes_label') ?></div>
+                        <?php if (!empty($localReleaseChanges)): ?>
+                            <ul class="mb-0 ps-3">
+                                <?php foreach ($localReleaseChanges as $change): ?>
+                                    <li><?= htmlSC((string)$change) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php else: ?>
+                            <p class="text-body-secondary mb-0"><?= print_translation('admin_update_no_changes') ?></p>
+                        <?php endif; ?>
+                    </div>
+
+                    <hr class="my-0">
+
+                    <div>
+                        <h3 class="h6 mb-2"><?= print_translation('admin_update_repository_label') ?></h3>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 text-body-secondary"><?= print_translation('admin_update_repository_label') ?></dt>
+                            <dd class="col-sm-8"><?= htmlSC((string)($updateConfig['repository'] ?? '—')) ?></dd>
+                            <dt class="col-sm-4 text-body-secondary"><?= print_translation('admin_update_branch_label') ?></dt>
+                            <dd class="col-sm-8"><?= htmlSC((string)($updateConfig['branch'] ?? 'main')) ?></dd>
+                            <dt class="col-sm-4 text-body-secondary"><?= print_translation('admin_update_origin_label') ?></dt>
+                            <dd class="col-sm-8 text-break"><?= htmlSC((string)($updateLocal['origin_url'] ?? '—')) ?></dd>
+                        </dl>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-5">
                 <div class="border rounded-4 p-3 h-100 d-flex flex-column gap-3">
+                    <div>
+                        <h3 class="h6 mb-2"><?= print_translation('admin_update_release_notes') ?></h3>
+                        <?php if (!empty($release)): ?>
+                            <div class="fw-semibold mb-2"><?= htmlSC((string)(($release['name'] ?? '') !== '' ? $release['name'] : ($release['tag_name'] ?? ''))) ?></div>
+                            <p class="text-body-secondary mb-3"><?= htmlSC((string)($release['excerpt'] ?? '')) ?></p>
+                            <?php if (!empty($remoteReleaseLines)): ?>
+                                <div class="text-body-secondary fs-sm mb-1"><?= print_translation('admin_update_changes_label') ?></div>
+                                <ul class="mb-3 ps-3">
+                                    <?php foreach ($remoteReleaseLines as $line): ?>
+                                        <li><?= htmlSC((string)$line) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
+                            <?php if (($release['html_url'] ?? '') !== ''): ?>
+                                <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC((string)$release['html_url']) ?>" target="_blank" rel="noopener noreferrer"><?= print_translation('admin_update_release_link') ?></a>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <p class="text-body-secondary mb-0"><?= print_translation('admin_update_no_release_data') ?></p>
+                        <?php endif; ?>
+                    </div>
+
                     <?php if (!empty($updateBlockers)): ?>
                         <div class="alert alert-warning mb-0">
                             <div class="fw-semibold mb-2"><?= print_translation('admin_update_blockers') ?></div>

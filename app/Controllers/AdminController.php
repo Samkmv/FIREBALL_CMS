@@ -739,6 +739,19 @@ class AdminController extends BaseController
             'social_instagram' => trim((string)($data['social_instagram'] ?? '')),
             'social_facebook' => trim((string)($data['social_facebook'] ?? '')),
             'social_youtube' => trim((string)($data['social_youtube'] ?? '')),
+            'contacts_page_heading' => trim((string)($data['contacts_page_heading'] ?? '')),
+            'contacts_page_subheading' => trim((string)($data['contacts_page_subheading'] ?? '')),
+            'contacts_page_image' => trim((string)($data['contacts_page_image'] ?? '')),
+            'contacts_phone_customers' => trim((string)($data['contacts_phone_customers'] ?? '')),
+            'contacts_phone_franchise' => trim((string)($data['contacts_phone_franchise'] ?? '')),
+            'contacts_email_customers' => mb_strtolower(trim((string)($data['contacts_email_customers'] ?? ''))),
+            'contacts_email_franchise' => mb_strtolower(trim((string)($data['contacts_email_franchise'] ?? ''))),
+            'contacts_location_city' => trim((string)($data['contacts_location_city'] ?? '')),
+            'contacts_location_address' => trim((string)($data['contacts_location_address'] ?? '')),
+            'contacts_hours_weekdays' => trim((string)($data['contacts_hours_weekdays'] ?? '')),
+            'contacts_hours_weekends' => trim((string)($data['contacts_hours_weekends'] ?? '')),
+            'contacts_support_title' => trim((string)($data['contacts_support_title'] ?? '')),
+            'contacts_support_text' => trim((string)($data['contacts_support_text'] ?? '')),
             'seo_home_title' => trim((string)($data['seo_home_title'] ?? '')),
             'seo_default_title_suffix' => trim((string)($data['seo_default_title_suffix'] ?? '')),
             'seo_meta_description' => trim((string)($data['seo_meta_description'] ?? '')),
@@ -765,6 +778,14 @@ class AdminController extends BaseController
                 $errors[$field][] = return_translation('admin_validation_social_url_invalid');
             }
         }
+        if ($data['contacts_page_image'] !== '' && !$this->isValidSeoImage($data['contacts_page_image'])) {
+            $errors['contacts_page_image'][] = return_translation('admin_validation_seo_image_invalid');
+        }
+        foreach (['contacts_email_customers', 'contacts_email_franchise'] as $field) {
+            if (($data[$field] ?? '') !== '' && filter_var((string)$data[$field], FILTER_VALIDATE_EMAIL) === false) {
+                $errors[$field][] = return_translation('contacts_validation_email_invalid');
+            }
+        }
         if (!in_array($data['seo_robots'], ['index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow'], true)) {
             $errors['seo_robots'][] = return_translation('admin_validation_seo_robots_invalid');
         }
@@ -783,10 +804,13 @@ class AdminController extends BaseController
      */
     protected function normalizeUpdateSettingsData(array $data): array
     {
+        $currentToken = $this->siteSettings->get('updater_github_token', '');
+        $submittedToken = trim((string)($data['updater_github_token'] ?? ''));
+
         return [
             'updater_github_repository' => trim((string)($data['updater_github_repository'] ?? '')),
             'updater_github_branch' => trim((string)($data['updater_github_branch'] ?? 'main')),
-            'updater_github_token' => trim((string)($data['updater_github_token'] ?? '')),
+            'updater_github_token' => $submittedToken !== '' ? $submittedToken : $currentToken,
         ];
     }
 

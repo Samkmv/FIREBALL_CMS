@@ -247,7 +247,7 @@ class ChatController extends BaseController
     protected function getAllowedAttachmentExtensions(): array
     {
         return [
-            'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg',
+            'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
             'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac',
             'mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'mpg',
             'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'md', 'json', 'xml',
@@ -267,7 +267,6 @@ class ChatController extends BaseController
             'webp' => 'image/webp',
             'gif' => 'image/gif',
             'bmp' => 'image/bmp',
-            'svg' => 'image/svg+xml',
             'mp3' => 'audio/mpeg',
             'wav' => 'audio/wav',
             'ogg' => 'audio/ogg',

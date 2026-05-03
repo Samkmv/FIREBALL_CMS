@@ -42,8 +42,8 @@
             <span class="h6 mb-0">$<?= \App\Helpers\Cart\Cart::getCartSum() ?></span>
         </div>
         <div class="d-flex w-100 gap-3">
-            <a class="btn btn-lg btn-secondary w-100 rounded-pill" href=""><?= print_translation('tpl_menu_btn_cart_details') ?></a>
-            <a class="btn btn-lg btn-primary w-100 rounded-pill" href=""><?= print_translation('tpl_menu_btn_cart_buy') ?></a>
+            <button class="btn btn-lg btn-secondary w-100 rounded-pill" type="button" disabled><?= print_translation('tpl_menu_btn_cart_details') ?></button>
+            <button class="btn btn-lg btn-primary w-100 rounded-pill" type="button" disabled><?= print_translation('tpl_menu_btn_cart_buy') ?></button>
         </div>
     </div>
 
@@ -56,6 +56,5 @@
     </div>
 
 <?php endif; ?>
-
 
 

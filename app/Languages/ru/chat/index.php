@@ -9,7 +9,7 @@ return [
     'chat_contacts_clients' => 'Клиенты',
     'chat_search_placeholder' => 'Поиск по чатам...',
     'chat_search_empty' => 'Ничего не найдено.',
-    'chat_encryption_badge' => 'AES шифрование',
+    'chat_encryption_badge' => 'AES-GCM + ключ дня',
     'chat_loading' => 'Загрузка сообщений...',
     'chat_message_placeholder' => 'Введите сообщение...',
     'chat_send_btn' => 'Отправить',
@@ -35,5 +35,5 @@ return [
     'chat_attachment_file' => 'Файл',
     'chat_file_upload_error' => 'Не удалось загрузить файл.',
     'chat_file_size_error' => 'Файл не должен превышать 200 МБ.',
-    'chat_file_type_error' => 'Разрешены изображения, музыка, видео, документы и архивы: JPG, PNG, WebP, GIF, BMP, SVG, MP3, WAV, OGG, M4A, FLAC, AAC, MP4, WEBM, MOV, AVI, MKV, MPEG, MPG, PDF, TXT, CSV, DOC, DOCX, XLS, XLSX, PPT, PPTX, RTF, ODT, ODS, ODP, MD, JSON, XML, ZIP, RAR и 7Z.',
+    'chat_file_type_error' => 'Разрешены изображения, музыка, видео, документы и архивы: JPG, PNG, WebP, GIF, BMP, MP3, WAV, OGG, M4A, FLAC, AAC, MP4, WEBM, MOV, AVI, MKV, MPEG, MPG, PDF, TXT, CSV, DOC, DOCX, XLS, XLSX, PPT, PPTX, RTF, ODT, ODS, ODP, MD, JSON, XML, ZIP, RAR и 7Z.',
 ];

@@ -30,7 +30,7 @@
                                 <div class="swiper-slide text-center text-md-start">
                                     <p class="fs-xl mb-2 mb-lg-3 mb-xl-4">Новая коллекция</p>
                                     <h2 class="display-4 text-uppercase mb-4 mb-xl-5">Новый осенний <br class="d-none d-md-inline">сезон 2024</h2>
-                                    <a class="btn btn-lg btn-outline-dark" href="shop-catalog-fashion.html">
+                                    <a class="btn btn-lg btn-outline-dark" href="<?= base_href('/posts') ?>">
                                         Подробнее
                                         <i class="ci-arrow-up-right fs-lg ms-2 me-n1"></i>
                                     </a>
@@ -40,7 +40,7 @@
                                 <div class="swiper-slide text-center text-md-start">
                                     <p class="fs-xl mb-2 mb-lg-3 mb-xl-4">Готовы к вечеринке?</p>
                                     <h2 class="display-4 text-uppercase mb-4 mb-xl-5">Choose outfits for parties</h2>
-                                    <a class="btn btn-lg btn-outline-dark" href="shop-catalog-fashion.html">
+                                    <a class="btn btn-lg btn-outline-dark" href="<?= base_href('/posts') ?>">
                                         Подробнее
                                         <i class="ci-arrow-up-right fs-lg ms-2 me-n1"></i>
                                     </a>
@@ -50,7 +50,7 @@
                                 <div class="swiper-slide text-center text-md-start">
                                     <p class="fs-xl mb-2 mb-lg-3 mb-xl-4">Серый цвет смотрится по новому</p>
                                     <h2 class="display-4 text-uppercase mb-4 mb-xl-5">-50% на серый цвет</h2>
-                                    <a class="btn btn-lg btn-outline-dark" href="shop-catalog-fashion.html">
+                                    <a class="btn btn-lg btn-outline-dark" href="<?= base_href('/posts') ?>">
                                         Подробнее
                                         <i class="ci-arrow-up-right fs-lg ms-2 me-n1"></i>
                                     </a>
@@ -79,13 +79,13 @@
                 }">
                             <div class="swiper-wrapper">
                                 <div class="swiper-slide">
-                                    <img src="assets/img/slider/1.png" class="rtl-flip" alt="Image">
+                                    <img src="<?= base_url('/assets/img/slider/1.png') ?>" class="rtl-flip" alt="Image">
                                 </div>
                                 <div class="swiper-slide">
-                                    <img src="assets/img/slider/2.png" class="rtl-flip" alt="Image">
+                                    <img src="<?= base_url('/assets/img/slider/2.png') ?>" class="rtl-flip" alt="Image">
                                 </div>
                                 <div class="swiper-slide">
-                                    <img src="assets/img/slider/3.png" class="rtl-flip" alt="Image">
+                                    <img src="<?= base_url('/assets/img/slider/3.png') ?>" class="rtl-flip" alt="Image">
                                 </div>
                             </div>
                         </div>

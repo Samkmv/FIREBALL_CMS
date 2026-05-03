@@ -117,7 +117,7 @@ $(function () {
                 <div class="mt-2">
                     <button
                         type="button"
-                        class="btn p-0 border-0 bg-transparent d-block"
+                        class="btn p-0 border-0 bg-transparent chat-message-image-trigger"
                         data-chat-attachment-preview
                         data-preview-url="${url}"
                         data-preview-name="${name}"
@@ -126,7 +126,7 @@ $(function () {
                         data-preview-extension="${extension}"
                         style="cursor: zoom-in;"
                     >
-                        <img class="rounded-3 border" src="${url}" alt="${name}" style="max-width: 240px; max-height: 180px; object-fit: cover;">
+                        <img class="chat-message-image rounded-3" src="${url}" alt="${name}">
                     </button>
                 </div>
             `;

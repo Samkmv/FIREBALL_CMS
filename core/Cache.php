@@ -52,7 +52,7 @@ class Cache
                 return $default;
             }
 
-            $content = unserialize($rawContent);
+            $content = @unserialize($rawContent, ['allowed_classes' => false]);
             if (!is_array($content) || !array_key_exists('end_time', $content)) {
                 log_error_details('Cache payload error', [
                     'Key' => $key,

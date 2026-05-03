@@ -77,11 +77,13 @@ $currentLangCode = app()->get('lang')['code'] ?? 'ru';
 $ogLocale = match ($currentLangCode) {
     'en' => 'en_US',
     'de' => 'de_DE',
+    'zh-cn' => 'zh_CN',
     default => 'ru_RU',
 };
 $currentUser = check_auth() ? get_user() : null;
 $isAdmin = check_admin();
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
+$logoutAction = base_href('/logout');
 $footerDescription = $siteDescription !== ''
     ? $siteDescription
     : return_translation('footer_description_fallback');
@@ -108,10 +110,6 @@ $footerAccountLinks = check_auth()
         [
             'href' => base_href('/chat'),
             'label' => return_translation('tpl_auth_chat'),
-        ],
-        [
-            'href' => base_href('/logout'),
-            'label' => return_translation('tpl_auth_logout'),
         ],
     ]
     : [
@@ -283,9 +281,12 @@ $postCategoryUrl = static function (?string $slug = null): string {
                 <i class="ci-chat fs-lg ms-n1 me-2"></i>
                 <?= print_translation('tpl_auth_chat') ?>
             </a>
-            <a class="btn btn-lg btn-dark w-100 rounded-pill" href="<?= base_href('/logout') ?>">
-                <?= print_translation('tpl_auth_logout') ?>
-            </a>
+            <form action="<?= $logoutAction ?>" method="post" class="w-100">
+                <?= get_csrf_field() ?>
+                <button class="btn btn-lg btn-dark w-100 rounded-pill" type="submit">
+                    <?= print_translation('tpl_auth_logout') ?>
+                </button>
+            </form>
         <?php else: ?>
             <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2" href="<?= base_href('/login') ?>">
                 <i class="ci-user fs-lg ms-n1 me-2"></i>
@@ -521,7 +522,12 @@ $postCategoryUrl = static function (?string $slug = null): string {
                         <?php if (check_admin()): ?>
                             <li><a class="dropdown-item" href="<?= base_href('/admin') ?>"><?= print_translation('tpl_auth_admin') ?></a></li>
                         <?php endif; ?>
-                        <li><a class="dropdown-item" href="<?= base_href('/logout') ?>"><?= print_translation('tpl_auth_logout') ?></a></li>
+                        <li>
+                            <form action="<?= $logoutAction ?>" method="post" class="px-2 py-1">
+                                <?= get_csrf_field() ?>
+                                <button class="dropdown-item" type="submit"><?= print_translation('tpl_auth_logout') ?></button>
+                            </form>
+                        </li>
                     <?php else: ?>
                         <li><a class="dropdown-item" href="<?= base_href('/login') ?>"><?= print_translation('tpl_auth_login') ?></a></li>
                         <li><a class="dropdown-item" href="<?= base_href('/register') ?>"><?= print_translation('tpl_auth_register') ?></a></li>
@@ -648,6 +654,16 @@ $postCategoryUrl = static function (?string $slug = null): string {
                                             <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= $link['href'] ?>"><?= $link['label'] ?></a>
                                         </li>
                                     <?php endforeach; ?>
+                                    <?php if (check_auth()): ?>
+                                        <li class="d-flex w-100 pt-1">
+                                            <form action="<?= $logoutAction ?>" method="post" class="w-100">
+                                                <?= get_csrf_field() ?>
+                                                <button class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0 border-0 bg-transparent text-start" type="submit">
+                                                    <?= print_translation('tpl_auth_logout') ?>
+                                                </button>
+                                            </form>
+                                        </li>
+                                    <?php endif; ?>
                                 </ul>
                             </div>
                             <hr class="d-sm-none my-0">

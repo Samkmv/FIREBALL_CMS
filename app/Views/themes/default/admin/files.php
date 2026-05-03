@@ -76,6 +76,15 @@
             min-width: 0;
         }
 
+        [data-file-manager-page] .min-w-0 {
+            min-width: 0 !important;
+        }
+
+        [data-file-manager-page] .text-truncate {
+            min-width: 0;
+            max-width: 100%;
+        }
+
         [data-file-manager-toolbar] {
             position: sticky;
             top: 0;
@@ -112,6 +121,24 @@
             color: inherit;
         }
 
+        [data-file-manager-name-cell] > .d-flex,
+        [data-file-manager-name-cell] .min-w-0,
+        [data-file-manager-name-cell] a,
+        [data-file-manager-name-cell] .fw-medium,
+        [data-file-manager-name-cell] .small {
+            min-width: 0;
+        }
+
+        [data-file-manager-name-cell] a,
+        [data-file-manager-name-cell] .fw-medium,
+        [data-file-manager-name-cell] .small {
+            display: block;
+        }
+
+        [data-file-manager-actions-menu] .dropdown-toggle {
+            white-space: nowrap;
+        }
+
         [data-file-manager-selection-badge] {
             background: var(--fm-accent-soft);
             color: var(--fm-accent);
@@ -126,11 +153,20 @@
             width: 100%;
         }
 
+        [data-file-manager-feedback-wrap]:empty {
+            display: none;
+        }
+
+        [data-file-manager-feedback-wrap]:not(:empty) {
+            padding-bottom: 0 !important;
+        }
+
         [data-file-manager-sidebar] .list-group-item {
             border: 0;
             background: transparent;
             border-radius: 18px;
             margin-bottom: .2rem;
+            min-width: 0;
         }
 
         [data-file-manager-sidebar] .list-group-item:hover {
@@ -233,6 +269,10 @@
                 min-width: 0;
             }
 
+            [data-file-manager-status] > * {
+                min-width: 0;
+            }
+
             [data-file-manager-search-form] {
                 max-width: none;
                 min-width: 0;
@@ -278,6 +318,11 @@
 
             [data-file-manager-name-cell] .small {
                 font-size: .74rem;
+            }
+
+            [data-file-manager-feedback-wrap] {
+                padding-inline: 1rem !important;
+                padding-top: 1rem !important;
             }
         }
     </style>

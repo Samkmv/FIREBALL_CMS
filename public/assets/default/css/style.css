@@ -64,12 +64,41 @@
 
 .chat-message-bubble {
     max-width: 80%;
+    min-width: 0;
     border: 1px solid transparent;
+    overflow: hidden;
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.chat-message-image-trigger {
+    display: block;
+    width: 100%;
+    max-width: 240px;
+}
+
+.chat-message-image {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 180px;
+    object-fit: cover;
+    border: 0 !important;
+}
+
+@media (max-width: 575.98px) {
+    .chat-message-bubble {
+        max-width: calc(100% - 40px);
+    }
+
+    .chat-message-image-trigger {
+        max-width: 100%;
+    }
 }
 
 [data-chat-messages] .chat-message-bubble .chat-message-text {
     color: inherit !important;
+    word-break: break-word;
 }
 
 [data-chat-messages] .chat-message-bubble .chat-message-attachment {
@@ -244,11 +273,86 @@
 
 .admin-table-scroll {
     height: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .admin-table-scroll thead th {
     background-color: var(--cz-body-bg);
     z-index: 1;
+}
+
+.admin-table-scroll > .table {
+    min-width: 720px;
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    [data-admin-nav] {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    [data-admin-nav] .btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+[data-admin-users-table-wrap] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+[data-admin-users-table] {
+    min-width: 760px;
+}
+
+[data-admin-users-table] td,
+[data-admin-users-table] th {
+    vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+    [data-admin-users-table] {
+        min-width: 700px;
+    }
+
+    .admin-table-scroll > .table {
+        min-width: 680px;
+    }
+
+    [data-admin-users-table] th,
+    [data-admin-users-table] td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9375rem;
+    }
+
+    [data-admin-users-table] td:first-child,
+    [data-admin-users-table] th:first-child {
+        padding-left: 0.75rem;
+    }
+
+    [data-admin-users-table] td:last-child,
+    [data-admin-users-table] th:last-child {
+        padding-right: 0.75rem;
+    }
+
+    [data-admin-users-table] td:nth-child(2) {
+        min-width: 200px;
+    }
+
+    [data-admin-users-table] td:nth-child(4) {
+        min-width: 220px;
+    }
+
+    [data-admin-users-table] td:last-child {
+        min-width: 96px;
+    }
 }
 
 .jodit-container,

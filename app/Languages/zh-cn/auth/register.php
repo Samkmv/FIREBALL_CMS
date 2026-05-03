@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'auth_register_title' => '注册',
+    'auth_register_heading' => '创建账户',
+    'auth_register_subtitle' => '填写表单以获得您的个人资料。',
+    'auth_register_name' => '姓名',
+    'auth_register_login_field' => '登录名',
+    'auth_register_email' => '邮箱',
+    'auth_register_password' => '密码',
+    'auth_register_password_confirmation' => '确认密码',
+    'auth_register_submit' => '注册',
+    'auth_register_login_text' => '已经有账户了？',
+    'auth_register_login_link' => '去登录',
+    'auth_register_success' => '账户创建成功。',
+    'auth_validation_name_required' => '请输入姓名。',
+    'auth_validation_name_length' => '姓名至少需要 2 个字符。',
+    'auth_validation_login_required' => '请输入登录名。',
+    'auth_validation_login_format' => '登录名至少 3 个字符，只能包含拉丁字母、数字和连字符。',
+    'auth_validation_login_exists' => '该登录名已被使用。',
+    'auth_validation_email_required' => '请输入邮箱。',
+    'auth_validation_email_invalid' => '请输入有效的邮箱地址。',
+    'auth_validation_email_exists' => '该邮箱已被使用。',
+    'auth_validation_password_required' => '请输入密码。',
+    'auth_validation_password_length' => '密码至少需要 8 个字符。',
+    'auth_validation_password_confirmation_required' => '请确认密码。',
+    'auth_validation_password_confirmation_match' => '两次输入的密码不一致。',
+];

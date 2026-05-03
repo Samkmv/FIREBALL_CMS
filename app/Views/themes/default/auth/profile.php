@@ -10,7 +10,10 @@
                     <?php if (check_admin()): ?>
                         <a class="btn btn-dark rounded-pill" href="<?= base_href('/admin') ?>"><?= print_translation('auth_profile_admin_link') ?></a>
                     <?php endif; ?>
-                    <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/logout') ?>"><?= print_translation('auth_profile_logout') ?></a>
+                    <form action="<?= base_href('/logout') ?>" method="post" class="d-inline">
+                        <?= get_csrf_field() ?>
+                        <button class="btn btn-outline-secondary rounded-pill" type="submit"><?= print_translation('auth_profile_logout') ?></button>
+                    </form>
                 </div>
             </div>
 

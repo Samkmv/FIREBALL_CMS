@@ -9,7 +9,7 @@ return [
     'chat_contacts_clients' => 'Kunden',
     'chat_search_placeholder' => 'Chats durchsuchen...',
     'chat_search_empty' => 'Nichts gefunden.',
-    'chat_encryption_badge' => 'AES-Verschluesselung',
+    'chat_encryption_badge' => 'AES-GCM + Tagesschluessel',
     'chat_loading' => 'Nachrichten werden geladen...',
     'chat_message_placeholder' => 'Nachricht eingeben...',
     'chat_send_btn' => 'Senden',
@@ -35,5 +35,5 @@ return [
     'chat_attachment_file' => 'Datei',
     'chat_file_upload_error' => 'Die Datei konnte nicht hochgeladen werden.',
     'chat_file_size_error' => 'Die Datei darf 200 MB nicht ueberschreiten.',
-    'chat_file_type_error' => 'Erlaubte Typen umfassen Bilder, Musik, Videos, Dokumente und Archive: JPG, PNG, WebP, GIF, BMP, SVG, MP3, WAV, OGG, M4A, FLAC, AAC, MP4, WEBM, MOV, AVI, MKV, MPEG, MPG, PDF, TXT, CSV, DOC, DOCX, XLS, XLSX, PPT, PPTX, RTF, ODT, ODS, ODP, MD, JSON, XML, ZIP, RAR und 7Z.',
+    'chat_file_type_error' => 'Erlaubte Typen umfassen Bilder, Musik, Videos, Dokumente und Archive: JPG, PNG, WebP, GIF, BMP, MP3, WAV, OGG, M4A, FLAC, AAC, MP4, WEBM, MOV, AVI, MKV, MPEG, MPG, PDF, TXT, CSV, DOC, DOCX, XLS, XLSX, PPT, PPTX, RTF, ODT, ODS, ODP, MD, JSON, XML, ZIP, RAR und 7Z.',
 ];

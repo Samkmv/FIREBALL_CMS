@@ -15,7 +15,7 @@ class CartController extends BaseController
      */
     public function addToCart()
     {
-        $product_id = (int) request()->get('product_id');
+        $product_id = (int) request()->post('product_id');
 
         if (!$product_id) {
             response()->text('Product id is required', 400);
@@ -27,7 +27,7 @@ class CartController extends BaseController
             response()->json(['data' => 'Product added to cart successfully.', 'mini_cart' => $mini_cart, 'cart_qty' => Cart::getCartQuantityTotal()]);
         }
 
-        response()->text('Product already exists in cart', 400);
+        response()->text('Product not found in cart', 400);
     }
 
     /**
@@ -35,7 +35,7 @@ class CartController extends BaseController
      */
     public function removeFromCart()
     {
-        $product_id = (int) request()->get('product_id');
+        $product_id = (int) request()->post('product_id');
 
         if (!$product_id) {
             response()->text('Product id is required', 400);
