@@ -2,7 +2,7 @@
 
 return [
     'name' => 'FIREBALL_CMS',
-    'version' => '1.3.2',
+    'version' => '1.3.3',
     'released_at' => '2026-05-03',
     'summary' => 'Улучшения интерфейса и исправления панели управления',
     'changes' => [
