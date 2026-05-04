@@ -735,6 +735,7 @@ class AdminController extends BaseController
         return [
             'site_title' => trim((string)($data['site_title'] ?? '')),
             'site_description' => trim((string)($data['site_description'] ?? '')),
+            'admin_session_lifetime_hours' => trim((string)($data['admin_session_lifetime_hours'] ?? '12')),
             'social_telegram' => trim((string)($data['social_telegram'] ?? '')),
             'social_instagram' => trim((string)($data['social_instagram'] ?? '')),
             'social_facebook' => trim((string)($data['social_facebook'] ?? '')),
@@ -772,6 +773,13 @@ class AdminController extends BaseController
 
         if ($data['site_title'] === '') {
             $errors['site_title'][] = return_translation('admin_validation_site_title_required');
+        }
+        if (
+            !ctype_digit((string)$data['admin_session_lifetime_hours'])
+            || (int)$data['admin_session_lifetime_hours'] < 1
+            || (int)$data['admin_session_lifetime_hours'] > 720
+        ) {
+            $errors['admin_session_lifetime_hours'][] = return_translation('admin_validation_admin_session_lifetime_hours_invalid');
         }
         foreach (['social_telegram', 'social_instagram', 'social_facebook', 'social_youtube'] as $field) {
             if (($data[$field] ?? '') !== '' && !$this->isValidExternalUrl((string)$data[$field])) {

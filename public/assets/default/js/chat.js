@@ -343,8 +343,8 @@ $(function () {
             const attachment = renderAttachment(item.attachment);
 
             html += `
-                <div class="d-flex ${mine ? 'justify-content-end' : 'justify-content-start'} align-items-end gap-2 mb-2">
-                    ${mine ? '' : `<img src="${avatar}" alt="" class="rounded-circle border flex-shrink-0" style="width: 32px; height: 32px; object-fit: cover;">`}
+                <div class="chat-message-row ${mine ? 'chat-message-row--mine' : 'chat-message-row--theirs'}">
+                    ${mine ? '' : `<img src="${avatar}" alt="" class="chat-message-avatar rounded-circle border flex-shrink-0">`}
                     <div class="chat-message-bubble rounded-3 px-3 py-2 ${mine ? 'chat-message-bubble--mine' : 'chat-message-bubble--theirs'}">
                         ${messageText}
                         ${attachment}
@@ -353,7 +353,7 @@ $(function () {
                             ${checks}
                         </div>
                     </div>
-                    ${mine ? `<img src="${avatar}" alt="" class="rounded-circle border flex-shrink-0" style="width: 32px; height: 32px; object-fit: cover;">` : ''}
+                    ${mine ? `<img src="${avatar}" alt="" class="chat-message-avatar rounded-circle border flex-shrink-0">` : ''}
                 </div>
             `;
         });

@@ -14,7 +14,9 @@ class Auth
     public function handle(): void
     {
         if (!check_auth()) {
-            session()->setFlash('error', \FBL\Language::get('tpl_auth_required_login'));
+            if (!session()->get('flash.error')) {
+                session()->setFlash('error', \FBL\Language::get('tpl_auth_required_login'));
+            }
             response()->redirect(base_href('/login'));
         }
     }

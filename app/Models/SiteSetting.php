@@ -109,6 +109,7 @@ class SiteSetting
         return [
             'site_title' => SITE_NAME,
             'site_description' => '',
+            'admin_session_lifetime_hours' => '12',
             'social_telegram' => '',
             'social_instagram' => '',
             'social_facebook' => '',

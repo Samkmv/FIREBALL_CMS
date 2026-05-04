@@ -517,15 +517,33 @@ $postCategoryUrl = static function (?string $slug = null): string {
                                 <div><?= htmlSC($currentUser['name'] ?? '') ?></div>
                             </div>
                         </li>
-                        <li><a class="dropdown-item" href="<?= base_href('/profile') ?>"><?= print_translation('tpl_auth_profile') ?></a></li>
-                        <li><a class="dropdown-item" href="<?= base_href('/chat') ?>"><?= print_translation('tpl_auth_chat') ?></a></li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/profile') ?>">
+                                <i class="ci-user fs-base"></i>
+                                <span><?= print_translation('tpl_auth_profile') ?></span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/chat') ?>">
+                                <i class="ci-chat fs-base"></i>
+                                <span><?= print_translation('tpl_auth_chat') ?></span>
+                            </a>
+                        </li>
                         <?php if (check_admin()): ?>
-                            <li><a class="dropdown-item" href="<?= base_href('/admin') ?>"><?= print_translation('tpl_auth_admin') ?></a></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin') ?>">
+                                    <i class="ci-layout fs-base"></i>
+                                    <span><?= print_translation('tpl_auth_admin') ?></span>
+                                </a>
+                            </li>
                         <?php endif; ?>
                         <li>
-                            <form action="<?= $logoutAction ?>" method="post" class="px-2 py-1">
+                            <form action="<?= $logoutAction ?>" method="post">
                                 <?= get_csrf_field() ?>
-                                <button class="dropdown-item" type="submit"><?= print_translation('tpl_auth_logout') ?></button>
+                                <button class="dropdown-item d-flex align-items-center gap-2 w-100" type="submit">
+                                    <i class="ci-log-out fs-base"></i>
+                                    <span><?= print_translation('tpl_auth_logout') ?></span>
+                                </button>
                             </form>
                         </li>
                     <?php else: ?>

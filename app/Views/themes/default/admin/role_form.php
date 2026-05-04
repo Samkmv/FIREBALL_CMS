@@ -12,17 +12,14 @@ $deleteBlockedMessage = $isProtectedCreatorRole
     ? return_translation('admin_roles_delete_system_blocked')
     : return_translation('admin_roles_delete_assigned_blocked'));
 ?>
-
-<section class="container py-5 my-2 my-md-4 my-lg-5">
-    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><?= $is_edit ? print_translation('admin_role_edit_heading') : print_translation('admin_role_create_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_role_form_subtitle') ?></p>
-        </div>
-        <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/roles') ?>"><i class="ci-arrow-left"></i><?= print_translation('admin_btn_back') ?></a>
-    </div>
-
-    <?= view()->renderPartial('admin/nav') ?>
+<?php ob_start(); ?>
+<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/roles') ?>"><i class="ci-arrow-left"></i><?= print_translation('admin_btn_back') ?></a>
+<?php $adminPageActions = ob_get_clean(); ?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => $is_edit ? return_translation('admin_role_edit_heading') : return_translation('admin_role_create_heading'),
+    'subtitle' => return_translation('admin_role_form_subtitle'),
+    'actions' => $adminPageActions,
+]) ?>
 
     <div class="border rounded-5 p-3 p-md-4">
         <?php if ($isProtectedCreatorRole): ?>
@@ -76,4 +73,4 @@ $deleteBlockedMessage = $isProtectedCreatorRole
             </div>
         </div>
     </div>
-</section>
+<?= view()->renderPartial('admin/shell_close') ?>

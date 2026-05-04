@@ -11,17 +11,14 @@ $deleteBlockedMessage = $isCurrentUser
         ? return_translation('admin_users_creator_protected')
         : return_translation('admin_users_delete_last_admin_blocked'));
 ?>
-
-<section class="container py-5 my-2 my-md-4 my-lg-5">
-    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><?= print_translation('admin_user_edit_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_user_form_subtitle') ?></p>
-        </div>
-        <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/users') ?>"><i class="ci-arrow-left"></i><?= print_translation('admin_btn_back') ?></a>
-    </div>
-
-    <?= view()->renderPartial('admin/nav') ?>
+<?php ob_start(); ?>
+<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/users') ?>"><i class="ci-arrow-left"></i><?= print_translation('admin_btn_back') ?></a>
+<?php $adminPageActions = ob_get_clean(); ?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => return_translation('admin_user_edit_heading'),
+    'subtitle' => return_translation('admin_user_form_subtitle'),
+    'actions' => $adminPageActions,
+]) ?>
 
     <div class="border rounded-5 p-3 p-md-4">
         <?php if ($isProtectedCreator): ?>
@@ -116,4 +113,4 @@ $deleteBlockedMessage = $isCurrentUser
             </div>
         </div>
     </div>
-</section>
+<?= view()->renderPartial('admin/shell_close') ?>

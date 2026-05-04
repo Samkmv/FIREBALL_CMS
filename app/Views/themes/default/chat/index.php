@@ -10,19 +10,28 @@
         'clients' => return_translation('chat_contacts_clients'),
     ];
     ?>
-    <section class="container py-5">
-        <div class="d-flex align-items-center justify-content-between mb-4">
+    <section class="container-fluid px-3 px-lg-4 px-xxl-5 py-4 py-lg-5">
+        <div class="chat-page-header d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4 mb-xl-5">
             <div>
+                <div class="small text-uppercase fw-semibold text-body-secondary mb-2" style="letter-spacing: .08em;">
+                    <?= print_translation('tpl_auth_chat') ?>
+                </div>
                 <h1 class="h3 mb-1"><?= print_translation('chat_index_heading') ?></h1>
                 <p class="text-body-secondary mb-0"><?= print_translation('chat_index_subtitle') ?></p>
             </div>
         </div>
 
         <?php if (empty($contacts)): ?>
-            <div class="alert alert-info mb-0"><?= print_translation('chat_no_contacts') ?></div>
+            <div class="chat-empty-state border rounded-5 p-4 p-md-5 text-center">
+                <div class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px;">
+                    <i class="ci-chat fs-2 text-body-secondary"></i>
+                </div>
+                <h2 class="h5 mb-2"><?= print_translation('chat_contacts_title') ?></h2>
+                <p class="text-body-secondary mb-0"><?= print_translation('chat_no_contacts') ?></p>
+            </div>
         <?php else: ?>
             <div
-                class="row g-4 align-items-stretch"
+                class="chat-app-shell"
                 data-chat-app
                 data-fetch-url="<?= htmlSC($chat_fetch_url) ?>"
                 data-send-url="<?= htmlSC($chat_send_url) ?>"
@@ -42,13 +51,24 @@
                 data-online-text="<?= htmlSC(return_translation('chat_status_online')) ?>"
                 data-offline-text="<?= htmlSC(return_translation('chat_status_offline')) ?>"
             >
-                <div class="col-lg-4">
-                    <div class="card border shadow-sm rounded-5 overflow-hidden h-100">
-                        <div class="card-header border-bottom bg-body px-4 py-3">
-                            <strong class="d-block"><?= print_translation('chat_contacts_title') ?></strong>
-                        </div>
-                        <div class="card-body p-0 bg-body-tertiary">
-                            <div class="p-3 border-bottom bg-body">
+                <div class="row g-4 align-items-stretch">
+                    <div class="col-xl-4 col-xxl-3">
+                        <div class="chat-sidebar h-100">
+                            <div class="chat-sidebar__head border-bottom px-4 py-4">
+                                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                    <div class="min-w-0">
+                                        <div class="small text-uppercase fw-semibold text-body-secondary mb-1" style="letter-spacing: .08em;">
+                                            <?= print_translation('chat_contacts_title') ?>
+                                        </div>
+                                        <strong class="d-block text-truncate"><?= htmlSC(get_user()['name'] ?? '') ?></strong>
+                                    </div>
+                                    <img
+                                        src="<?= get_user_avatar(get_user()['avatar'] ?? null, 'sm') ?>"
+                                        alt="<?= htmlSC((string)(get_user()['name'] ?? '')) ?>"
+                                        class="rounded-circle border object-fit-cover flex-shrink-0"
+                                        style="width: 48px; height: 48px;"
+                                    >
+                                </div>
                                 <div class="position-relative">
                                     <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"></i>
                                     <input
@@ -59,21 +79,24 @@
                                     >
                                 </div>
                             </div>
-                            <div style="max-height: 640px; overflow-y: auto;">
+                            <div class="chat-sidebar__body">
                                 <?php foreach ($contactsByGroup as $groupKey => $groupContacts): ?>
                                     <?php if (empty($groupContacts)): ?>
                                         <?php continue; ?>
                                     <?php endif; ?>
-                                    <div class="border-bottom" data-chat-contact-group="<?= htmlSC($groupKey) ?>">
-                                        <div class="px-4 py-2 text-uppercase small fw-semibold text-body-secondary bg-body" style="letter-spacing: .08em;">
-                                            <?= htmlSC($contactGroupTitles[$groupKey] ?? $groupKey) ?>
+                                    <div class="chat-contact-group border-bottom" data-chat-contact-group="<?= htmlSC($groupKey) ?>">
+                                        <div class="px-4 pt-4 pb-2 d-flex align-items-center justify-content-between gap-2">
+                                            <div class="small text-uppercase fw-semibold text-body-secondary" style="letter-spacing: .08em;">
+                                                <?= htmlSC($contactGroupTitles[$groupKey] ?? $groupKey) ?>
+                                            </div>
+                                            <span class="badge rounded-pill text-body-emphasis bg-body-tertiary px-2"><?= count($groupContacts) ?></span>
                                         </div>
-                                        <div class="list-group list-group-flush" data-chat-contact-group-list="<?= htmlSC($groupKey) ?>">
+                                        <div class="list-group list-group-flush px-3 pb-3 gap-2" data-chat-contact-group-list="<?= htmlSC($groupKey) ?>">
                                             <?php foreach ($groupContacts as $contact): ?>
                                                 <?php $isActive = (int)$active_contact['id'] === (int)$contact['id']; ?>
                                                 <button
                                                     type="button"
-                                                    class="list-group-item list-group-item-action px-4 py-3 <?= $isActive ? 'active' : '' ?>"
+                                                    class="list-group-item list-group-item-action border rounded-4 px-3 py-3 <?= $isActive ? 'active' : '' ?>"
                                                     data-chat-contact
                                                     data-contact-group="<?= htmlSC((string)($contact['chat_group'] ?? 'clients')) ?>"
                                                     data-user-id="<?= (int)$contact['id'] ?>"
@@ -84,13 +107,14 @@
                                                     data-last-message-preview="<?= htmlSC((string)($contact['last_message_preview'] ?? '')) ?>"
                                                 >
                                                     <span class="d-flex align-items-center gap-3 min-w-0">
-                                                        <span class="flex-shrink-0">
+                                                        <span class="position-relative flex-shrink-0">
                                                             <img
                                                                 src="<?= get_user_avatar($contact['avatar'] ?? null, 'sm') ?>"
                                                                 alt="<?= htmlSC($contact['name']) ?>"
                                                                 class="rounded-circle border object-fit-cover"
-                                                                style="width: 48px; height: 48px;"
+                                                                style="width: 52px; height: 52px;"
                                                             >
+                                                            <span class="chat-contact-presence <?= !empty($contact['is_online']) ? 'is-online' : 'is-offline' ?>"></span>
                                                         </span>
                                                         <span class="min-w-0 flex-grow-1">
                                                             <span class="d-flex align-items-start justify-content-between gap-2">
@@ -123,51 +147,60 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="col-lg-8">
-                    <div class="card border shadow-sm rounded-5 overflow-hidden h-100">
-                        <div class="card-header border-bottom bg-body px-4 py-3 d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-3 min-w-0">
-                                <img
-                                    src="<?= get_user_avatar($active_contact['avatar'] ?? null, 'sm') ?>"
-                                    alt="<?= htmlSC($active_contact['name']) ?>"
-                                    class="rounded-circle border object-fit-cover flex-shrink-0"
-                                    style="width: 44px; height: 44px;"
-                                    data-chat-current-avatar
-                                >
-                                <div class="min-w-0">
-                                    <strong class="d-block text-truncate" data-chat-current-name><?= htmlSC($active_contact['name']) ?></strong>
-                                    <span class="small d-inline-flex align-items-center gap-1 <?= !empty($active_contact['is_online']) ? 'text-success' : 'text-body-secondary' ?>" data-chat-current-status>
-                                        <span class="rounded-circle d-inline-block flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'bg-success' : 'bg-secondary' ?>" style="width: 8px; height: 8px;"></span>
-                                        <span><?= !empty($active_contact['is_online']) ? print_translation('chat_status_online') : print_translation('chat_status_offline') ?></span>
-                                    </span>
+                    <div class="col-xl-8 col-xxl-9">
+                        <div class="chat-thread h-100">
+                            <div class="chat-thread__head border-bottom px-4 py-4 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                                <div class="d-flex align-items-center gap-3 min-w-0">
+                                    <img
+                                        src="<?= get_user_avatar($active_contact['avatar'] ?? null, 'sm') ?>"
+                                        alt="<?= htmlSC($active_contact['name']) ?>"
+                                        class="rounded-circle border object-fit-cover flex-shrink-0"
+                                        style="width: 56px; height: 56px;"
+                                        data-chat-current-avatar
+                                    >
+                                    <div class="min-w-0">
+                                        <div class="small text-uppercase fw-semibold text-body-secondary mb-1" style="letter-spacing: .08em;">
+                                            <?= print_translation('chat_new_message') ?>
+                                        </div>
+                                        <strong class="d-block text-truncate fs-5" data-chat-current-name><?= htmlSC($active_contact['name']) ?></strong>
+                                        <span class="small d-inline-flex align-items-center gap-1 <?= !empty($active_contact['is_online']) ? 'text-success' : 'text-body-secondary' ?>" data-chat-current-status>
+                                            <span class="rounded-circle d-inline-block flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'bg-success' : 'bg-secondary' ?>" style="width: 8px; height: 8px;"></span>
+                                            <span><?= !empty($active_contact['is_online']) ? print_translation('chat_status_online') : print_translation('chat_status_offline') ?></span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <span class="badge rounded-pill text-body-emphasis bg-body-tertiary px-3 py-2"><?= print_translation('chat_encryption_badge') ?></span>
+                            </div>
+
+                            <div class="chat-thread__body">
+                                <div class="chat-messages-surface h-100" data-chat-messages>
+                                    <p class="text-body-secondary mb-0"><?= print_translation('chat_loading') ?></p>
                                 </div>
                             </div>
-                            <span class="badge text-bg-secondary"><?= print_translation('chat_encryption_badge') ?></span>
-                        </div>
 
-                        <div class="card-body bg-body p-3 p-md-4">
-                            <div class="chat-messages-surface rounded-4 border p-3 p-md-4" style="height: 420px; overflow-y: auto;" data-chat-messages>
-                                <p class="text-body-secondary mb-0"><?= print_translation('chat_loading') ?></p>
+                            <div class="chat-thread__composer border-top px-3 px-md-4 py-3 py-md-4">
+                                <form data-chat-form enctype="multipart/form-data">
+                                    <?= get_csrf_field() ?>
+                                    <input type="hidden" name="user_id" value="<?= (int)$active_contact['id'] ?>" data-chat-user-id>
+                                    <div class="chat-composer rounded-5 p-2 p-md-3">
+                                        <div class="chat-composer__row">
+                                            <label class="chat-composer__attach btn btn-outline-secondary rounded-circle mb-0" for="chat_attachment" title="<?= print_translation('chat_attachment_label') ?>">
+                                                <i class="ci-paperclip"></i>
+                                            </label>
+                                            <input class="d-none" id="chat_attachment" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm,.mov,.avi,.mkv,.mpeg,.mpg,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.md,.json,.xml,.zip,.rar,.7z" data-chat-attachment>
+                                            <input type="text" class="form-control border-0 shadow-none bg-transparent" name="message" maxlength="2000" placeholder="<?= print_translation('chat_message_placeholder') ?>">
+                                            <button class="chat-composer__submit btn btn-dark rounded-pill px-4" type="submit">
+                                                <i class="ci-send me-2"></i><?= print_translation('chat_send_btn') ?>
+                                            </button>
+                                        </div>
+                                        <div class="chat-composer__meta d-flex align-items-center justify-content-between gap-3 flex-wrap mt-2 px-2">
+                                            <div class="small text-body-secondary d-none" data-chat-attachment-name></div>
+                                            <div class="small text-body-secondary"><?= print_translation('chat_file_hint') ?></div>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
-                        </div>
-
-                        <div class="card-footer border-0 bg-body px-3 px-md-4 pb-4 pt-0">
-                            <form data-chat-form enctype="multipart/form-data">
-                                <?= get_csrf_field() ?>
-                                <input type="hidden" name="user_id" value="<?= (int)$active_contact['id'] ?>" data-chat-user-id>
-                                <div class="input-group mb-2">
-                                    <input type="text" class="form-control" name="message" maxlength="2000" placeholder="<?= print_translation('chat_message_placeholder') ?>">
-                                    <label class="btn btn-outline-secondary mb-0" for="chat_attachment">
-                                        <i class="ci-paperclip"></i>
-                                    </label>
-                                    <input class="d-none" id="chat_attachment" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm,.mov,.avi,.mkv,.mpeg,.mpg,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp,.md,.json,.xml,.zip,.rar,.7z" data-chat-attachment>
-                                    <button class="btn btn-dark" type="submit"><?= print_translation('chat_send_btn') ?></button>
-                                </div>
-                                <div class="small text-body-secondary d-none" data-chat-attachment-name></div>
-                                <div class="small text-body-secondary"><?= print_translation('chat_file_hint') ?></div>
-                            </form>
                         </div>
                     </div>
                 </div>

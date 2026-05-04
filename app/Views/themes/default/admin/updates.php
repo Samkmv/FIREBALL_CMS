@@ -67,15 +67,11 @@ if (is_array($lastCheck)) {
 }
 ?>
 
-<section class="container py-5 my-2 my-md-4 my-lg-5">
-    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><?= print_translation('admin_updates_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_updates_subtitle') ?></p>
-        </div>
-    </div>
-
-    <?= view()->renderPartial('admin/nav') ?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => return_translation('admin_updates_heading'),
+    'subtitle' => return_translation('admin_updates_subtitle'),
+    'actions' => '',
+]) ?>
 
     <?php if ($isCreator): ?>
         <form class="border rounded-5 p-3 p-md-4 mb-4" action="<?= base_href('/admin/updates') ?>" method="post">
@@ -321,4 +317,4 @@ if (is_array($lastCheck)) {
             <?php endif; ?>
         </div>
     </div>
-</section>
+<?= view()->renderPartial('admin/shell_close') ?>

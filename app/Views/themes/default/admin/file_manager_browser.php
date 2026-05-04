@@ -62,13 +62,23 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
 
 <div data-file-manager-workspace>
     <aside class="p-3 p-lg-4" data-file-manager-sidebar>
-        <div class="d-flex align-items-center gap-2 mb-3">
-            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 2.5rem; height: 2.5rem; background: #1f5c4f;">
-                <i class="ci-folder"></i>
+        <div class="border rounded-4 p-3 mb-3 bg-body-tertiary" data-file-manager-sidebar-head>
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center border bg-body text-body-secondary flex-shrink-0" style="width: 2.75rem; height: 2.75rem;">
+                    <i class="ci-folder"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="fw-semibold"><?= print_translation('admin_files_root') ?></div>
+                    <div class="small text-body-secondary text-truncate">/<?= htmlSC($currentDir !== '' ? $currentDir : return_translation('admin_files_root')) ?></div>
+                </div>
             </div>
-            <div>
-                <div class="fw-semibold"><?= print_translation('admin_files_root') ?></div>
-                <div class="small text-body-secondary">/<?= htmlSC($currentDir !== '' ? $currentDir : return_translation('admin_files_root')) ?></div>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <span class="badge rounded-pill text-body-emphasis bg-body border px-3 py-2">
+                    <?= print_translation('admin_files_folders') ?>: <?= $directoryCount ?>
+                </span>
+                <span class="badge rounded-pill text-body-emphasis bg-body border px-3 py-2">
+                    <?= print_translation('admin_files_type_file') ?>: <?= $fileCount ?>
+                </span>
             </div>
         </div>
 
@@ -203,7 +213,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
                     <input type="hidden" name="action_name" value="" data-file-manager-action-name>
 
-                    <div class="table-responsive overflow-auto admin-table-scroll" data-file-manager-table-wrap>
+                    <div class="table-responsive admin-table-scroll" data-file-manager-table-wrap>
                         <table class="table align-middle mb-0" data-file-manager-table>
                             <thead class="position-sticky top-0">
                             <tr>
@@ -289,11 +299,18 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     <td class="text-nowrap text-body-secondary small"><?= $isDirectory ? '—' : htmlSC((string)($item['size'] ?? '')) ?></td>
                                     <td class="text-nowrap text-body-secondary small"><?= htmlSC((string)($item['modified_at'] ?? '')) ?></td>
                                     <td class="text-end text-nowrap">
-                                        <div class="dropdown d-inline-block" data-file-manager-actions-menu>
-                                            <button class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="ci-settings"></i><?= print_translation('admin_files_actions_btn') ?>
+                                        <div class="dropdown dropstart d-inline-block" data-file-manager-actions-menu>
+                                            <button
+                                                class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
+                                                type="button"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                aria-label="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
+                                                title="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
+                                            >
+                                                <i class="ci-more-vertical"></i>
                                             </button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4">
+                                            <ul class="dropdown-menu shadow-sm border-0 rounded-4">
                                                 <?php if ($pickerMode && $pickerField !== '' && !$isDirectory): ?>
                                                     <li>
                                                         <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-select data-file-select-field="<?= htmlSC($pickerField) ?>" data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>">

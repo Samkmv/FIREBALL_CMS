@@ -1,26 +1,18 @@
-<section
-    class="container py-5 my-2 my-md-4 my-lg-5"
-    data-file-manager-page
-    data-fm-selection-required="<?= htmlSC(return_translation('admin_files_selection_required')) ?>"
-    data-fm-rename-single="<?= htmlSC(return_translation('admin_files_rename_single_required')) ?>"
-    data-fm-open-single="<?= htmlSC(return_translation('admin_files_open_single_required')) ?>"
-    data-fm-delete-confirm="<?= htmlSC(return_translation('admin_files_delete_selected_confirm')) ?>"
->
-    <style>
+<style>
         [data-file-manager-page] {
-            --fm-bg: linear-gradient(180deg, rgba(246, 244, 238, .95), rgba(255, 255, 255, .98));
-            --fm-panel: rgba(255, 255, 255, .84);
+            --fm-bg: linear-gradient(180deg, rgba(247, 248, 250, .98), rgba(255, 255, 255, .99));
+            --fm-panel: rgba(255, 255, 255, .92);
             --fm-border: rgba(28, 37, 38, .1);
             --fm-shadow: 0 18px 60px rgba(27, 39, 45, .12);
-            --fm-accent: #1f5c4f;
-            --fm-accent-soft: rgba(31, 92, 79, .1);
-            --fm-row-hover: rgba(31, 92, 79, .06);
-            --fm-row-active: rgba(31, 92, 79, .12);
-            --fm-sidebar: linear-gradient(180deg, rgba(245, 241, 232, .95), rgba(251, 250, 246, .88));
-            --fm-toolbar: rgba(255, 255, 255, .8);
+            --fm-accent: #212529;
+            --fm-accent-soft: rgba(33, 37, 41, .08);
+            --fm-row-hover: rgba(33, 37, 41, .04);
+            --fm-row-active: rgba(33, 37, 41, .08);
+            --fm-sidebar: linear-gradient(180deg, rgba(248, 249, 251, .98), rgba(255, 255, 255, .94));
+            --fm-toolbar: rgba(255, 255, 255, .92);
             --fm-toolbar-border: rgba(28, 37, 38, .08);
-            --fm-sidebar-active-text: #163b34;
-            --fm-row-active-border: rgba(31, 92, 79, .14);
+            --fm-sidebar-active-text: #111827;
+            --fm-row-active-border: rgba(33, 37, 41, .12);
         }
 
         [data-bs-theme="dark"] [data-file-manager-page] {
@@ -28,15 +20,15 @@
             --fm-panel: rgba(21, 28, 35, .92);
             --fm-border: rgba(255, 255, 255, .08);
             --fm-shadow: 0 24px 72px rgba(0, 0, 0, .38);
-            --fm-accent: #58c3ac;
-            --fm-accent-soft: rgba(88, 195, 172, .14);
-            --fm-row-hover: rgba(88, 195, 172, .08);
-            --fm-row-active: rgba(88, 195, 172, .14);
+            --fm-accent: #e5e7eb;
+            --fm-accent-soft: rgba(229, 231, 235, .12);
+            --fm-row-hover: rgba(229, 231, 235, .06);
+            --fm-row-active: rgba(229, 231, 235, .1);
             --fm-sidebar: linear-gradient(180deg, rgba(17, 24, 31, .98), rgba(13, 19, 25, .94));
             --fm-toolbar: rgba(18, 24, 30, .88);
             --fm-toolbar-border: rgba(255, 255, 255, .06);
-            --fm-sidebar-active-text: #dff8f1;
-            --fm-row-active-border: rgba(88, 195, 172, .24);
+            --fm-sidebar-active-text: #f8fafc;
+            --fm-row-active-border: rgba(229, 231, 235, .18);
         }
 
         [data-file-manager-shell] {
@@ -137,6 +129,42 @@
 
         [data-file-manager-actions-menu] .dropdown-toggle {
             white-space: nowrap;
+        }
+
+        [data-file-manager-page] .dropdown-menu {
+            min-width: 13.5rem;
+            padding: .45rem;
+        }
+
+        [data-file-manager-page] .dropdown-item {
+            width: 100%;
+            border-radius: .85rem;
+            padding: .65rem .8rem;
+        }
+
+        [data-file-manager-table-wrap] {
+            overflow-x: auto;
+            overflow-y: visible !important;
+            position: relative;
+        }
+
+        [data-file-manager-actions-menu] {
+            position: relative;
+        }
+
+        [data-file-manager-actions-menu] > .btn {
+            width: 2.35rem;
+            height: 2.35rem;
+            padding: 0;
+        }
+
+        [data-file-manager-actions-menu] .dropdown-menu {
+            z-index: 1085;
+            margin-right: .35rem !important;
+        }
+
+        .fm-dropdown-floating {
+            z-index: 2000 !important;
         }
 
         [data-file-manager-selection-badge] {
@@ -283,7 +311,7 @@
                 max-width: 100%;
                 min-width: 0;
                 overflow-x: auto;
-                overflow-y: hidden;
+                overflow-y: visible !important;
                 -webkit-overflow-scrolling: touch;
             }
 
@@ -327,20 +355,26 @@
         }
     </style>
 
-    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><?= print_translation('admin_files_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_files_subtitle') ?></p>
-        </div>
-    </div>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => return_translation('admin_files_heading'),
+    'subtitle' => return_translation('admin_files_subtitle'),
+    'actions' => '',
+]) ?>
 
-    <?= view()->renderPartial('admin/nav') ?>
-
+    <div
+        class="position-relative"
+        data-file-manager-page
+        data-file-manager-shell
+        data-fm-selection-required="<?= htmlSC(return_translation('admin_files_selection_required')) ?>"
+        data-fm-rename-single="<?= htmlSC(return_translation('admin_files_rename_single_required')) ?>"
+        data-fm-open-single="<?= htmlSC(return_translation('admin_files_open_single_required')) ?>"
+        data-fm-delete-confirm="<?= htmlSC(return_translation('admin_files_delete_selected_confirm')) ?>"
+    >
     <?php if (!empty($picker_mode)): ?>
-        <div class="mb-3 small text-body-secondary"><?= print_translation('admin_files_picker_hint') ?></div>
+        <div class="mb-3 small text-body-secondary px-3 pt-3"><?= print_translation('admin_files_picker_hint') ?></div>
     <?php endif; ?>
 
-    <div class="position-relative" data-file-manager-shell>
+    <div class="position-relative">
         <div data-file-manager-browser>
             <?= view()->renderPartial('admin/file_manager_browser', [
                 'manager' => $manager ?? [],
@@ -349,4 +383,5 @@
             ]) ?>
         </div>
     </div>
-</section>
+    </div>
+<?= view()->renderPartial('admin/shell_close') ?>

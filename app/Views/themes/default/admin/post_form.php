@@ -123,9 +123,10 @@ $editorConfig = [
     .fb-post-editor {
         border: 1px solid rgba(26, 33, 36, .08);
         border-radius: 1.25rem;
-        background: linear-gradient(180deg, #f4efe7 0%, #fbfaf8 100%);
+        background: linear-gradient(180deg, #f8f9fb 0%, #ffffff 100%);
         box-shadow: 0 24px 60px rgba(24, 33, 37, .08);
         overflow: hidden;
+        container-type: inline-size;
     }
 
     .fb-post-editor__topbar {
@@ -151,21 +152,21 @@ $editorConfig = [
         display: flex;
         align-items: center;
         gap: .75rem;
-        color: #173a34;
+        color: #212529;
         font-size: .88rem;
         font-weight: 700;
     }
 
     .fb-post-editor__workspace {
         display: grid;
-        grid-template-columns: 260px minmax(0, 1fr) 300px;
+        grid-template-columns: 240px minmax(0, 1fr) 280px;
         min-height: 720px;
     }
 
     .fb-post-editor__sidebar,
     .fb-post-editor__inspector,
     .fb-post-editor__canvas {
-        background: rgba(250, 248, 244, .92);
+        background: rgba(248, 249, 251, .94);
         min-width: 0;
     }
 
@@ -219,8 +220,8 @@ $editorConfig = [
         width: 2.2rem;
         height: 2.2rem;
         border-radius: .65rem;
-        background: rgba(31, 92, 79, .12);
-        color: #1f5c4f;
+        background: rgba(33, 37, 41, .08);
+        color: #212529;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -247,14 +248,14 @@ $editorConfig = [
     }
 
     .fb-post-editor__outline-item:hover {
-        border-color: rgba(31, 92, 79, .18);
+        border-color: rgba(33, 37, 41, .14);
         background: #fff;
     }
 
     .fb-post-editor__outline-item.is-active {
-        border-color: rgba(31, 92, 79, .26);
-        background: rgba(31, 92, 79, .1);
-        color: #173a34;
+        border-color: rgba(33, 37, 41, .16);
+        background: rgba(33, 37, 41, .06);
+        color: #212529;
         transform: translateY(-1px);
     }
 
@@ -286,7 +287,7 @@ $editorConfig = [
     }
 
     .fb-post-editor__empty {
-        border: 1px dashed rgba(31, 92, 79, .22);
+        border: 1px dashed rgba(33, 37, 41, .14);
         border-radius: 1.1rem;
         padding: 2.4rem 1.4rem;
         text-align: center;
@@ -304,13 +305,13 @@ $editorConfig = [
     }
 
     .fb-post-editor__block.is-selected {
-        border-color: rgba(31, 92, 79, .32);
-        box-shadow: 0 0 0 1px rgba(31, 92, 79, .22), 0 18px 40px rgba(31, 92, 79, .08);
+        border-color: rgba(33, 37, 41, .18);
+        box-shadow: 0 0 0 1px rgba(33, 37, 41, .12), 0 18px 40px rgba(17, 24, 39, .08);
         transform: translateY(-1px);
     }
 
     .fb-post-editor__block.is-drop-target {
-        outline: 2px solid rgba(31, 92, 79, .24);
+        outline: 2px solid rgba(33, 37, 41, .14);
     }
 
     .fb-post-editor__block-header {
@@ -400,7 +401,7 @@ $editorConfig = [
         padding: .85rem;
         border: 1px solid rgba(26, 33, 36, .08);
         border-radius: 1rem;
-        background: rgba(248, 245, 240, .9);
+        background: rgba(248, 249, 251, .96);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65);
     }
 
@@ -502,9 +503,9 @@ $editorConfig = [
         align-items: center;
         justify-content: center;
         min-height: 170px;
-        border: 1px dashed rgba(31, 92, 79, .18);
+        border: 1px dashed rgba(33, 37, 41, .12);
         border-radius: 1rem;
-        background: linear-gradient(180deg, #fbf8f3 0%, #f2eee7 100%);
+        background: linear-gradient(180deg, #ffffff 0%, #f5f6f8 100%);
         overflow: hidden;
     }
 
@@ -587,7 +588,7 @@ $editorConfig = [
         border: 1px solid rgba(26, 33, 36, .08);
         border-radius: 999px;
         background: rgba(255, 255, 255, .94);
-        color: #173a34;
+        color: #212529;
         text-decoration: none;
         line-height: 1.2;
         box-shadow: 0 10px 24px rgba(28, 37, 38, .05);
@@ -644,8 +645,8 @@ $editorConfig = [
         width: 2rem;
         height: 2rem;
         border-radius: .7rem;
-        background: rgba(31, 92, 79, .12);
-        color: #1f5c4f;
+        background: rgba(33, 37, 41, .08);
+        color: #212529;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -666,8 +667,8 @@ $editorConfig = [
         min-width: 0;
         padding: .32rem .55rem;
         border-radius: 999px;
-        background: rgba(31, 92, 79, .1);
-        color: #173a34;
+        background: rgba(33, 37, 41, .08);
+        color: #212529;
         font-size: .76rem;
         line-height: 1;
         white-space: nowrap;
@@ -695,8 +696,8 @@ $editorConfig = [
         display: inline-flex;
         align-items: center;
         border-radius: 999px;
-        background: rgba(31, 92, 79, .1);
-        color: #173a34;
+        background: rgba(33, 37, 41, .08);
+        color: #212529;
         padding: .3rem .6rem;
         font-size: .78rem;
         line-height: 1;
@@ -735,7 +736,7 @@ $editorConfig = [
     .fb-post-media-picker {
         border: 1px solid rgba(26, 33, 36, .08);
         border-radius: 1.25rem;
-        background: linear-gradient(180deg, rgba(255, 255, 255, .98) 0%, rgba(248, 245, 240, .94) 100%);
+        background: linear-gradient(180deg, rgba(255, 255, 255, .98) 0%, rgba(246, 247, 249, .96) 100%);
         box-shadow: 0 18px 38px rgba(28, 37, 38, .06);
         overflow: hidden;
     }
@@ -756,8 +757,8 @@ $editorConfig = [
     }
 
     .fb-post-media-picker.is-dragover .fb-post-media-picker__dropzone {
-        background: rgba(31, 92, 79, .08);
-        box-shadow: inset 0 0 0 1px rgba(31, 92, 79, .18);
+        background: rgba(33, 37, 41, .04);
+        box-shadow: inset 0 0 0 1px rgba(33, 37, 41, .12);
     }
 
     .fb-post-media-picker__figure {
@@ -766,7 +767,7 @@ $editorConfig = [
         border-radius: 1rem;
         overflow: hidden;
         border: 1px solid rgba(26, 33, 36, .08);
-        background: linear-gradient(180deg, #f6f1e8 0%, #efe7da 100%);
+        background: linear-gradient(180deg, #f8f9fb 0%, #eef1f4 100%);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -864,8 +865,8 @@ $editorConfig = [
         width: 2.35rem;
         height: 2.35rem;
         border-radius: .8rem;
-        background: rgba(31, 92, 79, .12);
-        color: #1f5c4f;
+        background: rgba(33, 37, 41, .08);
+        color: #212529;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1122,6 +1123,47 @@ $editorConfig = [
         box-shadow: 0 12px 26px rgba(8, 11, 18, .18);
     }
 
+    @container (max-width: 1240px) {
+        .fb-post-editor__workspace {
+            grid-template-columns: 220px minmax(0, 1fr);
+            min-height: auto;
+        }
+
+        .fb-post-editor__inspector {
+            grid-column: 1 / -1;
+            border-left: 0;
+            border-top: 1px solid rgba(26, 33, 36, .08);
+        }
+
+        [data-bs-theme=dark] .fb-post-editor__inspector {
+            border-top-color: rgba(255, 255, 255, .08);
+        }
+    }
+
+    @container (max-width: 960px) {
+        .fb-post-editor__workspace {
+            grid-template-columns: 1fr;
+        }
+
+        .fb-post-editor__sidebar,
+        .fb-post-editor__canvas,
+        .fb-post-editor__inspector {
+            border: 0;
+            border-bottom: 1px solid rgba(26, 33, 36, .08);
+        }
+
+        .fb-post-editor__canvas {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        [data-bs-theme=dark] .fb-post-editor__sidebar,
+        [data-bs-theme=dark] .fb-post-editor__canvas,
+        [data-bs-theme=dark] .fb-post-editor__inspector {
+            border-bottom-color: rgba(255, 255, 255, .08);
+        }
+    }
+
     @media (max-width: 1199.98px) {
         .fb-post-editor__workspace {
             grid-template-columns: 1fr;
@@ -1253,16 +1295,20 @@ $editorConfig = [
     }
 </style>
 
-<section class="container py-5 my-2 my-md-4 my-lg-5">
-    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><?= $is_edit ? print_translation('admin_post_edit_heading') : print_translation('admin_post_create_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_post_form_subtitle') ?></p>
-        </div>
-        <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts') ?>"><i class="ci-arrow-left"></i><?= print_translation('admin_btn_back') ?></a>
-    </div>
+<?php ob_start(); ?>
+<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts') ?>">
+    <i class="ci-arrow-left"></i>
+    <span><?= print_translation('admin_btn_back') ?></span>
+</a>
+<?php $adminPageActions = ob_get_clean(); ?>
 
-    <?= view()->renderPartial('admin/nav') ?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => $is_edit ? return_translation('admin_post_edit_heading') : return_translation('admin_post_create_heading'),
+    'subtitle' => return_translation('admin_post_form_subtitle'),
+    'actions' => $adminPageActions,
+    'sidebar_col_class' => 'col-lg-4 col-xl-3',
+    'main_col_class' => 'col-lg-8 col-xl-9',
+]) ?>
 
     <form class="border rounded-5 p-3 p-md-4" action="<?= $formAction ?>" method="post" enctype="multipart/form-data">
         <?= get_csrf_field() ?>
@@ -1820,3 +1866,4 @@ document.addEventListener('DOMContentLoaded', function () {
     consumeQueryFileSelection();
 });
 </script>
+<?= view()->renderPartial('admin/shell_close') ?>

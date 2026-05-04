@@ -7,17 +7,14 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
     return strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓';
 };
 ?>
-
-<section class="container py-5 my-2 my-md-4 my-lg-5">
-    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><?= print_translation('admin_categories_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_categories_subtitle') ?></p>
-        </div>
-        <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/categories/create') ?>"><i class="ci-plus"></i><?= print_translation('admin_categories_create') ?></a>
-    </div>
-
-    <?= view()->renderPartial('admin/nav') ?>
+<?php ob_start(); ?>
+<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/categories/create') ?>"><i class="ci-plus"></i><?= print_translation('admin_categories_create') ?></a>
+<?php $adminPageActions = ob_get_clean(); ?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => return_translation('admin_categories_heading'),
+    'subtitle' => return_translation('admin_categories_subtitle'),
+    'actions' => $adminPageActions,
+]) ?>
 
     <div class="border rounded-5 p-3 p-md-4">
         <form method="get" class="position-relative mb-3" style="max-width: 280px">
@@ -102,4 +99,4 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
             </div>
         <?php endif; ?>
     </div>
-</section>
+<?= view()->renderPartial('admin/shell_close') ?>

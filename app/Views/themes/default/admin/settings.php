@@ -2,6 +2,7 @@
 $formData = session()->get('form_data') ?: [];
 $siteTitle = $formData['site_title'] ?? ($settings['site_title'] ?? SITE_NAME);
 $siteDescription = $formData['site_description'] ?? ($settings['site_description'] ?? '');
+$adminSessionLifetimeHours = $formData['admin_session_lifetime_hours'] ?? ($settings['admin_session_lifetime_hours'] ?? '12');
 $socialTelegram = $formData['social_telegram'] ?? ($settings['social_telegram'] ?? '');
 $socialInstagram = $formData['social_instagram'] ?? ($settings['social_instagram'] ?? '');
 $socialFacebook = $formData['social_facebook'] ?? ($settings['social_facebook'] ?? '');
@@ -29,15 +30,11 @@ $seoOgImage = $formData['seo_og_image'] ?? ($settings['seo_og_image'] ?? '');
 $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'] ?? 'summary_large_image');
 ?>
 
-<section class="container py-5 my-2 my-md-4 my-lg-5">
-    <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><?= print_translation('admin_settings_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_settings_subtitle') ?></p>
-        </div>
-    </div>
-
-    <?= view()->renderPartial('admin/nav') ?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => return_translation('admin_settings_heading'),
+    'subtitle' => return_translation('admin_settings_subtitle'),
+    'actions' => '',
+]) ?>
 
     <form class="border rounded-5 p-3 p-md-4" action="<?= base_href('/admin/settings') ?>" method="post">
         <?= get_csrf_field() ?>
@@ -46,6 +43,21 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
                 <label class="form-label"><?= print_translation('admin_settings_site_title') ?></label>
                 <input class="form-control <?= get_validation_class('site_title') ?>" type="text" name="site_title" value="<?= htmlSC($siteTitle) ?>" required>
                 <?= get_errors('site_title') ?>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label"><?= print_translation('admin_settings_admin_session_lifetime_hours') ?></label>
+                <input
+                    class="form-control <?= get_validation_class('admin_session_lifetime_hours') ?>"
+                    type="number"
+                    name="admin_session_lifetime_hours"
+                    value="<?= htmlSC((string)$adminSessionLifetimeHours) ?>"
+                    min="1"
+                    max="720"
+                    step="1"
+                    required
+                >
+                <div class="form-text"><?= print_translation('admin_settings_admin_session_lifetime_hours_hint') ?></div>
+                <?= get_errors('admin_session_lifetime_hours') ?>
             </div>
             <div class="col-12">
                 <label class="form-label"><?= print_translation('admin_settings_site_description') ?></label>
@@ -243,4 +255,4 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
             </div>
         </div>
     </form>
-</section>
+<?= view()->renderPartial('admin/shell_close') ?>

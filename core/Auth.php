@@ -2,11 +2,17 @@
 
 namespace FBL;
 
+use App\Models\SiteSetting;
+
 /**
  * Отвечает за аутентификацию пользователя и работу с его сессионными данными.
  */
 class Auth
 {
+
+    protected const ADMIN_SESSION_SETTING_KEY = 'admin_session_lifetime_hours';
+    protected const ADMIN_SESSION_LAST_ACTIVITY_KEY = 'auth.admin_last_activity_at';
+    protected const DEFAULT_ADMIN_SESSION_LIFETIME_HOURS = 12;
 
     /**
      * Проверяет учётные данные и авторизует пользователя в сессии.
@@ -33,14 +39,16 @@ class Auth
         if (password_verify($password, $user['password'])) {
             session()->regenerateId();
             app()->regenerateCSRFToken();
-            session()->set('user', [
+            $sessionUser = [
                 'id' => $user['id'],
                 'name' => $user['name'],
                 'login' => $user['login'] ?? null,
                 'email' => $user['email'],
                 'avatar' => $user['avatar'] ?? null,
                 'role' => $user['role'] ?? 'user',
-            ]);
+            ];
+            session()->set('user', $sessionUser);
+            self::syncAdminSession($sessionUser);
 
             return true;
         }
@@ -70,6 +78,7 @@ class Auth
     public static function logout(): void
     {
         session()->remove('user');
+        session()->remove(self::ADMIN_SESSION_LAST_ACTIVITY_KEY);
         session()->regenerateId();
         app()->regenerateCSRFToken();
     }
@@ -97,20 +106,68 @@ class Auth
      */
     public static function setUser(): void
     {
-        if ($user_data = self::user()) {
-            $user = db()->findOne('users', $user_data['id']);
-
-            if ($user) {
-                session()->set('user', [
-                    'id' => $user['id'],
-                    'name' => $user['name'],
-                    'login' => $user['login'] ?? null,
-                    'email' => $user['email'],
-                    'avatar' => $user['avatar'] ?? null,
-                    'role' => $user['role'] ?? 'user',
-                ]);
-            }
+        $userData = session()->get('user');
+        if (!$userData) {
+            session()->remove(self::ADMIN_SESSION_LAST_ACTIVITY_KEY);
+            return;
         }
+
+        $user = db()->findOne('users', $userData['id']);
+        if (!$user) {
+            self::logout();
+            return;
+        }
+
+        $sessionUser = [
+            'id' => $user['id'],
+            'name' => $user['name'],
+            'login' => $user['login'] ?? null,
+            'email' => $user['email'],
+            'avatar' => $user['avatar'] ?? null,
+            'role' => $user['role'] ?? 'user',
+        ];
+        session()->set('user', $sessionUser);
+
+        self::syncAdminSession($sessionUser);
+    }
+
+    protected static function syncAdminSession(array $user): void
+    {
+        $role = (string)($user['role'] ?? 'user');
+        if (!in_array($role, ['creator', 'admin'], true)) {
+            session()->remove(self::ADMIN_SESSION_LAST_ACTIVITY_KEY);
+            return;
+        }
+
+        $now = time();
+        $lastActivity = (int)session()->get(self::ADMIN_SESSION_LAST_ACTIVITY_KEY, 0);
+        $lifetimeSeconds = self::getAdminSessionLifetimeHours() * 3600;
+
+        if ($lastActivity > 0 && ($lastActivity + $lifetimeSeconds) < $now) {
+            self::logout();
+            session()->setFlash('error', \FBL\Language::get('auth_admin_session_expired'));
+            return;
+        }
+
+        session()->set(self::ADMIN_SESSION_LAST_ACTIVITY_KEY, $now);
+    }
+
+    protected static function getAdminSessionLifetimeHours(): int
+    {
+        $value = (new SiteSetting())->get(
+            self::ADMIN_SESSION_SETTING_KEY,
+            (string)self::DEFAULT_ADMIN_SESSION_LIFETIME_HOURS
+        );
+
+        if (!ctype_digit($value)) {
+            return self::DEFAULT_ADMIN_SESSION_LIFETIME_HOURS;
+        }
+
+        $hours = (int)$value;
+
+        return $hours >= 1 && $hours <= 720
+            ? $hours
+            : self::DEFAULT_ADMIN_SESSION_LIFETIME_HOURS;
     }
 
 }

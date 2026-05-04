@@ -9,6 +9,92 @@ $(function () {
     const bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : (window.bootstrap || null);
     let searchTimer = null;
 
+    function closeFloatingRowMenus() {
+        if (!bootstrapApi || typeof bootstrapApi.Dropdown === 'undefined') {
+            return;
+        }
+
+        document.querySelectorAll('[data-file-manager-actions-menu] > [data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (toggle) {
+            const instance = bootstrapApi.Dropdown.getInstance(toggle);
+            if (instance) {
+                instance.hide();
+            }
+        });
+    }
+
+    function positionFloatingRowMenu(toggle, menu) {
+        if (!toggle || !menu) {
+            return;
+        }
+
+        const toggleRect = toggle.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const gap = 8;
+
+        let left = toggleRect.left - menuRect.width - gap;
+        let top = toggleRect.top;
+
+        if (left < gap) {
+            left = Math.min(viewportWidth - menuRect.width - gap, toggleRect.right + gap);
+        }
+
+        if (left < gap) {
+            left = gap;
+        }
+
+        if (top + menuRect.height > viewportHeight - gap) {
+            top = Math.max(gap, viewportHeight - menuRect.height - gap);
+        }
+
+        menu.style.position = 'fixed';
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
+        menu.style.right = 'auto';
+        menu.style.bottom = 'auto';
+        menu.style.margin = '0';
+        menu.style.transform = 'none';
+        menu.style.zIndex = '2000';
+    }
+
+    function floatRowMenu(dropdown) {
+        const menu = dropdown ? dropdown.querySelector('.dropdown-menu') : null;
+        const toggle = dropdown ? dropdown.querySelector('[data-bs-toggle="dropdown"]') : null;
+
+        if (!menu || !toggle || menu.dataset.fmFloating === '1') {
+            return;
+        }
+
+        menu.__fmOriginalParent = dropdown;
+        dropdown.__fmFloatingMenu = menu;
+        menu.dataset.fmFloating = '1';
+        menu.classList.add('fm-dropdown-floating');
+        document.body.appendChild(menu);
+        positionFloatingRowMenu(toggle, menu);
+    }
+
+    function restoreRowMenu(dropdown) {
+        const floatingMenu = dropdown ? dropdown.__fmFloatingMenu : null;
+
+        if (!floatingMenu || !floatingMenu.__fmOriginalParent) {
+            return;
+        }
+
+        floatingMenu.__fmOriginalParent.appendChild(floatingMenu);
+        floatingMenu.classList.remove('fm-dropdown-floating');
+        floatingMenu.dataset.fmFloating = '0';
+        floatingMenu.style.position = '';
+        floatingMenu.style.left = '';
+        floatingMenu.style.top = '';
+        floatingMenu.style.right = '';
+        floatingMenu.style.bottom = '';
+        floatingMenu.style.margin = '';
+        floatingMenu.style.transform = '';
+        floatingMenu.style.zIndex = '';
+        dropdown.__fmFloatingMenu = null;
+    }
+
     function getBrowser() {
         return $('[data-file-manager-browser]');
     }
@@ -46,6 +132,7 @@ $(function () {
     }
 
     function replaceBrowser(html) {
+        closeFloatingRowMenus();
         getBrowser().html(html);
         refreshSelectionState();
         initTooltips();
@@ -460,7 +547,7 @@ $(function () {
         );
     });
 
-    page.on('click', '[data-file-manager-row-action]', function () {
+    $(document).on('click', '[data-file-manager-row-action]', function () {
         const button = $(this);
         const action = String(button.data('fileManagerRowAction') || '');
         const row = button.closest('[data-file-manager-row]');
@@ -511,7 +598,19 @@ $(function () {
         }
     });
 
-    page.on('click', '[data-file-select]', function () {
+    $(document).on('shown.bs.dropdown', '[data-file-manager-actions-menu]', function () {
+        floatRowMenu(this);
+    });
+
+    $(document).on('hide.bs.dropdown', '[data-file-manager-actions-menu]', function () {
+        restoreRowMenu(this);
+    });
+
+    $(window).on('resize scroll', function () {
+        closeFloatingRowMenus();
+    });
+
+    $(document).on('click', '[data-file-select]', function () {
         const button = $(this);
         const field = String(button.data('fileSelectField') || '');
         const value = String(button.data('fileSelectValue') || '');
