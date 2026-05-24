@@ -1,0 +1,941 @@
+$(function () {
+    const fileSelectionStorageKey = 'fireball:file:selected';
+    const popupName = 'fireball_file_manager';
+    const bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : (window.bootstrap || null);
+    const page = $('[data-file-manager-page]');
+    let searchTimer = null;
+
+    function applySelectedFile(payload) {
+        if (!payload || payload.type !== 'fireball:file:selected') {
+            return;
+        }
+
+        const input = document.getElementById(String(payload.field || ''));
+        if (!input) {
+            return;
+        }
+
+        const value = String(payload.value || '');
+        input.value = value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const previewImageSelector = input.getAttribute('data-file-preview-image');
+        const previewTextSelector = input.getAttribute('data-file-preview-text');
+        const previewWrap = document.getElementById(input.id + '_preview_wrap') || document.getElementById(input.id.replace(/_image$/, '_image_preview_wrap'));
+
+        if (previewImageSelector) {
+            const image = document.querySelector(previewImageSelector);
+            if (image) {
+                image.setAttribute('src', value);
+            }
+        }
+
+        if (previewTextSelector) {
+            const text = document.querySelector(previewTextSelector);
+            if (text) {
+                text.textContent = value;
+            }
+        }
+
+        if (previewWrap) {
+            previewWrap.classList.toggle('d-none', !value);
+        }
+
+        try {
+            localStorage.removeItem(fileSelectionStorageKey);
+        } catch (error) {
+        }
+    }
+
+    function consumeStoredFileSelection() {
+        let payload = null;
+
+        try {
+            payload = JSON.parse(String(localStorage.getItem(fileSelectionStorageKey) || ''));
+        } catch (error) {
+            payload = null;
+        }
+
+        applySelectedFile(payload);
+    }
+
+    function bindExternalPickerButtons() {
+        document.querySelectorAll('[data-file-manager-open]').forEach(function (button) {
+            if (button.dataset.fileManagerPickerBound === 'true') {
+                return;
+            }
+
+            button.dataset.fileManagerPickerBound = 'true';
+            button.addEventListener('click', function () {
+                const inputId = String(button.getAttribute('data-file-manager-input') || '');
+                const baseUrl = String(button.getAttribute('data-file-manager-url') || '');
+                const directory = String(button.getAttribute('data-file-manager-dir') || '');
+
+                if (!inputId || !baseUrl) {
+                    return;
+                }
+
+                const url = new URL(baseUrl, window.location.origin);
+                url.searchParams.set('picker', '1');
+                url.searchParams.set('field', inputId);
+
+                if (directory) {
+                    url.searchParams.set('dir', directory);
+                }
+
+                window.open(url.toString(), popupName, 'width=1280,height=860,resizable=yes,scrollbars=yes');
+            });
+        });
+    }
+
+    bindExternalPickerButtons();
+
+    window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin || !event.data || event.data.type !== 'fireball:file:selected') {
+            return;
+        }
+
+        applySelectedFile(event.data);
+    });
+
+    window.addEventListener('storage', function (event) {
+        if (event.key !== fileSelectionStorageKey || !event.newValue) {
+            return;
+        }
+
+        let payload = null;
+
+        try {
+            payload = JSON.parse(String(event.newValue || ''));
+        } catch (error) {
+            payload = null;
+        }
+
+        applySelectedFile(payload);
+    });
+
+    window.addEventListener('pageshow', function () {
+        consumeStoredFileSelection();
+    });
+
+    window.addEventListener('focus', function () {
+        consumeStoredFileSelection();
+    });
+
+    if (!page.length) {
+        return;
+    }
+
+    function closeFloatingRowMenus() {
+        if (!bootstrapApi || typeof bootstrapApi.Dropdown === 'undefined') {
+            return;
+        }
+
+        document.querySelectorAll('[data-file-manager-actions-menu] > [data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (toggle) {
+            const instance = bootstrapApi.Dropdown.getInstance(toggle);
+            if (instance) {
+                instance.hide();
+            }
+        });
+    }
+
+    function positionFloatingRowMenu(toggle, menu) {
+        if (!toggle || !menu) {
+            return;
+        }
+
+        const toggleRect = toggle.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const gap = 8;
+
+        let left = toggleRect.left - menuRect.width - gap;
+        let top = toggleRect.top;
+
+        if (left < gap) {
+            left = Math.min(viewportWidth - menuRect.width - gap, toggleRect.right + gap);
+        }
+
+        if (left < gap) {
+            left = gap;
+        }
+
+        if (top + menuRect.height > viewportHeight - gap) {
+            top = Math.max(gap, viewportHeight - menuRect.height - gap);
+        }
+
+        menu.style.position = 'fixed';
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
+        menu.style.right = 'auto';
+        menu.style.bottom = 'auto';
+        menu.style.margin = '0';
+        menu.style.transform = 'none';
+        menu.style.zIndex = '2000';
+    }
+
+    function floatRowMenu(dropdown) {
+        const menu = dropdown ? dropdown.querySelector('.dropdown-menu') : null;
+        const toggle = dropdown ? dropdown.querySelector('[data-bs-toggle="dropdown"]') : null;
+
+        if (!menu || !toggle || menu.dataset.fmFloating === '1') {
+            return;
+        }
+
+        menu.__fmOriginalParent = dropdown;
+        dropdown.__fmFloatingMenu = menu;
+        menu.dataset.fmFloating = '1';
+        menu.classList.add('fm-dropdown-floating');
+        document.body.appendChild(menu);
+        positionFloatingRowMenu(toggle, menu);
+    }
+
+    function restoreRowMenu(dropdown) {
+        const floatingMenu = dropdown ? dropdown.__fmFloatingMenu : null;
+
+        if (!floatingMenu || !floatingMenu.__fmOriginalParent) {
+            return;
+        }
+
+        floatingMenu.__fmOriginalParent.appendChild(floatingMenu);
+        floatingMenu.classList.remove('fm-dropdown-floating');
+        floatingMenu.dataset.fmFloating = '0';
+        floatingMenu.style.position = '';
+        floatingMenu.style.left = '';
+        floatingMenu.style.top = '';
+        floatingMenu.style.right = '';
+        floatingMenu.style.bottom = '';
+        floatingMenu.style.margin = '';
+        floatingMenu.style.transform = '';
+        floatingMenu.style.zIndex = '';
+        dropdown.__fmFloatingMenu = null;
+    }
+
+    function getBrowser() {
+        return $('[data-file-manager-browser]');
+    }
+
+    function getModal(selector) {
+        if (!bootstrapApi) {
+            return null;
+        }
+
+        const element = document.querySelector(selector);
+        return element ? bootstrapApi.Modal.getOrCreateInstance(element) : null;
+    }
+
+    let pendingDelete = null;
+
+    function setLoading(isLoading) {
+        getBrowser().toggleClass('is-loading', isLoading);
+    }
+
+    function renderFeedback(status, message) {
+        const wrap = $('[data-file-manager-feedback-wrap]').first();
+        if (!wrap.length) {
+            return;
+        }
+
+        if (!message) {
+            wrap.empty();
+            return;
+        }
+
+        const variant = status === 'success' ? 'success' : 'danger';
+        wrap.html(
+            '<div class="alert alert-' + variant + ' border-0 rounded-4 mb-0">' + $('<div>').text(String(message)).html() + '</div>'
+        );
+    }
+
+    function replaceBrowser(html) {
+        closeFloatingRowMenus();
+        getBrowser().html(html);
+        refreshSelectionState();
+        initTooltips();
+    }
+
+    function initTooltips() {
+        if (!bootstrapApi || typeof bootstrapApi.Tooltip === 'undefined') {
+            return;
+        }
+
+        document.querySelectorAll('[data-file-manager-browser] [data-bs-toggle="tooltip"]').forEach(function (element) {
+            bootstrapApi.Tooltip.getOrCreateInstance(element);
+        });
+    }
+
+    function requestManager(url, options) {
+        const requestOptions = Object.assign({
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }, options || {});
+
+        setLoading(true);
+
+        return fetch(url, requestOptions)
+            .then(async function (response) {
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw payload;
+                }
+
+                return payload;
+            })
+            .finally(function () {
+                setLoading(false);
+            });
+    }
+
+    function loadUrl(url, pushState) {
+        requestManager(url, { method: 'GET' })
+            .then(function (payload) {
+                replaceBrowser(payload.html || '');
+                renderFeedback('', '');
+
+                if (pushState !== false) {
+                    window.history.pushState({ url: url }, '', url);
+                }
+            })
+            .catch(function (payload) {
+                renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
+            });
+    }
+
+    function submitAsyncForm(form, onSuccess) {
+        const formData = new FormData(form);
+
+        requestManager(form.action, {
+            method: String(form.method || 'POST').toUpperCase(),
+            body: formData
+        }).then(function (payload) {
+            hideVisibleModals();
+            replaceBrowser(payload.html || '');
+            renderFeedback(payload.status || 'success', payload.message || '');
+
+            if (typeof onSuccess === 'function') {
+                onSuccess(payload);
+            }
+        }).catch(function (payload) {
+            if (payload && payload.html) {
+                replaceBrowser(payload.html);
+            }
+
+            renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
+        });
+    }
+
+    function submitRowDelete(row) {
+        const form = $('[data-file-manager-bulk-form]')[0];
+        if (!form || !row.length) {
+            return;
+        }
+
+        const formData = new FormData(form);
+        formData.delete('selected_paths[]');
+        formData.delete('selected_types[]');
+        formData.set('action_name', 'delete');
+        formData.append('selected_paths[]', String(row.data('path') || ''));
+        formData.append('selected_types[]', String(row.data('type') || 'file'));
+
+        requestManager(form.action, {
+            method: String(form.method || 'POST').toUpperCase(),
+            body: formData
+        }).then(function (payload) {
+            hideVisibleModals();
+            replaceBrowser(payload.html || '');
+            renderFeedback(payload.status || 'success', payload.message || '');
+        }).catch(function (payload) {
+            if (payload && payload.html) {
+                replaceBrowser(payload.html);
+            }
+
+            renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
+        });
+    }
+
+    function openDeleteModal(options) {
+        const modal = getModal('[data-file-delete-modal]');
+        if (!modal) {
+            return false;
+        }
+
+        const messageElement = $('[data-file-delete-modal-message]');
+        const itemWrap = $('[data-file-delete-modal-item-wrap]');
+        const itemElement = $('[data-file-delete-modal-item]');
+        const message = String(options && options.message ? options.message : '').trim();
+        const item = String(options && options.item ? options.item : '').trim();
+
+        messageElement.text(message);
+        itemElement.text(item);
+        itemWrap.toggleClass('d-none', item === '');
+        pendingDelete = options || null;
+        modal.show();
+
+        return true;
+    }
+
+    function submitPendingDelete() {
+        if (!pendingDelete) {
+            return;
+        }
+
+        const activeDelete = pendingDelete;
+        pendingDelete = null;
+
+        if (activeDelete.type === 'row' && activeDelete.row) {
+            submitRowDelete(activeDelete.row);
+            return;
+        }
+
+        if (activeDelete.type === 'bulk' && activeDelete.form) {
+            $(activeDelete.form).find('[data-file-manager-action-name]').val('delete');
+            submitAsyncForm(activeDelete.form);
+        }
+    }
+
+    function selectedRows() {
+        return $('[data-file-manager-select]:checked').closest('[data-file-manager-row]');
+    }
+
+    function refreshSelectionState() {
+        const rows = $('[data-file-manager-row]');
+        const checked = $('[data-file-manager-select]:checked');
+        const actionToggle = $('[data-file-manager-action-toggle]');
+        const countTarget = $('[data-file-manager-selection-count]');
+        const toggleAll = $('[data-file-manager-toggle-all]');
+
+        rows.each(function () {
+            const row = $(this);
+            const isChecked = row.find('[data-file-manager-select]').is(':checked');
+            row.toggleClass('is-selected', isChecked);
+            row.find('[data-file-manager-select-type]').prop('disabled', !isChecked);
+        });
+
+        countTarget.text(String(checked.length));
+        actionToggle.prop('disabled', checked.length === 0);
+        toggleAll.prop('checked', rows.length > 0 && checked.length === rows.length);
+    }
+
+    function currentMessages() {
+        return {
+            selectionRequired: String(page.data('fmSelectionRequired') || 'Select at least one item.'),
+            renameSingle: String(page.data('fmRenameSingle') || 'Select one item to rename.'),
+            openSingle: String(page.data('fmOpenSingle') || 'Select one item to open.'),
+            deleteConfirm: String(page.data('fmDeleteConfirm') || 'Delete selected items (:count)?'),
+            copyTitle: String(page.data('fmCopyTitle') || 'Copy to folder'),
+            moveTitle: String(page.data('fmMoveTitle') || 'Move to folder'),
+            copySubmit: String(page.data('fmCopySubmit') || 'Copy'),
+            moveSubmit: String(page.data('fmMoveSubmit') || 'Move'),
+            transferProtected: String(page.data('fmTransferProtected') || 'This system folder cannot be copied or moved through the file manager.')
+        };
+    }
+
+    function hasProtectedTransferRows(rows) {
+        let blocked = false;
+
+        rows.each(function () {
+            if (String($(this).data('canTransfer') || '1') !== '1') {
+                blocked = true;
+                return false;
+            }
+            return undefined;
+        });
+
+        return blocked;
+    }
+
+    function openRenameModal(row) {
+        const modal = getModal('[data-file-rename-modal]');
+        if (!modal || !row.length) {
+            return;
+        }
+
+        const path = String(row.data('path') || '');
+        const fullName = String(row.data('name') || '');
+        const name = String(row.data('baseName') || '');
+        const extension = String(row.data('extension') || '');
+
+        $('[data-file-rename-path-input]').val(path);
+        $('[data-file-rename-input]').val(name);
+        $('[data-file-rename-current-name]').text(fullName);
+        $('[data-file-rename-extension]').text(extension);
+        $('[data-file-rename-extension-wrap]').toggleClass('d-none', !extension);
+        modal.show();
+
+        window.setTimeout(function () {
+            $('[data-file-rename-input]').trigger('focus').trigger('select');
+        }, 120);
+    }
+
+    function openTransferModal(action, rows) {
+        const modal = getModal('[data-file-transfer-modal]');
+        if (!modal || !rows || !rows.length) {
+            return;
+        }
+
+        const messages = currentMessages();
+        const hiddenInputsWrap = $('[data-file-transfer-hidden-inputs]');
+        const titleElement = $('[data-file-transfer-title]');
+        const summaryElement = $('[data-file-transfer-summary]');
+        const actionInput = $('[data-file-transfer-action-input]');
+        const submitText = $('[data-file-transfer-submit-text]');
+        const submitIcon = $('[data-file-transfer-submit-icon]');
+        const destinationSelect = $('[data-file-transfer-destination]');
+        const rowNames = rows.map(function () {
+            return String($(this).data('name') || '');
+        }).get();
+
+        hiddenInputsWrap.empty();
+        rows.each(function () {
+            const row = $(this);
+            hiddenInputsWrap.append(
+                $('<input>', {
+                    type: 'hidden',
+                    name: 'selected_paths[]',
+                    value: String(row.data('path') || '')
+                })
+            );
+            hiddenInputsWrap.append(
+                $('<input>', {
+                    type: 'hidden',
+                    name: 'selected_types[]',
+                    value: String(row.data('type') || 'file')
+                })
+            );
+        });
+
+        actionInput.val(action);
+        titleElement.text(action === 'move' ? messages.moveTitle : messages.copyTitle);
+        submitText.text(action === 'move' ? messages.moveSubmit : messages.copySubmit);
+        summaryElement.text(rowNames.length === 1 ? rowNames[0] : String(rowNames.length));
+        submitIcon.attr('class', action === 'move' ? 'ci-move' : 'ci-copy');
+        destinationSelect.val('');
+        modal.show();
+    }
+
+    function openPreviewModal(url, name) {
+        const modal = getModal('[data-file-preview-modal]');
+        if (!modal) {
+            return;
+        }
+
+        $('[data-file-preview-title]').text(name || 'Preview');
+        $('[data-file-preview-image]').attr('src', url).attr('alt', name);
+        $('[data-file-preview-open]').attr('href', url);
+        modal.show();
+    }
+
+    function closeTransientModals() {
+        ['[data-file-upload-modal]', '[data-file-folder-modal]', '[data-file-rename-modal]', '[data-file-transfer-modal]'].forEach(function (selector) {
+            const modal = getModal(selector);
+            if (modal) {
+                modal.hide();
+            }
+        });
+    }
+
+    function hideVisibleModals() {
+        if (!bootstrapApi) {
+            return;
+        }
+
+        document.querySelectorAll('.modal.show').forEach(function (element) {
+            const instance = bootstrapApi.Modal.getInstance(element);
+            if (instance) {
+                instance.hide();
+            }
+        });
+    }
+
+    page.on('click', '[data-fm-nav-link]', function (event) {
+        const link = $(this);
+        const href = String(link.attr('href') || '');
+        if (!href) {
+            return;
+        }
+
+        event.preventDefault();
+        loadUrl(href, true);
+    });
+
+    page.on('click', '[data-fm-pagination] a', function (event) {
+        const href = String($(this).attr('href') || '');
+        if (!href) {
+            return;
+        }
+
+        event.preventDefault();
+        loadUrl(href, true);
+    });
+
+    page.on('submit', '[data-fm-search-form]', function (event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const url = new URL(form.action || window.location.href, window.location.origin);
+        url.searchParams.delete('page');
+        const formData = new FormData(form);
+
+        formData.forEach(function (value, key) {
+            if (String(value) !== '') {
+                url.searchParams.set(key, String(value));
+            } else {
+                url.searchParams.delete(key);
+            }
+        });
+
+        loadUrl(url.toString(), true);
+    });
+
+    page.on('input', '[data-fm-search-form] input[type="search"]', function () {
+        const form = $(this).closest('[data-fm-search-form]')[0];
+        clearTimeout(searchTimer);
+        searchTimer = window.setTimeout(function () {
+            $(form).trigger('submit');
+        }, 260);
+    });
+
+    page.on('submit', '[data-fm-async-form]', function (event) {
+        event.preventDefault();
+        submitAsyncForm(event.currentTarget, function () {
+            closeTransientModals();
+        });
+    });
+
+    page.on('change', '[data-file-manager-toggle-all]', function () {
+        const checked = $(this).is(':checked');
+        $('[data-file-manager-select]').prop('checked', checked);
+        refreshSelectionState();
+    });
+
+    page.on('change', '[data-file-manager-select]', function () {
+        refreshSelectionState();
+    });
+
+    page.on('click', '[data-file-manager-row]', function (event) {
+        const target = $(event.target);
+        if (target.closest('a, button, input, label').length) {
+            return;
+        }
+
+        const checkbox = $(this).find('[data-file-manager-select]');
+        checkbox.prop('checked', !checkbox.is(':checked')).trigger('change');
+    });
+
+    page.on('dblclick', '[data-file-manager-row]', function (event) {
+        const target = $(event.target);
+        if (target.closest('a, button, input, label').length) {
+            return;
+        }
+
+        const row = $(this);
+        const type = String(row.data('type') || '');
+        const url = String(row.data('openUrl') || '');
+
+        if (!url) {
+            return;
+        }
+
+        if (type === 'directory') {
+            loadUrl(url, true);
+            return;
+        }
+
+        if (String(row.data('canPreview') || '0') === '1') {
+            openPreviewModal(String(row.data('previewUrl') || ''), String(row.data('name') || ''));
+            return;
+        }
+
+        window.open(url, '_blank', 'noopener');
+    });
+
+    page.on('click', '[data-file-manager-open-upload]', function () {
+        const modal = getModal('[data-file-upload-modal]');
+        if (modal) {
+            modal.show();
+        }
+    });
+
+    page.on('click', '[data-file-manager-open-folder]', function () {
+        const modal = getModal('[data-file-folder-modal]');
+        if (modal) {
+            modal.show();
+        }
+    });
+
+    page.on('click', '[data-file-manager-action]', function () {
+        const action = String($(this).data('fileManagerAction') || '');
+        const rows = selectedRows();
+        const messages = currentMessages();
+
+        if (!rows.length) {
+            renderFeedback('error', messages.selectionRequired);
+            return;
+        }
+
+        if (action === 'rename') {
+            if (rows.length !== 1) {
+                renderFeedback('error', messages.renameSingle);
+                return;
+            }
+
+            openRenameModal(rows.first());
+            return;
+        }
+
+        if (action === 'open') {
+            if (rows.length !== 1) {
+                renderFeedback('error', messages.openSingle);
+                return;
+            }
+
+            const row = rows.first();
+            const type = String(row.data('type') || '');
+            const url = String(row.data('openUrl') || '');
+
+            if (type === 'directory') {
+                loadUrl(url, true);
+            } else if (url) {
+                window.open(url, '_blank', 'noopener');
+            }
+
+            return;
+        }
+
+        if (action === 'delete') {
+            const form = $('[data-file-manager-bulk-form]')[0];
+            if (!form) {
+                return;
+            }
+
+            const opened = openDeleteModal({
+                type: 'bulk',
+                form: form,
+                message: messages.deleteConfirm.replace(':count', String(rows.length)),
+                item: rows.length === 1 ? String(rows.first().data('name') || '') : ''
+            });
+
+            if (!opened) {
+                return;
+            }
+            return;
+        }
+
+        if (action === 'copy' || action === 'move') {
+            if (hasProtectedTransferRows(rows)) {
+                renderFeedback('error', messages.transferProtected);
+                return;
+            }
+
+            openTransferModal(action, rows);
+        }
+    });
+
+    page.on('click', '[data-file-preview]', function () {
+        openPreviewModal(
+            String($(this).data('filePreviewUrl') || ''),
+            String($(this).data('filePreviewName') || '')
+        );
+    });
+
+    $(document).on('click', '[data-file-manager-row-action]', function () {
+        const button = $(this);
+        const action = String(button.data('fileManagerRowAction') || '');
+        const row = button.closest('[data-file-manager-row]');
+        const messages = currentMessages();
+
+        if (!row.length) {
+            return;
+        }
+
+        if (action === 'rename') {
+            openRenameModal(row);
+            return;
+        }
+
+        if (action === 'delete') {
+            const opened = openDeleteModal({
+                type: 'row',
+                row: row,
+                message: messages.deleteConfirm.replace(':count', '1'),
+                item: String(row.data('name') || '')
+            });
+
+            if (!opened) {
+                return;
+            }
+            return;
+        }
+
+        if (action === 'copy' || action === 'move') {
+            if (String(row.data('canTransfer') || '1') !== '1') {
+                renderFeedback('error', messages.transferProtected);
+                return;
+            }
+
+            openTransferModal(action, row);
+            return;
+        }
+
+        if (action === 'open') {
+            const type = String(row.data('type') || '');
+            const url = String(row.data('openUrl') || '');
+
+            if (!url) {
+                return;
+            }
+
+            if (type === 'directory') {
+                loadUrl(url, true);
+                return;
+            }
+
+            if (String(row.data('canPreview') || '0') === '1') {
+                openPreviewModal(String(row.data('previewUrl') || ''), String(row.data('name') || ''));
+                return;
+            }
+
+            window.open(url, '_blank', 'noopener');
+        }
+    });
+
+    $(document).on('shown.bs.dropdown', '[data-file-manager-actions-menu]', function () {
+        floatRowMenu(this);
+    });
+
+    $(document).on('hide.bs.dropdown', '[data-file-manager-actions-menu]', function () {
+        restoreRowMenu(this);
+    });
+
+    $(window).on('resize scroll', function () {
+        closeFloatingRowMenus();
+    });
+
+    $(document).on('click', '[data-file-select]', function () {
+        const button = $(this);
+        const field = String(button.data('fileSelectField') || '');
+        const value = String(button.data('fileSelectValue') || '');
+
+        if (!field) {
+            return;
+        }
+
+        const payload = {
+            type: 'fireball:file:selected',
+            field: field,
+            value: value
+        };
+        const currentUrl = new URL(window.location.href);
+        const returnUrl = String(currentUrl.searchParams.get('return_url') || '');
+        let redirectUrl = null;
+
+        if (returnUrl) {
+            try {
+                const candidateUrl = new URL(returnUrl, window.location.origin);
+                if (candidateUrl.origin === window.location.origin) {
+                    candidateUrl.searchParams.set('fireball_file_field', field);
+                    candidateUrl.searchParams.set('fireball_file_value', value);
+                    redirectUrl = candidateUrl.toString();
+                }
+            } catch (error) {
+            }
+        }
+
+        try {
+            localStorage.setItem(fileSelectionStorageKey, JSON.stringify(Object.assign({}, payload, {
+                timestamp: Date.now()
+            })));
+        } catch (error) {
+        }
+
+        if (window.opener) {
+            try {
+                if (redirectUrl) {
+                    window.opener.location.href = redirectUrl;
+                } else {
+                    window.opener.postMessage(payload, window.location.origin);
+                }
+            } catch (error) {
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                    return;
+                }
+            }
+
+            window.close();
+            return;
+        }
+
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
+            return;
+        }
+
+        if (window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+
+        if (document.referrer) {
+            try {
+                const referrerUrl = new URL(document.referrer);
+                if (referrerUrl.origin === window.location.origin) {
+                    window.location.href = referrerUrl.toString();
+                    return;
+                }
+            } catch (error) {
+            }
+        }
+
+        window.close();
+    });
+
+    page.on('click', '[data-file-rename-open]', function () {
+        openRenameModal($(this).closest('[data-file-manager-row]'));
+    });
+
+    $(document).on('hidden.bs.modal', '[data-file-preview-modal]', function () {
+        $('[data-file-preview-title]').text('');
+        $('[data-file-preview-image]').attr('src', '').attr('alt', '');
+        $('[data-file-preview-open]').attr('href', '');
+    });
+
+    $(document).on('hidden.bs.modal', '[data-file-transfer-modal]', function () {
+        $('[data-file-transfer-hidden-inputs]').empty();
+        $('[data-file-transfer-action-input]').val('');
+        $('[data-file-transfer-summary]').text('');
+        $('[data-file-transfer-destination]').val('');
+    });
+
+    $(document).on('hidden.bs.modal', '[data-file-rename-modal]', function () {
+        $('[data-file-rename-path-input]').val('');
+        $('[data-file-rename-input]').val('');
+        $('[data-file-rename-current-name]').text('');
+        $('[data-file-rename-extension]').text('');
+        $('[data-file-rename-extension-wrap]').removeClass('d-none');
+    });
+
+    $(document).on('hidden.bs.modal', '[data-file-delete-modal]', function () {
+        pendingDelete = null;
+        $('[data-file-delete-modal-message]').text('');
+        $('[data-file-delete-modal-item]').text('');
+        $('[data-file-delete-modal-item-wrap]').addClass('d-none');
+    });
+
+    page.on('click', '[data-file-delete-modal-confirm]', function () {
+        const modal = getModal('[data-file-delete-modal]');
+        submitPendingDelete();
+        if (modal) {
+            modal.hide();
+        }
+    });
+
+    window.addEventListener('popstate', function () {
+        loadUrl(window.location.href, false);
+    });
+
+    refreshSelectionState();
+    initTooltips();
+});

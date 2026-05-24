@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'auth_register_title' => 'Регистрация',
+    'auth_register_heading' => 'Создать аккаунт',
+    'auth_register_subtitle' => 'Заполните форму, чтобы получить личный профиль.',
+    'auth_register_name' => 'Имя',
+    'auth_register_login_field' => 'Логин',
+    'auth_register_email' => 'Email',
+    'auth_register_password' => 'Пароль',
+    'auth_register_password_confirmation' => 'Подтверждение пароля',
+    'auth_register_submit' => 'Зарегистрироваться',
+    'auth_register_login_text' => 'Уже есть аккаунт?',
+    'auth_register_login_link' => 'Войти',
+    'auth_register_success' => 'Аккаунт успешно создан.',
+    'auth_validation_name_required' => 'Введите имя.',
+    'auth_validation_name_length' => 'Имя должно содержать минимум 2 символа.',
+    'auth_validation_login_required' => 'Введите логин.',
+    'auth_validation_login_format' => 'Логин должен содержать минимум 3 символа и состоять из латинских букв, цифр и дефисов.',
+    'auth_validation_login_exists' => 'Пользователь с таким логином уже существует.',
+    'auth_validation_email_required' => 'Введите email.',
+    'auth_validation_email_invalid' => 'Введите корректный email.',
+    'auth_validation_email_exists' => 'Пользователь с таким email уже существует.',
+    'auth_validation_password_required' => 'Введите пароль.',
+    'auth_validation_password_length' => 'Пароль должен содержать минимум 8 символов.',
+    'auth_validation_password_confirmation_required' => 'Подтвердите пароль.',
+    'auth_validation_password_confirmation_match' => 'Пароли не совпадают.',
+];

@@ -1,0 +1,8 @@
+.idea
+.DS_Store
+.gigaide
+.gigacode
+public/uploads/*
+public/assets/cartzilla-html
+config/config.local.php
+UPDATE_CHEATSHEET.md

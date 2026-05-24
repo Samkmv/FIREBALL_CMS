@@ -1,0 +1,21 @@
+{
+  "name": "FBL",
+  "short_name": "FBL",
+  "description": "FBL",
+  "lang" : "en",
+  "dir": "ltr",
+  "start_url": "/index.html",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/assets/img/fbl_logo.png",
+      "sizes": "1000x1000",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "background_color": "#fff",
+  "theme_color": "#131920",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}
