@@ -259,31 +259,39 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Account button visible on screens < 768px wide (md breakpoint) -->
     <div class="offcanvas-header flex-column align-items-start d-md-none">
         <?php if (check_auth()): ?>
-            <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2" href="<?= base_href('/profile') ?>">
+            <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2 d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/profile') ?>">
                 <img
                     src="<?= $currentUserAvatar ?>"
                     alt="<?= htmlSC($currentUser['name'] ?? '') ?>"
-                    class="rounded-circle object-fit-cover ms-n1 me-2"
+                    class="rounded-circle object-fit-cover ms-n1"
                     style="width: 28px; height: 28px;"
                 >
                 <?= print_translation('tpl_auth_profile') ?>
             </a>
-            <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2" href="<?= base_href('/chat') ?>">
-                <i class="ci-chat fs-lg ms-n1 me-2"></i>
+            <?php if (check_admin()): ?>
+                <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2 d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/admin') ?>">
+                    <i class="ci-layout fs-lg ms-n1"></i>
+                    <?= print_translation('tpl_auth_admin') ?>
+                </a>
+            <?php endif; ?>
+            <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2 d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/chat') ?>">
+                <i class="ci-chat fs-lg ms-n1"></i>
                 <?= print_translation('tpl_auth_chat') ?>
             </a>
             <form action="<?= $logoutAction ?>" method="post" class="w-100">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-lg btn-dark w-100 rounded-pill" type="submit">
+                <button class="btn btn-lg btn-dark w-100 rounded-pill d-inline-flex align-items-center justify-content-center gap-2" type="submit">
+                    <i class="ci-log-out fs-lg ms-n1"></i>
                     <?= print_translation('tpl_auth_logout') ?>
                 </button>
             </form>
         <?php else: ?>
-            <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2" href="<?= base_href('/login') ?>">
-                <i class="ci-user fs-lg ms-n1 me-2"></i>
+            <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2 d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/login') ?>">
+                <i class="ci-log-in fs-lg ms-n1"></i>
                 <?= print_translation('tpl_auth_login') ?>
             </a>
-            <a class="btn btn-lg btn-dark w-100 rounded-pill" href="<?= base_href('/register') ?>">
+            <a class="btn btn-lg btn-dark w-100 rounded-pill d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/register') ?>">
+                <i class="ci-user-plus fs-lg ms-n1"></i>
                 <?= print_translation('tpl_auth_register') ?>
             </a>
         <?php endif; ?>

@@ -80,11 +80,12 @@
         [data-file-manager-toolbar] {
             position: sticky;
             top: 0;
-            z-index: 5;
+            z-index: 1080;
             background: var(--fm-toolbar);
             backdrop-filter: blur(18px);
             border-bottom: 1px solid var(--fm-toolbar-border);
             min-width: 0;
+            overflow: visible;
         }
 
         [data-file-manager-table] tbody tr {
@@ -299,13 +300,24 @@
             [data-file-manager-toolbar-actions] {
                 width: 100%;
                 display: grid;
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr;
                 min-width: 0;
+                position: relative;
+                z-index: 1081;
             }
 
             [data-file-manager-toolbar-actions] .dropdown,
             [data-file-manager-toolbar-actions] .dropdown > button {
                 width: 100%;
+            }
+
+            [data-file-manager-toolbar-actions] .dropdown-menu.show {
+                position: static !important;
+                transform: none !important;
+                inset: auto !important;
+                width: 100%;
+                max-width: none;
+                margin-top: .5rem !important;
             }
 
             [data-file-manager-breadcrumbs] {
@@ -362,11 +374,6 @@
 
             [data-file-manager-page] .dropdown-item {
                 white-space: normal;
-            }
-
-            [data-file-manager-toolbar-actions] .dropdown-menu.show {
-                width: calc(100vw - 2rem);
-                max-width: calc(100vw - 2rem);
             }
 
             .fm-dropdown-floating {

@@ -98,6 +98,9 @@ $editorConfig = [
         'moveUp' => return_translation('admin_post_builder_move_up'),
         'moveDown' => return_translation('admin_post_builder_move_down'),
         'remove' => return_translation('admin_post_builder_remove'),
+        'hide' => return_translation('admin_post_builder_hide'),
+        'show' => return_translation('admin_post_builder_show'),
+        'hidden' => return_translation('admin_post_builder_hidden'),
         'duplicate' => return_translation('admin_post_builder_duplicate'),
         'drag' => return_translation('admin_post_builder_drag'),
         'chooseFile' => return_translation('admin_post_builder_choose_file'),
@@ -1683,6 +1686,25 @@ $editorConfig = [
         bottom: -3px;
     }
 
+    .fb-post-block.is-hidden {
+        border-style: dashed;
+        opacity: .76;
+    }
+
+    .fb-post-block.is-hidden .fb-post-block__head {
+        border-radius: 1rem;
+        border-bottom: 0;
+    }
+
+    .fb-post-block.is-hidden .fb-post-block__content {
+        display: none;
+    }
+
+    .fb-post-block__chip--hidden {
+        background: rgba(108, 117, 125, .16);
+        color: #4b5563;
+    }
+
     .fb-post-block__head {
         display: flex;
         align-items: center;
@@ -2281,6 +2303,10 @@ $editorConfig = [
         box-shadow: 0 0 0 3px rgba(124, 197, 175, .12), 0 18px 36px rgba(8, 11, 18, .22);
     }
 
+    [data-bs-theme=dark] .fb-post-block.is-hidden {
+        opacity: .7;
+    }
+
     [data-bs-theme=dark] .fb-post-block__head,
     [data-bs-theme=dark] .fb-post-block__toolbar {
         border-bottom-color: rgba(255, 255, 255, .08);
@@ -2292,6 +2318,11 @@ $editorConfig = [
     [data-bs-theme=dark] .fb-post-settings__badge {
         background: rgba(124, 197, 175, .14);
         color: #9ae6d2;
+    }
+
+    [data-bs-theme=dark] .fb-post-block__chip--hidden {
+        background: rgba(156, 163, 175, .14);
+        color: #c8ced8;
     }
 
     [data-bs-theme=dark] .fb-post-block__drag {
@@ -2840,10 +2871,22 @@ $editorConfig = [
                     <label class="form-check-label" for="is_published"><?= print_translation('admin_posts_status_published') ?></label>
                 </div>
             </div>
-            <div class="col-12 d-flex gap-2">
-                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
-                <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts') ?>"><i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?></a>
-                <span class="small text-body-secondary align-self-center ms-auto" data-post-autosave-status aria-live="polite"></span>
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
+                    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts') ?>"><i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?></a>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card text-success border-success d-none" data-post-autosave-card>
+                    <div class="card-header bg-success-subtle border-success d-flex align-items-center gap-2">
+                        <i class="ci-check fs-lg"></i>
+                        <span class="fw-semibold"><?= print_translation('admin_post_autosave_title') ?></span>
+                    </div>
+                    <div class="card-body py-3">
+                        <p class="card-text mb-0 small text-success" data-post-autosave-status aria-live="polite"></p>
+                    </div>
+                </div>
             </div>
         </div>
     </form>

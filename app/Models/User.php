@@ -15,6 +15,7 @@ class User
     public const ROLE_MODERATOR = 'moderator';
     public const ROLE_USER = 'user';
     public const CREATOR_ROLE_ID = 1;
+    public const ONLINE_WINDOW_SECONDS = 70;
 
     protected string $usersTable = 'users';
     protected string $passwordResetsTable = 'password_resets';
@@ -162,7 +163,7 @@ class User
     /**
      * Определяет, считается ли пользователь онлайн по времени последней активности.
      */
-    public function isOnline(?string $lastSeenAt, int $windowSeconds = 70): bool
+    public function isOnline(?string $lastSeenAt, int $windowSeconds = self::ONLINE_WINDOW_SECONDS): bool
     {
         $lastSeenAt = trim((string)$lastSeenAt);
         if ($lastSeenAt === '') {
@@ -289,6 +290,8 @@ class User
         $search = trim((string)($options['search'] ?? ''));
         $sort = (string)($options['sort'] ?? 'created_at');
         $direction = strtolower((string)($options['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $onlineCutoff = date('Y-m-d H:i:s', time() - self::ONLINE_WINDOW_SECONDS);
+        $onlineOrderSql = "CASE WHEN u.last_seen_at IS NOT NULL AND u.last_seen_at >= '{$onlineCutoff}' THEN 1 ELSE 0 END";
 
         $sortMap = [
             'id' => 'u.id',
@@ -296,10 +299,16 @@ class User
             'login' => 'u.login',
             'email' => 'u.email',
             'role' => 'u.role',
+            'online' => $onlineOrderSql,
             'created_at' => 'u.created_at',
         ];
 
-        $orderBy = $sortMap[$sort] ?? 'u.created_at';
+        if (!array_key_exists($sort, $sortMap)) {
+            $sort = 'created_at';
+        }
+
+        $orderBy = $sortMap[$sort];
+        $secondaryOrder = $sort === 'online' ? ', u.last_seen_at DESC' : '';
         $where = '';
         $params = [];
 
@@ -326,6 +335,7 @@ class User
                     u.email,
                     u.avatar,
                     u.role,
+                    u.last_seen_at,
                     u.created_at,
                     r.name AS role_name,
                     CASE
@@ -340,7 +350,7 @@ class User
              FROM {$this->usersTable} u
              LEFT JOIN {$this->rolesTable} r ON r.slug = u.role
              {$where}
-             ORDER BY {$orderBy} {$direction}, u.id DESC
+             ORDER BY {$orderBy} {$direction}{$secondaryOrder}, u.id DESC
              LIMIT {$offset}, {$perPage}",
             $params
         )->get() ?: [];

@@ -110,6 +110,27 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                                     >
                                         <i class="ci-edit"></i>
                                     </a>
+                                    <form action="<?= base_href('/admin/posts/toggle-published') ?>" method="post">
+                                        <?= get_csrf_field() ?>
+                                        <input type="hidden" name="id" value="<?= (int)$post['id'] ?>">
+                                        <?php if ((int)$post['is_published'] === 1): ?>
+                                            <button
+                                                class="btn btn-sm btn-outline-warning btn-icon rounded-circle"
+                                                type="submit"
+                                                aria-label="<?= htmlSC(return_translation('admin_btn_unpublish')) ?>"
+                                                title="<?= htmlSC(return_translation('admin_btn_unpublish')) ?>"
+                                                data-bs-toggle="tooltip"
+                                            ><i class="ci-eye-off"></i></button>
+                                        <?php else: ?>
+                                            <button
+                                                class="btn btn-sm btn-outline-success btn-icon rounded-circle"
+                                                type="submit"
+                                                aria-label="<?= htmlSC(return_translation('admin_btn_publish')) ?>"
+                                                title="<?= htmlSC(return_translation('admin_btn_publish')) ?>"
+                                                data-bs-toggle="tooltip"
+                                            ><i class="ci-check"></i></button>
+                                        <?php endif; ?>
+                                    </form>
                                     <form
                                         action="<?= base_href('/admin/posts/delete') ?>"
                                         method="post"

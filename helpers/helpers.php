@@ -120,7 +120,18 @@ function abort($error = '', $code = 404)
 {
     if (!is_array(app()->get('lang'))) {
         $baseLang = array_value_search(LANGS, 'base', 1);
-        app()->set('lang', LANGS[$baseLang] ?? reset(LANGS));
+        $lang = $baseLang;
+
+        if (MULTILANGS) {
+            $path = method_exists(request(), 'getPath') ? request()->getPath() : '';
+            $firstSegment = strtok(trim((string)$path, '/'), '/');
+
+            if (is_string($firstSegment) && array_key_exists($firstSegment, LANGS)) {
+                $lang = $firstSegment;
+            }
+        }
+
+        app()->set('lang', LANGS[$lang] ?? LANGS[$baseLang] ?? reset(LANGS));
         \FBL\Language::load(null);
     }
 

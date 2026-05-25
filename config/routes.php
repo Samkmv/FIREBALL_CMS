@@ -64,6 +64,7 @@ $app->router->post('/admin/posts/autosave', [AdminController::class, 'postAutosa
 $app->router->get('/admin/posts/edit/(?P<id>\d+)/?', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/posts/edit/(?P<id>\d+)/?', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/posts/preview/(?P<id>\d+)/?', [AdminController::class, 'postPreview'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/posts/toggle-published', [AdminController::class, 'postTogglePublished'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/posts/delete', [AdminController::class, 'postDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories', [AdminController::class, 'categories'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories/create', [AdminController::class, 'categoryForm'])->middleware(['auth', 'admin']);

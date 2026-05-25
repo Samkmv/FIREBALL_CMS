@@ -11,6 +11,7 @@ use App\Models\Post;
 use App\Services\UpdateCenter;
 use FBL\Auth;
 use FBL\File;
+use FBL\Language;
 
 /**
  * Управляет административной частью: контентом, пользователями, ролями, заявками и настройками сайта.
@@ -120,7 +121,9 @@ class AdminController extends BaseController
         }
 
         $sidebarData = $posts->getSidebarData($post['slug']);
-        $popularPosts = $posts->getPopularPosts(9, $post['slug']);
+        $popularPosts = $posts->getPopularPosts(5, $post['slug']);
+
+        Language::load([PostsController::class, 'show']);
 
         return view('posts/show', [
             'title' => $post['title'],
@@ -248,6 +251,26 @@ class AdminController extends BaseController
     }
 
     /**
+     * Переключает публикацию записи из таблицы админки.
+     */
+    public function postTogglePublished()
+    {
+        $postId = (int)request()->post('id');
+        $nextStatus = $postId > 0 ? $this->blog->togglePostPublished($postId) : null;
+
+        if ($nextStatus === null) {
+            session()->setFlash('error', return_translation('admin_post_not_found'));
+            response()->redirect();
+        }
+
+        session()->setFlash(
+            'success',
+            return_translation($nextStatus === 1 ? 'admin_post_published' : 'admin_post_unpublished')
+        );
+        response()->redirect();
+    }
+
+    /**
      * Показывает список категорий блога в административной панели.
      */
     public function categories()
@@ -335,6 +358,7 @@ class AdminController extends BaseController
      */
     public function users()
     {
+        Auth::touchPresence(1);
         $users = $this->users->getPaginatedUsers($this->getTableParams('created_at', 'desc'));
 
         return view('admin/users', [

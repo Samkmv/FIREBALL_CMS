@@ -296,13 +296,6 @@
     background: #9ca3af;
 }
 
-.admin-user-presence {
-    right: -.05rem;
-    bottom: .05rem;
-    width: .78rem;
-    height: .78rem;
-}
-
 [data-chat-app] .list-group-item[data-chat-contact] {
     background: rgba(255, 255, 255, .78);
     transition: transform .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
@@ -1208,6 +1201,41 @@
     min-width: 0;
 }
 
+.plyr__video-wrapper video[data-plyr-zoomable="true"] {
+    transform-origin: center center;
+    transition: transform .18s ease;
+    will-change: transform;
+}
+
+.plyr.is-plyr-zoomed .plyr__video-wrapper {
+    cursor: grab;
+    touch-action: none;
+}
+
+.plyr.is-plyr-zoomed .plyr__video-wrapper.is-panning {
+    cursor: grabbing;
+}
+
+.plyr.is-plyr-zoomed .plyr__video-wrapper.is-panning video[data-plyr-zoomable="true"] {
+    transition: none;
+}
+
+.plyr__control[data-plyr-zoom] svg {
+    display: block;
+    width: var(--plyr-control-icon-size, 18px);
+    height: var(--plyr-control-icon-size, 18px);
+    pointer-events: none;
+}
+
+.plyr__control[data-plyr-zoom]:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+.plyr__control[data-plyr-zoom]:disabled .plyr__tooltip {
+    display: none;
+}
+
 @media (max-width: 767.98px) {
     [data-admin-nav] {
         flex-wrap: nowrap !important;
@@ -1231,7 +1259,7 @@
 }
 
 [data-admin-users-table] {
-    min-width: 760px;
+    min-width: 860px;
 }
 
 [data-admin-users-table] td,
@@ -1244,9 +1272,14 @@
     min-width: 140px;
 }
 
+[data-admin-users-table] td:nth-child(6),
+[data-admin-users-table] th:nth-child(6) {
+    min-width: 110px;
+}
+
 @media (max-width: 767.98px) {
     [data-admin-users-table] {
-        min-width: 700px;
+        min-width: 840px;
     }
 
     .admin-table-scroll > .table {
@@ -1280,6 +1313,18 @@
 
     [data-admin-users-table] td:nth-child(4) {
         min-width: 220px;
+    }
+
+    [data-admin-users-table] td:nth-child(5) {
+        min-width: 120px;
+    }
+
+    [data-admin-users-table] td:nth-child(6) {
+        min-width: 120px;
+    }
+
+    [data-admin-users-table] td:nth-child(7) {
+        min-width: 150px;
     }
 
     [data-admin-users-table] td:last-child {

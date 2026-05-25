@@ -6,7 +6,7 @@
     }
   },
   "require": {
-    "php": ">=8.2",
+    "php": ">=8.0",
     "symfony/var-dumper": "^7.2",
     "vlucas/valitron": "^1.4",
     "ext-pdo": "*",

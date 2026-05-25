@@ -65,6 +65,9 @@ function initPostEditor() {
         moveUp: 'Move up',
         moveDown: 'Move down',
         remove: 'Remove',
+        hide: 'Hide block',
+        show: 'Show block',
+        hidden: 'Hidden',
         duplicate: 'Duplicate',
         drag: 'Drag block',
         chooseFile: 'Choose file',
@@ -317,6 +320,7 @@ function initPostEditor() {
         return {
             id: String(block.id || makeId()),
             type: type,
+            hidden: block.hidden === true,
             data: Object.assign(defaultBlockData(type), cloneData(block.data))
         };
     }
@@ -399,8 +403,20 @@ function initPostEditor() {
         return {
             id: makeId(),
             type: blockType,
+            hidden: false,
             data: defaultBlockData(blockType)
         };
+    }
+
+    function toggleBlockVisibility(id) {
+        const block = findBlock(id);
+        if (!block) {
+            return;
+        }
+
+        block.hidden = block.hidden !== true;
+        render();
+        sync();
     }
 
     function removeBlock(id) {
@@ -454,6 +470,7 @@ function initPostEditor() {
         const duplicate = {
             id: makeId(),
             type: block.type,
+            hidden: block.hidden === true,
             data: cloneData(block.data)
         };
 
@@ -577,6 +594,11 @@ function initPostEditor() {
 
                 if (action === 'duplicate') {
                     duplicateBlock(blockId);
+                    return;
+                }
+
+                if (action === 'toggle-visibility') {
+                    toggleBlockVisibility(blockId);
                     return;
                 }
 
@@ -2105,8 +2127,11 @@ function initPostEditor() {
 
     function renderBlockCard(block, index) {
         const isActive = block.id === ui.activeBlockId;
+        const isHidden = block.hidden === true;
+        const visibilityLabel = isHidden ? labels.show : labels.hide;
+        const visibilityIcon = isHidden ? 'ci-eye' : 'ci-eye-off';
         return '' +
-            '<article class="fb-post-block' + (isActive ? ' is-active' : '') + '" data-block-id="' + escapeAttr(block.id) + '">' +
+            '<article class="fb-post-block' + (isActive ? ' is-active' : '') + (isHidden ? ' is-hidden' : '') + '" data-block-id="' + escapeAttr(block.id) + '">' +
                 '<div class="fb-post-block__head">' +
                     '<div class="fb-post-block__title">' +
                         '<button class="fb-post-block__drag" type="button" data-block-drag-handle title="' + escapeAttr(labels.drag) + '" aria-label="' + escapeAttr(labels.drag) + '">⋮⋮</button>' +
@@ -2118,6 +2143,7 @@ function initPostEditor() {
                         '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="move-up" title="' + escapeAttr(labels.moveUp) + '" aria-label="' + escapeAttr(labels.moveUp) + '"><i class="ci-arrow-up"></i></button>' +
                         '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="move-down" title="' + escapeAttr(labels.moveDown) + '" aria-label="' + escapeAttr(labels.moveDown) + '"><i class="ci-arrow-down"></i></button>' +
                         '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="duplicate" title="' + escapeAttr(labels.duplicate) + '" aria-label="' + escapeAttr(labels.duplicate) + '"><i class="ci-copy"></i></button>' +
+                        '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="toggle-visibility" title="' + escapeAttr(visibilityLabel) + '" aria-label="' + escapeAttr(visibilityLabel) + '"><i class="' + escapeAttr(visibilityIcon) + '"></i></button>' +
                         '<button class="btn btn-outline-secondary btn-sm" type="button" data-block-action="settings" title="' + escapeAttr(labels.settings) + '" aria-label="' + escapeAttr(labels.settings) + '"><i class="ci-settings"></i></button>' +
                         '<button class="btn btn-outline-danger btn-sm" type="button" data-block-action="remove" title="' + escapeAttr(labels.remove) + '" aria-label="' + escapeAttr(labels.remove) + '"><i class="ci-trash"></i></button>' +
                     '</div>' +
@@ -2163,6 +2189,10 @@ function initPostEditor() {
 
     function renderBlockMeta(block, index) {
         let html = '<span class="fb-post-block__chip">#' + escapeHtml(String(index + 1)) + '</span>';
+
+        if (block.hidden === true) {
+            html += '<span class="fb-post-block__chip fb-post-block__chip--hidden"><i class="ci-eye-off" aria-hidden="true"></i>' + escapeHtml(labels.hidden) + '</span>';
+        }
 
         if (block.type === 'heading') {
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(block.data.level || 'h2').toUpperCase()) + '</span>';
@@ -2625,6 +2655,10 @@ function initPostEditor() {
 
     function serializeBlocksToHtml() {
         return state.blocks.map(function (block) {
+            if (block.hidden === true) {
+                return serializeHiddenBlock(block);
+            }
+
             if (block.type === 'text') {
                 return serializeTextBlock(block);
             }
@@ -2759,6 +2793,17 @@ function initPostEditor() {
         }).join('\n');
     }
 
+    function serializeHiddenBlock(block) {
+        const payload = {
+            id: block.id,
+            type: block.type,
+            hidden: true,
+            data: cloneData(block.data)
+        };
+
+        return '<template data-fb-hidden-block="1" data-block-json="' + escapeAttr(encodeURIComponent(JSON.stringify(payload))) + '"></template>';
+    }
+
     function serializeTextBlock(block) {
         const html = sanitizeHtml(block.data.html || '');
         if (html === '') {
@@ -2840,6 +2885,15 @@ function initPostEditor() {
 
             const tag = node.tagName.toLowerCase();
 
+            if (tag === 'template' && node.matches('[data-fb-hidden-block]')) {
+                flushTextBuffer();
+                const hiddenBlock = parseHiddenBlock(node);
+                if (hiddenBlock) {
+                    blocks.push(hiddenBlock);
+                }
+                return;
+            }
+
             if (/^h[1-6]$/.test(tag)) {
                 flushTextBuffer();
                 blocks.push(createImportedBlock('heading', {
@@ -2906,8 +2960,27 @@ function initPostEditor() {
         return {
             id: makeId(),
             type: type,
+            hidden: false,
             data: Object.assign(defaultBlockData(type), cloneData(data))
         };
+    }
+
+    function parseHiddenBlock(node) {
+        let parsed = null;
+
+        try {
+            parsed = JSON.parse(decodeURIComponent(String(node.getAttribute('data-block-json') || '')));
+        } catch (error) {
+            parsed = null;
+        }
+
+        const block = normalizeBlock(parsed);
+        if (!block) {
+            return null;
+        }
+
+        block.hidden = true;
+        return block;
     }
 
     function parseTextBlock(html) {
@@ -3121,6 +3194,7 @@ function initPostAutosave() {
     document.querySelectorAll('[data-post-autosave]').forEach(function (form) {
         const autosaveUrl = String(form.getAttribute('data-autosave-url') || '');
         const statusNode = form.querySelector('[data-post-autosave-status]');
+        const statusCard = form.querySelector('[data-post-autosave-card]');
         const savingLabel = String(form.getAttribute('data-autosave-saving') || 'Autosaving...');
         const savedLabel = String(form.getAttribute('data-autosave-saved') || 'Draft saved');
         const errorLabel = String(form.getAttribute('data-autosave-error') || 'Autosave failed');
@@ -3144,6 +3218,10 @@ function initPostAutosave() {
             statusNode.textContent = message;
             statusNode.classList.remove('text-body-secondary', 'text-success', 'text-danger');
             statusNode.classList.add(tone || 'text-body-secondary');
+
+            if (statusCard) {
+                statusCard.classList.remove('d-none');
+            }
         }
 
         function serializeEditor() {

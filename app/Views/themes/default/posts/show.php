@@ -9,6 +9,7 @@ $shareTitle = rawurlencode($post['title']);
 $shareLink = rawurlencode($shareUrl);
 $socialLinks = site_social_links();
 $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '');
+$allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($category['total'] ?? 0), $categories ?? []));
 ?>
 
 <nav class="container pt-3 my-3 my-md-4" aria-label="breadcrumb">
@@ -119,6 +120,9 @@ $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '
                 <div class="offcanvas-body d-block pt-2 py-lg-0">
                     <h4 class="h6 mb-4"><?= print_translation('posts_show_categories') ?></h4>
                     <div class="d-flex flex-wrap gap-3">
+                        <a class="btn btn-outline-secondary px-3" href="<?= $categoryUrl() ?>">
+                            <?= print_translation('posts_show_back') ?> (<?= (int)$allPostsTotal ?>)
+                        </a>
                         <?php foreach ($categories as $category): ?>
                             <a class="btn <?= $currentCategorySlug === (string)$category['slug'] ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl($category['slug']) ?>">
                                 <?= htmlSC($category['label'] ?? $category['name']) ?> (<?= (int)$category['total'] ?>)

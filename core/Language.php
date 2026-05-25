@@ -21,6 +21,8 @@ class Language
 
         $lang_layout = APP . "/Languages/$code.php";
         $lang_view = '';
+        $layoutData = [];
+        $viewData = [];
 
         if (is_array($route)) {
             $controller_segments = explode('\\', $route[0]);
@@ -31,13 +33,15 @@ class Language
         }
 
         if (file_exists($lang_layout)) {
-            self::$lang_layout = require_once $lang_layout;
+            $layoutData = require $lang_layout;
         }
 
         if ($lang_view && file_exists($lang_view)) {
-            self::$lang_view = require_once $lang_view;
+            $viewData = require $lang_view;
         }
 
+        self::$lang_layout = is_array($layoutData) ? $layoutData : [];
+        self::$lang_view = is_array($viewData) ? $viewData : [];
         self::$lang_data = array_merge(self::$lang_layout, self::$lang_view);
     }
 

@@ -300,6 +300,43 @@ class Admin
     }
 
     /**
+     * Переключает статус публикации записи и возвращает новое состояние.
+     */
+    public function togglePostPublished(int $id): ?int
+    {
+        $this->ensureSchema();
+
+        $post = db()->query(
+            "SELECT id, is_published, published_at
+             FROM {$this->postsTable}
+             WHERE id = ?
+             LIMIT 1",
+            [$id]
+        )->getOne();
+
+        if (!$post) {
+            return null;
+        }
+
+        $isPublished = (int)$post['is_published'] === 1;
+        $nextStatus = $isPublished ? 0 : 1;
+        $publishedAt = trim((string)($post['published_at'] ?? ''));
+
+        db()->query(
+            "UPDATE {$this->postsTable}
+             SET is_published = ?,
+                 published_at = CASE
+                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
+                     ELSE published_at
+                 END
+             WHERE id = ?",
+            [$nextStatus, $nextStatus, $publishedAt !== '' ? $publishedAt : date('Y-m-d H:i:s'), $id]
+        );
+
+        return $nextStatus;
+    }
+
+    /**
      * Возвращает список всех категорий с количеством постов.
      */
     public function getCategories(): array

@@ -1063,6 +1063,210 @@
         wrapper.addEventListener('click', handleWakeGesture, true);
     };
 
+    const getZoomLocale = function () {
+        const lang = (document.documentElement.getAttribute('lang') || 'en').toLowerCase();
+
+        if (lang.startsWith('ru')) {
+            return {
+                in: 'Увеличить',
+                out: 'Уменьшить',
+                reset: 'Сбросить zoom',
+            };
+        }
+
+        return {
+            in: 'Zoom in',
+            out: 'Zoom out',
+            reset: 'Reset zoom',
+        };
+    };
+
+    const createPlyrZoomIcon = function (type) {
+        const common = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+
+        if (type === 'out') {
+            return '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path ' + common + ' d="M11 19a8 8 0 1 1 5.66-2.34L21 21"/><path ' + common + ' d="M8 11h6"/></svg>';
+        }
+
+        if (type === 'reset') {
+            return '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path ' + common + ' d="M3 12a9 9 0 1 0 3-6.7"/><path ' + common + ' d="M3 4v6h6"/></svg>';
+        }
+
+        return '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path ' + common + ' d="M11 19a8 8 0 1 1 5.66-2.34L21 21"/><path ' + common + ' d="M11 8v6"/><path ' + common + ' d="M8 11h6"/></svg>';
+    };
+
+    const initPlyrZoom = function (element) {
+        if (!(element instanceof HTMLVideoElement)) {
+            return;
+        }
+
+        const playerRoot = element.closest('.plyr');
+        const videoWrapper = playerRoot ? playerRoot.querySelector('.plyr__video-wrapper') : null;
+        const controls = playerRoot ? playerRoot.querySelector('.plyr__controls') : null;
+
+        if (!playerRoot || !videoWrapper || !controls || playerRoot.dataset.plyrZoomInitialized === 'true') {
+            return;
+        }
+
+        playerRoot.dataset.plyrZoomInitialized = 'true';
+        element.dataset.plyrZoomable = 'true';
+
+        const labels = getZoomLocale();
+        const levels = [1, 1.25, 1.5, 2, 2.5, 3];
+        const state = {
+            index: 0,
+            x: 0,
+            y: 0,
+            dragging: false,
+            startX: 0,
+            startY: 0,
+            pointerX: 0,
+            pointerY: 0,
+        };
+
+        const makeButton = function (type, label) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'plyr__control plyr__controls__item';
+            button.dataset.plyrZoom = type;
+            button.setAttribute('aria-label', label);
+            button.setAttribute('title', label);
+            button.innerHTML = createPlyrZoomIcon(type) + '<span class="plyr__tooltip">' + label + '</span>';
+            return button;
+        };
+
+        const zoomOutButton = makeButton('out', labels.out);
+        const zoomResetButton = makeButton('reset', labels.reset);
+        const zoomInButton = makeButton('in', labels.in);
+        const zoomButtons = [zoomOutButton, zoomResetButton, zoomInButton];
+        const fullscreenButton = controls.querySelector('[data-plyr="fullscreen"]');
+
+        zoomButtons.forEach(function (button) {
+            controls.insertBefore(button, fullscreenButton || null);
+        });
+
+        const getScale = function () {
+            return levels[state.index] || 1;
+        };
+
+        const clampOffsets = function () {
+            const scale = getScale();
+
+            if (scale <= 1) {
+                state.x = 0;
+                state.y = 0;
+                return;
+            }
+
+            const maxX = videoWrapper.clientWidth * (scale - 1) / 2;
+            const maxY = videoWrapper.clientHeight * (scale - 1) / 2;
+            state.x = Math.max(-maxX, Math.min(maxX, state.x));
+            state.y = Math.max(-maxY, Math.min(maxY, state.y));
+        };
+
+        const updateButtons = function () {
+            zoomOutButton.disabled = state.index === 0;
+            zoomResetButton.disabled = state.index === 0;
+            zoomInButton.disabled = state.index === levels.length - 1;
+        };
+
+        const applyZoom = function () {
+            const scale = getScale();
+            clampOffsets();
+
+            if (scale <= 1) {
+                element.style.transform = '';
+            } else {
+                element.style.transform = 'translate3d(' + state.x + 'px, ' + state.y + 'px, 0) scale(' + scale + ')';
+            }
+
+            playerRoot.classList.toggle('is-plyr-zoomed', scale > 1);
+            updateButtons();
+        };
+
+        const setZoomIndex = function (index) {
+            state.index = Math.max(0, Math.min(levels.length - 1, index));
+            applyZoom();
+        };
+
+        zoomInButton.addEventListener('click', function () {
+            setZoomIndex(state.index + 1);
+        });
+
+        zoomOutButton.addEventListener('click', function () {
+            setZoomIndex(state.index - 1);
+        });
+
+        zoomResetButton.addEventListener('click', function () {
+            state.x = 0;
+            state.y = 0;
+            setZoomIndex(0);
+        });
+
+        videoWrapper.addEventListener('pointerdown', function (event) {
+            if (getScale() <= 1 || !(event.target instanceof Element)) {
+                return;
+            }
+
+            if (event.target.closest('.plyr__controls, .plyr__control, button, a, input, select, textarea')) {
+                return;
+            }
+
+            state.dragging = true;
+            state.startX = state.x;
+            state.startY = state.y;
+            state.pointerX = event.clientX;
+            state.pointerY = event.clientY;
+            videoWrapper.classList.add('is-panning');
+            if (typeof videoWrapper.setPointerCapture === 'function') {
+                try {
+                    videoWrapper.setPointerCapture(event.pointerId);
+                } catch (error) {
+                    // Pointer capture can be unavailable for a finished pointer.
+                }
+            }
+            event.preventDefault();
+        });
+
+        videoWrapper.addEventListener('pointermove', function (event) {
+            if (!state.dragging) {
+                return;
+            }
+
+            state.x = state.startX + (event.clientX - state.pointerX);
+            state.y = state.startY + (event.clientY - state.pointerY);
+            applyZoom();
+        });
+
+        const stopPanning = function (event) {
+            if (!state.dragging) {
+                return;
+            }
+
+            state.dragging = false;
+            videoWrapper.classList.remove('is-panning');
+
+            if (typeof videoWrapper.releasePointerCapture === 'function') {
+                try {
+                    videoWrapper.releasePointerCapture(event.pointerId);
+                } catch (error) {
+                    // Pointer capture may already be released by the browser.
+                }
+            }
+        };
+
+        videoWrapper.addEventListener('pointerup', stopPanning);
+        videoWrapper.addEventListener('pointercancel', stopPanning);
+        window.addEventListener('resize', applyZoom);
+        element.addEventListener('emptied', function () {
+            state.x = 0;
+            state.y = 0;
+            setZoomIndex(0);
+        });
+
+        applyZoom();
+    };
+
     const attachHls = function (element) {
         const hlsSource = getHlsSource(element);
         if (!hlsSource) {
@@ -1137,6 +1341,7 @@
                 }
 
                 bindPlyrPlayButton(element);
+                initPlyrZoom(element);
             };
 
             attachHls(element).finally(finalizePlyr);

@@ -72,7 +72,7 @@ class PostsController extends BaseController
         $post['views_count'] = (int)$post['views_count'] + 1;
 
         $sidebarData = $this->posts->getSidebarData($slug);
-        $popularPosts = $this->posts->getPopularPosts(9, $slug);
+        $popularPosts = $this->posts->getPopularPosts(5, $slug);
 
         return view('posts/show', [
             'title' => $post['title'],

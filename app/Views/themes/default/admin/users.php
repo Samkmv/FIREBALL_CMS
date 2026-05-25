@@ -6,6 +6,13 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
 
     return strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓';
 };
+
+$onlineSortDirection = (($sort ?? '') === 'online' && strtolower((string)$direction) === 'desc') ? 'asc' : 'desc';
+$onlineSortUrl = current_url_with_query([
+    'sort' => 'online',
+    'direction' => $onlineSortDirection,
+    'page' => 1,
+]);
 ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_users_heading'),
@@ -33,6 +40,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('login', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_login') ?><?= $sortIndicator('login') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('email', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_email') ?><?= $sortIndicator('email') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('role', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_role') ?><?= $sortIndicator('role') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $onlineSortUrl ?>"><?= print_translation('admin_users_col_online') ?><?= $sortIndicator('online') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('created_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_created_at') ?><?= $sortIndicator('created_at') ?></a></th>
                         <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
                     </tr>
@@ -62,18 +70,13 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             </th>
                             <td>
                                 <div class="d-flex align-items-center gap-3 min-w-0">
-                                    <span
-                                        class="position-relative flex-shrink-0"
-                                        title="<?= htmlSC($isOnline ? return_translation('chat_status_online') : return_translation('chat_status_offline')) ?>"
-                                        data-bs-toggle="tooltip"
-                                    >
+                                    <span class="flex-shrink-0">
                                         <img
                                             src="<?= get_user_avatar($item['avatar'] ?? null, 'sm') ?>"
                                             alt="<?= htmlSC($item['name']) ?>"
                                             class="rounded-circle border object-fit-cover"
                                             style="width: 40px; height: 40px;"
                                         >
-                                        <span class="chat-contact-presence admin-user-presence <?= $isOnline ? 'is-online' : 'is-offline' ?>"></span>
                                     </span>
                                     <div class="min-w-0">
                                         <div class="text-truncate"><?= htmlSC($item['name']) ?></div>
@@ -88,6 +91,16 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             </td>
                             <td>
                                 <span class="badge fs-xs rounded-pill <?= $roleBadgeClass ?>"><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
+                            </td>
+                            <td class="text-nowrap">
+                                <span
+                                    class="badge fs-xs rounded-pill d-inline-flex align-items-center gap-1 <?= $isOnline ? 'text-success bg-success-subtle' : 'text-secondary bg-secondary-subtle' ?>"
+                                    title="<?= htmlSC($isOnline ? return_translation('admin_user_status_online') : return_translation('admin_user_status_offline')) ?>"
+                                    data-bs-toggle="tooltip"
+                                >
+                                    <span class="rounded-circle d-inline-block flex-shrink-0 <?= $isOnline ? 'bg-success' : 'bg-secondary' ?>" style="width: 8px; height: 8px;"></span>
+                                    <?= $isOnline ? print_translation('admin_user_status_online') : print_translation('admin_user_status_offline') ?>
+                                </span>
                             </td>
                             <td class="text-nowrap">
                                 <span><?= date('d.m.Y H:i', strtotime($item['created_at'])) ?></span>
