@@ -1109,19 +1109,31 @@
         }
 
         playerRoot.dataset.plyrZoomInitialized = 'true';
+        playerRoot.dataset.plyrZoomReady = 'true';
         element.dataset.plyrZoomable = 'true';
 
         const labels = getZoomLocale();
         const levels = [1, 1.25, 1.5, 2, 2.5, 3];
+        const minScale = levels[0];
+        const maxScale = levels[levels.length - 1];
+        const activePointers = new Map();
         const state = {
             index: 0,
+            scale: 1,
             x: 0,
             y: 0,
             dragging: false,
+            pinching: false,
             startX: 0,
             startY: 0,
             pointerX: 0,
             pointerY: 0,
+            pinchStartDistance: 0,
+            pinchStartScale: 1,
+            pinchStartX: 0,
+            pinchStartY: 0,
+            pinchStartLocalX: 0,
+            pinchStartLocalY: 0,
         };
 
         const makeButton = function (type, label) {
@@ -1146,7 +1158,7 @@
         });
 
         const getScale = function () {
-            return levels[state.index] || 1;
+            return state.scale || 1;
         };
 
         const clampOffsets = function () {
@@ -1165,9 +1177,10 @@
         };
 
         const updateButtons = function () {
-            zoomOutButton.disabled = state.index === 0;
-            zoomResetButton.disabled = state.index === 0;
-            zoomInButton.disabled = state.index === levels.length - 1;
+            const scale = getScale();
+            zoomOutButton.disabled = scale <= minScale + 0.01;
+            zoomResetButton.disabled = scale <= minScale + 0.01;
+            zoomInButton.disabled = scale >= maxScale - 0.01;
         };
 
         const applyZoom = function () {
@@ -1186,25 +1199,184 @@
 
         const setZoomIndex = function (index) {
             state.index = Math.max(0, Math.min(levels.length - 1, index));
+            state.scale = levels[state.index] || 1;
             applyZoom();
         };
 
+        const syncZoomIndex = function () {
+            let closestIndex = 0;
+            let closestDistance = Math.abs(levels[0] - getScale());
+
+            levels.forEach(function (level, index) {
+                const distance = Math.abs(level - getScale());
+                if (distance < closestDistance) {
+                    closestIndex = index;
+                    closestDistance = distance;
+                }
+            });
+
+            state.index = closestIndex;
+        };
+
+        const setZoomScale = function (scale) {
+            state.scale = Math.max(minScale, Math.min(maxScale, scale));
+
+            if (state.scale <= minScale + 0.01) {
+                state.scale = minScale;
+                state.x = 0;
+                state.y = 0;
+            }
+
+            syncZoomIndex();
+            applyZoom();
+        };
+
+        const getNextScale = function () {
+            const scale = getScale();
+            return levels.find(function (level) {
+                return level > scale + 0.01;
+            }) || maxScale;
+        };
+
+        const getPreviousScale = function () {
+            const scale = getScale();
+            return levels.slice().reverse().find(function (level) {
+                return level < scale - 0.01;
+            }) || minScale;
+        };
+
+        const getPointerDistance = function (first, second) {
+            const deltaX = first.clientX - second.clientX;
+            const deltaY = first.clientY - second.clientY;
+            return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
+        };
+
+        const getPointerCenter = function (first, second) {
+            return {
+                clientX: (first.clientX + second.clientX) / 2,
+                clientY: (first.clientY + second.clientY) / 2,
+            };
+        };
+
+        const getLocalPoint = function (point) {
+            const rect = videoWrapper.getBoundingClientRect();
+            return {
+                x: point.clientX - rect.left - (rect.width / 2),
+                y: point.clientY - rect.top - (rect.height / 2),
+            };
+        };
+
+        const getTrackedPointers = function () {
+            return Array.from(activePointers.values());
+        };
+
+        const startPanning = function (pointer) {
+            if (!pointer || getScale() <= 1) {
+                return;
+            }
+
+            state.dragging = true;
+            state.pinching = false;
+            state.startX = state.x;
+            state.startY = state.y;
+            state.pointerX = pointer.clientX;
+            state.pointerY = pointer.clientY;
+            videoWrapper.classList.add('is-panning');
+        };
+
+        const startPinching = function () {
+            const pointers = getTrackedPointers();
+            if (pointers.length < 2) {
+                return;
+            }
+
+            const first = pointers[0];
+            const second = pointers[1];
+            const center = getPointerCenter(first, second);
+            const local = getLocalPoint(center);
+
+            state.dragging = false;
+            state.pinching = true;
+            state.pinchStartDistance = Math.max(1, getPointerDistance(first, second));
+            state.pinchStartScale = getScale();
+            state.pinchStartX = state.x;
+            state.pinchStartY = state.y;
+            state.pinchStartLocalX = local.x;
+            state.pinchStartLocalY = local.y;
+            videoWrapper.classList.add('is-panning');
+        };
+
+        const updatePinchZoom = function () {
+            const pointers = getTrackedPointers();
+            if (!state.pinching || pointers.length < 2 || state.pinchStartDistance <= 0) {
+                return;
+            }
+
+            const first = pointers[0];
+            const second = pointers[1];
+            const center = getPointerCenter(first, second);
+            const local = getLocalPoint(center);
+            const nextScale = Math.max(
+                minScale,
+                Math.min(maxScale, state.pinchStartScale * (getPointerDistance(first, second) / state.pinchStartDistance))
+            );
+
+            if (nextScale <= minScale + 0.01) {
+                state.x = 0;
+                state.y = 0;
+                setZoomScale(minScale);
+                return;
+            }
+
+            const contentX = (state.pinchStartLocalX - state.pinchStartX) / state.pinchStartScale;
+            const contentY = (state.pinchStartLocalY - state.pinchStartY) / state.pinchStartScale;
+            state.scale = nextScale;
+            state.x = local.x - (contentX * nextScale);
+            state.y = local.y - (contentY * nextScale);
+            syncZoomIndex();
+            applyZoom();
+        };
+
+        const capturePointer = function (event) {
+            if (typeof videoWrapper.setPointerCapture !== 'function') {
+                return;
+            }
+
+            try {
+                videoWrapper.setPointerCapture(event.pointerId);
+            } catch (error) {
+                // Pointer capture can be unavailable for a finished pointer.
+            }
+        };
+
+        const releasePointer = function (event) {
+            if (typeof videoWrapper.releasePointerCapture !== 'function') {
+                return;
+            }
+
+            try {
+                videoWrapper.releasePointerCapture(event.pointerId);
+            } catch (error) {
+                // Pointer capture may already be released by the browser.
+            }
+        };
+
         zoomInButton.addEventListener('click', function () {
-            setZoomIndex(state.index + 1);
+            setZoomScale(getNextScale());
         });
 
         zoomOutButton.addEventListener('click', function () {
-            setZoomIndex(state.index - 1);
+            setZoomScale(getPreviousScale());
         });
 
         zoomResetButton.addEventListener('click', function () {
             state.x = 0;
             state.y = 0;
-            setZoomIndex(0);
+            setZoomScale(minScale);
         });
 
         videoWrapper.addEventListener('pointerdown', function (event) {
-            if (getScale() <= 1 || !(event.target instanceof Element)) {
+            if (!(event.target instanceof Element)) {
                 return;
             }
 
@@ -1212,23 +1384,38 @@
                 return;
             }
 
-            state.dragging = true;
-            state.startX = state.x;
-            state.startY = state.y;
-            state.pointerX = event.clientX;
-            state.pointerY = event.clientY;
-            videoWrapper.classList.add('is-panning');
-            if (typeof videoWrapper.setPointerCapture === 'function') {
-                try {
-                    videoWrapper.setPointerCapture(event.pointerId);
-                } catch (error) {
-                    // Pointer capture can be unavailable for a finished pointer.
-                }
+            activePointers.set(event.pointerId, {
+                clientX: event.clientX,
+                clientY: event.clientY,
+            });
+            capturePointer(event);
+
+            if (activePointers.size >= 2) {
+                startPinching();
+                event.preventDefault();
+                return;
             }
-            event.preventDefault();
+
+            if (getScale() > 1) {
+                startPanning({ clientX: event.clientX, clientY: event.clientY });
+                event.preventDefault();
+            }
         });
 
         videoWrapper.addEventListener('pointermove', function (event) {
+            if (activePointers.has(event.pointerId)) {
+                activePointers.set(event.pointerId, {
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                });
+            }
+
+            if (state.pinching) {
+                updatePinchZoom();
+                event.preventDefault();
+                return;
+            }
+
             if (!state.dragging) {
                 return;
             }
@@ -1236,23 +1423,27 @@
             state.x = state.startX + (event.clientX - state.pointerX);
             state.y = state.startY + (event.clientY - state.pointerY);
             applyZoom();
+            event.preventDefault();
         });
 
         const stopPanning = function (event) {
-            if (!state.dragging) {
+            activePointers.delete(event.pointerId);
+            releasePointer(event);
+
+            if (state.pinching && activePointers.size >= 2) {
+                startPinching();
+                return;
+            }
+
+            if (state.pinching && activePointers.size === 1) {
+                state.pinching = false;
+                startPanning(getTrackedPointers()[0]);
                 return;
             }
 
             state.dragging = false;
+            state.pinching = false;
             videoWrapper.classList.remove('is-panning');
-
-            if (typeof videoWrapper.releasePointerCapture === 'function') {
-                try {
-                    videoWrapper.releasePointerCapture(event.pointerId);
-                } catch (error) {
-                    // Pointer capture may already be released by the browser.
-                }
-            }
         };
 
         videoWrapper.addEventListener('pointerup', stopPanning);

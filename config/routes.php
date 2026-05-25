@@ -106,11 +106,6 @@ $app->router->post('/remove-from-cart', [CartController::class, 'removeFromCart'
 $app->router->get('/', [HomeController::class, 'index']);
 
 // Seed
-//$app->router->get('/seed-full', function () {
-//    $result = require __DIR__ . '/seeders/full_database.php';
-//    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-//});
-//
 //$app->router->get('/seed-reset-creator', function () {
 //    $result = require __DIR__ . '/seeders/reset_creator.php';
 //    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -119,5 +114,4 @@ $app->router->get('/', [HomeController::class, 'index']);
 //$app->router->get('/seed-demo', function () {
 //    $result = require __DIR__ . '/seeders/reset_demo.php';
 //    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-//}
-//);
+//});

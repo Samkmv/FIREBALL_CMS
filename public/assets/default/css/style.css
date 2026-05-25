@@ -1207,9 +1207,12 @@
     will-change: transform;
 }
 
+.plyr[data-plyr-zoom-ready="true"] .plyr__video-wrapper {
+    touch-action: none;
+}
+
 .plyr.is-plyr-zoomed .plyr__video-wrapper {
     cursor: grab;
-    touch-action: none;
 }
 
 .plyr.is-plyr-zoomed .plyr__video-wrapper.is-panning {
