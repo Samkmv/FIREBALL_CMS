@@ -235,6 +235,34 @@ class User
     }
 
     /**
+     * Создаёт пользователя из административной панели с выбранной ролью.
+     */
+    public function createFromAdmin(array $data): int
+    {
+        $this->ensureUsersTableExists();
+        $role = trim((string)($data['role'] ?? self::ROLE_USER)) ?: self::ROLE_USER;
+        if (!$this->findRoleBySlug($role) || $role === self::ROLE_CREATOR) {
+            $role = self::ROLE_USER;
+        }
+
+        db()->query(
+            "INSERT INTO {$this->usersTable} (name, login, email, password, avatar, role, created_at)
+             VALUES (:name, :login, :email, :password, :avatar, :role, :created_at)",
+            [
+                'name' => trim((string)$data['name']),
+                'login' => $this->ensureUniqueLogin($this->normalizeLogin((string)($data['login'] ?? '')), null),
+                'email' => mb_strtolower(trim((string)$data['email'])),
+                'password' => password_hash((string)$data['password'], PASSWORD_DEFAULT),
+                'avatar' => trim((string)($data['avatar'] ?? '')) ?: null,
+                'role' => $role,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]
+        );
+
+        return (int)db()->getInsertId();
+    }
+
+    /**
      * Возвращает всех пользователей вместе с названиями ролей.
      */
     public function getUsers(): array
@@ -537,6 +565,8 @@ class User
             $errors['password'][] = $this->translate('auth_validation_password_required');
         } elseif (mb_strlen($password) < 8) {
             $errors['password'][] = $this->translate('auth_validation_password_length');
+        } elseif (!$this->isStrongPassword($password)) {
+            $errors['password'][] = $this->translate('auth_validation_password_strength');
         }
 
         if ($passwordConfirmation === '') {
@@ -567,6 +597,63 @@ class User
 
         if ($password === '') {
             $errors['password'][] = $this->translate('auth_validation_password_required');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Валидирует данные пользователя при создании из админки.
+     */
+    public function validateAdminCreate(array $data): array
+    {
+        $this->ensureUsersTableExists();
+
+        $errors = [];
+        $name = trim((string)($data['name'] ?? ''));
+        $login = $this->normalizeLogin((string)($data['login'] ?? ''));
+        $email = mb_strtolower(trim((string)($data['email'] ?? '')));
+        $role = trim((string)($data['role'] ?? ''));
+        $password = (string)($data['password'] ?? '');
+        $passwordConfirmation = (string)($data['password_confirmation'] ?? '');
+
+        if ($name === '') {
+            $errors['name'][] = $this->translate('admin_validation_user_name_required');
+        } elseif (mb_strlen($name) < 2) {
+            $errors['name'][] = $this->translate('admin_validation_user_name_length');
+        }
+
+        $loginErrors = $this->validateLoginField($login, null, true);
+        if (!empty($loginErrors)) {
+            $errors['login'] = $loginErrors;
+        }
+
+        if ($email === '') {
+            $errors['email'][] = $this->translate('admin_validation_user_email_required');
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['email'][] = $this->translate('admin_validation_user_email_invalid');
+        } elseif ($this->emailExists($email, null)) {
+            $errors['email'][] = $this->translate('admin_validation_user_email_exists');
+        }
+
+        if ($role === '') {
+            $errors['role'][] = $this->translate('admin_validation_role_required');
+        } elseif (!$this->findRoleBySlug($role) || $role === self::ROLE_CREATOR) {
+            $errors['role'][] = $this->translate('admin_validation_role_invalid');
+        }
+
+        if ($password === '') {
+            $errors['password'][] = $this->translate('auth_validation_password_required');
+        } elseif (mb_strlen($password) < 8) {
+            $errors['password'][] = $this->translate('admin_validation_user_password_length');
+        } elseif (!$this->isStrongPassword($password)) {
+            $errors['password'][] = $this->translate('admin_validation_user_password_strength');
+        }
+
+        if ($passwordConfirmation === '') {
+            $errors['password_confirmation'][] = $this->translate('auth_validation_password_confirmation_required');
+        } elseif ($password !== $passwordConfirmation) {
+            $errors['password_confirmation'][] = $this->translate('admin_validation_user_password_confirmation_match');
         }
 
         return $errors;
@@ -616,6 +703,8 @@ class User
 
         if ($password !== '' && mb_strlen($password) < 8) {
             $errors['password'][] = $this->translate('admin_validation_user_password_length');
+        } elseif ($password !== '' && !$this->isStrongPassword($password)) {
+            $errors['password'][] = $this->translate('admin_validation_user_password_strength');
         }
 
         if ($password !== '' && $password !== $passwordConfirmation) {
@@ -669,6 +758,8 @@ class User
 
         if ($password !== '' && mb_strlen($password) < 8) {
             $errors['password'][] = $this->translate('auth_validation_password_length');
+        } elseif ($password !== '' && !$this->isStrongPassword($password)) {
+            $errors['password'][] = $this->translate('auth_validation_password_strength');
         }
 
         if ($password !== '' && $passwordConfirmation === '') {
@@ -792,6 +883,8 @@ class User
             $errors['password'][] = $this->translate('auth_validation_password_required');
         } elseif (mb_strlen($password) < 8) {
             $errors['password'][] = $this->translate('auth_validation_password_length');
+        } elseif (!$this->isStrongPassword($password)) {
+            $errors['password'][] = $this->translate('auth_validation_password_strength');
         }
 
         if ($passwordConfirmation === '') {
@@ -1226,6 +1319,7 @@ class User
         $requiredKey = $adminContext ? 'admin_validation_user_login_required' : 'auth_validation_login_required';
         $formatKey = $adminContext ? 'admin_validation_user_login_format' : 'auth_validation_login_format';
         $existsKey = $adminContext ? 'admin_validation_user_login_exists' : 'auth_validation_login_exists';
+        $reservedKey = $adminContext ? 'admin_validation_user_login_reserved' : 'auth_validation_login_reserved';
 
         if ($login === '') {
             return [$this->translate($requiredKey)];
@@ -1233,6 +1327,10 @@ class User
 
         if (!$this->isValidLogin($login)) {
             return [$this->translate($formatKey)];
+        }
+
+        if ($this->isReservedLogin($login) && !$this->isCurrentUserLogin($login, $ignoreId)) {
+            return [$this->translate($reservedKey)];
         }
 
         if ($this->loginExists($login, $ignoreId)) {
@@ -1263,6 +1361,36 @@ class User
         }
 
         return (bool)preg_match('/^[a-z0-9-]+$/', $login);
+    }
+
+    /**
+     * Проверяет обязательные требования к новому паролю.
+     */
+    protected function isStrongPassword(string $password): bool
+    {
+        return (bool)preg_match('/[A-Z]/', $password) && (bool)preg_match('/\d/', $password);
+    }
+
+    /**
+     * Запрещает системные логины для регистрации и создания пользователей.
+     */
+    protected function isReservedLogin(string $login): bool
+    {
+        return in_array(mb_strtolower($login), ['admin', 'administration', 'administrator'], true);
+    }
+
+    /**
+     * Позволяет сохранить существующий зарезервированный логин без смены.
+     */
+    protected function isCurrentUserLogin(string $login, ?int $userId): bool
+    {
+        if (!$userId) {
+            return false;
+        }
+
+        $user = $this->findById($userId);
+
+        return $user && $this->normalizeLogin((string)($user['login'] ?? '')) === $login;
     }
 
     /**

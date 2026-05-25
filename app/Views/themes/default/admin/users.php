@@ -10,7 +10,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_users_heading'),
     'subtitle' => return_translation('admin_users_subtitle'),
-    'actions' => '',
+    'actions' => '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/users/create') . '"><i class="ci-plus"></i>' . return_translation('admin_users_create') . '</a>',
 ]) ?>
 
     <div class="border rounded-5 p-3 p-md-4">

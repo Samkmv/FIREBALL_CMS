@@ -288,58 +288,64 @@ class AdminController extends BaseController
     public function userForm()
     {
         $userId = (int)get_route_param('id', 0);
-        if ($userId <= 0) {
+        $isEdit = $userId > 0;
+
+        $user = $isEdit ? $this->users->findEditableUserById($userId) : [];
+        if ($isEdit && !$user) {
             abort();
         }
 
-        $user = $this->users->findEditableUserById($userId);
-        if (!$user) {
-            abort();
-        }
-
-        if (request()->isPost() && $this->users->isProtectedUser($user)) {
+        if ($isEdit && request()->isPost() && $this->users->isProtectedUser($user)) {
             session()->setFlash('error', return_translation('admin_users_creator_protected'));
             response()->redirect(base_href('/admin/users'));
         }
 
         if (request()->isPost()) {
             $data = $this->normalizeUserData(request()->getData());
-            $errors = $this->users->validateAdminUpdate($data, $userId);
+            $errors = $isEdit
+                ? $this->users->validateAdminUpdate($data, $userId)
+                : $this->users->validateAdminCreate($data);
             $avatarFile = new File('avatar_file');
             $errors = array_merge_recursive($errors, $this->users->validateAvatarFile($avatarFile));
 
             if (!empty($errors)) {
                 session()->set('form_data', $data);
                 session()->set('form_errors', $errors);
-                response()->redirect(base_href("/admin/users/edit/{$userId}"));
+                response()->redirect($isEdit ? base_href("/admin/users/edit/{$userId}") : base_href('/admin/users/create'));
             }
 
-            $avatar = $this->users->storeAvatar($avatarFile, $user['avatar'] ?? null);
+            $avatar = $this->users->storeAvatar($avatarFile, $isEdit ? ($user['avatar'] ?? null) : null);
             if ($avatar === false) {
                 session()->set('form_data', $data);
                 session()->set('form_errors', [
                     'avatar_file' => [return_translation('auth_profile_avatar_upload_error')],
                 ]);
-                response()->redirect(base_href("/admin/users/edit/{$userId}"));
+                response()->redirect($isEdit ? base_href("/admin/users/edit/{$userId}") : base_href('/admin/users/create'));
             }
 
             $data['avatar'] = $avatar;
 
-            $this->users->updateFromAdmin($userId, $data);
-            if ((int)(get_user()['id'] ?? 0) === $userId) {
+            if ($isEdit) {
+                $this->users->updateFromAdmin($userId, $data);
+            } else {
+                $userId = $this->users->createFromAdmin($data);
+            }
+
+            if ($isEdit && (int)(get_user()['id'] ?? 0) === $userId) {
                 \FBL\Auth::setUser();
             }
 
             session()->remove('form_data');
             session()->remove('form_errors');
-            session()->setFlash('success', return_translation('admin_user_updated'));
+            session()->setFlash('success', return_translation($isEdit ? 'admin_user_updated' : 'admin_user_created'));
             response()->redirect(base_href('/admin/users'));
         }
 
         return view('admin/user_form', [
-            'title' => return_translation('admin_user_edit_title'),
+            'title' => return_translation($isEdit ? 'admin_user_edit_title' : 'admin_user_create_title'),
             'user_item' => $user,
             'roles' => $this->users->getRoles(),
+            'is_edit' => $isEdit,
         ]);
     }
 
@@ -737,6 +743,7 @@ class AdminController extends BaseController
             'site_description' => trim((string)($data['site_description'] ?? '')),
             'site_favicon' => trim((string)($data['site_favicon'] ?? '')),
             'admin_session_lifetime_hours' => trim((string)($data['admin_session_lifetime_hours'] ?? '12')),
+            'social_links' => $this->normalizeSocialLinksSetting($data),
             'social_telegram' => trim((string)($data['social_telegram'] ?? '')),
             'social_instagram' => trim((string)($data['social_instagram'] ?? '')),
             'social_facebook' => trim((string)($data['social_facebook'] ?? '')),
@@ -790,6 +797,24 @@ class AdminController extends BaseController
                 $errors[$field][] = return_translation('admin_validation_social_url_invalid');
             }
         }
+        $socialLinks = json_decode((string)($data['social_links'] ?? '[]'), true);
+        if (is_array($socialLinks)) {
+            foreach ($socialLinks as $index => $item) {
+                $network = (string)($item['network'] ?? '');
+                $url = (string)($item['url'] ?? '');
+                if ($network === 'phone') {
+                    if (!preg_match('/^tel:[\d+\-().\s]+$/', $url)) {
+                        $errors['social_links'][] = return_translation('admin_validation_social_url_invalid');
+                    }
+                    continue;
+                }
+
+                if (!$this->isValidExternalUrl($url)) {
+                    $errors['social_links'][] = return_translation('admin_validation_social_url_invalid');
+                    break;
+                }
+            }
+        }
         if ($data['contacts_page_image'] !== '' && !$this->isValidSeoImage($data['contacts_page_image'])) {
             $errors['contacts_page_image'][] = return_translation('admin_validation_seo_image_invalid');
         }
@@ -809,6 +834,37 @@ class AdminController extends BaseController
         }
 
         return $errors;
+    }
+
+    /**
+     * Собирает выбранные в настройках соцсети в JSON-структуру.
+     */
+    protected function normalizeSocialLinksSetting(array $data): string
+    {
+        $networks = $data['social_networks'] ?? [];
+        $urls = $data['social_urls'] ?? [];
+        $allowed = array_keys(site_social_network_options());
+        $links = [];
+
+        if (!is_array($networks) || !is_array($urls)) {
+            return '[]';
+        }
+
+        foreach ($networks as $index => $network) {
+            $network = trim((string)$network);
+            $url = trim((string)($urls[$index] ?? ''));
+
+            if ($network === '' || $url === '' || !in_array($network, $allowed, true)) {
+                continue;
+            }
+
+            $links[] = [
+                'network' => $network,
+                'url' => $network === 'phone' ? normalize_phone_href($url) : $url,
+            ];
+        }
+
+        return json_encode($links, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
     }
 
     /**
@@ -908,6 +964,7 @@ class AdminController extends BaseController
      */
     protected function isValidSeoImage(string $value): bool
     {
+        $value = trim($value);
         if ($value === '') {
             return true;
         }
@@ -916,7 +973,15 @@ class AdminController extends BaseController
             return true;
         }
 
-        return str_starts_with($value, '/');
+        if (str_contains($value, "\0") || preg_match('~[<>"\']~', $value)) {
+            return false;
+        }
+
+        if (str_starts_with($value, '//')) {
+            return true;
+        }
+
+        return preg_match('~^/?(?!.*(?:^|/)\.\.(?:/|$))[A-Za-z0-9][A-Za-z0-9/_.,%+\-=]*\.(?:jpe?g|png|webp|gif|svg)(?:\?[A-Za-z0-9._\~:/?#[\]@!$&()*+,;=%-]*)?$~i', $value) === 1;
     }
 
     /**

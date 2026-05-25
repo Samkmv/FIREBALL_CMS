@@ -18,11 +18,13 @@ return [
     'auth_validation_login_required' => 'Geben Sie Ihren Login ein.',
     'auth_validation_login_format' => 'Der Login muss mindestens 3 Zeichen lang sein und darf nur lateinische Buchstaben, Zahlen und Bindestriche enthalten.',
     'auth_validation_login_exists' => 'Ein Benutzer mit diesem Login existiert bereits.',
+    'auth_validation_login_reserved' => 'Dieser Login ist reserviert. Waehlen Sie einen anderen.',
     'auth_validation_email_required' => 'Geben Sie Ihre E-Mail-Adresse ein.',
     'auth_validation_email_invalid' => 'Geben Sie eine gueltige E-Mail-Adresse ein.',
     'auth_validation_email_exists' => 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.',
     'auth_validation_password_required' => 'Geben Sie Ihr Passwort ein.',
     'auth_validation_password_length' => 'Das Passwort muss mindestens 8 Zeichen lang sein.',
+    'auth_validation_password_strength' => 'Das Passwort muss mindestens einen Grossbuchstaben und eine Zahl enthalten.',
     'auth_validation_password_confirmation_required' => 'Bestaetigen Sie Ihr Passwort.',
     'auth_validation_password_confirmation_match' => 'Die Passwoerter stimmen nicht ueberein.',
 ];

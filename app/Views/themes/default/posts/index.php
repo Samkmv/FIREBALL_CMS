@@ -11,33 +11,16 @@ $categoryUrl = static function (?string $category = null): string {
 };
 
 $posts = array_values($posts ?? []);
+$allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($category['total'] ?? 0), $categories ?? []));
+if ($allPostsTotal <= 0) {
+    $allPostsTotal = (int)$total_posts;
+}
 
 $paginationMarkup = !empty($pagination)
         ? str_replace('class="pagination"', 'class="pagination justify-content-center"', $pagination)
         : '';
 
-$socialLinks = array_values(array_filter([
-    [
-        'href' => site_setting('social_instagram', ''),
-        'icon' => 'ci-instagram',
-        'label' => 'Instagram',
-    ],
-    [
-        'href' => site_setting('social_facebook', ''),
-        'icon' => 'ci-facebook',
-        'label' => 'Facebook',
-    ],
-    [
-        'href' => site_setting('social_telegram', ''),
-        'icon' => 'ci-telegram',
-        'label' => 'Telegram',
-    ],
-    [
-        'href' => site_setting('social_youtube', ''),
-        'icon' => 'ci-youtube',
-        'label' => 'YouTube',
-    ],
-], static fn(array $link): bool => trim((string)($link['href'] ?? '')) !== ''));
+$socialLinks = site_social_links();
 $buildExcerpt = static function (array $post, int $limit = 170): string {
     $excerpt = trim((string)($post['excerpt'] ?? ''));
     if ($excerpt === '') {
@@ -139,7 +122,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                     <h4 class="h6 mb-4"><?= print_translation('posts_index_sidebar_categories') ?></h4>
                     <div class="d-flex flex-wrap gap-3">
                         <a class="btn <?= empty($current_category) ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl() ?>">
-                            <?= print_translation('posts_index_all_categories') ?> (<?= (int)$total_posts ?>)
+                            <?= print_translation('posts_index_all_categories') ?> (<?= (int)$allPostsTotal ?>)
                         </a>
                         <?php foreach ($categories as $category): ?>
                             <a class="btn <?= ($current_category ?? '') === $category['slug'] ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl($category['slug']) ?>">
@@ -179,8 +162,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                                 <a
                                     class="btn btn-icon fs-base btn-outline-secondary border-0"
                                     href="<?= htmlSC($link['href']) ?>"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    <?= !empty($link['external']) ? 'target="_blank" rel="noopener noreferrer"' : '' ?>
                                     data-bs-toggle="tooltip"
                                     data-bs-template="<div class=&quot;tooltip fs-xs mb-n2&quot; role=&quot;tooltip&quot;><div class=&quot;tooltip-inner bg-transparent text-body p-0&quot;></div></div>"
                                     aria-label="<?= htmlSC($link['label']) ?>"

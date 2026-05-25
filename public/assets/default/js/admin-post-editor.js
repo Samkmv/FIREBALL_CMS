@@ -51,6 +51,7 @@ function initPostEditor() {
         addHtml: 'HTML',
         addSocial: 'Social buttons',
         addSlider: 'Slider',
+        addNewsletter: 'Newsletter CTA',
         addCode: 'Code',
         textBlock: 'Text block',
         headingBlock: 'Heading block',
@@ -59,6 +60,7 @@ function initPostEditor() {
         htmlBlock: 'HTML block',
         socialBlock: 'Social buttons block',
         sliderBlock: 'Slider block',
+        newsletterBlock: 'Newsletter block',
         codeBlock: 'Code block',
         moveUp: 'Move up',
         moveDown: 'Move down',
@@ -76,6 +78,7 @@ function initPostEditor() {
         codeLanguage: 'Language',
         htmlPlaceholder: 'Paste HTML markup. Scripts and unsafe event handlers will be removed.',
         htmlPreview: 'HTML preview',
+        formRequiredSummary: 'Fill in required fields:',
         socialNetwork: 'Network',
         socialIcon: 'Icon',
         socialCustom: 'Custom',
@@ -125,6 +128,11 @@ function initPostEditor() {
         sliderSlide: 'Slide',
         sliderPrev: 'Previous slide',
         sliderNext: 'Next slide',
+        newsletterTitle: 'Title',
+        newsletterText: 'Text',
+        newsletterButton: 'Button text',
+        newsletterUrl: 'Button link',
+        newsletterIcon: 'Button icon',
         blockCount: 'Blocks',
         canvasTitle: 'Post content',
         style: 'Style',
@@ -145,6 +153,7 @@ function initPostEditor() {
         html: 'ci-layout',
         social: 'ci-share-2',
         slider: 'ci-sliders',
+        newsletter: 'ci-mail',
         code: 'ci-code'
     };
     const fonts = Array.isArray(config.fonts) ? config.fonts : [];
@@ -169,6 +178,7 @@ function initPostEditor() {
         { value: 'github', label: 'GitHub', icon: 'ci-github' },
         { value: 'viber', label: 'Viber', icon: 'ci-viber' },
         { value: 'messenger', label: 'Messenger', icon: 'ci-messenger' },
+        { value: 'phone', label: labels.socialPhone, icon: 'ci-phone' },
         { value: 'custom', label: labels.socialCustom, icon: 'ci-share-2' }
     ];
     const socialIconOptions = [
@@ -197,6 +207,7 @@ function initPostEditor() {
         '14px': '3',
         '16px': '4',
         '18px': '5',
+        '20px': '5',
         '24px': '6',
         '32px': '7'
     };
@@ -738,6 +749,7 @@ function initPostEditor() {
                 const patch = {};
                 patch[fieldName] = blockField.value;
                 updateBlock(blockId, patch);
+                refreshNewsletterBlockContent(blockId);
 
                 if (fieldName === 'html') {
                     const blockElement = blockField.closest('[data-block-id]');
@@ -767,20 +779,30 @@ function initPostEditor() {
             if (commandSelect) {
                 const blockElement = commandSelect.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
+                updateBlockStyle(
+                    String(blockElement ? blockElement.dataset.blockId || '' : ''),
+                    String(commandSelect.getAttribute('data-editor-command') || ''),
+                    String(commandSelect.value || ''),
+                    editor
+                );
                 if (commandSelect.value !== '') {
                     applyCommand(editor, String(commandSelect.getAttribute('data-editor-command') || ''), String(commandSelect.value || ''));
                 }
-                commandSelect.value = '';
                 return;
             }
 
             if (fontSizeSelect) {
                 const blockElement = fontSizeSelect.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
+                updateBlockStyle(
+                    String(blockElement ? blockElement.dataset.blockId || '' : ''),
+                    'fontSize',
+                    String(fontSizeSelect.value || ''),
+                    editor
+                );
                 if (fontSizeSelect.value !== '') {
                     applyCommand(editor, 'fontSize', String(fontSizeSelect.value || ''));
                 }
-                fontSizeSelect.value = '';
                 return;
             }
 
@@ -1064,9 +1086,13 @@ function initPostEditor() {
                 }
 
                 if (blockField) {
+                    const blockId = String(blockField.getAttribute('data-block-id') || '');
+                    const fieldName = String(blockField.getAttribute('data-block-field') || '');
                     const patch = {};
-                    patch[String(blockField.getAttribute('data-block-field') || '')] = blockField.value;
-                    updateBlock(String(blockField.getAttribute('data-block-id') || ''), patch);
+                    patch[fieldName] = blockField.value;
+                    updateBlock(blockId, patch);
+                    refreshMediaBlockContent(blockId, fieldName);
+                    refreshNewsletterBlockContent(blockId);
                     sync();
                 }
             });
@@ -1215,6 +1241,42 @@ function initPostEditor() {
         });
     }
 
+    function findRenderedBlockElement(id) {
+        return Array.from(app.querySelectorAll('.fb-post-block[data-block-id]')).find(function (element) {
+            return String(element.dataset.blockId || '') === String(id || '');
+        }) || null;
+    }
+
+    function refreshMediaBlockContent(blockId, fieldName) {
+        const block = findBlock(blockId);
+        if (!block || (block.type !== 'image' && block.type !== 'video')) {
+            return;
+        }
+
+        if (['src', 'poster'].indexOf(String(fieldName || '')) === -1) {
+            return;
+        }
+
+        const blockElement = findRenderedBlockElement(blockId);
+        const contentElement = blockElement ? blockElement.querySelector('.fb-post-block__content') : null;
+        if (contentElement) {
+            contentElement.innerHTML = renderBlockContent(block);
+        }
+    }
+
+    function refreshNewsletterBlockContent(blockId) {
+        const block = findBlock(blockId);
+        if (!block || block.type !== 'newsletter') {
+            return;
+        }
+
+        const blockElement = findRenderedBlockElement(blockId);
+        const contentElement = blockElement ? blockElement.querySelector('.fb-post-block__content') : null;
+        if (contentElement) {
+            contentElement.innerHTML = renderBlockContent(block);
+        }
+    }
+
     function reorderBlocks(sourceId, targetId) {
         const sourceIndex = findBlockIndex(sourceId);
         const targetIndex = findBlockIndex(targetId);
@@ -1253,15 +1315,24 @@ function initPostEditor() {
                 items: [getDefaultSliderItem()]
             };
         }
+        if (type === 'newsletter') {
+            return {
+                title: 'Sign up to our newsletter',
+                text: 'Receive our latest updates about our products & promotions',
+                buttonText: 'Subscribe',
+                buttonUrl: '',
+                buttonIcon: 'ci-mail'
+            };
+        }
         if (type === 'code') {
             return { language: 'html', code: '' };
         }
 
-        return { html: '' };
+        return { html: '', fontName: '', fontSize: '' };
     }
 
     function getAllowedBlockType(type) {
-        const allowedTypes = ['text', 'heading', 'image', 'video', 'html', 'social', 'slider', 'code'];
+        const allowedTypes = ['text', 'heading', 'image', 'video', 'html', 'social', 'slider', 'newsletter', 'code'];
         return allowedTypes.indexOf(String(type || '')) !== -1 ? String(type) : 'text';
     }
 
@@ -1397,6 +1468,41 @@ function initPostEditor() {
             span.innerHTML = fontNode.innerHTML;
             fontNode.replaceWith(span);
         });
+    }
+
+    function getAllowedOptionValue(items, value) {
+        const normalizedValue = String(value || '').trim();
+        const found = items.find(function (item) {
+            return String(item.value || '') === normalizedValue;
+        });
+
+        return found ? String(found.value || '') : '';
+    }
+
+    function updateBlockStyle(blockId, command, value, editor) {
+        const block = findBlock(blockId);
+        if (!block || block.type !== 'text') {
+            return;
+        }
+
+        if (command === 'fontName') {
+            const fontName = getAllowedOptionValue(fonts, value);
+            block.data.fontName = fontName;
+            if (editor) {
+                editor.style.fontFamily = fontName;
+            }
+            sync();
+            return;
+        }
+
+        if (command === 'fontSize') {
+            const fontSize = getAllowedOptionValue(sizes, value);
+            block.data.fontSize = fontSize;
+            if (editor) {
+                editor.style.fontSize = fontSize;
+            }
+            sync();
+        }
     }
 
     function saveSelection(editor) {
@@ -1652,6 +1758,44 @@ function initPostEditor() {
         });
     }
 
+    function normalizePhoneHref(value) {
+        const rawValue = String(value || '').trim();
+        if (rawValue === '') {
+            return '';
+        }
+
+        if (/^tel:/i.test(rawValue)) {
+            return rawValue.replace(/\s+/g, '');
+        }
+
+        const phone = rawValue
+            .replace(/[()\s.-]+/g, '')
+            .replace(/(?!^\+)[^\d+*#,;]/g, '');
+
+        return phone !== '' ? 'tel:' + phone : '';
+    }
+
+    function getSocialHref(item) {
+        if (String(item.network || '') === 'phone') {
+            return normalizePhoneHref(item.url);
+        }
+
+        return String(item.url || '').trim();
+    }
+
+    function getSocialLinkAttributes(item) {
+        const href = getSocialHref(item);
+        if (href === '') {
+            return '';
+        }
+
+        if (String(item.network || '') === 'phone') {
+            return 'href="' + escapeAttr(href) + '"';
+        }
+
+        return 'href="' + escapeAttr(href) + '" target="_blank" rel="noopener noreferrer"';
+    }
+
     function normalizeSliderItems(items) {
         if (!Array.isArray(items) || !items.length) {
             return [getDefaultSliderItem()];
@@ -1790,6 +1934,7 @@ function initPostEditor() {
                         renderAddTypeButton('html', position, labels.addHtml) +
                         renderAddTypeButton('social', position, labels.addSocial) +
                         renderAddTypeButton('slider', position, labels.addSlider) +
+                        renderAddTypeButton('newsletter', position, labels.addNewsletter) +
                         renderAddTypeButton('code', position, labels.addCode) +
                     '</div>'
                     : '') +
@@ -1797,7 +1942,7 @@ function initPostEditor() {
     }
 
     function renderAddTypeButton(type, position, label) {
-        return '<button type="button" data-editor-add="' + escapeAttr(type) + '" data-insert-position="' + escapeAttr(String(position)) + '">' + escapeHtml(label) + '</button>';
+        return '<button type="button" data-editor-add="' + escapeAttr(type) + '" data-insert-position="' + escapeAttr(String(position)) + '"><span class="fb-post-add-menu__icon">' + renderBlockIcon(type) + '</span><span>' + escapeHtml(label) + '</span></button>';
     }
 
     function renderBlockCard(block, index) {
@@ -1849,6 +1994,9 @@ function initPostEditor() {
         if (type === 'slider') {
             return labels.sliderBlock;
         }
+        if (type === 'newsletter') {
+            return labels.newsletterBlock;
+        }
         if (type === 'code') {
             return labels.codeBlock;
         }
@@ -1869,6 +2017,8 @@ function initPostEditor() {
         } else if (block.type === 'slider') {
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(normalizeSliderItems(block.data.items).length)) + '</span>';
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(block.data.aspectRatio || '16x9')) + '</span>';
+        } else if (block.type === 'newsletter') {
+            html += '<span class="fb-post-block__chip">' + escapeHtml(block.data.buttonText || labels.newsletterButton) + '</span>';
         } else if (block.type === 'code') {
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(block.data.language || 'html')) + '</span>';
         } else if (block.type === 'html') {
@@ -1908,6 +2058,10 @@ function initPostEditor() {
             return renderSliderPreview(block);
         }
 
+        if (block.type === 'newsletter') {
+            return renderNewsletterPreview(block);
+        }
+
         if (block.type === 'code') {
             return '<textarea class="form-control fb-post-block__code" data-block-field="code" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.codePlaceholder) + '">' + escapeHtml(block.data.code || '') + '</textarea>';
         }
@@ -1916,6 +2070,10 @@ function initPostEditor() {
     }
 
     function renderTextBlock(block) {
+        const fontName = getAllowedOptionValue(fonts, block.data.fontName || '');
+        const fontSize = getAllowedOptionValue(sizes, block.data.fontSize || '');
+        const richStyle = buildTextBlockStyle(fontName, fontSize);
+
         return '' +
             '<div class="fb-post-block__toolbar" data-block-toolbar>' +
                 '<div class="fb-post-block__toolbar-group">' +
@@ -1942,14 +2100,14 @@ function initPostEditor() {
                             '<span>' + escapeHtml(labels.font) + '</span>' +
                             '<select class="form-select form-select-sm" data-editor-command="fontName">' +
                                 '<option value="">' + escapeHtml(labels.font) + '</option>' +
-                                renderOptions(fonts, '') +
+                                renderOptions(fonts, fontName) +
                             '</select>' +
                         '</label>' +
                         '<label class="fb-post-style-menu__field">' +
                             '<span>' + escapeHtml(labels.size) + '</span>' +
                             '<select class="form-select form-select-sm" data-editor-font-size>' +
                                 '<option value="">' + escapeHtml(labels.size) + '</option>' +
-                                renderOptions(sizes, '') +
+                                renderOptions(sizes, fontSize) +
                             '</select>' +
                         '</label>' +
                         '<label class="fb-post-style-menu__field">' +
@@ -1963,7 +2121,19 @@ function initPostEditor() {
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="fb-post-block__rich" contenteditable="true" data-block-rich data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.textPlaceholder) + '">' + sanitizeHtml(block.data.html || '') + '</div>';
+            '<div class="fb-post-block__rich" contenteditable="true" data-block-rich data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.textPlaceholder) + '"' + (richStyle ? ' style="' + escapeAttr(richStyle) + '"' : '') + '>' + sanitizeHtml(block.data.html || '') + '</div>';
+    }
+
+    function buildTextBlockStyle(fontName, fontSize) {
+        const styles = [];
+        if (fontName) {
+            styles.push('font-family: ' + fontName);
+        }
+        if (fontSize) {
+            styles.push('font-size: ' + fontSize);
+        }
+
+        return styles.join('; ');
     }
 
     function renderMediaPreview(block) {
@@ -2014,6 +2184,30 @@ function initPostEditor() {
                     '</div>' +
                 '</div>';
         }).join('') + '</div>';
+    }
+
+    function renderNewsletterPreview(block) {
+        const title = String(block.data.title || '').trim() || 'Sign up to our newsletter';
+        const text = String(block.data.text || '').trim() || 'Receive our latest updates about our products & promotions';
+        const buttonText = String(block.data.buttonText || '').trim() || 'Subscribe';
+        const buttonIcon = getSafeIconClass(block.data.buttonIcon || 'ci-mail');
+
+        return '' +
+            '<div class="fb-post-block__newsletter d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5">' +
+                '<div class="mb-4 mb-sm-0 me-sm-4">' +
+                    '<h3 class="h5 mb-2">' + escapeHtml(title) + '</h3>' +
+                    '<p class="fs-sm mb-0">' + escapeHtml(text) + '</p>' +
+                '</div>' +
+                '<button type="button" class="btn btn-dark">' +
+                    (buttonIcon ? '<i class="' + escapeAttr(buttonIcon) + ' fs-base ms-n1 me-2"></i>' : '') +
+                    escapeHtml(buttonText) +
+                '</button>' +
+            '</div>';
+    }
+
+    function getSafeIconClass(value) {
+        const icon = String(value || '').trim();
+        return /^ci-[a-z0-9-]+$/i.test(icon) ? icon : '';
     }
 
     function renderOptions(items, selectedValue) {
@@ -2105,6 +2299,10 @@ function initPostEditor() {
             return renderSliderSettings(block);
         }
 
+        if (block.type === 'newsletter') {
+            return renderNewsletterSettings(block);
+        }
+
         if (block.type === 'code') {
             return '' +
                 '<div class="fb-post-settings__section" data-block-id="' + escapeAttr(block.id) + '">' +
@@ -2118,6 +2316,19 @@ function initPostEditor() {
         }
 
         return '<p class="fb-post-settings__note">' + escapeHtml(labels.inlineSettingsHint) + '</p>';
+    }
+
+    function renderNewsletterSettings(block) {
+        return '' +
+            '<div class="fb-post-settings__section" data-block-id="' + escapeAttr(block.id) + '">' +
+                '<div class="fb-post-settings__grid">' +
+                    '<div><label class="form-label">' + escapeHtml(labels.newsletterTitle) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.title || '') + '" data-block-field="title" data-block-id="' + escapeAttr(block.id) + '"></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.newsletterText) + '</label><textarea class="form-control" rows="3" data-block-field="text" data-block-id="' + escapeAttr(block.id) + '">' + escapeHtml(block.data.text || '') + '</textarea></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.newsletterButton) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.buttonText || '') + '" data-block-field="buttonText" data-block-id="' + escapeAttr(block.id) + '"></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.newsletterUrl) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.buttonUrl || '') + '" data-block-field="buttonUrl" data-block-id="' + escapeAttr(block.id) + '" placeholder="https://example.com/subscribe"></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.newsletterIcon) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.buttonIcon || 'ci-mail') + '" data-block-field="buttonIcon" data-block-id="' + escapeAttr(block.id) + '" placeholder="ci-mail"></div>' +
+                '</div>' +
+            '</div>';
     }
 
     function renderImageSettings(block) {
@@ -2227,12 +2438,12 @@ function initPostEditor() {
 
     function getVideoEmbedUrl(source) {
         const url = String(source || '').trim();
-        const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]+)/i);
+        const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]+)/i);
         if (youtubeMatch) {
             return 'https://www.youtube.com/embed/' + youtubeMatch[1];
         }
 
-        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/i);
+        const vimeoMatch = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/i);
         if (vimeoMatch) {
             return 'https://player.vimeo.com/video/' + vimeoMatch[1];
         }
@@ -2256,6 +2467,10 @@ function initPostEditor() {
 
     function serializeBlocksToHtml() {
         return state.blocks.map(function (block) {
+            if (block.type === 'text') {
+                return serializeTextBlock(block);
+            }
+
             if (block.type === 'heading') {
                 const level = /^h[1-6]$/.test(String(block.data.level || '')) ? String(block.data.level) : 'h2';
                 const html = sanitizeHtml(block.data.html || '');
@@ -2304,7 +2519,7 @@ function initPostEditor() {
 
             if (block.type === 'social') {
                 const items = normalizeSocialItems(block.data.items).filter(function (item) {
-                    return String(item.url || '').trim() !== '';
+                    return getSocialHref(item) !== '';
                 });
 
                 if (!items.length) {
@@ -2312,7 +2527,7 @@ function initPostEditor() {
                 }
 
                 return '<div class="fb-social-buttons" data-fb-social-buttons="1">' + items.map(function (item) {
-                    return '<a class="fb-social-buttons__item" href="' + escapeAttr(item.url) + '" target="_blank" rel="noopener noreferrer" data-network="' + escapeAttr(item.network) + '" data-icon="' + escapeAttr(item.icon) + '"><i class="fb-social-buttons__icon ' + escapeAttr(item.icon) + '" aria-hidden="true"></i><span class="fb-social-buttons__label">' + escapeHtml(item.label) + '</span></a>';
+                    return '<a class="fb-social-buttons__item" ' + getSocialLinkAttributes(item) + ' data-network="' + escapeAttr(item.network) + '" data-icon="' + escapeAttr(item.icon) + '"><i class="fb-social-buttons__icon ' + escapeAttr(item.icon) + '" aria-hidden="true"></i><span class="fb-social-buttons__label">' + escapeHtml(item.label) + '</span></a>';
                 }).join('') + '</div>';
             }
 
@@ -2367,6 +2582,10 @@ function initPostEditor() {
                     '</div></div>';
             }
 
+            if (block.type === 'newsletter') {
+                return serializeNewsletterBlock(block);
+            }
+
             if (block.type === 'code') {
                 if (String(block.data.code || '').trim() === '') {
                     return '';
@@ -2380,6 +2599,48 @@ function initPostEditor() {
         }).filter(function (item) {
             return String(item || '').trim() !== '';
         }).join('\n');
+    }
+
+    function serializeTextBlock(block) {
+        const html = sanitizeHtml(block.data.html || '');
+        if (html === '') {
+            return '';
+        }
+
+        const fontName = getAllowedOptionValue(fonts, block.data.fontName || '');
+        const fontSize = getAllowedOptionValue(sizes, block.data.fontSize || '');
+        const style = buildTextBlockStyle(fontName, fontSize);
+
+        if (!style) {
+            return html;
+        }
+
+        return '<div data-fb-text-block="1" style="' + escapeAttr(style) + '">' + html + '</div>';
+    }
+
+    function serializeNewsletterBlock(block) {
+        const title = String(block.data.title || '').trim();
+        const text = String(block.data.text || '').trim();
+        const buttonText = String(block.data.buttonText || '').trim();
+        const buttonUrl = String(block.data.buttonUrl || '').trim();
+        const buttonIcon = getSafeIconClass(block.data.buttonIcon || 'ci-mail');
+        const resolvedTitle = title || 'Sign up to our newsletter';
+        const resolvedText = text || 'Receive our latest updates about our products & promotions';
+        const resolvedButtonText = buttonText || 'Subscribe';
+        const iconHtml = buttonIcon ? '<i class="' + escapeAttr(buttonIcon) + ' fs-base ms-n1 me-2"></i>' : '';
+        const buttonInner = iconHtml + escapeHtml(resolvedButtonText);
+        const buttonHtml = buttonUrl
+            ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" data-fb-newsletter-button="1" data-button-url="' + escapeAttr(buttonUrl) + '">' + buttonInner + '</a>'
+            : '<button type="button" class="btn btn-dark" data-fb-newsletter-button="1" data-button-url="">' + buttonInner + '</button>';
+
+        return '' +
+            '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5" data-fb-newsletter-block="1" data-button-icon="' + escapeAttr(buttonIcon) + '">' +
+                '<div class="mb-4 mb-sm-0 me-sm-4">' +
+                    '<h3 class="h5 mb-2" data-fb-newsletter-title="1">' + escapeHtml(resolvedTitle) + '</h3>' +
+                    '<p class="fs-sm mb-0" data-fb-newsletter-text="1">' + escapeHtml(resolvedText) + '</p>' +
+                '</div>' +
+                buttonHtml +
+            '</div>';
     }
 
     function importBlocksFromHtml(html) {
@@ -2402,7 +2663,7 @@ function initPostEditor() {
             if (!buffer.length) {
                 return;
             }
-            blocks.push(createImportedBlock('text', { html: sanitizeHtml(buffer.join('')) }));
+            blocks.push(parseTextBlock(buffer.join('')));
             buffer.length = 0;
         }
 
@@ -2442,13 +2703,29 @@ function initPostEditor() {
                 return;
             }
 
-            if (tag === 'iframe' || tag === 'video' || node.matches('[data-plyr-player-wrap]')) {
+            if (node.matches('[data-fb-text-block]')) {
+                flushTextBuffer();
+                blocks.push(parseTextBlock(node.outerHTML));
+                return;
+            }
+
+            if (node.matches('[data-fb-newsletter-block]')) {
+                flushTextBuffer();
+                blocks.push(parseNewsletterBlock(node));
+                return;
+            }
+
+            if (tag === 'iframe' || tag === 'video' || node.matches('[data-plyr-player-wrap]') || node.querySelector('iframe, video, [data-plyr-player-wrap]')) {
                 flushTextBuffer();
                 blocks.push(parseVideoBlock(node));
                 return;
             }
 
-            if (node.matches('.swiper') && node.querySelector('.swiper-wrapper')) {
+            if (
+                (node.matches('.swiper, [data-fb-slider]') && node.querySelector('.swiper-wrapper'))
+                || node.matches('[data-fb-slider-shell]')
+                || node.querySelector('[data-fb-slider] .swiper-wrapper, .swiper .swiper-wrapper')
+            ) {
                 flushTextBuffer();
                 blocks.push(parseSliderBlock(node));
                 return;
@@ -2475,6 +2752,24 @@ function initPostEditor() {
         };
     }
 
+    function parseTextBlock(html) {
+        const cleanHtml = sanitizeHtml(html);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString('<div data-text-import-root="1">' + cleanHtml + '</div>', 'text/html');
+        const root = doc.body.querySelector('[data-text-import-root="1"]');
+        const wrapper = root && root.children.length === 1 ? root.children[0] : null;
+
+        if (wrapper && wrapper.matches('[data-fb-text-block]')) {
+            return createImportedBlock('text', {
+                html: sanitizeHtml(wrapper.innerHTML),
+                fontName: getAllowedOptionValue(fonts, wrapper.style.fontFamily || ''),
+                fontSize: getAllowedOptionValue(sizes, wrapper.style.fontSize || '')
+            });
+        }
+
+        return createImportedBlock('text', { html: cleanHtml });
+    }
+
     function parseImageBlock(node) {
         const image = node.tagName && node.tagName.toLowerCase() === 'img' ? node : node.querySelector('img');
         const link = node.querySelector('a');
@@ -2494,6 +2789,8 @@ function initPostEditor() {
 
         if (node.matches('iframe')) {
             source = String(node.getAttribute('src') || '');
+        } else if (node.querySelector('iframe')) {
+            source = String(node.querySelector('iframe').getAttribute('src') || '');
         } else {
             const video = node.matches('video') ? node : node.querySelector('video');
             const sourceNode = video ? video.querySelector('source') : null;
@@ -2534,7 +2831,9 @@ function initPostEditor() {
         }
 
         const items = Array.from(wrapper.querySelectorAll('a')).map(function (linkNode) {
-            const meta = getSocialNetworkMeta(linkNode.getAttribute('data-network') || 'custom');
+            const href = String(linkNode.getAttribute('href') || '').trim();
+            const network = String(linkNode.getAttribute('data-network') || '').trim() || (/^tel:/i.test(href) ? 'phone' : 'custom');
+            const meta = getSocialNetworkMeta(network);
             const iconNode = linkNode.querySelector('i[class*="ci-"]');
             const iconClass = iconNode ? String(iconNode.className || '').match(/ci-[a-z0-9-]+/i) : null;
             const labelNode = linkNode.querySelector('.fb-social-buttons__label');
@@ -2543,7 +2842,7 @@ function initPostEditor() {
                 network: meta.value,
                 icon: iconClass ? iconClass[0] : meta.icon,
                 label: labelNode ? String(labelNode.textContent || '').trim() : String(linkNode.textContent || '').trim(),
-                url: String(linkNode.getAttribute('href') || '').trim()
+                url: href
             };
         });
 
@@ -2552,9 +2851,35 @@ function initPostEditor() {
         });
     }
 
+    function parseNewsletterBlock(node) {
+        const titleNode = node.querySelector('[data-fb-newsletter-title], h1, h2, h3, h4, h5, h6');
+        const textNode = node.querySelector('[data-fb-newsletter-text], p');
+        const buttonRoot = node.querySelector('[data-fb-newsletter-button]');
+        const buttonNode = buttonRoot
+            ? (buttonRoot.querySelector('a, button') || buttonRoot)
+            : node.querySelector('a.btn, button.btn');
+        const iconNode = buttonNode ? buttonNode.querySelector('i[class*="ci-"]') : null;
+        const iconClass = iconNode ? String(iconNode.className || '').match(/ci-[a-z0-9-]+/i) : null;
+        const buttonUrl = buttonNode && buttonNode.matches('a')
+            ? String(buttonNode.getAttribute('href') || '').trim()
+            : String((buttonRoot ? buttonRoot.getAttribute('data-button-url') : '') || '').trim();
+        const buttonText = buttonNode ? String(buttonNode.textContent || '').trim() : '';
+
+        return createImportedBlock('newsletter', {
+            title: titleNode ? String(titleNode.textContent || '').trim() : '',
+            text: textNode ? String(textNode.textContent || '').trim() : '',
+            buttonText: buttonText,
+            buttonUrl: buttonUrl,
+            buttonIcon: iconClass ? iconClass[0] : String(node.getAttribute('data-button-icon') || 'ci-mail')
+        });
+    }
+
     function parseSliderBlock(node) {
-        const aspectRatio = String(node.getAttribute('data-aspect-ratio') || '').trim();
-        const items = Array.from(node.querySelectorAll('.swiper-wrapper > .swiper-slide')).map(function (slideNode) {
+        const sliderNode = node.matches('.swiper, [data-fb-slider]')
+            ? node
+            : (node.querySelector('[data-fb-slider], .swiper') || node);
+        const aspectRatio = String(sliderNode.getAttribute('data-aspect-ratio') || '').trim();
+        const items = Array.from(sliderNode.querySelectorAll('.swiper-wrapper > .swiper-slide')).map(function (slideNode) {
             const imageNode = slideNode.querySelector('img');
             const copyRoot = slideNode.querySelector('[data-fb-slider-copy]');
             const titleNode = copyRoot ? copyRoot.querySelector('[data-fb-slider-title]') : slideNode.querySelector('[data-fb-slider-title], h1, h2, h3, h4, h5, h6');
@@ -2571,14 +2896,71 @@ function initPostEditor() {
             aspectRatio: sliderAspectRatioOptions.some(function (option) {
                 return option.value === aspectRatio;
             }) ? aspectRatio : '16x9',
-            showBullets: !!node.querySelector('.swiper-pagination'),
+            showBullets: !!sliderNode.querySelector('.swiper-pagination'),
             showArrows: !!(node.querySelector('[data-fb-slider-prev]') || node.querySelector('[data-fb-slider-next]') || node.querySelector('.btn-prev') || node.querySelector('.btn-next')),
             items: normalizeSliderItems(items)
         });
     }
 }
 
+function initPostFormValidation() {
+    function escapeFormHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = String(value == null ? '' : value);
+        return div.innerHTML;
+    }
+
+    document.querySelectorAll('[data-post-form]').forEach(function (form) {
+        const summary = form.querySelector('[data-post-form-errors]');
+        const requiredSummary = String(form.getAttribute('data-required-summary') || 'Fill in required fields:');
+
+        form.setAttribute('novalidate', 'novalidate');
+
+        form.addEventListener('submit', function (event) {
+            const invalidControls = Array.from(form.querySelectorAll('[required]')).filter(function (control) {
+                return !control.checkValidity();
+            });
+
+            form.querySelectorAll('.is-invalid[data-client-invalid]').forEach(function (control) {
+                control.classList.remove('is-invalid');
+                control.removeAttribute('data-client-invalid');
+            });
+
+            if (!invalidControls.length) {
+                if (summary) {
+                    summary.hidden = true;
+                    summary.classList.add('d-none');
+                    summary.innerHTML = '';
+                }
+                return;
+            }
+
+            event.preventDefault();
+
+            const labels = invalidControls.map(function (control) {
+                control.classList.add('is-invalid');
+                control.setAttribute('data-client-invalid', '1');
+
+                const field = control.closest('.col-12, .col-md-6, .col-md-3') || control.parentElement;
+                const label = field ? field.querySelector('.form-label, label') : null;
+                return label ? String(label.textContent || '').trim() : String(control.getAttribute('name') || '');
+            }).filter(Boolean);
+
+            if (summary) {
+                summary.hidden = false;
+                summary.classList.remove('d-none');
+                summary.innerHTML = '<strong>' + escapeFormHtml(requiredSummary) + '</strong><ul class="mb-0 mt-2">' + labels.map(function (label) {
+                    return '<li>' + escapeFormHtml(label) + '</li>';
+                }).join('') + '</ul>';
+            }
+
+            invalidControls[0].focus();
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initPostDatepicker();
     initPostEditor();
+    initPostFormValidation();
 });

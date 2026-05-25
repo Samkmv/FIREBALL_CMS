@@ -17,6 +17,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="reset-password"><?= print_translation('auth_reset_password') ?></label>
                         <input id="reset-password" type="password" name="password" class="form-control <?= get_validation_class('password') ?>" placeholder="••••••••">
+                        <div class="form-text"><?= print_translation('auth_validation_password_strength') ?></div>
                         <?= get_errors('password') ?>
                     </div>
 

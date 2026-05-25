@@ -54,6 +54,8 @@ $editorHtmlHint = $translateOrFallback('admin_post_builder_html_hint', 'Unsafe t
 $editorDeleteModalTitle = $translateOrFallback('admin_post_builder_delete_confirm_title', 'Remove block?');
 $editorDeleteModalText = $translateOrFallback('admin_post_builder_delete_confirm_text', 'This action cannot be undone. The block will be removed from the post content.');
 $closeLabel = $translateOrFallback('admin_btn_close', 'Close');
+$formErrors = session()->get('form_errors') ?: [];
+$requiredSummaryLabel = $translateOrFallback('admin_form_required_summary', 'Заполните обязательные поля:');
 $editorConfig = [
     'fileManagerUrl' => base_href('/admin/files'),
     'defaultDirectory' => 'posts',
@@ -82,6 +84,7 @@ $editorConfig = [
         'addHtml' => return_translation('admin_post_builder_add_html'),
         'addSocial' => return_translation('admin_post_builder_add_social'),
         'addSlider' => return_translation('admin_post_builder_add_slider'),
+        'addNewsletter' => return_translation('admin_post_builder_add_newsletter'),
         'addCode' => return_translation('admin_post_builder_add_code'),
         'textBlock' => return_translation('admin_post_builder_block_text'),
         'headingBlock' => return_translation('admin_post_builder_block_heading'),
@@ -90,6 +93,7 @@ $editorConfig = [
         'htmlBlock' => return_translation('admin_post_builder_block_html'),
         'socialBlock' => return_translation('admin_post_builder_block_social'),
         'sliderBlock' => return_translation('admin_post_builder_block_slider'),
+        'newsletterBlock' => return_translation('admin_post_builder_block_newsletter'),
         'codeBlock' => return_translation('admin_post_builder_block_code'),
         'moveUp' => return_translation('admin_post_builder_move_up'),
         'moveDown' => return_translation('admin_post_builder_move_down'),
@@ -161,6 +165,11 @@ $editorConfig = [
         'sliderSlide' => return_translation('admin_post_builder_slider_slide'),
         'sliderPrev' => return_translation('admin_post_builder_slider_prev'),
         'sliderNext' => return_translation('admin_post_builder_slider_next'),
+        'newsletterTitle' => return_translation('admin_post_builder_newsletter_title'),
+        'newsletterText' => return_translation('admin_post_builder_newsletter_text'),
+        'newsletterButton' => return_translation('admin_post_builder_newsletter_button'),
+        'newsletterUrl' => return_translation('admin_post_builder_newsletter_url'),
+        'newsletterIcon' => return_translation('admin_post_builder_newsletter_icon'),
         'blockCount' => return_translation('admin_post_builder_block_count'),
         'style' => $editorStyleLabel,
         'moreStyles' => $editorMoreStylesLabel,
@@ -1555,6 +1564,11 @@ $editorConfig = [
         position: relative;
         display: inline-flex;
         justify-content: center;
+        z-index: 5;
+    }
+
+    .fb-post-editor--linear .fb-post-editor__add-wrap.is-open {
+        z-index: 1080;
     }
 
     .fb-post-editor--linear .fb-post-editor__add-btn {
@@ -1571,10 +1585,11 @@ $editorConfig = [
         position: absolute;
         top: calc(100% + .5rem);
         left: 50%;
-        z-index: 30;
+        z-index: 1090;
         display: grid;
         gap: .25rem;
         min-width: 13rem;
+        max-width: calc(100vw - 2rem);
         padding: .45rem;
         border: 1px solid rgba(26, 33, 36, .1);
         border-radius: .95rem;
@@ -1584,6 +1599,9 @@ $editorConfig = [
     }
 
     .fb-post-add-menu button {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
         width: 100%;
         border: 0;
         border-radius: .7rem;
@@ -1593,6 +1611,18 @@ $editorConfig = [
         text-align: left;
         font-size: .9rem;
         line-height: 1.3;
+    }
+
+    .fb-post-add-menu__icon {
+        display: inline-flex;
+        width: 1.65rem;
+        height: 1.65rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: .55rem;
+        background: rgba(33, 37, 41, .08);
+        color: #1f2937;
+        flex: 0 0 auto;
     }
 
     .fb-post-add-menu button:hover {
@@ -1898,7 +1928,10 @@ $editorConfig = [
     }
 
     .fb-post-block__preview {
-        min-height: 220px;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        min-height: 0;
+        max-height: 360px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1911,6 +1944,12 @@ $editorConfig = [
         height: 100%;
         object-fit: cover;
         border: 0;
+    }
+
+    .fb-post-block__preview iframe,
+    .fb-post-block__preview video {
+        object-fit: contain;
+        background: #000;
     }
 
     .fb-post-block__placeholder-text {
@@ -1981,6 +2020,15 @@ $editorConfig = [
         color: #6b7577;
         font-size: .82rem;
         line-height: 1.45;
+    }
+
+    .fb-post-block__newsletter {
+        overflow: hidden;
+    }
+
+    .fb-post-block__newsletter h3,
+    .fb-post-block__newsletter p {
+        overflow-wrap: anywhere;
     }
 
     .fb-post-editor__settings-root {
@@ -2144,6 +2192,11 @@ $editorConfig = [
         color: #eef1f6;
     }
 
+    [data-bs-theme=dark] .fb-post-add-menu__icon {
+        background: rgba(124, 197, 175, .14);
+        color: #9ae6d2;
+    }
+
     [data-bs-theme=dark] .fb-post-add-menu button:hover {
         background: rgba(124, 197, 175, .12);
     }
@@ -2201,6 +2254,43 @@ $editorConfig = [
         border-color: rgba(255, 255, 255, .08);
         background: rgba(24, 29, 37, .92);
         color: #eef1f6;
+        color-scheme: dark;
+    }
+
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: #111827"],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:#111827"],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: rgb(17, 24, 39)"],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: rgb(0, 0, 0)" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:rgb(0,0,0)" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: black"],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:black" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:#000000" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: #000000" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:#000"],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: #000"] {
+        color: #eef1f6 !important;
+    }
+
+    .fb-post-block__rich [style*="color: white" i],
+    .fb-post-block__rich [style*="color:white" i],
+    .fb-post-block__rich [style*="color: rgb(255, 255, 255)" i],
+    .fb-post-block__rich [style*="color:rgb(255,255,255)" i],
+    .fb-post-block__rich [style*="color:#fff" i],
+    .fb-post-block__rich [style*="color: #fff" i],
+    .fb-post-block__rich [style*="color:#ffffff" i],
+    .fb-post-block__rich [style*="color: #ffffff" i] {
+        color: #111827 !important;
+    }
+
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: white" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:white" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: rgb(255, 255, 255)" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:rgb(255,255,255)" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:#fff" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: #fff" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color:#ffffff" i],
+    [data-bs-theme=dark] .fb-post-block__rich [style*="color: #ffffff" i] {
+        color: #eef1f6 !important;
     }
 
     [data-bs-theme=dark] .fb-post-block__rich:empty::before,
@@ -2225,6 +2315,10 @@ $editorConfig = [
 
     [data-bs-theme=dark] .fb-post-block__slider-placeholder {
         color: #9ca3af;
+    }
+
+    [data-bs-theme=dark] .fb-post-block__newsletter.bg-body-tertiary {
+        background-color: rgba(24, 29, 37, .92) !important;
     }
 
     [data-bs-theme=dark] .fb-post-block__code {
@@ -2393,8 +2487,27 @@ $editorConfig = [
     'main_col_class' => 'col-lg-8 col-xl-9',
 ]) ?>
 
-    <form class="border rounded-5 p-3 p-md-4" action="<?= $formAction ?>" method="post" enctype="multipart/form-data">
+    <form
+        class="border rounded-5 p-3 p-md-4"
+        action="<?= $formAction ?>"
+        method="post"
+        enctype="multipart/form-data"
+        data-post-form
+        data-required-summary="<?= htmlSC($requiredSummaryLabel) ?>"
+    >
         <?= get_csrf_field() ?>
+        <div class="alert alert-danger<?= empty($formErrors) ? ' d-none' : '' ?>" data-post-form-errors <?= empty($formErrors) ? 'hidden' : '' ?>>
+            <?php if (!empty($formErrors)): ?>
+                <strong><?= htmlSC($requiredSummaryLabel) ?></strong>
+                <ul class="mb-0 mt-2">
+                    <?php foreach ($formErrors as $fieldErrors): ?>
+                        <?php foreach ((array)$fieldErrors as $fieldError): ?>
+                            <li><?= htmlSC($fieldError) ?></li>
+                        <?php endforeach; ?>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </div>
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label"><?= print_translation('admin_posts_col_title') ?></label>
@@ -3005,6 +3118,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         dropzone.addEventListener('click', function (event) {
             if (event.target.closest('button, label, a, input')) {
+                return;
+            }
+            if (!event.target.closest('.fb-post-media-picker__figure, .fb-post-media-picker__placeholder')) {
                 return;
             }
             fileInput.click();

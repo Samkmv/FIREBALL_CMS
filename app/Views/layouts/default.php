@@ -4,28 +4,7 @@ $postNavigationCategories = (new \App\Models\Post())->getNavigationCategories();
 $currentPostCategorySlug = trim((string)request()->get('category', ''));
 $siteTitle = site_setting('site_title', SITE_NAME);
 $siteDescription = site_setting('site_description', '');
-$socialLinks = array_values(array_filter([
-    [
-        'href' => site_setting('social_telegram', ''),
-        'icon' => 'ci-telegram',
-        'label' => 'Telegram',
-    ],
-    [
-        'href' => site_setting('social_instagram', ''),
-        'icon' => 'ci-instagram',
-        'label' => 'Instagram',
-    ],
-    [
-        'href' => site_setting('social_facebook', ''),
-        'icon' => 'ci-facebook',
-        'label' => 'Facebook',
-    ],
-    [
-        'href' => site_setting('social_youtube', ''),
-        'icon' => 'ci-youtube',
-        'label' => 'YouTube',
-    ],
-], static fn(array $link): bool => trim((string)($link['href'] ?? '')) !== ''));
+$socialLinks = site_social_links();
 $seoHomeTitle = site_setting('seo_home_title', '');
 $seoDefaultTitleSuffix = site_setting('seo_default_title_suffix', '');
 $seoMetaDescription = site_setting('seo_meta_description', '');
@@ -631,8 +610,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                                     <a
                                         class="btn btn-icon btn-outline-secondary rounded-circle"
                                         href="<?= htmlSC((string)$link['href']) ?>"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        <?= !empty($link['external']) ? 'target="_blank" rel="noopener noreferrer"' : '' ?>
                                         aria-label="<?= htmlSC((string)$link['label']) ?>"
                                     >
                                         <i class="<?= htmlSC((string)$link['icon']) ?>"></i>

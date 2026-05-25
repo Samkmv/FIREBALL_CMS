@@ -18,11 +18,13 @@ return [
     'auth_validation_login_required' => '请输入登录名。',
     'auth_validation_login_format' => '登录名至少 3 个字符，只能包含拉丁字母、数字和连字符。',
     'auth_validation_login_exists' => '该登录名已被使用。',
+    'auth_validation_login_reserved' => '该登录名为保留名称，请选择其他登录名。',
     'auth_validation_email_required' => '请输入邮箱。',
     'auth_validation_email_invalid' => '请输入有效的邮箱地址。',
     'auth_validation_email_exists' => '该邮箱已被使用。',
     'auth_validation_password_required' => '请输入密码。',
     'auth_validation_password_length' => '密码至少需要 8 个字符。',
+    'auth_validation_password_strength' => '密码必须至少包含一个大写字母和一个数字。',
     'auth_validation_password_confirmation_required' => '请确认密码。',
     'auth_validation_password_confirmation_match' => '两次输入的密码不一致。',
 ];

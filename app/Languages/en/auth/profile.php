@@ -17,7 +17,7 @@ return [
     'auth_profile_edit_subtitle' => 'Update your name, login, email and password if needed.',
     'auth_profile_new_password' => 'New password',
     'auth_profile_password_confirmation' => 'Confirm new password',
-    'auth_profile_password_hint' => 'Leave password fields empty if you do not want to change it.',
+    'auth_profile_password_hint' => 'Leave password fields empty if you do not want to change it. New password: at least 8 characters, one uppercase letter and one number.',
     'auth_profile_save' => 'Save changes',
     'auth_profile_updated' => 'Profile updated successfully.',
     'auth_profile_avatar_required' => 'Choose an image to upload.',
@@ -32,4 +32,5 @@ return [
     'auth_validation_login_required' => 'Enter your login.',
     'auth_validation_login_format' => 'Login must be at least 3 characters long and contain only Latin letters, numbers and hyphens.',
     'auth_validation_login_exists' => 'A user with this login already exists.',
+    'auth_validation_login_reserved' => 'This login is reserved. Choose another one.',
 ];

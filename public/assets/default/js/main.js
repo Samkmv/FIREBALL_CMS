@@ -41,6 +41,94 @@ $(function(){
         .replace(/\s+/g, ' ')
         .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 
+    const initPostContentSliders = () => {
+        if (typeof Swiper === 'undefined') {
+            return;
+        }
+
+        document.querySelectorAll('[data-fb-slider]').forEach((slider, index) => {
+            const slides = slider.querySelectorAll('.swiper-slide');
+            if (slides.length <= 1) {
+                return;
+            }
+
+            const shell = slider.closest('[data-fb-slider-shell]') || slider.parentElement;
+            if (!shell) {
+                return;
+            }
+
+            let prevButton = shell.querySelector('[data-fb-slider-prev]');
+            let nextButton = shell.querySelector('[data-fb-slider-next]');
+            const wrapper = slider.querySelector('.swiper-wrapper');
+            const sliderId = slider.id || `fb-post-slider-${index + 1}`;
+
+            slider.id = sliderId;
+
+            if (wrapper && !wrapper.id) {
+                wrapper.id = `${sliderId}-wrapper`;
+            }
+
+            const makeButton = (direction) => {
+                const isPrev = direction === 'prev';
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `btn btn-icon btn-outline-secondary rounded-circle animate-slide-${isPrev ? 'start' : 'end'} position-absolute top-50 ${isPrev ? 'start-0' : 'end-0'} translate-middle-y mt-n3 z-2`;
+                button.setAttribute(`data-fb-slider-${direction}`, '1');
+                button.setAttribute('aria-label', isPrev ? 'Previous slide' : 'Next slide');
+                if (wrapper && wrapper.id) {
+                    button.setAttribute('aria-controls', wrapper.id);
+                }
+                button.innerHTML = `<i class="ci-chevron-${isPrev ? 'left' : 'right'} fs-lg animate-target"></i>`;
+                shell.insertBefore(button, slider);
+                return button;
+            };
+
+            if (!prevButton) {
+                prevButton = makeButton('prev');
+            }
+            if (!nextButton) {
+                nextButton = makeButton('next');
+            }
+
+            const navigationConfig = {
+                prevEl: prevButton,
+                nextEl: nextButton,
+            };
+            const swiper = slider.swiper;
+
+            if (swiper) {
+                swiper.params.navigation = Object.assign({}, swiper.params.navigation || {}, navigationConfig);
+                if (swiper.navigation) {
+                    try {
+                        swiper.navigation.destroy();
+                        swiper.navigation.init();
+                        swiper.navigation.update();
+                    } catch (error) {
+                        prevButton.addEventListener('click', () => swiper.slidePrev());
+                        nextButton.addEventListener('click', () => swiper.slideNext());
+                    }
+                } else {
+                    prevButton.addEventListener('click', () => swiper.slidePrev());
+                    nextButton.addEventListener('click', () => swiper.slideNext());
+                }
+                swiper.update();
+                return;
+            }
+
+            let options = {};
+            try {
+                options = slider.dataset.swiper ? JSON.parse(slider.dataset.swiper) : {};
+            } catch (error) {
+                options = {};
+            }
+
+            options.navigation = Object.assign({}, options.navigation || {}, navigationConfig);
+            new Swiper(slider, options);
+        });
+    };
+
+    initPostContentSliders();
+
     autoDismissAlerts.each(function () {
         const alert = $(this);
         const delay = Number(alert.data('auto-dismiss-delay')) || 5000;

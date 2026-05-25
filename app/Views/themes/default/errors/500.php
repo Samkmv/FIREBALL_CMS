@@ -1,12 +1,17 @@
-<?php $siteFaviconUrl = site_favicon_url(); $siteFaviconType = site_favicon_type(); ?>
-<!DOCTYPE html><html lang="en" data-bs-theme="light" data-pwa="true"><head>
+<?php
+$siteFaviconUrl = site_favicon_url();
+$siteFaviconType = site_favicon_type();
+$pageTitle = $title ?? return_translation('error_500_title');
+$message = trim((string)($error ?? '')) !== '' ? (string)$error : return_translation('error_500_message');
+?>
+<!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true"><head>
     <meta charset="utf-8">
 
     <!-- Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover">
 
     <!-- SEO Meta Tags -->
-    <title>FBL - <?= $title ?? '500 - Internal Server Error' ?></title>
+    <title>FBL - <?= htmlSC($pageTitle) ?></title>
     <meta name="description" content="Cartzilla - Multipurpose E-Commerce Bootstrap HTML Template">
     <meta name="keywords" content="online shop, e-commerce, online store, market, multipurpose, product landing, cart, checkout, ui kit, light and dark mode, bootstrap, html5, css3, javascript, gallery, slider, mobile, pwa">
     <meta name="author" content="Createx Studio">
@@ -293,9 +298,9 @@
                 </g>
 
             </svg>
-            <h1>Internal Server Error</h1>
-            <p class="pb-3"><?= $error ?? ''; ?></p>
-            <a class="btn btn-lg btn-primary" href="<?= base_url('/') ?>">Go to homepage</a>
+            <h1><?= print_translation('error_500_heading') ?></h1>
+            <p class="pb-3"><?= htmlSC($message) ?></p>
+            <a class="btn btn-lg btn-primary" href="<?= base_href('/') ?>"><?= print_translation('error_home_button') ?></a>
         </section>
 
     </div>

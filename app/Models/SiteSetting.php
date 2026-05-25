@@ -111,6 +111,7 @@ class SiteSetting
             'site_description' => '',
             'site_favicon' => '',
             'admin_session_lifetime_hours' => '12',
+            'social_links' => '[]',
             'social_telegram' => '',
             'social_instagram' => '',
             'social_facebook' => '',

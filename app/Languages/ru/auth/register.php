@@ -18,11 +18,13 @@ return [
     'auth_validation_login_required' => 'Введите логин.',
     'auth_validation_login_format' => 'Логин должен содержать минимум 3 символа и состоять из латинских букв, цифр и дефисов.',
     'auth_validation_login_exists' => 'Пользователь с таким логином уже существует.',
+    'auth_validation_login_reserved' => 'Этот логин зарезервирован. Выберите другой.',
     'auth_validation_email_required' => 'Введите email.',
     'auth_validation_email_invalid' => 'Введите корректный email.',
     'auth_validation_email_exists' => 'Пользователь с таким email уже существует.',
     'auth_validation_password_required' => 'Введите пароль.',
     'auth_validation_password_length' => 'Пароль должен содержать минимум 8 символов.',
+    'auth_validation_password_strength' => 'Пароль должен содержать минимум одну заглавную букву и одну цифру.',
     'auth_validation_password_confirmation_required' => 'Подтвердите пароль.',
     'auth_validation_password_confirmation_match' => 'Пароли не совпадают.',
 ];

@@ -70,6 +70,8 @@ $app->router->get('/admin/categories/edit/(?P<id>\d+)/?', [AdminController::clas
 $app->router->post('/admin/categories/edit/(?P<id>\d+)/?', [AdminController::class, 'categoryForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/categories/delete', [AdminController::class, 'categoryDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/users', [AdminController::class, 'users'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/users/create', [AdminController::class, 'userForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/users/create', [AdminController::class, 'userForm'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/users/delete', [AdminController::class, 'userDelete'])->middleware(['auth', 'admin']);

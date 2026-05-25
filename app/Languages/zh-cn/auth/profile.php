@@ -17,7 +17,7 @@ return [
     'auth_profile_edit_subtitle' => '如有需要，可更新姓名、登录名、邮箱和密码。',
     'auth_profile_new_password' => '新密码',
     'auth_profile_password_confirmation' => '确认新密码',
-    'auth_profile_password_hint' => '如果不想修改密码，请留空。',
+    'auth_profile_password_hint' => '如果不想修改密码，请留空。新密码至少 8 个字符，包含一个大写字母和一个数字。',
     'auth_profile_save' => '保存更改',
     'auth_profile_updated' => '个人资料已成功更新。',
     'auth_profile_avatar_required' => '请选择要上传的图片。',
@@ -32,4 +32,5 @@ return [
     'auth_validation_login_required' => '请输入登录名。',
     'auth_validation_login_format' => '登录名至少 3 个字符，只能包含拉丁字母、数字和连字符。',
     'auth_validation_login_exists' => '该登录名已被使用。',
+    'auth_validation_login_reserved' => '该登录名为保留名称，请选择其他登录名。',
 ];

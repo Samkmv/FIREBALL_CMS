@@ -7,28 +7,7 @@ $categoryUrl = static fn(?string $category = null): string => $category === null
 $shareUrl = base_href('/posts/' . $post['slug']);
 $shareTitle = rawurlencode($post['title']);
 $shareLink = rawurlencode($shareUrl);
-$socialLinks = array_values(array_filter([
-    [
-        'href' => site_setting('social_instagram', ''),
-        'icon' => 'ci-instagram',
-        'label' => 'Instagram',
-    ],
-    [
-        'href' => site_setting('social_facebook', ''),
-        'icon' => 'ci-facebook',
-        'label' => 'Facebook',
-    ],
-    [
-        'href' => site_setting('social_telegram', ''),
-        'icon' => 'ci-telegram',
-        'label' => 'Telegram',
-    ],
-    [
-        'href' => site_setting('social_youtube', ''),
-        'icon' => 'ci-youtube',
-        'label' => 'YouTube',
-    ],
-], static fn(array $link): bool => trim((string)($link['href'] ?? '')) !== ''));
+$socialLinks = site_social_links();
 $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '');
 ?>
 
@@ -178,8 +157,7 @@ $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '
                                 <a
                                     class="btn btn-icon fs-base btn-outline-secondary border-0"
                                     href="<?= htmlSC($link['href']) ?>"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    <?= !empty($link['external']) ? 'target="_blank" rel="noopener noreferrer"' : '' ?>
                                     data-bs-toggle="tooltip"
                                     data-bs-template="<div class=&quot;tooltip fs-xs mb-n2&quot; role=&quot;tooltip&quot;><div class=&quot;tooltip-inner bg-transparent text-body p-0&quot;></div></div>"
                                     aria-label="<?= htmlSC($link['label']) ?>"
@@ -197,7 +175,7 @@ $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '
 
     <?php if (!empty($popular_posts)): ?>
         <div class="pt-5 pb-5 mb-1 mb-sm-2 mb-md-3 mb-lg-4 mb-xl-5">
-            <h2 class="h3 text-center pb-2 pb-sm-3">Популярные</h2>
+            <h2 class="h3 text-center pb-2 pb-sm-3"><?= print_translation('posts_show_popular') ?></h2>
             <div class="swiper" data-swiper="{
           &quot;slidesPerView&quot;: 1,
           &quot;spaceBetween&quot;: 24,

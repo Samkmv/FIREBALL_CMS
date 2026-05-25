@@ -1,10 +1,11 @@
 <?php
-$formAction = base_href('/admin/users/edit/' . (int)$user_item['id']);
+$isEdit = (bool)($is_edit ?? true);
+$formAction = $isEdit ? base_href('/admin/users/edit/' . (int)$user_item['id']) : base_href('/admin/users/create');
 $currentAvatar = $user_item['avatar'] ?? '';
 $isProtectedCreator = ($user_item['role'] ?? 'user') === 'creator';
-$isCurrentUser = (int)$user_item['id'] === (int)(get_user()['id'] ?? 0);
+$isCurrentUser = $isEdit && (int)$user_item['id'] === (int)(get_user()['id'] ?? 0);
 $isLastAdmin = in_array(($user_item['role'] ?? 'user'), ['creator', 'admin'], true) && (int)($user_item['other_admins_count'] ?? 0) === 0;
-$canDeleteUser = !$isProtectedCreator && !$isCurrentUser && !$isLastAdmin;
+$canDeleteUser = $isEdit && !$isProtectedCreator && !$isCurrentUser && !$isLastAdmin;
 $deleteBlockedMessage = $isCurrentUser
     ? return_translation('admin_users_delete_self_blocked')
     : ($isProtectedCreator
@@ -15,8 +16,8 @@ $deleteBlockedMessage = $isCurrentUser
 <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/users') ?>"><i class="ci-arrow-left"></i><?= print_translation('admin_btn_back') ?></a>
 <?php $adminPageActions = ob_get_clean(); ?>
 <?= view()->renderPartial('admin/shell_open', [
-    'title' => return_translation('admin_user_edit_heading'),
-    'subtitle' => return_translation('admin_user_form_subtitle'),
+    'title' => return_translation($isEdit ? 'admin_user_edit_heading' : 'admin_user_create_heading'),
+    'subtitle' => return_translation($isEdit ? 'admin_user_form_subtitle' : 'admin_user_create_subtitle'),
     'actions' => $adminPageActions,
 ]) ?>
 
@@ -74,13 +75,13 @@ $deleteBlockedMessage = $isCurrentUser
                 </div>
                 <div class="col-md-6">
                     <label class="form-label"><?= print_translation('admin_user_password') ?></label>
-                    <input class="form-control <?= get_validation_class('password') ?>" type="password" name="password" autocomplete="new-password" <?= $isProtectedCreator ? 'disabled' : '' ?>>
-                    <div class="form-text"><?= print_translation('admin_user_password_hint') ?></div>
+                    <input class="form-control <?= get_validation_class('password') ?>" type="password" name="password" autocomplete="new-password" <?= $isProtectedCreator ? 'disabled' : '' ?> <?= !$isEdit ? 'required' : '' ?>>
+                    <div class="form-text"><?= print_translation($isEdit ? 'admin_user_password_hint' : 'admin_user_password_create_hint') ?></div>
                     <?= get_errors('password') ?>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label"><?= print_translation('admin_user_password_confirmation') ?></label>
-                    <input class="form-control <?= get_validation_class('password_confirmation') ?>" type="password" name="password_confirmation" autocomplete="new-password" <?= $isProtectedCreator ? 'disabled' : '' ?>>
+                    <input class="form-control <?= get_validation_class('password_confirmation') ?>" type="password" name="password_confirmation" autocomplete="new-password" <?= $isProtectedCreator ? 'disabled' : '' ?> <?= !$isEdit ? 'required' : '' ?>>
                     <?= get_errors('password_confirmation') ?>
                 </div>
             </div>
@@ -107,7 +108,7 @@ $deleteBlockedMessage = $isCurrentUser
                             <i class="ci-trash"></i><?= print_translation('admin_btn_delete') ?>
                         </button>
                     </form>
-                <?php else: ?>
+                <?php elseif ($isEdit): ?>
                     <span class="small text-body-secondary"><?= htmlSC($deleteBlockedMessage) ?></span>
                 <?php endif; ?>
             </div>

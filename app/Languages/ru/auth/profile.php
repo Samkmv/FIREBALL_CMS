@@ -17,7 +17,7 @@ return [
     'auth_profile_edit_subtitle' => 'Измените имя, логин, email и при необходимости пароль.',
     'auth_profile_new_password' => 'Новый пароль',
     'auth_profile_password_confirmation' => 'Подтверждение нового пароля',
-    'auth_profile_password_hint' => 'Оставьте поля пароля пустыми, если менять пароль не нужно.',
+    'auth_profile_password_hint' => 'Оставьте поля пустыми, если менять пароль не нужно. Новый пароль: минимум 8 символов, одна заглавная буква и одна цифра.',
     'auth_profile_save' => 'Сохранить изменения',
     'auth_profile_updated' => 'Профиль успешно обновлен.',
     'auth_profile_avatar_required' => 'Выберите изображение для загрузки.',
@@ -32,4 +32,5 @@ return [
     'auth_validation_login_required' => 'Введите логин.',
     'auth_validation_login_format' => 'Логин должен содержать минимум 3 символа и состоять из латинских букв, цифр и дефисов.',
     'auth_validation_login_exists' => 'Пользователь с таким логином уже существует.',
+    'auth_validation_login_reserved' => 'Этот логин зарезервирован. Выберите другой.',
 ];

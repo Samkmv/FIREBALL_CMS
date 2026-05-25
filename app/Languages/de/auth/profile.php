@@ -17,7 +17,7 @@ return [
     'auth_profile_edit_subtitle' => 'Aktualisieren Sie bei Bedarf Ihren Namen, Login, Ihre E-Mail und Ihr Passwort.',
     'auth_profile_new_password' => 'Neues Passwort',
     'auth_profile_password_confirmation' => 'Neues Passwort bestaetigen',
-    'auth_profile_password_hint' => 'Lassen Sie die Passwortfelder leer, wenn Sie es nicht aendern moechten.',
+    'auth_profile_password_hint' => 'Lassen Sie die Passwortfelder leer, wenn Sie es nicht aendern moechten. Neues Passwort: mindestens 8 Zeichen, ein Grossbuchstabe und eine Zahl.',
     'auth_profile_save' => 'Aenderungen speichern',
     'auth_profile_updated' => 'Profil erfolgreich aktualisiert.',
     'auth_profile_avatar_required' => 'Waehlen Sie ein Bild zum Hochladen aus.',
@@ -32,4 +32,5 @@ return [
     'auth_validation_login_required' => 'Geben Sie Ihren Login ein.',
     'auth_validation_login_format' => 'Der Login muss mindestens 3 Zeichen lang sein und darf nur lateinische Buchstaben, Zahlen und Bindestriche enthalten.',
     'auth_validation_login_exists' => 'Ein Benutzer mit diesem Login existiert bereits.',
+    'auth_validation_login_reserved' => 'Dieser Login ist reserviert. Waehlen Sie einen anderen.',
 ];

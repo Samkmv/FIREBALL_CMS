@@ -16,7 +16,7 @@
 
                     <div class="mb-3">
                         <label class="form-label" for="register-login"><?= print_translation('auth_register_login_field') ?></label>
-                        <input id="register-login" type="text" name="login" value="<?= old('login') ?>" class="form-control <?= get_validation_class('login') ?>" placeholder="admin">
+                        <input id="register-login" type="text" name="login" value="<?= old('login') ?>" class="form-control <?= get_validation_class('login') ?>" placeholder="user-login">
                         <?= get_errors('login') ?>
                     </div>
 
@@ -29,6 +29,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="register-password"><?= print_translation('auth_register_password') ?></label>
                         <input id="register-password" type="password" name="password" class="form-control <?= get_validation_class('password') ?>" placeholder="••••••••">
+                        <div class="form-text"><?= print_translation('auth_validation_password_strength') ?></div>
                         <?= get_errors('password') ?>
                     </div>
 

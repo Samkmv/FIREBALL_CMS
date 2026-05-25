@@ -118,6 +118,12 @@ function view($view = '', $data = [], $layout = ''): string|\FBL\View
 
 function abort($error = '', $code = 404)
 {
+    if (!is_array(app()->get('lang'))) {
+        $baseLang = array_value_search(LANGS, 'base', 1);
+        app()->set('lang', LANGS[$baseLang] ?? reset(LANGS));
+        \FBL\Language::load(null);
+    }
+
     response()->setResponseCode($code);
     echo view("errors/{$code}", ['error' => $error], false);
     die;
@@ -423,6 +429,88 @@ function site_setting(string $key, string $default = ''): string
     $value = (string)$settings[$key];
 
     return $value !== '' ? $value : $default;
+}
+
+function site_social_network_options(): array
+{
+    return [
+        'telegram' => ['label' => 'Telegram', 'icon' => 'ci-telegram', 'placeholder' => 'https://t.me/your_channel'],
+        'instagram' => ['label' => 'Instagram', 'icon' => 'ci-instagram', 'placeholder' => 'https://instagram.com/your_profile'],
+        'facebook' => ['label' => 'Facebook', 'icon' => 'ci-facebook', 'placeholder' => 'https://facebook.com/your_page'],
+        'youtube' => ['label' => 'YouTube', 'icon' => 'ci-youtube', 'placeholder' => 'https://youtube.com/@your_channel'],
+        'x' => ['label' => 'X', 'icon' => 'ci-twitter', 'placeholder' => 'https://x.com/your_profile'],
+        'tiktok' => ['label' => 'TikTok', 'icon' => 'ci-music', 'placeholder' => 'https://www.tiktok.com/@your_profile'],
+        'vk' => ['label' => 'VK', 'icon' => 'ci-users', 'placeholder' => 'https://vk.com/your_page'],
+        'linkedin' => ['label' => 'LinkedIn', 'icon' => 'ci-linkedin', 'placeholder' => 'https://linkedin.com/company/your_company'],
+        'whatsapp' => ['label' => 'WhatsApp', 'icon' => 'ci-message-circle', 'placeholder' => 'https://wa.me/15555555555'],
+        'phone' => ['label' => return_translation('admin_post_builder_social_phone'), 'icon' => 'ci-phone', 'placeholder' => '+15555555555'],
+        'website' => ['label' => return_translation('admin_post_builder_social_external_link'), 'icon' => 'ci-globe', 'placeholder' => 'https://example.com'],
+    ];
+}
+
+function site_social_links(): array
+{
+    $options = site_social_network_options();
+    $json = site_setting('social_links', '');
+    $items = [];
+
+    if ($json !== '') {
+        $decoded = json_decode($json, true);
+        if (is_array($decoded)) {
+            foreach ($decoded as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $network = (string)($item['network'] ?? '');
+                $url = trim((string)($item['url'] ?? ''));
+                if ($url === '' || !isset($options[$network])) {
+                    continue;
+                }
+
+                $items[] = [
+                    'network' => $network,
+                    'href' => $network === 'phone' ? normalize_phone_href($url) : $url,
+                    'icon' => $options[$network]['icon'],
+                    'label' => $options[$network]['label'],
+                    'external' => $network !== 'phone',
+                ];
+            }
+        }
+    }
+
+    if ($items) {
+        return $items;
+    }
+
+    foreach (['telegram', 'instagram', 'facebook', 'youtube'] as $network) {
+        $href = site_setting('social_' . $network, '');
+        if ($href === '') {
+            continue;
+        }
+
+        $items[] = [
+            'network' => $network,
+            'href' => $href,
+            'icon' => $options[$network]['icon'],
+            'label' => $options[$network]['label'],
+            'external' => true,
+        ];
+    }
+
+    return $items;
+}
+
+function normalize_phone_href(string $phone): string
+{
+    $phone = trim($phone);
+    if (str_starts_with(strtolower($phone), 'tel:')) {
+        return $phone;
+    }
+
+    $normalized = preg_replace('/[^\d+]/', '', $phone) ?: '';
+
+    return $normalized !== '' ? 'tel:' . $normalized : $phone;
 }
 
 function print_translation($key): void

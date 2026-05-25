@@ -4,10 +4,24 @@ $siteTitle = $formData['site_title'] ?? ($settings['site_title'] ?? SITE_NAME);
 $siteDescription = $formData['site_description'] ?? ($settings['site_description'] ?? '');
 $siteFavicon = $formData['site_favicon'] ?? ($settings['site_favicon'] ?? '');
 $adminSessionLifetimeHours = $formData['admin_session_lifetime_hours'] ?? ($settings['admin_session_lifetime_hours'] ?? '12');
-$socialTelegram = $formData['social_telegram'] ?? ($settings['social_telegram'] ?? '');
-$socialInstagram = $formData['social_instagram'] ?? ($settings['social_instagram'] ?? '');
-$socialFacebook = $formData['social_facebook'] ?? ($settings['social_facebook'] ?? '');
-$socialYoutube = $formData['social_youtube'] ?? ($settings['social_youtube'] ?? '');
+$socialNetworkOptions = site_social_network_options();
+$storedSocialLinks = $formData['social_links'] ?? ($settings['social_links'] ?? '');
+$socialLinks = [];
+if (is_string($storedSocialLinks) && trim($storedSocialLinks) !== '') {
+    $decodedSocialLinks = json_decode($storedSocialLinks, true);
+    $socialLinks = is_array($decodedSocialLinks) ? $decodedSocialLinks : [];
+}
+if (empty($socialLinks)) {
+    foreach (['telegram', 'instagram', 'facebook', 'youtube'] as $legacyNetwork) {
+        $legacyUrl = $formData['social_' . $legacyNetwork] ?? ($settings['social_' . $legacyNetwork] ?? '');
+        if (trim((string)$legacyUrl) !== '') {
+            $socialLinks[] = ['network' => $legacyNetwork, 'url' => $legacyUrl];
+        }
+    }
+}
+if (empty($socialLinks)) {
+    $socialLinks[] = ['network' => 'telegram', 'url' => ''];
+}
 $contactsPageHeading = $formData['contacts_page_heading'] ?? ($settings['contacts_page_heading'] ?? '');
 $contactsPageSubheading = $formData['contacts_page_subheading'] ?? ($settings['contacts_page_subheading'] ?? '');
 $contactsPageImage = $formData['contacts_page_image'] ?? ($settings['contacts_page_image'] ?? '');
@@ -92,28 +106,42 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
                         <h2 class="h5 mb-1"><?= print_translation('admin_settings_social_heading') ?></h2>
                         <p class="text-body-secondary mb-0"><?= print_translation('admin_settings_social_subtitle') ?></p>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label"><?= print_translation('admin_settings_social_telegram') ?></label>
-                            <input class="form-control <?= get_validation_class('social_telegram') ?>" type="url" name="social_telegram" value="<?= htmlSC($socialTelegram) ?>" placeholder="https://t.me/your_channel">
-                            <?= get_errors('social_telegram') ?>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><?= print_translation('admin_settings_social_instagram') ?></label>
-                            <input class="form-control <?= get_validation_class('social_instagram') ?>" type="url" name="social_instagram" value="<?= htmlSC($socialInstagram) ?>" placeholder="https://instagram.com/your_profile">
-                            <?= get_errors('social_instagram') ?>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><?= print_translation('admin_settings_social_facebook') ?></label>
-                            <input class="form-control <?= get_validation_class('social_facebook') ?>" type="url" name="social_facebook" value="<?= htmlSC($socialFacebook) ?>" placeholder="https://facebook.com/your_page">
-                            <?= get_errors('social_facebook') ?>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><?= print_translation('admin_settings_social_youtube') ?></label>
-                            <input class="form-control <?= get_validation_class('social_youtube') ?>" type="url" name="social_youtube" value="<?= htmlSC($socialYoutube) ?>" placeholder="https://youtube.com/@your_channel">
-                            <?= get_errors('social_youtube') ?>
-                        </div>
+                    <div class="d-grid gap-3" data-social-settings-list>
+                        <?php foreach ($socialLinks as $link): ?>
+                            <?php
+                            $selectedNetwork = (string)($link['network'] ?? 'telegram');
+                            if (!isset($socialNetworkOptions[$selectedNetwork])) {
+                                $selectedNetwork = 'telegram';
+                            }
+                            $selectedUrl = (string)($link['url'] ?? '');
+                            ?>
+                            <div class="row g-2 align-items-end" data-social-settings-row>
+                                <div class="col-md-4">
+                                    <label class="form-label"><?= print_translation('admin_settings_social_network') ?></label>
+                                    <select class="form-select" name="social_networks[]" data-social-settings-network>
+                                        <?php foreach ($socialNetworkOptions as $network => $option): ?>
+                                            <option value="<?= htmlSC($network) ?>" data-placeholder="<?= htmlSC((string)$option['placeholder']) ?>" <?= $selectedNetwork === $network ? 'selected' : '' ?>>
+                                                <?= htmlSC((string)$option['label']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-7">
+                                    <label class="form-label"><?= print_translation('admin_settings_social_url') ?></label>
+                                    <input class="form-control <?= get_validation_class('social_links') ?>" type="text" name="social_urls[]" value="<?= htmlSC($selectedUrl) ?>" placeholder="<?= htmlSC((string)$socialNetworkOptions[$selectedNetwork]['placeholder']) ?>" data-social-settings-url>
+                                </div>
+                                <div class="col-md-1 d-grid">
+                                    <button class="btn btn-outline-danger btn-icon" type="button" data-social-settings-remove aria-label="<?= htmlSC(return_translation('admin_settings_social_remove')) ?>">
+                                        <i class="ci-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
+                    <?= get_errors('social_links') ?>
+                    <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2 mt-3" type="button" data-social-settings-add>
+                        <i class="ci-plus"></i><?= print_translation('admin_settings_social_add') ?>
+                    </button>
                 </div>
             </div>
             <div class="col-12 pt-2">
@@ -278,4 +306,75 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
             </div>
         </div>
     </form>
+    <template id="socialSettingsRowTemplate">
+        <div class="row g-2 align-items-end" data-social-settings-row>
+            <div class="col-md-4">
+                <label class="form-label"><?= print_translation('admin_settings_social_network') ?></label>
+                <select class="form-select" name="social_networks[]" data-social-settings-network>
+                    <?php foreach ($socialNetworkOptions as $network => $option): ?>
+                        <option value="<?= htmlSC($network) ?>" data-placeholder="<?= htmlSC((string)$option['placeholder']) ?>">
+                            <?= htmlSC((string)$option['label']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-7">
+                <label class="form-label"><?= print_translation('admin_settings_social_url') ?></label>
+                <input class="form-control" type="text" name="social_urls[]" value="" placeholder="<?= htmlSC((string)$socialNetworkOptions['telegram']['placeholder']) ?>" data-social-settings-url>
+            </div>
+            <div class="col-md-1 d-grid">
+                <button class="btn btn-outline-danger btn-icon" type="button" data-social-settings-remove aria-label="<?= htmlSC(return_translation('admin_settings_social_remove')) ?>">
+                    <i class="ci-trash"></i>
+                </button>
+            </div>
+        </div>
+    </template>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const list = document.querySelector('[data-social-settings-list]');
+            const template = document.getElementById('socialSettingsRowTemplate');
+            const addButton = document.querySelector('[data-social-settings-add]');
+
+            function updatePlaceholder(row) {
+                const select = row.querySelector('[data-social-settings-network]');
+                const input = row.querySelector('[data-social-settings-url]');
+                const option = select ? select.options[select.selectedIndex] : null;
+                if (input && option) {
+                    input.placeholder = option.getAttribute('data-placeholder') || '';
+                }
+            }
+
+            if (list) {
+                list.querySelectorAll('[data-social-settings-row]').forEach(updatePlaceholder);
+                list.addEventListener('change', function (event) {
+                    const row = event.target.closest('[data-social-settings-row]');
+                    if (row && event.target.matches('[data-social-settings-network]')) {
+                        updatePlaceholder(row);
+                    }
+                });
+                list.addEventListener('click', function (event) {
+                    const removeButton = event.target.closest('[data-social-settings-remove]');
+                    if (!removeButton) {
+                        return;
+                    }
+                    const rows = list.querySelectorAll('[data-social-settings-row]');
+                    const row = removeButton.closest('[data-social-settings-row]');
+                    if (rows.length > 1 && row) {
+                        row.remove();
+                    }
+                });
+            }
+
+            if (addButton && list && template) {
+                addButton.addEventListener('click', function () {
+                    const fragment = template.content.cloneNode(true);
+                    const row = fragment.querySelector('[data-social-settings-row]');
+                    list.appendChild(fragment);
+                    if (row) {
+                        updatePlaceholder(row);
+                    }
+                });
+            }
+        });
+    </script>
 <?= view()->renderPartial('admin/shell_close') ?>

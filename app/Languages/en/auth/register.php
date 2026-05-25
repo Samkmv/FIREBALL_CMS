@@ -18,11 +18,13 @@ return [
     'auth_validation_login_required' => 'Enter your login.',
     'auth_validation_login_format' => 'Login must be at least 3 characters long and contain only Latin letters, numbers and hyphens.',
     'auth_validation_login_exists' => 'A user with this login already exists.',
+    'auth_validation_login_reserved' => 'This login is reserved. Choose another one.',
     'auth_validation_email_required' => 'Enter your email.',
     'auth_validation_email_invalid' => 'Enter a valid email.',
     'auth_validation_email_exists' => 'A user with this email already exists.',
     'auth_validation_password_required' => 'Enter your password.',
     'auth_validation_password_length' => 'Password must be at least 8 characters long.',
+    'auth_validation_password_strength' => 'Password must include at least one uppercase letter and one number.',
     'auth_validation_password_confirmation_required' => 'Confirm your password.',
     'auth_validation_password_confirmation_match' => 'Passwords do not match.',
 ];
