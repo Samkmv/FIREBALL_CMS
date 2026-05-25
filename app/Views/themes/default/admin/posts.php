@@ -90,19 +90,17 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             <td class="text-nowrap"><?= date('d.m.Y H:i', strtotime($post['published_at'])) ?></td>
                             <td class="text-nowrap">
                                 <div class="d-inline-flex flex-nowrap align-items-center gap-2">
-                                    <?php if ((int)$post['is_published'] === 1): ?>
-                                        <a
-                                            class="btn btn-sm btn-outline-primary btn-icon rounded-circle"
-                                            href="<?= base_href('/posts/' . $post['slug']) ?>"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            aria-label="<?= htmlSC(return_translation('admin_btn_view')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_btn_view')) ?>"
-                                            data-bs-toggle="tooltip"
-                                        >
-                                            <i class="ci-eye"></i>
-                                        </a>
-                                    <?php endif; ?>
+                                    <a
+                                        class="btn btn-sm btn-outline-primary btn-icon rounded-circle"
+                                        href="<?= (int)$post['is_published'] === 1 ? base_href('/posts/' . $post['slug']) : base_href('/admin/posts/preview/' . (int)$post['id']) ?>"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        aria-label="<?= htmlSC(return_translation('admin_btn_view')) ?>"
+                                        title="<?= htmlSC(return_translation('admin_btn_view')) ?>"
+                                        data-bs-toggle="tooltip"
+                                    >
+                                        <i class="ci-eye"></i>
+                                    </a>
                                     <a
                                         class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
                                         href="<?= base_href('/admin/posts/edit/' . (int)$post['id']) ?>"

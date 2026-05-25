@@ -100,6 +100,20 @@
             box-shadow: inset 0 0 0 1px var(--fm-row-active-border);
         }
 
+        [data-file-manager-row][draggable="true"] {
+            cursor: grab;
+        }
+
+        [data-file-manager-row].is-dragging {
+            opacity: .55;
+        }
+
+        [data-file-manager-row].is-drop-target,
+        [data-fm-drop-dir].is-drop-target {
+            background: var(--fm-row-active) !important;
+            box-shadow: inset 0 0 0 2px rgba(31, 92, 79, .28);
+        }
+
         [data-file-manager-table] td,
         [data-file-manager-table] th {
             vertical-align: middle;
@@ -164,7 +178,12 @@
         }
 
         .fm-dropdown-floating {
+            position: fixed !important;
+            inset: auto !important;
+            transform: none !important;
+            margin: 0 !important;
             z-index: 2000 !important;
+            box-shadow: 0 18px 48px rgba(17, 24, 39, .18);
         }
 
         [data-file-manager-selection-badge] {
@@ -187,6 +206,14 @@
 
         [data-file-manager-feedback-wrap]:not(:empty) {
             padding-bottom: 0 !important;
+        }
+
+        [data-fm-pagination] {
+            max-width: 100%;
+        }
+
+        [data-fm-pagination] .pagination {
+            margin-bottom: 0;
         }
 
         [data-file-manager-sidebar] .list-group-item {
@@ -329,9 +356,36 @@
                 font-size: .8rem;
             }
 
+            [data-file-manager-page] .dropdown-menu {
+                max-width: calc(100vw - 1.5rem);
+            }
+
+            [data-file-manager-page] .dropdown-item {
+                white-space: normal;
+            }
+
+            [data-file-manager-toolbar-actions] .dropdown-menu.show {
+                width: calc(100vw - 2rem);
+                max-width: calc(100vw - 2rem);
+            }
+
+            .fm-dropdown-floating {
+                width: min(14.5rem, calc(100vw - 1.5rem)) !important;
+                max-width: calc(100vw - 1.5rem) !important;
+                min-width: 0 !important;
+                max-height: calc(100dvh - 1.5rem);
+                overflow-y: auto;
+                border-radius: 1.1rem !important;
+            }
+
             [data-file-manager-actions-menu] > button {
                 min-width: 2.5rem;
                 padding-inline: .7rem;
+            }
+
+            [data-file-select] {
+                min-height: 2.5rem;
+                white-space: nowrap;
             }
 
             [data-file-manager-name-cell] img,
@@ -351,6 +405,23 @@
             [data-file-manager-feedback-wrap] {
                 padding-inline: 1rem !important;
                 padding-top: 1rem !important;
+            }
+
+            [data-fm-pagination] {
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: .15rem;
+            }
+
+            [data-fm-pagination] .pagination {
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+            }
+
+            [data-fm-pagination] .page-link {
+                min-width: 2.5rem;
+                text-align: center;
             }
         }
     </style>

@@ -191,6 +191,7 @@ class User
                     u.email,
                     u.avatar,
                     u.role,
+                    u.last_seen_at,
                     u.created_at,
                     r.name AS role_name,
                     CASE
@@ -343,6 +344,11 @@ class User
              LIMIT {$offset}, {$perPage}",
             $params
         )->get() ?: [];
+
+        foreach ($items as &$item) {
+            $item['is_online'] = $this->isOnline($item['last_seen_at'] ?? null) ? 1 : 0;
+        }
+        unset($item);
 
         return [
             'items' => $items,

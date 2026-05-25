@@ -6,6 +6,7 @@
     const hlsRetryDelayMs = 2000;
     const hlsPlayRetryDurationMs = 12000;
     const hlsPlayRetryDelayMs = 1000;
+    const canViewVideoStatus = window.canViewVideoStatus === true;
     let hlsScriptPromise = null;
     const hlsLocale = ((document.documentElement.getAttribute('lang') || 'en').toLowerCase().startsWith('ru')) ? 'ru' : 'en';
     const hlsMessages = {
@@ -302,6 +303,10 @@
     };
 
     const renderHlsMessage = function (element, message, type) {
+        if (!canViewVideoStatus) {
+            return;
+        }
+
         const container = element.closest('[data-plyr-player-wrap]') || element.parentElement;
         if (!container) {
             console.error(message);
@@ -312,7 +317,11 @@
         if (!messageNode) {
             messageNode = document.createElement('div');
             messageNode.dataset.plyrHlsMessage = 'true';
-            messageNode.className = 'alert mt-3';
+            messageNode.className = 'alert mt-3 mb-0';
+            messageNode.style.height = '5.5rem';
+            messageNode.style.overflow = 'hidden';
+            messageNode.style.display = 'flex';
+            messageNode.style.alignItems = 'center';
             container.appendChild(messageNode);
         }
 
@@ -323,7 +332,8 @@
             error: 'alert-danger',
         };
 
-        messageNode.className = 'alert mt-3 ' + (classMap[type] || classMap.info);
+        messageNode.className = 'alert mt-3 mb-0 ' + (classMap[type] || classMap.info);
+        messageNode.style.visibility = 'visible';
         messageNode.textContent = message;
     };
 
@@ -344,10 +354,16 @@
     };
 
     const clearHlsMessage = function (element) {
+        if (!canViewVideoStatus) {
+            return;
+        }
+
         const container = element.closest('[data-plyr-player-wrap]') || element.parentElement;
         const messageNode = container ? container.querySelector('[data-plyr-hls-message]') : null;
         if (messageNode) {
-            messageNode.remove();
+            messageNode.className = 'alert mt-3 mb-0 alert-secondary';
+            messageNode.style.visibility = 'hidden';
+            messageNode.textContent = '';
         }
     };
 

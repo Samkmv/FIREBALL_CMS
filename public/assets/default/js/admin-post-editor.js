@@ -229,6 +229,7 @@ function initPostEditor() {
         pendingRemoveBlockId: null,
         settingsBlockId: null,
         draggedBlockId: null,
+        pointerDrag: null,
         picker: null,
         selection: null,
         deleteModalInstance: null
@@ -351,6 +352,7 @@ function initPostEditor() {
 
     function sync() {
         textarea.value = JSON.stringify(state, null, 2);
+        textarea.dispatchEvent(new CustomEvent('fireball:post-editor-sync', { bubbles: true }));
     }
 
     function ensureAppStructure() {
@@ -752,11 +754,7 @@ function initPostEditor() {
                 refreshNewsletterBlockContent(blockId);
 
                 if (fieldName === 'html') {
-                    const blockElement = blockField.closest('[data-block-id]');
-                    const preview = blockElement ? blockElement.querySelector('[data-block-html-preview]') : null;
-                    if (preview) {
-                        preview.innerHTML = buildAdaptivePreviewHtml(blockField.value);
-                    }
+                    refreshHtmlBlockPreview(blockField);
                 }
                 return;
             }
@@ -876,13 +874,22 @@ function initPostEditor() {
             }
         });
 
+        app.addEventListener('pointerdown', function (event) {
+            const handle = event.target.closest('[data-block-drag-handle]');
+            if (!handle) {
+                return;
+            }
+
+            startPointerBlockDrag(event, handle);
+        });
+
         app.addEventListener('dragstart', function (event) {
             const handle = event.target.closest('[data-block-drag-handle]');
             if (!handle) {
                 return;
             }
 
-            const blockElement = handle.closest('[data-block-id]');
+            const blockElement = handle.closest('.fb-post-block[data-block-id]');
             ui.draggedBlockId = blockElement ? String(blockElement.dataset.blockId || '') : null;
             if (event.dataTransfer && ui.draggedBlockId) {
                 event.dataTransfer.effectAllowed = 'move';
@@ -891,34 +898,33 @@ function initPostEditor() {
         });
 
         app.addEventListener('dragover', function (event) {
-            const blockElement = event.target.closest('[data-block-id]');
+            const blockElement = event.target.closest('.fb-post-block[data-block-id]');
             if (!blockElement || !ui.draggedBlockId) {
                 return;
             }
 
             event.preventDefault();
-            app.querySelectorAll('[data-block-id]').forEach(function (item) {
-                item.classList.remove('is-drop-target');
-            });
-            blockElement.classList.add('is-drop-target');
+            const rect = blockElement.getBoundingClientRect();
+            const dropPosition = event.clientY > rect.top + (rect.height / 2) ? 'after' : 'before';
+            applyBlockDropTarget({ blockElement: blockElement, position: dropPosition });
         });
 
         app.addEventListener('drop', function (event) {
-            const blockElement = event.target.closest('[data-block-id]');
+            const blockElement = event.target.closest('.fb-post-block[data-block-id]');
             if (!blockElement || !ui.draggedBlockId) {
                 return;
             }
 
             event.preventDefault();
-            reorderBlocks(ui.draggedBlockId, String(blockElement.dataset.blockId || ''));
+            const rect = blockElement.getBoundingClientRect();
+            const dropPosition = event.clientY > rect.top + (rect.height / 2) ? 'after' : 'before';
+            reorderBlocks(ui.draggedBlockId, String(blockElement.dataset.blockId || ''), dropPosition);
             ui.draggedBlockId = null;
         });
 
         app.addEventListener('dragend', function () {
             ui.draggedBlockId = null;
-            app.querySelectorAll('[data-block-id]').forEach(function (item) {
-                item.classList.remove('is-drop-target');
-            });
+            cleanupBlockDragState();
         });
 
         document.addEventListener('selectionchange', function () {
@@ -1212,6 +1218,10 @@ function initPostEditor() {
         });
 
         if (textarea.form) {
+            textarea.form.addEventListener('fireball:post-editor-serialize', function () {
+                textarea.value = serializeBlocksToHtml();
+            });
+
             textarea.form.addEventListener('submit', function () {
                 textarea.value = serializeBlocksToHtml();
             });
@@ -1277,7 +1287,149 @@ function initPostEditor() {
         }
     }
 
-    function reorderBlocks(sourceId, targetId) {
+    function refreshHtmlBlockPreview(field) {
+        if (!field) {
+            return;
+        }
+
+        const blockElement = field.closest('.fb-post-block');
+        const preview = blockElement ? blockElement.querySelector('[data-block-html-preview]') : null;
+        if (preview) {
+            preview.innerHTML = buildAdaptivePreviewHtml(field.value);
+        }
+    }
+
+    function cleanupBlockDropTargets() {
+        app.querySelectorAll('.fb-post-block[data-block-id]').forEach(function (item) {
+            item.classList.remove('is-drop-target', 'is-drop-before', 'is-drop-after');
+        });
+    }
+
+    function cleanupBlockDragState() {
+        cleanupBlockDropTargets();
+        app.querySelectorAll('.fb-post-block.is-dragging').forEach(function (item) {
+            item.classList.remove('is-dragging');
+        });
+        document.body.classList.remove('fb-post-editor-is-dragging');
+    }
+
+    function applyBlockDropTarget(candidate) {
+        cleanupBlockDropTargets();
+        if (!candidate || !candidate.blockElement) {
+            return;
+        }
+
+        candidate.blockElement.classList.add('is-drop-target', candidate.position === 'after' ? 'is-drop-after' : 'is-drop-before');
+    }
+
+    function getBlockDropCandidate(clientX, clientY) {
+        const element = document.elementFromPoint(clientX, clientY);
+        const blockElement = element ? element.closest('.fb-post-block[data-block-id]') : null;
+
+        if (!blockElement || !ui.draggedBlockId || String(blockElement.dataset.blockId || '') === ui.draggedBlockId) {
+            return null;
+        }
+
+        const rect = blockElement.getBoundingClientRect();
+        return {
+            blockElement: blockElement,
+            position: clientY > rect.top + (rect.height / 2) ? 'after' : 'before'
+        };
+    }
+
+    function startPointerBlockDrag(event, handle) {
+        if (event.button !== undefined && event.button !== 0) {
+            return;
+        }
+
+        const blockElement = handle.closest('.fb-post-block[data-block-id]');
+        if (!blockElement) {
+            return;
+        }
+
+        event.preventDefault();
+        closeAddMenu();
+
+        ui.draggedBlockId = String(blockElement.dataset.blockId || '');
+        ui.pointerDrag = {
+            pointerId: event.pointerId,
+            handle: handle,
+            sourceElement: blockElement,
+            targetId: null,
+            position: null
+        };
+
+        blockElement.classList.add('is-dragging');
+        document.body.classList.add('fb-post-editor-is-dragging');
+
+        if (handle.setPointerCapture && event.pointerId !== undefined) {
+            try {
+                handle.setPointerCapture(event.pointerId);
+            } catch (error) {
+            }
+        }
+
+        document.addEventListener('pointermove', updatePointerBlockDrag, { passive: false });
+        document.addEventListener('pointerup', finishPointerBlockDrag);
+        document.addEventListener('pointercancel', cancelPointerBlockDrag);
+    }
+
+    function updatePointerBlockDrag(event) {
+        if (!ui.pointerDrag || (event.pointerId !== undefined && event.pointerId !== ui.pointerDrag.pointerId)) {
+            return;
+        }
+
+        event.preventDefault();
+        const candidate = getBlockDropCandidate(event.clientX, event.clientY);
+        ui.pointerDrag.targetId = candidate && candidate.blockElement ? String(candidate.blockElement.dataset.blockId || '') : null;
+        ui.pointerDrag.position = candidate ? candidate.position : null;
+        applyBlockDropTarget(candidate);
+    }
+
+    function finishPointerBlockDrag(event) {
+        if (!ui.pointerDrag || (event.pointerId !== undefined && event.pointerId !== ui.pointerDrag.pointerId)) {
+            return;
+        }
+
+        event.preventDefault();
+        const targetId = ui.pointerDrag.targetId;
+        const position = ui.pointerDrag.position;
+        const sourceId = ui.draggedBlockId;
+        const handle = ui.pointerDrag.handle;
+
+        if (handle && handle.releasePointerCapture && event.pointerId !== undefined) {
+            try {
+                handle.releasePointerCapture(event.pointerId);
+            } catch (error) {
+            }
+        }
+
+        document.removeEventListener('pointermove', updatePointerBlockDrag);
+        document.removeEventListener('pointerup', finishPointerBlockDrag);
+        document.removeEventListener('pointercancel', cancelPointerBlockDrag);
+        ui.pointerDrag = null;
+        ui.draggedBlockId = null;
+        cleanupBlockDragState();
+
+        if (sourceId && targetId && position) {
+            reorderBlocks(sourceId, targetId, position);
+        }
+    }
+
+    function cancelPointerBlockDrag(event) {
+        if (!ui.pointerDrag || (event.pointerId !== undefined && event.pointerId !== ui.pointerDrag.pointerId)) {
+            return;
+        }
+
+        document.removeEventListener('pointermove', updatePointerBlockDrag);
+        document.removeEventListener('pointerup', finishPointerBlockDrag);
+        document.removeEventListener('pointercancel', cancelPointerBlockDrag);
+        ui.pointerDrag = null;
+        ui.draggedBlockId = null;
+        cleanupBlockDragState();
+    }
+
+    function reorderBlocks(sourceId, targetId, position) {
         const sourceIndex = findBlockIndex(sourceId);
         const targetIndex = findBlockIndex(targetId);
         if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) {
@@ -1285,7 +1437,13 @@ function initPostEditor() {
         }
 
         const moved = state.blocks.splice(sourceIndex, 1)[0];
-        state.blocks.splice(targetIndex, 0, moved);
+        let insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
+
+        if (sourceIndex < insertIndex) {
+            insertIndex -= 1;
+        }
+
+        state.blocks.splice(Math.max(0, Math.min(insertIndex, state.blocks.length)), 0, moved);
         ui.activeBlockId = moved.id;
         render();
         sync();
@@ -1951,7 +2109,7 @@ function initPostEditor() {
             '<article class="fb-post-block' + (isActive ? ' is-active' : '') + '" data-block-id="' + escapeAttr(block.id) + '">' +
                 '<div class="fb-post-block__head">' +
                     '<div class="fb-post-block__title">' +
-                        '<button class="fb-post-block__drag" type="button" draggable="true" data-block-drag-handle title="' + escapeAttr(labels.drag) + '" aria-label="' + escapeAttr(labels.drag) + '">⋮⋮</button>' +
+                        '<button class="fb-post-block__drag" type="button" data-block-drag-handle title="' + escapeAttr(labels.drag) + '" aria-label="' + escapeAttr(labels.drag) + '">⋮⋮</button>' +
                         '<span class="fb-post-block__icon">' + renderBlockIcon(block.type) + '</span>' +
                         '<span>' + escapeHtml(blockTitle(block.type)) + '</span>' +
                     '</div>' +
@@ -2044,7 +2202,7 @@ function initPostEditor() {
         if (block.type === 'html') {
             return '' +
                 '<div class="fb-post-block__stack">' +
-                    '<textarea class="form-control fb-post-block__code fb-post-block__code--html" data-block-field="html" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.htmlPlaceholder) + '">' + escapeHtml(block.data.html || '') + '</textarea>' +
+                    '<div class="fb-post-block__code-wrap"><textarea class="form-control fb-post-block__code fb-post-block__code--html" data-block-field="html" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.htmlPlaceholder) + '" style="height: 420px;">' + escapeHtml(block.data.html || '') + '</textarea></div>' +
                     '<div class="fb-post-block__subhead">' + escapeHtml(labels.htmlPreview) + '</div>' +
                     '<div class="fb-post-block__html-preview" data-block-html-preview>' + buildAdaptivePreviewHtml(block.data.html || '') + '</div>' +
                 '</div>';
@@ -2063,7 +2221,7 @@ function initPostEditor() {
         }
 
         if (block.type === 'code') {
-            return '<textarea class="form-control fb-post-block__code" data-block-field="code" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.codePlaceholder) + '">' + escapeHtml(block.data.code || '') + '</textarea>';
+            return '<div class="fb-post-block__code-wrap"><textarea class="form-control fb-post-block__code" data-block-field="code" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.codePlaceholder) + '" style="height: 420px;">' + escapeHtml(block.data.code || '') + '</textarea></div>';
         }
 
         return renderTextBlock(block);
@@ -2630,7 +2788,7 @@ function initPostEditor() {
         const iconHtml = buttonIcon ? '<i class="' + escapeAttr(buttonIcon) + ' fs-base ms-n1 me-2"></i>' : '';
         const buttonInner = iconHtml + escapeHtml(resolvedButtonText);
         const buttonHtml = buttonUrl
-            ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" data-fb-newsletter-button="1" data-button-url="' + escapeAttr(buttonUrl) + '">' + buttonInner + '</a>'
+            ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" target="_blank" rel="noopener noreferrer" data-fb-newsletter-button="1" data-button-url="' + escapeAttr(buttonUrl) + '">' + buttonInner + '</a>'
             : '<button type="button" class="btn btn-dark" data-fb-newsletter-button="1" data-button-url="">' + buttonInner + '</button>';
 
         return '' +
@@ -2959,8 +3117,240 @@ function initPostFormValidation() {
     });
 }
 
+function initPostAutosave() {
+    document.querySelectorAll('[data-post-autosave]').forEach(function (form) {
+        const autosaveUrl = String(form.getAttribute('data-autosave-url') || '');
+        const statusNode = form.querySelector('[data-post-autosave-status]');
+        const savingLabel = String(form.getAttribute('data-autosave-saving') || 'Autosaving...');
+        const savedLabel = String(form.getAttribute('data-autosave-saved') || 'Draft saved');
+        const errorLabel = String(form.getAttribute('data-autosave-error') || 'Autosave failed');
+        let postId = Number(form.getAttribute('data-autosave-post-id') || '0');
+        let timer = null;
+        let dirty = false;
+        let inFlight = false;
+        let pendingSave = false;
+        let isSubmitting = false;
+        let lastSnapshot = '';
+
+        if (!autosaveUrl) {
+            return;
+        }
+
+        function setStatus(message, tone) {
+            if (!statusNode) {
+                return;
+            }
+
+            statusNode.textContent = message;
+            statusNode.classList.remove('text-body-secondary', 'text-success', 'text-danger');
+            statusNode.classList.add(tone || 'text-body-secondary');
+        }
+
+        function serializeEditor() {
+            form.dispatchEvent(new CustomEvent('fireball:post-editor-serialize', { bubbles: true }));
+        }
+
+        function collectFormData() {
+            serializeEditor();
+
+            const formData = new FormData(form);
+            formData.set('autosave_post_id', String(postId > 0 ? postId : 0));
+            formData.set('is_published', '0');
+
+            form.querySelectorAll('input[type="file"][name]').forEach(function (input) {
+                formData.delete(input.name);
+            });
+
+            return formData;
+        }
+
+        function formDataHasContent(formData) {
+            const keys = [
+                'title',
+                'excerpt',
+                'content',
+                'image',
+                'image_url',
+                'seo_title',
+                'seo_description',
+                'seo_keywords',
+                'seo_image'
+            ];
+
+            return keys.some(function (key) {
+                const rawValue = String(formData.get(key) || '').trim();
+                if (key === 'content') {
+                    return rawValue !== '';
+                }
+
+                const value = rawValue
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/&nbsp;/gi, ' ')
+                    .trim();
+                return value !== '';
+            });
+        }
+
+        function makeSnapshot(formData) {
+            const pairs = [];
+            formData.forEach(function (value, key) {
+                if (value instanceof File) {
+                    return;
+                }
+
+                pairs.push(String(key) + '=' + String(value));
+            });
+
+            return pairs.join('&');
+        }
+
+        function applyAutosaveResponse(payload) {
+            const nextPostId = Number(payload && payload.id ? payload.id : 0);
+            const editUrl = String(payload && payload.edit_url ? payload.edit_url : '');
+            const savedAt = String(payload && payload.saved_at ? payload.saved_at : '');
+            const wasNewPost = postId <= 0;
+
+            if (nextPostId > 0) {
+                postId = nextPostId;
+                form.setAttribute('data-autosave-post-id', String(postId));
+            }
+
+            if (editUrl) {
+                form.setAttribute('action', editUrl);
+                if (wasNewPost && window.history && typeof window.history.replaceState === 'function') {
+                    window.history.replaceState({}, document.title, editUrl);
+                }
+            }
+
+            setStatus(savedAt ? savedLabel + ' ' + savedAt : savedLabel, 'text-success');
+        }
+
+        function runAutosave() {
+            if (isSubmitting) {
+                return;
+            }
+
+            if (inFlight) {
+                pendingSave = true;
+                return;
+            }
+
+            const formData = collectFormData();
+            if (!formDataHasContent(formData)) {
+                return;
+            }
+
+            const snapshot = makeSnapshot(formData);
+            if (snapshot === lastSnapshot) {
+                dirty = false;
+                return;
+            }
+
+            inFlight = true;
+            pendingSave = false;
+            setStatus(savingLabel, 'text-body-secondary');
+
+            fetch(autosaveUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json'
+                }
+            })
+                .then(function (response) {
+                    return response.json().catch(function () {
+                        return {};
+                    }).then(function (payload) {
+                        if (!response.ok || !payload || payload.status !== 'success') {
+                            throw new Error(String(payload && payload.message ? payload.message : errorLabel));
+                        }
+
+                        return payload;
+                    });
+                })
+                .then(function (payload) {
+                    lastSnapshot = snapshot;
+                    dirty = false;
+                    applyAutosaveResponse(payload);
+                })
+                .catch(function () {
+                    setStatus(errorLabel, 'text-danger');
+                })
+                .finally(function () {
+                    inFlight = false;
+                    if (pendingSave || dirty) {
+                        scheduleAutosave();
+                    }
+                });
+        }
+
+        function scheduleAutosave() {
+            dirty = true;
+            window.clearTimeout(timer);
+            timer = window.setTimeout(runAutosave, 1800);
+        }
+
+        function flushAutosave() {
+            if (!dirty || isSubmitting) {
+                return;
+            }
+
+            window.clearTimeout(timer);
+            const formData = collectFormData();
+            if (!formDataHasContent(formData)) {
+                return;
+            }
+
+            if (navigator.sendBeacon && navigator.sendBeacon(autosaveUrl, formData)) {
+                dirty = false;
+                return;
+            }
+
+            fetch(autosaveUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                keepalive: true,
+                headers: {
+                    Accept: 'application/json'
+                }
+            }).catch(function () {
+            });
+        }
+
+        form.addEventListener('input', function (event) {
+            if (event.target && event.target.matches('input[type="file"]')) {
+                return;
+            }
+
+            scheduleAutosave();
+        });
+
+        form.addEventListener('change', function (event) {
+            if (event.target && event.target.matches('input[type="file"]')) {
+                return;
+            }
+
+            scheduleAutosave();
+        });
+
+        form.addEventListener('fireball:post-editor-sync', scheduleAutosave);
+
+        form.addEventListener('submit', function (event) {
+            if (!event.defaultPrevented) {
+                isSubmitting = true;
+                window.clearTimeout(timer);
+            }
+        });
+
+        window.addEventListener('pagehide', flushAutosave);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initPostDatepicker();
     initPostEditor();
     initPostFormValidation();
+    initPostAutosave();
 });

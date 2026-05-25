@@ -4,6 +4,7 @@ $(function () {
     const bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : (window.bootstrap || null);
     const page = $('[data-file-manager-page]');
     let searchTimer = null;
+    let draggedFileRows = null;
 
     function applySelectedFile(payload) {
         if (!payload || payload.type !== 'fireball:file:selected') {
@@ -149,7 +150,43 @@ $(function () {
         const menuRect = menu.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const gap = 8;
+        const gap = viewportWidth < 768 ? 12 : 8;
+
+        menu.style.setProperty('position', 'fixed', 'important');
+        menu.style.setProperty('inset', 'auto', 'important');
+        menu.style.setProperty('margin', '0', 'important');
+        menu.style.setProperty('transform', 'none', 'important');
+        menu.style.setProperty('z-index', '2000', 'important');
+
+        if (viewportWidth < 768) {
+            const availableHeight = Math.max(180, viewportHeight - (gap * 2));
+            const menuWidth = Math.min(Math.max(menuRect.width, 224), viewportWidth - (gap * 2));
+            let left = toggleRect.right - menuWidth;
+            let top = Math.min(toggleRect.top, viewportHeight - gap - Math.min(menuRect.height, availableHeight));
+
+            if (left < gap) {
+                left = gap;
+            }
+
+            if (left + menuWidth > viewportWidth - gap) {
+                left = viewportWidth - gap - menuWidth;
+            }
+
+            if (top < gap) {
+                top = gap;
+            }
+
+            menu.style.setProperty('left', left + 'px', 'important');
+            menu.style.setProperty('right', 'auto', 'important');
+            menu.style.setProperty('top', top + 'px', 'important');
+            menu.style.setProperty('bottom', 'auto', 'important');
+            menu.style.setProperty('width', menuWidth + 'px', 'important');
+            menu.style.setProperty('min-width', '0', 'important');
+            menu.style.setProperty('max-width', (viewportWidth - (gap * 2)) + 'px', 'important');
+            menu.style.setProperty('max-height', availableHeight + 'px', 'important');
+            menu.style.setProperty('overflow-y', 'auto', 'important');
+            return;
+        }
 
         let left = toggleRect.left - menuRect.width - gap;
         let top = toggleRect.top;
@@ -166,14 +203,15 @@ $(function () {
             top = Math.max(gap, viewportHeight - menuRect.height - gap);
         }
 
-        menu.style.position = 'fixed';
-        menu.style.left = left + 'px';
-        menu.style.top = top + 'px';
-        menu.style.right = 'auto';
-        menu.style.bottom = 'auto';
-        menu.style.margin = '0';
-        menu.style.transform = 'none';
-        menu.style.zIndex = '2000';
+        menu.style.setProperty('left', left + 'px', 'important');
+        menu.style.setProperty('top', top + 'px', 'important');
+        menu.style.setProperty('right', 'auto', 'important');
+        menu.style.setProperty('bottom', 'auto', 'important');
+        menu.style.width = '';
+        menu.style.minWidth = '';
+        menu.style.maxWidth = '';
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
     }
 
     function floatRowMenu(dropdown) {
@@ -190,6 +228,12 @@ $(function () {
         menu.classList.add('fm-dropdown-floating');
         document.body.appendChild(menu);
         positionFloatingRowMenu(toggle, menu);
+        window.requestAnimationFrame(function () {
+            positionFloatingRowMenu(toggle, menu);
+        });
+        window.setTimeout(function () {
+            positionFloatingRowMenu(toggle, menu);
+        }, 0);
     }
 
     function restoreRowMenu(dropdown) {
@@ -207,9 +251,15 @@ $(function () {
         floatingMenu.style.top = '';
         floatingMenu.style.right = '';
         floatingMenu.style.bottom = '';
+        floatingMenu.style.inset = '';
         floatingMenu.style.margin = '';
         floatingMenu.style.transform = '';
         floatingMenu.style.zIndex = '';
+        floatingMenu.style.width = '';
+        floatingMenu.style.minWidth = '';
+        floatingMenu.style.maxWidth = '';
+        floatingMenu.style.maxHeight = '';
+        floatingMenu.style.overflowY = '';
         dropdown.__fmFloatingMenu = null;
     }
 
@@ -256,6 +306,19 @@ $(function () {
         initTooltips();
     }
 
+    function updateBrowserUrl(url, replace) {
+        if (!url || !window.history) {
+            return;
+        }
+
+        if (replace) {
+            window.history.replaceState({ url: url }, '', url);
+            return;
+        }
+
+        window.history.pushState({ url: url }, '', url);
+    }
+
     function initTooltips() {
         if (!bootstrapApi || typeof bootstrapApi.Tooltip === 'undefined') {
             return;
@@ -296,7 +359,9 @@ $(function () {
                 renderFeedback('', '');
 
                 if (pushState !== false) {
-                    window.history.pushState({ url: url }, '', url);
+                    updateBrowserUrl(payload.url || url, false);
+                } else if (payload.url) {
+                    updateBrowserUrl(payload.url, true);
                 }
             })
             .catch(function (payload) {
@@ -314,6 +379,7 @@ $(function () {
             hideVisibleModals();
             replaceBrowser(payload.html || '');
             renderFeedback(payload.status || 'success', payload.message || '');
+            updateBrowserUrl(payload.url || '', true);
 
             if (typeof onSuccess === 'function') {
                 onSuccess(payload);
@@ -347,6 +413,7 @@ $(function () {
             hideVisibleModals();
             replaceBrowser(payload.html || '');
             renderFeedback(payload.status || 'success', payload.message || '');
+            updateBrowserUrl(payload.url || '', true);
         }).catch(function (payload) {
             if (payload && payload.html) {
                 replaceBrowser(payload.html);
@@ -445,6 +512,85 @@ $(function () {
         });
 
         return blocked;
+    }
+
+    function rowsForDrag(row) {
+        if (!row || !row.length) {
+            return $();
+        }
+
+        if (row.find('[data-file-manager-select]').is(':checked')) {
+            const rows = selectedRows();
+            return rows.length ? rows : row;
+        }
+
+        return row;
+    }
+
+    function clearDropTargets() {
+        $('[data-file-manager-row], [data-fm-drop-dir]').removeClass('is-drop-target is-dragging');
+    }
+
+    function isDropAllowed(rows, destinationDir) {
+        let allowed = !!rows && !!rows.length;
+        destinationDir = String(destinationDir || '');
+
+        rows.each(function () {
+            const row = $(this);
+            const path = String(row.data('path') || '');
+            const type = String(row.data('type') || 'file');
+
+            if (!path || String(row.data('canTransfer') || '1') !== '1') {
+                allowed = false;
+                return false;
+            }
+
+            if (type === 'directory' && (destinationDir === path || destinationDir.indexOf(path + '/') === 0)) {
+                allowed = false;
+                return false;
+            }
+
+            return undefined;
+        });
+
+        return allowed;
+    }
+
+    function submitDragMove(rows, destinationDir) {
+        const form = $('[data-file-manager-bulk-form]')[0];
+        const messages = currentMessages();
+
+        if (!form || !rows || !rows.length || !isDropAllowed(rows, destinationDir)) {
+            renderFeedback('error', messages.transferProtected);
+            return;
+        }
+
+        const formData = new FormData(form);
+        formData.delete('selected_paths[]');
+        formData.delete('selected_types[]');
+        formData.set('action_name', 'move');
+        formData.set('destination_dir', String(destinationDir || ''));
+
+        rows.each(function () {
+            const row = $(this);
+            formData.append('selected_paths[]', String(row.data('path') || ''));
+            formData.append('selected_types[]', String(row.data('type') || 'file'));
+        });
+
+        requestManager(form.action, {
+            method: String(form.method || 'POST').toUpperCase(),
+            body: formData
+        }).then(function (payload) {
+            replaceBrowser(payload.html || '');
+            renderFeedback(payload.status || 'success', payload.message || '');
+            updateBrowserUrl(payload.url || '', true);
+        }).catch(function (payload) {
+            if (payload && payload.html) {
+                replaceBrowser(payload.html);
+            }
+
+            renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
+        });
     }
 
     function openRenameModal(row) {
@@ -612,6 +758,70 @@ $(function () {
 
     page.on('change', '[data-file-manager-select]', function () {
         refreshSelectionState();
+    });
+
+    page.on('dragstart', '[data-file-manager-row][draggable="true"]', function (event) {
+        const originalEvent = event.originalEvent;
+        const target = $(originalEvent.target);
+        const row = $(this);
+
+        if (target.closest('a, button, input, label, [data-file-manager-actions-menu]').length || String(row.data('canTransfer') || '1') !== '1') {
+            event.preventDefault();
+            return;
+        }
+
+        draggedFileRows = rowsForDrag(row);
+        draggedFileRows.addClass('is-dragging');
+
+        if (originalEvent.dataTransfer) {
+            originalEvent.dataTransfer.effectAllowed = 'move';
+            originalEvent.dataTransfer.setData('text/plain', String(row.data('path') || ''));
+        }
+    });
+
+    page.on('dragover', '[data-fm-drop-dir]', function (event) {
+        if (!draggedFileRows || !draggedFileRows.length) {
+            return;
+        }
+
+        const destinationDir = String($(this).data('fmDropDir') || '');
+        if (!isDropAllowed(draggedFileRows, destinationDir)) {
+            return;
+        }
+
+        event.preventDefault();
+        if (event.originalEvent.dataTransfer) {
+            event.originalEvent.dataTransfer.dropEffect = 'move';
+        }
+        $('[data-fm-drop-dir]').removeClass('is-drop-target');
+        $(this).addClass('is-drop-target');
+    });
+
+    page.on('dragleave', '[data-fm-drop-dir]', function (event) {
+        if (!$(event.currentTarget).has(event.relatedTarget).length) {
+            $(this).removeClass('is-drop-target');
+        }
+    });
+
+    page.on('drop', '[data-fm-drop-dir]', function (event) {
+        if (!draggedFileRows || !draggedFileRows.length) {
+            return;
+        }
+
+        const destinationDir = String($(this).data('fmDropDir') || '');
+        if (!isDropAllowed(draggedFileRows, destinationDir)) {
+            return;
+        }
+
+        event.preventDefault();
+        submitDragMove(draggedFileRows, destinationDir);
+        draggedFileRows = null;
+        clearDropTargets();
+    });
+
+    page.on('dragend', '[data-file-manager-row]', function () {
+        draggedFileRows = null;
+        clearDropTargets();
     });
 
     page.on('click', '[data-file-manager-row]', function (event) {

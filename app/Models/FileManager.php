@@ -68,6 +68,9 @@ class FileManager
 
         $directoryItems = $this->sortItems($directoryItems, $sort, $direction);
         $total = count($directoryItems);
+        $page = max(1, (int)($options['page'] ?? request()->get('page', 1)));
+        $countPages = max(1, (int)ceil($total / $perPage));
+        request()->get['page'] = (string)min($page, $countPages);
         $pagination = new Pagination($total, $perPage);
         $offset = $pagination->getOffset();
         $directoryItems = array_slice($directoryItems, $offset, $perPage);

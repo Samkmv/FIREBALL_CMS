@@ -13,6 +13,7 @@ $breadcrumbs = $manager['breadcrumbs'] ?? [];
 $destinationDirectories = $manager['destination_directories'] ?? [];
 $directoryCount = count($manager['directories'] ?? []);
 $fileCount = count($manager['files'] ?? []);
+$currentPage = max(1, (int)request()->get('page', 1));
 
 $sortIndicator = static function (string $column) use ($sort, $direction): string {
     if ($sort !== $column) {
@@ -84,14 +85,14 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
         </div>
 
         <div class="list-group list-group-flush mb-3">
-            <a class="list-group-item list-group-item-action <?= $currentDir === '' ? 'active' : '' ?>" href="<?= $buildManagerUrl('') ?>" data-fm-nav-link>
+            <a class="list-group-item list-group-item-action <?= $currentDir === '' ? 'active' : '' ?>" href="<?= $buildManagerUrl('') ?>" data-fm-nav-link data-fm-drop-dir="">
                 <div class="d-flex align-items-center justify-content-between gap-2">
                     <span class="d-inline-flex align-items-center gap-2"><i class="ci-home"></i><?= print_translation('admin_files_root') ?></span>
                     <span class="small text-body-secondary"><?= $directoryCount + $fileCount ?></span>
                 </div>
             </a>
             <?php if ($parentDir !== null): ?>
-                <a class="list-group-item list-group-item-action" href="<?= $buildManagerUrl($parentDir) ?>" data-fm-nav-link>
+                <a class="list-group-item list-group-item-action" href="<?= $buildManagerUrl($parentDir) ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)$parentDir) ?>">
                     <span class="d-inline-flex align-items-center gap-2"><i class="ci-corner-up-left"></i><?= print_translation('admin_files_up') ?></span>
                 </a>
             <?php endif; ?>
@@ -100,7 +101,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
         <div class="small text-uppercase text-body-secondary fw-semibold mb-2"><?= print_translation('admin_files_folders') ?></div>
         <div class="list-group list-group-flush">
             <?php foreach ($breadcrumbs as $crumb): ?>
-                <a class="list-group-item list-group-item-action <?= ($crumb['dir'] ?? '') === $currentDir ? 'active' : '' ?>" href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>" data-fm-nav-link>
+                <a class="list-group-item list-group-item-action <?= ($crumb['dir'] ?? '') === $currentDir ? 'active' : '' ?>" href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)($crumb['dir'] ?? '')) ?>">
                     <span class="d-inline-flex align-items-center gap-2"><i class="ci-folder"></i><?= htmlSC((string)($crumb['label'] ?? '')) ?></span>
                 </a>
             <?php endforeach; ?>
@@ -120,7 +121,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                 <?php if ($index > 0): ?>
                                     <span class="text-body-secondary">/</span>
                                 <?php endif; ?>
-                                <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>" data-fm-nav-link><?= htmlSC((string)($crumb['label'] ?? '')) ?></a>
+                                <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)($crumb['dir'] ?? '')) ?>"><?= htmlSC((string)($crumb['label'] ?? '')) ?></a>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -222,6 +223,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                     <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                     <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                    <input type="hidden" name="page" value="<?= $currentPage ?>">
                     <input type="hidden" name="action_name" value="" data-file-manager-action-name>
 
                     <div class="table-responsive admin-table-scroll" data-file-manager-table-wrap>
@@ -274,6 +276,8 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     data-can-preview="<?= $previewable ? '1' : '0' ?>"
                                     data-can-rename="<?= !empty($item['can_rename']) ? '1' : '0' ?>"
                                     data-can-transfer="<?= !empty($item['can_transfer']) ? '1' : '0' ?>"
+                                    <?= !empty($item['can_transfer']) ? 'draggable="true"' : '' ?>
+                                    <?= $isDirectory ? 'data-fm-drop-dir="' . htmlSC((string)($item['relative_path'] ?? '')) . '"' : '' ?>
                                 >
                                     <td data-file-manager-select-cell>
                                         <input class="form-check-input" type="checkbox" name="selected_paths[]" value="<?= htmlSC((string)($item['relative_path'] ?? '')) ?>" data-file-manager-select>
@@ -312,6 +316,17 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     <td class="text-nowrap text-body-secondary small"><?= $isDirectory ? '—' : htmlSC((string)($item['size'] ?? '')) ?></td>
                                     <td class="text-nowrap text-body-secondary small"><?= htmlSC((string)($item['modified_at'] ?? '')) ?></td>
                                     <td class="text-end text-nowrap">
+                                        <?php if ($pickerMode && $pickerField !== '' && !$isDirectory): ?>
+                                            <button
+                                                class="btn btn-sm btn-dark rounded-pill d-inline-flex align-items-center gap-2 me-2"
+                                                type="button"
+                                                data-file-select
+                                                data-file-select-field="<?= htmlSC($pickerField) ?>"
+                                                data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>"
+                                            >
+                                                <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
+                                            </button>
+                                        <?php endif; ?>
                                         <div class="dropdown dropstart d-inline-block" data-file-manager-actions-menu>
                                             <button
                                                 class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
@@ -324,13 +339,6 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                                 <i class="ci-more-vertical"></i>
                                             </button>
                                             <ul class="dropdown-menu shadow-sm border-0 rounded-4">
-                                                <?php if ($pickerMode && $pickerField !== '' && !$isDirectory): ?>
-                                                    <li>
-                                                        <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-select data-file-select-field="<?= htmlSC($pickerField) ?>" data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>">
-                                                            <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
-                                                        </button>
-                                                    </li>
-                                                <?php endif; ?>
                                                 <li>
                                                     <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="open">
                                                         <i class="<?= $isDirectory ? 'ci-folder' : 'ci-eye' ?>"></i><?= $isDirectory ? print_translation('admin_btn_open') : print_translation('admin_btn_view') ?>
@@ -397,6 +405,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <div class="modal-header border-0 pb-0">
                     <h2 class="modal-title fs-5"><?= print_translation('admin_files_upload_label') ?></h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -407,7 +416,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <div class="form-text"><?= print_translation('admin_files_upload_hint') ?></div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
                     <button type="submit" class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2"><i class="ci-upload"></i><?= print_translation('admin_files_upload_btn') ?></button>
                 </div>
             </form>
@@ -426,6 +435,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <div class="modal-header border-0 pb-0">
                     <h2 class="modal-title fs-5"><?= print_translation('admin_files_folder_label') ?></h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -436,7 +446,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <div class="form-text"><?= print_translation('admin_files_folder_hint') ?></div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
                     <button type="submit" class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2"><i class="ci-folder-plus"></i><?= print_translation('admin_files_folder_submit') ?></button>
                 </div>
             </form>
@@ -455,6 +465,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <input type="hidden" name="path" value="" data-file-rename-path-input>
                 <div class="modal-header border-0 pb-0">
                     <div class="min-w-0">
@@ -472,7 +483,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <div class="form-text"><?= print_translation('admin_files_rename_hint') ?></div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
                     <button type="submit" class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2"><i class="ci-check"></i><?= print_translation('admin_files_rename_submit') ?></button>
                 </div>
             </form>
@@ -491,6 +502,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <input type="hidden" name="action_name" value="" data-file-transfer-action-input>
                 <div data-file-transfer-hidden-inputs></div>
                 <div class="modal-header border-0 pb-0">
@@ -512,7 +524,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <div class="form-text"><?= print_translation('admin_files_transfer_destination_hint') ?></div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
                     <button type="submit" class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" data-file-transfer-submit>
                         <i class="ci-copy" data-file-transfer-submit-icon></i><span data-file-transfer-submit-text><?= print_translation('admin_files_transfer_submit_copy') ?></span>
                     </button>
@@ -538,7 +550,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="" target="_blank" rel="noopener noreferrer" data-file-preview-open>
                     <i class="ci-eye"></i><?= print_translation('admin_btn_view') ?>
                 </a>
-                <button type="button" class="btn btn-dark rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                <button type="button" class="btn btn-dark rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
             </div>
         </div>
     </div>
@@ -562,7 +574,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <p class="small text-body-secondary mb-0 mt-3"><?= print_translation('admin_delete_modal_hint') ?></p>
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
                 <button type="button" class="btn btn-danger rounded-pill d-inline-flex align-items-center gap-2" data-file-delete-modal-confirm>
                     <i class="ci-trash"></i><?= print_translation('admin_btn_delete') ?>
                 </button>

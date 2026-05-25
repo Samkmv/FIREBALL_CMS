@@ -42,6 +42,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                         <?php
                         $isCurrentUser = (int)$item['id'] === (int)(get_user()['id'] ?? 0);
                         $roleSlug = (string)($item['role'] ?? 'user');
+                        $isOnline = !empty($item['is_online']);
                         $isProtectedCreator = $roleSlug === 'creator';
                         $isLastAdmin = in_array($roleSlug, ['creator', 'admin'], true) && (int)($item['other_admins_count'] ?? 0) === 0;
                         $roleBadgeClass = match ($roleSlug) {
@@ -61,12 +62,19 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             </th>
                             <td>
                                 <div class="d-flex align-items-center gap-3 min-w-0">
-                                    <img
-                                        src="<?= get_user_avatar($item['avatar'] ?? null, 'sm') ?>"
-                                        alt="<?= htmlSC($item['name']) ?>"
-                                        class="rounded-circle border object-fit-cover"
-                                        style="width: 40px; height: 40px;"
+                                    <span
+                                        class="position-relative flex-shrink-0"
+                                        title="<?= htmlSC($isOnline ? return_translation('chat_status_online') : return_translation('chat_status_offline')) ?>"
+                                        data-bs-toggle="tooltip"
                                     >
+                                        <img
+                                            src="<?= get_user_avatar($item['avatar'] ?? null, 'sm') ?>"
+                                            alt="<?= htmlSC($item['name']) ?>"
+                                            class="rounded-circle border object-fit-cover"
+                                            style="width: 40px; height: 40px;"
+                                        >
+                                        <span class="chat-contact-presence admin-user-presence <?= $isOnline ? 'is-online' : 'is-offline' ?>"></span>
+                                    </span>
                                     <div class="min-w-0">
                                         <div class="text-truncate"><?= htmlSC($item['name']) ?></div>
                                     </div>

@@ -12,6 +12,7 @@ class Auth
 
     protected const ADMIN_SESSION_SETTING_KEY = 'admin_session_lifetime_hours';
     protected const ADMIN_SESSION_LAST_ACTIVITY_KEY = 'auth.admin_last_activity_at';
+    protected const PRESENCE_LAST_TOUCH_KEY = 'auth.presence_last_touch_at';
     protected const DEFAULT_ADMIN_SESSION_LIFETIME_HOURS = 12;
 
     /**
@@ -99,6 +100,31 @@ class Auth
         $role = self::user()['role'] ?? 'user';
 
         return in_array($role, ['creator', 'admin'], true);
+    }
+
+    /**
+     * Обновляет отметку активности авторизованного пользователя без частых запросов к базе.
+     */
+    public static function touchPresence(int $throttleSeconds = 30): void
+    {
+        if (!self::isAuth()) {
+            session()->remove(self::PRESENCE_LAST_TOUCH_KEY);
+            return;
+        }
+
+        $userId = (int)(self::user()['id'] ?? 0);
+        if ($userId <= 0) {
+            return;
+        }
+
+        $now = time();
+        $lastTouch = (int)session()->get(self::PRESENCE_LAST_TOUCH_KEY, 0);
+        if ($lastTouch > 0 && ($lastTouch + max(1, $throttleSeconds)) > $now) {
+            return;
+        }
+
+        (new \App\Models\User())->touchPresence($userId);
+        session()->set(self::PRESENCE_LAST_TOUCH_KEY, $now);
     }
 
     /**

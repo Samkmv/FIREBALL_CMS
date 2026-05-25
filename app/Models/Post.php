@@ -86,6 +86,39 @@ class Post extends Model
     }
 
     /**
+     * Ищет запись по ID для админского предпросмотра, включая черновики.
+     */
+    public function findByIdForPreview(int $id): array|false
+    {
+        if ($id <= 0) {
+            return false;
+        }
+
+        $this->ensureSchema();
+        $categoryNameSql = $this->categoryNameSql('c');
+        $post = db()->query(
+            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
+                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
+                    c.slug AS category_slug,
+                    c.seo_title AS category_seo_title,
+                    c.seo_description AS category_seo_description,
+                    c.seo_keywords AS category_seo_keywords,
+                    c.seo_image AS category_seo_image
+             FROM {$this->table} p
+             LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
+             WHERE p.id = ?
+             LIMIT 1",
+            [$id]
+        )->getOne();
+
+        if (!$post) {
+            return false;
+        }
+
+        return $this->normalizePost($post);
+    }
+
+    /**
      * Увеличивает счётчик просмотров опубликованного поста.
      */
     public function incrementViews(int $id): void

@@ -26,12 +26,19 @@ class FileManagerController extends BaseController
     {
         $state = $this->getManagerStateFromGet();
         $directoryData = $this->files->getDirectoryData($state['current_dir'], $state['table_params']);
+        $state['table_params']['page'] = max(1, (int)request()->get('page', 1));
 
         if (request()->isAjax()) {
             response()->json([
                 'status' => 'success',
                 'html' => $this->renderBrowser($directoryData, $state['picker_mode'], $state['picker_field']),
                 'current_dir' => $directoryData['current_dir'] ?? '',
+                'url' => $this->buildUrl(
+                    $directoryData['current_dir'] ?? $state['current_dir'],
+                    $state['picker_mode'],
+                    $state['picker_field'],
+                    $state['table_params']
+                ),
             ]);
         }
 
@@ -205,6 +212,7 @@ class FileManagerController extends BaseController
         $search = trim((string)($tableParams['search'] ?? ''));
         $sort = trim((string)($tableParams['sort'] ?? ''));
         $direction = trim((string)($tableParams['direction'] ?? ''));
+        $page = max(1, (int)($tableParams['page'] ?? 1));
 
         if ($search !== '') {
             $params['q'] = $search;
@@ -216,6 +224,10 @@ class FileManagerController extends BaseController
 
         if ($direction !== '') {
             $params['direction'] = $direction;
+        }
+
+        if ($page > 1) {
+            $params['page'] = (string)$page;
         }
 
         $query = $params ? ('?' . http_build_query($params)) : '';
@@ -233,6 +245,7 @@ class FileManagerController extends BaseController
             'search' => request()->get('q', ''),
             'sort' => request()->get('sort', $defaultSort),
             'direction' => request()->get('direction', $defaultDirection),
+            'page' => max(1, (int)request()->get('page', 1)),
         ];
     }
 
@@ -245,6 +258,7 @@ class FileManagerController extends BaseController
             'search' => request()->post('q', ''),
             'sort' => request()->post('sort', 'modified'),
             'direction' => request()->post('direction', 'desc'),
+            'page' => max(1, (int)request()->post('page', 1)),
         ];
     }
 
@@ -292,12 +306,21 @@ class FileManagerController extends BaseController
     protected function respondWithManagerState(array $state, string $status, string $message): void
     {
         if (request()->isAjax()) {
+            $this->syncRequestWithManagerState($state);
             $directoryData = $this->files->getDirectoryData($state['current_dir'], $state['table_params']);
+            $state['table_params']['page'] = max(1, (int)request()->get('page', 1));
+
             response()->json([
                 'status' => $status,
                 'message' => $message,
                 'html' => $this->renderBrowser($directoryData, $state['picker_mode'], $state['picker_field']),
                 'current_dir' => $directoryData['current_dir'] ?? '',
+                'url' => $this->buildUrl(
+                    $directoryData['current_dir'] ?? $state['current_dir'],
+                    $state['picker_mode'],
+                    $state['picker_field'],
+                    $state['table_params']
+                ),
             ], $status === 'success' ? 200 : 422);
         }
 
@@ -308,6 +331,28 @@ class FileManagerController extends BaseController
             $state['picker_field'],
             $state['table_params']
         ));
+    }
+
+    /**
+     * Подменяет GET-контекст для AJAX POST, чтобы пагинация строила ссылки на /admin/files.
+     */
+    protected function syncRequestWithManagerState(array $state): void
+    {
+        $url = $this->buildUrl(
+            $state['current_dir'],
+            $state['picker_mode'],
+            $state['picker_field'],
+            $state['table_params']
+        );
+        $parsedUrl = parse_url($url);
+        $query = [];
+
+        if (!empty($parsedUrl['query'])) {
+            parse_str((string)$parsedUrl['query'], $query);
+        }
+
+        request()->get = $query;
+        request()->uri = trim('/admin/files' . (!empty($parsedUrl['query']) ? '?' . $parsedUrl['query'] : ''), '/');
     }
 
 }

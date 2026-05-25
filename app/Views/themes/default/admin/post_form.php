@@ -1652,9 +1652,35 @@ $editorConfig = [
         box-shadow: 0 0 0 3px rgba(31, 92, 79, .08), 0 14px 28px rgba(17, 24, 39, .06);
     }
 
+    .fb-post-block.is-dragging {
+        opacity: .72;
+        transform: scale(.998);
+    }
+
     .fb-post-block.is-drop-target {
-        outline: 2px solid rgba(31, 92, 79, .22);
-        outline-offset: 2px;
+        border-color: rgba(31, 92, 79, .42);
+        box-shadow: 0 0 0 3px rgba(31, 92, 79, .12), 0 14px 30px rgba(17, 24, 39, .08);
+    }
+
+    .fb-post-block.is-drop-before::before,
+    .fb-post-block.is-drop-after::after {
+        content: "";
+        position: absolute;
+        left: .8rem;
+        right: .8rem;
+        height: 4px;
+        border-radius: 999px;
+        background: #1f5c4f;
+        box-shadow: 0 0 0 4px rgba(31, 92, 79, .14);
+        z-index: 3;
+    }
+
+    .fb-post-block.is-drop-before::before {
+        top: -3px;
+    }
+
+    .fb-post-block.is-drop-after::after {
+        bottom: -3px;
     }
 
     .fb-post-block__head {
@@ -1707,13 +1733,30 @@ $editorConfig = [
     }
 
     .fb-post-block__drag {
-        border: 0;
-        background: transparent;
-        color: #7b8588;
-        padding: .15rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.25rem;
+        min-height: 2.25rem;
+        border: 1px solid rgba(26, 33, 36, .1);
+        border-radius: .75rem;
+        background: rgba(255, 255, 255, .86);
+        color: #3f4a4d;
+        padding: 0;
         cursor: grab;
-        font-size: 1rem;
+        font-size: 1.15rem;
         line-height: 1;
+        touch-action: none;
+        user-select: none;
+    }
+
+    .fb-post-block__drag:active {
+        cursor: grabbing;
+    }
+
+    body.fb-post-editor-is-dragging {
+        cursor: grabbing;
+        user-select: none;
     }
 
     .fb-post-block__actions {
@@ -1872,7 +1915,11 @@ $editorConfig = [
     }
 
     .fb-post-block__code {
-        min-height: 210px;
+        display: block;
+        width: 100%;
+        min-width: 48rem;
+        max-width: none;
+        min-height: 420px !important;
         resize: vertical;
         padding: .95rem 1rem;
         font: 400 .92rem/1.6 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -1882,7 +1929,13 @@ $editorConfig = [
     }
 
     .fb-post-block__code--html {
-        min-height: 180px;
+        min-height: 420px !important;
+    }
+
+    .fb-post-block__code-wrap {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .fb-post-block__html-preview,
@@ -2242,7 +2295,15 @@ $editorConfig = [
     }
 
     [data-bs-theme=dark] .fb-post-block__drag {
-        color: #9ca3af;
+        border-color: rgba(255, 255, 255, .12);
+        background: rgba(255, 255, 255, .05);
+        color: #d7dde7;
+    }
+
+    [data-bs-theme=dark] .fb-post-block.is-drop-before::before,
+    [data-bs-theme=dark] .fb-post-block.is-drop-after::after {
+        background: #9ae6d2;
+        box-shadow: 0 0 0 4px rgba(124, 197, 175, .18);
     }
 
     [data-bs-theme=dark] .fb-post-style-menu__title {
@@ -2452,8 +2513,45 @@ $editorConfig = [
             padding-bottom: .85rem;
         }
 
+        .fb-post-add-menu {
+            position: fixed;
+            top: max(5rem, env(safe-area-inset-top));
+            left: 1rem;
+            right: 1rem;
+            max-width: none;
+            max-height: calc(100dvh - 8rem);
+            overflow-y: auto;
+            transform: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .fb-post-add-menu button {
+            min-height: 3rem;
+            font-size: 1rem;
+        }
+
+        .fb-post-add-menu__icon {
+            width: 2rem;
+            height: 2rem;
+        }
+
         .fb-post-block__content {
             padding: .85rem;
+        }
+
+        .fb-post-block__stack {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .fb-post-block__code {
+            min-width: 42rem;
+            min-height: 360px !important;
+        }
+
+        .fb-post-block__drag {
+            min-width: 2.55rem;
+            min-height: 2.55rem;
         }
 
         .fb-post-block__toolbar .btn {
@@ -2493,6 +2591,12 @@ $editorConfig = [
         method="post"
         enctype="multipart/form-data"
         data-post-form
+        data-post-autosave
+        data-autosave-url="<?= base_href('/admin/posts/autosave') ?>"
+        data-autosave-post-id="<?= $is_edit ? (int)$post['id'] : 0 ?>"
+        data-autosave-saving="<?= htmlSC(return_translation('admin_post_autosave_saving')) ?>"
+        data-autosave-saved="<?= htmlSC(return_translation('admin_post_autosave_saved')) ?>"
+        data-autosave-error="<?= htmlSC(return_translation('admin_post_autosave_error')) ?>"
         data-required-summary="<?= htmlSC($requiredSummaryLabel) ?>"
     >
         <?= get_csrf_field() ?>
@@ -2739,6 +2843,7 @@ $editorConfig = [
             <div class="col-12 d-flex gap-2">
                 <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
                 <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts') ?>"><i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?></a>
+                <span class="small text-body-secondary align-self-center ms-auto" data-post-autosave-status aria-live="polite"></span>
             </div>
         </div>
     </form>
@@ -2752,8 +2857,8 @@ $editorConfig = [
                 </div>
                 <div class="modal-body" data-editor-settings-body></div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
-                        <?= print_translation('admin_btn_cancel') ?>
+                    <button type="button" class="btn btn-dark rounded-pill" data-bs-dismiss="modal">
+                        <?= print_translation('admin_btn_done') ?>
                     </button>
                 </div>
             </div>

@@ -60,7 +60,11 @@ $ogLocale = match ($currentLangCode) {
     default => 'ru_RU',
 };
 $currentUser = check_auth() ? get_user() : null;
+if ($currentUser) {
+    \FBL\Auth::touchPresence();
+}
 $isAdmin = check_admin();
+$canViewVideoStatus = $isAdmin || check_creator();
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 $logoutAction = base_href('/logout');
 $siteFaviconUrl = site_favicon_url();
@@ -743,6 +747,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
 <script>
     const baseUrl = '<?= base_url(); ?>';
+    window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
 </script>
 
 <script src="<?= base_url('/assets/default/js/jquery-3.7.1.min.js') ?>"></script>

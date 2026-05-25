@@ -92,7 +92,8 @@ abstract class Model
         }, 'must be unique');
 
         Validator::langDir(WWW . '/lang');
-        Validator::lang('ru');
+        $validatorLang = (string)(app()->get('lang')['code'] ?? 'ru');
+        Validator::lang(is_file(WWW . "/lang/{$validatorLang}.php") ? $validatorLang : 'ru');
         $validator = new Validator($data);
         $validator->rules($rules);
         $validator->labels($labels);

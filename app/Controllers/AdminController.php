@@ -7,6 +7,7 @@ use App\Models\Analytics;
 use App\Models\ContactRequest;
 use App\Models\SiteSetting;
 use App\Models\User;
+use App\Models\Post;
 use App\Services\UpdateCenter;
 use FBL\Auth;
 use FBL\File;
@@ -106,6 +107,37 @@ class AdminController extends BaseController
     }
 
     /**
+     * Показывает предпросмотр опубликованной записи или черновика из админки.
+     */
+    public function postPreview()
+    {
+        $postId = (int)get_route_param('id', 0);
+        $posts = new Post();
+        $post = $posts->findByIdForPreview($postId);
+
+        if (!$post) {
+            abort();
+        }
+
+        $sidebarData = $posts->getSidebarData($post['slug']);
+        $popularPosts = $posts->getPopularPosts(9, $post['slug']);
+
+        return view('posts/show', [
+            'title' => $post['title'],
+            'post' => $post,
+            'categories' => $sidebarData['categories'],
+            'trending_posts' => $sidebarData['trending_posts'],
+            'popular_posts' => $popularPosts,
+            'seo_title' => $post['seo_title'] !== '' ? $post['seo_title'] : $post['title'],
+            'seo_description' => $post['seo_description'],
+            'seo_keywords' => $post['seo_keywords'],
+            'seo_image' => $post['seo_image'],
+            'seo_robots' => 'noindex,nofollow',
+            'seo_canonical' => base_href('/admin/posts/preview/' . $postId),
+        ]);
+    }
+
+    /**
      * Показывает форму создания или редактирования поста и обрабатывает её отправку.
      */
     public function postForm()
@@ -164,6 +196,40 @@ class AdminController extends BaseController
                 base_url('/assets/default/js/admin-post-editor.js?v=' . filemtime(WWW . '/assets/default/js/admin-post-editor.js')),
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
             ],
+        ]);
+    }
+
+    /**
+     * Автоматически сохраняет форму записи как черновик.
+     */
+    public function postAutosave()
+    {
+        $postId = (int)(request()->post('autosave_post_id') ?: request()->post('id'));
+        $post = $postId > 0 ? $this->blog->findPostById($postId) : false;
+
+        if ($postId > 0 && !$post) {
+            response()->json([
+                'status' => 'error',
+                'message' => return_translation('admin_post_autosave_not_found'),
+            ], 404);
+        }
+
+        $data = $this->normalizePostData(request()->getData());
+        $data = $this->prepareAutosaveDraftData($data, $post ?: []);
+
+        if ($postId > 0) {
+            $this->blog->updatePost($postId, $data);
+        } else {
+            $postId = $this->blog->createPost($data);
+        }
+
+        response()->json([
+            'status' => 'success',
+            'id' => $postId,
+            'edit_url' => base_href('/admin/posts/edit/' . $postId),
+            'preview_url' => base_href('/admin/posts/preview/' . $postId),
+            'saved_at' => date('H:i'),
+            'message' => return_translation('admin_post_autosave_saved'),
         ]);
     }
 
@@ -619,6 +685,70 @@ class AdminController extends BaseController
             'author_id' => isset($user['id']) ? (int)$user['id'] : null,
             'author_name' => trim((string)($user['name'] ?? 'Fireball')),
             'author_role' => trim((string)($user['role'] ?? 'user')),
+        ];
+    }
+
+    /**
+     * Заполняет обязательные поля для автосохранения, чтобы запись могла остаться черновиком.
+     */
+    protected function prepareAutosaveDraftData(array $data, array $post = []): array
+    {
+        if ($data['title'] === '') {
+            $data['title'] = trim((string)($post['title'] ?? ''));
+        }
+
+        if ($data['title'] === '') {
+            $data['title'] = return_translation('admin_posts_status_draft') . ' ' . date('d.m.Y H:i');
+        }
+
+        if (trim((string)$data['slug']) === '' && !empty($post['slug'])) {
+            $data['slug'] = (string)$post['slug'];
+        }
+
+        if ((int)$data['category_id'] <= 0 || trim((string)$data['category_name']) === '') {
+            $category = $this->resolveAutosaveCategory($post);
+            $data['category_id'] = (int)$category['id'];
+            $data['category_name'] = (string)$category['name'];
+        }
+
+        if ($data['published_at'] === '' && !empty($post['published_at'])) {
+            $data['published_at'] = (string)$post['published_at'];
+        }
+
+        $data['is_published'] = 0;
+
+        return $data;
+    }
+
+    /**
+     * Возвращает категорию для черновика, если пользователь ещё не выбрал её в форме.
+     */
+    protected function resolveAutosaveCategory(array $post = []): array
+    {
+        $postCategoryId = (int)($post['category_id'] ?? 0);
+        if ($postCategoryId > 0) {
+            $category = $this->blog->findCategoryById($postCategoryId);
+            if ($category) {
+                return [
+                    'id' => (int)$category['id'],
+                    'name' => (string)($category['name'] ?: ($category['name_ru'] ?? $category['name_en'] ?? '')),
+                ];
+            }
+        }
+
+        $categories = $this->blog->getCategories();
+        if (!empty($categories[0])) {
+            return [
+                'id' => (int)$categories[0]['id'],
+                'name' => (string)($categories[0]['name'] ?: ($categories[0]['name_ru'] ?? $categories[0]['name_en'] ?? '')),
+            ];
+        }
+
+        $categoryId = $this->blog->createCategory('Без категории', 'Uncategorized', 'uncategorized');
+
+        return [
+            'id' => $categoryId,
+            'name' => 'Без категории',
         ];
     }
 
