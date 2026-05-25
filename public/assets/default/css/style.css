@@ -1202,13 +1202,29 @@
 }
 
 .plyr__video-wrapper video[data-plyr-zoomable="true"] {
+    position: relative;
+    z-index: 0;
     transform-origin: center center;
     transition: transform .18s ease;
     will-change: transform;
 }
 
 .plyr[data-plyr-zoom-ready="true"] .plyr__video-wrapper {
+    z-index: 0;
     touch-action: none;
+}
+
+.plyr[data-plyr-zoom-ready="true"] .plyr__controls,
+.plyr[data-plyr-zoom-ready="true"] .plyr__captions,
+.plyr[data-plyr-zoom-ready="true"] .plyr__control--overlaid {
+    z-index: 20;
+}
+
+.plyr[data-plyr-zoom-ready="true"]:fullscreen .plyr__controls,
+.plyr[data-plyr-zoom-ready="true"]:-webkit-full-screen .plyr__controls,
+.plyr[data-plyr-zoom-ready="true"].plyr--fullscreen .plyr__controls {
+    transform: translateZ(0);
+    z-index: 30;
 }
 
 .plyr.is-plyr-zoomed .plyr__video-wrapper {

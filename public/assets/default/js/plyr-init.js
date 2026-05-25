@@ -1398,7 +1398,6 @@
 
             if (getScale() > 1) {
                 startPanning({ clientX: event.clientX, clientY: event.clientY });
-                event.preventDefault();
             }
         });
 
