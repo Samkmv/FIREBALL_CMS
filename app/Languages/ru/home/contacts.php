@@ -29,7 +29,7 @@ return [
     'contacts_block_location_title' => 'Адрес магазина',
     'contacts_block_hours_title' => 'Часы работы',
     'contacts_label_customers' => 'Клиенты',
-    'contacts_label_franchise' => 'Франшиза',
+    'contacts_label_support' => 'Техподдержка',
     'contacts_location_city' => 'Нью-Йорк 11741, США',
     'contacts_location_address' => '396 Lillian Bolavandy, Holbrook',
     'contacts_hours_weekdays' => 'Пн - Пт 8:00 - 18:00',

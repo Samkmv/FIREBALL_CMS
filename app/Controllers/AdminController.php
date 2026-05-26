@@ -906,9 +906,9 @@ class AdminController extends BaseController
             'contacts_page_subheading' => trim((string)($data['contacts_page_subheading'] ?? '')),
             'contacts_page_image' => trim((string)($data['contacts_page_image'] ?? '')),
             'contacts_phone_customers' => trim((string)($data['contacts_phone_customers'] ?? '')),
-            'contacts_phone_franchise' => trim((string)($data['contacts_phone_franchise'] ?? '')),
+            'contacts_phone_support' => trim((string)($data['contacts_phone_support'] ?? '')),
             'contacts_email_customers' => mb_strtolower(trim((string)($data['contacts_email_customers'] ?? ''))),
-            'contacts_email_franchise' => mb_strtolower(trim((string)($data['contacts_email_franchise'] ?? ''))),
+            'contacts_email_support' => mb_strtolower(trim((string)($data['contacts_email_support'] ?? ''))),
             'contacts_location_city' => trim((string)($data['contacts_location_city'] ?? '')),
             'contacts_location_address' => trim((string)($data['contacts_location_address'] ?? '')),
             'contacts_hours_weekdays' => trim((string)($data['contacts_hours_weekdays'] ?? '')),
@@ -972,7 +972,7 @@ class AdminController extends BaseController
         if ($data['contacts_page_image'] !== '' && !$this->isValidSeoImage($data['contacts_page_image'])) {
             $errors['contacts_page_image'][] = return_translation('admin_validation_seo_image_invalid');
         }
-        foreach (['contacts_email_customers', 'contacts_email_franchise'] as $field) {
+        foreach (['contacts_email_customers', 'contacts_email_support'] as $field) {
             if (($data[$field] ?? '') !== '' && filter_var((string)$data[$field], FILTER_VALIDATE_EMAIL) === false) {
                 $errors[$field][] = return_translation('contacts_validation_email_invalid');
             }

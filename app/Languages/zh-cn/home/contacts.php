@@ -29,7 +29,7 @@ return [
     'contacts_block_location_title' => '门店地址',
     'contacts_block_hours_title' => '营业时间',
     'contacts_label_customers' => '客户',
-    'contacts_label_franchise' => '加盟',
+    'contacts_label_support' => '技术支持',
     'contacts_location_city' => '美国纽约州 11741',
     'contacts_location_address' => 'Holbrook, Lillian Bolavandy 街 396 号',
     'contacts_hours_weekdays' => '周一至周五 8:00 - 18:00',

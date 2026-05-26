@@ -542,8 +542,8 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body pt-3">
-                <div class="rounded-4 bg-body-tertiary d-flex align-items-center justify-content-center p-3" style="min-height: 360px;">
-                    <img src="" alt="" class="img-fluid rounded-4" style="max-height: 75vh; width: auto;" data-file-preview-image>
+                <div class="rounded-4 bg-body-tertiary d-flex align-items-center justify-content-center p-3" data-file-preview-stage>
+                    <img src="" alt="" class="img-fluid rounded-4" data-file-preview-image>
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">

@@ -80,7 +80,7 @@
         [data-file-manager-toolbar] {
             position: sticky;
             top: 0;
-            z-index: 1080;
+            z-index: 1020;
             background: var(--fm-toolbar);
             backdrop-filter: blur(18px);
             border-bottom: 1px solid var(--fm-toolbar-border);
@@ -174,7 +174,7 @@
         }
 
         [data-file-manager-actions-menu] .dropdown-menu {
-            z-index: 1085;
+            z-index: 1045;
             margin-right: .35rem !important;
         }
 
@@ -183,7 +183,7 @@
             inset: auto !important;
             transform: none !important;
             margin: 0 !important;
-            z-index: 2000 !important;
+            z-index: 1045 !important;
             box-shadow: 0 18px 48px rgba(17, 24, 39, .18);
         }
 
@@ -215,6 +215,35 @@
 
         [data-fm-pagination] .pagination {
             margin-bottom: 0;
+        }
+
+        [data-file-preview-modal] .modal-dialog {
+            max-width: min(1120px, calc(100vw - 1.5rem));
+        }
+
+        [data-file-preview-modal] .modal-content {
+            max-height: calc(100dvh - 1.5rem);
+        }
+
+        [data-file-preview-modal] .modal-body {
+            min-width: 0;
+            overflow: auto;
+        }
+
+        [data-file-preview-stage] {
+            min-height: clamp(220px, 42dvh, 360px);
+            max-height: min(72dvh, 760px);
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        [data-file-preview-image] {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: min(68dvh, 720px);
+            object-fit: contain;
         }
 
         [data-file-manager-sidebar] .list-group-item {
@@ -303,7 +332,7 @@
                 grid-template-columns: 1fr;
                 min-width: 0;
                 position: relative;
-                z-index: 1081;
+                z-index: 1021;
             }
 
             [data-file-manager-toolbar-actions] .dropdown,
@@ -429,6 +458,21 @@
             [data-fm-pagination] .page-link {
                 min-width: 2.5rem;
                 text-align: center;
+            }
+
+            [data-file-preview-modal] .modal-dialog {
+                margin-inline: .75rem;
+                max-width: calc(100vw - 1.5rem);
+            }
+
+            [data-file-preview-stage] {
+                min-height: 220px;
+                max-height: calc(100dvh - 12rem);
+                padding: .75rem !important;
+            }
+
+            [data-file-preview-image] {
+                max-height: calc(100dvh - 13.5rem);
             }
         }
     </style>

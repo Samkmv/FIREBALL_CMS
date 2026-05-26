@@ -676,7 +676,10 @@ $(function () {
         let html = '';
         filteredMessages.forEach((item) => {
             const mine = Number(item.sender_id) === Number(currentUserId);
-            const checks = mine ? `<span class="ms-2">${Number(item.is_read) === 1 ? '✓✓' : '✓'}</span>` : '';
+            const readIcon = Number(item.is_read) === 1
+                ? '<span class="chat-message-checks" aria-hidden="true"><i class="ci-check"></i><i class="ci-check"></i></span>'
+                : '<span class="chat-message-checks" aria-hidden="true"><i class="ci-check"></i></span>';
+            const checks = mine ? readIcon : '';
             const avatar = escapeHtml(mine ? currentUserAvatar : (getContactButtons().filter('.active').first().data('user-avatar') || currentAvatar.attr('src') || ''));
             const messageText = item.message
                 ? `<div class="chat-message-text small lh-sm">${highlightText(item.message, query)}</div>`
@@ -685,22 +688,24 @@ $(function () {
             const isSelected = state.selectedIds.has(Number(item.id));
             const canShowActions = state.canModerate && !state.selectionMode;
             const canShowCheckbox = state.selectionMode && state.canBulkDelete;
+            const actionDeleteText = escapeHtml(chatApp.data('action-delete-text') || 'Delete');
 
             html += `
                 <div class="chat-message-row ${mine ? 'chat-message-row--mine' : 'chat-message-row--theirs'} ${isSelected ? 'is-selected' : ''}" data-chat-message-row data-message-id="${Number(item.id) || 0}">
                     ${mine ? '' : `<img src="${avatar}" alt="" class="chat-message-avatar rounded-circle border flex-shrink-0">`}
                     ${canShowCheckbox ? `<input type="checkbox" class="form-check-input chat-message-select" data-chat-message-select value="${Number(item.id) || 0}" ${isSelected ? 'checked' : ''}>` : ''}
-                    <div class="chat-message-bubble rounded-3 px-3 py-2 ${mine ? 'chat-message-bubble--mine' : 'chat-message-bubble--theirs'}">
+                    <div class="chat-message-bubble rounded-3 px-3 py-2 ${mine ? 'chat-message-bubble--mine' : 'chat-message-bubble--theirs'} ${canShowActions ? 'chat-message-bubble--actions' : ''}">
                         ${canShowActions ? `
                             <div class="chat-message-actions">
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-chat-delete-message="${Number(item.id) || 0}">
-                                    ${escapeHtml(chatApp.data('action-delete-text') || 'Delete')}
+                                <button type="button" class="chat-message-delete-btn" data-chat-delete-message="${Number(item.id) || 0}" title="${actionDeleteText}" aria-label="${actionDeleteText}">
+                                    <i class="ci-trash" aria-hidden="true"></i>
                                 </button>
                             </div>
                         ` : ''}
                         ${messageText}
                         ${attachment}
-                        <div class="small mt-1 chat-message-meta-text d-flex align-items-center justify-content-end">
+                        <div class="small mt-2 chat-message-meta-text d-flex align-items-center justify-content-end gap-1">
+                            <i class="ci-clock" aria-hidden="true"></i>
                             <span>${escapeHtml(item.created_at)}</span>
                             ${checks}
                         </div>

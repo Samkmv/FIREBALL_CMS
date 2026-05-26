@@ -29,7 +29,7 @@ return [
     'contacts_block_location_title' => 'Store location',
     'contacts_block_hours_title' => 'Working hours',
     'contacts_label_customers' => 'Customers',
-    'contacts_label_franchise' => 'Franchise',
+    'contacts_label_support' => 'Technical support',
     'contacts_location_city' => 'New York 11741, USA',
     'contacts_location_address' => '396 Lillian Bolavandy, Holbrook',
     'contacts_hours_weekdays' => 'Mon - Fri 8:00 - 18:00',

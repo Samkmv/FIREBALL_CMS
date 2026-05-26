@@ -3,9 +3,9 @@ $contactsHeading = site_setting('contacts_page_heading', return_translation('con
 $contactsSubheading = site_setting('contacts_page_subheading', return_translation('contacts_subheading'));
 $contactsImage = site_setting('contacts_page_image', '/assets/img/slider/2.png');
 $contactsPhoneCustomers = site_setting('contacts_phone_customers', '+1 50 537 53 082');
-$contactsPhoneFranchise = site_setting('contacts_phone_franchise', '+1 50 537 53 000');
+$contactsPhoneSupport = site_setting('contacts_phone_support', site_setting('contacts_phone_franchise', '+1 50 537 53 000'));
 $contactsEmailCustomers = site_setting('contacts_email_customers', 'info@cartzilla.com');
-$contactsEmailFranchise = site_setting('contacts_email_franchise', 'franchise@cartzilla.com');
+$contactsEmailSupport = site_setting('contacts_email_support', site_setting('contacts_email_franchise', 'support@cartzilla.com'));
 $contactsLocationCity = site_setting('contacts_location_city', return_translation('contacts_location_city'));
 $contactsLocationAddress = site_setting('contacts_location_address', return_translation('contacts_location_address'));
 $contactsHoursWeekdays = site_setting('contacts_hours_weekdays', return_translation('contacts_hours_weekdays'));
@@ -86,8 +86,8 @@ $phoneHref = static function (string $value): string {
                         <a class="nav-link animate-target fs-base ms-1 p-0" href="tel:<?= htmlSC($phoneHref($contactsPhoneCustomers)) ?>"><?= htmlSC($contactsPhoneCustomers) ?></a>
                     </li>
                     <li class="nav animate-underline justify-content-center">
-                        <?= print_translation('contacts_label_franchise') ?>:
-                        <a class="nav-link animate-target fs-base ms-1 p-0" href="tel:<?= htmlSC($phoneHref($contactsPhoneFranchise)) ?>"><?= htmlSC($contactsPhoneFranchise) ?></a>
+                        <?= print_translation('contacts_label_support') ?>:
+                        <a class="nav-link animate-target fs-base ms-1 p-0" href="tel:<?= htmlSC($phoneHref($contactsPhoneSupport)) ?>"><?= htmlSC($contactsPhoneSupport) ?></a>
                     </li>
                 </ul>
             </div>
@@ -102,8 +102,8 @@ $phoneHref = static function (string $value): string {
                         <a class="nav-link animate-target fs-base ms-1 p-0" href="mailto:<?= htmlSC($contactsEmailCustomers) ?>"><?= htmlSC($contactsEmailCustomers) ?></a>
                     </li>
                     <li class="nav animate-underline justify-content-center">
-                        <?= print_translation('contacts_label_franchise') ?>:
-                        <a class="nav-link animate-target fs-base ms-1 p-0" href="mailto:<?= htmlSC($contactsEmailFranchise) ?>"><?= htmlSC($contactsEmailFranchise) ?></a>
+                        <?= print_translation('contacts_label_support') ?>:
+                        <a class="nav-link animate-target fs-base ms-1 p-0" href="mailto:<?= htmlSC($contactsEmailSupport) ?>"><?= htmlSC($contactsEmailSupport) ?></a>
                     </li>
                 </ul>
             </div>

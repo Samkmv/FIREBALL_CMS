@@ -170,7 +170,8 @@
                 data-delete-message-text="<?= htmlSC(return_translation('chat_message_deleted')) ?>"
                 data-delete-messages-text="<?= htmlSC(return_translation('chat_messages_deleted')) ?>"
                 data-clear-chat-text="<?= htmlSC(return_translation('chat_conversation_cleared')) ?>"
-                data-action-delete-text="<?= htmlSC(return_translation('chat_action_delete')) ?>"\n                data-confirm-delete-message-text="<?= htmlSC(return_translation('chat_confirm_delete_message')) ?>"
+                data-action-delete-text="<?= htmlSC(return_translation('chat_action_delete')) ?>"
+                data-confirm-delete-message-text="<?= htmlSC(return_translation('chat_confirm_delete_message')) ?>"
                 data-confirm-delete-messages-text="<?= htmlSC(return_translation('chat_confirm_delete_messages')) ?>"
                 data-confirm-clear-chat-text="<?= htmlSC(return_translation('chat_confirm_clear_chat')) ?>"
                 data-audit-empty-text="<?= htmlSC(return_translation('chat_audit_empty')) ?>"
@@ -329,6 +330,7 @@
                             </div>
                         </div>
                     </div>
+                </div>
             <div class="offcanvas offcanvas-start chat-sidebar-offcanvas d-lg-none" tabindex="-1" id="accountSidebar" aria-labelledby="accountSidebarLabel">
                 <div class="offcanvas-header py-3">
                     <h5 class="offcanvas-title" id="accountSidebarLabel"><?= print_translation('chat_contacts_title') ?></h5>
@@ -352,18 +354,18 @@
             </button>
 
             <div class="modal fade" id="chatAttachmentModal" tabindex="-1" role="dialog" aria-hidden="true" data-chat-preview-modal>
-                <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-md-down" role="document">
-                    <div class="modal-content border-0 rounded-5 overflow-hidden chat-preview-modal">
-                        <div class="modal-header border-0 pb-0 chat-preview-modal__header">
-                            <h2 class="modal-title fs-5 text-truncate" data-chat-preview-modal-title><?= print_translation('chat_image_modal_title') ?></h2>
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content chat-preview-modal">
+                        <div class="modal-header chat-preview-modal__header align-items-center gap-3">
+                            <h2 class="modal-title fs-5 text-truncate min-w-0 flex-grow-1" data-chat-preview-modal-title><?= print_translation('chat_image_modal_title') ?></h2>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div class="modal-body pt-3 chat-preview-modal__body">
+                        <div class="modal-body chat-preview-modal__body">
                             <div class="chat-preview-modal__stage rounded-4 bg-body-tertiary d-flex align-items-center justify-content-center p-2 p-md-3" data-chat-preview-modal-body>
                                 <p class="text-body-secondary mb-0"><?= print_translation('chat_preview_loading') ?></p>
                             </div>
                         </div>
-                        <div class="modal-footer border-0 pt-0 chat-preview-modal__footer">
+                        <div class="modal-footer chat-preview-modal__footer">
                             <a class="btn btn-outline-secondary rounded-pill" href="" target="_blank" rel="noopener noreferrer" data-chat-preview-modal-open>
                                 <i class="ci-external-link me-2"></i>
                                 <?= print_translation('chat_open_file') ?>
@@ -372,7 +374,7 @@
                                 <i class="ci-download me-2"></i>
                                 <?= print_translation('chat_download_file') ?>
                             </a>
-                            <button type="button" class="btn btn-dark rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                            <button type="button" class="btn btn-dark rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
                         </div>
                     </div>
                 </div>

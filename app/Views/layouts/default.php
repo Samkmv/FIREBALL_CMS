@@ -21,13 +21,17 @@ $pageSeoImage = trim((string)($seo_image ?? ''));
 $pageSeoRobots = trim((string)($seo_robots ?? ''));
 $pageSeoCanonical = trim((string)($seo_canonical ?? ''));
 $isHomePage = uri_without_lang() === '';
+$homePageTitle = $pageTitle !== '' ? $pageTitle : return_translation('home_index_title');
+$homeTitleBase = ($seoHomeTitle !== '' && $seoHomeTitle !== $siteTitle)
+    ? $seoHomeTitle
+    : ($homePageTitle !== 'home_index_title' ? $homePageTitle : $siteTitle);
 $resolvedTitleBase = $pageSeoTitle !== ''
     ? $pageSeoTitle
-    : ($isHomePage ? ($seoHomeTitle !== '' ? $seoHomeTitle : $siteTitle) : ($pageTitle !== '' ? $pageTitle : $siteTitle));
+    : ($isHomePage ? $homeTitleBase : ($pageTitle !== '' ? $pageTitle : $siteTitle));
 $resolvedTitleSuffix = $seoDefaultTitleSuffix !== '' ? $seoDefaultTitleSuffix : $siteTitle;
-$documentTitle = $isHomePage
-    ? $resolvedTitleBase
-    : ($resolvedTitleBase !== $resolvedTitleSuffix ? $resolvedTitleBase . ' - ' . $resolvedTitleSuffix : $resolvedTitleBase);
+$documentTitle = $resolvedTitleBase !== $resolvedTitleSuffix
+    ? $resolvedTitleBase . ' - ' . $resolvedTitleSuffix
+    : $resolvedTitleBase;
 $metaDescription = $pageSeoDescription !== ''
     ? $pageSeoDescription
     : ($seoMetaDescription !== '' ? $seoMetaDescription : ($siteDescription !== '' ? $siteDescription : $siteTitle));
@@ -64,6 +68,9 @@ if ($currentUser) {
     \FBL\Auth::touchPresence();
 }
 $isAdmin = check_admin();
+$hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="#adminSidebar"')
+    || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
+    || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
 $canViewVideoStatus = $isAdmin || check_creator();
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 $logoutAction = base_href('/logout');
@@ -605,7 +612,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?= $this->content; ?>
 
 <!-- Page footer -->
-<footer class="footer position-relative bg-dark">
+<footer class="footer position-relative bg-dark<?= $hasMobileSidebarToggle ? ' mobile-sidebar-layout-footer' : '' ?>">
     <span class="position-absolute top-0 start-0 w-100 h-100 bg-body d-none d-block-dark"></span>
     <div class="container position-relative z-1 pt-sm-2 pt-md-3 pt-lg-4" data-bs-theme="dark">
         <div class="accordion py-5" id="footerLinks">

@@ -26,9 +26,9 @@ $contactsPageHeading = $formData['contacts_page_heading'] ?? ($settings['contact
 $contactsPageSubheading = $formData['contacts_page_subheading'] ?? ($settings['contacts_page_subheading'] ?? '');
 $contactsPageImage = $formData['contacts_page_image'] ?? ($settings['contacts_page_image'] ?? '');
 $contactsPhoneCustomers = $formData['contacts_phone_customers'] ?? ($settings['contacts_phone_customers'] ?? '');
-$contactsPhoneFranchise = $formData['contacts_phone_franchise'] ?? ($settings['contacts_phone_franchise'] ?? '');
+$contactsPhoneSupport = $formData['contacts_phone_support'] ?? (trim((string)($settings['contacts_phone_support'] ?? '')) !== '' ? $settings['contacts_phone_support'] : ($settings['contacts_phone_franchise'] ?? ''));
 $contactsEmailCustomers = $formData['contacts_email_customers'] ?? ($settings['contacts_email_customers'] ?? '');
-$contactsEmailFranchise = $formData['contacts_email_franchise'] ?? ($settings['contacts_email_franchise'] ?? '');
+$contactsEmailSupport = $formData['contacts_email_support'] ?? (trim((string)($settings['contacts_email_support'] ?? '')) !== '' ? $settings['contacts_email_support'] : ($settings['contacts_email_franchise'] ?? ''));
 $contactsLocationCity = $formData['contacts_location_city'] ?? ($settings['contacts_location_city'] ?? '');
 $contactsLocationAddress = $formData['contacts_location_address'] ?? ($settings['contacts_location_address'] ?? '');
 $contactsHoursWeekdays = $formData['contacts_hours_weekdays'] ?? ($settings['contacts_hours_weekdays'] ?? '');
@@ -183,9 +183,9 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
                             <div class="form-text"><?= print_translation('admin_settings_contacts_phone_customers_hint') ?></div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><?= print_translation('admin_settings_contacts_phone_franchise') ?></label>
-                            <input class="form-control" type="text" name="contacts_phone_franchise" value="<?= htmlSC($contactsPhoneFranchise) ?>" placeholder="+1 50 537 53 000">
-                            <div class="form-text"><?= print_translation('admin_settings_contacts_phone_franchise_hint') ?></div>
+                            <label class="form-label"><?= print_translation('admin_settings_contacts_phone_support') ?></label>
+                            <input class="form-control" type="text" name="contacts_phone_support" value="<?= htmlSC($contactsPhoneSupport) ?>" placeholder="+1 50 537 53 000">
+                            <div class="form-text"><?= print_translation('admin_settings_contacts_phone_support_hint') ?></div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label"><?= print_translation('admin_settings_contacts_email_customers') ?></label>
@@ -194,10 +194,10 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
                             <?= get_errors('contacts_email_customers') ?>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><?= print_translation('admin_settings_contacts_email_franchise') ?></label>
-                            <input class="form-control <?= get_validation_class('contacts_email_franchise') ?>" type="email" name="contacts_email_franchise" value="<?= htmlSC($contactsEmailFranchise) ?>" placeholder="franchise@example.com">
-                            <div class="form-text"><?= print_translation('admin_settings_contacts_email_franchise_hint') ?></div>
-                            <?= get_errors('contacts_email_franchise') ?>
+                            <label class="form-label"><?= print_translation('admin_settings_contacts_email_support') ?></label>
+                            <input class="form-control <?= get_validation_class('contacts_email_support') ?>" type="email" name="contacts_email_support" value="<?= htmlSC($contactsEmailSupport) ?>" placeholder="support@example.com">
+                            <div class="form-text"><?= print_translation('admin_settings_contacts_email_support_hint') ?></div>
+                            <?= get_errors('contacts_email_support') ?>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label"><?= print_translation('admin_settings_contacts_location_city') ?></label>
