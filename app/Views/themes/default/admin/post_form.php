@@ -1510,6 +1510,9 @@ $editorConfig = [
         }
     }
     .fb-post-editor.fb-post-editor--linear {
+        --fb-post-editor-layer-content: 1;
+        --fb-post-editor-layer-toolbar: 20;
+        --fb-post-editor-layer-floating: 1070;
         border: 1px solid rgba(26, 33, 36, .08);
         border-radius: 1rem;
         background: #fff;
@@ -1520,7 +1523,7 @@ $editorConfig = [
 
     .fb-post-editor--linear .fb-post-editor__bar {
         position: relative;
-        z-index: 10;
+        z-index: var(--fb-post-editor-layer-toolbar);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -1552,7 +1555,7 @@ $editorConfig = [
 
     .fb-post-editor--linear .fb-post-editor__blocks {
         position: relative;
-        z-index: 1;
+        z-index: var(--fb-post-editor-layer-content);
         display: grid;
         gap: .8rem;
         padding: 1rem;
@@ -1576,16 +1579,16 @@ $editorConfig = [
         position: relative;
         display: inline-flex;
         justify-content: center;
-        z-index: 20;
+        z-index: var(--fb-post-editor-layer-toolbar);
     }
 
     .fb-post-editor--linear .fb-post-editor__add-wrap.is-open {
-        z-index: 1100;
+        z-index: var(--fb-post-editor-layer-floating);
     }
 
     .fb-post-editor--linear.has-open-add-menu {
         position: relative;
-        z-index: 1090;
+        z-index: auto;
     }
 
     .fb-post-editor--linear .fb-post-editor__add-btn {
@@ -1602,7 +1605,7 @@ $editorConfig = [
         position: absolute;
         top: calc(100% + .5rem);
         left: 50%;
-        z-index: 1105;
+        z-index: var(--fb-post-editor-layer-floating);
         display: none;
         gap: .25rem;
         width: max-content;
@@ -1762,8 +1765,10 @@ $editorConfig = [
         background: rgba(33, 37, 41, .08);
         color: #1f2937;
         padding: .26rem .56rem;
+        max-width: 100%;
         font-size: .76rem;
         line-height: 1;
+        overflow-wrap: anywhere;
     }
 
     .fb-post-block__icon {
@@ -1810,6 +1815,7 @@ $editorConfig = [
         flex-wrap: wrap;
         gap: .45rem;
         min-width: 0;
+        max-width: 100%;
     }
 
     .fb-post-block__actions .btn {
@@ -1824,6 +1830,8 @@ $editorConfig = [
         align-items: center;
         flex-wrap: wrap;
         gap: .35rem;
+        min-width: 0;
+        max-width: 100%;
         margin-right: .15rem;
     }
 
@@ -1834,6 +1842,8 @@ $editorConfig = [
     }
 
     .fb-post-block__toolbar {
+        position: relative;
+        z-index: var(--fb-post-editor-layer-toolbar);
         display: none;
         align-items: center;
         flex-wrap: wrap;
@@ -1853,6 +1863,7 @@ $editorConfig = [
         align-items: center;
         flex-wrap: wrap;
         gap: .35rem;
+        min-width: 0;
     }
 
     .fb-post-block__toolbar .btn {
@@ -1865,21 +1876,30 @@ $editorConfig = [
     .fb-post-block__style {
         position: relative;
         margin-left: auto;
+        min-width: 0;
+    }
+
+    .fb-post-block__style.is-open {
+        z-index: var(--fb-post-editor-layer-floating);
     }
 
     .fb-post-style-menu {
         position: absolute;
         top: calc(100% + .5rem);
         right: 0;
-        z-index: 25;
+        z-index: var(--fb-post-editor-layer-floating);
         display: none;
         gap: .65rem;
         min-width: 15rem;
+        max-width: calc(100vw - 2rem);
         padding: .75rem;
         border: 1px solid rgba(26, 33, 36, .1);
         border-radius: .9rem;
         background: #fff;
         box-shadow: 0 16px 36px rgba(17, 24, 39, .14);
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        contain: layout paint;
     }
 
     .fb-post-block__style.is-open .fb-post-style-menu {
@@ -2685,7 +2705,7 @@ $editorConfig = [
         }
 
         .fb-post-block__code {
-            min-width: 42rem;
+            min-width: 0;
             min-height: 360px !important;
         }
 

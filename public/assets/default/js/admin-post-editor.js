@@ -748,6 +748,10 @@ function initPostEditor() {
         });
 
         app.addEventListener('focusin', function (event) {
+            if (event.target.closest('[data-style-wrap]')) {
+                return;
+            }
+
             const blockElement = event.target.closest('[data-block-id]');
             if (blockElement) {
                 setActiveBlock(String(blockElement.dataset.blockId || ''));
@@ -1047,9 +1051,13 @@ function initPostEditor() {
 
         window.addEventListener('resize', positionOpenAddDropdown, { passive: true });
         window.addEventListener('scroll', positionOpenAddDropdown, { passive: true });
+        window.addEventListener('resize', positionOpenStylePanel, { passive: true });
+        window.addEventListener('scroll', positionOpenStylePanel, { passive: true });
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', positionOpenAddDropdown, { passive: true });
             window.visualViewport.addEventListener('scroll', positionOpenAddDropdown, { passive: true });
+            window.visualViewport.addEventListener('resize', positionOpenStylePanel, { passive: true });
+            window.visualViewport.addEventListener('scroll', positionOpenStylePanel, { passive: true });
         }
 
         if (deleteModalConfirmButton) {
@@ -1984,13 +1992,20 @@ function initPostEditor() {
         }
 
         const willOpen = !wrap.classList.contains('is-open');
+        closeAllAddDropdowns();
         closeStylePanels();
         wrap.classList.toggle('is-open', willOpen);
+
+        if (willOpen) {
+            positionStylePanel(wrap);
+        }
     }
 
     function closeStylePanels() {
         app.querySelectorAll('[data-style-wrap]').forEach(function (wrap) {
+            const menu = wrap.querySelector('.fb-post-style-menu');
             wrap.classList.remove('is-open');
+            clearFloatingMenuStyles(menu);
         });
     }
 
@@ -2234,15 +2249,7 @@ function initPostEditor() {
         button.classList.remove('show');
         button.setAttribute('aria-expanded', 'false');
         menu.classList.remove('show');
-        menu.style.position = '';
-        menu.style.top = '';
-        menu.style.left = '';
-        menu.style.right = '';
-        menu.style.transform = '';
-        menu.style.zIndex = '';
-        menu.style.maxHeight = '';
-        menu.style.overflowY = '';
-        menu.style.width = '';
+        clearFloatingMenuStyles(menu);
         wrap.classList.remove('is-open');
         app.classList.remove('has-open-add-menu');
     }
@@ -2277,7 +2284,7 @@ function initPostEditor() {
         }
     }
 
-    function getVisibleFixedBottomInset() {
+    function getVisibleFixedBottomInset(viewport) {
         const toggle = document.querySelector('.admin-shell-mobile-toggle');
         if (!toggle) {
             return 16;
@@ -2293,7 +2300,89 @@ function initPostEditor() {
             return 16;
         }
 
-        return Math.max(16, window.innerHeight - rect.top + 12);
+        const viewportBottom = viewport
+            ? viewport.top + viewport.height
+            : (window.innerHeight || document.documentElement.clientHeight);
+
+        return Math.max(16, viewportBottom - rect.top + 12);
+    }
+
+    function getViewportMetrics() {
+        const visualViewport = window.visualViewport || null;
+        return {
+            width: visualViewport ? visualViewport.width : (window.innerWidth || document.documentElement.clientWidth),
+            height: visualViewport ? visualViewport.height : (window.innerHeight || document.documentElement.clientHeight),
+            left: visualViewport ? visualViewport.offsetLeft : 0,
+            top: visualViewport ? visualViewport.offsetTop : 0
+        };
+    }
+
+    function clearFloatingMenuStyles(menu) {
+        if (!menu) {
+            return;
+        }
+
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.left = '';
+        menu.style.right = '';
+        menu.style.transform = '';
+        menu.style.zIndex = '';
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
+        menu.style.width = '';
+    }
+
+    function positionFloatingMenu(anchor, menu, options) {
+        if (!anchor || !menu) {
+            return;
+        }
+
+        const settings = Object.assign({
+            width: 352,
+            minWidth: 220,
+            zIndex: 1070,
+            align: 'center'
+        }, options || {});
+        const rect = anchor.getBoundingClientRect();
+        const viewport = getViewportMetrics();
+        const margin = 12;
+        const bottomInset = getVisibleFixedBottomInset(viewport);
+        const maxWidth = Math.max(settings.minWidth, viewport.width - (margin * 2));
+
+        menu.style.position = 'fixed';
+        menu.style.right = 'auto';
+        menu.style.transform = 'none';
+        menu.style.zIndex = String(settings.zIndex);
+        menu.style.width = Math.min(settings.width, maxWidth) + 'px';
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
+
+        const menuRect = menu.getBoundingClientRect();
+        const availableBelow = viewport.top + viewport.height - rect.bottom - bottomInset - margin;
+        const availableAbove = rect.top - viewport.top - margin;
+        const openAbove = availableBelow < menuRect.height && availableAbove > availableBelow;
+        const chosenAvailable = Math.max(0, openAbove ? availableAbove : availableBelow);
+        const viewportAvailable = Math.max(0, viewport.height - bottomInset - (margin * 2));
+        const maxHeight = Math.max(48, Math.min(chosenAvailable, viewportAvailable));
+        const renderedHeight = Math.min(menuRect.height, maxHeight);
+        const top = openAbove
+            ? Math.max(viewport.top + margin, rect.top - renderedHeight - 8)
+            : Math.min(rect.bottom + 8, viewport.top + viewport.height - bottomInset - renderedHeight - margin);
+        let preferredLeft = rect.left + (rect.width / 2) - (menuRect.width / 2);
+
+        if (settings.align === 'end') {
+            preferredLeft = rect.right - menuRect.width;
+        } else if (settings.align === 'start') {
+            preferredLeft = rect.left;
+        }
+
+        const left = Math.max(viewport.left + margin, Math.min(preferredLeft, viewport.left + viewport.width - menuRect.width - margin));
+
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.style.maxHeight = maxHeight + 'px';
+        menu.style.overflowY = menuRect.height > maxHeight ? 'auto' : 'visible';
     }
 
     function positionAddDropdown(wrap) {
@@ -2304,45 +2393,41 @@ function initPostEditor() {
             return;
         }
 
-        const rect = button.getBoundingClientRect();
-        const visualViewport = window.visualViewport || null;
-        const viewportWidth = visualViewport ? visualViewport.width : (window.innerWidth || document.documentElement.clientWidth);
-        const viewportHeight = visualViewport ? visualViewport.height : (window.innerHeight || document.documentElement.clientHeight);
-        const viewportLeft = visualViewport ? visualViewport.offsetLeft : 0;
-        const viewportTop = visualViewport ? visualViewport.offsetTop : 0;
-        const margin = 12;
-        const bottomInset = getVisibleFixedBottomInset();
-        const maxWidth = Math.max(220, viewportWidth - (margin * 2));
-
-        menu.style.position = 'fixed';
-        menu.style.right = 'auto';
-        menu.style.transform = 'none';
-        menu.style.zIndex = '1105';
-        menu.style.width = Math.min(352, maxWidth) + 'px';
-        menu.style.maxHeight = '';
-        menu.style.overflowY = '';
-
-        const menuRect = menu.getBoundingClientRect();
-        const availableBelow = viewportTop + viewportHeight - rect.bottom - bottomInset - margin;
-        const availableAbove = rect.top - viewportTop - margin;
-        const openAbove = availableBelow < menuRect.height && availableAbove > availableBelow;
-        const maxHeight = Math.max(180, (openAbove ? availableAbove : availableBelow));
-        const top = openAbove
-            ? Math.max(viewportTop + margin, rect.top - Math.min(menuRect.height, maxHeight) - 8)
-            : Math.min(rect.bottom + 8, viewportTop + viewportHeight - bottomInset - margin);
-        const centeredLeft = rect.left + (rect.width / 2) - (menuRect.width / 2);
-        const left = Math.max(viewportLeft + margin, Math.min(centeredLeft, viewportLeft + viewportWidth - menuRect.width - margin));
-
-        menu.style.top = top + 'px';
-        menu.style.left = left + 'px';
-        menu.style.maxHeight = maxHeight + 'px';
-        menu.style.overflowY = menuRect.height > maxHeight ? 'auto' : 'visible';
+        positionFloatingMenu(button, menu, {
+            width: 352,
+            minWidth: 220,
+            zIndex: 1070,
+            align: 'center'
+        });
     }
 
     function positionOpenAddDropdown() {
         const openWrap = app.querySelector('[data-add-wrap].is-open');
         if (openWrap) {
             positionAddDropdown(openWrap);
+        }
+    }
+
+    function positionStylePanel(wrap) {
+        const button = wrap ? wrap.querySelector('[data-style-toggle]') : null;
+        const menu = wrap ? wrap.querySelector('.fb-post-style-menu') : null;
+
+        if (!button || !menu || !wrap.classList.contains('is-open')) {
+            return;
+        }
+
+        positionFloatingMenu(button, menu, {
+            width: 288,
+            minWidth: 220,
+            zIndex: 1070,
+            align: 'end'
+        });
+    }
+
+    function positionOpenStylePanel() {
+        const openWrap = app.querySelector('[data-style-wrap].is-open');
+        if (openWrap) {
+            positionStylePanel(openWrap);
         }
     }
 

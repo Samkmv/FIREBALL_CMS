@@ -1488,6 +1488,7 @@
 }
 
 .admin-shell-mobile-toggle {
+    z-index: 1088 !important;
     padding-top: .95rem;
     border: 0 !important;
     box-shadow: none !important;
@@ -1496,6 +1497,12 @@
     transform: translateZ(0);
     backface-visibility: hidden;
     background-clip: padding-box;
+}
+
+body:has(.admin-shell-offcanvas.show) .admin-shell-mobile-toggle,
+body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .admin-shell-mobile-toggle::before,
