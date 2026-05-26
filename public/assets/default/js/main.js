@@ -11,6 +11,9 @@ $(function(){
     const notificationList = notificationCenter.find('[data-notifications-list]');
     const autoDismissAlerts = $('[data-auto-dismiss-alert]');
     const originalTitle = document.title;
+    const bodyDataset = document.body ? document.body.dataset : {};
+    const codeCopyLabel = bodyDataset.codeCopyLabel || 'Copy';
+    const codeCopiedLabel = bodyDataset.codeCopiedLabel || 'Copied';
     const seenNotificationKeys = new Set();
     let unreadBadgesReady = false;
     let lastUnreadTotal = 0;
@@ -151,38 +154,81 @@ $(function(){
         });
     };
 
+    const getCodeBlockLanguage = (pre, code) => {
+        const classSource = `${pre.getAttribute('class') || ''} ${code ? code.getAttribute('class') || '' : ''}`;
+        const classMatch = classSource.match(/\blanguage-([a-z0-9_-]+)\b/i);
+        if (classMatch) {
+            return classMatch[1].toLowerCase();
+        }
+
+        const dataLanguage = String(pre.dataset.language || (code ? code.dataset.language || '' : '') || '').trim();
+        if (dataLanguage) {
+            return dataLanguage.toLowerCase();
+        }
+
+        const text = String(code ? code.textContent || '' : pre.textContent || '').trim();
+        if (/^<[\s\S]+>$/.test(text) || /<\/?[a-z][\s\S]*>/i.test(text)) {
+            return 'html';
+        }
+
+        return 'plaintext';
+    };
+
     const initPostCodeBlocks = () => {
-        document.querySelectorAll('.post-content pre.fb-code-block').forEach((pre) => {
+        document.querySelectorAll('.post-content pre').forEach((pre) => {
             if (pre.dataset.fbCodeReady === '1') {
                 return;
             }
 
             pre.dataset.fbCodeReady = '1';
-            const code = pre.querySelector('code');
+            pre.classList.add('fb-code-block');
+
+            let code = pre.querySelector('code');
+            if (!code) {
+                code = document.createElement('code');
+                code.textContent = pre.textContent || '';
+                pre.textContent = '';
+                pre.appendChild(code);
+            }
+
+            const language = getCodeBlockLanguage(pre, code);
+            if (language && language !== 'plaintext') {
+                code.classList.add(`language-${language}`);
+            }
 
             if (code && typeof hljs !== 'undefined' && hljs.highlightElement) {
+                if (typeof hljs.configure === 'function') {
+                    hljs.configure({ ignoreUnescapedHTML: true });
+                }
                 delete code.dataset.highlighted;
                 hljs.highlightElement(code);
             }
 
-            const shell = document.createElement('div');
-            shell.className = 'fb-code-shell';
-            pre.parentNode.insertBefore(shell, pre);
-            shell.appendChild(pre);
+            let shell = pre.closest('.fb-code-shell');
+            if (!shell) {
+                shell = document.createElement('div');
+                shell.className = 'fb-code-shell';
+                pre.parentNode.insertBefore(shell, pre);
+                shell.appendChild(pre);
+            }
+
+            if (shell.querySelector('.fb-code-copy')) {
+                return;
+            }
 
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'fb-code-copy';
-            button.innerHTML = '<i class="ci-copy" aria-hidden="true"></i><span>Copy</span>';
+            button.innerHTML = '<i class="ci-copy" aria-hidden="true"></i><span>' + escapeHtml(codeCopyLabel) + '</span>';
             shell.appendChild(button);
 
             button.addEventListener('click', () => {
                 copyText(code ? code.textContent || '' : pre.textContent || '').then(() => {
                     button.classList.add('is-copied');
-                    button.innerHTML = '<i class="ci-check" aria-hidden="true"></i><span>Copied</span>';
+                    button.innerHTML = '<i class="ci-check" aria-hidden="true"></i><span>' + escapeHtml(codeCopiedLabel) + '</span>';
                     setTimeout(() => {
                         button.classList.remove('is-copied');
-                        button.innerHTML = '<i class="ci-copy" aria-hidden="true"></i><span>Copy</span>';
+                        button.innerHTML = '<i class="ci-copy" aria-hidden="true"></i><span>' + escapeHtml(codeCopyLabel) + '</span>';
                     }, 1800);
                 }).catch(() => {});
             });

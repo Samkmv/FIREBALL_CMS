@@ -1571,7 +1571,7 @@ $editorConfig = [
     }
 
     .fb-post-editor--linear .fb-post-editor__add-wrap.is-open {
-        z-index: 1080;
+        z-index: 60;
     }
 
     .fb-post-editor--linear .fb-post-editor__add-btn {
@@ -1588,9 +1588,10 @@ $editorConfig = [
         position: absolute;
         top: calc(100% + .5rem);
         left: 50%;
-        z-index: 1090;
-        display: grid;
+        z-index: 70;
+        display: none;
         gap: .25rem;
+        width: max-content;
         min-width: 13rem;
         max-width: calc(100vw - 2rem);
         padding: .45rem;
@@ -1599,6 +1600,10 @@ $editorConfig = [
         background: #fff;
         box-shadow: 0 18px 40px rgba(17, 24, 39, .14);
         transform: translateX(-50%);
+    }
+
+    .fb-post-add-menu.show {
+        display: grid;
     }
 
     .fb-post-add-menu button {
@@ -1943,7 +1948,8 @@ $editorConfig = [
         width: 100%;
         min-width: 0;
         max-width: none;
-        min-height: 420px !important;
+        min-height: 0 !important;
+        height: 100% !important;
         resize: vertical;
         padding: .95rem 1rem;
         font: 400 .92rem/1.6 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -1962,22 +1968,30 @@ $editorConfig = [
     }
 
     .fb-post-block__code--html {
-        min-height: 420px !important;
+        resize: none;
     }
 
     .fb-post-block__code-wrap {
         width: 100%;
-        overflow-x: auto;
+        min-width: 0;
+        overflow: hidden;
         -webkit-overflow-scrolling: touch;
     }
 
     .fb-post-block__code-editor {
         display: grid;
-        min-width: 48rem;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        height: 26rem;
         border: 1px solid #111827;
         border-radius: .95rem;
         background: #111827;
         overflow: hidden;
+    }
+
+    .fb-post-block__code-editor--html {
+        height: clamp(22rem, 52vh, 34rem);
     }
 
     .fb-post-block__code-editor .fb-post-block__code,
@@ -1986,7 +2000,8 @@ $editorConfig = [
     }
 
     .fb-post-block__code-highlight {
-        min-height: 420px;
+        min-height: 0;
+        height: 100%;
         margin: 0;
         padding: .95rem 1rem;
         font: 400 .92rem/1.6 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -2557,10 +2572,11 @@ $editorConfig = [
         }
 
         .fb-post-add-menu {
-            left: 0;
-            right: 0;
+            left: 50%;
+            right: auto;
+            width: min(22rem, calc(100vw - 2rem));
             min-width: 0;
-            transform: none;
+            transform: translateX(-50%);
         }
 
         .fb-post-block__head {
@@ -2613,25 +2629,28 @@ $editorConfig = [
         }
 
         .fb-post-add-menu {
-            position: fixed;
-            top: max(5rem, env(safe-area-inset-top));
-            left: 1rem;
-            right: 1rem;
-            max-width: none;
-            max-height: calc(100dvh - 8rem);
-            overflow-y: auto;
-            transform: none;
-            -webkit-overflow-scrolling: touch;
+            position: absolute;
+            top: calc(100% + .5rem);
+            left: 50%;
+            right: auto;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: min(22rem, calc(100vw - 2rem));
+            max-width: calc(100vw - 2rem);
+            max-height: none;
+            overflow: visible;
+            transform: translateX(-50%);
         }
 
         .fb-post-add-menu button {
-            min-height: 3rem;
-            font-size: 1rem;
+            min-height: 2.85rem;
+            gap: .45rem;
+            padding: .5rem .55rem;
+            font-size: .9rem;
         }
 
         .fb-post-add-menu__icon {
-            width: 2rem;
-            height: 2rem;
+            width: 1.8rem;
+            height: 1.8rem;
         }
 
         .fb-post-block__content {

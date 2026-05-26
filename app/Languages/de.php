@@ -103,6 +103,8 @@ return [
     'toast_error_title' => 'Fehler',
     'toast_info_title' => 'Info',
     'toast_warning_title' => 'Hinweis',
+    'code_copy_button' => 'Kopieren',
+    'code_copied_button' => 'Kopiert',
 
     // Chat
     'chat_message_required' => 'Bitte geben Sie eine Nachricht ein oder waehlen Sie eine Datei aus.',

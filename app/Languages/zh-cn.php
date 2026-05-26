@@ -103,6 +103,8 @@ return [
     'toast_error_title' => '错误',
     'toast_info_title' => '信息',
     'toast_warning_title' => '注意',
+    'code_copy_button' => '复制',
+    'code_copied_button' => '已复制',
 
     // Chat
     'chat_message_required' => '请输入消息或选择文件。',

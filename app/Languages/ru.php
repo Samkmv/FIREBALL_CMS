@@ -103,6 +103,8 @@ return [
     'toast_error_title' => 'Ошибка',
     'toast_info_title' => 'Информация',
     'toast_warning_title' => 'Внимание',
+    'code_copy_button' => 'Копировать',
+    'code_copied_button' => 'Скопировано',
 
     // Chat
     'chat_message_required' => 'Введите текст сообщения или выберите файл.',

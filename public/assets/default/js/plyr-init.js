@@ -6,6 +6,10 @@
     const hlsRetryDelayMs = 2000;
     const hlsPlayRetryDurationMs = 12000;
     const hlsPlayRetryDelayMs = 1000;
+    const hlsHealthCheckIntervalMs = 2000;
+    const hlsStuckResetAfterMs = 6000;
+    const hlsRestartCooldownMs = 10000;
+    const hlsPrewarmTtlMs = 45000;
     const canViewVideoStatus = window.canViewVideoStatus === true;
     let hlsScriptPromise = null;
     const hlsLocale = ((document.documentElement.getAttribute('lang') || 'en').toLowerCase().startsWith('ru')) ? 'ru' : 'en';
@@ -26,6 +30,7 @@
             native_stalled: 'Native HLS остановился. Перезагружаем поток...',
             native_fallback: 'Native HLS не стартовал. Переключаемся на HLS.js...',
             stream_error_load: 'Ошибка потока: не удалось загрузить HLS источник{details}',
+            stream_restarting: 'Поток завис в состоянии загрузки. Пересоздаем HLS... {state}',
             media_recover: 'Обнаружена ошибка медиа. Пытаемся восстановить...',
             stream_error_play: 'Ошибка потока: не удалось воспроизвести HLS источник{details}',
             loading_manifest: 'Загружаем манифест потока...',
@@ -60,6 +65,7 @@
             native_stalled: 'Native HLS stalled. Reloading stream...',
             native_fallback: 'Native HLS did not start. Switching to HLS.js...',
             stream_error_load: 'Stream error: failed to load HLS source{details}',
+            stream_restarting: 'Stream is stuck while loading. Recreating HLS... {state}',
             media_recover: 'Media error detected. Trying to recover...',
             stream_error_play: 'Stream error: failed to play HLS source{details}',
             loading_manifest: 'Loading stream manifest...',
@@ -317,13 +323,14 @@
         if (!messageNode) {
             messageNode = document.createElement('div');
             messageNode.dataset.plyrHlsMessage = 'true';
-            messageNode.className = 'alert mt-3 mb-0';
-            messageNode.style.height = '5.5rem';
-            messageNode.style.overflow = 'hidden';
-            messageNode.style.display = 'flex';
-            messageNode.style.alignItems = 'center';
+            messageNode.className = 'alert mt-3 mb-0 fb-plyr-hls-message';
             container.appendChild(messageNode);
         }
+
+        messageNode.style.removeProperty('height');
+        messageNode.style.removeProperty('overflow');
+        messageNode.style.removeProperty('display');
+        messageNode.style.removeProperty('align-items');
 
         const classMap = {
             info: 'alert-secondary',
@@ -332,8 +339,8 @@
             error: 'alert-danger',
         };
 
-        messageNode.className = 'alert mt-3 mb-0 ' + (classMap[type] || classMap.info);
-        messageNode.style.visibility = 'visible';
+        messageNode.className = 'alert mt-3 mb-0 fb-plyr-hls-message ' + (classMap[type] || classMap.info);
+        messageNode.hidden = false;
         messageNode.textContent = message;
     };
 
@@ -361,8 +368,8 @@
         const container = element.closest('[data-plyr-player-wrap]') || element.parentElement;
         const messageNode = container ? container.querySelector('[data-plyr-hls-message]') : null;
         if (messageNode) {
-            messageNode.className = 'alert mt-3 mb-0 alert-secondary';
-            messageNode.style.visibility = 'hidden';
+            messageNode.className = 'alert mt-3 mb-0 fb-plyr-hls-message alert-secondary';
+            messageNode.hidden = true;
             messageNode.textContent = '';
         }
     };
@@ -435,6 +442,35 @@
         }
     };
 
+    const revokeBlobMediaUrl = function (url) {
+        if (!/^blob:/i.test(url || '') || typeof window.URL === 'undefined' || typeof window.URL.revokeObjectURL !== 'function') {
+            return;
+        }
+
+        try {
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            // A browser-owned blob URL may already be released.
+        }
+    };
+
+    const resetMediaSource = function (element) {
+        const currentSource = element.currentSrc || element.getAttribute('src') || element.src || '';
+
+        revokeBlobMediaUrl(currentSource);
+
+        try {
+            element.pause();
+        } catch (error) {
+            // The media element can be detached during an HLS reset.
+        }
+
+        element.removeAttribute('src');
+        element.src = '';
+        element.srcObject = null;
+        element.load();
+    };
+
     const isPrimerPlaybackActive = function (element) {
         return element.dataset.hlsPrimerActive === 'true';
     };
@@ -477,6 +513,8 @@
 
     const markPlaybackStarted = function (element) {
         cleanupPlayRetryTimer(element);
+        element.hlsPlayRetryStartedAt = 0;
+        element.hlsStuckSince = 0;
         element.hlsPlaybackStarted = true;
         showHlsSuccess(element, t('stream_playing'));
 
@@ -596,6 +634,10 @@
             return Promise.resolve(false);
         }
 
+        if (element.hlsSourcePrewarmed && element.hlsSourcePrewarmedAt && (Date.now() - element.hlsSourcePrewarmedAt) < hlsPrewarmTtlMs) {
+            return Promise.resolve(true);
+        }
+
         if (element.hlsBackgroundWarmupPromise) {
             return element.hlsBackgroundWarmupPromise;
         }
@@ -605,6 +647,7 @@
             emitStatus: false,
         }).then(function (isReady) {
             element.hlsSourcePrewarmed = isReady;
+            element.hlsSourcePrewarmedAt = isReady ? Date.now() : 0;
             return isReady;
         }).finally(function () {
             element.hlsBackgroundWarmupPromise = null;
@@ -614,11 +657,37 @@
     };
 
     const destroyHlsInstance = function (element) {
-        if (element.hlsInstance && typeof element.hlsInstance.destroy === 'function') {
-            element.hlsInstance.destroy();
+        const hls = element.hlsInstance;
+
+        if (hls) {
+            try {
+                if (typeof hls.stopLoad === 'function') {
+                    hls.stopLoad();
+                }
+            } catch (error) {
+                // Ignore cleanup failures from already-detached HLS instances.
+            }
+
+            try {
+                if (typeof hls.detachMedia === 'function') {
+                    hls.detachMedia();
+                }
+            } catch (error) {
+                // Ignore cleanup failures from already-detached HLS instances.
+            }
+
+            try {
+                if (typeof hls.destroy === 'function') {
+                    hls.destroy();
+                }
+            } catch (error) {
+                // Ignore cleanup failures from already-destroyed HLS instances.
+            }
         }
 
         cleanupPlayRetryTimer(element);
+        releasePrimedPlayback(element);
+        resetMediaSource(element);
         element.hlsInstance = null;
         element.hlsMediaReady = false;
         element.hlsPlaybackStarted = false;
@@ -631,9 +700,7 @@
         releasePrimedPlayback(element);
         element.hlsMediaReady = false;
         element.hlsPlaybackStarted = false;
-        element.removeAttribute('src');
-        element.srcObject = null;
-        element.load();
+        resetMediaSource(element);
     };
 
     const fallbackToHlsJsPlayback = async function (element, reason) {
@@ -725,6 +792,101 @@
         }, hlsPlayRetryDelayMs);
     };
 
+    const isHlsStuckLoadingState = function (element) {
+        if (!(element instanceof HTMLMediaElement) || !element.hlsSource || !element.hlsAutoplayRequested) {
+            return false;
+        }
+
+        const haveNothing = typeof HTMLMediaElement !== 'undefined'
+            ? HTMLMediaElement.HAVE_NOTHING
+            : 0;
+        const networkLoading = typeof HTMLMediaElement !== 'undefined'
+            ? HTMLMediaElement.NETWORK_LOADING
+            : 2;
+
+        return !element.paused
+            && !element.ended
+            && !element.error
+            && !element.hlsWarmupActive
+            && !isPrimerPlaybackActive(element)
+            && element.readyState === haveNothing
+            && element.networkState === networkLoading;
+    };
+
+    const restartHlsPlayback = function (element, reason) {
+        if (element.hlsRestarting || !element.hlsSource || !element.hlsAutoplayRequested) {
+            return;
+        }
+
+        const now = Date.now();
+        if (element.hlsLastRestartAt && (now - element.hlsLastRestartAt) < hlsRestartCooldownMs) {
+            return;
+        }
+
+        element.hlsRestarting = true;
+        element.hlsLastRestartAt = now;
+        element.hlsStuckSince = 0;
+        element.hlsPlayRetryStartedAt = now;
+        showHlsWarning(element, t('stream_restarting', { state: reason || describeMediaState(element) }));
+
+        if (shouldUseNativeHls(element)) {
+            resetNativePlaybackState(element);
+            element.hlsAutoplayRequested = true;
+            prepareNativeHlsPlayback(element);
+            scheduleDeferredPlay(element, t('stream_initialized'));
+            element.hlsRestarting = false;
+            return;
+        }
+
+        destroyHlsInstance(element);
+        element.hlsAutoplayRequested = true;
+        prepareHlsPlayback(element).then(function (isReady) {
+            if (!isReady) {
+                showHlsError(element, t('source_timeout'));
+                return;
+            }
+
+            scheduleDeferredPlay(element, t('stream_initialized'));
+        }).finally(function () {
+            element.hlsRestarting = false;
+        });
+    };
+
+    const startHlsHealthMonitor = function (element) {
+        if (element.hlsHealthTimer) {
+            return;
+        }
+
+        element.hlsHealthTimer = setInterval(function () {
+            if (!element.hlsAutoplayRequested || isPrimerPlaybackActive(element)) {
+                element.hlsStuckSince = 0;
+                return;
+            }
+
+            if (isMediaPlaybackActive(element)) {
+                if (!element.hlsPlaybackStarted) {
+                    markPlaybackStarted(element);
+                }
+                element.hlsStuckSince = 0;
+                return;
+            }
+
+            if (!isHlsStuckLoadingState(element)) {
+                element.hlsStuckSince = 0;
+                return;
+            }
+
+            if (!element.hlsStuckSince) {
+                element.hlsStuckSince = Date.now();
+                return;
+            }
+
+            if ((Date.now() - element.hlsStuckSince) >= hlsStuckResetAfterMs) {
+                restartHlsPlayback(element, describeMediaState(element));
+            }
+        }, hlsHealthCheckIntervalMs);
+    };
+
     const bindNativePlaybackEvents = function (element) {
         if (element.dataset.hlsNativePlaybackBound === 'true') {
             return;
@@ -805,13 +967,17 @@
     };
 
     const bindHlsPlaybackEvents = function (element, hls) {
-        if (element.dataset.hlsPlaybackBound === 'true') {
+        if (!hls) {
             return;
         }
 
         element.dataset.hlsPlaybackBound = 'true';
 
         hls.on(Hls.Events.ERROR, function (_, data) {
+            if (element.hlsInstance !== hls) {
+                return;
+            }
+
             if (!data || !data.fatal) {
                 return;
             }
@@ -820,7 +986,8 @@
 
             switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                    showHlsError(element, t('stream_error_load', { details }));
+                    showHlsWarning(element, t('stream_error_load', { details }));
+                    restartHlsPlayback(element, details || describeMediaState(element));
                     break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
                     showHlsWarning(element, t('media_recover'));
@@ -834,27 +1001,53 @@
         });
 
         hls.on(Hls.Events.MANIFEST_LOADING, function () {
+            if (element.hlsInstance !== hls) {
+                return;
+            }
+
             showHlsInfo(element, t('loading_manifest'));
         });
 
         hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+            if (element.hlsInstance !== hls) {
+                return;
+            }
+
             releasePrimedPlayback(element, true);
             showHlsInfo(element, t('media_attached'));
         });
 
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            if (element.hlsInstance !== hls) {
+                return;
+            }
+
             showHlsSuccess(element, t('manifest_loaded'));
             scheduleDeferredPlay(element);
         });
 
         hls.on(Hls.Events.LEVEL_LOADING, function () {
+            if (element.hlsInstance !== hls) {
+                return;
+            }
+
             showHlsInfo(element, t('loading_segments'));
         });
 
         hls.on(Hls.Events.LEVEL_LOADED, function () {
+            if (element.hlsInstance !== hls) {
+                return;
+            }
+
             showHlsSuccess(element, t('stream_buffered'));
             scheduleDeferredPlay(element);
         });
+
+        if (element.dataset.hlsMediaEventsBound === 'true') {
+            return;
+        }
+
+        element.dataset.hlsMediaEventsBound = 'true';
 
         element.addEventListener('playing', function () {
             if (isPrimerPlaybackActive(element)) {
@@ -920,7 +1113,10 @@
                 throw new Error('This browser does not support HLS playback');
             }
 
-            const sourceReady = element.hlsSourcePrewarmed
+            const sourcePrewarmedFresh = element.hlsSourcePrewarmed
+                && element.hlsSourcePrewarmedAt
+                && (Date.now() - element.hlsSourcePrewarmedAt) < hlsPrewarmTtlMs;
+            const sourceReady = sourcePrewarmedFresh
                 ? true
                 : (element.hlsBackgroundWarmupPromise
                     ? await element.hlsBackgroundWarmupPromise
@@ -929,6 +1125,8 @@
                 return false;
             }
 
+            element.hlsSourcePrewarmed = true;
+            element.hlsSourcePrewarmedAt = Date.now();
             destroyHlsInstance(element);
             detachNativeHlsSource(element);
 
@@ -1468,8 +1666,12 @@
         element.hlsMediaReady = shouldUseNativeHls(element);
         element.hlsPreparePromise = null;
         element.hlsSourcePrewarmed = false;
+        element.hlsSourcePrewarmedAt = 0;
         element.hlsBackgroundWarmupPromise = null;
         element.hlsPlayRetryStartedAt = 0;
+        element.hlsStuckSince = 0;
+        element.hlsLastRestartAt = 0;
+        element.hlsRestarting = false;
         element.hlsPlaybackStarted = false;
         element.dataset.hlsNativeSourceDetached = 'false';
         element.dataset.hlsPrimerActive = 'false';
@@ -1477,6 +1679,7 @@
         element.hlsWarmupActive = false;
         bootstrapPlayIntent(element);
         bindNativePlaybackEvents(element);
+        startHlsHealthMonitor(element);
         clearHlsMessage(element);
 
         if (!shouldUseNativeHls(element)) {

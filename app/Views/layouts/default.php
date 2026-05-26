@@ -221,6 +221,8 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-toast-error-title="<?= htmlSC(return_translation('toast_error_title')) ?>"
     data-toast-info-title="<?= htmlSC(return_translation('toast_info_title')) ?>"
     data-toast-warning-title="<?= htmlSC(return_translation('toast_warning_title')) ?>"
+    data-code-copy-label="<?= htmlSC(return_translation('code_copy_button')) ?>"
+    data-code-copied-label="<?= htmlSC(return_translation('code_copied_button')) ?>"
 >
 
 <nav class="offcanvas offcanvas-start" id="navbarNav" tabindex="-1" aria-labelledby="navbarNavLabel">

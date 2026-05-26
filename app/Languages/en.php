@@ -103,6 +103,8 @@ return [
     'toast_error_title' => 'Error',
     'toast_info_title' => 'Info',
     'toast_warning_title' => 'Warning',
+    'code_copy_button' => 'Copy',
+    'code_copied_button' => 'Copied',
 
     // Chat
     'chat_message_required' => 'Please enter a message or choose a file.',

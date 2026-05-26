@@ -396,7 +396,7 @@ function initPostEditor() {
         closeAddMenu();
         render();
         sync();
-        focusBlockEditor(block.id);
+        revealBlockEditor(block.id);
     }
 
     function createBlock(type) {
@@ -549,6 +549,32 @@ function initPostEditor() {
         app.addEventListener('click', function (event) {
             const openAddButton = event.target.closest('[data-editor-open-add]');
             const addTypeButton = event.target.closest('[data-editor-add]');
+
+            if (!openAddButton && !addTypeButton) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.stopImmediatePropagation) {
+                event.stopImmediatePropagation();
+            }
+
+            if (openAddButton) {
+                toggleAddDropdown(openAddButton);
+                return;
+            }
+
+            hideAddDropdown(addTypeButton.closest('[data-add-wrap]'));
+            addBlock(
+                String(addTypeButton.getAttribute('data-editor-add') || 'text'),
+                Number(addTypeButton.getAttribute('data-insert-position') || state.blocks.length)
+            );
+        }, true);
+
+        app.addEventListener('click', function (event) {
+            const openAddButton = event.target.closest('[data-editor-open-add]');
+            const addTypeButton = event.target.closest('[data-editor-add]');
             const blockActionButton = event.target.closest('[data-block-action]');
             const styleToggleButton = event.target.closest('[data-style-toggle]');
             const closeSettingsButton = event.target.closest('[data-editor-close-settings]');
@@ -562,11 +588,14 @@ function initPostEditor() {
             const editorCommandButton = event.target.closest('button[data-editor-command]');
 
             if (openAddButton) {
-                openAddMenu(openAddButton);
+                event.preventDefault();
+                event.stopPropagation();
+                toggleAddDropdown(openAddButton);
                 return;
             }
 
             if (addTypeButton) {
+                hideAddDropdown(addTypeButton.closest('[data-add-wrap]'));
                 addBlock(
                     String(addTypeButton.getAttribute('data-editor-add') || 'text'),
                     Number(addTypeButton.getAttribute('data-insert-position') || state.blocks.length)
@@ -963,6 +992,20 @@ function initPostEditor() {
             cleanupBlockDragState();
         });
 
+        app.addEventListener('shown.bs.dropdown', function (event) {
+            const wrap = event.target ? event.target.closest('[data-add-wrap]') : null;
+            if (wrap) {
+                wrap.classList.add('is-open');
+            }
+        });
+
+        app.addEventListener('hidden.bs.dropdown', function (event) {
+            const wrap = event.target ? event.target.closest('[data-add-wrap]') : null;
+            if (wrap) {
+                wrap.classList.remove('is-open');
+            }
+        });
+
         document.addEventListener('selectionchange', function () {
             const selection = window.getSelection ? window.getSelection() : null;
             if (!selection || selection.rangeCount === 0) {
@@ -987,28 +1030,19 @@ function initPostEditor() {
 
         document.addEventListener('pointerdown', function (event) {
             const target = event.target;
-            const clickedInsideApp = app.contains(target);
             const clickedInsideAddMenu = !!target.closest('[data-add-wrap], .fb-post-add-menu');
             const clickedInsideStyleMenu = !!target.closest('[data-style-wrap]');
+            const hasOpenAddMenu = !!app.querySelector('.fb-post-add-menu.show');
 
             if (!clickedInsideStyleMenu) {
                 closeStylePanels();
             }
 
-            if (ui.addMenuAnchor === null) {
+            if (!hasOpenAddMenu || clickedInsideAddMenu) {
                 return;
             }
 
-            if (!clickedInsideApp) {
-                closeAddMenu();
-                render();
-                return;
-            }
-
-            if (!clickedInsideAddMenu) {
-                closeAddMenu();
-                render();
-            }
+            closeAllAddDropdowns();
         });
 
         if (deleteModalConfirmButton) {
@@ -1555,15 +1589,22 @@ function initPostEditor() {
         return escapeHtml(value).replace(/"/g, '&quot;');
     }
 
-    function sanitizeHtml(html) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString('<div data-root="1">' + String(html || '') + '</div>', 'text/html');
-        const root = doc.body.querySelector('[data-root="1"]');
+    function sanitizeHtml(html, options) {
+        const settings = Object.assign({
+            htmlBlock: false
+        }, options || {});
+        const template = document.createElement('template');
+        template.innerHTML = String(html || '');
+        const root = template.content;
         if (!root) {
             return '';
         }
 
-        root.querySelectorAll('script,style,object,embed,form,input,button,textarea,select').forEach(function (node) {
+        const blockedSelector = settings.htmlBlock
+            ? 'script'
+            : 'script,style,object,embed,form,input,button,textarea,select';
+
+        root.querySelectorAll(blockedSelector).forEach(function (node) {
             node.remove();
         });
 
@@ -1577,13 +1618,26 @@ function initPostEditor() {
                     return;
                 }
 
-                if ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(value)) {
+                if (name === 'srcdoc') {
+                    node.removeAttribute(attribute.name);
+                    return;
+                }
+
+                if ((name === 'href' || name === 'src' || name === 'action' || name === 'formaction' || name === 'xlink:href') && /^\s*javascript:/i.test(value)) {
+                    node.removeAttribute(attribute.name);
+                    return;
+                }
+
+                if (name === 'style' && /(?:expression\s*\(|javascript\s*:)/i.test(value)) {
                     node.removeAttribute(attribute.name);
                 }
             });
         });
 
-        return root.innerHTML.trim();
+        const output = document.createElement('div');
+        output.appendChild(root.cloneNode(true));
+
+        return output.innerHTML.trim();
     }
 
     function extractDimensionValue(value) {
@@ -1601,14 +1655,14 @@ function initPostEditor() {
     }
 
     function buildAdaptivePreviewHtml(html) {
-        const cleanHtml = sanitizeHtml(html || '');
+        const cleanHtml = sanitizeHtml(html || '', { htmlBlock: true });
         if (cleanHtml === '') {
             return '';
         }
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString('<div data-preview-root="1">' + cleanHtml + '</div>', 'text/html');
-        const root = doc.body.querySelector('[data-preview-root="1"]');
+        const template = document.createElement('template');
+        template.innerHTML = cleanHtml;
+        const root = template.content;
         if (!root) {
             return cleanHtml;
         }
@@ -1649,7 +1703,10 @@ function initPostEditor() {
             }
         });
 
-        return root.innerHTML.trim();
+        const output = document.createElement('div');
+        output.appendChild(root.cloneNode(true));
+
+        return output.innerHTML.trim();
     }
 
     function normalizeFontTags(scope) {
@@ -1785,7 +1842,25 @@ function initPostEditor() {
             if (headingEditor) {
                 headingEditor.focus();
                 placeCaretAtEnd(headingEditor);
+                return;
             }
+
+            const codeEditor = app.querySelector('[data-code-input][data-block-id="' + blockId + '"]');
+            if (codeEditor) {
+                codeEditor.focus();
+                codeEditor.setSelectionRange(codeEditor.value.length, codeEditor.value.length);
+            }
+        });
+    }
+
+    function revealBlockEditor(blockId) {
+        window.requestAnimationFrame(function () {
+            const blockElement = findRenderedBlockElement(blockId);
+            if (blockElement && typeof blockElement.scrollIntoView === 'function') {
+                blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            focusBlockEditor(blockId);
         });
     }
 
@@ -1840,6 +1915,27 @@ function initPostEditor() {
         ui.picker = null;
         render();
         sync();
+    }
+
+    function encodeStoredSource(value) {
+        try {
+            return encodeURIComponent(String(value || ''));
+        } catch (error) {
+            return '';
+        }
+    }
+
+    function decodeStoredSource(value) {
+        const encoded = String(value || '');
+        if (encoded === '') {
+            return '';
+        }
+
+        try {
+            return decodeURIComponent(encoded);
+        } catch (error) {
+            return '';
+        }
     }
 
     function openDeleteModal() {
@@ -2112,31 +2208,83 @@ function initPostEditor() {
         sync();
     }
 
+    function getAddDropdownButton(wrap) {
+        return wrap ? wrap.querySelector('[data-editor-open-add]') : null;
+    }
+
+    function getAddDropdownMenu(wrap) {
+        return wrap ? wrap.querySelector('.fb-post-add-menu') : null;
+    }
+
+    function hideAddDropdown(wrap) {
+        const button = getAddDropdownButton(wrap);
+        const menu = getAddDropdownMenu(wrap);
+
+        if (!button || !menu) {
+            return;
+        }
+
+        button.classList.remove('show');
+        button.setAttribute('aria-expanded', 'false');
+        menu.classList.remove('show');
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.left = '';
+        menu.style.right = '';
+        menu.style.transform = '';
+        menu.style.zIndex = '';
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
+        wrap.classList.remove('is-open');
+    }
+
+    function closeAllAddDropdowns(exceptWrap) {
+        app.querySelectorAll('[data-add-wrap]').forEach(function (item) {
+            if (item !== exceptWrap) {
+                hideAddDropdown(item);
+            }
+        });
+    }
+
+    function toggleAddDropdown(button) {
+        const wrap = button ? button.closest('[data-add-wrap]') : null;
+        const menu = getAddDropdownMenu(wrap);
+
+        if (!wrap || !menu) {
+            return;
+        }
+
+        const shouldOpen = !menu.classList.contains('show');
+        closeAllAddDropdowns(wrap);
+
+        button.classList.toggle('show', shouldOpen);
+        button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        menu.classList.toggle('show', shouldOpen);
+        wrap.classList.toggle('is-open', shouldOpen);
+    }
+
     function renderInsertControl(anchor, position) {
-        const isOpen = ui.addMenuAnchor === anchor;
         return '' +
-            '<div class="fb-post-editor__add-wrap' + (isOpen ? ' is-open' : '') + '" data-add-wrap="' + escapeAttr(anchor) + '">' +
-                '<button class="btn btn-outline-secondary btn-sm fb-post-editor__add-btn" type="button" data-editor-open-add data-menu-anchor="' + escapeAttr(anchor) + '" data-insert-position="' + escapeAttr(String(position)) + '">' +
+            '<div class="dropdown dropdown-center fb-post-editor__add-wrap" data-add-wrap="' + escapeAttr(anchor) + '">' +
+                '<button class="btn btn-outline-secondary btn-sm fb-post-editor__add-btn dropdown-toggle" type="button" aria-expanded="false" data-editor-open-add data-menu-anchor="' + escapeAttr(anchor) + '" data-insert-position="' + escapeAttr(String(position)) + '">' +
                     '<i class="ci-plus"></i><span>' + escapeHtml(labels.addBlock) + '</span>' +
                 '</button>' +
-                (isOpen
-                    ? '<div class="fb-post-add-menu">' +
-                        renderAddTypeButton('text', position, labels.addText) +
-                        renderAddTypeButton('heading', position, labels.addHeading) +
-                        renderAddTypeButton('image', position, labels.addImage) +
-                        renderAddTypeButton('video', position, labels.addVideo) +
-                        renderAddTypeButton('html', position, labels.addHtml) +
-                        renderAddTypeButton('social', position, labels.addSocial) +
-                        renderAddTypeButton('slider', position, labels.addSlider) +
-                        renderAddTypeButton('newsletter', position, labels.addNewsletter) +
-                        renderAddTypeButton('code', position, labels.addCode) +
-                    '</div>'
-                    : '') +
+                '<div class="dropdown-menu fb-post-add-menu">' +
+                    renderAddTypeButton('text', position, labels.addText) +
+                    renderAddTypeButton('heading', position, labels.addHeading) +
+                    renderAddTypeButton('image', position, labels.addImage) +
+                    renderAddTypeButton('video', position, labels.addVideo) +
+                    renderAddTypeButton('html', position, labels.addHtml) +
+                    renderAddTypeButton('social', position, labels.addSocial) +
+                    renderAddTypeButton('slider', position, labels.addSlider) +
+                    renderAddTypeButton('newsletter', position, labels.addNewsletter) +
+                    renderAddTypeButton('code', position, labels.addCode) +
+                '</div>' +
             '</div>';
     }
 
     function renderAddTypeButton(type, position, label) {
-        return '<button type="button" data-editor-add="' + escapeAttr(type) + '" data-insert-position="' + escapeAttr(String(position)) + '"><span class="fb-post-add-menu__icon">' + renderBlockIcon(type) + '</span><span>' + escapeHtml(label) + '</span></button>';
+        return '<button class="dropdown-item" type="button" data-editor-add="' + escapeAttr(type) + '" data-insert-position="' + escapeAttr(String(position)) + '"><span class="fb-post-add-menu__icon">' + renderBlockIcon(type) + '</span><span>' + escapeHtml(label) + '</span></button>';
     }
 
     function renderBlockCard(block, index) {
@@ -2274,9 +2422,10 @@ function initPostEditor() {
     function renderCodeEditor(block, fieldName, value, language, placeholder, extraClass) {
         const normalizedLanguage = normalizeCodeLanguage(language || 'html');
         const textareaClass = 'form-control fb-post-block__code' + (extraClass ? ' ' + extraClass : '');
+        const editorClass = 'fb-post-block__code-editor' + (fieldName === 'html' ? ' fb-post-block__code-editor--html' : '');
         return '' +
             '<div class="fb-post-block__code-wrap">' +
-                '<div class="fb-post-block__code-editor" data-code-editor data-code-language="' + escapeAttr(normalizedLanguage) + '">' +
+                '<div class="' + escapeAttr(editorClass) + '" data-code-editor data-code-language="' + escapeAttr(normalizedLanguage) + '">' +
                     '<pre class="fb-post-block__code-highlight" aria-hidden="true"><code class="language-' + escapeAttr(normalizedLanguage) + '">' + escapeHtml(value || '') + '</code></pre>' +
                     '<textarea class="' + escapeAttr(textareaClass) + '" data-code-input data-block-field="' + escapeAttr(fieldName) + '" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" wrap="off" placeholder="' + escapeAttr(placeholder) + '" style="height: 420px;">' + escapeHtml(value || '') + '</textarea>' +
                 '</div>' +
@@ -2781,8 +2930,9 @@ function initPostEditor() {
             }
 
             if (block.type === 'html') {
-                const html = sanitizeHtml(block.data.html || '');
-                return html ? '<div data-fb-html-block="1">' + html + '</div>' : '';
+                const sourceHtml = String(block.data.html || '');
+                const html = sanitizeHtml(sourceHtml, { htmlBlock: true });
+                return html ? '<div data-fb-html-block="1" data-fb-html-source="' + escapeAttr(encodeStoredSource(sourceHtml)) + '">' + html + '</div>' : '';
             }
 
             if (block.type === 'social') {
@@ -3005,7 +3155,8 @@ function initPostEditor() {
 
             if (node.matches('[data-fb-html-block]')) {
                 flushTextBuffer();
-                blocks.push(parseHtmlBlock(node.innerHTML));
+                const storedSource = decodeStoredSource(node.getAttribute('data-fb-html-source'));
+                blocks.push(parseHtmlBlock(storedSource || node.innerHTML, storedSource !== ''));
                 return;
             }
 
@@ -3102,9 +3253,9 @@ function initPostEditor() {
         });
     }
 
-    function parseHtmlBlock(html) {
+    function parseHtmlBlock(html, preserveSource) {
         return createImportedBlock('html', {
-            html: sanitizeHtml(html)
+            html: preserveSource ? String(html || '') : sanitizeHtml(html, { htmlBlock: true })
         });
     }
 

@@ -172,29 +172,57 @@
     margin-top: 1rem !important;
 }
 
+.fb-plyr-hls-message {
+    width: 100%;
+    max-height: 14rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+.fb-plyr-hls-message[hidden] {
+    display: none !important;
+}
+
+.post-content pre,
 .post-content .fb-code-block {
     margin: 0;
     padding: 2.75rem 1.25rem 1.25rem;
+    height: clamp(22rem, 52vh, 34rem);
     border-radius: 1rem;
     background: #1f2632;
     color: #abb2bf;
-    overflow-x: auto;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
     font: 400 0.95rem/1.65 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+.post-content pre code,
 .post-content .fb-code-block code {
+    display: block;
+    min-width: max-content;
     white-space: pre;
-    background: transparent;
+    background: transparent !important;
 }
 
+.post-content pre code.hljs,
 .post-content .fb-code-block code.hljs {
     padding: 0;
     overflow: visible;
+    background: transparent !important;
 }
 
 .fb-code-shell {
     position: relative;
     width: 100%;
+    border-radius: 1rem;
+    background: #1f2632;
+    overflow: hidden;
 }
 
 .fb-code-copy {
@@ -1477,24 +1505,43 @@
 
 .plyr[data-plyr-zoom-ready="true"] .plyr__video-wrapper {
     z-index: 0;
-    touch-action: none;
+    touch-action: manipulation;
 }
 
-.plyr[data-plyr-zoom-ready="true"] .plyr__controls,
-.plyr[data-plyr-zoom-ready="true"] .plyr__captions,
+.plyr[data-plyr-zoom-ready="true"] .plyr__controls {
+    z-index: 40;
+    pointer-events: auto;
+}
+
+.plyr[data-plyr-zoom-ready="true"] .plyr__controls * {
+    pointer-events: auto;
+}
+
+.plyr[data-plyr-zoom-ready="true"].plyr--hide-controls .plyr__controls {
+    pointer-events: none;
+}
+
+.plyr[data-plyr-zoom-ready="true"] .plyr__captions {
+    z-index: 30;
+    pointer-events: none;
+}
+
 .plyr[data-plyr-zoom-ready="true"] .plyr__control--overlaid {
-    z-index: 20;
+    z-index: 35;
+    pointer-events: auto;
 }
 
 .plyr[data-plyr-zoom-ready="true"]:fullscreen .plyr__controls,
 .plyr[data-plyr-zoom-ready="true"]:-webkit-full-screen .plyr__controls,
-.plyr[data-plyr-zoom-ready="true"].plyr--fullscreen .plyr__controls {
+.plyr[data-plyr-zoom-ready="true"].plyr--fullscreen .plyr__controls,
+.plyr[data-plyr-zoom-ready="true"].plyr--fullscreen-fallback .plyr__controls {
     transform: translateZ(0);
-    z-index: 30;
+    z-index: 60;
 }
 
 .plyr.is-plyr-zoomed .plyr__video-wrapper {
     cursor: grab;
+    touch-action: none;
 }
 
 .plyr.is-plyr-zoomed .plyr__video-wrapper.is-panning {
