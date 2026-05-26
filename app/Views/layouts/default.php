@@ -177,6 +177,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/choices.js/choices.min.css') ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/swiper/swiper-bundle.min.css') ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/plyr/plyr.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/highlight.js/styles/atom-one-dark.min.css') ?>">
 
     <?php if (!empty($styles)): ?>
         <?php foreach ($styles as $style): ?>
@@ -765,6 +766,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script src="<?= base_url('/assets/default/vendor/swiper/swiper-bundle.min.js') ?>"></script>
 <script src="<?= base_url('/assets/default/vendor/toastr/toastr.min.js') ?>"></script>
 <script src="<?= base_url('/assets/default/vendor/plyr/plyr.polyfilled.js') ?>"></script>
+<script src="<?= base_url('/assets/default/vendor/highlight.js/highlight.min.js') ?>"></script>
 
 <?php if (!empty($footer_scripts)): ?>
     <?php foreach ($footer_scripts as $footer_script): ?>

@@ -109,6 +109,28 @@
     height: auto;
 }
 
+.post-content [data-fb-html-block],
+.post-content [data-fb-html-block] * {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.post-content [data-fb-html-block] iframe,
+.post-content [data-fb-html-block] embed,
+.post-content [data-fb-html-block] object {
+    display: block;
+    width: 100%;
+    border: 0;
+}
+
+.post-content [data-fb-html-block] img,
+.post-content [data-fb-html-block] video,
+.post-content [data-fb-html-block] canvas,
+.post-content [data-fb-html-block] svg {
+    max-width: 100%;
+    height: auto;
+}
+
 .post-content > img,
 .post-content a > img,
 .post-content figure img {
@@ -152,10 +174,57 @@
 
 .post-content .fb-code-block {
     margin: 0;
-    padding: 1rem 1.25rem;
+    padding: 2.75rem 1.25rem 1.25rem;
     border-radius: 1rem;
-    background: #181d25;
+    background: #1f2632;
+    color: #abb2bf;
+    overflow-x: auto;
+    font: 400 0.95rem/1.65 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.post-content .fb-code-block code {
+    white-space: pre;
+    background: transparent;
+}
+
+.post-content .fb-code-block code.hljs {
+    padding: 0;
+    overflow: visible;
+}
+
+.fb-code-shell {
+    position: relative;
+    width: 100%;
+}
+
+.fb-code-copy {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    min-height: 2.25rem;
+    padding: .45rem .75rem;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: .55rem;
+    background: rgba(31, 38, 50, .82);
     color: #eef1f6;
+    font-size: .9rem;
+    line-height: 1;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.fb-code-copy:hover,
+.fb-code-copy:focus {
+    border-color: rgba(255, 255, 255, .28);
+    background: rgba(47, 56, 72, .92);
+}
+
+.fb-code-copy.is-copied {
+    color: #9ae6d2;
+    border-color: rgba(154, 230, 210, .38);
 }
 
 .post-content [style*="color: white" i],
@@ -220,7 +289,7 @@
 }
 
 [data-bs-theme="dark"] .post-content .fb-code-block {
-    background: #0f172a;
+    background: #1f2632;
 }
 
 .chat-page,

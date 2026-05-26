@@ -1936,18 +1936,29 @@ $editorConfig = [
         font-weight: 600;
     }
 
-    .fb-post-block__code {
+    .fb-post-block__code,
+    .fb-post-block__code.form-control,
+    .fb-post-block__code.form-control:focus {
         display: block;
         width: 100%;
-        min-width: 48rem;
+        min-width: 0;
         max-width: none;
         min-height: 420px !important;
         resize: vertical;
         padding: .95rem 1rem;
         font: 400 .92rem/1.6 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-        background: #111827;
-        color: #f3f4f6;
-        border-color: #111827;
+        background: transparent !important;
+        background-color: transparent !important;
+        color: transparent !important;
+        -webkit-text-fill-color: transparent !important;
+        caret-color: #f3f4f6;
+        border-color: transparent !important;
+        box-shadow: none !important;
+        white-space: pre;
+        overflow: auto;
+        position: relative;
+        z-index: 2;
+        color-scheme: dark;
     }
 
     .fb-post-block__code--html {
@@ -1960,6 +1971,55 @@ $editorConfig = [
         -webkit-overflow-scrolling: touch;
     }
 
+    .fb-post-block__code-editor {
+        display: grid;
+        min-width: 48rem;
+        border: 1px solid #111827;
+        border-radius: .95rem;
+        background: #111827;
+        overflow: hidden;
+    }
+
+    .fb-post-block__code-editor .fb-post-block__code,
+    .fb-post-block__code-highlight {
+        grid-area: 1 / 1;
+    }
+
+    .fb-post-block__code-highlight {
+        min-height: 420px;
+        margin: 0;
+        padding: .95rem 1rem;
+        font: 400 .92rem/1.6 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        white-space: pre;
+        overflow: auto;
+        pointer-events: none;
+        background: #111827;
+        color: #abb2bf;
+        border-radius: .95rem;
+        scrollbar-width: none;
+    }
+
+    .fb-post-block__code-highlight::-webkit-scrollbar {
+        display: none;
+    }
+
+    .fb-post-block__code-highlight code.hljs {
+        display: block;
+        padding: 0;
+        overflow: visible;
+        background: transparent;
+    }
+
+    .fb-post-block__code::placeholder {
+        color: rgba(209, 213, 219, .58);
+        -webkit-text-fill-color: rgba(209, 213, 219, .58);
+    }
+
+    .fb-post-block__code::selection {
+        background: rgba(97, 175, 239, .32);
+        color: transparent;
+    }
+
     .fb-post-block__html-preview,
     .fb-post-block__preview {
         overflow: hidden;
@@ -1970,8 +2030,10 @@ $editorConfig = [
 
     .fb-post-block__html-preview {
         min-height: 6rem;
+        max-height: 28rem;
         padding: .9rem;
-        overflow-x: auto;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .fb-post-block__html-preview * {
@@ -1994,6 +2056,7 @@ $editorConfig = [
         display: block;
         width: 100% !important;
         max-width: 100% !important;
+        max-height: 24rem;
         border: 0;
     }
 
@@ -2413,10 +2476,15 @@ $editorConfig = [
         background-color: rgba(24, 29, 37, .92) !important;
     }
 
-    [data-bs-theme=dark] .fb-post-block__code {
-        background: #111827;
-        color: #f3f4f6;
-        border-color: #111827;
+    [data-bs-theme=dark] .fb-post-block__code,
+    [data-bs-theme=dark] .fb-post-block__code.form-control,
+    [data-bs-theme=dark] .fb-post-block__code.form-control:focus {
+        background: transparent !important;
+        background-color: transparent !important;
+        color: transparent !important;
+        -webkit-text-fill-color: transparent !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
     }
 
     [data-bs-theme=dark] #postEditorSettingsModal .modal-content,
@@ -2878,13 +2946,11 @@ $editorConfig = [
                 </div>
             </div>
             <div class="col-12">
-                <div class="card text-success border-success d-none" data-post-autosave-card>
-                    <div class="card-header bg-success-subtle border-success d-flex align-items-center gap-2">
-                        <i class="ci-check fs-lg"></i>
-                        <span class="fw-semibold"><?= print_translation('admin_post_autosave_title') ?></span>
-                    </div>
-                    <div class="card-body py-3">
-                        <p class="card-text mb-0 small text-success" data-post-autosave-status aria-live="polite"></p>
+                <div class="alert d-flex alert-success d-none mb-0" role="alert" data-post-autosave-card>
+                    <i class="ci-check-circle fs-lg pe-1 mt-1 me-2"></i>
+                    <div>
+                        <span class="fw-semibold"><?= print_translation('admin_post_autosave_title') ?>:</span>
+                        <span data-post-autosave-status aria-live="polite"></span>
                     </div>
                 </div>
             </div>

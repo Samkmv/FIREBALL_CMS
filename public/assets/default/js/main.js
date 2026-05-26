@@ -127,7 +127,70 @@ $(function(){
         });
     };
 
+    const copyText = (text) => {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        return new Promise((resolve, reject) => {
+            try {
+                document.execCommand('copy') ? resolve() : reject(new Error('Copy command failed'));
+            } catch (error) {
+                reject(error);
+            } finally {
+                textarea.remove();
+            }
+        });
+    };
+
+    const initPostCodeBlocks = () => {
+        document.querySelectorAll('.post-content pre.fb-code-block').forEach((pre) => {
+            if (pre.dataset.fbCodeReady === '1') {
+                return;
+            }
+
+            pre.dataset.fbCodeReady = '1';
+            const code = pre.querySelector('code');
+
+            if (code && typeof hljs !== 'undefined' && hljs.highlightElement) {
+                delete code.dataset.highlighted;
+                hljs.highlightElement(code);
+            }
+
+            const shell = document.createElement('div');
+            shell.className = 'fb-code-shell';
+            pre.parentNode.insertBefore(shell, pre);
+            shell.appendChild(pre);
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'fb-code-copy';
+            button.innerHTML = '<i class="ci-copy" aria-hidden="true"></i><span>Copy</span>';
+            shell.appendChild(button);
+
+            button.addEventListener('click', () => {
+                copyText(code ? code.textContent || '' : pre.textContent || '').then(() => {
+                    button.classList.add('is-copied');
+                    button.innerHTML = '<i class="ci-check" aria-hidden="true"></i><span>Copied</span>';
+                    setTimeout(() => {
+                        button.classList.remove('is-copied');
+                        button.innerHTML = '<i class="ci-copy" aria-hidden="true"></i><span>Copy</span>';
+                    }, 1800);
+                }).catch(() => {});
+            });
+        });
+    };
+
     initPostContentSliders();
+    initPostCodeBlocks();
 
     autoDismissAlerts.each(function () {
         const alert = $(this);

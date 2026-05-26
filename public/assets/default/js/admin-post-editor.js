@@ -352,6 +352,7 @@ function initPostEditor() {
         blocksContainer.insertAdjacentHTML('beforeend', '<div class="fb-post-editor__insert fb-post-editor__insert--tail">' + renderInsertControl('bottom', state.blocks.length) + '</div>');
         renderSettingsModal();
         closeStylePanels();
+        refreshAllCodeEditors();
     }
 
     function sync() {
@@ -778,6 +779,10 @@ function initPostEditor() {
                 if (fieldName === 'html') {
                     refreshHtmlBlockPreview(blockField);
                 }
+                if (fieldName === 'html' || fieldName === 'code' || fieldName === 'language') {
+                    refreshCodeEditor(blockField.closest('[data-code-editor]'));
+                    refreshCodeEditor(findRenderedBlockElement(blockId) ? findRenderedBlockElement(blockId).querySelector('[data-code-editor]') : null);
+                }
                 return;
             }
 
@@ -787,6 +792,15 @@ function initPostEditor() {
                 applyCommand(editor, String(colorField.getAttribute('data-editor-command') || ''), String(colorField.value || ''));
             }
         });
+
+        app.addEventListener('scroll', function (event) {
+            const codeInput = event.target.closest('[data-code-input]');
+            if (!codeInput) {
+                return;
+            }
+
+            syncCodeEditorScroll(codeInput);
+        }, true);
 
         app.addEventListener('change', function (event) {
             const commandSelect = event.target.closest('select[data-editor-command]');
@@ -2232,7 +2246,7 @@ function initPostEditor() {
         if (block.type === 'html') {
             return '' +
                 '<div class="fb-post-block__stack">' +
-                    '<div class="fb-post-block__code-wrap"><textarea class="form-control fb-post-block__code fb-post-block__code--html" data-block-field="html" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.htmlPlaceholder) + '" style="height: 420px;">' + escapeHtml(block.data.html || '') + '</textarea></div>' +
+                    renderCodeEditor(block, 'html', block.data.html || '', 'html', labels.htmlPlaceholder, 'fb-post-block__code--html') +
                     '<div class="fb-post-block__subhead">' + escapeHtml(labels.htmlPreview) + '</div>' +
                     '<div class="fb-post-block__html-preview" data-block-html-preview>' + buildAdaptivePreviewHtml(block.data.html || '') + '</div>' +
                 '</div>';
@@ -2251,10 +2265,22 @@ function initPostEditor() {
         }
 
         if (block.type === 'code') {
-            return '<div class="fb-post-block__code-wrap"><textarea class="form-control fb-post-block__code" data-block-field="code" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" placeholder="' + escapeAttr(labels.codePlaceholder) + '" style="height: 420px;">' + escapeHtml(block.data.code || '') + '</textarea></div>';
+            return renderCodeEditor(block, 'code', block.data.code || '', block.data.language || 'html', labels.codePlaceholder, '');
         }
 
         return renderTextBlock(block);
+    }
+
+    function renderCodeEditor(block, fieldName, value, language, placeholder, extraClass) {
+        const normalizedLanguage = normalizeCodeLanguage(language || 'html');
+        const textareaClass = 'form-control fb-post-block__code' + (extraClass ? ' ' + extraClass : '');
+        return '' +
+            '<div class="fb-post-block__code-wrap">' +
+                '<div class="fb-post-block__code-editor" data-code-editor data-code-language="' + escapeAttr(normalizedLanguage) + '">' +
+                    '<pre class="fb-post-block__code-highlight" aria-hidden="true"><code class="language-' + escapeAttr(normalizedLanguage) + '">' + escapeHtml(value || '') + '</code></pre>' +
+                    '<textarea class="' + escapeAttr(textareaClass) + '" data-code-input data-block-field="' + escapeAttr(fieldName) + '" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" wrap="off" placeholder="' + escapeAttr(placeholder) + '" style="height: 420px;">' + escapeHtml(value || '') + '</textarea>' +
+                '</div>' +
+            '</div>';
     }
 
     function renderTextBlock(block) {
@@ -2639,6 +2665,55 @@ function initPostEditor() {
         return '';
     }
 
+    function normalizeCodeLanguage(language) {
+        return String(language || 'html')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]/g, '') || 'html';
+    }
+
+    function refreshAllCodeEditors() {
+        app.querySelectorAll('[data-code-editor]').forEach(function (editor) {
+            refreshCodeEditor(editor);
+        });
+    }
+
+    function refreshCodeEditor(editor) {
+        if (!editor) {
+            return;
+        }
+
+        const input = editor.querySelector('[data-code-input]');
+        const code = editor.querySelector('code');
+        if (!input || !code) {
+            return;
+        }
+
+        const block = findBlock(String(input.getAttribute('data-block-id') || ''));
+        const language = normalizeCodeLanguage(block && block.type === 'code' ? block.data.language : editor.getAttribute('data-code-language'));
+        const value = String(input.value || '');
+        code.textContent = value === '' ? '\n' : value;
+        code.className = 'language-' + language;
+        delete code.dataset.highlighted;
+
+        if (typeof hljs !== 'undefined' && hljs.highlightElement) {
+            hljs.highlightElement(code);
+        }
+
+        syncCodeEditorScroll(input);
+    }
+
+    function syncCodeEditorScroll(input) {
+        const editor = input ? input.closest('[data-code-editor]') : null;
+        const highlight = editor ? editor.querySelector('[data-code-editor] .fb-post-block__code-highlight, .fb-post-block__code-highlight') : null;
+        if (!highlight) {
+            return;
+        }
+
+        highlight.scrollTop = input.scrollTop;
+        highlight.scrollLeft = input.scrollLeft;
+    }
+
     function getVideoMimeType(source) {
         const url = String(source || '').toLowerCase();
         if (/\.m3u8(?:$|\?)/.test(url)) {
@@ -2706,7 +2781,8 @@ function initPostEditor() {
             }
 
             if (block.type === 'html') {
-                return sanitizeHtml(block.data.html || '');
+                const html = sanitizeHtml(block.data.html || '');
+                return html ? '<div data-fb-html-block="1">' + html + '</div>' : '';
             }
 
             if (block.type === 'social') {
@@ -2927,9 +3003,21 @@ function initPostEditor() {
                 return;
             }
 
-            if (tag === 'iframe' || tag === 'video' || node.matches('[data-plyr-player-wrap]') || node.querySelector('iframe, video, [data-plyr-player-wrap]')) {
+            if (node.matches('[data-fb-html-block]')) {
+                flushTextBuffer();
+                blocks.push(parseHtmlBlock(node.innerHTML));
+                return;
+            }
+
+            if (isVideoBlockCandidate(node)) {
                 flushTextBuffer();
                 blocks.push(parseVideoBlock(node));
+                return;
+            }
+
+            if (tag === 'iframe' || node.querySelector('iframe')) {
+                flushTextBuffer();
+                blocks.push(parseHtmlBlock(node.outerHTML));
                 return;
             }
 
@@ -3014,6 +3102,12 @@ function initPostEditor() {
         });
     }
 
+    function parseHtmlBlock(html) {
+        return createImportedBlock('html', {
+            html: sanitizeHtml(html)
+        });
+    }
+
     function parseVideoBlock(node) {
         let source = '';
         let poster = '';
@@ -3034,6 +3128,20 @@ function initPostEditor() {
             poster: poster,
             caption: ''
         });
+    }
+
+    function isVideoBlockCandidate(node) {
+        const tag = node.tagName ? node.tagName.toLowerCase() : '';
+        if (tag === 'video' || node.matches('[data-plyr-player-wrap]') || node.querySelector('video, [data-plyr-player-wrap]')) {
+            return true;
+        }
+
+        const iframe = tag === 'iframe' ? node : node.querySelector('iframe');
+        if (!iframe) {
+            return false;
+        }
+
+        return getVideoEmbedUrl(String(iframe.getAttribute('src') || '')) !== '';
     }
 
     function parseCodeBlock(node) {
