@@ -3093,7 +3093,7 @@ function initPostEditor() {
                 }
 
                 const poster = String(block.data.poster || '').trim();
-                return '<div data-plyr-player-wrap=""><video controls playsinline data-plyr-player=""' + (poster ? ' poster="' + escapeAttr(poster) + '"' : '') + '><source src="' + escapeAttr(src) + '" type="' + escapeAttr(getVideoMimeType(src)) + '"></video></div>' +
+                return '<div data-plyr-player-wrap=""><video controls playsinline webkit-playsinline preload="metadata" data-plyr-player=""' + (poster ? ' poster="' + escapeAttr(poster) + '"' : '') + '><source src="' + escapeAttr(src) + '" type="' + escapeAttr(getVideoMimeType(src)) + '"></video></div>' +
                     (caption ? '<p>' + escapeHtml(caption) + '</p>' : '');
             }
 

@@ -1,7 +1,8 @@
 (function () {
     const plyrAssetBase = (typeof baseUrl === 'string' ? baseUrl : '') + '/assets/default/vendor/plyr';
+    const hlsAssetBase = (typeof baseUrl === 'string' ? baseUrl : '') + '/assets/default/vendor/hls.js';
     const plyrBlankVideoUrl = plyrAssetBase + '/blank.mp4';
-    const hlsScriptUrl = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+    const hlsScriptUrl = hlsAssetBase + '/hls.min.js';
     const hlsWarmupDurationMs = 15000;
     const hlsRetryDelayMs = 2000;
     const hlsPlayRetryDurationMs = 12000;
@@ -110,6 +111,16 @@
         hlsScriptPromise = new Promise(function (resolve, reject) {
             const existing = document.querySelector('script[data-hls-js-loader="true"]');
             if (existing) {
+                if (existing.dataset.hlsJsLoaded === 'true') {
+                    reject(new Error('Hls.js loaded but window.Hls is unavailable'));
+                    return;
+                }
+
+                if (existing.dataset.hlsJsFailed === 'true') {
+                    reject(new Error('Failed to load Hls.js'));
+                    return;
+                }
+
                 existing.addEventListener('load', function () {
                     if (typeof window.Hls === 'function') {
                         resolve(window.Hls);
@@ -131,14 +142,17 @@
 
             script.addEventListener('load', function () {
                 if (typeof window.Hls === 'function') {
+                    script.dataset.hlsJsLoaded = 'true';
                     resolve(window.Hls);
                     return;
                 }
 
+                script.dataset.hlsJsFailed = 'true';
                 reject(new Error('Hls.js loaded but window.Hls is unavailable'));
             }, { once: true });
 
             script.addEventListener('error', function () {
+                script.dataset.hlsJsFailed = 'true';
                 reject(new Error('Failed to load Hls.js'));
             }, { once: true });
 
@@ -216,7 +230,12 @@
         const isSafari = /Safari/i.test(userAgent)
             && /Apple/i.test(vendor)
             && !/Chrome|CriOS|Chromium|Edg|OPR|YaBrowser|FxiOS|DuckDuckGo/i.test(userAgent);
-        const isMobileSafari = /iPad|iPhone|iPod/i.test(userAgent);
+        const isIosLike = /iPad|iPhone|iPod/i.test(userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIosLike) {
+            return true;
+        }
 
         if (!isSafari) {
             return false;
@@ -224,7 +243,7 @@
 
         // Prefer hls.js on desktop Safari because this stream fails in native HLS,
         // while keeping native playback as a fallback on iOS where MSE support varies.
-        if (!isMobileSafari && canUseHlsJsPlayback()) {
+        if (canUseHlsJsPlayback()) {
             return false;
         }
 
@@ -726,6 +745,7 @@
         element.hlsInstance = null;
         element.hlsMediaReady = false;
         element.hlsPlaybackStarted = false;
+        element.hlsMediaRecoverAttempts = 0;
         element.dataset.hlsPlaybackBound = 'false';
     };
 
@@ -735,6 +755,7 @@
         releasePrimedPlayback(element);
         element.hlsMediaReady = false;
         element.hlsPlaybackStarted = false;
+        element.hlsMediaRecoverAttempts = 0;
         resetMediaSource(element);
     };
 
@@ -1064,8 +1085,23 @@
                     restartHlsPlayback(element, details || describeMediaState(element));
                     break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
+                    element.hlsMediaRecoverAttempts = (element.hlsMediaRecoverAttempts || 0) + 1;
                     showHlsWarning(element, t('media_recover'));
-                    hls.recoverMediaError();
+
+                    if (element.hlsMediaRecoverAttempts === 1) {
+                        hls.recoverMediaError();
+                        break;
+                    }
+
+                    if (element.hlsMediaRecoverAttempts === 2) {
+                        if (typeof hls.swapAudioCodec === 'function') {
+                            hls.swapAudioCodec();
+                        }
+                        hls.recoverMediaError();
+                        break;
+                    }
+
+                    restartHlsPlayback(element, details || describeMediaState(element));
                     break;
                 default:
                     showHlsError(element, t('stream_error_play', { details }));
@@ -1096,6 +1132,7 @@
                 return;
             }
 
+            element.hlsMediaRecoverAttempts = 0;
             showHlsSuccess(element, t('manifest_loaded'));
             scheduleDeferredPlay(element);
         });
@@ -1113,6 +1150,7 @@
                 return;
             }
 
+            element.hlsMediaRecoverAttempts = 0;
             showHlsSuccess(element, t('stream_buffered'));
             scheduleDeferredPlay(element);
         });
@@ -1129,6 +1167,7 @@
                 return;
             }
 
+            element.hlsMediaRecoverAttempts = 0;
             markPlaybackStarted(element);
         });
 
@@ -1209,6 +1248,12 @@
                 enableWorker: true,
                 lowLatencyMode: true,
                 backBufferLength: 90,
+                capLevelToPlayerSize: true,
+                manifestLoadingMaxRetry: 3,
+                manifestLoadingTimeOut: 15000,
+                levelLoadingMaxRetry: 4,
+                fragLoadingMaxRetry: 4,
+                startFragPrefetch: true,
             });
 
             element.hlsInstance = hls;
@@ -1818,6 +1863,12 @@
                 element.dataset.plyrInitialized = 'true';
                 element.plyr = new window.Plyr(element, options);
                 syncFullVolume(element, !isPrimerPlaybackActive(element));
+
+                ['loadedmetadata', 'canplay', 'play', 'playing'].forEach(function (eventName) {
+                    element.addEventListener(eventName, function () {
+                        syncFullVolume(element, !isPrimerPlaybackActive(element));
+                    });
+                });
 
                 if (typeof element.plyr.on === 'function') {
                     element.plyr.on('enterfullscreen', syncFullscreenUiState);

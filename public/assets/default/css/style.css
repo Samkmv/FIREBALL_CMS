@@ -379,7 +379,7 @@
     overflow-y: auto;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     background: rgba(248, 250, 252, .74);
 }
 
@@ -470,7 +470,7 @@
     overflow-y: auto;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     padding: 1.25rem !important;
     background:
             linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(248, 250, 252, .92)),
