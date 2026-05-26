@@ -8,7 +8,7 @@ $message = trim((string)($error ?? '')) !== '' ? (string)$error : return_transla
     <meta charset="utf-8">
 
     <!-- Viewport -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- SEO Meta Tags -->
     <title>FBL - <?= htmlSC($pageTitle) ?></title>

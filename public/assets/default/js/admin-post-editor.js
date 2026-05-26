@@ -368,7 +368,7 @@ function initPostEditor() {
                     '<strong>' + escapeHtml(labels.canvasTitle) + '</strong>' +
                     '<span>' + escapeHtml(labels.blockCount) + ': <span data-editor-block-count>' + escapeHtml(String(state.blocks.length)) + '</span></span>' +
                 '</div>' +
-                topMenu +
+                '<div class="fb-post-editor__insert fb-post-editor__insert--top">' + topMenu + '</div>' +
             '</div>' +
             '<div class="fb-post-editor__blocks" data-editor-blocks></div>' +
             '<div class="fb-post-editor__settings-root" data-editor-settings-root></div>';
@@ -1044,6 +1044,13 @@ function initPostEditor() {
 
             closeAllAddDropdowns();
         });
+
+        window.addEventListener('resize', positionOpenAddDropdown, { passive: true });
+        window.addEventListener('scroll', positionOpenAddDropdown, { passive: true });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', positionOpenAddDropdown, { passive: true });
+            window.visualViewport.addEventListener('scroll', positionOpenAddDropdown, { passive: true });
+        }
 
         if (deleteModalConfirmButton) {
             deleteModalConfirmButton.addEventListener('click', confirmRemoveBlock);
@@ -2235,7 +2242,9 @@ function initPostEditor() {
         menu.style.zIndex = '';
         menu.style.maxHeight = '';
         menu.style.overflowY = '';
+        menu.style.width = '';
         wrap.classList.remove('is-open');
+        app.classList.remove('has-open-add-menu');
     }
 
     function closeAllAddDropdowns(exceptWrap) {
@@ -2261,6 +2270,80 @@ function initPostEditor() {
         button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
         menu.classList.toggle('show', shouldOpen);
         wrap.classList.toggle('is-open', shouldOpen);
+        app.classList.toggle('has-open-add-menu', shouldOpen);
+
+        if (shouldOpen) {
+            positionAddDropdown(wrap);
+        }
+    }
+
+    function getVisibleFixedBottomInset() {
+        const toggle = document.querySelector('.admin-shell-mobile-toggle');
+        if (!toggle) {
+            return 16;
+        }
+
+        const style = window.getComputedStyle(toggle);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+            return 16;
+        }
+
+        const rect = toggle.getBoundingClientRect();
+        if (!rect.height) {
+            return 16;
+        }
+
+        return Math.max(16, window.innerHeight - rect.top + 12);
+    }
+
+    function positionAddDropdown(wrap) {
+        const button = getAddDropdownButton(wrap);
+        const menu = getAddDropdownMenu(wrap);
+
+        if (!button || !menu || !menu.classList.contains('show')) {
+            return;
+        }
+
+        const rect = button.getBoundingClientRect();
+        const visualViewport = window.visualViewport || null;
+        const viewportWidth = visualViewport ? visualViewport.width : (window.innerWidth || document.documentElement.clientWidth);
+        const viewportHeight = visualViewport ? visualViewport.height : (window.innerHeight || document.documentElement.clientHeight);
+        const viewportLeft = visualViewport ? visualViewport.offsetLeft : 0;
+        const viewportTop = visualViewport ? visualViewport.offsetTop : 0;
+        const margin = 12;
+        const bottomInset = getVisibleFixedBottomInset();
+        const maxWidth = Math.max(220, viewportWidth - (margin * 2));
+
+        menu.style.position = 'fixed';
+        menu.style.right = 'auto';
+        menu.style.transform = 'none';
+        menu.style.zIndex = '1105';
+        menu.style.width = Math.min(352, maxWidth) + 'px';
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
+
+        const menuRect = menu.getBoundingClientRect();
+        const availableBelow = viewportTop + viewportHeight - rect.bottom - bottomInset - margin;
+        const availableAbove = rect.top - viewportTop - margin;
+        const openAbove = availableBelow < menuRect.height && availableAbove > availableBelow;
+        const maxHeight = Math.max(180, (openAbove ? availableAbove : availableBelow));
+        const top = openAbove
+            ? Math.max(viewportTop + margin, rect.top - Math.min(menuRect.height, maxHeight) - 8)
+            : Math.min(rect.bottom + 8, viewportTop + viewportHeight - bottomInset - margin);
+        const centeredLeft = rect.left + (rect.width / 2) - (menuRect.width / 2);
+        const left = Math.max(viewportLeft + margin, Math.min(centeredLeft, viewportLeft + viewportWidth - menuRect.width - margin));
+
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.style.maxHeight = maxHeight + 'px';
+        menu.style.overflowY = menuRect.height > maxHeight ? 'auto' : 'visible';
+    }
+
+    function positionOpenAddDropdown() {
+        const openWrap = app.querySelector('[data-add-wrap].is-open');
+        if (openWrap) {
+            positionAddDropdown(openWrap);
+        }
     }
 
     function renderInsertControl(anchor, position) {

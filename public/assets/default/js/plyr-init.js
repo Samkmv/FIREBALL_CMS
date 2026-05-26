@@ -10,6 +10,7 @@
     const hlsStuckResetAfterMs = 6000;
     const hlsRestartCooldownMs = 10000;
     const hlsPrewarmTtlMs = 45000;
+    const hlsStartTimeEpsilon = 0.08;
     const canViewVideoStatus = window.canViewVideoStatus === true;
     let hlsScriptPromise = null;
     const hlsLocale = ((document.documentElement.getAttribute('lang') || 'en').toLowerCase().startsWith('ru')) ? 'ru' : 'en';
@@ -471,6 +472,39 @@
         element.load();
     };
 
+    const syncFullVolume = function (element, allowUnmute) {
+        if (!(element instanceof HTMLMediaElement)) {
+            return;
+        }
+
+        try {
+            element.volume = 1;
+        } catch (error) {
+            // iOS exposes hardware volume only; assigning volume can be ignored.
+        }
+
+        if (allowUnmute) {
+            try {
+                element.muted = false;
+                element.defaultMuted = false;
+                element.removeAttribute('muted');
+            } catch (error) {
+                // Mobile browsers can reject script-driven unmute outside a user gesture.
+            }
+        }
+
+        if (element.plyr) {
+            try {
+                element.plyr.volume = 1;
+                if (allowUnmute) {
+                    element.plyr.muted = false;
+                }
+            } catch (error) {
+                // Plyr can be mid-destroy while HLS is resetting.
+            }
+        }
+    };
+
     const isPrimerPlaybackActive = function (element) {
         return element.dataset.hlsPrimerActive === 'true';
     };
@@ -516,6 +550,7 @@
         element.hlsPlayRetryStartedAt = 0;
         element.hlsStuckSince = 0;
         element.hlsPlaybackStarted = true;
+        syncFullVolume(element, true);
         showHlsSuccess(element, t('stream_playing'));
 
         if (element.dataset.hlsForceMutedAutoplay === 'true') {
@@ -800,17 +835,42 @@
         const haveNothing = typeof HTMLMediaElement !== 'undefined'
             ? HTMLMediaElement.HAVE_NOTHING
             : 0;
+        const haveCurrentData = typeof HTMLMediaElement !== 'undefined'
+            ? HTMLMediaElement.HAVE_CURRENT_DATA
+            : 2;
         const networkLoading = typeof HTMLMediaElement !== 'undefined'
             ? HTMLMediaElement.NETWORK_LOADING
             : 2;
+        const networkIdle = typeof HTMLMediaElement !== 'undefined'
+            ? HTMLMediaElement.NETWORK_IDLE
+            : 1;
+        const mediaErrDecode = typeof MediaError !== 'undefined'
+            ? MediaError.MEDIA_ERR_DECODE
+            : 3;
 
-        return !element.paused
+        if (element.paused
+            || element.ended
+            || element.hlsWarmupActive
+            || isPrimerPlaybackActive(element)) {
+            return false;
+        }
+
+        const decodeErrorAtStart = element.error
+            && element.error.code === mediaErrDecode
+            && element.readyState >= haveCurrentData
+            && element.networkState === networkIdle
+            && element.currentTime <= hlsStartTimeEpsilon;
+        const idleAtStartWithoutProgress = !element.error
+            && !element.hlsPlaybackStarted
+            && element.readyState === haveCurrentData
+            && element.networkState === networkIdle
+            && element.currentTime <= hlsStartTimeEpsilon;
+        const loadingWithoutData = !element.error
             && !element.ended
-            && !element.error
-            && !element.hlsWarmupActive
-            && !isPrimerPlaybackActive(element)
             && element.readyState === haveNothing
             && element.networkState === networkLoading;
+
+        return decodeErrorAtStart || idleAtStartWithoutProgress || loadingWithoutData;
     };
 
     const restartHlsPlayback = function (element, reason) {
@@ -944,6 +1004,10 @@
                 return;
             }
 
+            if (!element.hlsPlayRetryStartedAt) {
+                element.hlsPlayRetryStartedAt = Date.now();
+            }
+
             if ((Date.now() - element.hlsPlayRetryStartedAt) > hlsPlayRetryDurationMs) {
                 const state = describeMediaState(element);
                 fallbackToHlsJsPlayback(element, state).then(function (switched) {
@@ -960,9 +1024,19 @@
                 if (!shouldUseNativeHls(element)) {
                     return;
                 }
+                resetNativePlaybackState(element);
+                element.hlsAutoplayRequested = true;
                 prepareNativeHlsPlayback(element);
                 attemptDeferredPlay(element);
             }, hlsRetryDelayMs);
+        });
+
+        element.addEventListener('stalled', function () {
+            if (!shouldUseNativeHls(element) || !element.hlsAutoplayRequested || element.hlsPlaybackStarted) {
+                return;
+            }
+
+            restartHlsPlayback(element, describeMediaState(element));
         });
     };
 
@@ -1677,6 +1751,7 @@
         element.dataset.hlsPrimerActive = 'false';
         element.dataset.hlsForceJsPlayback = 'false';
         element.hlsWarmupActive = false;
+        syncFullVolume(element, !element.muted);
         bootstrapPlayIntent(element);
         bindNativePlaybackEvents(element);
         startHlsHealthMonitor(element);
@@ -1702,6 +1777,18 @@
             return;
         }
 
+        const syncFullscreenUiState = function () {
+            const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || null;
+            const fullscreenPlyr = fullscreenElement
+                ? (fullscreenElement.matches && fullscreenElement.matches('.plyr') ? fullscreenElement : fullscreenElement.querySelector && fullscreenElement.querySelector('.plyr'))
+                : document.querySelector('.plyr.plyr--fullscreen, .plyr.plyr--fullscreen-fallback');
+
+            document.body.classList.toggle('is-site-fullscreen', Boolean(fullscreenPlyr));
+        };
+
+        document.addEventListener('fullscreenchange', syncFullscreenUiState);
+        document.addEventListener('webkitfullscreenchange', syncFullscreenUiState);
+
         document.querySelectorAll('[data-plyr-player]').forEach(function (element) {
             element = createCleanMediaElement(element);
 
@@ -1723,11 +1810,19 @@
             options = Object.assign({
                 iconUrl: plyrAssetBase + '/plyr.svg',
                 blankVideo: plyrAssetBase + '/blank.mp4',
+                volume: 1,
+                muted: false,
             }, options);
 
             const finalizePlyr = function () {
                 element.dataset.plyrInitialized = 'true';
                 element.plyr = new window.Plyr(element, options);
+                syncFullVolume(element, !isPrimerPlaybackActive(element));
+
+                if (typeof element.plyr.on === 'function') {
+                    element.plyr.on('enterfullscreen', syncFullscreenUiState);
+                    element.plyr.on('exitfullscreen', syncFullscreenUiState);
+                }
 
                 if (!shouldUseNativeHls(element)) {
                     forceDetachNativeHlsSource(element);
@@ -1735,6 +1830,12 @@
 
                 bindPlyrPlayButton(element);
                 initPlyrZoom(element);
+
+                const playerRoot = element.closest('.plyr');
+                if (playerRoot && typeof MutationObserver === 'function') {
+                    const fullscreenObserver = new MutationObserver(syncFullscreenUiState);
+                    fullscreenObserver.observe(playerRoot, { attributes: true, attributeFilter: ['class'] });
+                }
             };
 
             attachHls(element).finally(finalizePlyr);

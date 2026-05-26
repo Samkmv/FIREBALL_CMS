@@ -1489,6 +1489,27 @@
 
 .admin-shell-mobile-toggle {
     padding-top: .95rem;
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    -webkit-tap-highlight-color: transparent;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    background-clip: padding-box;
+}
+
+.admin-shell-mobile-toggle::before,
+.admin-shell-mobile-toggle::after {
+    display: none !important;
+    content: none !important;
+}
+
+.admin-shell-mobile-toggle:focus,
+.admin-shell-mobile-toggle:focus-visible,
+.admin-shell-mobile-toggle:active {
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
 }
 
 .min-w-0 {
@@ -1505,7 +1526,29 @@
 
 .plyr[data-plyr-zoom-ready="true"] .plyr__video-wrapper {
     z-index: 0;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y pinch-zoom;
+}
+
+.plyr:fullscreen,
+.plyr:-webkit-full-screen,
+.plyr.plyr--fullscreen,
+.plyr.plyr--fullscreen-fallback {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483647 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    background: #000000;
+    isolation: isolate;
+}
+
+.plyr:fullscreen .plyr__video-wrapper,
+.plyr:-webkit-full-screen .plyr__video-wrapper,
+.plyr.plyr--fullscreen .plyr__video-wrapper,
+.plyr.plyr--fullscreen-fallback .plyr__video-wrapper {
+    height: 100% !important;
 }
 
 .plyr[data-plyr-zoom-ready="true"] .plyr__controls {
@@ -1536,7 +1579,21 @@
 .plyr[data-plyr-zoom-ready="true"].plyr--fullscreen .plyr__controls,
 .plyr[data-plyr-zoom-ready="true"].plyr--fullscreen-fallback .plyr__controls {
     transform: translateZ(0);
-    z-index: 60;
+    z-index: 2147483647;
+}
+
+body.is-site-fullscreen > header,
+body.is-site-fullscreen > nav,
+body.is-site-fullscreen .navbar-sticky,
+body.is-site-fullscreen .floating-buttons,
+body.is-site-fullscreen .btn-scroll-top,
+body.is-site-fullscreen .app-toast-stack,
+body.is-site-fullscreen .toast-container,
+body.is-site-fullscreen .modal-backdrop,
+body.is-site-fullscreen .offcanvas-backdrop {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
 .plyr.is-plyr-zoomed .plyr__video-wrapper {

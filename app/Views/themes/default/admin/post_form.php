@@ -1519,6 +1519,8 @@ $editorConfig = [
     }
 
     .fb-post-editor--linear .fb-post-editor__bar {
+        position: relative;
+        z-index: 10;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -1549,6 +1551,8 @@ $editorConfig = [
     }
 
     .fb-post-editor--linear .fb-post-editor__blocks {
+        position: relative;
+        z-index: 1;
         display: grid;
         gap: .8rem;
         padding: 1rem;
@@ -1557,6 +1561,11 @@ $editorConfig = [
     .fb-post-editor--linear .fb-post-editor__insert {
         display: flex;
         justify-content: center;
+        min-width: 0;
+    }
+
+    .fb-post-editor--linear .fb-post-editor__insert--top {
+        flex: 0 0 auto;
     }
 
     .fb-post-editor--linear .fb-post-editor__insert--tail {
@@ -1567,11 +1576,16 @@ $editorConfig = [
         position: relative;
         display: inline-flex;
         justify-content: center;
-        z-index: 5;
+        z-index: 20;
     }
 
     .fb-post-editor--linear .fb-post-editor__add-wrap.is-open {
-        z-index: 60;
+        z-index: 1100;
+    }
+
+    .fb-post-editor--linear.has-open-add-menu {
+        position: relative;
+        z-index: 1090;
     }
 
     .fb-post-editor--linear .fb-post-editor__add-btn {
@@ -1588,7 +1602,7 @@ $editorConfig = [
         position: absolute;
         top: calc(100% + .5rem);
         left: 50%;
-        z-index: 70;
+        z-index: 1105;
         display: none;
         gap: .25rem;
         width: max-content;
@@ -1600,6 +1614,9 @@ $editorConfig = [
         background: #fff;
         box-shadow: 0 18px 40px rgba(17, 24, 39, .14);
         transform: translateX(-50%);
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        contain: layout paint;
     }
 
     .fb-post-add-menu.show {
@@ -2568,6 +2585,11 @@ $editorConfig = [
 
         .fb-post-editor--linear .fb-post-editor__add-wrap,
         .fb-post-editor--linear .fb-post-editor__add-btn {
+            width: 100%;
+        }
+
+        .fb-post-editor--linear .fb-post-editor__insert--top {
+            flex: 0 0 auto;
             width: 100%;
         }
 
