@@ -274,6 +274,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     data-extension="<?= htmlSC((string)($item['extension'] ?? '')) ?>"
                                     data-preview-url="<?= htmlSC((string)($item['url'] ?? '')) ?>"
                                     data-can-preview="<?= $previewable ? '1' : '0' ?>"
+                                    data-can-delete="<?= !empty($item['can_delete']) ? '1' : '0' ?>"
                                     data-can-rename="<?= !empty($item['can_rename']) ? '1' : '0' ?>"
                                     data-can-transfer="<?= !empty($item['can_transfer']) ? '1' : '0' ?>"
                                     <?= !empty($item['can_transfer']) ? 'draggable="true"' : '' ?>
@@ -361,7 +362,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                                 </li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
-                                                    <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="delete">
+                                                    <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2<?= empty($item['can_delete']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="delete" <?= empty($item['can_delete']) ? 'aria-disabled="true"' : '' ?>>
                                                         <i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?>
                                                     </button>
                                                 </li>

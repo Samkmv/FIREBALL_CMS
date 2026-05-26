@@ -491,6 +491,7 @@
         data-fm-rename-single="<?= htmlSC(return_translation('admin_files_rename_single_required')) ?>"
         data-fm-open-single="<?= htmlSC(return_translation('admin_files_open_single_required')) ?>"
         data-fm-delete-confirm="<?= htmlSC(return_translation('admin_files_delete_selected_confirm')) ?>"
+        data-fm-delete-protected="<?= htmlSC(return_translation('admin_files_folder_delete_protected')) ?>"
         data-fm-rename-protected="<?= htmlSC(return_translation('admin_files_folder_rename_protected')) ?>"
         data-fm-copy-title="<?= htmlSC(return_translation('admin_files_transfer_title_copy')) ?>"
         data-fm-move-title="<?= htmlSC(return_translation('admin_files_transfer_title_move')) ?>"

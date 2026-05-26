@@ -607,37 +607,81 @@ class UpdateCenter
     }
 
     /**
-     * Преобразует содержимое config/version.php в массив metadata.
+     * Преобразует содержимое config/version.php в metadata без исполнения удалённого PHP-кода.
      */
     protected function parseVersionPhpPayload(string $contents): array
     {
-        $tmpDirectory = is_dir(ROOT . '/tmp') ? ROOT . '/tmp' : sys_get_temp_dir();
-        $tmpFile = tempnam($tmpDirectory, 'fb-version-');
-        if ($tmpFile === false) {
-            throw new RuntimeException(return_translation('admin_update_workspace_failed'));
+        $contents = $this->stripPhpComments($contents);
+        if (trim($contents) === '' || !str_contains($contents, 'return')) {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
         }
 
-        try {
-            if (@file_put_contents($tmpFile, $contents) === false) {
-                throw new RuntimeException(return_translation('admin_update_workspace_failed'));
-            }
-
-            $payload = require $tmpFile;
-        } finally {
-            @unlink($tmpFile);
-        }
-
-        if (!is_array($payload)) {
+        $version = $this->extractPhpArrayStringValue($contents, 'version');
+        if ($version === '') {
             throw new RuntimeException(return_translation('admin_update_release_invalid'));
         }
 
         return [
-            'name' => trim((string)($payload['name'] ?? 'FIREBALL_CMS')),
-            'version' => trim((string)($payload['version'] ?? '')),
-            'released_at' => trim((string)($payload['released_at'] ?? '')),
-            'summary' => trim((string)($payload['summary'] ?? '')),
-            'changes' => is_array($payload['changes'] ?? null) ? array_values($payload['changes']) : [],
+            'name' => $this->extractPhpArrayStringValue($contents, 'name') ?: 'FIREBALL_CMS',
+            'version' => $version,
+            'released_at' => $this->extractPhpArrayStringValue($contents, 'released_at'),
+            'summary' => $this->extractPhpArrayStringValue($contents, 'summary'),
+            'changes' => $this->extractPhpArrayStringList($contents, 'changes'),
         ];
+    }
+
+    /**
+     * Убирает PHP-комментарии перед безопасным разбором metadata.
+     */
+    protected function stripPhpComments(string $contents): string
+    {
+        $tokens = token_get_all($contents);
+        $clean = '';
+
+        foreach ($tokens as $token) {
+            if (is_array($token)) {
+                if (in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+                    continue;
+                }
+
+                $clean .= $token[1];
+                continue;
+            }
+
+            $clean .= $token;
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Извлекает строковое значение верхнего уровня из простого PHP array metadata-файла.
+     */
+    protected function extractPhpArrayStringValue(string $contents, string $key): string
+    {
+        $quotedKey = preg_quote($key, '~');
+        if (preg_match('~[\'"]' . $quotedKey . '[\'"]\s*=>\s*([\'"])((?:\\\\.|(?!\1).)*)\1~su', $contents, $matches) !== 1) {
+            return '';
+        }
+
+        return trim(stripcslashes((string)$matches[2]));
+    }
+
+    /**
+     * Извлекает список строк из простого array-значения metadata-файла.
+     */
+    protected function extractPhpArrayStringList(string $contents, string $key): array
+    {
+        $quotedKey = preg_quote($key, '~');
+        if (preg_match('~[\'"]' . $quotedKey . '[\'"]\s*=>\s*\[(.*?)\]\s*,?~su', $contents, $matches) !== 1) {
+            return [];
+        }
+
+        preg_match_all('~([\'"])((?:\\\\.|(?!\1).)*)\1~su', (string)$matches[1], $stringMatches);
+
+        return array_values(array_filter(array_map(static function (string $value): string {
+            return trim(stripcslashes($value));
+        }, $stringMatches[2] ?? [])));
     }
 
     /**
@@ -985,6 +1029,8 @@ class UpdateCenter
             throw new RuntimeException(return_translation('admin_update_extract_failed'));
         }
 
+        $this->validateArchiveEntries($zip);
+
         if (!$zip->extractTo($extractPath)) {
             $zip->close();
             throw new RuntimeException(return_translation('admin_update_extract_failed'));
@@ -993,6 +1039,30 @@ class UpdateCenter
         $zip->close();
 
         return $this->resolvePackageRoot($extractPath);
+    }
+
+    /**
+     * Проверяет ZIP перед распаковкой, чтобы архив не мог писать вне workspace.
+     */
+    protected function validateArchiveEntries(\ZipArchive $zip): void
+    {
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = (string)$zip->getNameIndex($index);
+            $normalized = trim(str_replace('\\', '/', $name));
+            if ($normalized === '') {
+                continue;
+            }
+
+            if (str_starts_with($normalized, '/')
+                || preg_match('~^[A-Za-z]:/~', $normalized) === 1
+                || str_contains($normalized, '../')
+                || str_contains($normalized, '/..')
+                || $normalized === '..'
+            ) {
+                $zip->close();
+                throw new RuntimeException(return_translation('admin_update_extract_failed'));
+            }
+        }
     }
 
     /**
@@ -1105,6 +1175,10 @@ class UpdateCenter
         );
 
         foreach ($iterator as $item) {
+            if ($item->isLink()) {
+                continue;
+            }
+
             $sourcePath = $item->getPathname();
             $relativePath = str_replace('\\', '/', substr($sourcePath, strlen($packageRoot) + 1));
 

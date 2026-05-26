@@ -24,9 +24,12 @@ class FileManager
         'seo',
     ];
     protected array $allowedExtensions = [
-        'jpg', 'jpeg', 'png', 'webp', 'gif',
-        'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx',
-        'zip', 'rar', 'mp3', 'wav', 'mp4', 'webm',
+        'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
+        'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+        'rtf', 'odt', 'ods', 'odp', 'md', 'json', 'xml',
+        'zip', 'rar', '7z',
+        'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac',
+        'mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'mpg',
     ];
 
     /**
@@ -47,7 +50,7 @@ class FileManager
         $relativeDir = $this->normalizeRelativePath($relativeDir);
         $perPage = max(1, (int)($options['per_page'] ?? 5));
         $search = trim((string)($options['search'] ?? ''));
-        $sort = (string)($options['sort'] ?? 'modified');
+        $sort = $this->normalizeSortColumn((string)($options['sort'] ?? 'modified'));
         $direction = strtolower((string)($options['direction'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
         $currentDirectoryData = $this->collectDirectoryItems($relativeDir);
         $directories = $currentDirectoryData['directories'];
@@ -146,6 +149,9 @@ class FileManager
         }
 
         $directoryName = make_slug($directoryName, 'folder');
+        if ($directoryName === '') {
+            throw new \RuntimeException(return_translation('admin_files_folder_name_required'));
+        }
 
         $targetRelativePath = ltrim($relativeDir . '/' . $directoryName, '/');
         if ($this->isProtectedPath($targetRelativePath)) {
@@ -268,6 +274,10 @@ class FileManager
         $isDirectory = is_dir($absolutePath);
         $extension = $isDirectory ? '' : strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
         $baseName = make_slug(pathinfo($newName, PATHINFO_FILENAME), $isDirectory ? 'folder' : 'file');
+        if ($baseName === '') {
+            throw new \RuntimeException(return_translation('admin_files_rename_name_required'));
+        }
+
         $targetName = $extension !== '' ? ($baseName . '.' . $extension) : $baseName;
         $targetRelativePath = ltrim($relativeDir . '/' . $targetName, '/');
         $targetAbsolutePath = $absoluteDir . '/' . $targetName;
@@ -300,8 +310,7 @@ class FileManager
         $destinationDir = $this->normalizeRelativePath($destinationDir);
         $this->ensureDirectoryExists($destinationDir);
 
-        $transferredCount = 0;
-
+        $normalizedItems = [];
         foreach ($items as $item) {
             if (!is_array($item)) {
                 continue;
@@ -309,13 +318,28 @@ class FileManager
 
             $type = trim((string)($item['type'] ?? ''));
             $path = trim((string)($item['path'] ?? ''));
-
             if ($path === '') {
                 continue;
             }
 
-            $relativePath = $this->normalizeRelativePath($path);
-            $this->transferItem($relativePath, $type === 'directory' ? 'directory' : 'file', $destinationDir, $action);
+            $normalizedItems[] = [
+                'path' => $this->normalizeRelativePath($path),
+                'type' => $type === 'directory' ? 'directory' : 'file',
+            ];
+        }
+
+        if ($normalizedItems === []) {
+            throw new \RuntimeException(return_translation('admin_files_selection_required'));
+        }
+
+        foreach ($normalizedItems as $item) {
+            $this->assertTransferAllowed($item['path'], $item['type'], $destinationDir, $action);
+        }
+
+        $transferredCount = 0;
+
+        foreach ($normalizedItems as $item) {
+            $this->transferItem($item['path'], $item['type'], $destinationDir, $action);
             $transferredCount++;
         }
 
@@ -335,6 +359,9 @@ class FileManager
         if ($this->isProtectedPath($relativeDir)) {
             throw new \RuntimeException(return_translation('admin_files_protected_path'));
         }
+        if ($this->pathContainsSymlink($relativeDir)) {
+            throw new \RuntimeException(return_translation('admin_files_invalid_path'));
+        }
 
         $absoluteDir = $relativeDir === '' ? $this->rootPath : $this->rootPath . '/' . $relativeDir;
 
@@ -351,6 +378,10 @@ class FileManager
     protected function resolveExistingPath(string $relativePath): string
     {
         $relativePath = $this->normalizeRelativePath($relativePath);
+        if ($this->pathContainsSymlink($relativePath)) {
+            throw new \RuntimeException(return_translation('admin_files_invalid_path'));
+        }
+
         $absolutePath = $this->rootPath . '/' . $relativePath;
         $realPath = realpath($absolutePath);
         $realRoot = realpath($this->rootPath) ?: $this->rootPath;
@@ -360,6 +391,35 @@ class FileManager
         }
 
         return $realPath;
+    }
+
+    /**
+     * Запрещает проход через symlink внутри uploads, чтобы менеджер не управлял внешними путями.
+     */
+    protected function pathContainsSymlink(string $relativePath): bool
+    {
+        $relativePath = $this->normalizeRelativePath($relativePath);
+        if ($relativePath === '') {
+            return is_link($this->rootPath);
+        }
+
+        $currentPath = $this->rootPath;
+        foreach (explode('/', $relativePath) as $segment) {
+            $currentPath .= '/' . $segment;
+            if (is_link($currentPath)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Приводит имя колонки сортировки к поддерживаемому набору.
+     */
+    protected function normalizeSortColumn(string $sort): string
+    {
+        return in_array($sort, ['name', 'type', 'size', 'modified'], true) ? $sort : 'modified';
     }
 
     /**
@@ -471,11 +531,15 @@ class FileManager
     {
         $baseName = pathinfo($originalName, PATHINFO_FILENAME);
         $baseName = make_slug($baseName, 'file');
-        $candidate = $baseName . '.' . $extension;
+        if ($baseName === '') {
+            $baseName = 'file';
+        }
+
+        $candidate = $extension !== '' ? ($baseName . '.' . $extension) : $baseName;
         $counter = 1;
 
         while (file_exists($absoluteDir . '/' . $candidate)) {
-            $candidate = $baseName . '-' . $counter . '.' . $extension;
+            $candidate = $extension !== '' ? ($baseName . '-' . $counter . '.' . $extension) : ($baseName . '-' . $counter);
             $counter++;
         }
 
@@ -504,7 +568,7 @@ class FileManager
      */
     protected function storeUploadedFile(string $relativeDir, string $originalName, string $tmpName, int $error, int $size): string
     {
-        if ($error !== UPLOAD_ERR_OK || $tmpName === '') {
+        if ($error !== UPLOAD_ERR_OK || $tmpName === '' || !is_uploaded_file($tmpName)) {
             throw new \RuntimeException(return_translation('admin_files_upload_error'));
         }
 
@@ -580,6 +644,13 @@ class FileManager
 
             $path = $absoluteDir . '/' . $item;
 
+            if (is_link($path)) {
+                if (!@unlink($path)) {
+                    throw new \RuntimeException(return_translation('admin_files_folder_delete_error'));
+                }
+                continue;
+            }
+
             if (is_dir($path)) {
                 $this->deleteDirectoryRecursively($path);
                 continue;
@@ -617,6 +688,10 @@ class FileManager
             $sourcePath = $sourceAbsoluteDir . '/' . $item;
             $targetPath = $targetAbsoluteDir . '/' . $item;
 
+            if (is_link($sourcePath)) {
+                continue;
+            }
+
             if (is_dir($sourcePath)) {
                 $this->copyDirectoryRecursively($sourcePath, $targetPath);
                 continue;
@@ -652,6 +727,39 @@ class FileManager
         }
 
         $this->transferFile($relativePath, $absoluteSourcePath, $destinationDir, $absoluteDestinationDir, $action);
+    }
+
+    /**
+     * Проверяет перенос до начала пакетной операции, чтобы избежать частичных изменений.
+     */
+    protected function assertTransferAllowed(string $relativePath, string $type, string $destinationDir, string $action): void
+    {
+        if ($relativePath === '' || $this->isProtectedPath($relativePath)) {
+            throw new \RuntimeException(return_translation('admin_files_invalid_path'));
+        }
+
+        $absoluteSourcePath = $this->resolveExistingPath($relativePath);
+        if ($type === 'directory') {
+            if (!is_dir($absoluteSourcePath) || is_link($absoluteSourcePath)) {
+                throw new \RuntimeException(return_translation('admin_files_invalid_path'));
+            }
+
+            if ($this->isDeletionProtectedPath($relativePath)) {
+                throw new \RuntimeException(return_translation('admin_files_folder_move_protected'));
+            }
+
+            if (str_starts_with($destinationDir . '/', $relativePath . '/')) {
+                throw new \RuntimeException(return_translation('admin_files_move_into_self_error'));
+            }
+        } elseif (!is_file($absoluteSourcePath) || is_link($absoluteSourcePath)) {
+            throw new \RuntimeException(return_translation('admin_files_invalid_path'));
+        }
+
+        $sourceDirectory = dirname($relativePath);
+        $sourceDirectory = $sourceDirectory === '.' ? '' : $sourceDirectory;
+        if ($action === 'move' && $sourceDirectory === $destinationDir) {
+            throw new \RuntimeException(return_translation('admin_files_transfer_same_directory'));
+        }
     }
 
     /**
@@ -778,6 +886,10 @@ class FileManager
             $absolutePath = $absoluteDir . '/' . $item;
             $relativePath = ltrim($relativeDir . '/' . $item, '/');
 
+            if (is_link($absolutePath)) {
+                continue;
+            }
+
             if (is_dir($absolutePath)) {
                 if ($this->isProtectedPath($relativePath)) {
                     continue;
@@ -814,6 +926,10 @@ class FileManager
 
             $absolutePath = $absoluteDir . '/' . $item;
             $relativePath = ltrim($relativeDir . '/' . $item, '/');
+
+            if (is_link($absolutePath)) {
+                continue;
+            }
 
             if (is_dir($absolutePath)) {
                 if ($this->isProtectedPath($relativePath)) {
@@ -879,6 +995,7 @@ class FileManager
             'modified_timestamp' => $modifiedTimestamp,
             'type_sort' => 1,
             'is_image' => in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true),
+            'can_delete' => true,
             'can_rename' => true,
             'can_transfer' => true,
         ];

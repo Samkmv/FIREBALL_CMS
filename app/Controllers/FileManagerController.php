@@ -240,11 +240,14 @@ class FileManagerController extends BaseController
      */
     protected function getTableParams(string $defaultSort, string $defaultDirection = 'desc'): array
     {
+        $sort = $this->normalizeTableSort((string)request()->get('sort', $defaultSort), $defaultSort);
+        $direction = $this->normalizeTableDirection((string)request()->get('direction', $defaultDirection), $defaultDirection);
+
         return [
             'per_page' => 5,
             'search' => request()->get('q', ''),
-            'sort' => request()->get('sort', $defaultSort),
-            'direction' => request()->get('direction', $defaultDirection),
+            'sort' => $sort,
+            'direction' => $direction,
             'page' => max(1, (int)request()->get('page', 1)),
         ];
     }
@@ -254,12 +257,36 @@ class FileManagerController extends BaseController
      */
     protected function getRedirectTableParams(): array
     {
+        $sort = $this->normalizeTableSort((string)request()->post('sort', 'modified'), 'modified');
+        $direction = $this->normalizeTableDirection((string)request()->post('direction', 'desc'), 'desc');
+
         return [
             'search' => request()->post('q', ''),
-            'sort' => request()->post('sort', 'modified'),
-            'direction' => request()->post('direction', 'desc'),
+            'sort' => $sort,
+            'direction' => $direction,
             'page' => max(1, (int)request()->post('page', 1)),
         ];
+    }
+
+    /**
+     * Ограничивает сортировку файлового менеджера поддерживаемыми колонками.
+     */
+    protected function normalizeTableSort(string $sort, string $fallback): string
+    {
+        return in_array($sort, ['name', 'type', 'size', 'modified'], true) ? $sort : $fallback;
+    }
+
+    /**
+     * Ограничивает направление сортировки предсказуемыми значениями.
+     */
+    protected function normalizeTableDirection(string $direction, string $fallback): string
+    {
+        $direction = strtolower($direction);
+        if (in_array($direction, ['asc', 'desc'], true)) {
+            return $direction;
+        }
+
+        return strtolower($fallback) === 'asc' ? 'asc' : 'desc';
     }
 
     /**

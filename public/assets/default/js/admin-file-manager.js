@@ -340,7 +340,19 @@ $(function () {
 
         return fetch(url, requestOptions)
             .then(async function (response) {
-                const payload = await response.json();
+                const contentType = String(response.headers.get('content-type') || '');
+                let payload = null;
+
+                if (contentType.indexOf('application/json') !== -1) {
+                    payload = await response.json();
+                } else {
+                    const text = await response.text();
+                    payload = {
+                        status: response.ok ? 'success' : 'error',
+                        message: text || response.statusText || 'Request failed'
+                    };
+                }
+
                 if (!response.ok) {
                     throw payload;
                 }
@@ -492,6 +504,7 @@ $(function () {
             renameSingle: String(page.data('fmRenameSingle') || 'Select one item to rename.'),
             openSingle: String(page.data('fmOpenSingle') || 'Select one item to open.'),
             deleteConfirm: String(page.data('fmDeleteConfirm') || 'Delete selected items (:count)?'),
+            deleteProtected: String(page.data('fmDeleteProtected') || 'This system folder cannot be deleted through the file manager.'),
             copyTitle: String(page.data('fmCopyTitle') || 'Copy to folder'),
             moveTitle: String(page.data('fmMoveTitle') || 'Move to folder'),
             copySubmit: String(page.data('fmCopySubmit') || 'Copy'),
@@ -505,6 +518,20 @@ $(function () {
 
         rows.each(function () {
             if (String($(this).data('canTransfer') || '1') !== '1') {
+                blocked = true;
+                return false;
+            }
+            return undefined;
+        });
+
+        return blocked;
+    }
+
+    function hasProtectedDeleteRows(rows) {
+        let blocked = false;
+
+        rows.each(function () {
+            if (String($(this).data('canDelete') || '1') !== '1') {
                 blocked = true;
                 return false;
             }
@@ -541,6 +568,38 @@ $(function () {
             const type = String(row.data('type') || 'file');
 
             if (!path || String(row.data('canTransfer') || '1') !== '1') {
+                allowed = false;
+                return false;
+            }
+
+            if (type === 'directory' && (destinationDir === path || destinationDir.indexOf(path + '/') === 0)) {
+                allowed = false;
+                return false;
+            }
+
+            return undefined;
+        });
+
+        return allowed;
+    }
+
+    function isTransferDestinationAllowed(rows, destinationDir, action) {
+        let allowed = !!rows && !!rows.length;
+        destinationDir = String(destinationDir || '');
+        action = String(action || '');
+
+        rows.each(function () {
+            const row = $(this);
+            const path = String(row.data('path') || '');
+            const type = String(row.data('type') || 'file');
+            const sourceDirectory = path.indexOf('/') === -1 ? '' : path.split('/').slice(0, -1).join('/');
+
+            if (!path || String(row.data('canTransfer') || '1') !== '1') {
+                allowed = false;
+                return false;
+            }
+
+            if (action === 'move' && sourceDirectory === destinationDir) {
                 allowed = false;
                 return false;
             }
@@ -658,7 +717,14 @@ $(function () {
         submitText.text(action === 'move' ? messages.moveSubmit : messages.copySubmit);
         summaryElement.text(rowNames.length === 1 ? rowNames[0] : String(rowNames.length));
         submitIcon.attr('class', action === 'move' ? 'ci-move' : 'ci-copy');
-        destinationSelect.val('');
+        destinationSelect.find('option').each(function () {
+            const option = $(this);
+            option.prop('disabled', !isTransferDestinationAllowed(rows, String(option.val() || ''), action));
+        });
+
+        const firstAllowedDestination = destinationSelect.find('option:not(:disabled)').first().val();
+        $('[data-file-transfer-submit]').prop('disabled', firstAllowedDestination === undefined);
+        destinationSelect.val(firstAllowedDestination !== undefined ? String(firstAllowedDestination) : '');
         modal.show();
     }
 
@@ -920,6 +986,11 @@ $(function () {
                 return;
             }
 
+            if (hasProtectedDeleteRows(rows)) {
+                renderFeedback('error', messages.deleteProtected);
+                return;
+            }
+
             const opened = openDeleteModal({
                 type: 'bulk',
                 form: form,
@@ -966,6 +1037,11 @@ $(function () {
         }
 
         if (action === 'delete') {
+            if (String(row.data('canDelete') || '1') !== '1') {
+                renderFeedback('error', messages.deleteProtected);
+                return;
+            }
+
             const opened = openDeleteModal({
                 type: 'row',
                 row: row,
@@ -1117,6 +1193,8 @@ $(function () {
         $('[data-file-transfer-action-input]').val('');
         $('[data-file-transfer-summary]').text('');
         $('[data-file-transfer-destination]').val('');
+        $('[data-file-transfer-destination] option').prop('disabled', false);
+        $('[data-file-transfer-submit]').prop('disabled', false);
     });
 
     $(document).on('hidden.bs.modal', '[data-file-rename-modal]', function () {
