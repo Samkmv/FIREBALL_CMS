@@ -168,23 +168,115 @@
     width: 100%;
 }
 
+.post-content [data-plyr-player-wrap] {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    min-height: 220px;
+    overflow: hidden;
+    border-radius: .75rem;
+    background: #05070a;
+}
+
+.post-content [data-plyr-player-wrap] > video,
+.post-content [data-plyr-player-wrap] > .plyr {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.post-content [data-plyr-player-wrap] > video {
+    display: block;
+    background: #000000;
+}
+
+.post-content [data-plyr-player-wrap] .plyr__poster {
+    background-size: cover;
+}
+
 .post-content .swiper-pagination.position-static {
     margin-top: 1rem !important;
 }
 
 .fb-plyr-hls-message {
-    width: 100%;
-    max-height: 14rem;
-    overflow-x: hidden;
-    overflow-y: auto;
+    position: absolute;
+    top: .75rem;
+    left: .75rem;
+    right: .75rem;
+    z-index: 55;
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    width: auto;
+    max-height: 5rem;
+    padding: .65rem .8rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: .5rem;
+    background: rgba(8, 12, 18, .84);
+    color: #ffffff;
+    box-shadow: 0 .75rem 1.75rem rgba(0, 0, 0, .28);
+    backdrop-filter: blur(8px);
     white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
     line-height: 1.35;
+    pointer-events: none;
+}
+
+.fb-plyr-hls-message::before {
+    content: "";
+    flex: 0 0 auto;
+    width: .9rem;
+    height: .9rem;
+    border: 2px solid rgba(255, 255, 255, .35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: fb-plyr-status-spin .85s linear infinite;
+}
+
+.fb-plyr-hls-message--success::before {
+    border: 0;
+    border-radius: 50%;
+    background: #2fd17c;
+    animation: none;
+}
+
+.fb-plyr-hls-message--warning::before {
+    border-color: #ffd166;
+    border-top-color: rgba(255, 255, 255, .3);
+}
+
+.fb-plyr-hls-message--error::before {
+    border: 0;
+    border-radius: 50%;
+    background: #ff5c6c;
+    animation: none;
 }
 
 .fb-plyr-hls-message[hidden] {
     display: none !important;
+}
+
+@keyframes fb-plyr-status-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .post-content [data-plyr-player-wrap] {
+        min-height: 190px;
+    }
+
+    .fb-plyr-hls-message {
+        top: .5rem;
+        left: .5rem;
+        right: .5rem;
+        max-height: 4.5rem;
+        padding: .55rem .65rem;
+        font-size: .875rem;
+    }
 }
 
 .post-content pre,
@@ -1539,6 +1631,8 @@ body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
 .plyr:fullscreen,
 .plyr:-webkit-full-screen,
 .plyr.plyr--fullscreen,
+.plyr.plyr--fullscreen-active,
+.plyr.is-site-plyr-fullscreen,
 .plyr.plyr--fullscreen-fallback {
     position: fixed !important;
     inset: 0 !important;
@@ -1554,6 +1648,8 @@ body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
 .plyr:fullscreen .plyr__video-wrapper,
 .plyr:-webkit-full-screen .plyr__video-wrapper,
 .plyr.plyr--fullscreen .plyr__video-wrapper,
+.plyr.plyr--fullscreen-active .plyr__video-wrapper,
+.plyr.is-site-plyr-fullscreen .plyr__video-wrapper,
 .plyr.plyr--fullscreen-fallback .plyr__video-wrapper {
     height: 100% !important;
 }
@@ -1584,9 +1680,16 @@ body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
 .plyr[data-plyr-zoom-ready="true"]:fullscreen .plyr__controls,
 .plyr[data-plyr-zoom-ready="true"]:-webkit-full-screen .plyr__controls,
 .plyr[data-plyr-zoom-ready="true"].plyr--fullscreen .plyr__controls,
+.plyr[data-plyr-zoom-ready="true"].plyr--fullscreen-active .plyr__controls,
+.plyr[data-plyr-zoom-ready="true"].is-site-plyr-fullscreen .plyr__controls,
 .plyr[data-plyr-zoom-ready="true"].plyr--fullscreen-fallback .plyr__controls {
     transform: translateZ(0);
     z-index: 2147483647;
+}
+
+html.is-site-fullscreen,
+body.is-site-fullscreen {
+    overflow: hidden !important;
 }
 
 body.is-site-fullscreen > header,
@@ -1597,7 +1700,11 @@ body.is-site-fullscreen .btn-scroll-top,
 body.is-site-fullscreen .app-toast-stack,
 body.is-site-fullscreen .toast-container,
 body.is-site-fullscreen .modal-backdrop,
-body.is-site-fullscreen .offcanvas-backdrop {
+body.is-site-fullscreen .offcanvas-backdrop,
+body.is-site-fullscreen .offcanvas,
+body.is-site-fullscreen .admin-shell-mobile-toggle,
+body.is-site-fullscreen [data-bs-target="#blogSidebar"],
+body.is-site-fullscreen [data-bs-target="#accountSidebar"] {
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;

@@ -4,14 +4,16 @@
     const plyrBlankVideoUrl = plyrAssetBase + '/blank.mp4';
     const hlsScriptUrl = hlsAssetBase + '/hls.min.js';
     const hlsWarmupDurationMs = 15000;
-    const hlsRetryDelayMs = 2000;
-    const hlsPlayRetryDurationMs = 12000;
+    const hlsRetryDelayMs = 1200;
+    const hlsPlayRetryDurationMs = 10000;
     const hlsPlayRetryDelayMs = 1000;
     const hlsHealthCheckIntervalMs = 2000;
-    const hlsStuckResetAfterMs = 6000;
-    const hlsRestartCooldownMs = 10000;
+    const hlsStuckResetAfterMs = 5000;
+    const hlsRestartCooldownMs = 6000;
     const hlsPrewarmTtlMs = 45000;
     const hlsStartTimeEpsilon = 0.08;
+    const hlsStatusHideDelayMs = 1400;
+    const hlsPosterRefreshIntervalMs = 5000;
     const canViewVideoStatus = window.canViewVideoStatus === true;
     let hlsScriptPromise = null;
     const hlsLocale = ((document.documentElement.getAttribute('lang') || 'en').toLowerCase().startsWith('ru')) ? 'ru' : 'en';
@@ -48,7 +50,8 @@
             hls_unavailable: 'Ошибка потока: HLS воспроизведение недоступно',
             first_play: 'Первое нажатие Play получено. Будим поток...',
             native_available: 'Native HLS доступен. Запускаем воспроизведение...',
-            source_timeout: 'Ошибка потока: источник не успел проснуться',
+            source_timeout: 'Источник потока пока не отвечает. Камера или HLS-сервер вернул недоступный манифест.',
+            poster_fallback: 'Live HLS пока недоступен. Показываем обновляемый кадр камеры.',
             stream_initialized: 'Поток инициализирован. Запрашиваем воспроизведение...'
         },
         en: {
@@ -83,7 +86,8 @@
             hls_unavailable: 'Stream error: HLS playback is unavailable',
             first_play: 'First play captured. Waking stream...',
             native_available: 'Native HLS is available. Starting playback...',
-            source_timeout: 'Stream error: source did not wake up in time',
+            source_timeout: 'Stream source is not responding yet. The camera or HLS server returned an unavailable manifest.',
+            poster_fallback: 'Live HLS is unavailable. Showing refreshed camera snapshot.',
             stream_initialized: 'Stream initialized. Requesting playback...'
         }
     };
@@ -216,42 +220,87 @@
         return true;
     };
 
+    const isSafariBrowser = function () {
+        const userAgent = window.navigator.userAgent || '';
+        const vendor = window.navigator.vendor || '';
+        return /Safari/i.test(userAgent)
+            && /Apple/i.test(vendor)
+            && !/Chrome|CriOS|Chromium|Edg|OPR|YaBrowser|FxiOS|DuckDuckGo/i.test(userAgent);
+    };
+
+    const isIosLikeBrowser = function () {
+        const userAgent = window.navigator.userAgent || '';
+        const isIosLike = /iPad|iPhone|iPod/i.test(userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        return isIosLike;
+    };
+
     const shouldUseNativeHls = function (element) {
+        if (!(element instanceof HTMLVideoElement)) {
+            return false;
+        }
+
+        if (isSafariBrowser()) {
+            return true;
+        }
+
         if (element && element.dataset && element.dataset.hlsForceJsPlayback === 'true') {
             return false;
         }
 
-        if (!canPlayHlsNatively(element)) {
-            return false;
-        }
-
-        const userAgent = window.navigator.userAgent || '';
-        const vendor = window.navigator.vendor || '';
-        const isSafari = /Safari/i.test(userAgent)
-            && /Apple/i.test(vendor)
-            && !/Chrome|CriOS|Chromium|Edg|OPR|YaBrowser|FxiOS|DuckDuckGo/i.test(userAgent);
-        const isIosLike = /iPad|iPhone|iPod/i.test(userAgent)
-            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        if (isIosLike) {
-            return true;
-        }
-
-        if (!isSafari) {
-            return false;
-        }
-
-        // Prefer hls.js on desktop Safari because this stream fails in native HLS,
-        // while keeping native playback as a fallback on iOS where MSE support varies.
-        if (canUseHlsJsPlayback()) {
-            return false;
-        }
-
-        return true;
+        return isIosLikeBrowser() && canPlayHlsNatively(element) && !canUseHlsJsPlayback();
     };
 
     const isHlsUrl = function (url) {
         return /\.m3u8(?:$|\?)/i.test(url || '');
+    };
+
+    const inferHlsPoster = function (url) {
+        if (!url) {
+            return '';
+        }
+
+        try {
+            const parsedUrl = new URL(url, window.location.href);
+            const match = parsedUrl.pathname.match(/\/stream-([^/]+)\/index\.m3u8$/i);
+            if (!match) {
+                return '';
+            }
+
+            parsedUrl.pathname = parsedUrl.pathname.replace(/\/stream-([^/]+)\/index\.m3u8$/i, '/tn-$1.jpg');
+            parsedUrl.search = '';
+            parsedUrl.hash = '';
+
+            return parsedUrl.href;
+        } catch (error) {
+            const match = String(url).match(/^(.*\/)stream-([^/]+)\/index\.m3u8(?:[?#].*)?$/i);
+            return match ? (match[1] + 'tn-' + match[2] + '.jpg') : '';
+        }
+    };
+
+    const normalizeHlsPoster = function (element, hlsSource) {
+        if (!(element instanceof HTMLVideoElement)) {
+            return;
+        }
+
+        const existingPoster = element.getAttribute('poster') || element.dataset.poster || '';
+        const poster = existingPoster || inferHlsPoster(hlsSource);
+
+        if (!poster) {
+            return;
+        }
+
+        element.setAttribute('poster', poster);
+        element.dataset.poster = poster;
+
+        if (element.plyr) {
+            try {
+                element.plyr.poster = poster;
+            } catch (error) {
+                // Plyr may not be fully ready while HLS is initializing.
+            }
+        }
     };
 
     const detachNativeHlsSource = function (element) {
@@ -329,37 +378,38 @@
     };
 
     const renderHlsMessage = function (element, message, type) {
-        if (!canViewVideoStatus) {
-            return;
-        }
-
-        const container = element.closest('[data-plyr-player-wrap]') || element.parentElement;
+        const playerRoot = element.closest('.plyr');
+        const playerWrap = element.closest('[data-plyr-player-wrap]');
+        const container = playerRoot || playerWrap || element.parentElement;
         if (!container) {
             console.error(message);
             return;
         }
 
-        let messageNode = container.querySelector('[data-plyr-hls-message]');
+        if (element.hlsStatusClearTimer) {
+            clearTimeout(element.hlsStatusClearTimer);
+            element.hlsStatusClearTimer = null;
+        }
+
+        let messageNode = (playerWrap || container).querySelector('[data-plyr-hls-message]');
         if (!messageNode) {
             messageNode = document.createElement('div');
             messageNode.dataset.plyrHlsMessage = 'true';
-            messageNode.className = 'alert mt-3 mb-0 fb-plyr-hls-message';
+            messageNode.className = 'fb-plyr-hls-message';
+            messageNode.setAttribute('aria-live', 'polite');
+            messageNode.setAttribute('role', 'status');
+            container.appendChild(messageNode);
+        } else if (messageNode.parentElement !== container) {
             container.appendChild(messageNode);
         }
 
-        messageNode.style.removeProperty('height');
-        messageNode.style.removeProperty('overflow');
         messageNode.style.removeProperty('display');
-        messageNode.style.removeProperty('align-items');
 
-        const classMap = {
-            info: 'alert-secondary',
-            success: 'alert-success',
-            warning: 'alert-warning',
-            error: 'alert-danger',
-        };
-
-        messageNode.className = 'alert mt-3 mb-0 fb-plyr-hls-message ' + (classMap[type] || classMap.info);
+        const statusType = type || 'info';
+        container.classList.add('has-hls-status');
+        container.dataset.plyrHlsStatus = statusType;
+        messageNode.className = 'fb-plyr-hls-message fb-plyr-hls-message--' + statusType;
+        messageNode.setAttribute('role', statusType === 'error' ? 'alert' : 'status');
         messageNode.hidden = false;
         messageNode.textContent = message;
     };
@@ -381,17 +431,40 @@
     };
 
     const clearHlsMessage = function (element) {
-        if (!canViewVideoStatus) {
-            return;
+        if (element.hlsStatusClearTimer) {
+            clearTimeout(element.hlsStatusClearTimer);
+            element.hlsStatusClearTimer = null;
         }
 
-        const container = element.closest('[data-plyr-player-wrap]') || element.parentElement;
-        const messageNode = container ? container.querySelector('[data-plyr-hls-message]') : null;
+        const playerRoot = element.closest('.plyr');
+        const playerWrap = element.closest('[data-plyr-player-wrap]');
+        const container = playerRoot || playerWrap || element.parentElement;
+        const messageNode = (playerWrap || container) ? (playerWrap || container).querySelector('[data-plyr-hls-message]') : null;
+
+        [playerRoot, playerWrap].forEach(function (node) {
+            if (!node) {
+                return;
+            }
+
+            node.classList.remove('has-hls-status');
+            delete node.dataset.plyrHlsStatus;
+        });
+
         if (messageNode) {
-            messageNode.className = 'alert mt-3 mb-0 fb-plyr-hls-message alert-secondary';
+            messageNode.className = 'fb-plyr-hls-message';
             messageNode.hidden = true;
             messageNode.textContent = '';
         }
+    };
+
+    const scheduleHlsMessageClear = function (element) {
+        if (element.hlsStatusClearTimer) {
+            clearTimeout(element.hlsStatusClearTimer);
+        }
+
+        element.hlsStatusClearTimer = setTimeout(function () {
+            clearHlsMessage(element);
+        }, hlsStatusHideDelayMs);
     };
 
     const sleep = function (ms) {
@@ -405,6 +478,10 @@
     };
 
     const describeMediaState = function (element) {
+        if (!canViewVideoStatus) {
+            return '';
+        }
+
         const readyStates = {
             0: 'HAVE_NOTHING',
             1: 'HAVE_METADATA',
@@ -554,7 +631,16 @@
         attemptDeferredPlay(element);
     };
 
-    const prepareNativeHlsPlayback = function (element) {
+    const prepareNativeHlsPlayback = async function (element) {
+        const isAwake = await ensureHlsSourceAwake(element, {
+            emitStatus: true,
+            requirePlayIntent: true,
+        });
+
+        if (!isAwake) {
+            return false;
+        }
+
         if (element.getAttribute('src') !== element.hlsSource) {
             element.setAttribute('src', element.hlsSource);
         }
@@ -562,6 +648,7 @@
         element.load();
         element.hlsMediaReady = true;
         showHlsInfo(element, t('preparing_native'));
+        return true;
     };
 
     const markPlaybackStarted = function (element) {
@@ -571,6 +658,7 @@
         element.hlsPlaybackStarted = true;
         syncFullVolume(element, true);
         showHlsSuccess(element, t('stream_playing'));
+        scheduleHlsMessageClear(element);
 
         if (element.dataset.hlsForceMutedAutoplay === 'true') {
             element.dataset.hlsForceMutedAutoplay = 'false';
@@ -597,8 +685,26 @@
         }
     };
 
-    const urlExists = function (url, method) {
+    const cacheBustUrl = function (url) {
+        if (!url) {
+            return url;
+        }
+
+        try {
+            const parsedUrl = new URL(url, window.location.href);
+            parsedUrl.searchParams.set('_hls_wake', String(Date.now()));
+            return parsedUrl.href;
+        } catch (error) {
+            const separator = String(url).includes('?') ? '&' : '?';
+            return String(url) + separator + '_hls_wake=' + Date.now();
+        }
+    };
+
+    const urlExists = function (url, method, options) {
         return new Promise(function (resolve) {
+            const settings = Object.assign({
+                cacheBust: false,
+            }, options || {});
             let settled = false;
             const xhr = new XMLHttpRequest();
 
@@ -611,8 +717,8 @@
                 resolve(result);
             };
 
-            xhr.open(method, url, true);
-            xhr.timeout = 4000;
+            xhr.open(method, settings.cacheBust ? cacheBustUrl(url) : url, true);
+            xhr.timeout = 2500;
             xhr.onreadystatechange = function () {
                 if (xhr.readyState !== 4) {
                     return;
@@ -644,6 +750,7 @@
         const settings = Object.assign({
             requirePlayIntent: true,
             emitStatus: true,
+            wake: false,
         }, options || {});
         const startedAt = Date.now();
         let attempt = 0;
@@ -658,20 +765,32 @@
                 showHlsInfo(element, t('checking_attempt', { attempt }));
             }
 
-            const headExists = await urlExists(url, 'HEAD');
-            if (headExists) {
-                if (settings.emitStatus) {
-                    showHlsSuccess(element, t('manifest_available'));
-                }
-                return true;
-            }
-
-            const getExists = await urlExists(url, 'GET');
-            if (getExists) {
+            const wakeExists = await urlExists(url, 'GET', { cacheBust: settings.wake });
+            if (wakeExists) {
                 if (settings.emitStatus) {
                     showHlsSuccess(element, t('stream_responded'));
                 }
                 return true;
+            }
+
+            if (!settings.wake) {
+                const headExists = await urlExists(url, 'HEAD');
+                if (headExists) {
+                    if (settings.emitStatus) {
+                        showHlsSuccess(element, t('manifest_available'));
+                    }
+                    return true;
+                }
+            }
+
+            if (settings.wake) {
+                const headExists = await urlExists(url, 'HEAD', { cacheBust: true });
+                if (headExists) {
+                    if (settings.emitStatus) {
+                        showHlsSuccess(element, t('manifest_available'));
+                    }
+                    return true;
+                }
             }
 
             if (settings.emitStatus) {
@@ -681,6 +800,45 @@
         }
 
         return false;
+    };
+
+    const ensureHlsSourceAwake = function (element, options) {
+        const settings = Object.assign({
+            emitStatus: true,
+            requirePlayIntent: true,
+        }, options || {});
+
+        if (!element.hlsSource) {
+            return Promise.resolve(false);
+        }
+
+        if (element.hlsSourcePrewarmed && element.hlsSourcePrewarmedAt && (Date.now() - element.hlsSourcePrewarmedAt) < hlsPrewarmTtlMs) {
+            return Promise.resolve(true);
+        }
+
+        if (element.hlsWakePromise) {
+            return element.hlsWakePromise;
+        }
+
+        element.hlsWakePromise = waitForHlsSource(element, element.hlsSource, {
+            requirePlayIntent: settings.requirePlayIntent,
+            emitStatus: settings.emitStatus,
+            wake: true,
+        }).then(function (isReady) {
+            if (isReady) {
+                element.hlsSourcePrewarmed = true;
+                element.hlsSourcePrewarmedAt = Date.now();
+                if (settings.emitStatus) {
+                    showHlsSuccess(element, t('manifest_available'));
+                }
+            }
+
+            return isReady;
+        }).finally(function () {
+            element.hlsWakePromise = null;
+        });
+
+        return element.hlsWakePromise;
     };
 
     const prewarmHlsSource = function (element) {
@@ -699,6 +857,7 @@
         element.hlsBackgroundWarmupPromise = waitForHlsSource(element, element.hlsSource, {
             requirePlayIntent: false,
             emitStatus: false,
+            wake: true,
         }).then(function (isReady) {
             element.hlsSourcePrewarmed = isReady;
             element.hlsSourcePrewarmedAt = isReady ? Date.now() : 0;
@@ -760,6 +919,10 @@
     };
 
     const fallbackToHlsJsPlayback = async function (element, reason) {
+        if (isSafariBrowser()) {
+            return false;
+        }
+
         if (element.dataset.hlsForceJsPlayback === 'true' || !canUseHlsJsPlayback()) {
             return false;
         }
@@ -913,9 +1076,16 @@
         if (shouldUseNativeHls(element)) {
             resetNativePlaybackState(element);
             element.hlsAutoplayRequested = true;
-            prepareNativeHlsPlayback(element);
-            scheduleDeferredPlay(element, t('stream_initialized'));
-            element.hlsRestarting = false;
+            prepareNativeHlsPlayback(element).then(function (isReady) {
+                if (!isReady) {
+                    showHlsError(element, t('source_timeout'));
+                    return;
+                }
+
+                scheduleDeferredPlay(element, t('stream_initialized'));
+            }).finally(function () {
+                element.hlsRestarting = false;
+            });
             return;
         }
 
@@ -1047,8 +1217,11 @@
                 }
                 resetNativePlaybackState(element);
                 element.hlsAutoplayRequested = true;
-                prepareNativeHlsPlayback(element);
-                attemptDeferredPlay(element);
+                prepareNativeHlsPlayback(element).then(function (isReady) {
+                    if (isReady) {
+                        attemptDeferredPlay(element);
+                    }
+                });
             }, hlsRetryDelayMs);
         });
 
@@ -1226,20 +1399,15 @@
                 throw new Error('This browser does not support HLS playback');
             }
 
-            const sourcePrewarmedFresh = element.hlsSourcePrewarmed
-                && element.hlsSourcePrewarmedAt
-                && (Date.now() - element.hlsSourcePrewarmedAt) < hlsPrewarmTtlMs;
-            const sourceReady = sourcePrewarmedFresh
-                ? true
-                : (element.hlsBackgroundWarmupPromise
-                    ? await element.hlsBackgroundWarmupPromise
-                    : await waitForHlsSource(element, element.hlsSource));
-            if (!sourceReady) {
+            const isAwake = await ensureHlsSourceAwake(element, {
+                emitStatus: Boolean(element.hlsAutoplayRequested),
+                requirePlayIntent: Boolean(element.hlsAutoplayRequested),
+            });
+
+            if (!isAwake) {
                 return false;
             }
 
-            element.hlsSourcePrewarmed = true;
-            element.hlsSourcePrewarmedAt = Date.now();
             destroyHlsInstance(element);
             detachNativeHlsSource(element);
 
@@ -1249,10 +1417,16 @@
                 lowLatencyMode: true,
                 backBufferLength: 90,
                 capLevelToPlayerSize: true,
-                manifestLoadingMaxRetry: 3,
-                manifestLoadingTimeOut: 15000,
+                manifestLoadingMaxRetry: 4,
+                manifestLoadingRetryDelay: 1000,
+                manifestLoadingMaxRetryTimeout: 5000,
+                manifestLoadingTimeOut: 8000,
                 levelLoadingMaxRetry: 4,
+                levelLoadingRetryDelay: 1000,
+                levelLoadingMaxRetryTimeout: 5000,
                 fragLoadingMaxRetry: 4,
+                fragLoadingRetryDelay: 1000,
+                fragLoadingMaxRetryTimeout: 5000,
                 startFragPrefetch: true,
             });
 
@@ -1299,9 +1473,10 @@
 
         try {
             if (shouldUseNativeHls(element)) {
-                prepareNativeHlsPlayback(element);
-                showHlsSuccess(element, t('native_available'));
-                isReady = true;
+                isReady = await prepareNativeHlsPlayback(element);
+                if (isReady) {
+                    showHlsSuccess(element, t('native_available'));
+                }
             } else {
                 isReady = await prepareHlsPlayback(element);
             }
@@ -1781,6 +1956,7 @@
         }
 
         element.hlsSource = hlsSource;
+        normalizeHlsPoster(element, hlsSource);
         element.hlsAutoplayRequested = false;
         element.hlsMediaReady = shouldUseNativeHls(element);
         element.hlsPreparePromise = null;
@@ -1825,10 +2001,26 @@
         const syncFullscreenUiState = function () {
             const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || null;
             const fullscreenPlyr = fullscreenElement
-                ? (fullscreenElement.matches && fullscreenElement.matches('.plyr') ? fullscreenElement : fullscreenElement.querySelector && fullscreenElement.querySelector('.plyr'))
-                : document.querySelector('.plyr.plyr--fullscreen, .plyr.plyr--fullscreen-fallback');
+                ? (fullscreenElement.matches && fullscreenElement.matches('.plyr')
+                    ? fullscreenElement
+                    : ((fullscreenElement.closest && fullscreenElement.closest('.plyr')) || (fullscreenElement.querySelector && fullscreenElement.querySelector('.plyr'))))
+                : document.querySelector('.plyr.plyr--fullscreen, .plyr.plyr--fullscreen-active, .plyr.plyr--fullscreen-fallback');
+
+            document.querySelectorAll('.plyr.is-site-plyr-fullscreen, [data-plyr-player-wrap].is-site-plyr-fullscreen').forEach(function (node) {
+                node.classList.remove('is-site-plyr-fullscreen');
+            });
+
+            if (fullscreenPlyr) {
+                fullscreenPlyr.classList.add('is-site-plyr-fullscreen');
+
+                const fullscreenWrap = fullscreenPlyr.closest('[data-plyr-player-wrap]');
+                if (fullscreenWrap) {
+                    fullscreenWrap.classList.add('is-site-plyr-fullscreen');
+                }
+            }
 
             document.body.classList.toggle('is-site-fullscreen', Boolean(fullscreenPlyr));
+            document.documentElement.classList.toggle('is-site-fullscreen', Boolean(fullscreenPlyr));
         };
 
         document.addEventListener('fullscreenchange', syncFullscreenUiState);
