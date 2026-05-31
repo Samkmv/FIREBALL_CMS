@@ -52,6 +52,46 @@
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+@media (hover: none), (pointer: coarse) {
+    input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="image"]):not([type="radio"]):not([type="range"]):not([type="reset"]):not([type="submit"]):not(.form-control-lg),
+    textarea:not(.form-control-lg),
+    select:not(.form-select-lg),
+    .form-control:not(.form-control-lg),
+    .form-select:not(.form-select-lg),
+    .form-control-sm,
+    .form-select-sm,
+    .input-group-sm > .form-control,
+    .input-group-sm > .form-select {
+        font-size: 16px !important;
+    }
+}
+
+[data-search-suggest-results] {
+    z-index: 1080 !important;
+}
+
+.search-suggest-menu {
+    max-height: min(24rem, calc(100dvh - 8rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.search-suggest-menu__item:last-child {
+    border-bottom: 0 !important;
+}
+
+@media (max-width: 767.98px) {
+    .search-suggest-menu {
+        max-height: min(70dvh, 26rem);
+    }
+}
+
 .fb-social-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -172,7 +212,7 @@
     position: relative;
     display: block;
     aspect-ratio: 16 / 9;
-    min-height: 220px;
+    min-height: clamp(190px, 56vw, 420px);
     overflow: hidden;
     border-radius: .75rem;
     background: #05070a;
@@ -266,16 +306,17 @@
 
 @media (max-width: 575.98px) {
     .post-content [data-plyr-player-wrap] {
-        min-height: 190px;
+        min-height: clamp(180px, 58vw, 260px);
+        border-radius: .5rem;
     }
 
     .fb-plyr-hls-message {
         top: .5rem;
         left: .5rem;
         right: .5rem;
-        max-height: 4.5rem;
+        max-height: min(5.25rem, 32%);
         padding: .55rem .65rem;
-        font-size: .875rem;
+        font-size: .8125rem;
     }
 }
 
@@ -1628,6 +1669,12 @@ body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
     touch-action: pan-x pan-y pinch-zoom;
 }
 
+.post-content [data-plyr-player-wrap]:fullscreen,
+.post-content [data-plyr-player-wrap]:-webkit-full-screen,
+[data-plyr-player-wrap]:fullscreen,
+[data-plyr-player-wrap]:-webkit-full-screen,
+[data-plyr-player-wrap].is-site-plyr-fullscreen,
+[data-plyr-player-wrap].plyr--fullscreen-fallback,
 .plyr:fullscreen,
 .plyr:-webkit-full-screen,
 .plyr.plyr--fullscreen,
@@ -1638,13 +1685,37 @@ body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
     inset: 0 !important;
     z-index: 2147483647 !important;
     width: 100vw !important;
+    width: 100dvw !important;
     height: 100vh !important;
+    height: 100dvh !important;
     max-width: none !important;
     max-height: none !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    margin: 0 !important;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+    border-radius: 0 !important;
     background: #000000;
     isolation: isolate;
+    overflow: hidden !important;
+    aspect-ratio: auto !important;
 }
 
+[data-plyr-player-wrap]:fullscreen > .plyr,
+[data-plyr-player-wrap]:-webkit-full-screen > .plyr,
+[data-plyr-player-wrap].is-site-plyr-fullscreen > .plyr,
+[data-plyr-player-wrap].plyr--fullscreen-fallback > .plyr {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+}
+
+.post-content [data-plyr-player-wrap]:fullscreen .plyr__video-wrapper,
+.post-content [data-plyr-player-wrap]:-webkit-full-screen .plyr__video-wrapper,
+[data-plyr-player-wrap]:fullscreen .plyr__video-wrapper,
+[data-plyr-player-wrap]:-webkit-full-screen .plyr__video-wrapper,
+[data-plyr-player-wrap].is-site-plyr-fullscreen .plyr__video-wrapper,
+[data-plyr-player-wrap].plyr--fullscreen-fallback .plyr__video-wrapper,
 .plyr:fullscreen .plyr__video-wrapper,
 .plyr:-webkit-full-screen .plyr__video-wrapper,
 .plyr.plyr--fullscreen .plyr__video-wrapper,
@@ -1652,6 +1723,23 @@ body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
 .plyr.is-site-plyr-fullscreen .plyr__video-wrapper,
 .plyr.plyr--fullscreen-fallback .plyr__video-wrapper {
     height: 100% !important;
+}
+
+.post-content [data-plyr-player-wrap]:fullscreen video,
+.post-content [data-plyr-player-wrap]:-webkit-full-screen video,
+[data-plyr-player-wrap]:fullscreen video,
+[data-plyr-player-wrap]:-webkit-full-screen video,
+[data-plyr-player-wrap].is-site-plyr-fullscreen video,
+[data-plyr-player-wrap].plyr--fullscreen-fallback video,
+.plyr:fullscreen video,
+.plyr:-webkit-full-screen video,
+.plyr.plyr--fullscreen video,
+.plyr.plyr--fullscreen-active video,
+.plyr.is-site-plyr-fullscreen video,
+.plyr.plyr--fullscreen-fallback video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
 }
 
 .plyr[data-plyr-zoom-ready="true"] .plyr__controls {
@@ -1675,6 +1763,10 @@ body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
 .plyr[data-plyr-zoom-ready="true"] .plyr__control--overlaid {
     z-index: 35;
     pointer-events: auto;
+}
+
+.plyr [data-plyr="fullscreen"] {
+    display: inline-block !important;
 }
 
 .plyr[data-plyr-zoom-ready="true"]:fullscreen .plyr__controls,
@@ -1704,10 +1796,20 @@ body.is-site-fullscreen .offcanvas-backdrop,
 body.is-site-fullscreen .offcanvas,
 body.is-site-fullscreen .admin-shell-mobile-toggle,
 body.is-site-fullscreen [data-bs-target="#blogSidebar"],
-body.is-site-fullscreen [data-bs-target="#accountSidebar"] {
+body.is-site-fullscreen [data-bs-target="#accountSidebar"],
+body.is-site-fullscreen [data-sticky-element],
+body.is-site-fullscreen .sticky-top,
+body.is-site-fullscreen .fixed-top,
+body.is-site-fullscreen .fixed-bottom {
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
+}
+
+body.is-site-fullscreen [data-plyr-player-wrap],
+body.is-site-fullscreen .plyr,
+body.is-site-fullscreen .plyr * {
+    pointer-events: auto;
 }
 
 .plyr.is-plyr-zoomed .plyr__video-wrapper {

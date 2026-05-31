@@ -789,6 +789,8 @@ class AdminController extends BaseController
         }
         if ($data['slug'] === '') {
             $errors['slug'][] = return_translation('admin_validation_slug_required');
+        } elseif (!$this->isValidSlug($data['slug'])) {
+            $errors['slug'][] = return_translation('admin_validation_slug_format');
         }
         if ((int)$data['category_id'] <= 0 || $data['category_name'] === '') {
             $errors['category_id'][] = return_translation('admin_validation_category_required');
@@ -839,9 +841,13 @@ class AdminController extends BaseController
         }
         if ($data['name_en'] === '') {
             $errors['name_en'][] = return_translation('admin_validation_name_en_required');
+        } elseif (!$this->isValidEnglishLabel($data['name_en'])) {
+            $errors['name_en'][] = return_translation('admin_validation_name_en_latin');
         }
         if ($data['slug'] === '') {
             $errors['slug'][] = return_translation('admin_validation_slug_required');
+        } elseif (!$this->isValidSlug($data['slug'])) {
+            $errors['slug'][] = return_translation('admin_validation_slug_format');
         }
         if ($data['seo_image'] !== '' && !$this->isValidSeoImage($data['seo_image'])) {
             $errors['seo_image'][] = return_translation('admin_validation_seo_image_invalid');
@@ -1111,6 +1117,22 @@ class AdminController extends BaseController
             'seo_keywords' => trim((string)($data['seo_keywords'] ?? '')),
             'seo_image' => trim((string)($data['seo_image'] ?? '')),
         ];
+    }
+
+    /**
+     * Проверяет slug для URL: только нижний латинский регистр, цифры и дефисы.
+     */
+    protected function isValidSlug(string $value): bool
+    {
+        return preg_match('/^[a-z0-9-]+$/', $value) === 1;
+    }
+
+    /**
+     * Проверяет английское название без кириллицы и других нелатинских букв.
+     */
+    protected function isValidEnglishLabel(string $value): bool
+    {
+        return preg_match('~^[A-Za-z0-9][A-Za-z0-9\s&\'.,()_/-]*$~u', $value) === 1;
     }
 
     /**

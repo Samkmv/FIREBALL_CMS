@@ -64,7 +64,8 @@ class SearchController extends BaseController
             ]);
         }
 
-        $results = $this->search->suggest($query);
+        $maxItems = 24;
+        $results = $this->search->suggest($query, 12);
         $items = [];
 
         foreach ($results['products'] as $product) {
@@ -88,7 +89,7 @@ class SearchController extends BaseController
         }
 
         response()->json([
-            'items' => array_slice($items, 0, 8),
+            'items' => array_slice($items, 0, $maxItems),
             'empty_text' => return_translation('search_suggest_empty'),
         ]);
     }

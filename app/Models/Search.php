@@ -56,7 +56,7 @@ class Search
     /**
      * Возвращает короткие поисковые подсказки по товарам и постам.
      */
-    public function suggest(string $query, int $limitPerSection = 4): array
+    public function suggest(string $query, int $limitPerSection = 12): array
     {
         $query = trim($query);
 

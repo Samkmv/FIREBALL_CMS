@@ -1998,35 +1998,122 @@
             return;
         }
 
-        const syncFullscreenUiState = function () {
-            const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || null;
-            const fullscreenPlyr = fullscreenElement
-                ? (fullscreenElement.matches && fullscreenElement.matches('.plyr')
-                    ? fullscreenElement
-                    : ((fullscreenElement.closest && fullscreenElement.closest('.plyr')) || (fullscreenElement.querySelector && fullscreenElement.querySelector('.plyr'))))
-                : document.querySelector('.plyr.plyr--fullscreen, .plyr.plyr--fullscreen-active, .plyr.plyr--fullscreen-fallback');
+        const getDocumentFullscreenElement = function () {
+            return document.fullscreenElement
+                || document.webkitFullscreenElement
+                || document.mozFullScreenElement
+                || document.msFullscreenElement
+                || null;
+        };
 
-            document.querySelectorAll('.plyr.is-site-plyr-fullscreen, [data-plyr-player-wrap].is-site-plyr-fullscreen').forEach(function (node) {
-                node.classList.remove('is-site-plyr-fullscreen');
-            });
+        const getPlayerRoot = function (element) {
+            return element ? element.closest('.plyr') : null;
+        };
+
+        const getPlayerWrap = function (element) {
+            const playerRoot = getPlayerRoot(element);
+            return playerRoot ? playerRoot.closest('[data-plyr-player-wrap]') : (element ? element.closest('[data-plyr-player-wrap]') : null);
+        };
+
+        const getPlyrRootFromNode = function (node) {
+            if (!(node instanceof Element)) {
+                return null;
+            }
+
+            if (node.matches('.plyr')) {
+                return node;
+            }
+
+            return (typeof node.closest === 'function' && node.closest('.plyr'))
+                || (typeof node.querySelector === 'function' && node.querySelector('.plyr'))
+                || null;
+        };
+
+        const syncFullscreenUiState = function () {
+            const fullscreenPlyr = getPlyrRootFromNode(getDocumentFullscreenElement())
+                || document.querySelector('.plyr.plyr--fullscreen, .plyr.plyr--fullscreen-active, .plyr.plyr--fullscreen-fallback, [data-plyr-player-wrap].plyr--fullscreen-fallback .plyr');
+            const activeNodes = [];
 
             if (fullscreenPlyr) {
-                fullscreenPlyr.classList.add('is-site-plyr-fullscreen');
+                activeNodes.push(fullscreenPlyr);
 
                 const fullscreenWrap = fullscreenPlyr.closest('[data-plyr-player-wrap]');
                 if (fullscreenWrap) {
-                    fullscreenWrap.classList.add('is-site-plyr-fullscreen');
+                    activeNodes.push(fullscreenWrap);
                 }
             }
+
+            document.querySelectorAll('.plyr.is-site-plyr-fullscreen, [data-plyr-player-wrap].is-site-plyr-fullscreen').forEach(function (node) {
+                if (activeNodes.indexOf(node) === -1) {
+                    node.classList.remove('is-site-plyr-fullscreen');
+                }
+            });
+
+            activeNodes.forEach(function (node) {
+                if (!node.classList.contains('is-site-plyr-fullscreen')) {
+                    node.classList.add('is-site-plyr-fullscreen');
+                }
+            });
 
             document.body.classList.toggle('is-site-fullscreen', Boolean(fullscreenPlyr));
             document.documentElement.classList.toggle('is-site-fullscreen', Boolean(fullscreenPlyr));
         };
 
-        document.addEventListener('fullscreenchange', syncFullscreenUiState);
-        document.addEventListener('webkitfullscreenchange', syncFullscreenUiState);
+        const setNativeVideoFullscreenState = function (element, enabled) {
+            const playerRoot = getPlayerRoot(element);
+            const playerWrap = getPlayerWrap(element);
 
-        document.querySelectorAll('[data-plyr-player]').forEach(function (element) {
+            [playerRoot, playerWrap].forEach(function (node) {
+                if (node) {
+                    node.classList.toggle('is-site-plyr-fullscreen', enabled);
+                }
+            });
+
+            document.body.classList.toggle('is-site-fullscreen', enabled);
+            document.documentElement.classList.toggle('is-site-fullscreen', enabled);
+        };
+
+        const bindFullscreenStateSync = function (element) {
+            const playerRoot = getPlayerRoot(element);
+            if (!playerRoot || playerRoot.dataset.siteFullscreenStateBound === 'true') {
+                return;
+            }
+
+            playerRoot.dataset.siteFullscreenStateBound = 'true';
+            playerRoot.classList.add('plyr--fullscreen-enabled');
+
+            if (element.plyr && typeof element.plyr.on === 'function') {
+                element.plyr.on('enterfullscreen', syncFullscreenUiState);
+                element.plyr.on('exitfullscreen', syncFullscreenUiState);
+            }
+
+            element.addEventListener('webkitbeginfullscreen', function () {
+                setNativeVideoFullscreenState(element, true);
+            });
+            element.addEventListener('webkitendfullscreen', function () {
+                setNativeVideoFullscreenState(element, false);
+                syncFullscreenUiState();
+            });
+
+            if (typeof MutationObserver === 'function') {
+                const fullscreenObserver = new MutationObserver(syncFullscreenUiState);
+                fullscreenObserver.observe(playerRoot, { attributes: true, attributeFilter: ['class'] });
+            }
+        };
+
+        if (document.documentElement.dataset.sitePlyrFullscreenStateBound !== 'true') {
+            document.documentElement.dataset.sitePlyrFullscreenStateBound = 'true';
+            document.addEventListener('fullscreenchange', syncFullscreenUiState);
+            document.addEventListener('webkitfullscreenchange', syncFullscreenUiState);
+            document.addEventListener('mozfullscreenchange', syncFullscreenUiState);
+            document.addEventListener('MSFullscreenChange', syncFullscreenUiState);
+        }
+
+        document.querySelectorAll('[data-plyr-player], .post-content video, [data-plyr-player-wrap] video').forEach(function (element) {
+            if (!element.hasAttribute('data-plyr-player')) {
+                element.setAttribute('data-plyr-player', '');
+            }
+
             element = createCleanMediaElement(element);
 
             if (element.dataset.plyrInitialized === 'true') {
@@ -2049,7 +2136,24 @@
                 blankVideo: plyrAssetBase + '/blank.mp4',
                 volume: 1,
                 muted: false,
+                fullscreen: {
+                    enabled: true,
+                    fallback: true,
+                    iosNative: false,
+                    container: '.plyr',
+                },
             }, options);
+
+            options.fullscreen = Object.assign({
+                enabled: true,
+                fallback: true,
+                iosNative: false,
+                container: '.plyr',
+            }, options.fullscreen || {});
+            options.fullscreen.enabled = true;
+            options.fullscreen.fallback = true;
+            options.fullscreen.iosNative = false;
+            options.fullscreen.container = options.fullscreen.container || '.plyr';
 
             const finalizePlyr = function () {
                 element.dataset.plyrInitialized = 'true';
@@ -2062,23 +2166,13 @@
                     });
                 });
 
-                if (typeof element.plyr.on === 'function') {
-                    element.plyr.on('enterfullscreen', syncFullscreenUiState);
-                    element.plyr.on('exitfullscreen', syncFullscreenUiState);
-                }
-
                 if (!shouldUseNativeHls(element)) {
                     forceDetachNativeHlsSource(element);
                 }
 
                 bindPlyrPlayButton(element);
                 initPlyrZoom(element);
-
-                const playerRoot = element.closest('.plyr');
-                if (playerRoot && typeof MutationObserver === 'function') {
-                    const fullscreenObserver = new MutationObserver(syncFullscreenUiState);
-                    fullscreenObserver.observe(playerRoot, { attributes: true, attributeFilter: ['class'] });
-                }
+                bindFullscreenStateSync(element);
             };
 
             attachHls(element).finally(finalizePlyr);

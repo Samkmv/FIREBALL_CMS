@@ -528,16 +528,16 @@ $(function(){
         const renderItems = (items, emptyText) => {
             if (!items.length) {
                 results.html(
-                    `<div class="bg-body border rounded-4 shadow-sm p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
+                    `<div class="search-suggest-menu bg-body border rounded-4 shadow-sm p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
                 ).removeClass('d-none');
                 return;
             }
 
-            let html = '<div class="bg-body border rounded-4 shadow-sm overflow-hidden">';
+            let html = '<div class="search-suggest-menu bg-body border rounded-4 shadow-sm overflow-hidden">';
 
             items.forEach((item) => {
                 html += `
-                    <a class="d-flex align-items-start justify-content-between gap-3 text-decoration-none text-reset px-3 py-2 border-bottom" href="${escapeHtml(item.url)}">
+                    <a class="search-suggest-menu__item d-flex align-items-start justify-content-between gap-3 text-decoration-none text-reset px-3 py-2 border-bottom" href="${escapeHtml(item.url)}">
                         <div class="min-w-0">
                             <div class="fs-xs text-body-tertiary text-uppercase mb-1">${escapeHtml(item.type_label)}</div>
                             <div class="fw-medium text-truncate">${escapeHtml(item.title)}</div>

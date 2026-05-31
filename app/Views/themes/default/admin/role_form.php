@@ -35,7 +35,7 @@ $deleteBlockedMessage = $isProtectedCreatorRole
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Slug</label>
-                    <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="role_slug" name="slug" value="<?= old('slug') ?: htmlSC($role['slug'] ?? '') ?>" data-slug-input <?= ($isSystem || $isProtectedCreatorRole) ? 'readonly' : '' ?> required>
+                    <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="role_slug" name="slug" value="<?= old('slug') ?: htmlSC($role['slug'] ?? '') ?>" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en" pattern="[a-z0-9-]+" data-slug-input <?= ($isSystem || $isProtectedCreatorRole) ? 'readonly' : '' ?> required>
                     <?php if ($isSystem): ?>
                         <div class="form-text"><?= print_translation('admin_roles_system_slug_hint') ?></div>
                     <?php endif; ?>

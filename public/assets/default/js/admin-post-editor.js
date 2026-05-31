@@ -328,6 +328,7 @@ function initPostEditor() {
     function render() {
         ensureAppStructure();
         ensureActiveBlock();
+        closeAllAddDropdowns();
 
         const blockCountElement = app.querySelector('[data-editor-block-count]');
         const blocksContainer = getBlocksContainer();
@@ -565,7 +566,28 @@ function initPostEditor() {
                 return;
             }
 
-            hideAddDropdown(addTypeButton.closest('[data-add-wrap]'));
+            hideAddDropdown(getAddDropdownWrapFromElement(addTypeButton));
+            addBlock(
+                String(addTypeButton.getAttribute('data-editor-add') || 'text'),
+                Number(addTypeButton.getAttribute('data-insert-position') || state.blocks.length)
+            );
+        }, true);
+
+        document.addEventListener('click', function (event) {
+            const addTypeButton = event.target.closest('.fb-post-add-menu--portal [data-editor-add]');
+            const wrap = getAddDropdownWrapFromElement(addTypeButton);
+
+            if (!addTypeButton || !wrap || !app.contains(wrap)) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.stopImmediatePropagation) {
+                event.stopImmediatePropagation();
+            }
+
+            hideAddDropdown(wrap);
             addBlock(
                 String(addTypeButton.getAttribute('data-editor-add') || 'text'),
                 Number(addTypeButton.getAttribute('data-insert-position') || state.blocks.length)
@@ -595,7 +617,7 @@ function initPostEditor() {
             }
 
             if (addTypeButton) {
-                hideAddDropdown(addTypeButton.closest('[data-add-wrap]'));
+                hideAddDropdown(getAddDropdownWrapFromElement(addTypeButton));
                 addBlock(
                     String(addTypeButton.getAttribute('data-editor-add') || 'text'),
                     Number(addTypeButton.getAttribute('data-insert-position') || state.blocks.length)
@@ -1036,7 +1058,7 @@ function initPostEditor() {
             const target = event.target;
             const clickedInsideAddMenu = !!target.closest('[data-add-wrap], .fb-post-add-menu');
             const clickedInsideStyleMenu = !!target.closest('[data-style-wrap]');
-            const hasOpenAddMenu = !!app.querySelector('.fb-post-add-menu.show');
+            const hasOpenAddMenu = !!app.querySelector('[data-add-wrap].is-open');
 
             if (!clickedInsideStyleMenu) {
                 closeStylePanels();
@@ -2235,7 +2257,76 @@ function initPostEditor() {
     }
 
     function getAddDropdownMenu(wrap) {
-        return wrap ? wrap.querySelector('.fb-post-add-menu') : null;
+        if (!wrap) {
+            return null;
+        }
+
+        const activeMenu = wrap.__fbAddMenu || null;
+        if (activeMenu && document.body.contains(activeMenu)) {
+            return activeMenu;
+        }
+
+        const menu = wrap.querySelector('.fb-post-add-menu');
+        if (menu) {
+            wrap.__fbAddMenu = menu;
+        }
+
+        return menu;
+    }
+
+    function getAddDropdownWrapFromMenu(menu) {
+        if (!menu) {
+            return null;
+        }
+
+        return menu.__fbAddWrap || menu.closest('[data-add-wrap]');
+    }
+
+    function getAddDropdownWrapFromElement(element) {
+        if (!element) {
+            return null;
+        }
+
+        return element.closest('[data-add-wrap]') || getAddDropdownWrapFromMenu(element.closest('.fb-post-add-menu'));
+    }
+
+    function attachAddDropdownToBody(wrap, menu) {
+        if (!wrap || !menu || menu.parentNode === document.body) {
+            return;
+        }
+
+        const placeholder = document.createComment('fb-post-add-menu');
+        wrap.__fbAddMenu = menu;
+        menu.__fbAddWrap = wrap;
+        menu.__fbAddPlaceholder = placeholder;
+        menu.setAttribute('data-add-anchor', wrap.getAttribute('data-add-wrap') || '');
+        menu.parentNode.insertBefore(placeholder, menu);
+        document.body.appendChild(menu);
+        menu.classList.add('fb-post-add-menu--portal');
+    }
+
+    function restoreAddDropdown(menu) {
+        if (!menu) {
+            return;
+        }
+
+        const wrap = getAddDropdownWrapFromMenu(menu);
+        const placeholder = menu.__fbAddPlaceholder || null;
+
+        if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.insertBefore(menu, placeholder);
+            placeholder.parentNode.removeChild(placeholder);
+        } else if (wrap && !wrap.contains(menu)) {
+            wrap.appendChild(menu);
+        }
+
+        menu.classList.remove('fb-post-add-menu--portal', 'is-open-up');
+        menu.removeAttribute('data-add-anchor');
+        if (wrap && wrap.__fbAddMenu === menu) {
+            delete wrap.__fbAddMenu;
+        }
+        delete menu.__fbAddWrap;
+        delete menu.__fbAddPlaceholder;
     }
 
     function hideAddDropdown(wrap) {
@@ -2250,6 +2341,7 @@ function initPostEditor() {
         button.setAttribute('aria-expanded', 'false');
         menu.classList.remove('show');
         clearFloatingMenuStyles(menu);
+        restoreAddDropdown(menu);
         wrap.classList.remove('is-open');
         app.classList.remove('has-open-add-menu');
     }
@@ -2275,6 +2367,9 @@ function initPostEditor() {
 
         button.classList.toggle('show', shouldOpen);
         button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        if (shouldOpen) {
+            attachAddDropdownToBody(wrap, menu);
+        }
         menu.classList.toggle('show', shouldOpen);
         wrap.classList.toggle('is-open', shouldOpen);
         app.classList.toggle('has-open-add-menu', shouldOpen);
@@ -2331,6 +2426,7 @@ function initPostEditor() {
         menu.style.maxHeight = '';
         menu.style.overflowY = '';
         menu.style.width = '';
+        menu.classList.remove('is-open-up');
     }
 
     function positionFloatingMenu(anchor, menu, options) {
@@ -2342,26 +2438,30 @@ function initPostEditor() {
             width: 352,
             minWidth: 220,
             zIndex: 1070,
-            align: 'center'
+            align: 'center',
+            matchAnchor: false,
+            forceBelow: false
         }, options || {});
         const rect = anchor.getBoundingClientRect();
         const viewport = getViewportMetrics();
         const margin = 12;
         const bottomInset = getVisibleFixedBottomInset(viewport);
-        const maxWidth = Math.max(settings.minWidth, viewport.width - (margin * 2));
+        const availableWidth = Math.max(120, viewport.width - (margin * 2));
+        const targetWidth = settings.matchAnchor ? rect.width : settings.width;
+        const menuWidth = Math.min(Math.max(settings.minWidth, targetWidth), availableWidth);
 
         menu.style.position = 'fixed';
         menu.style.right = 'auto';
         menu.style.transform = 'none';
         menu.style.zIndex = String(settings.zIndex);
-        menu.style.width = Math.min(settings.width, maxWidth) + 'px';
+        menu.style.width = menuWidth + 'px';
         menu.style.maxHeight = '';
         menu.style.overflowY = '';
 
         const menuRect = menu.getBoundingClientRect();
         const availableBelow = viewport.top + viewport.height - rect.bottom - bottomInset - margin;
         const availableAbove = rect.top - viewport.top - margin;
-        const openAbove = availableBelow < menuRect.height && availableAbove > availableBelow;
+        const openAbove = !settings.forceBelow && availableBelow < menuRect.height && availableAbove > availableBelow;
         const chosenAvailable = Math.max(0, openAbove ? availableAbove : availableBelow);
         const viewportAvailable = Math.max(0, viewport.height - bottomInset - (margin * 2));
         const maxHeight = Math.max(48, Math.min(chosenAvailable, viewportAvailable));
@@ -2383,6 +2483,7 @@ function initPostEditor() {
         menu.style.left = left + 'px';
         menu.style.maxHeight = maxHeight + 'px';
         menu.style.overflowY = menuRect.height > maxHeight ? 'auto' : 'visible';
+        menu.classList.toggle('is-open-up', openAbove);
     }
 
     function positionAddDropdown(wrap) {
@@ -2393,11 +2494,17 @@ function initPostEditor() {
             return;
         }
 
+        const viewport = getViewportMetrics();
+        const buttonRect = button.getBoundingClientRect();
+        const matchButtonWidth = viewport.width < 768 || buttonRect.width >= 260;
+
         positionFloatingMenu(button, menu, {
-            width: 352,
-            minWidth: 220,
-            zIndex: 1070,
-            align: 'center'
+            width: matchButtonWidth ? buttonRect.width : 352,
+            minWidth: matchButtonWidth ? Math.min(buttonRect.width, 220) : 220,
+            zIndex: 12000,
+            align: matchButtonWidth ? 'start' : 'center',
+            matchAnchor: matchButtonWidth,
+            forceBelow: viewport.width < 768
         });
     }
 
@@ -2437,7 +2544,7 @@ function initPostEditor() {
                 '<button class="btn btn-outline-secondary btn-sm fb-post-editor__add-btn dropdown-toggle" type="button" aria-expanded="false" data-editor-open-add data-menu-anchor="' + escapeAttr(anchor) + '" data-insert-position="' + escapeAttr(String(position)) + '">' +
                     '<i class="ci-plus"></i><span>' + escapeHtml(labels.addBlock) + '</span>' +
                 '</button>' +
-                '<div class="dropdown-menu fb-post-add-menu">' +
+                '<div class="dropdown-menu fb-post-add-menu" data-add-menu data-add-anchor="' + escapeAttr(anchor) + '">' +
                     renderAddTypeButton('text', position, labels.addText) +
                     renderAddTypeButton('heading', position, labels.addHeading) +
                     renderAddTypeButton('image', position, labels.addImage) +

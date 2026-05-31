@@ -22,12 +22,12 @@ $formAction = $is_edit
             </div>
             <div class="col-md-6">
                 <label class="form-label"><?= print_translation('admin_categories_col_name_en') ?></label>
-                <input class="form-control <?= get_validation_class('name_en') ?>" type="text" id="category_name_en" name="name_en" value="<?= old('name_en') ?: htmlSC($category['name_en'] ?? '') ?>" data-slug-source="#category_slug" required>
+                <input class="form-control <?= get_validation_class('name_en') ?>" type="text" id="category_name_en" name="name_en" value="<?= old('name_en') ?: htmlSC($category['name_en'] ?? '') ?>" inputmode="text" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en" pattern="[A-Za-z0-9][A-Za-z0-9\s&amp;'.,()_\/-]*" data-slug-source="#category_slug" required>
                 <?= get_errors('name_en') ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Slug</label>
-                <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="category_slug" name="slug" value="<?= old('slug') ?: htmlSC($category['slug'] ?? '') ?>" data-slug-input>
+                <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="category_slug" name="slug" value="<?= old('slug') ?: htmlSC($category['slug'] ?? '') ?>" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en" pattern="[a-z0-9-]+" data-slug-input>
                 <?= get_errors('slug') ?>
             </div>
             <div class="col-12 pt-2">
@@ -45,7 +45,7 @@ $formAction = $is_edit
                         <div class="col-md-6">
                             <label class="form-label"><?= print_translation('admin_seo_image') ?></label>
                             <div class="input-group">
-                                <input class="form-control <?= get_validation_class('seo_image') ?>" type="text" id="category_seo_image" name="seo_image" value="<?= old('seo_image') ?: htmlSC($category['seo_image'] ?? '') ?>" placeholder="/uploads/categories/cover.jpg">
+                                <input class="form-control <?= get_validation_class('seo_image') ?>" type="text" id="category_seo_image" name="seo_image" value="<?= old('seo_image') ?: htmlSC($category['seo_image'] ?? '') ?>" placeholder="/uploads/categories/cover.jpg" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en">
                                 <button
                                     class="btn btn-outline-secondary"
                                     type="button"

@@ -1626,6 +1626,12 @@ $editorConfig = [
         display: grid;
     }
 
+    .fb-post-add-menu--portal {
+        position: fixed !important;
+        z-index: 12000 !important;
+        contain: none;
+    }
+
     .fb-post-add-menu button {
         display: flex;
         align-items: center;
@@ -2780,7 +2786,7 @@ $editorConfig = [
             </div>
             <div class="col-md-6">
                 <label class="form-label">Slug</label>
-                <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="post_slug" name="slug" value="<?= old('slug') ?: htmlSC($post['slug'] ?? '') ?>" data-slug-input required>
+                <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="post_slug" name="slug" value="<?= old('slug') ?: htmlSC($post['slug'] ?? '') ?>" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en" pattern="[a-z0-9-]+" data-slug-input required>
                 <?= get_errors('slug') ?>
             </div>
             <div class="col-md-6">
@@ -2921,6 +2927,11 @@ $editorConfig = [
                                     name="image_url"
                                     value="<?= old('image_url') ?: htmlSC($currentImageUrl) ?>"
                                     placeholder="https://example.com/image.jpg"
+                                    inputmode="url"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    autocapitalize="off"
+                                    lang="en"
                                 >
                                 <?= get_errors('image_url') ?>
                             </div>
@@ -2953,7 +2964,7 @@ $editorConfig = [
                         <div class="col-md-6">
                             <label class="form-label"><?= print_translation('admin_seo_image') ?></label>
                             <div class="input-group">
-                                <input class="form-control <?= get_validation_class('seo_image') ?>" type="text" id="post_seo_image" name="seo_image" value="<?= old('seo_image') ?: htmlSC($post['seo_image'] ?? '') ?>" placeholder="/uploads/posts/cover.jpg">
+                                <input class="form-control <?= get_validation_class('seo_image') ?>" type="text" id="post_seo_image" name="seo_image" value="<?= old('seo_image') ?: htmlSC($post['seo_image'] ?? '') ?>" placeholder="/uploads/posts/cover.jpg" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en">
                                 <button
                                     class="btn btn-outline-secondary"
                                     type="button"
