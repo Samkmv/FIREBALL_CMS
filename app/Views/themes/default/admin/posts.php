@@ -6,26 +6,19 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
 
     return strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓';
 };
-?>
-<?php ob_start(); ?>
-<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts/create') ?>"><i class="ci-plus"></i><?= print_translation('admin_posts_create') ?></a>
-<?php $adminPageActions = ob_get_clean(); ?>
-<?= view()->renderPartial('admin/shell_open', [
-    'title' => return_translation('admin_posts_heading'),
-    'subtitle' => return_translation('admin_posts_subtitle'),
-    'actions' => $adminPageActions,
-]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4">
-        <form method="get" class="position-relative mb-3" style="max-width: 280px">
-            <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
-            <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
-            <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-            <input type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>" class="table-search form-control form-icon-start" placeholder="<?= print_translation('admin_table_search_placeholder') ?>">
-        </form>
+$publishedPosts = (array)($published_posts ?? []);
+$draftPosts = (array)($draft_posts ?? []);
+$publishedTotal = (int)($published_total ?? count($publishedPosts));
+$draftTotal = (int)($draft_total ?? count($draftPosts));
+$searchValue = (string)($search ?? '');
+$emptyText = $searchValue !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_posts_empty');
 
-        <?php if (empty($posts)): ?>
-            <p class="text-body-secondary mb-0"><?= ($search ?? '') !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_posts_empty') ?></p>
+$renderPostsTable = static function (array $items, string $tableKey, string $emptyText) use ($sortIndicator, $sort, $direction): void {
+    ?>
+    <div data-admin-posts-table-shell="<?= htmlSC($tableKey) ?>">
+        <?php if (empty($items)): ?>
+            <p class="text-body-secondary mb-0" data-admin-posts-empty><?= htmlSC($emptyText) ?></p>
         <?php else: ?>
             <div class="table-responsive overflow-auto admin-table-scroll">
                 <table class="table align-middle mb-0">
@@ -59,20 +52,36 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                     </tr>
                     </thead>
                     <tbody class="table-list">
-                    <?php foreach ($posts as $post): ?>
-                        <tr>
+                    <?php foreach ($items as $post): ?>
+                        <?php
+                        $authorRole = trim((string)($post['author_role'] ?? 'admin')) ?: 'user';
+                        $authorName = trim((string)($post['author_name'] ?? 'Fireball'));
+                        $categoryName = (string)($post['category_name'] ?? $post['category'] ?? '-');
+                        $statusLabel = (int)$post['is_published'] === 1
+                            ? return_translation('admin_posts_status_published')
+                            : return_translation('admin_posts_status_draft');
+                        $searchText = implode(' ', [
+                            (string)($post['id'] ?? ''),
+                            (string)($post['title'] ?? ''),
+                            (string)($post['slug'] ?? ''),
+                            $categoryName,
+                            (string)($post['priority'] ?? ''),
+                            $authorName,
+                            get_user_role_label($authorRole),
+                            (string)($post['views_count'] ?? ''),
+                            $statusLabel,
+                            (string)($post['published_at'] ?? ''),
+                        ]);
+                        ?>
+                        <tr data-admin-post-row data-search-text="<?= htmlSC($searchText) ?>">
                             <th class="text-nowrap" scope="row"><?= (int)$post['id'] ?></th>
                             <td>
                                 <div class="fw-medium"><?= htmlSC($post['title']) ?></div>
                                 <div class="text-body-tertiary small"><?= htmlSC($post['slug']) ?></div>
                             </td>
-                            <td><?= htmlSC($post['category_name'] ?? $post['category'] ?? '-') ?></td>
+                            <td><?= htmlSC($categoryName) ?></td>
                             <td class="text-nowrap"><?= (int)($post['priority'] ?? 0) ?></td>
                             <td>
-                                <?php
-                                $authorRole = trim((string)($post['author_role'] ?? 'admin')) ?: 'user';
-                                $authorName = trim((string)($post['author_name'] ?? 'Fireball'));
-                                ?>
                                 <div class="fw-medium"><?= htmlSC(get_user_role_label($authorRole)) ?></div>
                                 <div class="text-body-tertiary small"><?= htmlSC($authorName) ?></div>
                             </td>
@@ -155,21 +164,77 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                     </tbody>
                 </table>
             </div>
-
-            <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
-                <div class="fs-sm">
-                    <?= print_translation('admin_table_showing') ?>
-                    <span class="fw-semibold"><?= count($posts) ?></span>
-                    <?= print_translation('admin_table_of') ?>
-                    <span class="fw-semibold"><?= (int)$total ?></span>
-                    <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
-                </div>
-                <?php if (!empty($pagination)): ?>
-                    <nav aria-label="Pagination" class="mt-4">
-                        <?= $pagination ?>
-                    </nav>
-                <?php endif; ?>
-            </div>
+            <p class="text-body-secondary d-none mb-0" data-admin-posts-empty><?= print_translation('admin_table_empty_search') ?></p>
         <?php endif; ?>
+    </div>
+    <?php
+};
+?>
+<?php ob_start(); ?>
+<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts/create') ?>"><i class="ci-plus"></i><?= print_translation('admin_posts_create') ?></a>
+<?php $adminPageActions = ob_get_clean(); ?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => return_translation('admin_posts_heading'),
+    'subtitle' => return_translation('admin_posts_subtitle'),
+    'actions' => $adminPageActions,
+]) ?>
+
+    <div class="border rounded-5 p-3 p-md-4" data-admin-posts-tabs>
+        <form method="get" class="position-relative mb-3" style="max-width: 320px" data-admin-posts-live-form>
+            <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
+            <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
+            <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
+            <input
+                type="search"
+                name="q"
+                value="<?= htmlSC($searchValue) ?>"
+                class="table-search form-control form-icon-start"
+                placeholder="<?= print_translation('admin_table_search_placeholder') ?>"
+                autocomplete="off"
+                data-admin-posts-live-search
+            >
+        </form>
+
+        <ul class="nav nav-tabs mb-3 admin-posts-tabs" role="tablist" style="max-width: 450px">
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link active" id="published-posts-tab" data-bs-toggle="tab" data-bs-target="#published-posts-tab-pane" role="tab" aria-controls="published-posts-tab-pane" aria-selected="true">
+                    <?= print_translation('admin_posts_status_published') ?>
+                    <span class="badge text-bg-secondary ms-2" data-admin-posts-count="published"><?= $publishedTotal ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" id="draft-posts-tab" data-bs-toggle="tab" data-bs-target="#draft-posts-tab-pane" role="tab" aria-controls="draft-posts-tab-pane" aria-selected="false">
+                    <?= print_translation('admin_posts_status_draft') ?>
+                    <span class="badge text-bg-secondary ms-2" data-admin-posts-count="drafts"><?= $draftTotal ?></span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="published-posts-tab-pane" role="tabpanel" aria-labelledby="published-posts-tab" tabindex="0" data-admin-posts-pane="published">
+                <?php $renderPostsTable($publishedPosts, 'published', $emptyText); ?>
+                <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
+                    <div class="fs-sm">
+                        <?= print_translation('admin_table_showing') ?>
+                        <span class="fw-semibold" data-admin-posts-visible="published"><?= count($publishedPosts) ?></span>
+                        <?= print_translation('admin_table_of') ?>
+                        <span class="fw-semibold" data-admin-posts-total="published"><?= $publishedTotal ?></span>
+                        <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="draft-posts-tab-pane" role="tabpanel" aria-labelledby="draft-posts-tab" tabindex="0" data-admin-posts-pane="drafts">
+                <?php $renderPostsTable($draftPosts, 'drafts', $emptyText); ?>
+                <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
+                    <div class="fs-sm">
+                        <?= print_translation('admin_table_showing') ?>
+                        <span class="fw-semibold" data-admin-posts-visible="drafts"><?= count($draftPosts) ?></span>
+                        <?= print_translation('admin_table_of') ?>
+                        <span class="fw-semibold" data-admin-posts-total="drafts"><?= $draftTotal ?></span>
+                        <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 <?= view()->renderPartial('admin/shell_close') ?>

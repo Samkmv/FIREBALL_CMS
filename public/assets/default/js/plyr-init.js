@@ -2134,6 +2134,7 @@
             options = Object.assign({
                 iconUrl: plyrAssetBase + '/plyr.svg',
                 blankVideo: plyrAssetBase + '/blank.mp4',
+                ratio: '16:9',
                 volume: 1,
                 muted: false,
                 fullscreen: {

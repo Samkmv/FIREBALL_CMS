@@ -16,18 +16,18 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
     'actions' => $adminPageActions,
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4">
-        <form method="get" class="position-relative mb-3" style="max-width: 280px">
+    <div class="border rounded-5 p-3 p-md-4" data-admin-live-table>
+        <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-live-table-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
             <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-            <input type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>" class="table-search form-control form-icon-start" placeholder="<?= print_translation('admin_table_search_placeholder') ?>">
+            <input type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>" class="table-search form-control form-icon-start" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off" data-admin-live-table-search>
         </form>
 
         <?php if (empty($roles)): ?>
-            <p class="text-body-secondary mb-0"><?= ($search ?? '') !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_roles_empty') ?></p>
+            <p class="text-body-secondary mb-0" data-admin-live-table-empty><?= ($search ?? '') !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_roles_empty') ?></p>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll">
+            <div class="table-responsive overflow-auto admin-table-scroll" data-admin-live-table-wrap>
                 <table class="table align-middle mb-0">
                     <thead class="position-sticky top-0">
                     <tr>
@@ -51,7 +51,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             ? return_translation('admin_roles_delete_system_blocked')
                             : return_translation('admin_roles_delete_assigned_blocked'));
                         ?>
-                        <tr>
+                        <tr data-admin-live-table-row>
                             <th class="text-nowrap" scope="row"><?= (int)$role['id'] ?></th>
                             <td><?= htmlSC(get_user_role_label($role['slug'])) ?></td>
                             <td><?= htmlSC($role['slug']) ?></td>
@@ -122,7 +122,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
             <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
                 <div class="fs-sm">
                     <?= print_translation('admin_table_showing') ?>
-                    <span class="fw-semibold"><?= count($roles) ?></span>
+                    <span class="fw-semibold" data-admin-live-table-visible><?= count($roles) ?></span>
                     <?= print_translation('admin_table_of') ?>
                     <span class="fw-semibold"><?= (int)$total ?></span>
                     <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
@@ -133,6 +133,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                     </nav>
                 <?php endif; ?>
             </div>
+            <p class="text-body-secondary d-none mb-0" data-admin-live-table-empty><?= print_translation('admin_table_empty_search') ?></p>
         <?php endif; ?>
     </div>
 <?= view()->renderPartial('admin/shell_close') ?>

@@ -185,6 +185,58 @@ class Admin
     }
 
     /**
+     * Возвращает посты одного статуса для вкладок административной таблицы.
+     */
+    public function getPostsByPublicationStatus(int $status, array $options = []): array
+    {
+        $this->ensureSchema();
+
+        $search = trim((string)($options['search'] ?? ''));
+        $sort = (string)($options['sort'] ?? 'published_at');
+        $direction = strtolower((string)($options['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+
+        $sortMap = [
+            'id' => 'p.id',
+            'title' => 'p.title',
+            'category' => 'category_name',
+            'priority' => 'p.priority',
+            'author' => 'p.author_name',
+            'views' => 'p.views_count',
+            'status' => 'p.is_published',
+            'published_at' => 'p.published_at',
+        ];
+
+        $orderBy = $sortMap[$sort] ?? 'p.published_at';
+        $whereParts = ['p.is_published = ?'];
+        $params = [(int)$status === 1 ? 1 : 0];
+
+        if ($search !== '') {
+            $whereParts[] = "(p.title LIKE ? OR p.slug LIKE ? OR p.excerpt LIKE ? OR COALESCE(c.name, p.category) LIKE ? OR c.name_ru LIKE ? OR c.name_en LIKE ? OR p.author_name LIKE ? OR p.author_role LIKE ?)";
+            $searchLike = '%' . $search . '%';
+            array_push($params, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike);
+        }
+
+        $where = 'WHERE ' . implode(' AND ', $whereParts);
+
+        $items = db()->query(
+            "SELECT p.*, COALESCE(c.name, c.name_ru, c.name_en, p.category) AS category_name
+             FROM {$this->postsTable} p
+             LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
+             {$where}
+             ORDER BY {$orderBy} {$direction}, p.priority DESC, p.id DESC",
+            $params
+        )->get() ?: [];
+
+        return [
+            'items' => $items,
+            'total' => count($items),
+            'search' => $search,
+            'sort' => $sort,
+            'direction' => strtolower($direction),
+        ];
+    }
+
+    /**
      * Ищет пост по идентификатору вместе с категорией.
      */
     public function findPostById(int $id): array|false
@@ -321,17 +373,26 @@ class Admin
         $isPublished = (int)$post['is_published'] === 1;
         $nextStatus = $isPublished ? 0 : 1;
         $publishedAt = trim((string)($post['published_at'] ?? ''));
+        $nextPublishedAt = $publishedAt !== '' && $publishedAt !== '0000-00-00 00:00:00'
+            ? $publishedAt
+            : date('Y-m-d H:i:s');
 
-        db()->query(
-            "UPDATE {$this->postsTable}
-             SET is_published = ?,
-                 published_at = CASE
-                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
-                     ELSE published_at
-                 END
-             WHERE id = ?",
-            [$nextStatus, $nextStatus, $publishedAt !== '' ? $publishedAt : date('Y-m-d H:i:s'), $id]
-        );
+        if ($nextStatus === 1) {
+            db()->query(
+                "UPDATE {$this->postsTable}
+                 SET is_published = 1,
+                     published_at = ?
+                 WHERE id = ?",
+                [$nextPublishedAt, $id]
+            );
+        } else {
+            db()->query(
+                "UPDATE {$this->postsTable}
+                 SET is_published = 0
+                 WHERE id = ?",
+                [$id]
+            );
+        }
 
         return $nextStatus;
     }

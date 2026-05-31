@@ -77,13 +77,31 @@ html {
 
 .search-suggest-menu {
     max-height: min(24rem, calc(100dvh - 8rem));
-    overflow-y: auto;
+    overflow-x: hidden;
+    overflow-y: auto !important;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
 }
 
 .search-suggest-menu__item:last-child {
     border-bottom: 0 !important;
+}
+
+#navbarNav {
+    height: 100dvh;
+    max-height: 100dvh;
+    z-index: 1090;
+}
+
+#navbarNav .offcanvas-body {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#navbarNav > .offcanvas-header:last-child {
+    flex: 0 0 auto;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
 }
 
 @media (max-width: 767.98px) {
@@ -218,6 +236,11 @@ html {
     background: #05070a;
 }
 
+.post-content [data-plyr-player-wrap] > .plyr {
+    position: absolute;
+    inset: 0;
+}
+
 .post-content [data-plyr-player-wrap] > video,
 .post-content [data-plyr-player-wrap] > .plyr {
     width: 100%;
@@ -228,6 +251,23 @@ html {
 .post-content [data-plyr-player-wrap] > video {
     display: block;
     background: #000000;
+}
+
+.post-content [data-plyr-player-wrap] .plyr__video-wrapper,
+.post-content [data-plyr-player-wrap] .plyr__video-wrapper--fixed-ratio {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    aspect-ratio: auto;
+}
+
+.post-content [data-plyr-player-wrap] .plyr video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .post-content [data-plyr-player-wrap] .plyr__poster {
@@ -1608,12 +1648,27 @@ html {
     color: currentColor;
 }
 
+.admin-posts-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-posts-tabs .nav-link {
+    white-space: nowrap;
+}
+
 .admin-shell-offcanvas {
     width: min(100vw - 1.25rem, 24rem);
+    height: 100dvh;
+    max-height: 100dvh;
+    z-index: 1090;
 }
 
 .admin-shell-offcanvas .offcanvas-body {
     background: var(--cz-body-bg);
+    min-height: 0;
 }
 
 [data-admin-sidebar-panel] {
@@ -1633,7 +1688,10 @@ html {
 }
 
 body:has(.admin-shell-offcanvas.show) .admin-shell-mobile-toggle,
-body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle {
+body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle,
+body:has(.offcanvas.show) .admin-shell-mobile-toggle,
+body:has(.offcanvas.showing) .admin-shell-mobile-toggle,
+body.has-open-offcanvas .admin-shell-mobile-toggle {
     opacity: 0;
     pointer-events: none;
 }
@@ -1852,10 +1910,73 @@ body.is-site-fullscreen .plyr * {
 }
 
 @media (max-width: 767.98px) {
+    .admin-shell-offcanvas .offcanvas-body {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+    }
+
+    .admin-shell-offcanvas [data-admin-sidebar-panel] {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: .75rem;
+    }
+
+    .admin-shell-offcanvas .admin-shell-profile-card {
+        flex: 0 0 auto;
+        margin-bottom: 0 !important;
+        padding: 1rem !important;
+        border-radius: 1.25rem !important;
+    }
+
+    .admin-shell-offcanvas .admin-shell-profile-card img {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    .admin-shell-offcanvas .admin-shell-nav {
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: .75rem !important;
+        border-radius: 1.25rem !important;
+    }
+
+    .admin-shell-offcanvas .admin-shell-nav .d-flex.align-items-center.justify-content-between {
+        margin-bottom: .5rem !important;
+    }
+
+    .admin-shell-offcanvas .admin-shell-nav .list-group-item {
+        padding: .55rem .65rem !important;
+        border-radius: .9rem !important;
+    }
+
+    .admin-shell-offcanvas .admin-shell-nav-icon {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .admin-shell-offcanvas .admin-shell-quicklinks {
+        flex: 0 0 auto;
+        margin-top: 0 !important;
+        padding: .75rem !important;
+        border-radius: 1.25rem !important;
+    }
+
     [data-admin-nav] {
         flex-wrap: nowrap !important;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-shell-offcanvas [data-admin-nav] {
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 
     [data-admin-nav] .list-group-item {

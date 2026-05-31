@@ -18,6 +18,11 @@ $(function(){
     let unreadBadgesReady = false;
     let lastUnreadTotal = 0;
     let notificationsReady = false;
+    const syncOffcanvasState = () => {
+        if (document.body) {
+            document.body.classList.toggle('has-open-offcanvas', document.querySelector('.offcanvas.show, .offcanvas.showing') !== null);
+        }
+    };
     const slugMap = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
         'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i',
@@ -27,6 +32,105 @@ $(function(){
         'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '',
         'э': 'e', 'ю': 'yu', 'я': 'ya'
     };
+
+    document.addEventListener('show.bs.offcanvas', syncOffcanvasState);
+    document.addEventListener('shown.bs.offcanvas', syncOffcanvasState);
+    document.addEventListener('hide.bs.offcanvas', syncOffcanvasState);
+    document.addEventListener('hidden.bs.offcanvas', syncOffcanvasState);
+
+    document.querySelectorAll('[data-admin-posts-tabs]').forEach((root) => {
+        const input = root.querySelector('[data-admin-posts-live-search]');
+        const panes = Array.from(root.querySelectorAll('[data-admin-posts-pane]'));
+
+        if (!input || !panes.length) {
+            return;
+        }
+
+        const applyAdminPostsSearch = () => {
+            const query = input.value.trim().toLowerCase();
+
+            panes.forEach((pane) => {
+                const paneKey = pane.getAttribute('data-admin-posts-pane') || '';
+                const rows = Array.from(pane.querySelectorAll('[data-admin-post-row]'));
+                let visibleCount = 0;
+
+                rows.forEach((row) => {
+                    const searchText = String(row.getAttribute('data-search-text') || '').toLowerCase();
+                    const isVisible = query === '' || searchText.includes(query);
+                    row.hidden = !isVisible;
+                    if (isVisible) {
+                        visibleCount += 1;
+                    }
+                });
+
+                const emptyNode = pane.querySelector('[data-admin-posts-empty]');
+                if (emptyNode) {
+                    emptyNode.classList.toggle('d-none', rows.length > 0 && visibleCount > 0);
+                }
+
+                const visibleNode = root.querySelector('[data-admin-posts-visible="' + paneKey + '"]');
+                if (visibleNode) {
+                    visibleNode.textContent = String(visibleCount);
+                }
+
+                const countNode = root.querySelector('[data-admin-posts-count="' + paneKey + '"]');
+                if (countNode) {
+                    countNode.textContent = String(visibleCount);
+                }
+            });
+        };
+
+        input.addEventListener('input', applyAdminPostsSearch);
+        root.querySelector('[data-admin-posts-live-form]')?.addEventListener('submit', () => {
+            applyAdminPostsSearch();
+        });
+        applyAdminPostsSearch();
+    });
+
+    document.querySelectorAll('[data-admin-live-table]').forEach((root) => {
+        const input = root.querySelector('[data-admin-live-table-search]');
+        const rows = Array.from(root.querySelectorAll('[data-admin-live-table-row]'));
+        const tableWrap = root.querySelector('[data-admin-live-table-wrap]');
+        const emptyNode = root.querySelector('[data-admin-live-table-empty]');
+        const visibleNode = root.querySelector('[data-admin-live-table-visible]');
+
+        if (!input || !rows.length) {
+            return;
+        }
+
+        const applyLiveTableSearch = () => {
+            const query = input.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            rows.forEach((row) => {
+                const searchText = row.textContent.toLowerCase();
+                const isVisible = query === '' || searchText.includes(query);
+                row.hidden = !isVisible;
+
+                if (isVisible) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (visibleNode) {
+                visibleNode.textContent = String(visibleCount);
+            }
+
+            if (tableWrap) {
+                tableWrap.classList.toggle('d-none', visibleCount === 0);
+            }
+
+            if (emptyNode) {
+                emptyNode.classList.toggle('d-none', visibleCount > 0);
+            }
+        };
+
+        input.addEventListener('input', applyLiveTableSearch);
+        root.querySelector('[data-admin-live-table-form]')?.addEventListener('submit', () => {
+            applyLiveTableSearch();
+        });
+        applyLiveTableSearch();
+    });
 
     const makeSlug = (value) => String(value || '')
         .trim()
@@ -533,7 +637,7 @@ $(function(){
                 return;
             }
 
-            let html = '<div class="search-suggest-menu bg-body border rounded-4 shadow-sm overflow-hidden">';
+            let html = '<div class="search-suggest-menu bg-body border rounded-4 shadow-sm">';
 
             items.forEach((item) => {
                 html += `

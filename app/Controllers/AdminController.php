@@ -94,16 +94,24 @@ class AdminController extends BaseController
      */
     public function posts()
     {
-        $posts = $this->blog->getPaginatedPosts($this->getTableParams('published_at', 'desc'));
+        $params = $this->getTableParams('published_at', 'desc');
+        $fetchParams = array_merge($params, ['search' => '']);
+        $publishedPosts = $this->blog->getPostsByPublicationStatus(1, $fetchParams);
+        $draftPosts = $this->blog->getPostsByPublicationStatus(0, $fetchParams);
+        $posts = array_merge($publishedPosts['items'], $draftPosts['items']);
 
         return view('admin/posts', [
             'title' => return_translation('admin_posts_title'),
-            'posts' => $posts['items'],
-            'pagination' => $posts['pagination'],
-            'total' => $posts['total'],
-            'search' => $posts['search'],
-            'sort' => $posts['sort'],
-            'direction' => $posts['direction'],
+            'posts' => $posts,
+            'published_posts' => $publishedPosts['items'],
+            'draft_posts' => $draftPosts['items'],
+            'pagination' => null,
+            'total' => count($posts),
+            'published_total' => $publishedPosts['total'],
+            'draft_total' => $draftPosts['total'],
+            'search' => $params['search'],
+            'sort' => $publishedPosts['sort'],
+            'direction' => $publishedPosts['direction'],
         ]);
     }
 
@@ -260,14 +268,14 @@ class AdminController extends BaseController
 
         if ($nextStatus === null) {
             session()->setFlash('error', return_translation('admin_post_not_found'));
-            response()->redirect();
+            response()->redirect(base_href('/admin/posts'));
         }
 
         session()->setFlash(
             'success',
             return_translation($nextStatus === 1 ? 'admin_post_published' : 'admin_post_unpublished')
         );
-        response()->redirect();
+        response()->redirect(base_href('/admin/posts'));
     }
 
     /**
