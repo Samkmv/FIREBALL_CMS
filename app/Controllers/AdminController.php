@@ -7,6 +7,7 @@ use App\Models\Analytics;
 use App\Models\ContactRequest;
 use App\Models\SiteSetting;
 use App\Models\User;
+use App\Services\AnalyticsService;
 use App\Services\UpdateCenter;
 use FBL\Auth;
 use FBL\File;
@@ -23,6 +24,7 @@ class AdminController extends BaseController
     protected User $users;
     protected SiteSetting $siteSettings;
     protected UpdateCenter $updateCenter;
+    protected AnalyticsService $analyticsService;
 
     /**
      * Инициализирует модели, используемые в административной панели.
@@ -35,6 +37,7 @@ class AdminController extends BaseController
         $this->users = new User();
         $this->siteSettings = new SiteSetting();
         $this->updateCenter = new UpdateCenter($this->siteSettings);
+        $this->analyticsService = new AnalyticsService();
     }
 
     /**
@@ -49,8 +52,14 @@ class AdminController extends BaseController
         return view('admin/dashboard', [
             'title' => return_translation('admin_dashboard_title'),
             'stats' => $stats,
+            'analytics_dashboard' => $this->analyticsService->dashboardData(),
             'engine_release' => require CONFIG . '/version.php',
             'update_center' => $this->updateCenter->getDashboardData(),
+            'footer_scripts' => [
+                base_url('/assets/default/vendor/chart.js/chart.umd.js'),
+                base_url('/assets/default/vendor/apexcharts/apexcharts.min.js?v=' . filemtime(WWW . '/assets/default/vendor/apexcharts/apexcharts.min.js')),
+                base_url('/assets/default/js/admin-analytics.js?v=' . filemtime(WWW . '/assets/default/js/admin-analytics.js')),
+            ],
         ]);
     }
 
@@ -308,7 +317,7 @@ class AdminController extends BaseController
     {
         return [
             'per_page' => 20,
-            'search' => request()->get('q', ''),
+            'search' => request()->get('search', request()->get('q', '')),
             'sort' => request()->get('sort', $defaultSort),
             'direction' => request()->get('direction', $defaultDirection),
         ];

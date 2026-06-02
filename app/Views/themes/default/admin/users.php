@@ -24,8 +24,9 @@ $onlineSortUrl = current_url_with_query([
         <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-live-table-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
+            <input type="hidden" name="page" value="1" data-admin-live-table-page-input>
             <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-            <input type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>" class="table-search form-control form-icon-start" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off" data-admin-live-table-search>
+            <input type="search" name="search" value="<?= htmlSC((string)($search ?? '')) ?>" class="table-search form-control form-icon-start" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off" data-admin-live-table-search>
         </form>
 
         <?php if (empty($users)): ?>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Modules\BlockEditor\BlockRenderer;
 use App\Services\PostSeo;
 use FBL\Model;
 use FBL\Pagination;
@@ -638,6 +639,10 @@ class Post extends Model
 
         $excerpt = trim((string)($post['excerpt'] ?? ''));
         $content = trim((string)($post['content'] ?? ''));
+
+        if ($content !== '' && $content[0] === '{') {
+            $content = (new BlockRenderer())->renderPublicContent($content);
+        }
 
         if ($content !== '' && $content === strip_tags($content)) {
             $content = '<p>' . nl2br(htmlSC($content)) . '</p>';

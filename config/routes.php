@@ -13,8 +13,10 @@ use App\Controllers\ChatController;
 use App\Controllers\AdminController;
 use App\Controllers\AdminPostController;
 use App\Controllers\AdminPagesController;
+use App\Controllers\AnalyticsController;
 use App\Controllers\NotificationController;
 use App\Controllers\FileManagerController;
+use App\Modules\BlockEditor\BlockEditorController;
 
 /* Documentation:
  * withoutCSRFToken() - Исключает проверку на CSRF если метода нет то по умолчанию true
@@ -58,6 +60,7 @@ $app->router->get('/posts', [PostsController::class, 'index']);
 
 // Admin pages ---------- //
 $app->router->get('/admin', [AdminController::class, 'dashboard'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/analytics/data', [AnalyticsController::class, 'dashboardData'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/contact-requests', [AdminController::class, 'contactRequests'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/contact-requests/delete', [AdminController::class, 'contactRequestDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/posts', [AdminPostController::class, 'posts'])->middleware(['auth', 'admin']);
@@ -78,6 +81,12 @@ $app->router->post('/admin/pages/edit/(?P<id>\d+)/?', [AdminPagesController::cla
 $app->router->get('/admin/pages/preview/(?P<id>\d+)/?', [AdminPagesController::class, 'preview'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/pages/toggle-published', [AdminPagesController::class, 'togglePublished'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/pages/delete', [AdminPagesController::class, 'delete'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/block-editor/add', [BlockEditorController::class, 'add'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/block-editor/update', [BlockEditorController::class, 'update'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/block-editor/delete', [BlockEditorController::class, 'delete'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/block-editor/reorder', [BlockEditorController::class, 'reorder'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/block-editor/preview', [BlockEditorController::class, 'preview'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/block-editor/order-modal', [BlockEditorController::class, 'orderModal'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories', [AdminController::class, 'categories'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories/create', [AdminController::class, 'categoryForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/categories/create', [AdminController::class, 'categoryForm'])->middleware(['auth', 'admin']);

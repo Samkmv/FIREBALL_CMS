@@ -38,6 +38,39 @@ $(function(){
     document.addEventListener('hide.bs.offcanvas', syncOffcanvasState);
     document.addEventListener('hidden.bs.offcanvas', syncOffcanvasState);
 
+    const initBootstrapTooltips = (container) => {
+        if (!window.bootstrap?.Tooltip || !container) {
+            return;
+        }
+
+        container.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((element) => {
+            window.bootstrap.Tooltip.getOrCreateInstance(element, { trigger: 'hover' });
+        });
+    };
+
+    const initAdminTableScrollbars = (container) => {
+        if (!window.SimpleBar || !container) {
+            return;
+        }
+
+        const scrollables = container.matches?.('.admin-table-scroll')
+            ? [container, ...container.querySelectorAll('.admin-table-scroll')]
+            : Array.from(container.querySelectorAll('.admin-table-scroll'));
+
+        scrollables.forEach((element) => {
+            const instance = window.SimpleBar.instances?.get(element);
+            if (instance) {
+                instance.recalculate();
+                return;
+            }
+
+            element.setAttribute('data-simplebar', '');
+            new window.SimpleBar(element, { autoHide: true });
+        });
+    };
+
+    initAdminTableScrollbars(document);
+
     const adminPostActionDropdowns = new WeakMap();
     const getAdminPostActionDropdown = (target) => {
         if (!target || !target.closest) {
@@ -145,127 +178,305 @@ $(function(){
     document.querySelectorAll('[data-admin-posts-tabs]').forEach((root) => {
         const input = root.querySelector('[data-admin-posts-live-search]');
         const panes = Array.from(root.querySelectorAll('[data-admin-posts-pane]'));
-        const tabsKey = String(root.getAttribute('data-admin-posts-tabs') || 'posts').trim() || 'posts';
-        const tabStorageKey = 'fireball.admin.' + tabsKey + '.activeTab';
+        const form = root.querySelector('[data-admin-posts-live-form]');
+        const statusInput = root.querySelector('[data-admin-posts-status-input]');
+        const pageInput = root.querySelector('[data-admin-posts-page-input]');
+        const sortInput = form ? form.querySelector('input[name="sort"]') : null;
+        const directionInput = form ? form.querySelector('input[name="direction"]') : null;
+        const endpoint = root.getAttribute('data-admin-posts-url') || window.location.pathname;
+        let activeStatus = root.querySelector('[data-admin-posts-tab-button].active')?.getAttribute('data-admin-posts-tab-button') || 'published';
+        let activeRequest = null;
+        let searchTimer = null;
 
         if (!input || !panes.length) {
             return;
         }
 
-        const activateStoredTab = () => {
-            const params = new URLSearchParams(window.location.search);
-            let storedTab = null;
-            try {
-                storedTab = window.localStorage.getItem(tabStorageKey);
-            } catch (error) {
-                storedTab = null;
-            }
-            const tabKey = params.has('draft_page') && params.get('draft_page') !== '1'
-                ? 'drafts'
-                : storedTab;
-            const tabButton = tabKey ? root.querySelector('[data-admin-posts-tab-button="' + tabKey + '"]') : null;
+        const getPane = (status) => root.querySelector('[data-admin-posts-pane="' + status + '"]');
+        const setLoading = (isLoading) => {
+            root.classList.toggle('admin-posts-tabs--loading', isLoading);
+        };
 
-            if (tabButton && window.bootstrap?.Tab) {
-                window.bootstrap.Tab.getOrCreateInstance(tabButton).show();
+        const buildUrl = (status, page = 1) => {
+            const url = new URL(endpoint, window.location.origin);
+            const search = input.value.trim();
+            const sort = sortInput ? sortInput.value.trim() : '';
+            const direction = directionInput ? directionInput.value.trim() : '';
+
+            if (search !== '') {
+                url.searchParams.set('search', search);
+            }
+            url.searchParams.set('status', status);
+            url.searchParams.set('page', String(Math.max(1, parseInt(page, 10) || 1)));
+            if (sort !== '') {
+                url.searchParams.set('sort', sort);
+            }
+            if (direction !== '') {
+                url.searchParams.set('direction', direction);
+            }
+
+            return url;
+        };
+
+        const applyUrlState = (url) => {
+            const status = url.searchParams.get('status') === 'drafts' ? 'drafts' : 'published';
+            activeStatus = status;
+            input.value = url.searchParams.get('search') || '';
+
+            if (statusInput) {
+                statusInput.value = status;
+            }
+            if (pageInput) {
+                pageInput.value = url.searchParams.get('page') || '1';
+            }
+            if (sortInput) {
+                sortInput.value = url.searchParams.get('sort') || sortInput.value || '';
+            }
+            if (directionInput) {
+                directionInput.value = url.searchParams.get('direction') || directionInput.value || '';
             }
         };
 
-        const applyAdminPostsSearch = () => {
-            const query = input.value.trim().toLowerCase();
+        const updateTabCounts = (counts) => {
+            if (!counts) {
+                return;
+            }
 
-            panes.forEach((pane) => {
-                const paneKey = pane.getAttribute('data-admin-posts-pane') || '';
-                const rows = Array.from(pane.querySelectorAll('[data-admin-post-row]'));
-                let visibleCount = 0;
-
-                rows.forEach((row) => {
-                    const searchText = String(row.getAttribute('data-search-text') || '').toLowerCase();
-                    const isVisible = query === '' || searchText.includes(query);
-                    row.hidden = !isVisible;
-                    if (isVisible) {
-                        visibleCount += 1;
-                    }
-                });
-
-                const emptyNode = pane.querySelector('[data-admin-posts-empty]');
-                if (emptyNode) {
-                    emptyNode.classList.toggle('d-none', rows.length > 0 && visibleCount > 0);
-                }
-
-                const visibleNode = root.querySelector('[data-admin-posts-visible="' + paneKey + '"]');
-                if (visibleNode) {
-                    visibleNode.textContent = String(visibleCount);
-                }
-
-                const countNode = root.querySelector('[data-admin-posts-count="' + paneKey + '"]');
+            ['published', 'drafts'].forEach((status) => {
+                const countNode = root.querySelector('[data-admin-posts-count="' + status + '"]');
                 if (countNode) {
-                    const totalNode = root.querySelector('[data-admin-posts-total="' + paneKey + '"]');
-                    countNode.textContent = query === '' && totalNode ? totalNode.textContent : String(visibleCount);
+                    countNode.textContent = String(counts[status] ?? 0);
                 }
             });
+        };
+
+        const loadTable = (url, pushState = true) => {
+            applyUrlState(url);
+
+            const pane = getPane(activeStatus);
+            if (!pane) {
+                return Promise.resolve();
+            }
+
+            if (activeRequest) {
+                activeRequest.abort();
+            }
+
+            activeRequest = new AbortController();
+            setLoading(true);
+
+            return fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                signal: activeRequest.signal
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Admin table request failed');
+                    }
+
+                    return response.json();
+                })
+                .then((data) => {
+                    pane.innerHTML = data.html || '';
+                    initAdminTableScrollbars(pane);
+                    initBootstrapTooltips(pane);
+                    updateTabCounts(data.counts);
+                    if (pushState) {
+                        window.history.pushState({ adminTableUrl: url.toString() }, '', url.toString());
+                    }
+                })
+                .catch((error) => {
+                    if (error.name !== 'AbortError') {
+                        console.error(error);
+                    }
+                })
+                .finally(() => {
+                    setLoading(false);
+                    activeRequest = null;
+                });
         };
 
         root.querySelectorAll('[data-admin-posts-tab-button]').forEach((button) => {
             button.addEventListener('shown.bs.tab', () => {
-                try {
-                    window.localStorage.setItem(tabStorageKey, button.getAttribute('data-admin-posts-tab-button') || 'published');
-                } catch (error) {
-                    // Some mobile privacy modes block localStorage; the tab still works for the current page.
-                }
+                const status = button.getAttribute('data-admin-posts-tab-button') === 'drafts' ? 'drafts' : 'published';
+                loadTable(buildUrl(status, 1));
             });
         });
 
-        activateStoredTab();
-        input.addEventListener('input', applyAdminPostsSearch);
-        root.querySelector('[data-admin-posts-live-form]')?.addEventListener('submit', () => {
-            applyAdminPostsSearch();
+        input.addEventListener('input', () => {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(() => {
+                loadTable(buildUrl(activeStatus, 1));
+            }, 300);
         });
-        applyAdminPostsSearch();
+
+        form?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            loadTable(buildUrl(activeStatus, 1));
+        });
+
+        root.addEventListener('click', (event) => {
+            const link = event.target.closest('[data-admin-posts-pane] .pagination a, [data-admin-posts-pane] thead a');
+            if (!link || !link.href) {
+                return;
+            }
+
+            event.preventDefault();
+            const url = new URL(link.href, window.location.origin);
+            loadTable(url);
+        });
+
+        window.addEventListener('popstate', () => {
+            loadTable(new URL(window.location.href), false);
+        });
     });
 
     document.querySelectorAll('[data-admin-live-table]').forEach((root) => {
-        const input = root.querySelector('[data-admin-live-table-search]');
-        const rows = Array.from(root.querySelectorAll('[data-admin-live-table-row]'));
-        const tableWrap = root.querySelector('[data-admin-live-table-wrap]');
-        const emptyNode = root.querySelector('[data-admin-live-table-empty]');
-        const visibleNode = root.querySelector('[data-admin-live-table-visible]');
+        let activeRequest = null;
+        let searchTimer = null;
 
-        if (!input || !rows.length) {
-            return;
-        }
+        const getInput = () => root.querySelector('[data-admin-live-table-search]');
+        const getForm = () => root.querySelector('[data-admin-live-table-form]');
+        const setLoading = (isLoading) => {
+            root.classList.toggle('admin-live-table--loading', isLoading);
+        };
 
-        const applyLiveTableSearch = () => {
-            const query = input.value.trim().toLowerCase();
-            let visibleCount = 0;
+        const buildLiveTableUrl = (page = 1) => {
+            const form = getForm();
+            const input = getInput();
+            const url = new URL(form ? form.action || window.location.href : window.location.href, window.location.origin);
+            const formData = form ? new FormData(form) : new FormData();
+            const search = input ? input.value.trim() : '';
 
-            rows.forEach((row) => {
-                const searchText = row.textContent.toLowerCase();
-                const isVisible = query === '' || searchText.includes(query);
-                row.hidden = !isVisible;
-
-                if (isVisible) {
-                    visibleCount += 1;
+            url.search = '';
+            formData.forEach((value, key) => {
+                const normalizedValue = String(value || '').trim();
+                if (key === 'q' || key === 'page' || normalizedValue === '') {
+                    return;
                 }
+
+                url.searchParams.set(key, normalizedValue);
             });
+            if (search !== '') {
+                url.searchParams.set('search', search);
+            }
+            url.searchParams.set('page', String(Math.max(1, parseInt(page, 10) || 1)));
 
-            if (visibleNode) {
-                visibleNode.textContent = String(visibleCount);
+            return url;
+        };
+
+        const syncFormFromUrl = (url) => {
+            const form = getForm();
+            const input = getInput();
+            if (!form) {
+                return;
             }
 
-            if (tableWrap) {
-                tableWrap.classList.toggle('d-none', visibleCount === 0);
+            form.querySelectorAll('input[type="hidden"]').forEach((field) => {
+                field.value = url.searchParams.get(field.name) || field.value || '';
+            });
+            const pageInput = form.querySelector('[data-admin-live-table-page-input]');
+            if (pageInput) {
+                pageInput.value = url.searchParams.get('page') || '1';
             }
-
-            if (emptyNode) {
-                emptyNode.classList.toggle('d-none', visibleCount > 0);
+            if (input) {
+                input.value = url.searchParams.get('search') || '';
             }
         };
 
-        input.addEventListener('input', applyLiveTableSearch);
-        root.querySelector('[data-admin-live-table-form]')?.addEventListener('submit', () => {
-            applyLiveTableSearch();
+        const replaceLiveTableHtml = (html) => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const nextRoot = doc.querySelector('[data-admin-live-table]');
+            if (!nextRoot) {
+                throw new Error('Admin live table response is missing table root');
+            }
+
+            root.innerHTML = nextRoot.innerHTML;
+        };
+
+        const loadLiveTable = (url, pushState = true) => {
+            syncFormFromUrl(url);
+
+            if (activeRequest) {
+                activeRequest.abort();
+            }
+
+            activeRequest = new AbortController();
+            setLoading(true);
+
+            return fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                },
+                signal: activeRequest.signal
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Admin live table request failed');
+                    }
+
+                    return response.text();
+                })
+                .then((html) => {
+                    replaceLiveTableHtml(html);
+                    initAdminTableScrollbars(root);
+                    initBootstrapTooltips(root);
+                    if (pushState) {
+                        window.history.pushState({ adminLiveTableUrl: url.toString() }, '', url.toString());
+                    }
+                })
+                .catch((error) => {
+                    if (error.name !== 'AbortError') {
+                        console.error(error);
+                    }
+                })
+                .finally(() => {
+                    setLoading(false);
+                    activeRequest = null;
+                });
+        };
+
+        if (!getInput()) {
+            return;
+        }
+
+        root.addEventListener('input', (event) => {
+            if (!event.target.matches('[data-admin-live-table-search]')) {
+                return;
+            }
+
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(() => {
+                loadLiveTable(buildLiveTableUrl(1));
+            }, 300);
         });
-        applyLiveTableSearch();
+
+        root.addEventListener('submit', (event) => {
+            if (!event.target.matches('[data-admin-live-table-form]')) {
+                return;
+            }
+
+            event.preventDefault();
+            loadLiveTable(buildLiveTableUrl(1));
+        });
+
+        root.addEventListener('click', (event) => {
+            const link = event.target.closest('.pagination a, thead a');
+            if (!link || !link.href || !root.contains(link)) {
+                return;
+            }
+
+            event.preventDefault();
+            loadLiveTable(new URL(link.href, window.location.origin));
+        });
+
+        window.addEventListener('popstate', () => {
+            loadLiveTable(new URL(window.location.href), false);
+        });
     });
 
     const makeSlug = (value) => String(value || '')

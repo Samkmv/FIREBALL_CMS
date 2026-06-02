@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Models\Admin;
 use App\Models\Post;
+use App\Modules\BlockEditor\BlockEditor;
+use App\Modules\BlockEditor\BlockEditorService;
 use FBL\File;
 use FBL\Language;
 
@@ -26,11 +28,51 @@ class AdminPostController extends BaseController
     public function posts()
     {
         $params = $this->getTableParams('published_at', 'desc');
+        $activeStatus = $this->normalizeTableStatus((string)request()->get(
+            'status',
+            request()->get('draft_page') !== null ? 'drafts' : 'published'
+        ));
+
+        if (request()->isAjax()) {
+            $statusCode = $activeStatus === 'drafts' ? 0 : 1;
+            $posts = $this->blog->getPostsByPublicationStatus($statusCode, array_merge($params, [
+                'page_param' => 'page',
+            ]));
+            $publishedCount = $activeStatus === 'published'
+                ? $posts['total']
+                : $this->blog->getPostsByPublicationStatus(1, array_merge($params, ['per_page' => 1, 'page_param' => 'published_count_page']))['total'];
+            $draftCount = $activeStatus === 'drafts'
+                ? $posts['total']
+                : $this->blog->getPostsByPublicationStatus(0, array_merge($params, ['per_page' => 1, 'page_param' => 'draft_count_page']))['total'];
+
+            response()->json([
+                'status' => $activeStatus,
+                'search' => $params['search'],
+                'sort' => $posts['sort'],
+                'direction' => $posts['direction'],
+                'visible' => count($posts['items']),
+                'total' => $posts['total'],
+                'counts' => [
+                    'published' => $publishedCount,
+                    'drafts' => $draftCount,
+                ],
+                'html' => view()->renderPartial('admin/partials/posts_table_pane', [
+                    'items' => $posts['items'],
+                    'table_key' => $activeStatus,
+                    'empty_text' => $params['search'] !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_posts_empty'),
+                    'pagination' => $posts['pagination'],
+                    'total' => $posts['total'],
+                    'sort' => $posts['sort'],
+                    'direction' => $posts['direction'],
+                ]),
+            ]);
+        }
+
         $publishedPosts = $this->blog->getPostsByPublicationStatus(1, array_merge($params, [
-            'page_param' => 'published_page',
+            'page_param' => $activeStatus === 'published' ? 'page' : 'published_page',
         ]));
         $draftPosts = $this->blog->getPostsByPublicationStatus(0, array_merge($params, [
-            'page_param' => 'draft_page',
+            'page_param' => $activeStatus === 'drafts' ? 'page' : 'draft_page',
         ]));
         $posts = array_merge($publishedPosts['items'], $draftPosts['items']);
 
@@ -45,6 +87,7 @@ class AdminPostController extends BaseController
             'published_total' => $publishedPosts['total'],
             'draft_total' => $draftPosts['total'],
             'search' => $params['search'],
+            'active_status' => $activeStatus,
             'sort' => $publishedPosts['sort'],
             'direction' => $publishedPosts['direction'],
         ]);
@@ -134,14 +177,12 @@ class AdminPostController extends BaseController
             'post' => $post ?: [],
             'categories' => $this->blog->getCategories(),
             'is_edit' => $isEdit,
-            'styles' => [
+            'styles' => array_merge(BlockEditor::styles(), [
                 base_url('/assets/default/vendor/flatpickr/flatpickr.min.css?v=' . filemtime(WWW . '/assets/default/vendor/flatpickr/flatpickr.min.css')),
-            ],
-            'footer_scripts' => [
+            ]),
+            'footer_scripts' => array_merge([
                 base_url('/assets/default/vendor/flatpickr/flatpickr.min.js?v=' . filemtime(WWW . '/assets/default/vendor/flatpickr/flatpickr.min.js')),
-                base_url('/assets/default/js/admin-post-editor.js?v=' . filemtime(WWW . '/assets/default/js/admin-post-editor.js')),
-                base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
-            ],
+            ], BlockEditor::scripts()),
         ]);
     }
 
@@ -220,10 +261,15 @@ class AdminPostController extends BaseController
     {
         return [
             'per_page' => 20,
-            'search' => request()->get('q', ''),
+            'search' => request()->get('search', request()->get('q', '')),
             'sort' => request()->get('sort', $defaultSort),
             'direction' => request()->get('direction', $defaultDirection),
         ];
+    }
+
+    protected function normalizeTableStatus(string $status): string
+    {
+        return in_array($status, ['drafts', 'draft'], true) ? 'drafts' : 'published';
     }
 
     /**
@@ -350,6 +396,9 @@ class AdminPostController extends BaseController
         }
         if ($data['seo_image'] !== '' && !$this->isValidSeoImage($data['seo_image'])) {
             $errors['seo_image'][] = return_translation('admin_validation_seo_image_invalid');
+        }
+        if (!(new BlockEditorService())->validateContentJson((string)($data['content'] ?? ''))) {
+            $errors['content'][] = return_translation('admin_validation_content_invalid');
         }
 
         return $errors;

@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\Page;
+use App\Modules\BlockEditor\BlockEditor;
+use App\Modules\BlockEditor\BlockEditorService;
 
 /**
  * Handles admin CRUD for CMS pages while reusing the post block editor.
@@ -23,11 +25,51 @@ class AdminPagesController extends BaseController
     public function index()
     {
         $params = $this->getTableParams('menu_order', 'asc');
+        $activeStatus = $this->normalizeTableStatus((string)request()->get(
+            'status',
+            request()->get('draft_page') !== null ? 'drafts' : 'published'
+        ));
+
+        if (request()->isAjax()) {
+            $statusCode = $activeStatus === 'drafts' ? 0 : 1;
+            $pages = $this->pages->getPagesByPublicationStatus($statusCode, array_merge($params, [
+                'page_param' => 'page',
+            ]));
+            $publishedCount = $activeStatus === 'published'
+                ? $pages['total']
+                : $this->pages->getPagesByPublicationStatus(1, array_merge($params, ['per_page' => 1, 'page_param' => 'published_count_page']))['total'];
+            $draftCount = $activeStatus === 'drafts'
+                ? $pages['total']
+                : $this->pages->getPagesByPublicationStatus(0, array_merge($params, ['per_page' => 1, 'page_param' => 'draft_count_page']))['total'];
+
+            response()->json([
+                'status' => $activeStatus,
+                'search' => $params['search'],
+                'sort' => $pages['sort'],
+                'direction' => $pages['direction'],
+                'visible' => count($pages['items']),
+                'total' => $pages['total'],
+                'counts' => [
+                    'published' => $publishedCount,
+                    'drafts' => $draftCount,
+                ],
+                'html' => view()->renderPartial('admin/partials/pages_table_pane', [
+                    'items' => $pages['items'],
+                    'table_key' => $activeStatus,
+                    'empty_text' => $params['search'] !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_pages_empty'),
+                    'pagination' => $pages['pagination'],
+                    'total' => $pages['total'],
+                    'sort' => $pages['sort'],
+                    'direction' => $pages['direction'],
+                ]),
+            ]);
+        }
+
         $publishedPages = $this->pages->getPagesByPublicationStatus(1, array_merge($params, [
-            'page_param' => 'published_page',
+            'page_param' => $activeStatus === 'published' ? 'page' : 'published_page',
         ]));
         $draftPages = $this->pages->getPagesByPublicationStatus(0, array_merge($params, [
-            'page_param' => 'draft_page',
+            'page_param' => $activeStatus === 'drafts' ? 'page' : 'draft_page',
         ]));
 
         return view('admin/pages', [
@@ -41,6 +83,7 @@ class AdminPagesController extends BaseController
             'published_total' => $publishedPages['total'],
             'draft_total' => $draftPages['total'],
             'search' => $params['search'],
+            'active_status' => $activeStatus,
             'sort' => $publishedPages['sort'],
             'direction' => $publishedPages['direction'],
         ]);
@@ -109,10 +152,8 @@ class AdminPagesController extends BaseController
             'editor_mode' => 'page',
             'page' => $page ?: [],
             'is_edit' => $isEdit,
-            'footer_scripts' => [
-                base_url('/assets/default/js/admin-post-editor.js?v=' . filemtime(WWW . '/assets/default/js/admin-post-editor.js')),
-                base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
-            ],
+            'styles' => BlockEditor::styles(),
+            'footer_scripts' => BlockEditor::scripts(),
         ]);
     }
 
@@ -196,10 +237,15 @@ class AdminPagesController extends BaseController
     {
         return [
             'per_page' => 15,
-            'search' => request()->get('q', ''),
+            'search' => request()->get('search', request()->get('q', '')),
             'sort' => request()->get('sort', $defaultSort),
             'direction' => request()->get('direction', $defaultDirection),
         ];
+    }
+
+    protected function normalizeTableStatus(string $status): string
+    {
+        return in_array($status, ['drafts', 'draft'], true) ? 'drafts' : 'published';
     }
 
     protected function normalizePageData(array $data): array
@@ -286,6 +332,9 @@ class AdminPagesController extends BaseController
         }
         if (!ctype_digit((string)$data['menu_order']) && (int)$data['menu_order'] < 0) {
             $errors['menu_order'][] = return_translation('admin_validation_menu_order_invalid');
+        }
+        if (!(new BlockEditorService())->validateContentJson((string)($data['content'] ?? ''))) {
+            $errors['content'][] = return_translation('admin_validation_content_invalid');
         }
 
         return $errors;

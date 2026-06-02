@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\AnalyticsService;
+
 /**
  * Собирает базовую аналитику публичной части сайта: просмотры страниц и визиты.
  */
@@ -17,17 +19,7 @@ class Analytics
      */
     public function trackPublicRequest(): void
     {
-        if (!$this->shouldTrackRequest()) {
-            return;
-        }
-
-        $this->ensureSchema();
-        $this->incrementMetric('page_views');
-
-        if ($this->shouldCountVisit()) {
-            $this->incrementMetric('site_visits');
-            session()->set('analytics.last_visit_at', time());
-        }
+        (new AnalyticsService())->trackPublicRequest();
     }
 
     /**
@@ -35,12 +27,12 @@ class Analytics
      */
     public function getStats(): array
     {
-        $this->ensureSchema();
+        return (new AnalyticsService())->legacyStats();
+    }
 
-        return [
-            'site_visits' => $this->getMetricValue('site_visits'),
-            'page_views' => $this->getMetricValue('page_views'),
-        ];
+    public function getDashboardData(): array
+    {
+        return (new AnalyticsService())->dashboardData();
     }
 
     /**

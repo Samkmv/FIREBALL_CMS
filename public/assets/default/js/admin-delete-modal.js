@@ -12,11 +12,6 @@ $(function () {
         return;
     }
 
-    const deleteForms = $('[data-admin-delete-form]');
-    if (!deleteForms.length) {
-        return;
-    }
-
     const modal = new bootstrapApi.Modal(modalElement[0]);
     const messageElement = modalElement.find('[data-admin-delete-modal-message]');
     const itemWrap = modalElement.find('[data-admin-delete-modal-item-wrap]');
@@ -25,7 +20,7 @@ $(function () {
     const defaultMessage = String(messageElement.text() || '').trim();
     let activeForm = null;
 
-    deleteForms.on('submit', function (event) {
+    $(document).on('submit', '[data-admin-delete-form]', function (event) {
         const form = this;
 
         if (form.dataset.deleteConfirmed === '1') {

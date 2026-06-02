@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Modules\BlockEditor\BlockRenderer;
 use FBL\Model;
 use FBL\Pagination;
 
@@ -469,6 +470,10 @@ class Page extends Model
         $page['menu_order'] = max(0, (int)($page['menu_order'] ?? 0));
         $page['created_at'] = (string)($page['created_at'] ?? '');
         $page['updated_at'] = (string)($page['updated_at'] ?? '');
+
+        if ($page['content'] !== '' && $page['content'][0] === '{') {
+            $page['content'] = (new BlockRenderer())->renderPublicContent($page['content']);
+        }
 
         if ($page['content'] !== '' && $page['content'] === strip_tags($page['content'])) {
             $page['content'] = '<p>' . nl2br(htmlSC($page['content'])) . '</p>';

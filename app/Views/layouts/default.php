@@ -186,6 +186,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
     <!-- Vendor styles -->
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/choices.js/choices.min.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/simplebar/simplebar.min.css') ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/swiper/swiper-bundle.min.css') ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/plyr/plyr.css?v=' . filemtime(WWW . '/assets/default/vendor/plyr/plyr.css')) ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/highlight.js/styles/atom-one-dark.min.css') ?>">
@@ -778,6 +779,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
 <!-- Vendor scripts -->
 <script src="<?= base_url('/assets/default/vendor/choices.js/choices.min.js') ?>"></script>
+<script src="<?= base_url('/assets/default/vendor/simplebar/simplebar.min.js') ?>"></script>
 <script>
     if (window.Choices && !window.Choices.__fireballHardened) {
         const FireballChoicesBase = window.Choices;
