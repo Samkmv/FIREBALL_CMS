@@ -9,12 +9,25 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
 
 $publishedPosts = (array)($published_posts ?? []);
 $draftPosts = (array)($draft_posts ?? []);
+$publishedPagination = $published_pagination ?? null;
+$draftPagination = $draft_pagination ?? null;
 $publishedTotal = (int)($published_total ?? count($publishedPosts));
 $draftTotal = (int)($draft_total ?? count($draftPosts));
 $searchValue = (string)($search ?? '');
 $emptyText = $searchValue !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_posts_empty');
+$postsSortUrl = static function (string $column) use ($sort, $direction): string {
+    $nextDirection = (($sort ?? '') === $column && strtolower((string)$direction) === 'asc') ? 'desc' : 'asc';
 
-$renderPostsTable = static function (array $items, string $tableKey, string $emptyText) use ($sortIndicator, $sort, $direction): void {
+    return current_url_with_query([
+        'sort' => $column,
+        'direction' => $nextDirection,
+        'page' => 1,
+        'published_page' => 1,
+        'draft_page' => 1,
+    ]);
+};
+
+$renderPostsTable = static function (array $items, string $tableKey, string $emptyText) use ($sortIndicator, $postsSortUrl): void {
     ?>
     <div data-admin-posts-table-shell="<?= htmlSC($tableKey) ?>">
         <?php if (empty($items)): ?>
@@ -25,28 +38,28 @@ $renderPostsTable = static function (array $items, string $tableKey, string $emp
                     <thead class="position-sticky top-0">
                     <tr>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('id') ?>">#<?= $sortIndicator('id') ?></a>
                         </th>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('title', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_title') ?><?= $sortIndicator('title') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('title') ?>"><?= print_translation('admin_posts_col_title') ?><?= $sortIndicator('title') ?></a>
                         </th>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('category', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_category') ?><?= $sortIndicator('category') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('category') ?>"><?= print_translation('admin_posts_col_category') ?><?= $sortIndicator('category') ?></a>
                         </th>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('priority', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_priority') ?><?= $sortIndicator('priority') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('priority') ?>"><?= print_translation('admin_posts_col_priority') ?><?= $sortIndicator('priority') ?></a>
                         </th>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('author', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_author') ?><?= $sortIndicator('author') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('author') ?>"><?= print_translation('admin_posts_col_author') ?><?= $sortIndicator('author') ?></a>
                         </th>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('views', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_views') ?><?= $sortIndicator('views') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('views') ?>"><?= print_translation('admin_posts_col_views') ?><?= $sortIndicator('views') ?></a>
                         </th>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('status', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_status') ?><?= $sortIndicator('status') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('status') ?>"><?= print_translation('admin_posts_col_status') ?><?= $sortIndicator('status') ?></a>
                         </th>
                         <th scope="col">
-                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('published_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_posts_col_date') ?><?= $sortIndicator('published_at') ?></a>
+                            <a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $postsSortUrl('published_at') ?>"><?= print_translation('admin_posts_col_date') ?><?= $sortIndicator('published_at') ?></a>
                         </th>
                         <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
                     </tr>
@@ -183,6 +196,8 @@ $renderPostsTable = static function (array $items, string $tableKey, string $emp
         <form method="get" class="position-relative mb-3" style="max-width: 320px" data-admin-posts-live-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
+            <input type="hidden" name="published_page" value="1">
+            <input type="hidden" name="draft_page" value="1">
             <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
             <input
                 type="search"
@@ -197,13 +212,13 @@ $renderPostsTable = static function (array $items, string $tableKey, string $emp
 
         <ul class="nav nav-tabs mb-3 admin-posts-tabs" role="tablist" style="max-width: 450px">
             <li class="nav-item" role="presentation">
-                <button type="button" class="nav-link active" id="published-posts-tab" data-bs-toggle="tab" data-bs-target="#published-posts-tab-pane" role="tab" aria-controls="published-posts-tab-pane" aria-selected="true">
+                <button type="button" class="nav-link active" id="published-posts-tab" data-bs-toggle="tab" data-bs-target="#published-posts-tab-pane" role="tab" aria-controls="published-posts-tab-pane" aria-selected="true" data-admin-posts-tab-button="published">
                     <?= print_translation('admin_posts_status_published') ?>
                     <span class="badge text-bg-secondary ms-2" data-admin-posts-count="published"><?= $publishedTotal ?></span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button type="button" class="nav-link" id="draft-posts-tab" data-bs-toggle="tab" data-bs-target="#draft-posts-tab-pane" role="tab" aria-controls="draft-posts-tab-pane" aria-selected="false">
+                <button type="button" class="nav-link" id="draft-posts-tab" data-bs-toggle="tab" data-bs-target="#draft-posts-tab-pane" role="tab" aria-controls="draft-posts-tab-pane" aria-selected="false" data-admin-posts-tab-button="drafts">
                     <?= print_translation('admin_posts_status_draft') ?>
                     <span class="badge text-bg-secondary ms-2" data-admin-posts-count="drafts"><?= $draftTotal ?></span>
                 </button>
@@ -221,6 +236,11 @@ $renderPostsTable = static function (array $items, string $tableKey, string $emp
                         <span class="fw-semibold" data-admin-posts-total="published"><?= $publishedTotal ?></span>
                         <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
                     </div>
+                    <?php if (!empty($publishedPagination)): ?>
+                        <nav aria-label="Pagination">
+                            <?= $publishedPagination ?>
+                        </nav>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="tab-pane fade" id="draft-posts-tab-pane" role="tabpanel" aria-labelledby="draft-posts-tab" tabindex="0" data-admin-posts-pane="drafts">
@@ -233,6 +253,11 @@ $renderPostsTable = static function (array $items, string $tableKey, string $emp
                         <span class="fw-semibold" data-admin-posts-total="drafts"><?= $draftTotal ?></span>
                         <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
                     </div>
+                    <?php if (!empty($draftPagination)): ?>
+                        <nav aria-label="Pagination">
+                            <?= $draftPagination ?>
+                        </nav>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

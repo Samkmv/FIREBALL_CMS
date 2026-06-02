@@ -5,6 +5,12 @@ namespace App\Widgets\Menu;
 class Menu
 {
 
+    protected const DEFAULT_CACHE_KEYS = [
+        'menu',
+        'shop_desktop_menu',
+        'shop_mobile_menu',
+    ];
+
     protected array $data;
     protected string $table = 'categories';
     protected array $tree;
@@ -23,6 +29,13 @@ class Menu
         $this->getOptions($options);
         $this->tpl = __DIR__ . "/{$this->tpl}.php";
         $this->run();
+    }
+
+    public static function clearCache(): void
+    {
+        foreach (self::DEFAULT_CACHE_KEYS as $key) {
+            cache()->remove($key);
+        }
     }
 
     protected function run()

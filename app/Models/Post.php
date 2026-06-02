@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PostSeo;
 use FBL\Model;
 use FBL\Pagination;
 
@@ -14,7 +15,56 @@ class Post extends Model
     protected string $table = 'posts';
     public bool $timestamps = false;
     protected string $categoriesTable = 'post_categories';
-    protected bool $schemaReady = false;
+    protected Category $categories;
+    protected PostSeo $seo;
+    protected static bool $schemaReady = false;
+    protected static array $runtimeCache = [];
+
+    public function __construct()
+    {
+        $this->categories = new Category();
+        $this->seo = new PostSeo();
+    }
+
+    public static function clearPublicCache(): void
+    {
+        self::$runtimeCache = [];
+        cache()->set('posts:public_version', (string)microtime(true), 31536000);
+
+        foreach ([
+            'posts:navigation_categories',
+            'posts:home_featured:8',
+            'posts:sidebar_categories',
+        ] as $key) {
+            cache()->remove($key);
+        }
+    }
+
+    protected function publicCacheKey(string $name): string
+    {
+        return 'posts:v' . $this->publicCacheVersion() . ':' . $name;
+    }
+
+    protected function publicCacheVersion(): string
+    {
+        return (string)cache()->get('posts:public_version', '1');
+    }
+
+    protected function publicPostSelectColumns(): string
+    {
+        $categoryNameSql = $this->categories->nameSql('c');
+
+        return "p.id, p.title, p.slug, p.excerpt, p.content, p.image,
+                p.seo_title, p.seo_description, p.seo_keywords, p.seo_image,
+                p.hide_placeholder_image, p.show_on_home, p.priority,
+                p.author_name, p.author_role, p.published_at, p.views_count,
+                COALESCE({$categoryNameSql}, p.category, 'General') AS category,
+                c.slug AS category_slug,
+                c.seo_title AS category_seo_title,
+                c.seo_description AS category_seo_description,
+                c.seo_keywords AS category_seo_keywords,
+                c.seo_image AS category_seo_image";
+    }
 
     /**
      * Возвращает опубликованные посты с пагинацией и фильтром по категории.
@@ -29,15 +79,8 @@ class Post extends Model
         $limit = (int)$perPage;
         $offset = (int)$offset;
         [$whereSql, $params] = $this->buildPublishedWhereClause($category);
-        $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
-                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-                    c.slug AS category_slug,
-                    c.seo_title AS category_seo_title,
-                    c.seo_description AS category_seo_description,
-                    c.seo_keywords AS category_seo_keywords,
-                    c.seo_image AS category_seo_image
+            "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$whereSql}
@@ -62,15 +105,8 @@ class Post extends Model
     public function findPublishedBySlug(string $slug): array|false
     {
         $this->ensureSchema();
-        $categoryNameSql = $this->categoryNameSql('c');
         $post = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
-                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-                    c.slug AS category_slug,
-                    c.seo_title AS category_seo_title,
-                    c.seo_description AS category_seo_description,
-                    c.seo_keywords AS category_seo_keywords,
-                    c.seo_image AS category_seo_image
+            "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.slug = ? AND p.is_published = 1
@@ -95,15 +131,8 @@ class Post extends Model
         }
 
         $this->ensureSchema();
-        $categoryNameSql = $this->categoryNameSql('c');
         $post = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
-                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-                    c.slug AS category_slug,
-                    c.seo_title AS category_seo_title,
-                    c.seo_description AS category_seo_description,
-                    c.seo_keywords AS category_seo_keywords,
-                    c.seo_image AS category_seo_image
+            "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.id = ?
@@ -137,7 +166,12 @@ class Post extends Model
      */
     public function getSidebarData(?string $excludeSlug = null): array
     {
-        return [
+        $cacheKey = 'sidebar:' . ($excludeSlug ?: 'all');
+        if (array_key_exists($cacheKey, self::$runtimeCache)) {
+            return self::$runtimeCache[$cacheKey];
+        }
+
+        return self::$runtimeCache[$cacheKey] = [
             'categories' => $this->getCategories(),
             'trending_posts' => $this->getTrendingPosts(6, $excludeSlug),
         ];
@@ -150,15 +184,14 @@ class Post extends Model
     {
         $this->ensureSchema();
         $limit = max(1, (int)$limit);
-        $categoryNameSql = $this->categoryNameSql('c');
+        $cacheKey = $this->publicCacheKey('home_featured:' . $limit);
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.show_on_home, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
-                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-                    c.slug AS category_slug,
-                    c.seo_title AS category_seo_title,
-                    c.seo_description AS category_seo_description,
-                    c.seo_keywords AS category_seo_keywords,
-                    c.seo_image AS category_seo_image
+            "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.is_published = 1
@@ -167,7 +200,10 @@ class Post extends Model
              LIMIT {$limit}"
         )->get() ?: [];
 
-        return $this->normalizePosts($posts);
+        $items = $this->normalizePosts($posts);
+        cache()->set($cacheKey, $items, 300);
+
+        return $items;
     }
 
     /**
@@ -177,6 +213,13 @@ class Post extends Model
     {
         $this->ensureSchema();
         $limit = max(1, (int)$limit);
+        $excludeSlug = trim((string)$excludeSlug);
+        $cacheKey = $this->publicCacheKey('popular:' . $limit . ':' . md5($excludeSlug));
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
         $params = [];
         $where = 'WHERE p.is_published = 1';
 
@@ -185,15 +228,8 @@ class Post extends Model
             $params[] = $excludeSlug;
         }
 
-        $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
-                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-                    c.slug AS category_slug,
-                    c.seo_title AS category_seo_title,
-                    c.seo_description AS category_seo_description,
-                    c.seo_keywords AS category_seo_keywords,
-                    c.seo_image AS category_seo_image
+            "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
@@ -202,7 +238,10 @@ class Post extends Model
             $params
         )->get() ?: [];
 
-        return $this->normalizePosts($posts);
+        $items = $this->normalizePosts($posts);
+        cache()->set($cacheKey, $items, 300);
+
+        return $items;
     }
 
     /**
@@ -211,25 +250,16 @@ class Post extends Model
     public function getNavigationCategories(): array
     {
         $this->ensureSchema();
-        $categoryNameSql = $this->categoryNameSql('c');
+        $cacheKey = $this->publicCacheKey('navigation_categories');
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
 
-        $categories = db()->query(
-            "SELECT c.id, {$categoryNameSql} AS name, c.name_ru, c.name_en, c.slug, COUNT(p.id) AS total
-             FROM {$this->categoriesTable} c
-             LEFT JOIN {$this->table} p ON p.category_id = c.id AND p.is_published = 1
-             GROUP BY c.id, c.name, c.name_ru, c.name_en, c.slug
-             ORDER BY c.name ASC"
-        )->get() ?: [];
+        $items = $this->categories->getNavigationCategories($this->table);
+        cache()->set($cacheKey, $items, 600);
 
-        return array_map(static function (array $category): array {
-            return [
-                'id' => (int)$category['id'],
-                'name' => (string)$category['name'],
-                'slug' => (string)$category['slug'],
-                'label' => (string)$category['name'],
-                'total' => (int)$category['total'],
-            ];
-        }, $categories);
+        return $items;
     }
 
     /**
@@ -246,15 +276,8 @@ class Post extends Model
 
         $like = '%' . $query . '%';
         $limit = (int)$limit;
-        $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
-                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-                    c.slug AS category_slug,
-                    c.seo_title AS category_seo_title,
-                    c.seo_description AS category_seo_description,
-                    c.seo_keywords AS category_seo_keywords,
-                    c.seo_image AS category_seo_image
+            "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.is_published = 1
@@ -295,16 +318,8 @@ class Post extends Model
         $offset = $pagination->getOffset();
         $limit = (int)$perPage;
         $like = '%' . $query . '%';
-        $categoryNameSql = $this->categoryNameSql('c');
-
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image, p.seo_title, p.seo_description, p.seo_keywords, p.seo_image, p.hide_placeholder_image, p.priority, p.author_name, p.author_role, p.published_at, p.views_count,
-                    COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-                    c.slug AS category_slug,
-                    c.seo_title AS category_seo_title,
-                    c.seo_description AS category_seo_description,
-                    c.seo_keywords AS category_seo_keywords,
-                    c.seo_image AS category_seo_image
+            "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.is_published = 1
@@ -333,36 +348,18 @@ class Post extends Model
      */
     protected function ensureSchema(): void
     {
-        if ($this->schemaReady) {
+        if (self::$schemaReady) {
             return;
         }
 
-        db()->query(
-            "CREATE TABLE IF NOT EXISTS {$this->categoriesTable} (
-                id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-                name VARCHAR(150) NOT NULL,
-                name_ru VARCHAR(150) NULL,
-                name_en VARCHAR(150) NULL,
-                slug VARCHAR(180) NOT NULL,
-                seo_title VARCHAR(255) NULL,
-                seo_description TEXT NULL,
-                seo_keywords TEXT NULL,
-                seo_image VARCHAR(255) NULL,
-                created_at DATETIME NOT NULL,
-                PRIMARY KEY (id),
-                UNIQUE KEY slug (slug),
-                UNIQUE KEY name (name)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-        );
-
-        $this->ensureCategoryTranslationColumns();
-        $this->ensureCategorySeoColumns();
+        $this->categories->ensureSchema();
 
         db()->query(
             "CREATE TABLE IF NOT EXISTS {$this->table} (
                 id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
                 title VARCHAR(255) NOT NULL,
                 slug VARCHAR(255) NOT NULL,
+                category_id INT(10) UNSIGNED NULL,
                 category VARCHAR(150) NOT NULL,
                 excerpt TEXT NULL,
                 content MEDIUMTEXT NOT NULL,
@@ -382,7 +379,14 @@ class Post extends Model
                 is_published TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
                 PRIMARY KEY (id),
                 UNIQUE KEY slug (slug),
-                KEY published_at (published_at)
+                KEY category_id (category_id),
+                KEY published_at (published_at),
+                KEY published_lookup (is_published, published_at, id),
+                KEY category_published (category_id, is_published, published_at),
+                KEY show_on_home (show_on_home),
+                KEY priority (priority),
+                KEY home_featured (is_published, show_on_home, priority, published_at),
+                KEY popular_published (is_published, views_count, priority, published_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
 
@@ -398,49 +402,41 @@ class Post extends Model
         $this->ensureHidePlaceholderImageColumn();
         $this->ensureShowOnHomeColumn();
         $this->ensurePriorityColumn();
+        $this->ensurePostIndexes();
 
-        $oldCategoryExists = (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE 'category'")->getColumn();
-        if ($oldCategoryExists) {
-            $categories = db()->query(
-                "SELECT DISTINCT category FROM {$this->table}
-                 WHERE category IS NOT NULL
-                   AND category != ''
-                   AND (category_id IS NULL OR category_id = 0)"
-            )->get() ?: [];
+        $this->categories->syncLegacyPostCategories($this->table);
 
-            foreach ($categories as $category) {
-                $name = trim((string)$category['category']);
-                if ($name === '') {
-                    continue;
+        self::$schemaReady = true;
+    }
+
+    protected function ensurePostIndexes(): void
+    {
+        $this->ensureIndex('category_id', ['category_id'], "ALTER TABLE {$this->table} ADD KEY category_id (category_id)");
+        $this->ensureIndex('published_lookup', ['is_published', 'published_at', 'id'], "ALTER TABLE {$this->table} ADD KEY published_lookup (is_published, published_at, id)");
+        $this->ensureIndex('category_published', ['category_id', 'is_published', 'published_at'], "ALTER TABLE {$this->table} ADD KEY category_published (category_id, is_published, published_at)");
+        $this->ensureIndex('show_on_home', ['show_on_home'], "ALTER TABLE {$this->table} ADD KEY show_on_home (show_on_home)");
+        $this->ensureIndex('priority', ['priority'], "ALTER TABLE {$this->table} ADD KEY priority (priority)");
+        $this->ensureIndex('home_featured', ['is_published', 'show_on_home', 'priority', 'published_at'], "ALTER TABLE {$this->table} ADD KEY home_featured (is_published, show_on_home, priority, published_at)");
+        $this->ensureIndex('popular_published', ['is_published', 'views_count', 'priority', 'published_at'], "ALTER TABLE {$this->table} ADD KEY popular_published (is_published, views_count, priority, published_at)");
+    }
+
+    protected function ensureIndex(string $name, array $columns, string $sql): void
+    {
+        $exists = (bool)db()->query("SHOW INDEX FROM {$this->table} WHERE Key_name = ?", [$name])->getOne();
+        if (!$exists) {
+            foreach ($columns as $column) {
+                if (!$this->columnExists($column)) {
+                    return;
                 }
-
-                $slug = $this->makeSlug($name);
-                db()->query(
-                    "INSERT IGNORE INTO {$this->categoriesTable} (name, name_ru, name_en, slug, created_at)
-                     VALUES (?, ?, ?, ?, ?)",
-                    [$name, $name, $name, $slug, date('Y-m-d H:i:s')]
-                );
-                db()->query(
-                    "UPDATE {$this->table} p
-                     INNER JOIN {$this->categoriesTable} c ON c.name = p.category
-                     SET p.category_id = c.id
-                     WHERE (p.category_id IS NULL OR p.category_id = 0)
-                       AND p.category = ?",
-                    [$name]
-                );
             }
+
+            db()->query($sql);
         }
+    }
 
-        db()->query(
-            "UPDATE {$this->table} p
-             INNER JOIN (
-                SELECT id FROM {$this->categoriesTable} ORDER BY id ASC LIMIT 1
-             ) c ON 1 = 1
-             SET p.category_id = c.id
-             WHERE p.category_id IS NULL OR p.category_id = 0"
-        );
-
-        $this->schemaReady = true;
+    protected function columnExists(string $column): bool
+    {
+        return (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE ?", [$column])->getColumn();
     }
 
     /**
@@ -463,49 +459,16 @@ class Post extends Model
      */
     protected function getCategories(): array
     {
-        $categoryNameSql = $this->categoryNameSql('c');
-        $categories = db()->query(
-            "SELECT c.id, {$categoryNameSql} AS name, c.name_ru, c.name_en, c.slug, COUNT(p.id) AS total
-             FROM {$this->categoriesTable} c
-             LEFT JOIN {$this->table} p ON p.category_id = c.id AND p.is_published = 1
-             GROUP BY c.id, c.name, c.name_ru, c.name_en, c.slug
-             HAVING total > 0
-             ORDER BY total DESC, c.name ASC"
-        )->get() ?: [];
-
-        if (!empty($categories)) {
-            return array_map(static function (array $category): array {
-                return [
-                    'id' => (int)$category['id'],
-                    'name' => (string)$category['name'],
-                    'slug' => (string)$category['slug'],
-                    'label' => (string)$category['name'],
-                    'total' => (int)$category['total'],
-                ];
-            }, $categories);
+        $cacheKey = $this->publicCacheKey('sidebar_categories');
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
         }
 
-        // Fallback for legacy schemas where category_id is not linked yet.
-        $legacyCategories = db()->query(
-            "SELECT p.category AS name, COUNT(*) AS total
-             FROM {$this->table} p
-             WHERE p.is_published = 1
-               AND p.category IS NOT NULL
-               AND p.category != ''
-             GROUP BY p.category
-             ORDER BY total DESC, p.category ASC"
-        )->get() ?: [];
+        $items = $this->categories->getSidebarCategories($this->table);
+        cache()->set($cacheKey, $items, 600);
 
-        return array_map(function (array $category): array {
-            $name = (string)$category['name'];
-            return [
-                'id' => 0,
-                'name' => $name,
-                'slug' => $this->makeSlug($name),
-                'label' => $name,
-                'total' => (int)$category['total'],
-            ];
-        }, $legacyCategories);
+        return $items;
     }
 
     /**
@@ -514,6 +477,13 @@ class Post extends Model
     protected function getTrendingPosts(int $limit = 3, ?string $excludeSlug = null): array
     {
         $limit = (int)$limit;
+        $excludeSlug = trim((string)$excludeSlug);
+        $cacheKey = $this->publicCacheKey('trending:' . $limit . ':' . md5($excludeSlug));
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
         $params = [];
         $where = 'WHERE p.is_published = 1';
 
@@ -522,27 +492,20 @@ class Post extends Model
             $params[] = $excludeSlug;
         }
 
-        $categoryNameSql = $this->categoryNameSql('c');
         $posts = db()->query(
-            "SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image,
-            p.seo_title, p.seo_description, p.seo_keywords, p.seo_image,
-            p.hide_placeholder_image, p.priority, p.author_name, p.author_role,
-            p.published_at, p.views_count,
-            COALESCE({$categoryNameSql}, p.category, 'General') AS category,
-            c.slug AS category_slug,
-            c.seo_title AS category_seo_title,
-            c.seo_description AS category_seo_description,
-            c.seo_keywords AS category_seo_keywords,
-            c.seo_image AS category_seo_image
-     FROM {$this->table} p
-     LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
-     {$where}
-     ORDER BY p.published_at DESC, p.id DESC
-     LIMIT {$limit}",
+            "SELECT {$this->publicPostSelectColumns()}
+             FROM {$this->table} p
+             LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
+             {$where}
+             ORDER BY p.published_at DESC, p.id DESC
+             LIMIT {$limit}",
             $params
         )->get() ?: [];
 
-        return $this->normalizePosts($posts);
+        $items = $this->normalizePosts($posts);
+        cache()->set($cacheKey, $items, 300);
+
+        return $items;
     }
 
     /**
@@ -600,30 +563,16 @@ class Post extends Model
      */
     protected function getCategoryNameBySlug(string $slug): string
     {
-        $categoryNameSql = $this->categoryNameSql();
-        $name = db()->query(
-            "SELECT {$categoryNameSql} FROM {$this->categoriesTable} WHERE slug = ? LIMIT 1",
-            [$slug]
-        )->getColumn();
-
-        if ($name) {
-            return (string)$name;
+        $cacheKey = $this->publicCacheKey('category_name:' . md5($slug));
+        $cached = cache()->get($cacheKey);
+        if (is_string($cached)) {
+            return $cached;
         }
 
-        $legacyCategories = db()->query(
-            "SELECT DISTINCT category
-             FROM {$this->table}
-             WHERE category IS NOT NULL AND category != ''"
-        )->get() ?: [];
+        $value = $this->categories->getNameBySlug($slug, $this->table);
+        cache()->set($cacheKey, $value, 600);
 
-        foreach ($legacyCategories as $legacyCategory) {
-            $legacyName = (string)$legacyCategory['category'];
-            if ($this->makeSlug($legacyName) === $slug) {
-                return $legacyName;
-            }
-        }
-
-        return $slug;
+        return $value;
     }
 
     /**
@@ -631,27 +580,21 @@ class Post extends Model
      */
     protected function getCategoryMetaBySlug(string $slug): ?array
     {
-        $categoryNameSql = $this->categoryNameSql();
-        $category = db()->query(
-            "SELECT {$categoryNameSql} AS name, slug, seo_title, seo_description, seo_keywords, seo_image
-             FROM {$this->categoriesTable}
-             WHERE slug = ?
-             LIMIT 1",
-            [$slug]
-        )->getOne();
+        $cacheKey = $this->publicCacheKey('category_meta:' . md5($slug));
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached ?: null;
+        }
 
-        if (!$category) {
+        $meta = $this->categories->getMetaBySlug($slug);
+        if ($meta === null) {
+            cache()->set($cacheKey, [], 600);
             return null;
         }
 
-        return [
-            'name' => trim((string)($category['name'] ?? '')),
-            'slug' => trim((string)($category['slug'] ?? '')),
-            'seo_title' => trim((string)($category['seo_title'] ?? '')),
-            'seo_description' => trim((string)($category['seo_description'] ?? '')),
-            'seo_keywords' => trim((string)($category['seo_keywords'] ?? '')),
-            'seo_image' => trim((string)($category['seo_image'] ?? '')),
-        ];
+        cache()->set($cacheKey, $meta, 600);
+
+        return $meta;
     }
 
     /**
@@ -704,7 +647,7 @@ class Post extends Model
         $post['content'] = $content;
         $post['seo_description'] = $post['seo_description'] !== ''
             ? $post['seo_description']
-            : $this->buildSeoDescription($excerpt, $content, $post['title']);
+            : $this->seo->description($excerpt, $content, $post['title']);
         $post['seo_image'] = $post['seo_image'] !== '' ? ltrim($post['seo_image'], '/') : $post['original_image'];
 
         return $post;
@@ -716,69 +659,6 @@ class Post extends Model
     protected function makeSlug(string $value): string
     {
         return make_slug($value, 'general');
-    }
-
-    /**
-     * Добавляет языковые поля категорий и заполняет их в старых схемах.
-     */
-    protected function ensureCategoryTranslationColumns(): void
-    {
-        $nameRuExists = (bool)db()->query("SHOW COLUMNS FROM {$this->categoriesTable} LIKE 'name_ru'")->getColumn();
-        if (!$nameRuExists) {
-            db()->query("ALTER TABLE {$this->categoriesTable} ADD COLUMN name_ru VARCHAR(150) NULL AFTER name");
-        }
-
-        $nameEnExists = (bool)db()->query("SHOW COLUMNS FROM {$this->categoriesTable} LIKE 'name_en'")->getColumn();
-        if (!$nameEnExists) {
-            db()->query("ALTER TABLE {$this->categoriesTable} ADD COLUMN name_en VARCHAR(150) NULL AFTER name_ru");
-        }
-
-        db()->query(
-            "UPDATE {$this->categoriesTable}
-             SET name_ru = COALESCE(NULLIF(name_ru, ''), name),
-                 name_en = COALESCE(NULLIF(name_en, ''), name)
-             WHERE name_ru IS NULL OR name_ru = '' OR name_en IS NULL OR name_en = ''"
-        );
-    }
-
-    /**
-     * Добавляет SEO-поля категорий в таблицу, если их нет.
-     */
-    protected function ensureCategorySeoColumns(): void
-    {
-        $seoTitleExists = (bool)db()->query("SHOW COLUMNS FROM {$this->categoriesTable} LIKE 'seo_title'")->getColumn();
-        if (!$seoTitleExists) {
-            db()->query("ALTER TABLE {$this->categoriesTable} ADD COLUMN seo_title VARCHAR(255) NULL AFTER slug");
-        }
-
-        $seoDescriptionExists = (bool)db()->query("SHOW COLUMNS FROM {$this->categoriesTable} LIKE 'seo_description'")->getColumn();
-        if (!$seoDescriptionExists) {
-            db()->query("ALTER TABLE {$this->categoriesTable} ADD COLUMN seo_description TEXT NULL AFTER seo_title");
-        }
-
-        $seoKeywordsExists = (bool)db()->query("SHOW COLUMNS FROM {$this->categoriesTable} LIKE 'seo_keywords'")->getColumn();
-        if (!$seoKeywordsExists) {
-            db()->query("ALTER TABLE {$this->categoriesTable} ADD COLUMN seo_keywords TEXT NULL AFTER seo_description");
-        }
-
-        $seoImageExists = (bool)db()->query("SHOW COLUMNS FROM {$this->categoriesTable} LIKE 'seo_image'")->getColumn();
-        if (!$seoImageExists) {
-            db()->query("ALTER TABLE {$this->categoriesTable} ADD COLUMN seo_image VARCHAR(255) NULL AFTER seo_keywords");
-        }
-    }
-
-    /**
-     * Возвращает SQL-выражение для выбора названия категории в текущем языке.
-     */
-    protected function categoryNameSql(string $alias = ''): string
-    {
-        $prefix = $alias !== '' ? "{$alias}." : '';
-        $column = match (app()->get('lang')['code'] ?? 'ru') {
-            'en', 'de', 'zh-cn' => 'name_en',
-            default => 'name_ru',
-        };
-
-        return "COALESCE(NULLIF({$prefix}{$column}, ''), {$prefix}name)";
     }
 
     /**
@@ -886,36 +766,6 @@ class Post extends Model
     {
         $roleLabel = get_user_role_label($role);
         return trim($roleLabel . ($name !== '' ? ': ' . $name : ''));
-    }
-
-    /**
-     * Извлекает краткий текстовый фрагмент из HTML-содержимого.
-     */
-    protected function excerptFromHtml(string $content, int $limit = 180): string
-    {
-        $text = trim(preg_replace('/\s+/', ' ', strip_tags($content)));
-        if (mb_strlen($text) <= $limit) {
-            return $text;
-        }
-        return rtrim(mb_substr($text, 0, $limit - 1)) . '...';
-    }
-
-    /**
-     * Формирует SEO-описание на основе excerpt, content или заголовка.
-     */
-    protected function buildSeoDescription(string $excerpt, string $content, string $title): string
-    {
-        $excerpt = trim(preg_replace('/\s+/', ' ', strip_tags($excerpt)));
-        if ($excerpt !== '') {
-            return $this->excerptFromHtml($excerpt, 160);
-        }
-
-        $contentExcerpt = $this->excerptFromHtml($content, 160);
-        if ($contentExcerpt !== '') {
-            return $contentExcerpt;
-        }
-
-        return $title;
     }
 
 }

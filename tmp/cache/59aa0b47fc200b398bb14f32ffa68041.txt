@@ -1,0 +1,1 @@
+a:2:{s:4:"data";a:1:{i:0;a:5:{s:2:"id";i:1;s:4:"name";s:12:"Москва";s:4:"slug";s:6:"moscow";s:5:"label";s:12:"Москва";s:5:"total";i:1;}}s:8:"end_time";i:1780402040;}

@@ -201,7 +201,11 @@ class Router
      */
     public function checkCSRFToken(): bool
     {
-        $requestToken = (string)request()->post('needCSRFToken', '');
+        $requestToken = (string)(
+            request()->post('needCSRFToken', '')
+            ?: request()->header('X-CSRF-Token', '')
+            ?: request()->header('X-Need-CSRF-Token', '')
+        );
         $sessionToken = (string)session()->get('needCSRFToken', '');
 
         return $requestToken !== '' && $sessionToken !== '' && hash_equals($sessionToken, $requestToken);

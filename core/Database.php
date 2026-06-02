@@ -100,6 +100,7 @@ class Database
      */
     public function findAll($tbl): false|array
     {
+        $this->assertIdentifier($tbl);
         $this->query("SELECT * FROM {$tbl}");
         return $this->stmt->fetchAll();
     }
@@ -109,8 +110,20 @@ class Database
      */
     public function findOne($tbl, $value, $key = 'id')
     {
+        $this->assertIdentifier($tbl);
+        $this->assertIdentifier($key);
         $this->query("SELECT * FROM {$tbl} WHERE {$key} = ? LIMIT 1", [$value]);
         return $this->stmt->fetch();
+    }
+
+    /**
+     * Защищает helper-методы от динамических имён таблиц и колонок.
+     */
+    protected function assertIdentifier(string $identifier): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $identifier)) {
+            throw new \InvalidArgumentException('Unsafe database identifier.');
+        }
     }
 
     /**

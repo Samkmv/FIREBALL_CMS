@@ -2,9 +2,9 @@
   "name": "FBL",
   "short_name": "FBL",
   "description": "FBL",
-  "lang" : "en",
+  "lang": "ru",
   "dir": "ltr",
-  "start_url": "/index.html",
+  "start_url": "/",
   "scope": "/",
   "icons": [
     {
@@ -14,7 +14,7 @@
       "purpose": "any maskable"
     }
   ],
-  "background_color": "#fff",
+  "background_color": "#ffffff",
   "theme_color": "#131920",
   "display": "standalone",
   "orientation": "portrait-primary"

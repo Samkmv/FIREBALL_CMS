@@ -36,15 +36,12 @@ class HomeController extends BaseController
 //        Cart::clearCart();
 //        dump(Cart::getCart());
 
-        $sales_products = db()->query("select * from products where is_sale = 1 order by id desc limit 10")->get();
-
-        $root_categories = db()->query("select * from categories where parent_id = 0")->get();
         $featured_posts = $this->posts->getHomeFeaturedPosts(8);
 
         return view('home/index', [
             'title' => return_translation('home_index_title'),
-            'sales_products' => $sales_products,
-            'root_categories' => $root_categories,
+            'sales_products' => [],
+            'root_categories' => [],
             'featured_posts' => $featured_posts,
         ]);
     }

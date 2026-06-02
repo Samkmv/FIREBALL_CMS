@@ -51,6 +51,11 @@ class SiteSetting
             return self::$cache;
         }
 
+        $cached = cache()->get('site_settings:all');
+        if (is_array($cached)) {
+            return self::$cache = $cached;
+        }
+
         $this->ensureTableExists();
         $rows = db()->query("SELECT setting_key, setting_value FROM {$this->table}")->get() ?: [];
 
@@ -58,6 +63,7 @@ class SiteSetting
         foreach ($rows as $row) {
             self::$cache[$row['setting_key']] = (string)($row['setting_value'] ?? '');
         }
+        cache()->set('site_settings:all', self::$cache, 600);
 
         return self::$cache;
     }
@@ -98,7 +104,17 @@ class SiteSetting
             );
         }
 
+        self::clearPublicCache();
+    }
+
+    public static function clearPublicCache(): void
+    {
         self::$cache = null;
+        cache()->remove('site_settings:all');
+
+        if (class_exists(\App\Widgets\Menu\Menu::class)) {
+            \App\Widgets\Menu\Menu::clearCache();
+        }
     }
 
     /**

@@ -1,150 +1,19 @@
-[2026-05-26 14:01:12] Database query error
-Request URI: /admin/posts/toggle-published
-Request Method: POST
-Remote IP: ::1
+[2026-06-02 14:25:18] Database connection error
+Request URI: /
+Request Method: GET
+Remote IP: -
 Exception: PDOException
-Message: SQLSTATE[22007]: Invalid datetime format: 1292 Incorrect datetime value: '0000-00-00 00:00:00' for column 'published_at' at row 1
+Message: SQLSTATE[HY000] [2002] No such file or directory
 File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 48
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/Admin.php(325): FBL\Database->query('UPDATE posts\n  ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(259): App\Models\Admin->togglePostPublished(11)
-#3 [internal function]: App\Controllers\AdminController->postTogglePublished()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Array)
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
-#7 {main}
-SQL: UPDATE posts
-             SET is_published = ?,
-                 published_at = CASE
-                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
-                     ELSE published_at
-                 END
-             WHERE id = ?
-Params: [1,1,"2026-05-26 13:05:00",11]
-========================================================================
-[2026-05-31 21:20:08] Database query error
-Request URI: /admin/posts/toggle-published
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[22007]: Invalid datetime format: 1292 Incorrect datetime value: '0000-00-00 00:00:00' for column 'published_at' at row 1
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 48
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/Admin.php(377): FBL\Database->query('UPDATE posts\n  ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(267): App\Models\Admin->togglePostPublished(3)
-#3 [internal function]: App\Controllers\AdminController->postTogglePublished()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Array)
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
-#7 {main}
-SQL: UPDATE posts
-             SET is_published = ?,
-                 published_at = CASE
-                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
-                     ELSE published_at
-                 END
-             WHERE id = ?
-Params: [1,1,"2026-05-31 21:19:00",3]
-========================================================================
-[2026-05-31 21:20:19] Database query error
-Request URI: /admin/posts/toggle-published
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[22007]: Invalid datetime format: 1292 Incorrect datetime value: '0000-00-00 00:00:00' for column 'published_at' at row 1
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 48
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/Admin.php(377): FBL\Database->query('UPDATE posts\n  ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(267): App\Models\Admin->togglePostPublished(3)
-#3 [internal function]: App\Controllers\AdminController->postTogglePublished()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Array)
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
-#7 {main}
-SQL: UPDATE posts
-             SET is_published = ?,
-                 published_at = CASE
-                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
-                     ELSE published_at
-                 END
-             WHERE id = ?
-Params: [1,1,"2026-05-31 21:19:00",3]
-========================================================================
-[2026-05-31 21:21:39] Database query error
-Request URI: /admin/posts/toggle-published
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[22007]: Invalid datetime format: 1292 Incorrect datetime value: '0000-00-00 00:00:00' for column 'published_at' at row 1
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 48
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/Admin.php(377): FBL\Database->query('UPDATE posts\n  ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(267): App\Models\Admin->togglePostPublished(3)
-#3 [internal function]: App\Controllers\AdminController->postTogglePublished()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Array)
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
-#7 {main}
-SQL: UPDATE posts
-             SET is_published = ?,
-                 published_at = CASE
-                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
-                     ELSE published_at
-                 END
-             WHERE id = ?
-Params: [1,1,"2026-05-31 21:19:00",3]
-========================================================================
-[2026-05-31 21:22:47] Database query error
-Request URI: /admin/posts/toggle-published
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[22007]: Invalid datetime format: 1292 Incorrect datetime value: '0000-00-00 00:00:00' for column 'published_at' at row 1
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 48
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/Admin.php(380): FBL\Database->query('UPDATE posts\n  ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(267): App\Models\Admin->togglePostPublished(3)
-#3 [internal function]: App\Controllers\AdminController->postTogglePublished()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Array)
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
-#7 {main}
-SQL: UPDATE posts
-             SET is_published = ?,
-                 published_at = CASE
-                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
-                     ELSE published_at
-                 END
-             WHERE id = ?
-Params: [1,1,"2026-05-31 21:19:00",3]
-========================================================================
-[2026-05-31 21:23:12] Database query error
-Request URI: /admin/posts/toggle-published
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[22007]: Invalid datetime format: 1292 Incorrect datetime value: '0000-00-00 00:00:00' for column 'published_at' at row 1
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 48
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/Admin.php(380): FBL\Database->query('UPDATE posts\n  ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(267): App\Models\Admin->togglePostPublished(2)
-#3 [internal function]: App\Controllers\AdminController->postTogglePublished()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(96): call_user_func(Array)
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(47): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(49): FBL\Application->run()
-#7 {main}
-SQL: UPDATE posts
-             SET is_published = ?,
-                 published_at = CASE
-                     WHEN ? = 1 AND (published_at IS NULL OR published_at = '0000-00-00 00:00:00') THEN ?
-                     ELSE published_at
-                 END
-             WHERE id = ?
-Params: [1,1,"2026-05-31 21:19:00",2]
+Line: 25
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(25): PDO->__construct('mysql:host=loca...', 'root', Object(SensitiveParameterValue), Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(38): FBL\Database->__construct()
+#2 Command line code(1): FBL\Application->__construct()
+#3 {main}
+Driver: mysql
+Host: localhost
+Port: 8889
+Database: fbl
+Username: root
+DSN: mysql:host=localhost;dbname=fbl;charset=utf8mb4;port=8889
 ========================================================================

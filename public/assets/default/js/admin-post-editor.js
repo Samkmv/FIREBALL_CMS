@@ -2503,8 +2503,7 @@ function initPostEditor() {
             minWidth: matchButtonWidth ? Math.min(buttonRect.width, 220) : 220,
             zIndex: 12000,
             align: matchButtonWidth ? 'start' : 'center',
-            matchAnchor: matchButtonWidth,
-            forceBelow: viewport.width < 768
+            matchAnchor: matchButtonWidth
         });
     }
 
@@ -3334,14 +3333,14 @@ function initPostEditor() {
         const iconHtml = buttonIcon ? '<i class="' + escapeAttr(buttonIcon) + ' fs-base ms-n1 me-2"></i>' : '';
         const buttonInner = iconHtml + escapeHtml(resolvedButtonText);
         const buttonHtml = buttonUrl
-            ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" target="_blank" rel="noopener noreferrer" data-fb-newsletter-button="1" data-button-url="' + escapeAttr(buttonUrl) + '">' + buttonInner + '</a>'
-            : '<button type="button" class="btn btn-dark" data-fb-newsletter-button="1" data-button-url="">' + buttonInner + '</button>';
+            ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" target="_blank" rel="noopener noreferrer">' + buttonInner + '</a>'
+            : '<button type="button" class="btn btn-dark">' + buttonInner + '</button>';
 
         return '' +
-            '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5" data-fb-newsletter-block="1" data-button-icon="' + escapeAttr(buttonIcon) + '">' +
+            '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5">' +
                 '<div class="mb-4 mb-sm-0 me-sm-4">' +
-                    '<h3 class="h5 mb-2" data-fb-newsletter-title="1">' + escapeHtml(resolvedTitle) + '</h3>' +
-                    '<p class="fs-sm mb-0" data-fb-newsletter-text="1">' + escapeHtml(resolvedText) + '</p>' +
+                    '<h3 class="h5 mb-2">' + escapeHtml(resolvedTitle) + '</h3>' +
+                    '<p class="fs-sm mb-0">' + escapeHtml(resolvedText) + '</p>' +
                 '</div>' +
                 buttonHtml +
             '</div>';
@@ -3422,7 +3421,7 @@ function initPostEditor() {
                 return;
             }
 
-            if (node.matches('[data-fb-newsletter-block]')) {
+            if (node.matches('[data-fb-newsletter-block]') || isNewsletterBlockCandidate(node)) {
                 flushTextBuffer();
                 blocks.push(parseNewsletterBlock(node));
                 return;
@@ -3637,6 +3636,17 @@ function initPostEditor() {
             buttonUrl: buttonUrl,
             buttonIcon: iconClass ? iconClass[0] : String(node.getAttribute('data-button-icon') || 'ci-mail')
         });
+    }
+
+    function isNewsletterBlockCandidate(node) {
+        if (!node || !node.matches) {
+            return false;
+        }
+
+        return node.matches('.d-sm-flex.align-items-center.justify-content-between.bg-body-tertiary.rounded-4')
+            && !!node.querySelector('h1, h2, h3, h4, h5, h6')
+            && !!node.querySelector('p')
+            && !!node.querySelector('a.btn, button.btn, [class*="ci-mail"]');
     }
 
     function parseSliderBlock(node) {

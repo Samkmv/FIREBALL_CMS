@@ -1,6 +1,9 @@
 <?php
 
 $postNavigationCategories = (new \App\Models\Post())->getNavigationCategories();
+$pageNavigationModel = new \App\Models\Page();
+$headerPageLinks = $pageNavigationModel->getMenuPages('header');
+$footerPageLinks = $pageNavigationModel->getMenuPages('footer');
 $currentPostCategorySlug = trim((string)request()->get('category', ''));
 $siteTitle = site_setting('site_title', SITE_NAME);
 $siteDescription = site_setting('site_description', '');
@@ -93,6 +96,7 @@ $footerNavigationLinks = [
         'label' => return_translation('tpl_menu_nav_contacts'),
     ],
 ];
+$footerNavigationLinks = array_merge($footerNavigationLinks, $footerPageLinks);
 $footerAccountLinks = check_auth()
     ? [
         [
@@ -262,7 +266,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
         </div>
 
         <!-- Main menu -->
-        <?php echo view()->renderPartial('incs/main_menu_tpl') ?>
+        <?php echo view()->renderPartial('incs/main_menu_tpl', [
+            'headerPageLinks' => $headerPageLinks,
+        ]) ?>
 
     </div>
 
@@ -772,6 +778,23 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
 <!-- Vendor scripts -->
 <script src="<?= base_url('/assets/default/vendor/choices.js/choices.min.js') ?>"></script>
+<script>
+    if (window.Choices && !window.Choices.__fireballHardened) {
+        const FireballChoicesBase = window.Choices;
+        const FireballChoices = function (element, options) {
+            const allowHtml = element && element.getAttribute && element.getAttribute('data-select-allow-html') === 'true';
+            return new FireballChoicesBase(element, Object.assign({}, options || {}, {
+                allowHTML: allowHtml
+            }));
+        };
+        FireballChoices.prototype = FireballChoicesBase.prototype;
+        Object.keys(FireballChoicesBase).forEach(function (key) {
+            FireballChoices[key] = FireballChoicesBase[key];
+        });
+        FireballChoices.__fireballHardened = true;
+        window.Choices = FireballChoices;
+    }
+</script>
 <script src="<?= base_url('/assets/default/vendor/swiper/swiper-bundle.min.js') ?>"></script>
 <script src="<?= base_url('/assets/default/vendor/toastr/toastr.min.js') ?>"></script>
 <script src="<?= base_url('/assets/default/vendor/plyr/plyr.polyfilled.js?v=' . filemtime(WWW . '/assets/default/vendor/plyr/plyr.polyfilled.js')) ?>"></script>

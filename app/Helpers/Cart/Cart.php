@@ -19,7 +19,10 @@ class Cart
             session()->set("cart.$product_id.quantity", session()->get("cart.$product_id.quantity") + $quantity);
             $added = true;
         } else {
-            $product = db()->query("select * from products where id = ? and in_stock = 1", [$product_id])->getOne();
+            $product = db()->query(
+                "select id, title, slug, image, price from products where id = ? and in_stock = 1",
+                [$product_id]
+            )->getOne();
 
             if ($product){
                 $new_product = [

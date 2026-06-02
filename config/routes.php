@@ -5,11 +5,14 @@
 use FBL\Application;
 use App\Controllers\AuthController;
 use App\Controllers\HomeController;
+use App\Controllers\PagesController;
 use App\Controllers\PostsController;
 use App\Controllers\SearchController;
 use App\Controllers\CartController;
 use App\Controllers\ChatController;
 use App\Controllers\AdminController;
+use App\Controllers\AdminPostController;
+use App\Controllers\AdminPagesController;
 use App\Controllers\NotificationController;
 use App\Controllers\FileManagerController;
 
@@ -57,15 +60,24 @@ $app->router->get('/posts', [PostsController::class, 'index']);
 $app->router->get('/admin', [AdminController::class, 'dashboard'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/contact-requests', [AdminController::class, 'contactRequests'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/contact-requests/delete', [AdminController::class, 'contactRequestDelete'])->middleware(['auth', 'admin']);
-$app->router->get('/admin/posts', [AdminController::class, 'posts'])->middleware(['auth', 'admin']);
-$app->router->get('/admin/posts/create', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
-$app->router->post('/admin/posts/create', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
-$app->router->post('/admin/posts/autosave', [AdminController::class, 'postAutosave'])->middleware(['auth', 'admin']);
-$app->router->get('/admin/posts/edit/(?P<id>\d+)/?', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
-$app->router->post('/admin/posts/edit/(?P<id>\d+)/?', [AdminController::class, 'postForm'])->middleware(['auth', 'admin']);
-$app->router->get('/admin/posts/preview/(?P<id>\d+)/?', [AdminController::class, 'postPreview'])->middleware(['auth', 'admin']);
-$app->router->post('/admin/posts/toggle-published', [AdminController::class, 'postTogglePublished'])->middleware(['auth', 'admin']);
-$app->router->post('/admin/posts/delete', [AdminController::class, 'postDelete'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/posts', [AdminPostController::class, 'posts'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/posts/create', [AdminPostController::class, 'postForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/posts/create', [AdminPostController::class, 'postForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/posts/autosave', [AdminPostController::class, 'postAutosave'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/posts/edit/(?P<id>\d+)/?', [AdminPostController::class, 'postForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/posts/edit/(?P<id>\d+)/?', [AdminPostController::class, 'postForm'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/posts/preview/(?P<id>\d+)/?', [AdminPostController::class, 'postPreview'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/posts/toggle-published', [AdminPostController::class, 'postTogglePublished'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/posts/delete', [AdminPostController::class, 'postDelete'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/pages', [AdminPagesController::class, 'index'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/pages/create', [AdminPagesController::class, 'form'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/pages/create', [AdminPagesController::class, 'form'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/pages/autosave', [AdminPagesController::class, 'autosave'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/pages/edit/(?P<id>\d+)/?', [AdminPagesController::class, 'form'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/pages/edit/(?P<id>\d+)/?', [AdminPagesController::class, 'form'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/pages/preview/(?P<id>\d+)/?', [AdminPagesController::class, 'preview'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/pages/toggle-published', [AdminPagesController::class, 'togglePublished'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/pages/delete', [AdminPagesController::class, 'delete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories', [AdminController::class, 'categories'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories/create', [AdminController::class, 'categoryForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/categories/create', [AdminController::class, 'categoryForm'])->middleware(['auth', 'admin']);
@@ -101,6 +113,9 @@ $app->router->post('/admin/files/folder/delete', [FileManagerController::class, 
 // Store pages ---------- //
 $app->router->post('/add-to-cart', [CartController::class, 'addToCart']);
 $app->router->post('/remove-from-cart', [CartController::class, 'removeFromCart']);
+
+// CMS pages ---------- //
+$app->router->get('/(?P<slug>[a-z0-9-]+)/?', [PagesController::class, 'show']);
 
 // Home (keep last among dynamic routes to avoid locale false-positive)
 $app->router->get('/', [HomeController::class, 'index']);

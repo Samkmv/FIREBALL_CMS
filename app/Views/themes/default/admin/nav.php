@@ -25,6 +25,7 @@ $navItems = [
     ['href' => base_href('/admin'), 'label' => return_translation('admin_nav_dashboard'), 'icon' => 'ci-layout'],
     ['href' => base_href('/admin/contact-requests'), 'label' => return_translation('admin_nav_contacts'), 'icon' => 'ci-mail'],
     ['href' => base_href('/admin/posts'), 'label' => return_translation('admin_nav_posts'), 'icon' => 'ci-file-text'],
+    ['href' => base_href('/admin/pages'), 'label' => return_translation('admin_nav_pages'), 'icon' => 'ci-file', 'badge' => 'Beta'],
     ['href' => base_href('/admin/categories'), 'label' => return_translation('admin_nav_categories'), 'icon' => 'ci-folder'],
     ['href' => base_href('/admin/users'), 'label' => return_translation('admin_nav_users'), 'icon' => 'ci-user'],
     ['href' => base_href('/admin/roles'), 'label' => return_translation('admin_nav_roles'), 'icon' => 'ci-shield'],
@@ -61,7 +62,12 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0 admin-shell-nav-icon">
                     <i class="<?= htmlSC($item['icon']) ?>"></i>
                 </span>
-                <span class="fw-medium"><?= htmlSC($item['label']) ?></span>
+                <span class="fw-medium d-inline-flex align-items-center flex-wrap gap-1">
+                    <?= htmlSC($item['label']) ?>
+                    <?php if (!empty($item['badge'])): ?>
+                        <span class="badge text-bg-warning ms-2"><?= htmlSC($item['badge']) ?></span>
+                    <?php endif; ?>
+                </span>
             </a>
         <?php endforeach; ?>
     </div>

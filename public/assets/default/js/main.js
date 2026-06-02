@@ -41,10 +41,30 @@ $(function(){
     document.querySelectorAll('[data-admin-posts-tabs]').forEach((root) => {
         const input = root.querySelector('[data-admin-posts-live-search]');
         const panes = Array.from(root.querySelectorAll('[data-admin-posts-pane]'));
+        const tabsKey = String(root.getAttribute('data-admin-posts-tabs') || 'posts').trim() || 'posts';
+        const tabStorageKey = 'fireball.admin.' + tabsKey + '.activeTab';
 
         if (!input || !panes.length) {
             return;
         }
+
+        const activateStoredTab = () => {
+            const params = new URLSearchParams(window.location.search);
+            let storedTab = null;
+            try {
+                storedTab = window.localStorage.getItem(tabStorageKey);
+            } catch (error) {
+                storedTab = null;
+            }
+            const tabKey = params.has('draft_page') && params.get('draft_page') !== '1'
+                ? 'drafts'
+                : storedTab;
+            const tabButton = tabKey ? root.querySelector('[data-admin-posts-tab-button="' + tabKey + '"]') : null;
+
+            if (tabButton && window.bootstrap?.Tab) {
+                window.bootstrap.Tab.getOrCreateInstance(tabButton).show();
+            }
+        };
 
         const applyAdminPostsSearch = () => {
             const query = input.value.trim().toLowerCase();
@@ -75,11 +95,23 @@ $(function(){
 
                 const countNode = root.querySelector('[data-admin-posts-count="' + paneKey + '"]');
                 if (countNode) {
-                    countNode.textContent = String(visibleCount);
+                    const totalNode = root.querySelector('[data-admin-posts-total="' + paneKey + '"]');
+                    countNode.textContent = query === '' && totalNode ? totalNode.textContent : String(visibleCount);
                 }
             });
         };
 
+        root.querySelectorAll('[data-admin-posts-tab-button]').forEach((button) => {
+            button.addEventListener('shown.bs.tab', () => {
+                try {
+                    window.localStorage.setItem(tabStorageKey, button.getAttribute('data-admin-posts-tab-button') || 'published');
+                } catch (error) {
+                    // Some mobile privacy modes block localStorage; the tab still works for the current page.
+                }
+            });
+        });
+
+        activateStoredTab();
         input.addEventListener('input', applyAdminPostsSearch);
         root.querySelector('[data-admin-posts-live-form]')?.addEventListener('submit', () => {
             applyAdminPostsSearch();

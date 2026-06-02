@@ -625,6 +625,32 @@ function site_favicon_type(): string
     };
 }
 
+function sanitize_content_html(string $html): string
+{
+    $html = trim($html);
+    if ($html === '') {
+        return '';
+    }
+
+    $html = preg_replace('#<\s*script\b[^>]*>.*?<\s*/\s*script\s*>#is', '', $html) ?? $html;
+    $html = preg_replace('#<\s*/?\s*(object|embed|form|input|textarea|select)\b[^>]*>#is', '', $html) ?? $html;
+    $html = preg_replace('/\s+on[a-z0-9_-]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
+    $html = preg_replace('/\s+srcdoc\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
+    $html = preg_replace_callback(
+        '/\s+(href|src|action|formaction|xlink:href)\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i',
+        static function (array $matches): string {
+            $value = trim($matches[2], "\"' \t\n\r\0\x0B");
+
+            return preg_match('/^\s*javascript:/i', $value)
+                ? ''
+                : $matches[0];
+        },
+        $html
+    ) ?? $html;
+
+    return trim($html);
+}
+
 function get_user_avatar(?string $path = null, string $size = 'default'): string
 {
     $fallbacks = [

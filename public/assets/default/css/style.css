@@ -75,6 +75,28 @@ html {
     z-index: 1080 !important;
 }
 
+form[data-post-form] .choices {
+    position: relative;
+    z-index: 20;
+}
+
+form[data-post-form] .choices.is-open {
+    z-index: 12050;
+}
+
+form[data-post-form] .choices__list--dropdown,
+form[data-post-form] .choices__list[aria-expanded] {
+    z-index: 12050 !important;
+    max-width: calc(100dvw - 1.5rem);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+form[data-post-form] select[data-select-clear="false"] + .choices .choices__button,
+form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__button {
+    display: none !important;
+}
+
 .search-suggest-menu {
     max-height: min(24rem, calc(100dvh - 8rem));
     overflow-x: hidden;

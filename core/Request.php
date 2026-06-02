@@ -13,6 +13,7 @@ class Request
     public array $get;
     public array $post;
     public array $files;
+    protected ?array $jsonBody = null;
 
     /**
      * Сохраняет основные данные текущего запроса.
@@ -61,7 +62,7 @@ class Request
     /**
      * Возвращает GET-параметр по имени.
      */
-    public function get($name, $default = null): ?string
+    public function get($name, $default = null): mixed
     {
         return $this->get[$name] ?? $default;
     }
@@ -69,9 +70,56 @@ class Request
     /**
      * Возвращает POST-параметр по имени.
      */
-    public function post($name, $default = null): ?string
+    public function post($name, $default = null): mixed
     {
-        return $this->post[$name] ?? $default;
+        if (array_key_exists($name, $this->post)) {
+            return $this->post[$name];
+        }
+
+        $jsonBody = $this->json();
+
+        return $jsonBody[$name] ?? $default;
+    }
+
+    /**
+     * Возвращает HTTP-заголовок в нормализованном виде.
+     */
+    public function header(string $name, ?string $default = null): ?string
+    {
+        $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+        if (array_key_exists($key, $_SERVER)) {
+            return (string)$_SERVER[$key];
+        }
+
+        if (strtolower($name) === 'content-type' && isset($_SERVER['CONTENT_TYPE'])) {
+            return (string)$_SERVER['CONTENT_TYPE'];
+        }
+
+        return $default;
+    }
+
+    /**
+     * Возвращает распарсенное JSON-тело запроса, если оно есть.
+     */
+    public function json(): array
+    {
+        if ($this->jsonBody !== null) {
+            return $this->jsonBody;
+        }
+
+        $contentType = strtolower((string)$this->header('Content-Type', ''));
+        if (!str_contains($contentType, 'application/json')) {
+            return $this->jsonBody = [];
+        }
+
+        $rawBody = file_get_contents('php://input');
+        if (!is_string($rawBody) || trim($rawBody) === '') {
+            return $this->jsonBody = [];
+        }
+
+        $decoded = json_decode($rawBody, true);
+
+        return $this->jsonBody = is_array($decoded) ? $decoded : [];
     }
 
     /**
@@ -103,17 +151,22 @@ class Request
     {
         $data = [];
 
-        $request_data = $this->isPost() ? $_POST : $_GET;
+        $request_data = $this->isPost() ? array_replace($this->json(), $_POST) : $_GET;
 
         foreach ($request_data as $key => $value) {
-            if (is_string($value)) {
-                $value = trim($value);
-            }
-
-            $data[$key] = $value;
+            $data[$key] = $this->trimValue($value);
         }
 
         return $data;
+    }
+
+    protected function trimValue($value)
+    {
+        if (is_array($value)) {
+            return array_map(fn($item) => $this->trimValue($item), $value);
+        }
+
+        return is_string($value) ? trim($value) : $value;
     }
 
 }

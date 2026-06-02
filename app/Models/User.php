@@ -45,7 +45,8 @@ class User
                 created_at DATETIME NOT NULL,
                 PRIMARY KEY (id),
                 UNIQUE KEY login (login),
-                UNIQUE KEY email (email)
+                UNIQUE KEY email (email),
+                KEY role (role)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
 
@@ -55,6 +56,7 @@ class User
         $this->ensureRoleColumnExists();
         $this->ensureAvatarColumnExists();
         $this->ensureLastSeenColumnExists();
+        $this->ensureUserIndexes();
         $this->ensureCreatorUserExists();
         $this->syncRolesFromUsers();
         self::$schemaReady = true;
@@ -1247,6 +1249,29 @@ class User
         }
     }
 
+    protected function ensureUserIndexes(): void
+    {
+        $this->ensureIndex($this->usersTable, 'role', ['role'], "ALTER TABLE {$this->usersTable} ADD KEY role (role)");
+        $this->ensureIndex($this->usersTable, 'role_id', ['role_id'], "ALTER TABLE {$this->usersTable} ADD KEY role_id (role_id)");
+    }
+
+    protected function ensureIndex(string $table, string $name, array $columns, string $sql): void
+    {
+        $exists = (bool)db()->query("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$name])->getOne();
+        if ($exists) {
+            return;
+        }
+
+        foreach ($columns as $column) {
+            $columnExists = (bool)db()->query("SHOW COLUMNS FROM {$table} LIKE ?", [$column])->getColumn();
+            if (!$columnExists) {
+                return;
+            }
+        }
+
+        db()->query($sql);
+    }
+
     /**
      * Создаёт таблицу токенов восстановления пароля.
      */
@@ -1645,6 +1670,7 @@ class User
             "UPDATE posts SET author_name = ?, author_role = ? WHERE author_id = ?",
             [$name, $role, $userId]
         );
+        Post::clearPublicCache();
     }
 
     /**
@@ -1658,6 +1684,7 @@ class User
         }
 
         db()->query("UPDATE posts SET author_role = ? WHERE author_role = ?", [$newSlug, $oldSlug]);
+        Post::clearPublicCache();
     }
 
     /**

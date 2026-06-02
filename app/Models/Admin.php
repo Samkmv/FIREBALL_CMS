@@ -12,14 +12,14 @@ class Admin
 
     protected string $postsTable = 'posts';
     protected string $categoriesTable = 'post_categories';
-    protected bool $schemaReady = false;
+    protected static bool $schemaReady = false;
 
     /**
      * Создаёт таблицы блога и подтягивает недостающие поля старых схем.
      */
     public function ensureSchema(): void
     {
-        if ($this->schemaReady) {
+        if (self::$schemaReady) {
             return;
         }
 
@@ -70,7 +70,13 @@ class Admin
                 PRIMARY KEY (id),
                 UNIQUE KEY slug (slug),
                 KEY published_at (published_at),
-                KEY category_id (category_id)
+                KEY category_id (category_id),
+                KEY published_lookup (is_published, published_at, id),
+                KEY category_published (category_id, is_published, published_at),
+                KEY show_on_home (show_on_home),
+                KEY priority (priority),
+                KEY home_featured (is_published, show_on_home, priority, published_at),
+                KEY popular_published (is_published, views_count, priority, published_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
 
@@ -86,8 +92,39 @@ class Admin
         $this->ensureHidePlaceholderImageColumn();
         $this->ensureShowOnHomeColumn();
         $this->ensurePriorityColumn();
+        $this->ensurePostIndexes();
         $this->syncLegacyCategoryColumn();
-        $this->schemaReady = true;
+        self::$schemaReady = true;
+    }
+
+    protected function ensurePostIndexes(): void
+    {
+        $this->ensureIndex('category_id', ['category_id'], "ALTER TABLE {$this->postsTable} ADD KEY category_id (category_id)");
+        $this->ensureIndex('published_lookup', ['is_published', 'published_at', 'id'], "ALTER TABLE {$this->postsTable} ADD KEY published_lookup (is_published, published_at, id)");
+        $this->ensureIndex('category_published', ['category_id', 'is_published', 'published_at'], "ALTER TABLE {$this->postsTable} ADD KEY category_published (category_id, is_published, published_at)");
+        $this->ensureIndex('show_on_home', ['show_on_home'], "ALTER TABLE {$this->postsTable} ADD KEY show_on_home (show_on_home)");
+        $this->ensureIndex('priority', ['priority'], "ALTER TABLE {$this->postsTable} ADD KEY priority (priority)");
+        $this->ensureIndex('home_featured', ['is_published', 'show_on_home', 'priority', 'published_at'], "ALTER TABLE {$this->postsTable} ADD KEY home_featured (is_published, show_on_home, priority, published_at)");
+        $this->ensureIndex('popular_published', ['is_published', 'views_count', 'priority', 'published_at'], "ALTER TABLE {$this->postsTable} ADD KEY popular_published (is_published, views_count, priority, published_at)");
+    }
+
+    protected function ensureIndex(string $name, array $columns, string $sql): void
+    {
+        $exists = (bool)db()->query("SHOW INDEX FROM {$this->postsTable} WHERE Key_name = ?", [$name])->getOne();
+        if (!$exists) {
+            foreach ($columns as $column) {
+                if (!$this->postColumnExists($column)) {
+                    return;
+                }
+            }
+
+            db()->query($sql);
+        }
+    }
+
+    protected function postColumnExists(string $column): bool
+    {
+        return (bool)db()->query("SHOW COLUMNS FROM {$this->postsTable} LIKE ?", [$column])->getColumn();
     }
 
     /**
@@ -112,7 +149,7 @@ class Admin
         $this->ensureSchema();
 
         return db()->query(
-            "SELECT p.*, c.name AS category_name
+            "SELECT {$this->postListSelectColumns('c.name')}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              ORDER BY p.priority DESC, p.published_at DESC, p.id DESC"
@@ -164,7 +201,7 @@ class Admin
         $offset = $pagination->getOffset();
 
         $items = db()->query(
-            "SELECT p.*, c.name AS category_name
+            "SELECT {$this->postListSelectColumns('c.name')}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
@@ -191,6 +228,8 @@ class Admin
     {
         $this->ensureSchema();
 
+        $perPage = max(1, (int)($options['per_page'] ?? 15));
+        $pageParam = (string)($options['page_param'] ?? 'page');
         $search = trim((string)($options['search'] ?? ''));
         $sort = (string)($options['sort'] ?? 'published_at');
         $direction = strtolower((string)($options['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
@@ -218,21 +257,35 @@ class Admin
 
         $where = 'WHERE ' . implode(' AND ', $whereParts);
 
+        $total = (int)db()->query(
+            "SELECT COUNT(*)
+             FROM {$this->postsTable} p
+             LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
+             {$where}",
+            $params
+        )->getColumn();
+
+        $pagination = new Pagination($total, $perPage, PAGINATION_SETTINGS['midSize'], PAGINATION_SETTINGS['maxPages'], PAGINATION_SETTINGS['tpl'], $pageParam);
+        $offset = $pagination->getOffset();
+
         $items = db()->query(
-            "SELECT p.*, COALESCE(c.name, c.name_ru, c.name_en, p.category) AS category_name
+            "SELECT {$this->postListSelectColumns('COALESCE(c.name, c.name_ru, c.name_en, p.category)')}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
-             ORDER BY {$orderBy} {$direction}, p.priority DESC, p.id DESC",
+             ORDER BY {$orderBy} {$direction}, p.priority DESC, p.id DESC
+             LIMIT {$offset}, {$perPage}",
             $params
         )->get() ?: [];
 
         return [
             'items' => $items,
-            'total' => count($items),
+            'total' => $total,
+            'pagination' => $pagination,
             'search' => $search,
             'sort' => $sort,
             'direction' => strtolower($direction),
+            'per_page' => $perPage,
         ];
     }
 
@@ -244,13 +297,32 @@ class Admin
         $this->ensureSchema();
 
         return db()->query(
-            "SELECT p.*, c.name AS category_name
+            "SELECT {$this->postFormSelectColumns('c.name')}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.id = ?
              LIMIT 1",
             [$id]
         )->getOne();
+    }
+
+    protected function postListSelectColumns(string $categorySql): string
+    {
+        return "p.id, p.title, p.slug, p.category, p.category_id, p.excerpt, p.image,
+                p.hide_placeholder_image, p.show_on_home, p.priority,
+                p.author_id, p.author_name, p.author_role, p.views_count,
+                p.published_at, p.is_published,
+                {$categorySql} AS category_name";
+    }
+
+    protected function postFormSelectColumns(string $categorySql): string
+    {
+        return "p.id, p.title, p.slug, p.category, p.category_id, p.excerpt, p.content, p.image,
+                p.seo_title, p.seo_description, p.seo_keywords, p.seo_image,
+                p.hide_placeholder_image, p.show_on_home, p.priority,
+                p.author_id, p.author_name, p.author_role, p.views_count,
+                p.published_at, p.is_published,
+                {$categorySql} AS category_name";
     }
 
     /**
@@ -288,6 +360,7 @@ class Admin
                 'is_published' => !empty($data['is_published']) ? 1 : 0,
             ]
         );
+        Post::clearPublicCache();
 
         return (int)db()->getInsertId();
     }
@@ -340,6 +413,7 @@ class Admin
                 'is_published' => !empty($data['is_published']) ? 1 : 0,
             ]
         );
+        Post::clearPublicCache();
     }
 
     /**
@@ -349,6 +423,7 @@ class Admin
     {
         $this->ensureSchema();
         db()->query("DELETE FROM {$this->postsTable} WHERE id = ?", [$id]);
+        Post::clearPublicCache();
     }
 
     /**
@@ -393,6 +468,8 @@ class Admin
                 [$id]
             );
         }
+
+        Post::clearPublicCache();
 
         return $nextStatus;
     }
@@ -509,6 +586,7 @@ class Admin
                 date('Y-m-d H:i:s'),
             ]
         );
+        Post::clearPublicCache();
 
         return (int)db()->getInsertId();
     }
@@ -543,6 +621,7 @@ class Admin
             "UPDATE {$this->postsTable} SET category = ?, category_id = ? WHERE category_id = ?",
             [$name, $id, $id]
         );
+        Post::clearPublicCache();
     }
 
     /**
@@ -568,6 +647,7 @@ class Admin
         }
 
         db()->query("DELETE FROM {$this->categoriesTable} WHERE id = ?", [$id]);
+        Post::clearPublicCache();
         return true;
     }
 

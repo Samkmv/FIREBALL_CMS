@@ -1,9 +1,16 @@
 <?php
-$formAction = $is_edit
-    ? base_href('/admin/posts/edit/' . (int)$post['id'])
-    : base_href('/admin/posts/create');
+$editorMode = (string)($editor_mode ?? 'post');
+$isPageEditor = $editorMode === 'page';
+$entity = $isPageEditor ? (array)($page ?? []) : (array)($post ?? []);
+$post = $entity;
+$listUrl = $isPageEditor ? base_href('/admin/pages') : base_href('/admin/posts');
+$formAction = $isPageEditor
+    ? ($is_edit ? base_href('/admin/pages/edit/' . (int)($entity['id'] ?? 0)) : base_href('/admin/pages/create'))
+    : ($is_edit ? base_href('/admin/posts/edit/' . (int)($entity['id'] ?? 0)) : base_href('/admin/posts/create'));
+$autosaveUrl = $isPageEditor ? base_href('/admin/pages/autosave') : base_href('/admin/posts/autosave');
+$editorDefaultDirectory = $isPageEditor ? 'pages' : 'posts';
 $formData = session()->get('form_data') ?: [];
-$currentImage = $formData['image'] ?? ($post['image'] ?? '');
+$currentImage = $formData['image'] ?? ($entity['image'] ?? '');
 $currentImageUrl = $formData['image_url'] ?? $currentImage;
 $selectedFileField = trim((string)request()->get('fireball_file_field', ''));
 $selectedFileValue = trim((string)request()->get('fireball_file_value', ''));
@@ -13,14 +20,14 @@ if ($selectedFileField === 'post_image' && $selectedFileValue !== '') {
 }
 $hidePlaceholderImage = array_key_exists('hide_placeholder_image', $formData)
     ? (int)$formData['hide_placeholder_image']
-    : (int)($post['hide_placeholder_image'] ?? 0);
+    : (int)($entity['hide_placeholder_image'] ?? 0);
 $showOnHome = array_key_exists('show_on_home', $formData)
     ? (int)$formData['show_on_home']
-    : (int)($post['show_on_home'] ?? 0);
+    : (int)($entity['show_on_home'] ?? 0);
 $priorityValue = array_key_exists('priority', $formData)
     ? (int)$formData['priority']
-    : (int)($post['priority'] ?? 0);
-$publishedAtSource = old('published_at') ?: ($post['published_at'] ?? '');
+    : (int)($entity['priority'] ?? 0);
+$publishedAtSource = old('published_at') ?: ($entity['published_at'] ?? '');
 $publishedAtValue = $publishedAtSource !== '' && strtotime($publishedAtSource)
     ? date('Y-m-d H:i:S', strtotime($publishedAtSource))
     : date('Y-m-d H:i:S');
@@ -29,7 +36,7 @@ $excerptValue = array_key_exists('excerpt', $formData)
     : (string)($post['excerpt'] ?? '');
 $contentValue = array_key_exists('content', $formData)
     ? (string)$formData['content']
-    : (string)($post['content'] ?? '');
+    : (string)($entity['content'] ?? '');
 $translateOrFallback = static function (string $key, string $fallback = ''): string {
     $value = return_translation($key);
 
@@ -58,7 +65,7 @@ $formErrors = session()->get('form_errors') ?: [];
 $requiredSummaryLabel = $translateOrFallback('admin_form_required_summary', 'Заполните обязательные поля:');
 $editorConfig = [
     'fileManagerUrl' => base_href('/admin/files'),
-    'defaultDirectory' => 'posts',
+    'defaultDirectory' => $editorDefaultDirectory,
     'fonts' => [
         ['value' => '"Helvetica Neue", Arial, sans-serif', 'label' => 'Helvetica'],
         ['value' => 'Georgia, serif', 'label' => 'Georgia'],
@@ -2737,15 +2744,17 @@ $editorConfig = [
 </style>
 
 <?php ob_start(); ?>
-<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts') ?>">
+<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= $listUrl ?>">
     <i class="ci-arrow-left"></i>
     <span><?= print_translation('admin_btn_back') ?></span>
 </a>
 <?php $adminPageActions = ob_get_clean(); ?>
 
 <?= view()->renderPartial('admin/shell_open', [
-    'title' => $is_edit ? return_translation('admin_post_edit_heading') : return_translation('admin_post_create_heading'),
-    'subtitle' => return_translation('admin_post_form_subtitle'),
+    'title' => $isPageEditor
+        ? ($is_edit ? return_translation('admin_page_edit_heading') : return_translation('admin_page_create_heading'))
+        : ($is_edit ? return_translation('admin_post_edit_heading') : return_translation('admin_post_create_heading')),
+    'subtitle' => $isPageEditor ? return_translation('admin_page_form_subtitle') : return_translation('admin_post_form_subtitle'),
     'actions' => $adminPageActions,
     'sidebar_col_class' => 'col-lg-4 col-xl-3',
     'main_col_class' => 'col-lg-8 col-xl-9',
@@ -2758,8 +2767,8 @@ $editorConfig = [
         enctype="multipart/form-data"
         data-post-form
         data-post-autosave
-        data-autosave-url="<?= base_href('/admin/posts/autosave') ?>"
-        data-autosave-post-id="<?= $is_edit ? (int)$post['id'] : 0 ?>"
+        data-autosave-url="<?= $autosaveUrl ?>"
+        data-autosave-post-id="<?= $is_edit ? (int)($entity['id'] ?? 0) : 0 ?>"
         data-autosave-saving="<?= htmlSC(return_translation('admin_post_autosave_saving')) ?>"
         data-autosave-saved="<?= htmlSC(return_translation('admin_post_autosave_saved')) ?>"
         data-autosave-error="<?= htmlSC(return_translation('admin_post_autosave_error')) ?>"
@@ -2780,19 +2789,57 @@ $editorConfig = [
         </div>
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label"><?= print_translation('admin_posts_col_title') ?></label>
-                <input class="form-control <?= get_validation_class('title') ?>" type="text" name="title" value="<?= old('title') ?: htmlSC($post['title'] ?? '') ?>" data-slug-source="#post_slug" required>
+                <label class="form-label"><?= $isPageEditor ? print_translation('admin_page_field_title') : print_translation('admin_posts_col_title') ?></label>
+                <input class="form-control <?= get_validation_class('title') ?>" type="text" name="title" value="<?= old('title') ?: htmlSC($entity['title'] ?? '') ?>" data-slug-source="#post_slug" required>
                 <?= get_errors('title') ?>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Slug</label>
-                <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="post_slug" name="slug" value="<?= old('slug') ?: htmlSC($post['slug'] ?? '') ?>" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en" pattern="[a-z0-9-]+" data-slug-input required>
+                <label class="form-label"><?= $isPageEditor ? print_translation('admin_page_field_slug') : 'URL' ?></label>
+                <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="post_slug" name="slug" value="<?= old('slug') ?: htmlSC($entity['slug'] ?? '') ?>" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en" pattern="[a-z0-9-]+" data-slug-input required>
                 <?= get_errors('slug') ?>
             </div>
+            <?php if ($isPageEditor): ?>
+                <div class="col-md-6">
+                    <label class="form-label"><?= print_translation('admin_page_field_menu_title') ?></label>
+                    <input class="form-control <?= get_validation_class('menu_title') ?>" type="text" name="menu_title" value="<?= old('menu_title') ?: htmlSC($entity['menu_title'] ?? '') ?>">
+                    <div class="form-text"><?= print_translation('admin_page_field_menu_title_hint') ?></div>
+                    <?= get_errors('menu_title') ?>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><?= print_translation('admin_page_field_menu_order') ?></label>
+                    <input class="form-control <?= get_validation_class('menu_order') ?>" type="number" name="menu_order" value="<?= array_key_exists('menu_order', $formData) ? (int)$formData['menu_order'] : (int)($entity['menu_order'] ?? 0) ?>" min="0" step="1">
+                    <div class="form-text"><?= print_translation('admin_page_field_menu_order_hint') ?></div>
+                    <?= get_errors('menu_order') ?>
+                </div>
+                <div class="col-md-6">
+                    <?php
+                    $menuVisibility = (string)($formData['menu_visibility'] ?? '');
+                    if ($menuVisibility === '') {
+                        $showInHeader = (int)($entity['show_in_header'] ?? 0);
+                        $showInFooter = (int)($entity['show_in_footer'] ?? 0);
+                        $menuVisibility = match (true) {
+                            $showInHeader === 1 && $showInFooter === 1 => 'both',
+                            $showInHeader === 1 => 'header',
+                            $showInFooter === 1 => 'footer',
+                            default => 'none',
+                        };
+                    }
+                    ?>
+                    <label class="form-label"><?= print_translation('admin_page_field_menu_visibility') ?></label>
+                    <select class="form-select <?= get_validation_class('menu_visibility') ?>" name="menu_visibility" data-select='{"removeItemButton":false,"position":"auto"}' data-select-floating data-select-clear="false" aria-label="<?= htmlSC(return_translation('admin_page_field_menu_visibility')) ?>">
+                        <option value="none" <?= $menuVisibility === 'none' ? 'selected' : '' ?>><?= print_translation('admin_page_visibility_none') ?></option>
+                        <option value="header" <?= $menuVisibility === 'header' ? 'selected' : '' ?>><?= print_translation('admin_page_visibility_header') ?></option>
+                        <option value="footer" <?= $menuVisibility === 'footer' ? 'selected' : '' ?>><?= print_translation('admin_page_visibility_footer') ?></option>
+                        <option value="both" <?= $menuVisibility === 'both' ? 'selected' : '' ?>><?= print_translation('admin_page_visibility_both') ?></option>
+                    </select>
+                    <div class="form-text"><?= print_translation('admin_page_field_menu_visibility_hint') ?></div>
+                    <?= get_errors('menu_visibility') ?>
+                </div>
+            <?php else: ?>
             <div class="col-md-6">
                 <label class="form-label"><?= print_translation('admin_posts_col_category') ?></label>
                 <?php $selectedCategoryId = (int)(old('category_id') ?: ($post['category_id'] ?? 0)); ?>
-                <select class="form-select <?= get_validation_class('category_id') ?>" name="category_id" data-select aria-label="<?= htmlSC(return_translation('admin_posts_col_category')) ?>" required>
+                <select class="form-select <?= get_validation_class('category_id') ?>" name="category_id" data-select='{"removeItemButton":false,"position":"auto"}' data-select-floating data-select-clear="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_category')) ?>" required>
                     <option value=""><?= print_translation('admin_posts_select_category') ?></option>
                     <?php foreach ($categories as $category): ?>
                         <option value="<?= (int)$category['id'] ?>" <?= $selectedCategoryId === (int)$category['id'] ? 'selected' : '' ?>>
@@ -2830,8 +2877,9 @@ $editorConfig = [
                 <label class="form-label"><?= print_translation('admin_post_excerpt') ?></label>
                 <textarea class="form-control" name="excerpt" rows="2"><?= htmlSC($excerptValue) ?></textarea>
             </div>
+            <?php endif; ?>
             <div class="col-12">
-                <label class="form-label"><?= print_translation('admin_post_content') ?></label>
+                <label class="form-label"><?= $isPageEditor ? print_translation('admin_page_content') : print_translation('admin_post_content') ?></label>
                 <textarea
                     class="form-control <?= get_validation_class('content') ?> d-none"
                     id="post_content"
@@ -2846,6 +2894,7 @@ $editorConfig = [
                 ></div>
                 <?= get_errors('content') ?>
             </div>
+            <?php if (!$isPageEditor): ?>
             <div class="col-12">
                 <label class="form-label"><?= print_translation('admin_post_image') ?></label>
                 <input
@@ -3004,8 +3053,30 @@ $editorConfig = [
                 </div>
                 <div class="form-text"><?= print_translation('admin_post_show_on_home_hint') ?></div>
             </div>
+            <?php else: ?>
+            <div class="col-12 pt-2">
+                <div class="border rounded-4 p-3 p-md-4">
+                    <div class="mb-3">
+                        <h2 class="h5 mb-1"><?= print_translation('admin_seo_section_heading') ?></h2>
+                        <p class="text-body-secondary mb-0"><?= print_translation('admin_seo_section_subtitle') ?></p>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label"><?= print_translation('admin_seo_title') ?></label>
+                            <input class="form-control" type="text" name="meta_title" value="<?= old('meta_title') ?: htmlSC($entity['meta_title'] ?? '') ?>">
+                            <div class="form-text"><?= print_translation('admin_seo_title_hint') ?></div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label"><?= print_translation('admin_seo_description') ?></label>
+                            <textarea class="form-control" name="meta_description" rows="3"><?= old('meta_description') ?: htmlSC($entity['meta_description'] ?? '') ?></textarea>
+                            <div class="form-text"><?= print_translation('admin_seo_description_hint') ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
             <div class="col-12">
-                <?php $isPublished = (int)(old('is_published') ?: ($post['is_published'] ?? 1)); ?>
+                <?php $isPublished = array_key_exists('is_published', $formData) ? (int)$formData['is_published'] : (int)($entity['is_published'] ?? ($isPageEditor ? 0 : 1)); ?>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="is_published" name="is_published" value="1" <?= $isPublished === 1 ? 'checked' : '' ?>>
                     <label class="form-check-label" for="is_published"><?= print_translation('admin_posts_status_published') ?></label>
@@ -3014,7 +3085,7 @@ $editorConfig = [
             <div class="col-12">
                 <div class="d-flex flex-wrap gap-2">
                     <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
-                    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/posts') ?>"><i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?></a>
+                    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= $listUrl ?>"><i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?></a>
                 </div>
             </div>
             <div class="col-12">
