@@ -43,7 +43,17 @@ $renderPagesTable = static function (array $items, string $tableKey, string $emp
             <p class="text-body-secondary mb-0" data-admin-posts-empty><?= htmlSC($emptyText) ?></p>
         <?php else: ?>
             <div class="table-responsive overflow-auto admin-table-scroll">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0 admin-pages-table">
+                    <colgroup>
+                        <col class="admin-pages-table__col-id">
+                        <col class="admin-pages-table__col-title">
+                        <col class="admin-pages-table__col-menu">
+                        <col class="admin-pages-table__col-slug">
+                        <col class="admin-pages-table__col-order">
+                        <col class="admin-pages-table__col-status">
+                        <col class="admin-pages-table__col-updated">
+                        <col class="admin-pages-table__col-actions">
+                    </colgroup>
                     <thead class="position-sticky top-0">
                     <tr>
                         <th scope="col">
@@ -106,46 +116,53 @@ $renderPagesTable = static function (array $items, string $tableKey, string $emp
                             </td>
                             <td class="text-nowrap"><?= $page['updated_at'] !== '' ? date('d.m.Y H:i', strtotime($page['updated_at'])) : '-' ?></td>
                             <td class="text-nowrap">
-                                <div class="d-inline-flex flex-nowrap align-items-center gap-2">
+                                <div class="dropdown admin-post-actions-dropdown" data-admin-post-actions-dropdown>
+                                    <button
+                                        class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
+                                        type="button"
+                                        data-bs-toggle="dropdown"
+                                        data-bs-display="static"
+                                        aria-expanded="false"
+                                        aria-label="<?= htmlSC(print_translation('admin_posts_col_actions')) ?>"
+                                    >
+                                        <i class="ci-more-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
                                     <a
-                                        class="btn btn-sm btn-outline-primary btn-icon rounded-circle"
+                                        class="dropdown-item d-flex align-items-center gap-2"
                                         href="<?= (int)$page['is_published'] === 1 ? base_href('/' . $page['slug']) : base_href('/admin/pages/preview/' . (int)$page['id']) ?>"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        aria-label="<?= htmlSC(return_translation('admin_btn_view')) ?>"
-                                        title="<?= htmlSC(return_translation('admin_btn_view')) ?>"
-                                        data-bs-toggle="tooltip"
                                     >
-                                        <i class="ci-eye"></i>
+                                        <i class="ci-external-link"></i>
+                                        <span><?= print_translation('admin_btn_view') ?></span>
                                     </a>
                                     <a
-                                        class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
+                                        class="dropdown-item d-flex align-items-center gap-2"
                                         href="<?= base_href('/admin/pages/edit/' . (int)$page['id']) ?>"
-                                        aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        data-bs-toggle="tooltip"
                                     >
                                         <i class="ci-edit"></i>
+                                        <span><?= print_translation('admin_btn_edit') ?></span>
                                     </a>
                                     <form action="<?= base_href('/admin/pages/toggle-published') ?>" method="post">
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="id" value="<?= (int)$page['id'] ?>">
                                         <?php if ((int)$page['is_published'] === 1): ?>
                                             <button
-                                                class="btn btn-sm btn-outline-warning btn-icon rounded-circle"
+                                                class="dropdown-item d-flex align-items-center gap-2"
                                                 type="submit"
-                                                aria-label="<?= htmlSC(return_translation('admin_btn_unpublish')) ?>"
-                                                title="<?= htmlSC(return_translation('admin_btn_unpublish')) ?>"
-                                                data-bs-toggle="tooltip"
-                                            ><i class="ci-eye-off"></i></button>
+                                            >
+                                                <i class="ci-eye-off"></i>
+                                                <span><?= print_translation('admin_btn_unpublish') ?></span>
+                                            </button>
                                         <?php else: ?>
                                             <button
-                                                class="btn btn-sm btn-outline-success btn-icon rounded-circle"
+                                                class="dropdown-item d-flex align-items-center gap-2"
                                                 type="submit"
-                                                aria-label="<?= htmlSC(return_translation('admin_btn_publish')) ?>"
-                                                title="<?= htmlSC(return_translation('admin_btn_publish')) ?>"
-                                                data-bs-toggle="tooltip"
-                                            ><i class="ci-check"></i></button>
+                                            >
+                                                <i class="ci-check"></i>
+                                                <span><?= print_translation('admin_btn_publish') ?></span>
+                                            </button>
                                         <?php endif; ?>
                                     </form>
                                     <form
@@ -158,13 +175,14 @@ $renderPagesTable = static function (array $items, string $tableKey, string $emp
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="id" value="<?= (int)$page['id'] ?>">
                                         <button
-                                            class="btn btn-sm btn-outline-danger btn-icon rounded-circle"
+                                            class="dropdown-item d-flex align-items-center gap-2 text-danger"
                                             type="submit"
-                                            aria-label="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                            data-bs-toggle="tooltip"
-                                        ><i class="ci-trash"></i></button>
+                                        >
+                                            <i class="ci-trash"></i>
+                                            <span><?= print_translation('admin_btn_delete') ?></span>
+                                        </button>
                                     </form>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

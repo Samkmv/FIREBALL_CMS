@@ -1,1 +1,1 @@
-a:2:{s:4:"data";a:1:{i:0;a:4:{s:2:"id";i:1;s:4:"href";s:27:"http://localhost:8888/about";s:5:"label";s:9:"О нас";s:10:"menu_order";i:0;}}s:8:"end_time";i:1780403514;}
+a:2:{s:4:"data";a:1:{i:0;a:4:{s:2:"id";i:1;s:4:"href";s:27:"http://localhost:8888/about";s:5:"label";s:9:"О нас";s:10:"menu_order";i:0;}}s:8:"end_time";i:1780405213;}

@@ -1681,6 +1681,136 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
     white-space: nowrap;
 }
 
+.admin-posts-table {
+    min-width: 1180px;
+    table-layout: fixed;
+}
+
+.admin-posts-table__col-id {
+    width: 4.5rem;
+}
+
+.admin-posts-table__col-title {
+    width: 24rem;
+}
+
+.admin-posts-table__col-category {
+    width: 11rem;
+}
+
+.admin-posts-table__col-priority {
+    width: 8rem;
+}
+
+.admin-posts-table__col-author {
+    width: 12rem;
+}
+
+.admin-posts-table__col-views {
+    width: 8rem;
+}
+
+.admin-posts-table__col-status {
+    width: 10rem;
+}
+
+.admin-posts-table__col-date {
+    width: 13.5rem;
+}
+
+.admin-posts-table__col-actions {
+    width: 7rem;
+}
+
+.admin-posts-table th,
+.admin-posts-table td {
+    overflow-wrap: normal;
+}
+
+.admin-posts-table td:nth-child(2) {
+    overflow-wrap: anywhere;
+}
+
+.admin-pages-table {
+    min-width: 1120px;
+    table-layout: fixed;
+}
+
+.admin-pages-table__col-id {
+    width: 4.5rem;
+}
+
+.admin-pages-table__col-title {
+    width: 18rem;
+}
+
+.admin-pages-table__col-menu {
+    width: 13rem;
+}
+
+.admin-pages-table__col-slug {
+    width: 14rem;
+}
+
+.admin-pages-table__col-order {
+    width: 7rem;
+}
+
+.admin-pages-table__col-status {
+    width: 9rem;
+}
+
+.admin-pages-table__col-updated {
+    width: 12.5rem;
+}
+
+.admin-pages-table__col-actions {
+    width: 7rem;
+}
+
+.admin-pages-table th,
+.admin-pages-table td {
+    overflow-wrap: normal;
+}
+
+.admin-pages-table td:nth-child(2),
+.admin-pages-table td:nth-child(3),
+.admin-pages-table td:nth-child(4) {
+    overflow-wrap: anywhere;
+}
+
+.admin-posts-table th:nth-child(9),
+.admin-posts-table td:nth-child(9) {
+    text-align: right;
+}
+
+.admin-pages-table th:nth-child(8),
+.admin-pages-table td:nth-child(8) {
+    text-align: right;
+}
+
+.admin-post-actions-dropdown .dropdown-menu,
+.admin-post-actions-dropdown__menu--floating {
+    min-width: 12rem;
+    z-index: 1085;
+}
+
+.admin-post-actions-dropdown__menu--floating {
+    z-index: 12020;
+}
+
+.admin-post-actions-dropdown .dropdown-item,
+.admin-post-actions-dropdown__menu--floating .dropdown-item {
+    --cz-dropdown-item-padding-x: 1rem;
+    --cz-dropdown-item-padding-y: .55rem;
+}
+
+.admin-post-actions-dropdown .dropdown-item i,
+.admin-post-actions-dropdown__menu--floating .dropdown-item i {
+    width: 1rem;
+    text-align: center;
+}
+
 .admin-shell-offcanvas {
     width: min(100vw - 1.25rem, 24rem);
     height: 100dvh;

@@ -38,6 +38,110 @@ $(function(){
     document.addEventListener('hide.bs.offcanvas', syncOffcanvasState);
     document.addEventListener('hidden.bs.offcanvas', syncOffcanvasState);
 
+    const adminPostActionDropdowns = new WeakMap();
+    const getAdminPostActionDropdown = (target) => {
+        if (!target || !target.closest) {
+            return null;
+        }
+
+        return target.closest('[data-admin-post-actions-dropdown]');
+    };
+
+    const placeAdminPostActionMenu = (dropdown) => {
+        const state = adminPostActionDropdowns.get(dropdown);
+        if (!state || !state.menu || !state.toggle) {
+            return;
+        }
+
+        const gap = 6;
+        const viewportGap = 12;
+        const buttonRect = state.toggle.getBoundingClientRect();
+        const menu = state.menu;
+        menu.style.position = 'fixed';
+        menu.style.left = 'auto';
+        menu.style.right = Math.max(viewportGap, window.innerWidth - buttonRect.right) + 'px';
+        menu.style.maxHeight = Math.max(160, window.innerHeight - viewportGap * 2) + 'px';
+        menu.style.overflowY = 'auto';
+
+        const menuHeight = menu.offsetHeight || 0;
+        const belowTop = buttonRect.bottom + gap;
+        const aboveTop = buttonRect.top - menuHeight - gap;
+        const belowSpace = window.innerHeight - buttonRect.bottom - viewportGap;
+        const aboveSpace = buttonRect.top - viewportGap;
+        const shouldOpenUp = menuHeight > belowSpace && aboveSpace > belowSpace;
+        const top = shouldOpenUp
+            ? Math.max(viewportGap, aboveTop)
+            : Math.min(belowTop, window.innerHeight - menuHeight - viewportGap);
+
+        menu.style.top = Math.max(viewportGap, top) + 'px';
+    };
+
+    document.addEventListener('show.bs.dropdown', (event) => {
+        const dropdown = getAdminPostActionDropdown(event.target);
+        if (!dropdown) {
+            return;
+        }
+
+        const menu = dropdown.querySelector('.dropdown-menu');
+        const toggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+        if (!menu || !toggle) {
+            return;
+        }
+
+        const placeholder = document.createComment('admin-post-actions-menu');
+        menu.parentNode.insertBefore(placeholder, menu);
+
+        const update = () => placeAdminPostActionMenu(dropdown);
+        adminPostActionDropdowns.set(dropdown, {
+            menu,
+            toggle,
+            placeholder,
+            parent: dropdown,
+            update
+        });
+
+        document.body.appendChild(menu);
+        menu.classList.add('admin-post-actions-dropdown__menu--floating');
+    });
+
+    document.addEventListener('shown.bs.dropdown', (event) => {
+        const dropdown = getAdminPostActionDropdown(event.target);
+        if (!dropdown || !adminPostActionDropdowns.has(dropdown)) {
+            return;
+        }
+
+        placeAdminPostActionMenu(dropdown);
+        const state = adminPostActionDropdowns.get(dropdown);
+        if (!state) {
+            return;
+        }
+
+        window.addEventListener('resize', state.update, { passive: true });
+        document.addEventListener('scroll', state.update, { passive: true, capture: true });
+    });
+
+    document.addEventListener('hide.bs.dropdown', (event) => {
+        const dropdown = getAdminPostActionDropdown(event.target);
+        const state = dropdown ? adminPostActionDropdowns.get(dropdown) : null;
+        if (!dropdown || !state) {
+            return;
+        }
+
+        window.removeEventListener('resize', state.update);
+        document.removeEventListener('scroll', state.update, { capture: true });
+
+        state.menu.classList.remove('admin-post-actions-dropdown__menu--floating');
+        state.menu.removeAttribute('style');
+        if (state.placeholder.parentNode) {
+            state.placeholder.parentNode.insertBefore(state.menu, state.placeholder);
+            state.placeholder.parentNode.removeChild(state.placeholder);
+        } else {
+            state.parent.appendChild(state.menu);
+        }
+
+        adminPostActionDropdowns.delete(dropdown);
+    });
+
     document.querySelectorAll('[data-admin-posts-tabs]').forEach((root) => {
         const input = root.querySelector('[data-admin-posts-live-search]');
         const panes = Array.from(root.querySelectorAll('[data-admin-posts-pane]'));
