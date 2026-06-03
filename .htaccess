@@ -26,6 +26,16 @@ RewriteCond %{REQUEST_URI} !^/public/
 RewriteCond %{DOCUMENT_ROOT}/public/$1 !-d
 RewriteRule ^(.*)/$ /$1 [R=302,L]
 
+# Serve only existing theme assets from the project-level /themes directory.
+RewriteCond %{REQUEST_URI} ^/themes/[^/]+/assets/
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Serve theme preview images without exposing PHP templates.
+RewriteCond %{REQUEST_URI} ^/themes/[^/]+/preview\.(png|jpg|jpeg|webp|gif|svg)$ [NC]
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
 
 # Rewrite "everything" to the "public" subdirectory if not already
 # This ignores existing files/dirs in the document root

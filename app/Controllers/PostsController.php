@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\Post;
+use FBL\Theme;
 
 /**
  * Обслуживает публичный раздел блога: список записей и страницу отдельного поста.
@@ -39,7 +40,7 @@ class PostsController extends BaseController
             ? base_href('/posts') . '?category=' . rawurlencode((string)$postsData['current_category'])
             : base_href('/posts');
 
-        return view('posts/index', [
+        return Theme::render('posts', [
             'title' => return_translation('posts_index_title'),
             'posts' => $postsData['posts'],
             'total_posts' => $postsData['total'],
@@ -74,7 +75,7 @@ class PostsController extends BaseController
         $sidebarData = $this->posts->getSidebarData($slug);
         $popularPosts = $this->posts->getPopularPosts(5, $slug);
 
-        return view('posts/show', [
+        return Theme::render('post', [
             'title' => $post['title'],
             'post' => $post,
             'categories' => $sidebarData['categories'],

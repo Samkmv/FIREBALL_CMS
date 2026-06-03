@@ -11,6 +11,8 @@ use App\Services\AnalyticsService;
 use App\Services\UpdateCenter;
 use FBL\Auth;
 use FBL\File;
+use FBL\Markdown;
+use FBL\Theme;
 
 /**
  * Управляет административной частью: контентом, пользователями, ролями, заявками и настройками сайта.
@@ -431,6 +433,253 @@ class AdminController extends BaseController
     }
 
     /**
+     * Shows installed CMS themes and the active theme state.
+     */
+    public function themes()
+    {
+        return view('admin/themes', [
+            'title' => return_translation('admin_themes_title'),
+            'themes' => Theme::getThemes(),
+            'active_theme' => Theme::getActiveTheme(),
+        ]);
+    }
+
+    /**
+     * Creates a new theme from the admin panel.
+     */
+    public function themeCreate()
+    {
+        if (request()->isPost()) {
+            $data = $this->normalizeThemeData(request()->getData(), true);
+            $data['preview_upload'] = request()->files['preview_upload'] ?? null;
+            $errors = $this->validateThemeData($data, true);
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/themes/create'));
+            }
+
+            try {
+                $theme = Theme::createTheme($data);
+            } catch (\Throwable $exception) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', [
+                    'slug' => [return_translation('admin_themes_create_error')],
+                ]);
+                response()->redirect(base_href('/admin/themes/create'));
+            }
+
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_themes_created'));
+            response()->redirect(base_href('/admin/themes/edit/' . $theme['slug'] . '?created=1'));
+        }
+
+        return view('admin/theme_form', [
+            'title' => return_translation('admin_themes_create_title'),
+            'theme_item' => [],
+            'is_edit' => false,
+            'created' => false,
+            'footer_scripts' => [
+                base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
+            ],
+        ]);
+    }
+
+    /**
+     * Imports a theme ZIP package after validating it.
+     */
+    public function themeImport()
+    {
+        if (request()->isPost()) {
+            try {
+                $theme = Theme::import(request()->files['theme_zip'] ?? null);
+            } catch (\Throwable $exception) {
+                session()->setFlash('error', return_translation('admin_themes_import_error') . ' ' . $exception->getMessage());
+                response()->redirect(base_href('/admin/themes/import'));
+            }
+
+            session()->setFlash('success', return_translation('admin_themes_imported'));
+            response()->redirect(base_href('/admin/themes/import?imported=' . rawurlencode((string)$theme['slug'])));
+        }
+
+        $importedSlug = trim((string)request()->get('imported', ''));
+        $importedTheme = $importedSlug !== '' ? Theme::getTheme($importedSlug) : null;
+
+        return view('admin/theme_import', [
+            'title' => return_translation('admin_themes_import_title'),
+            'imported_theme' => $importedTheme,
+        ]);
+    }
+
+    /**
+     * Edits theme metadata stored in theme.json. Slug is immutable.
+     */
+    public function themeEdit()
+    {
+        $slug = trim((string)get_route_param('slug'));
+        $theme = Theme::getTheme($slug);
+        if (!$theme) {
+            abort();
+        }
+
+        if (request()->isPost()) {
+            $data = $this->normalizeThemeData(request()->getData(), false);
+            $data['preview_upload'] = request()->files['preview_upload'] ?? null;
+            $errors = $this->validateThemeData($data, false);
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/themes/edit/' . $slug));
+            }
+
+            if (!Theme::updateTheme($slug, $data)) {
+                session()->setFlash('error', return_translation('admin_themes_update_error'));
+                response()->redirect(base_href('/admin/themes/edit/' . $slug));
+            }
+
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_themes_updated'));
+            response()->redirect(base_href('/admin/themes/edit/' . $slug));
+        }
+
+        return view('admin/theme_form', [
+            'title' => return_translation('admin_themes_edit_title'),
+            'theme_item' => $theme,
+            'is_edit' => true,
+            'created' => request()->get('created') === '1',
+            'footer_scripts' => [
+                base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
+            ],
+        ]);
+    }
+
+    /**
+     * Deletes a theme unless it is default or currently active.
+     */
+    public function themeDelete()
+    {
+        $slug = trim((string)request()->post('slug'));
+
+        if (!Theme::deleteTheme($slug)) {
+            session()->setFlash('error', return_translation('admin_themes_delete_error'));
+            response()->redirect(base_href('/admin/themes'));
+        }
+
+        session()->setFlash('success', return_translation('admin_themes_deleted'));
+        response()->redirect(base_href('/admin/themes'));
+    }
+
+    /**
+     * Shows a read-only list of files generated for a theme.
+     */
+    public function themeFiles()
+    {
+        $slug = trim((string)get_route_param('slug'));
+        $theme = Theme::getTheme($slug);
+        if (!$theme) {
+            abort();
+        }
+
+        return view('admin/theme_files', [
+            'title' => return_translation('admin_themes_files_title'),
+            'theme_item' => $theme,
+            'files' => Theme::listThemeFiles($slug),
+        ]);
+    }
+
+    /**
+     * Redirects an admin to frontend preview mode without activating the theme.
+     */
+    public function themePreview()
+    {
+        $slug = trim((string)get_route_param('slug'));
+        $previewUrl = Theme::preview($slug);
+        if ($previewUrl === null) {
+            session()->setFlash('error', return_translation('admin_themes_preview_error'));
+            response()->redirect(base_href('/admin/themes'));
+        }
+
+        response()->redirect($previewUrl);
+    }
+
+    /**
+     * Exports a theme as a ZIP package.
+     */
+    public function themeExport()
+    {
+        $slug = trim((string)get_route_param('slug'));
+
+        try {
+            $zipPath = Theme::export($slug);
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', return_translation('admin_themes_export_error') . ' ' . $exception->getMessage());
+            response()->redirect(base_href('/admin/themes'));
+        }
+
+        $downloadName = $slug . '.zip';
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+        header('Content-Length: ' . filesize($zipPath));
+        readfile($zipPath);
+        @unlink($zipPath);
+        exit;
+    }
+
+    /**
+     * Shows developer documentation for FIREBALL CMS themes.
+     */
+    public function themeDocs()
+    {
+        $articles = $this->themeDocsArticles();
+        $article = trim((string)get_route_param('article', 'introduction'));
+        if (!isset($articles[$article])) {
+            $article = 'introduction';
+        }
+
+        $query = trim((string)request()->get('q', ''));
+        $language = app()->get('lang')['code'] ?? 'ru';
+        $resolved = $this->resolveThemeDocsArticle($language, $article);
+        $content = is_file($resolved['path']) ? (string)file_get_contents($resolved['path']) : '';
+        $articleKeys = array_keys($articles);
+        $currentIndex = array_search($article, $articleKeys, true);
+        $previousArticle = $currentIndex > 0 ? $articleKeys[$currentIndex - 1] : null;
+        $nextArticle = $currentIndex < count($articleKeys) - 1 ? $articleKeys[$currentIndex + 1] : null;
+
+        return view('admin/docs_themes', [
+            'title' => return_translation('admin_docs_themes_title'),
+            'articles' => $articles,
+            'article' => $article,
+            'article_title' => $articles[$article],
+            'content_html' => Markdown::render($content),
+            'query' => $query,
+            'search_results' => $this->searchThemeDocs($language, $query, $articles),
+            'previous_article' => $previousArticle,
+            'next_article' => $nextArticle,
+            'resolved_language' => $resolved['language'],
+        ]);
+    }
+
+    /**
+     * Activates a valid theme by slug.
+     */
+    public function activateTheme()
+    {
+        $slug = trim((string)request()->post('slug'));
+
+        if (!Theme::activate($slug)) {
+            session()->setFlash('error', return_translation('admin_themes_activate_error'));
+            response()->redirect(base_href('/admin/themes'));
+        }
+
+        session()->setFlash('success', return_translation('admin_themes_activated'));
+        response()->redirect(base_href('/admin/themes'));
+    }
+
+    /**
      * Показывает отдельную страницу центра обновлений и сохраняет его настройки.
      */
     public function updates()
@@ -754,6 +1003,201 @@ class AdminController extends BaseController
         }
 
         return $errors;
+    }
+
+    /**
+     * Normalizes theme form fields before validation and storage.
+     */
+    protected function normalizeThemeData(array $data, bool $includeSlug): array
+    {
+        $normalized = [
+            'name' => trim(strip_tags((string)($data['name'] ?? ''))),
+            'author' => trim(strip_tags((string)($data['author'] ?? ''))),
+            'description' => trim(strip_tags((string)($data['description'] ?? ''))),
+            'version' => trim(strip_tags((string)($data['version'] ?? '1.0.0'))),
+            'preview' => trim(strip_tags((string)($data['preview'] ?? 'preview.png'))),
+            'preview_source' => trim(strip_tags((string)($data['preview_source'] ?? ''))),
+        ];
+
+        if ($normalized['version'] === '') {
+            $normalized['version'] = '1.0.0';
+        }
+
+        if ($normalized['preview'] === '') {
+            $normalized['preview'] = 'preview.png';
+        }
+
+        if ($includeSlug) {
+            $normalized['slug'] = trim((string)($data['slug'] ?? ''));
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Validates theme metadata and creation rules.
+     */
+    protected function validateThemeData(array $data, bool $includeSlug): array
+    {
+        $errors = [];
+
+        if ($data['name'] === '') {
+            $errors['name'][] = return_translation('admin_themes_validation_name_required');
+        }
+
+        if ($data['version'] === '' || !$this->isValidThemeVersion($data['version'])) {
+            $errors['version'][] = return_translation('admin_themes_validation_version_invalid');
+        }
+
+        if ($data['preview'] !== '' && !$this->isValidThemePreview($data['preview'])) {
+            $errors['preview'][] = return_translation('admin_themes_validation_preview_invalid');
+        }
+        if (($data['preview_source'] ?? '') !== '' && !$this->isValidThemePreviewSource((string)$data['preview_source'])) {
+            $errors['preview_source'][] = return_translation('admin_themes_validation_preview_source_invalid');
+        }
+        if (!empty($data['preview_upload']['size']) && !$this->isValidThemePreviewUpload($data['preview_upload'])) {
+            $errors['preview_upload'][] = return_translation('admin_themes_validation_preview_upload_invalid');
+        }
+
+        if ($includeSlug) {
+            $slug = (string)($data['slug'] ?? '');
+
+            if ($slug === '') {
+                $errors['slug'][] = return_translation('admin_themes_validation_slug_required');
+            } elseif (!$this->isValidThemeSlug($slug)) {
+                $errors['slug'][] = return_translation('admin_themes_validation_slug_invalid');
+            } elseif ($this->isReservedThemeSlug($slug)) {
+                $errors['slug'][] = return_translation('admin_themes_validation_slug_reserved');
+            } elseif (file_exists(ROOT . '/themes/' . $slug)) {
+                $errors['slug'][] = return_translation('admin_themes_validation_slug_exists');
+            }
+        }
+
+        return $errors;
+    }
+
+    protected function isValidThemeSlug(string $slug): bool
+    {
+        return preg_match('/^[a-z0-9][a-z0-9_-]*$/', $slug) === 1
+            && !str_contains($slug, '..')
+            && !str_contains($slug, '/')
+            && !str_contains($slug, '\\');
+    }
+
+    protected function isReservedThemeSlug(string $slug): bool
+    {
+        return in_array($slug, [
+            'default', 'admin', 'system', 'core', 'app', 'config', 'public', 'vendor',
+            'tmp', 'cache', 'uploads', 'assets', 'themes', 'files', 'api', 'static',
+        ], true);
+    }
+
+    protected function isValidThemeVersion(string $version): bool
+    {
+        return preg_match('/^[0-9]+(?:\.[0-9]+){0,3}(?:[-+][A-Za-z0-9._-]+)?$/', $version) === 1;
+    }
+
+    protected function isValidThemePreview(string $preview): bool
+    {
+        return preg_match('/^[A-Za-z0-9._-]+\.(png|jpg|jpeg|webp|gif|svg)$/i', $preview) === 1
+            && !str_contains($preview, '..')
+            && !str_contains($preview, '/')
+            && !str_contains($preview, '\\');
+    }
+
+    protected function isValidThemePreviewSource(string $previewSource): bool
+    {
+        return preg_match('~^/uploads/(?!.*(?:^|/)\.\.(?:/|$))[A-Za-z0-9/_.,%+\-=]+\.(png|jpe?g|webp|gif|svg)$~i', $previewSource) === 1;
+    }
+
+    protected function isValidThemePreviewUpload(array $file): bool
+    {
+        $error = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($error !== UPLOAD_ERR_OK) {
+            return false;
+        }
+
+        $size = (int)($file['size'] ?? 0);
+        $name = (string)($file['name'] ?? '');
+
+        return $size > 0
+            && $size <= 5 * 1024 * 1024
+            && preg_match('/\.(png|jpe?g|webp|gif|svg)$/i', $name) === 1;
+    }
+
+    protected function themeDocsArticles(): array
+    {
+        return [
+            'introduction' => 'Введение',
+            'structure' => 'Структура темы',
+            'theme-json' => 'theme.json',
+            'templates' => 'Шаблоны',
+            'partials' => 'Partials',
+            'assets' => 'Assets',
+            'helpers' => 'Helper-функции',
+            'create-theme' => 'Создание темы',
+            'import-export' => 'Импорт и экспорт',
+        ];
+    }
+
+    protected function resolveThemeDocsArticle(string $language, string $article): array
+    {
+        $article = preg_replace('/[^a-z0-9_-]/', '', $article) ?: 'introduction';
+        $candidates = array_values(array_unique([
+            strtolower($language),
+            'en',
+            'ru',
+        ]));
+
+        foreach ($candidates as $candidate) {
+            $path = ROOT . '/docs/' . $candidate . '/themes/' . $article . '.md';
+            $real = realpath($path);
+            $base = realpath(ROOT . '/docs/' . $candidate . '/themes');
+            if ($real !== false && $base !== false && str_starts_with($real, rtrim($base, '/') . '/') && is_file($real)) {
+                return ['path' => $real, 'language' => $candidate];
+            }
+        }
+
+        return [
+            'path' => ROOT . '/docs/ru/themes/' . $article . '.md',
+            'language' => 'ru',
+        ];
+    }
+
+    protected function searchThemeDocs(string $language, string $query, array $articles): array
+    {
+        if (mb_strlen($query) < 2) {
+            return [];
+        }
+
+        $results = [];
+        $needle = mb_strtolower($query);
+        foreach ($articles as $slug => $title) {
+            $resolved = $this->resolveThemeDocsArticle($language, $slug);
+            if (!is_file($resolved['path'])) {
+                continue;
+            }
+
+            $markdown = (string)file_get_contents($resolved['path']);
+            $haystack = mb_strtolower(strip_tags($markdown . ' ' . $title));
+            if (!str_contains($haystack, $needle)) {
+                continue;
+            }
+
+            $plain = trim(preg_replace('/\s+/u', ' ', strip_tags($markdown)) ?? '');
+            $position = mb_stripos($plain, $query);
+            $excerpt = $position === false
+                ? mb_substr($plain, 0, 180)
+                : mb_substr($plain, max(0, $position - 70), 180);
+
+            $results[] = [
+                'slug' => $slug,
+                'title' => $title,
+                'excerpt' => $excerpt,
+            ];
+        }
+
+        return $results;
     }
 
     /**

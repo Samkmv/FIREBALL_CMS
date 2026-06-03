@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\Page;
+use FBL\Theme;
 
 /**
  * Serves public CMS pages by slug.
@@ -30,7 +31,7 @@ class PagesController extends BaseController
             abort();
         }
 
-        return view('pages/show', [
+        return Theme::render('page', [
             'title' => $page['title'],
             'page' => $page,
             'seo_title' => $page['meta_title'] !== '' ? $page['meta_title'] : $page['title'],

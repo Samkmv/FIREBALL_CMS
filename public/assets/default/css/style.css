@@ -2280,3 +2280,65 @@ body.is-site-fullscreen .plyr * {
         pointer-events: none;
     }
 }
+
+.docs-theme-article {
+    font-size: 1rem;
+    line-height: 1.75;
+}
+
+.docs-theme-article h1,
+.docs-theme-article h2,
+.docs-theme-article h3,
+.docs-theme-article h4 {
+    scroll-margin-top: 7rem;
+}
+
+.docs-theme-article p,
+.docs-theme-article ul,
+.docs-theme-article ol,
+.docs-theme-article pre {
+    margin-bottom: 1.15rem;
+}
+
+.docs-theme-article code {
+    color: #9a3412;
+    background: rgba(154, 52, 18, .08);
+    border-radius: .35rem;
+    padding: .1rem .3rem;
+    font-size: .92em;
+}
+
+.docs-theme-article pre {
+    color: #1f2937;
+    background: #f8fafc !important;
+}
+
+.docs-theme-article pre code {
+    color: #1f2937;
+    background: transparent;
+    padding: 0;
+}
+
+[data-bs-theme="dark"] .docs-theme-article code {
+    color: #fed7aa;
+    background: rgba(251, 146, 60, .16);
+}
+
+[data-bs-theme="dark"] .docs-theme-article pre {
+    color: #e5e7eb;
+    background: #111827 !important;
+    border-color: #374151 !important;
+}
+
+[data-bs-theme="dark"] .docs-theme-article pre code {
+    color: #e5e7eb;
+    background: transparent;
+}
+
+.docs-theme-article a {
+    text-decoration: none;
+}
+
+.docs-theme-article a:hover {
+    text-decoration: underline;
+}

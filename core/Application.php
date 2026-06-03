@@ -18,6 +18,7 @@ class Application
     public Cache $cache;
     public Database $db;
     public View $view;
+    public ThemeManager $theme;
     public static Application $app;
     protected array $container = [];
 
@@ -36,6 +37,7 @@ class Application
         $this->cache = new Cache();
         $this->generateCSRFToken();
         $this->db = new Database();
+        $this->theme = new ThemeManager();
         Auth::setUser();
     }
 

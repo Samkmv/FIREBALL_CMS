@@ -107,6 +107,18 @@ $app->router->post('/admin/roles/edit/(?P<id>\d+)/?', [AdminController::class, '
 $app->router->post('/admin/roles/delete', [AdminController::class, 'roleDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes', [AdminController::class, 'themes'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes/create', [AdminController::class, 'themeCreate'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/themes/create', [AdminController::class, 'themeCreate'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes/import', [AdminController::class, 'themeImport'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/themes/import', [AdminController::class, 'themeImport'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/themes/activate', [AdminController::class, 'activateTheme'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes/preview/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themePreview'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes/export/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeExport'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes/edit/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeEdit'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/themes/edit/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeEdit'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes/files/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeFiles'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/themes/delete', [AdminController::class, 'themeDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/update-center/check', [AdminController::class, 'checkForUpdates'])->middleware(['auth', 'admin']);
@@ -118,6 +130,8 @@ $app->router->post('/admin/files/rename', [FileManagerController::class, 'rename
 $app->router->post('/admin/files/action', [FileManagerController::class, 'bulkAction'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/delete', [FileManagerController::class, 'delete'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/folder/delete', [FileManagerController::class, 'deleteDirectory'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/docs/themes', [AdminController::class, 'themeDocs'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/docs/themes/(?P<article>[a-z0-9_-]+)/?', [AdminController::class, 'themeDocs'])->middleware(['auth', 'admin']);
 
 // Store pages ---------- //
 $app->router->post('/add-to-cart', [CartController::class, 'addToCart']);

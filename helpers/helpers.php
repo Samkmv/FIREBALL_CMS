@@ -116,6 +116,16 @@ function view($view = '', $data = [], $layout = ''): string|\FBL\View
     return app()->view;
 }
 
+function theme(): \FBL\ThemeManager
+{
+    return app()->theme;
+}
+
+function theme_asset($path): string
+{
+    return theme()->asset($path);
+}
+
 function abort($error = '', $code = 404)
 {
     if (!is_array(app()->get('lang'))) {

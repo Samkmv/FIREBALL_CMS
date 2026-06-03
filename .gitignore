@@ -5,6 +5,9 @@
 public/uploads/*
 tmp/cache/*
 !tmp/cache/.gitkeep
+tmp/theme-actions.log
+tmp/theme-exports/
+tmp/theme-import-*
 public/assets/cartzilla-html
 config/config.local.php
 AGENT.md

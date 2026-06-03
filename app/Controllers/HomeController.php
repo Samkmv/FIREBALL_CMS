@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Helpers\Cart\Cart;
 use App\Models\ContactRequest;
 use App\Models\Post;
+use FBL\Theme;
 
 /**
  * Обрабатывает главную страницу и страницу контактов сайта.
@@ -38,7 +39,7 @@ class HomeController extends BaseController
 
         $featured_posts = $this->posts->getHomeFeaturedPosts(8);
 
-        return view('home/index', [
+        return Theme::render('home', [
             'title' => return_translation('home_index_title'),
             'sales_products' => [],
             'root_categories' => [],
