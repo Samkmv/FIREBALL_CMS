@@ -3,7 +3,8 @@
 .gigaide
 .gigacode
 public/uploads/*
-tmp/cache
+tmp/cache/*
+!tmp/cache/.gitkeep
 public/assets/cartzilla-html
 config/config.local.php
 AGENT.md

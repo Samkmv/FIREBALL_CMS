@@ -1,1 +1,0 @@
-a:2:{s:4:"data";a:6:{s:4:"name";s:12:"Москва";s:4:"slug";s:6:"moscow";s:9:"seo_title";s:41:"Записи FIREBALL CMS в Москве";s:15:"seo_description";s:56:"Демо-категория записей FIREBALL CMS.";s:12:"seo_keywords";s:18:"fireball cms, demo";s:9:"seo_image";s:0:"";}s:8:"end_time";i:1780402046;}
