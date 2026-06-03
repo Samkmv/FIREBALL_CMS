@@ -20,4 +20,12 @@ final class AnalyticsController extends BaseController
             'analytics' => $this->analytics->dashboardData(),
         ]);
     }
+
+    public function index()
+    {
+        return view('admin/analytics', [
+            'title' => return_translation('admin_analytics_full_title'),
+            'analytics' => $this->analytics->fullAnalyticsData(request()->getData()),
+        ]);
+    }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use FBL\Pagination;
+
 final class AnalyticsRepository
 {
     private string $table = 'analytics_visits';
@@ -150,11 +152,11 @@ final class AnalyticsRepository
         $this->ensureSchema();
 
         return db()->query(
-            "SELECT current_page AS label, COUNT(*) AS total
+            "SELECT current_page AS label, COUNT(*) AS views, COUNT(*) AS total
              FROM {$this->table}
              WHERE created_at >= ?
              GROUP BY current_page
-             ORDER BY total DESC
+             ORDER BY views DESC
              LIMIT " . max(1, $limit),
             [$from]
         )->get() ?: [];
@@ -172,6 +174,112 @@ final class AnalyticsRepository
         )->get() ?: [];
     }
 
+    public function paginatedPopularPages(array $params = []): array
+    {
+        $this->ensureSchema();
+
+        $perPage = max(1, min(100, (int)($params['per_page'] ?? 20)));
+        $sort = (string)($params['sort'] ?? 'views');
+        $direction = strtoupper((string)($params['direction'] ?? 'desc')) === 'ASC' ? 'ASC' : 'DESC';
+        $sortMap = [
+            'page' => 'label',
+            'views' => 'views',
+        ];
+        $orderBy = $sortMap[$sort] ?? 'views';
+        $filter = $this->buildFilterWhere($params, ['search', 'country', 'device_type', 'browser', 'source']);
+        $where = $filter['where'] !== '' ? 'WHERE ' . $filter['where'] : '';
+
+        $total = (int)db()->query(
+            "SELECT COUNT(*) FROM (
+                SELECT current_page
+                FROM {$this->table}
+                {$where}
+                GROUP BY current_page
+             ) grouped_pages",
+            $filter['params']
+        )->getColumn();
+
+        $pagination = new Pagination($total, $perPage, PAGINATION_SETTINGS['midSize'], PAGINATION_SETTINGS['maxPages'], PAGINATION_SETTINGS['tpl'], 'pages_page');
+        $offset = $pagination->getOffset();
+
+        $items = db()->query(
+            "SELECT current_page AS label, COUNT(*) AS views, COUNT(*) AS total
+             FROM {$this->table}
+             {$where}
+             GROUP BY current_page
+             ORDER BY {$orderBy} {$direction}
+             LIMIT {$offset}, {$perPage}",
+            $filter['params']
+        )->get() ?: [];
+
+        return [
+            'items' => $items,
+            'total' => $total,
+            'pagination' => $pagination,
+            'sort' => $sort,
+            'direction' => strtolower($direction),
+            'per_page' => $perPage,
+        ];
+    }
+
+    public function paginatedVisits(array $params = []): array
+    {
+        $this->ensureSchema();
+
+        $perPage = max(1, min(100, (int)($params['per_page'] ?? 20)));
+        $sort = (string)($params['sort'] ?? 'created_at');
+        $direction = strtoupper((string)($params['direction'] ?? 'desc')) === 'ASC' ? 'ASC' : 'DESC';
+        $sortMap = [
+            'created_at' => 'created_at',
+            'country' => 'country',
+            'device' => 'device_type',
+            'browser' => 'browser',
+            'source' => 'source',
+            'page' => 'current_page',
+        ];
+        $orderBy = $sortMap[$sort] ?? 'created_at';
+        $filter = $this->buildFilterWhere($params, ['search', 'country', 'device_type', 'browser', 'source']);
+        $where = $filter['where'] !== '' ? 'WHERE ' . $filter['where'] : '';
+
+        $total = (int)db()->query(
+            "SELECT COUNT(*) FROM {$this->table} {$where}",
+            $filter['params']
+        )->getColumn();
+
+        $pagination = new Pagination($total, $perPage, PAGINATION_SETTINGS['midSize'], PAGINATION_SETTINGS['maxPages'], PAGINATION_SETTINGS['tpl'], 'visits_page');
+        $offset = $pagination->getOffset();
+
+        $items = db()->query(
+            "SELECT id, created_at, ip, country, country_code, city, device_type, os, browser, source, landing_page, current_page
+             FROM {$this->table}
+             {$where}
+             ORDER BY {$orderBy} {$direction}, id DESC
+             LIMIT {$offset}, {$perPage}",
+            $filter['params']
+        )->get() ?: [];
+
+        return [
+            'items' => $items,
+            'total' => $total,
+            'pagination' => $pagination,
+            'sort' => $sort,
+            'direction' => strtolower($direction),
+            'per_page' => $perPage,
+        ];
+    }
+
+    public function filterOptions(): array
+    {
+        $this->ensureSchema();
+
+        return [
+            'countries' => $this->distinctValues('country'),
+            'devices' => $this->distinctValues('device_type'),
+            'browsers' => $this->distinctValues('browser'),
+            'sources' => $this->distinctValues('source'),
+        ];
+    }
+
     private function nullableString(mixed $value): ?string
     {
         $value = trim((string)$value);
@@ -184,5 +292,66 @@ final class AnalyticsRepository
         if (!in_array($column, $allowed, true)) {
             throw new \InvalidArgumentException('Unsupported analytics grouping column.');
         }
+    }
+
+    private function buildFilterWhere(array $params, array $enabledFilters): array
+    {
+        $where = [];
+        $queryParams = [];
+
+        if (!empty($params['from'])) {
+            $where[] = 'created_at >= ?';
+            $queryParams[] = (string)$params['from'];
+        }
+
+        if (!empty($params['to'])) {
+            $where[] = 'created_at <= ?';
+            $queryParams[] = (string)$params['to'];
+        }
+
+        if (in_array('search', $enabledFilters, true) && trim((string)($params['search'] ?? '')) !== '') {
+            $search = '%' . trim((string)$params['search']) . '%';
+            $where[] = '(current_page LIKE ? OR landing_page LIKE ? OR ip LIKE ? OR country LIKE ? OR city LIKE ?)';
+            array_push($queryParams, $search, $search, $search, $search, $search);
+        }
+
+        $exactFilters = [
+            'country' => 'country',
+            'device_type' => 'device_type',
+            'browser' => 'browser',
+            'source' => 'source',
+        ];
+
+        foreach ($exactFilters as $key => $column) {
+            if (!in_array($key, $enabledFilters, true)) {
+                continue;
+            }
+
+            $value = trim((string)($params[$key] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+
+            $where[] = "{$column} = ?";
+            $queryParams[] = $value;
+        }
+
+        return [
+            'where' => implode(' AND ', $where),
+            'params' => $queryParams,
+        ];
+    }
+
+    private function distinctValues(string $column): array
+    {
+        $this->ensureAllowedColumn($column);
+
+        return db()->query(
+            "SELECT DISTINCT {$column} AS value
+             FROM {$this->table}
+             WHERE {$column} IS NOT NULL AND {$column} <> ''
+             ORDER BY {$column} ASC
+             LIMIT 200"
+        )->get() ?: [];
     }
 }

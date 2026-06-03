@@ -60,6 +60,7 @@ $app->router->get('/posts', [PostsController::class, 'index']);
 
 // Admin pages ---------- //
 $app->router->get('/admin', [AdminController::class, 'dashboard'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/analytics', [AnalyticsController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/analytics/data', [AnalyticsController::class, 'dashboardData'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/contact-requests', [AdminController::class, 'contactRequests'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/contact-requests/delete', [AdminController::class, 'contactRequestDelete'])->middleware(['auth', 'admin']);

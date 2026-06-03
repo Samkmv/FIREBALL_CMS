@@ -1627,6 +1627,79 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
     min-width: 720px;
 }
 
+.admin-analytics-card {
+    min-height: 9rem;
+}
+
+.admin-analytics-card__label {
+    min-height: 2.6rem;
+    line-height: 1.25;
+}
+
+.admin-analytics-card__label i {
+    flex: 0 0 1.1rem;
+    width: 1.1rem;
+    line-height: 1.25;
+    margin-top: .1rem;
+}
+
+.admin-analytics-card__value {
+    margin-top: auto;
+}
+
+.admin-analytics-table--pages {
+    min-width: 640px;
+}
+
+.admin-analytics-table--latest {
+    min-width: 920px;
+}
+
+.analytics-scroll-container {
+    max-height: 420px;
+    overflow-x: auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+.analytics-scroll-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.analytics-scroll-container::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #d1d5db;
+}
+
+[data-theme="dark"] .analytics-scroll-container,
+[data-bs-theme="dark"] .analytics-scroll-container {
+    scrollbar-color: #4b5563 transparent;
+}
+
+[data-theme="dark"] .analytics-scroll-container::-webkit-scrollbar-thumb,
+[data-bs-theme="dark"] .analytics-scroll-container::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+.analytics-scroll-container.admin-table-scroll[data-simplebar] {
+    overflow-y: auto !important;
+}
+
+.analytics-scroll-container.admin-table-scroll[data-simplebar] .simplebar-content-wrapper {
+    max-height: 420px;
+    overflow: auto !important;
+}
+
+.admin-analytics-table--pages-full {
+    min-width: 760px;
+}
+
+.admin-analytics-table--visits-full {
+    min-width: 1120px;
+}
+
 [data-admin-shell] {
     --admin-shell-panel-bg: color-mix(in srgb, var(--cz-body-bg) 94%, var(--cz-tertiary-bg));
     --admin-shell-panel-border: color-mix(in srgb, var(--cz-border-color) 78%, transparent);
@@ -2163,6 +2236,19 @@ body.is-site-fullscreen .plyr * {
     [data-admin-nav] .list-group-item {
         flex: 0 0 auto;
         white-space: nowrap;
+    }
+
+    .admin-analytics-card,
+    .admin-analytics-card__label {
+        min-height: 0;
+    }
+
+    .analytics-scroll-container {
+        max-height: 300px;
+    }
+
+    .analytics-scroll-container.admin-table-scroll[data-simplebar] .simplebar-content-wrapper {
+        max-height: 300px;
     }
 
 }

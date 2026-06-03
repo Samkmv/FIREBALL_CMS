@@ -87,12 +87,47 @@ final class AnalyticsService
             'countries' => $this->repository->topGrouped('country', $last30, 10),
             'devices' => $this->repository->topGrouped('os', $last30, 10),
             'pages' => $this->repository->popularPages($last30, 20),
-            'latest' => $this->repository->latest(15),
+            'latest' => $this->repository->latest(20),
         ];
 
         cache()->set('analytics:dashboard', $data, $this->cacheTtl);
 
         return $data;
+    }
+
+    public function fullAnalyticsData(array $query = []): array
+    {
+        $period = (string)($query['period'] ?? '30');
+        if (!in_array($period, ['7', '30', '90', 'all'], true)) {
+            $period = '30';
+        }
+
+        $dateRange = $this->dateRangeForPeriod($period);
+        $filters = [
+            'period' => $period,
+            'search' => trim((string)($query['search'] ?? '')),
+            'country' => trim((string)($query['country'] ?? '')),
+            'device_type' => trim((string)($query['device_type'] ?? '')),
+            'browser' => trim((string)($query['browser'] ?? '')),
+            'source' => trim((string)($query['source'] ?? '')),
+            'from' => $dateRange['from'],
+            'to' => $dateRange['to'],
+        ];
+
+        return [
+            'filters' => $filters,
+            'filter_options' => $this->repository->filterOptions(),
+            'pages' => $this->repository->paginatedPopularPages(array_merge($filters, [
+                'per_page' => 20,
+                'sort' => (string)($query['pages_sort'] ?? 'views'),
+                'direction' => (string)($query['pages_direction'] ?? 'desc'),
+            ])),
+            'visits' => $this->repository->paginatedVisits(array_merge($filters, [
+                'per_page' => 20,
+                'sort' => (string)($query['visits_sort'] ?? 'created_at'),
+                'direction' => (string)($query['visits_direction'] ?? 'desc'),
+            ])),
+        ];
     }
 
     public function legacyStats(): array
@@ -361,5 +396,19 @@ final class AnalyticsService
         }
 
         return $result;
+    }
+
+    private function dateRangeForPeriod(string $period): array
+    {
+        if ($period === 'all') {
+            return ['from' => null, 'to' => null];
+        }
+
+        $days = max(1, (int)$period);
+
+        return [
+            'from' => date('Y-m-d 00:00:00', strtotime('-' . ($days - 1) . ' days')),
+            'to' => date('Y-m-d 23:59:59'),
+        ];
     }
 }

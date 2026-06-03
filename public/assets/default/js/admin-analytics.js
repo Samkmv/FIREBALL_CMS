@@ -11,6 +11,13 @@
         payload = {};
     }
 
+    let i18n = {};
+    try {
+        i18n = JSON.parse(root.getAttribute('data-admin-analytics-i18n') || '{}');
+    } catch (error) {
+        i18n = {};
+    }
+
     const charts = {};
     const colors = ['#212529', '#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#20c997'];
 
@@ -29,7 +36,7 @@
             type: 'line',
             labels: data.labels || [],
             values: data.values || [],
-            label: 'Визиты'
+            label: i18n.visits || 'Visits'
         });
     }
 
@@ -40,7 +47,7 @@
             type: 'donut',
             labels: data.labels,
             values: data.values,
-            label: 'Источники'
+            label: i18n.sources || 'Sources'
         });
     }
 
@@ -51,7 +58,7 @@
             type: 'donut',
             labels: data.labels,
             values: data.values,
-            label: 'Устройства'
+            label: i18n.devices || 'Devices'
         });
     }
 
@@ -76,7 +83,10 @@
             return;
         }
 
-        target.innerHTML = '<div class="text-body-secondary py-5 text-center">График недоступен.</div>';
+        const message = document.createElement('div');
+        message.className = 'text-body-secondary py-5 text-center';
+        message.textContent = i18n.unavailable || 'Chart is unavailable.';
+        target.appendChild(message);
     }
 
     function renderApex(target, config) {
