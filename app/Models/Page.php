@@ -278,6 +278,68 @@ class Page extends Model
     }
 
     /**
+     * Finds a published page by ID for public rendering.
+     */
+    public function findPublishedById(int $id): array|false
+    {
+        if ($id <= 0) {
+            return false;
+        }
+
+        $this->ensureSchema();
+        $cacheKey = $this->publicCacheKey('published_id:' . $id);
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached ?: false;
+        }
+
+        $page = db()->query(
+            "SELECT {$this->pageSelectColumns()}
+             FROM {$this->table}
+             WHERE id = ? AND is_published = 1
+             LIMIT 1",
+            [$id]
+        )->getOne();
+
+        if (!$page) {
+            cache()->set($cacheKey, [], 300);
+            return false;
+        }
+
+        $item = $this->normalizePage($page);
+        cache()->set($cacheKey, $item, 600);
+
+        return $item;
+    }
+
+    /**
+     * Returns published pages for settings dropdowns.
+     */
+    public function getPublishedOptions(): array
+    {
+        $this->ensureSchema();
+
+        $pages = db()->query(
+            "SELECT id, title, menu_title, slug
+             FROM {$this->table}
+             WHERE is_published = 1
+             ORDER BY title ASC, id ASC"
+        )->get() ?: [];
+
+        return array_map(static function (array $page): array {
+            $title = trim((string)($page['title'] ?? ''));
+            $menuTitle = trim((string)($page['menu_title'] ?? ''));
+
+            return [
+                'id' => (int)$page['id'],
+                'title' => $title,
+                'label' => $menuTitle !== '' ? $menuTitle : $title,
+                'slug' => trim((string)($page['slug'] ?? '')),
+            ];
+        }, $pages);
+    }
+
+    /**
      * Creates a page.
      */
     public function createPage(array $data): int

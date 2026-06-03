@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\Page;
+use App\Models\SiteSetting;
 use FBL\Theme;
 
 /**
@@ -12,11 +13,13 @@ class PagesController extends BaseController
 {
 
     protected Page $pages;
+    protected SiteSetting $siteSettings;
 
     public function __construct()
     {
         parent::__construct();
         $this->pages = new Page();
+        $this->siteSettings = new SiteSetting();
     }
 
     /**
@@ -31,6 +34,11 @@ class PagesController extends BaseController
             abort();
         }
 
+        if ($this->isAssignedHomepage($page)) {
+            response()->setResponseCode(301);
+            response()->redirect(base_href('/'));
+        }
+
         return Theme::render('page', [
             'title' => $page['title'],
             'page' => $page,
@@ -38,6 +46,12 @@ class PagesController extends BaseController
             'seo_description' => $page['meta_description'],
             'seo_canonical' => base_href('/' . $page['slug']),
         ]);
+    }
+
+    protected function isAssignedHomepage(array $page): bool
+    {
+        return $this->siteSettings->get('homepage_type', 'default') === 'page'
+            && (int)$this->siteSettings->get('homepage_page_id', '0') === (int)($page['id'] ?? 0);
     }
 
 }

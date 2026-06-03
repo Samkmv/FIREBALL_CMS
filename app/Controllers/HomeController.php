@@ -4,7 +4,9 @@ namespace App\Controllers;
 
 use App\Helpers\Cart\Cart;
 use App\Models\ContactRequest;
+use App\Models\Page;
 use App\Models\Post;
+use App\Models\SiteSetting;
 use FBL\Theme;
 
 /**
@@ -14,7 +16,9 @@ class HomeController extends BaseController
 {
 
     protected ContactRequest $contactRequests;
+    protected Page $pages;
     protected Post $posts;
+    protected SiteSetting $siteSettings;
 
     /**
      * Инициализирует модели, используемые на публичных страницах контроллера.
@@ -23,7 +27,9 @@ class HomeController extends BaseController
     {
         parent::__construct();
         $this->contactRequests = new ContactRequest();
+        $this->pages = new Page();
         $this->posts = new Post();
+        $this->siteSettings = new SiteSetting();
     }
 
     /**
@@ -37,6 +43,27 @@ class HomeController extends BaseController
 //        Cart::clearCart();
 //        dump(Cart::getCart());
 
+        $homepageType = $this->siteSettings->get('homepage_type', 'default');
+
+        if ($homepageType === 'page') {
+            $page = $this->pages->findPublishedById((int)$this->siteSettings->get('homepage_page_id', '0'));
+            if ($page) {
+                return $this->renderPageHomepage($page);
+            }
+        }
+
+        if ($homepageType === 'posts') {
+            return $this->renderPostsHomepage();
+        }
+
+        return $this->renderDefaultHomepage();
+    }
+
+    /**
+     * Renders the original system homepage.
+     */
+    protected function renderDefaultHomepage(): string
+    {
         $featured_posts = $this->posts->getHomeFeaturedPosts(8);
 
         return Theme::render('home', [
@@ -44,6 +71,43 @@ class HomeController extends BaseController
             'sales_products' => [],
             'root_categories' => [],
             'featured_posts' => $featured_posts,
+        ]);
+    }
+
+    /**
+     * Renders a CMS page as the site root while keeping canonical URL at "/".
+     */
+    protected function renderPageHomepage(array $page): string
+    {
+        return Theme::render('page', [
+            'title' => $page['title'],
+            'page' => $page,
+            'seo_title' => $page['meta_title'] !== '' ? $page['meta_title'] : $page['title'],
+            'seo_description' => $page['meta_description'],
+            'seo_canonical' => base_href('/'),
+        ]);
+    }
+
+    /**
+     * Renders a latest-posts feed as the site root.
+     */
+    protected function renderPostsHomepage(): string
+    {
+        $limit = max(1, min(100, (int)$this->siteSettings->get('posts_per_page', '10')));
+        $posts = $this->posts->getLatestPublishedPosts($limit);
+        $sidebarData = $this->posts->getSidebarData();
+
+        return Theme::render('posts', [
+            'title' => return_translation('posts_index_title'),
+            'posts' => $posts,
+            'total_posts' => count($posts),
+            'pagination' => null,
+            'current_category' => null,
+            'current_category_label' => null,
+            'categories' => $sidebarData['categories'],
+            'trending_posts' => $sidebarData['trending_posts'],
+            'seo_title' => return_translation('posts_index_title'),
+            'seo_canonical' => base_href('/'),
         ]);
     }
 

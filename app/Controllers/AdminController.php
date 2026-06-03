@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\Admin;
 use App\Models\Analytics;
 use App\Models\ContactRequest;
+use App\Models\Page;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\AnalyticsService;
@@ -23,6 +24,7 @@ class AdminController extends BaseController
     protected Admin $blog;
     protected Analytics $analytics;
     protected ContactRequest $contactRequests;
+    protected Page $pages;
     protected User $users;
     protected SiteSetting $siteSettings;
     protected UpdateCenter $updateCenter;
@@ -36,6 +38,7 @@ class AdminController extends BaseController
         $this->blog = new Admin();
         $this->analytics = new Analytics();
         $this->contactRequests = new ContactRequest();
+        $this->pages = new Page();
         $this->users = new User();
         $this->siteSettings = new SiteSetting();
         $this->updateCenter = new UpdateCenter($this->siteSettings);
@@ -425,6 +428,7 @@ class AdminController extends BaseController
         return view('admin/settings', [
             'title' => return_translation('admin_settings_title'),
             'settings' => $this->siteSettings->all(),
+            'published_pages' => $this->pages->getPublishedOptions(),
             'engine_release' => require CONFIG . '/version.php',
             'footer_scripts' => [
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
@@ -875,7 +879,15 @@ class AdminController extends BaseController
             'seo_robots' => trim((string)($data['seo_robots'] ?? 'index,follow')),
             'seo_og_image' => trim((string)($data['seo_og_image'] ?? '')),
             'seo_twitter_card' => trim((string)($data['seo_twitter_card'] ?? 'summary_large_image')),
+            'homepage_type' => $this->normalizeHomepageType((string)($data['homepage_type'] ?? 'default')),
+            'homepage_page_id' => (string)max(0, (int)($data['homepage_page_id'] ?? 0)),
+            'posts_per_page' => (string)max(1, min(100, (int)($data['posts_per_page'] ?? 10))),
         ];
+    }
+
+    protected function normalizeHomepageType(string $type): string
+    {
+        return in_array($type, ['default', 'page', 'posts'], true) ? $type : 'default';
     }
 
     /**

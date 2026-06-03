@@ -1,6 +1,11 @@
 <?php
 
 $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
+$postsTranslationPrefix = trim((string)($posts_translation_prefix ?? 'posts'));
+if ($postsTranslationPrefix === '') {
+    $postsTranslationPrefix = 'posts';
+}
+$postsTranslate = static fn(string $key): string => return_translation($postsTranslationPrefix . '_' . $key);
 $categoryUrl = static function (?string $category = null): string {
     $url = base_href('/posts');
     if ($category === null || $category === '') {
@@ -66,7 +71,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
 <nav class="container pt-3 my-3 my-md-4" aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?= base_href('/') ?>"><?= print_translation('tpl_menu_nav_index') ?></a></li>
-        <li class="breadcrumb-item active" aria-current="page"><?= print_translation('posts_index_breadcrumb') ?></li>
+        <li class="breadcrumb-item active" aria-current="page"><?= htmlSC($postsTranslate('index_breadcrumb')) ?></li>
     </ol>
 </nav>
 
@@ -75,9 +80,9 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
         <div class="col-lg-8">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 pb-4 mb-2">
                 <div>
-                    <span class="badge text-bg-dark rounded-pill mb-3"><?= (int)$total_posts ?> <?= print_translation('posts_index_total') ?></span>
-                    <h1 class="h3 mb-2"><?= print_translation('posts_index_heading') ?></h1>
-                    <?php $postsIndexSubtitle = trim((string)return_translation('posts_index_subtitle')); ?>
+                    <span class="badge text-bg-dark rounded-pill mb-3"><?= (int)$total_posts ?> <?= htmlSC($postsTranslate('index_total')) ?></span>
+                    <h1 class="h3 mb-2"><?= htmlSC($postsTranslate('index_heading')) ?></h1>
+                    <?php $postsIndexSubtitle = trim((string)$postsTranslate('index_subtitle')); ?>
                     <?php if ($postsIndexSubtitle !== ''): ?>
                         <p class="text-body-secondary mb-0"><?= htmlSC($postsIndexSubtitle) ?></p>
                     <?php endif; ?>
@@ -85,7 +90,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                 <div class="d-flex flex-wrap gap-2">
                     <?php if (!empty($current_category)): ?>
                         <a class="btn btn-outline-secondary" href="<?= $categoryUrl() ?>">
-                            <?= print_translation('posts_index_clear_category') ?>: <?= htmlSC($current_category_label ?? $current_category) ?>
+                            <?= htmlSC($postsTranslate('index_clear_category')) ?>: <?= htmlSC($current_category_label ?? $current_category) ?>
                         </a>
                     <?php endif; ?>
                 </div>
@@ -105,8 +110,8 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
 
             <?php else: ?>
                 <div class="border rounded-5 p-5 text-center">
-                    <h2 class="h5 mb-2"><?= print_translation('posts_index_empty') ?></h2>
-                    <p class="text-body-secondary mb-0"><?= print_translation('posts_index_empty_desc') ?></p>
+                    <h2 class="h5 mb-2"><?= htmlSC($postsTranslate('index_empty')) ?></h2>
+                    <p class="text-body-secondary mb-0"><?= htmlSC($postsTranslate('index_empty_desc')) ?></p>
                 </div>
             <?php endif; ?>
         </div>
@@ -115,14 +120,14 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
             <div class="offcanvas-lg offcanvas-end sticky-lg-top ps-lg-4 ps-xl-0" id="blogSidebar">
                 <div class="d-none d-lg-block" style="height: 115px"></div>
                 <div class="offcanvas-header py-3">
-                    <h5 class="offcanvas-title"><?= print_translation('posts_index_sidebar_title') ?></h5>
+                    <h5 class="offcanvas-title"><?= htmlSC($postsTranslate('index_sidebar_title')) ?></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#blogSidebar" aria-label="Close"></button>
                 </div>
                 <div class="offcanvas-body d-block pt-2 py-lg-0">
-                    <h4 class="h6 mb-4"><?= print_translation('posts_index_sidebar_categories') ?></h4>
+                    <h4 class="h6 mb-4"><?= htmlSC($postsTranslate('index_sidebar_categories')) ?></h4>
                     <div class="d-flex flex-wrap gap-3">
                         <a class="btn <?= empty($current_category) ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl() ?>">
-                            <?= print_translation('posts_index_all_categories') ?> (<?= (int)$allPostsTotal ?>)
+                            <?= htmlSC($postsTranslate('index_all_categories')) ?> (<?= (int)$allPostsTotal ?>)
                         </a>
                         <?php foreach ($categories as $category): ?>
                             <a class="btn <?= ($current_category ?? '') === $category['slug'] ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl($category['slug']) ?>">
@@ -132,7 +137,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                     </div>
 
                     <?php if (!empty($trending_posts)): ?>
-                        <h4 class="h6 pt-5 mb-0"><?= print_translation('posts_index_sidebar_trending') ?></h4>
+                        <h4 class="h6 pt-5 mb-0"><?= htmlSC($postsTranslate('index_sidebar_trending')) ?></h4>
 
                         <?php foreach ($trending_posts as $index => $post): ?>
                             <article class="hover-effect-scale position-relative d-flex align-items-center <?= $index < count($trending_posts) - 1 ? 'border-bottom ' : '' ?>py-4">
@@ -145,7 +150,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                                     <div class="text-body-tertiary fs-xs">
                                         <?= date('d.m.Y', strtotime($post['published_at'])) ?>
                                         <span class="mx-1">•</span>
-                                        <?= print_translation('posts_show_views') ?> <?= (int)$post['views_count'] ?>
+                                        <?= htmlSC($postsTranslate('show_views')) ?> <?= (int)$post['views_count'] ?>
                                     </div>
                                 </div>
                                 <div class="ratio w-100" style="max-width: 86px; --cz-aspect-ratio: calc(64 / 86 * 100%)">
@@ -156,7 +161,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                     <?php endif; ?>
 
                     <?php if (!empty($socialLinks)): ?>
-                        <h4 class="h6 pt-4"><?= print_translation('posts_index_follow') ?></h4>
+                        <h4 class="h6 pt-4"><?= htmlSC($postsTranslate('index_follow')) ?></h4>
                         <div class="d-flex gap-2 pb-2">
                             <?php foreach ($socialLinks as $link): ?>
                                 <a
@@ -188,5 +193,5 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
     data-bs-theme="light"
 >
     <i class="ci-sidebar fs-base me-2"></i>
-    <?= print_translation('posts_index_sidebar_open') ?>
+    <?= htmlSC($postsTranslate('index_sidebar_open')) ?>
 </button>

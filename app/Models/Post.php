@@ -208,6 +208,34 @@ class Post extends Model
     }
 
     /**
+     * Returns latest published posts without using the legacy "show on home" flag.
+     */
+    public function getLatestPublishedPosts(int $limit = 10): array
+    {
+        $this->ensureSchema();
+        $limit = max(1, min(100, (int)$limit));
+        $cacheKey = $this->publicCacheKey('latest:' . $limit);
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $posts = db()->query(
+            "SELECT {$this->publicPostSelectColumns()}
+             FROM {$this->table} p
+             LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
+             WHERE p.is_published = 1
+             ORDER BY p.published_at DESC, p.id DESC
+             LIMIT {$limit}"
+        )->get() ?: [];
+
+        $items = $this->normalizePosts($posts);
+        cache()->set($cacheKey, $items, 300);
+
+        return $items;
+    }
+
+    /**
      * Возвращает самые просматриваемые опубликованные посты.
      */
     public function getPopularPosts(int $limit = 6, ?string $excludeSlug = null): array

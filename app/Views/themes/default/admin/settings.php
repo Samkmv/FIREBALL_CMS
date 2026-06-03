@@ -43,6 +43,16 @@ $seoMetaAuthor = $formData['seo_meta_author'] ?? ($settings['seo_meta_author'] ?
 $seoRobots = $formData['seo_robots'] ?? ($settings['seo_robots'] ?? 'index,follow');
 $seoOgImage = $formData['seo_og_image'] ?? ($settings['seo_og_image'] ?? '');
 $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'] ?? 'summary_large_image');
+$homepageType = $formData['homepage_type'] ?? ($settings['homepage_type'] ?? 'default');
+if (!in_array($homepageType, ['default', 'page', 'posts'], true)) {
+    $homepageType = 'default';
+}
+$homepagePageId = (int)($formData['homepage_page_id'] ?? ($settings['homepage_page_id'] ?? 0));
+$postsPerPage = (int)($formData['posts_per_page'] ?? ($settings['posts_per_page'] ?? 10));
+if ($postsPerPage < 1) {
+    $postsPerPage = 10;
+}
+$publishedPages = (array)($published_pages ?? []);
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -98,6 +108,42 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
                         <img id="settings_site_favicon_preview_image" src="<?= htmlSC($siteFavicon !== '' ? get_image($siteFavicon) : '') ?>" alt="favicon preview" style="width: 100%; height: 100%; object-fit: contain;">
                     </span>
                     <code class="small text-break" id="settings_site_favicon_preview_text"><?= htmlSC($siteFavicon) ?></code>
+                </div>
+            </div>
+            <div class="col-12 pt-2">
+                <div class="border rounded-4 p-3 p-md-4" data-homepage-settings>
+                    <div class="mb-3">
+                        <h2 class="h5 mb-1"><?= print_translation('admin_settings_homepage_heading') ?></h2>
+                        <p class="text-body-secondary mb-0"><?= print_translation('admin_settings_homepage_subtitle') ?></p>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><?= print_translation('admin_settings_homepage_type') ?></label>
+                            <select class="form-select" name="homepage_type" data-homepage-type>
+                                <option value="default" <?= $homepageType === 'default' ? 'selected' : '' ?>><?= print_translation('admin_settings_homepage_type_default') ?></option>
+                                <option value="page" <?= $homepageType === 'page' ? 'selected' : '' ?>><?= print_translation('admin_settings_homepage_type_page') ?></option>
+                                <option value="posts" <?= $homepageType === 'posts' ? 'selected' : '' ?>><?= print_translation('admin_settings_homepage_type_posts') ?></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 <?= $homepageType === 'page' ? '' : 'd-none' ?>" data-homepage-page-field>
+                            <label class="form-label"><?= print_translation('admin_settings_homepage_page') ?></label>
+                            <select class="form-select" name="homepage_page_id">
+                                <option value="0"><?= print_translation('admin_settings_homepage_page_placeholder') ?></option>
+                                <?php foreach ($publishedPages as $page): ?>
+                                    <option value="<?= (int)$page['id'] ?>" <?= $homepagePageId === (int)$page['id'] ? 'selected' : '' ?>>
+                                        <?= htmlSC((string)$page['label']) ?> (/<?= htmlSC((string)$page['slug']) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (empty($publishedPages)): ?>
+                                <div class="form-text"><?= print_translation('admin_settings_homepage_no_pages') ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-md-6 <?= $homepageType === 'posts' ? '' : 'd-none' ?>" data-homepage-posts-field>
+                            <label class="form-label"><?= print_translation('admin_settings_homepage_posts_per_page') ?></label>
+                            <input class="form-control" type="number" name="posts_per_page" value="<?= (int)$postsPerPage ?>" min="1" max="100" step="1">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-12 pt-2">
@@ -331,6 +377,27 @@ $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'
     </template>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const homepageSettings = document.querySelector('[data-homepage-settings]');
+            if (homepageSettings) {
+                const homepageType = homepageSettings.querySelector('[data-homepage-type]');
+                const homepagePageField = homepageSettings.querySelector('[data-homepage-page-field]');
+                const homepagePostsField = homepageSettings.querySelector('[data-homepage-posts-field]');
+                const updateHomepageFields = function () {
+                    const type = homepageType ? homepageType.value : 'default';
+                    if (homepagePageField) {
+                        homepagePageField.classList.toggle('d-none', type !== 'page');
+                    }
+                    if (homepagePostsField) {
+                        homepagePostsField.classList.toggle('d-none', type !== 'posts');
+                    }
+                };
+
+                if (homepageType) {
+                    homepageType.addEventListener('change', updateHomepageFields);
+                    updateHomepageFields();
+                }
+            }
+
             const list = document.querySelector('[data-social-settings-list]');
             const template = document.getElementById('socialSettingsRowTemplate');
             const addButton = document.querySelector('[data-social-settings-add]');

@@ -1,295 +1,353 @@
-<!-- Page content -->
-<main class="content-wrapper">
-    <?php $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']); ?>
+<?php
 
+$postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
+$heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
+$heroHlsScript = theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js'));
+$homeCityCategories = array_values(array_filter(
+    (new \App\Models\Post())->getNavigationCategories(),
+    static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
+));
 
-    <section class="container pt-5">
-        <div class="row pt-2 pt-sm-3 pt-md-4 pt-lg-5">
-            <div class="col-md-5 col-lg-6 pb-1 pb-sm-2 pb-md-0 mb-4 mb-md-0">
-                <div class="ratio ratio-1x1">
-                    <img src="https://i.pinimg.com/originals/61/e9/75/61e9750492779f437d343b81f50a5692.jpg" style="object-fit: cover;" class="rounded-5" alt="Image">
+$popularCameras = [];
+foreach (array_slice($featured_posts ?? [], 0, 6) as $post) {
+    $title = trim((string)($post['title'] ?? ''));
+    if ($title === '') {
+        continue;
+    }
+
+    $popularCameras[] = [
+        'title' => $title,
+        'city' => trim((string)($post['category_label'] ?? $post['category'] ?? 'MAXIPAPA')),
+        'image' => get_image($post['image'] ?? ''),
+        'url' => $postUrl($post),
+    ];
+}
+
+$objectCards = [
+    [
+        'title' => 'Многоквартирные дома',
+        'text' => 'Контроль дворов, парковок, детских площадок и общественных зон. Жители получают удобный доступ к камерам и архиву, а управляющие компании — инструмент для повышения безопасности.',
+        'image' => theme_asset('images/about/v2/hero.jpg'),
+    ],
+    [
+        'title' => 'Бизнес',
+        'text' => 'Покажите клиентам свой объект в прямом эфире. Онлайн-трансляция повышает доверие и помогает демонстрировать работу объекта открыто и честно.',
+        'image' => theme_asset('images/about/v2/feature02.jpg'),
+    ],
+    [
+        'title' => 'Общественные пространства',
+        'text' => 'Парки, площади, набережные, спортивные зоны и туристические локации становятся доступнее для жителей и гостей города.',
+        'image' => theme_asset('images/about/v2/feature03.jpg'),
+    ],
+];
+$benefits = [
+    ['icon' => 'ci-monitor', 'title' => 'Простота', 'text' => 'Просмотр работает через браузер без сложных настроек и приложений.'],
+    ['icon' => 'ci-check-shield', 'title' => 'Надёжность', 'text' => 'Стабильная работа камер и доступ к архиву.'],
+    ['icon' => 'ci-lock', 'title' => 'Безопасность', 'text' => 'Камеры помогают быстро разбирать спорные ситуации.'],
+    ['icon' => 'ci-eye', 'title' => 'Прозрачность', 'text' => 'Жители и клиенты видят происходящее в режиме реального времени.'],
+];
+
+?>
+<main class="home-page content-wrapper">
+    <section class="home-hero">
+        <div class="home-hero__media" aria-hidden="true">
+            <video class="home-hero__video" data-home-hero-video muted autoplay playsinline preload="metadata">
+                <source src="<?= htmlSC($heroStream) ?>" type="application/x-mpegURL">
+            </video>
+        </div>
+        <div class="home-hero__overlay" aria-hidden="true"></div>
+        <div class="container home-hero__inner">
+            <div class="home-hero__content home-reveal">
+                <span class="home-eyebrow"><span class="home-live-dot"></span> MAXIPAPA live platform</span>
+                <h1 class="home-hero__title">Онлайн-видеонаблюдение нового поколения</h1>
+                <p class="home-hero__lead">Следите за двором, домом, парковкой или бизнесом в режиме реального времени из любой точки мира.</p>
+                <p class="home-hero__text">24/7 онлайн-трансляции, удобный просмотр с любого устройства и быстрый доступ к архиву записей.</p>
+                <div class="home-hero__actions">
+                    <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts') ?>">Смотреть камеры</a>
+                    <a class="btn btn-outline-secondary rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>">Подключить объект</a>
                 </div>
             </div>
-            <div class="col-md-7 col-lg-6 pt-md-3 pt-xl-4 pt-xxl-5">
-                <div class="ps-md-3 ps-lg-4 ps-xl-5 ms-xxl-4">
-                    <h3 class="h1 pb-1 pb-sm-2 pb-lg-3">ВИДЕОТРАНСЛЯЦИЯ ВАШЕГО ДВОРА ДЛЯ ВСЕХ ЖИТЕЛЕЙ МКД</h3>
-                    <ul>
-                        <li>Удобное использование без скачивания приложений и паролей</li>
-                        <li>Наблюдение в реальном времени с любого устройства</li>
-                        <li>Легко делиться трансляцией с камер с близкими людьми</li>
-                        <li>Постоянный контроль сохранности вашего имущества</li>
-                    </ul>
+        </div>
+    </section>
 
-                    <!-- Accordion -->
-                    <div class="accordion accordion-alt-icon" id="principles">
+    <section class="home-section home-stats" aria-label="Статистика MAXIPAPA">
+        <div class="container">
+            <div class="home-stats__grid home-reveal" data-home-stats>
+                <div class="home-stat">
+                    <strong><span data-home-counter="365">365</span>+</strong>
+                    <span>Камер онлайн</span>
+                </div>
+                <div class="home-stat">
+                    <strong>24/7</strong>
+                    <span>Доступ к просмотру</span>
+                </div>
+                <div class="home-stat">
+                    <strong><span data-home-counter="7">7</span></strong>
+                    <span>Дней архива</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                        <!-- Item (expanded) -->
-                        <div class="accordion-item">
-                            <h3 class="accordion-header" id="headingFocus">
-                                <button type="button" class="accordion-button animate-underline collapsed" data-bs-toggle="collapse" data-bs-target="#focus" aria-expanded="false" aria-controls="focus">
-                                    <span class="animate-target me-2">Управляющие компании и ТСЖ</span>
-                                </button>
-                            </h3>
-                            <div class="accordion-collapse collapse" id="focus" aria-labelledby="headingFocus" data-bs-parent="#principles" style="">
-                                <div class="accordion-body">
-                                    <section class="video-surveillance">
-                                        <div class="container">
-                                            <section class="video-surveillance">
-                                                <div class="container">
+    <?php if (!empty($popularCameras)): ?>
+        <section class="home-section home-popular" id="home-popular-cameras">
+            <div class="container">
+                <div class="home-section-head home-reveal">
+                    <div>
+                        <span class="home-section-kicker">Featured on homepage</span>
+                        <h2>Записи на главной</h2>
+                        <p>Подборка объектов, которые сейчас вынесены на главную страницу сайта.</p>
+                    </div>
+                    <div class="home-slider-actions" aria-label="Навигация по популярным камерам">
+                        <button class="home-slider-btn" type="button" data-home-slider-prev aria-label="Назад"><i class="ci-chevron-left"></i></button>
+                        <button class="home-slider-btn" type="button" data-home-slider-next aria-label="Вперёд"><i class="ci-chevron-right"></i></button>
+                    </div>
+                </div>
 
-                                                    <h5 class="subtitle">
-                                                        Наша цель — сделать видеонаблюдение доступным каждому.
-                                                    </h5>
-
-                                                    <h6>
-                                                        Видеонаблюдение для многоквартирных домов
-                                                    </h6>
-
-                                                    <p>
-                                                        Онлайн-сервис «MAXIPAPA» помогает управляющим компаниям
-                                                        контролировать дома, подъезды, дворы и парковки
-                                                        из одной системы — в любое время и с любого устройства.
-                                                    </p>
-
-                                                    <ul>
-                                                        <li>Централизованный контроль всех камер</li>
-                                                        <li>Повышение безопасности жителей</li>
-                                                        <li>Видеоархив и быстрый поиск записей</li>
-                                                        <li>Удобный доступ с компьютера и телефона</li>
-                                                        <li>Круглосуточная техническая поддержка</li>
-                                                    </ul>
-
-                                                    <p>
-                                                        Меньше жалоб, больше контроля и спокойствия для жителей.
-                                                    </p>
-
-                                                </div>
-                                            </section>
-                                        </div>
-                                    </section>
-                                </div>
+                <div class="home-slider home-reveal" data-home-slider tabindex="0" aria-label="Популярные камеры">
+                    <?php foreach ($popularCameras as $camera): ?>
+                        <article class="home-camera-card">
+                            <a class="home-camera-card__media" href="<?= htmlSC($camera['url']) ?>">
+                                <img src="<?= htmlSC($camera['image']) ?>" alt="<?= htmlSC($camera['city'] . ' — ' . $camera['title']) ?>" loading="lazy">
+                                <span class="home-online-badge"><span class="home-live-dot"></span> Онлайн</span>
+                            </a>
+                            <div class="home-camera-card__body">
+                                <span><?= htmlSC($camera['city']) ?></span>
+                                <h3><?= htmlSC($camera['title']) ?></h3>
+                                <a class="home-card-link" href="<?= htmlSC($camera['url']) ?>">Смотреть <i class="ci-arrow-right"></i></a>
                             </div>
-                        </div>
-
-                        <!-- Item -->
-<!--                        <div class="accordion-item">-->
-<!--                            <h3 class="accordion-header" id="headingReputation">-->
-<!--                                <button type="button" class="accordion-button animate-underline collapsed" data-bs-toggle="collapse" data-bs-target="#reputation" aria-expanded="false" aria-controls="reputation">-->
-<!--                                    <span class="animate-target me-2">Betting on reputation</span>-->
-<!--                                </button>-->
-<!--                            </h3>-->
-<!--                            <div class="accordion-collapse collapse" id="reputation" aria-labelledby="headingReputation" data-bs-parent="#principles" style="">-->
-<!--                                <div class="accordion-body">We value a solid reputation built on integrity, transparency, and quality - ensuring our customers trust and rely on our brand.</div>-->
-<!--                            </div>-->
-<!--                        </div>-->
-
-                        <!-- Item -->
-<!--                        <div class="accordion-item">-->
-<!--                            <h3 class="accordion-header" id="headingFast">-->
-<!--                                <button type="button" class="accordion-button animate-underline" data-bs-toggle="collapse" data-bs-target="#fast" aria-expanded="true" aria-controls="fast">-->
-<!--                                    <span class="animate-target me-2">Fast, convenient and enjoyable</span>-->
-<!--                                </button>-->
-<!--                            </h3>-->
-<!--                            <div class="accordion-collapse collapse show" id="fast" aria-labelledby="headingFast" data-bs-parent="#principles" style="">-->
-<!--                                <div class="accordion-body">We've streamlined our process for speed, convenience, and an enjoyable shopping experience, redefining online standards for our delighted customers.</div>-->
-<!--                            </div>-->
-<!--                        </div>-->
-
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="container-start pt-5">
-        <div class="row align-items-center g-0 pt-2 pt-sm-3 pt-md-4 pt-lg-5">
-            <div class="col-md-4 col-lg-3 pb-1 pb-md-0 pe-3 ps-md-0 mb-4 mb-md-0">
-                <div class="d-flex flex-md-column align-items-end align-items-md-start">
-                    <div class="mb-md-5 me-3 me-md-0">
-                        <h3 class="h1 mb-0">ПОДКЛЮЧАЙТЕ НОВЫЕ ИНТЕРЕСНЫЕ ОБЪЕКТЫ ГОРОДА</h3>
-                    </div>
-
-                    <!-- External slider prev/next buttons -->
-                    <div class="d-flex gap-2">
-                        <button type="button" id="prev-values" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-start me-1" aria-label="Previous slide" tabindex="0" aria-controls="swiper-wrapper-26c106b45e289b75b">
-                            <i class="ci-chevron-left fs-xl animate-target"></i>
-                        </button>
-                        <button type="button" id="next-values" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-end" aria-label="Next slide" tabindex="0" aria-controls="swiper-wrapper-26c106b45e289b75b">
-                            <i class="ci-chevron-right fs-xl animate-target"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-8 col-lg-9">
-                <div class="ps-md-4 ps-lg-5">
-                    <div class="swiper swiper-initialized swiper-horizontal swiper-backface-hidden" data-swiper="{
-                &quot;slidesPerView&quot;: &quot;auto&quot;,
-                &quot;spaceBetween&quot;: 24,
-                &quot;loop&quot;: true,
-                &quot;navigation&quot;: {
-                  &quot;prevEl&quot;: &quot;#prev-values&quot;,
-                  &quot;nextEl&quot;: &quot;#next-values&quot;
-                }
-              }">
-                        <div class="swiper-wrapper" id="swiper-wrapper-26c106b45e289b75b" aria-live="polite" style="transition-duration: 0ms; transform: translate3d(-660px, 0px, 0px); transition-delay: 0ms;">
-
-                            <!-- Item -->
-
-                            <div class="swiper-slide w-auto h-auto" style="margin-right: 24px;" role="group" aria-label="1 / 6" data-swiper-slide-index="0">
-                                <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
-                                    <div class="card-body py-5 px-3">
-                                        <div class="h4 h5 d-flex align-items-center">
-                                            <i class="ci-user-plus fs-4 me-3"></i>
-                                            People
-                                        </div>
-                                        <p class="mb-0">The most important value of the Company is people (employees, partners, clients). Behind any success there is, first and foremost, a specific person. It is he who creates the product, technology, and innovation.</p>
-                                    </div>
-                                </div>
-                            </div><div class="swiper-slide w-auto h-auto swiper-slide-prev" style="margin-right: 24px;" role="group" aria-label="2 / 6" data-swiper-slide-index="1">
-                                <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
-                                    <div class="card-body py-5 px-3">
-                                        <div class="h4 h5 d-flex align-items-center">
-                                            <i class="ci-shopping-bag fs-4 me-3"></i>
-                                            Service
-                                        </div>
-                                        <p class="mb-0">Care, attention, desire and ability to be helpful (to a colleague in his department, other departments, clients, customers and all other people who surround us).</p>
-                                    </div>
-                                </div>
-                            </div><div class="swiper-slide w-auto h-auto swiper-slide-active" style="margin-right: 24px;" role="group" aria-label="3 / 6" data-swiper-slide-index="2">
-                                <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
-                                    <div class="card-body py-5 px-3">
-                                        <div class="h4 h5 d-flex align-items-center">
-                                            <i class="ci-trending-up fs-4 me-3"></i>
-                                            Responsibility
-                                        </div>
-                                        <p class="mb-0">Responsibility is our key quality. We don't shift it to external circumstances or other people. If we see something that could be improved, we don't just criticize, but offer our own options.</p>
-                                    </div>
-                                </div>
-                            </div><div class="swiper-slide w-auto h-auto swiper-slide-next" style="margin-right: 24px;" role="group" aria-label="4 / 6" data-swiper-slide-index="3">
-                                <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
-                                    <div class="card-body py-5 px-3">
-                                        <div class="h4 h5 d-flex align-items-center">
-                                            <i class="ci-rocket fs-4 me-3"></i>
-                                            Innovation
-                                        </div>
-                                        <p class="mb-0">We foster a culture of continuous improvement and innovation. Embracing change and staying ahead of the curve are essential for our success. We encourage creative thinking, experimentation, and the pursuit of new ideas.</p>
-                                    </div>
-                                </div>
-                            </div><div class="swiper-slide w-auto h-auto" style="margin-right: 24px;" role="group" aria-label="5 / 6" data-swiper-slide-index="4">
-                                <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
-                                    <div class="card-body py-5 px-3">
-                                        <div class="h4 h5 d-flex align-items-center">
-                                            <i class="ci-star fs-4 me-3"></i>
-                                            Leadership
-                                        </div>
-                                        <p class="mb-0">Cartzilla people are young, ambitious and energetic individuals. With identified leadership qualities, with a desire to be the best at what they do.</p>
-                                    </div>
-                                </div>
-                            </div><div class="swiper-slide w-auto h-auto" style="margin-right: 24px;" role="group" aria-label="6 / 6" data-swiper-slide-index="5">
-                                <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
-                                    <div class="card-body py-5 px-3">
-                                        <div class="h4 h5 d-flex align-items-center">
-                                            <i class="ci-leaf fs-4 me-3"></i>
-                                            Sustainability
-                                        </div>
-                                        <p class="mb-0">We are committed to minimizing our environmental impact and promoting sustainable practices. From responsible sourcing to eco-friendly packaging, we aim to make a positive contribution to the well-being of our planet.</p>
-                                    </div>
-                                </div>
-                            </div></div>
-                        <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="container py-5 mt-md-2 mt-lg-4">
-        <div class="row row-cols-3 row-cols-md-3 g-4">
-            <div class="col text-center">
-                <div class="display-4 text-dark-emphasis mb-2">365</div>
-                <p class="fs-sm mb-0">Наних камер</p>
-            </div>
-            <div class="col text-center">
-                <div class="display-4 text-dark-emphasis mb-2">24/7</div>
-                <p class="fs-sm mb-0">Онлайн</p>
-            </div>
-            <div class="col text-center">
-                <div class="display-4 text-dark-emphasis mb-2">7</div>
-                <p class="fs-sm mb-0">Дней архива </p>
-            </div>
-        </div>
-    </section>
-
-    <?php if (!empty($featured_posts)): ?>
-        <section class="container py-5 mt-1 my-sm-2 my-md-3 my-lg-4 my-xl-5">
-            <div class="row py-2 py-xxl-3">
-                <div class="col-lg-3 pb-2 mb-4">
-                    <h2 class="text-center text-lg-start mb-lg-5"><?= print_translation('home_index_featured_posts') ?></h2>
-
-                    <!-- External slider prev/next buttons -->
-                    <div class="d-flex justify-content-center justify-content-lg-start gap-2">
-                        <button type="button" id="prev" class="btn btn-lg btn-icon btn-outline-secondary rounded-circle animate-slide-start me-1" aria-label="Previous slide">
-                            <i class="ci-chevron-left fs-xl animate-target"></i>
-                        </button>
-                        <button type="button" id="next" class="btn btn-lg btn-icon btn-outline-secondary rounded-circle animate-slide-end" aria-label="Next slide">
-                            <i class="ci-chevron-right fs-xl animate-target"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="col-lg-9">
-
-                    <!-- Slider -->
-                    <div class="swiper" data-swiper="{
-                  &quot;slidesPerView&quot;: 1,
-                  &quot;spaceBetween&quot;: 24,
-                  &quot;navigation&quot;: {
-                    &quot;prevEl&quot;: &quot;#prev&quot;,
-                    &quot;nextEl&quot;: &quot;#next&quot;
-                  },
-                  &quot;scrollbar&quot;: {
-                    &quot;el&quot;: &quot;.swiper-scrollbar&quot;
-                  },
-                  &quot;breakpoints&quot;: {
-                    &quot;500&quot;: {
-                      &quot;slidesPerView&quot;: 2
-                    },
-                    &quot;768&quot;: {
-                      &quot;slidesPerView&quot;: 3
-                    }
-                  }
-                }">
-                        <div class="swiper-wrapper pb-3 mb-2 mb-sm-3 mb-md-4">
-                            <?php foreach ($featured_posts as $post): ?>
-                                <!-- Article -->
-                                <article class="swiper-slide">
-                                    <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
-                                        <img src="<?= get_image($post['image']) ?>" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($post['title']) ?>">
-                                    </a>
-                                    <div class="pt-4">
-                                        <div class="nav pb-2 mb-1">
-                                            <a class="nav-link text-body fs-xs text-uppercase p-0" href="<?= base_href('/posts') . '?category=' . rawurlencode((string)($post['category_slug'] ?? $post['category'])) ?>">
-                                                <?= htmlSC($post['category_label'] ?? $post['category']) ?>
-                                            </a>
-                                        </div>
-                                        <h3 class="h6 mb-3">
-                                            <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
-                                        </h3>
-                                        <div class="nav align-items-center gap-2 fs-xs">
-                                            <span class="nav-link text-body-secondary fs-xs fw-normal p-0"><?= htmlSC($post['author_name'] ?? '') ?></span>
-                                            <hr class="vr my-1 mx-1">
-                                            <span class="text-body-secondary"><?= date('d.m.Y', strtotime($post['published_at'])) ?></span>
-                                        </div>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-
-                        <!-- Slider scrollbar -->
-                        <div class="swiper-scrollbar position-static" style="height: .125rem"></div>
-                    </div>
+                        </article>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </section>
     <?php endif; ?>
 
+    <section class="home-section home-objects">
+        <div class="container">
+            <div class="home-section-head home-reveal">
+                <div>
+                    <span class="home-section-kicker">Use cases</span>
+                    <h2>Что можно подключить</h2>
+                    <p>MAXIPAPA подходит для жилых комплексов, бизнеса и городских пространств.</p>
+                </div>
+            </div>
+
+            <div class="home-object-grid">
+                <?php foreach ($objectCards as $index => $card): ?>
+                    <article class="home-object-card home-reveal <?= $index === 0 ? 'home-object-card--large' : '' ?>">
+                        <img src="<?= htmlSC($card['image']) ?>" alt="<?= htmlSC($card['title']) ?>" loading="lazy">
+                        <div class="home-object-card__content">
+                            <span>0<?= $index + 1 ?></span>
+                            <h3><?= htmlSC($card['title']) ?></h3>
+                            <p><?= htmlSC($card['text']) ?></p>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-section home-benefits">
+        <div class="container">
+            <div class="home-section-head home-reveal">
+                <div>
+                    <span class="home-section-kicker">Why MAXIPAPA</span>
+                    <h2>Почему выбирают MAXIPAPA</h2>
+                </div>
+            </div>
+            <div class="home-benefit-grid">
+                <?php foreach ($benefits as $benefit): ?>
+                    <article class="home-benefit-card home-reveal">
+                        <div class="home-benefit-card__icon"><i class="<?= htmlSC($benefit['icon']) ?>"></i></div>
+                        <h3><?= htmlSC($benefit['title']) ?></h3>
+                        <p><?= htmlSC($benefit['text']) ?></p>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-section home-geo">
+        <div class="container">
+            <div class="home-geo-card home-reveal">
+                <div class="home-geo-card__content">
+                    <span class="home-section-kicker">Coverage</span>
+                    <h2>Города присутствия</h2>
+                    <p>Выберите город, чтобы перейти к опубликованным объектам и камерам MAXIPAPA.</p>
+                    <?php if (!empty($homeCityCategories)): ?>
+                        <div class="home-city-list" aria-label="Города присутствия">
+                            <?php foreach ($homeCityCategories as $city): ?>
+                                <a class="btn btn-outline-secondary rounded-pill home-city-link" href="<?= base_href('/posts') . '?category=' . rawurlencode((string)$city['slug']) ?>">
+                                    <span><?= htmlSC((string)($city['label'] ?? $city['name'] ?? $city['slug'])) ?></span>
+                                    <small><?= (int)($city['total'] ?? 0) ?></small>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-section home-cta-wrap">
+        <div class="container">
+            <div class="home-cta home-reveal">
+                <div class="home-cta__glow home-cta__glow--one" aria-hidden="true"></div>
+                <div class="home-cta__glow home-cta__glow--two" aria-hidden="true"></div>
+                <span class="home-section-kicker">Start live</span>
+                <h2>Подключите видеонаблюдение уже сегодня</h2>
+                <p>Создайте безопасное и прозрачное пространство для жителей, клиентов и посетителей.</p>
+                <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>">Подключить объект</a>
+            </div>
+        </div>
+    </section>
 </main>
+
+<script>
+(function () {
+    const root = document.querySelector('.home-page');
+    if (!root) {
+        return;
+    }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const hero = root.querySelector('.home-hero');
+    const heroVideo = root.querySelector('[data-home-hero-video]');
+    const heroStream = <?= json_encode($heroStream, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    const heroHlsScript = <?= json_encode($heroHlsScript, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    const loadHeroHls = () => new Promise((resolve, reject) => {
+        if (typeof window.Hls === 'function') {
+            resolve(window.Hls);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = heroHlsScript;
+        script.async = true;
+        script.onload = () => typeof window.Hls === 'function' ? resolve(window.Hls) : reject(new Error('HLS is unavailable'));
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+    const playHeroVideo = () => {
+        const playPromise = heroVideo.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {});
+        }
+    };
+    if (heroVideo && !reduceMotion) {
+        heroVideo.addEventListener('loadeddata', () => {
+            if (hero) {
+                hero.classList.add('home-hero--video-ready');
+            }
+        }, { once: true });
+        if (heroVideo.canPlayType('application/vnd.apple.mpegurl') || heroVideo.canPlayType('application/x-mpegURL')) {
+            playHeroVideo();
+        } else {
+            loadHeroHls()
+                .then((Hls) => {
+                    if (!Hls.isSupported()) {
+                        return;
+                    }
+                    const hls = new Hls({ liveDurationInfinity: true });
+                    hls.loadSource(heroStream);
+                    hls.attachMedia(heroVideo);
+                    hls.on(Hls.Events.MANIFEST_PARSED, playHeroVideo);
+                })
+                .catch(() => {});
+        }
+    }
+
+    const revealItems = root.querySelectorAll('.home-reveal');
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+        revealItems.forEach((item) => item.classList.add('home-reveal--visible'));
+    } else {
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('home-reveal--visible');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.12 });
+        revealItems.forEach((item) => revealObserver.observe(item));
+    }
+
+    const counters = root.querySelectorAll('[data-home-counter]');
+    const runCounters = () => {
+        counters.forEach((counter) => {
+            const target = parseInt(counter.getAttribute('data-home-counter') || '0', 10);
+            if (!target || counter.dataset.homeCounterDone === '1') {
+                return;
+            }
+            counter.dataset.homeCounterDone = '1';
+            if (reduceMotion) {
+                counter.textContent = String(target);
+                return;
+            }
+            const duration = 1100;
+            const start = performance.now();
+            const tick = (time) => {
+                const progress = Math.min((time - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                counter.textContent = String(Math.round(target * eased));
+                if (progress < 1) {
+                    requestAnimationFrame(tick);
+                }
+            };
+            requestAnimationFrame(tick);
+        });
+    };
+
+    const stats = root.querySelector('[data-home-stats]');
+    if (stats && 'IntersectionObserver' in window) {
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    runCounters();
+                    statsObserver.disconnect();
+                }
+            });
+        }, { threshold: 0.35 });
+        statsObserver.observe(stats);
+    } else {
+        runCounters();
+    }
+
+    const slider = root.querySelector('[data-home-slider]');
+    if (!slider) {
+        return;
+    }
+
+    const scrollSlider = (direction) => {
+        const card = slider.querySelector('.home-camera-card');
+        const distance = card ? card.getBoundingClientRect().width + 24 : slider.clientWidth * 0.85;
+        slider.scrollBy({ left: direction * distance, behavior: reduceMotion ? 'auto' : 'smooth' });
+    };
+
+    root.querySelector('[data-home-slider-prev]')?.addEventListener('click', () => scrollSlider(-1));
+    root.querySelector('[data-home-slider-next]')?.addEventListener('click', () => scrollSlider(1));
+
+    let isDragging = false;
+    let startX = 0;
+    let startScroll = 0;
+    slider.addEventListener('pointerdown', (event) => {
+        isDragging = true;
+        startX = event.clientX;
+        startScroll = slider.scrollLeft;
+        slider.classList.add('home-slider--dragging');
+        slider.setPointerCapture(event.pointerId);
+    });
+    slider.addEventListener('pointermove', (event) => {
+        if (!isDragging) {
+            return;
+        }
+        slider.scrollLeft = startScroll - (event.clientX - startX);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((eventName) => {
+        slider.addEventListener(eventName, () => {
+            isDragging = false;
+            slider.classList.remove('home-slider--dragging');
+        });
+    });
+})();
+</script>
