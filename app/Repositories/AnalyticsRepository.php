@@ -137,7 +137,7 @@ final class AnalyticsRepository
         $this->ensureSchema();
 
         return db()->query(
-            "SELECT COALESCE(NULLIF({$column}, ''), 'Unknown') AS label, COUNT(*) AS total
+            "SELECT COALESCE(NULLIF({$column}, ''), '') AS label, COUNT(*) AS total
              FROM {$this->table}
              WHERE created_at >= ?
              GROUP BY label
@@ -250,7 +250,7 @@ final class AnalyticsRepository
         $offset = $pagination->getOffset();
 
         $items = db()->query(
-            "SELECT id, created_at, ip, country, country_code, city, device_type, os, browser, source, landing_page, current_page
+            "SELECT id, created_at, country, country_code, city, device_type, os, browser, source, landing_page, current_page
              FROM {$this->table}
              {$where}
              ORDER BY {$orderBy} {$direction}, id DESC
@@ -278,6 +278,19 @@ final class AnalyticsRepository
             'browsers' => $this->distinctValues('browser'),
             'sources' => $this->distinctValues('source'),
         ];
+    }
+
+    public function resetAll(): void
+    {
+        $this->ensureSchema();
+
+        db()->query("DELETE FROM {$this->table}");
+
+        if ($this->tableExists('site_metrics')) {
+            db()->query("DELETE FROM site_metrics WHERE metric_key IN ('site_visits', 'page_views')");
+        }
+
+        self::$schemaReady = false;
     }
 
     private function nullableString(mixed $value): ?string
@@ -346,12 +359,27 @@ final class AnalyticsRepository
     {
         $this->ensureAllowedColumn($column);
 
+        $where = "{$column} IS NOT NULL AND {$column} <> ''";
+        $params = [];
+
+        if ($column === 'country') {
+            $where .= " AND {$column} NOT IN (?, ?)";
+            $params[] = 'Unknown';
+            $params[] = 'Неизвестно';
+        }
+
         return db()->query(
             "SELECT DISTINCT {$column} AS value
              FROM {$this->table}
-             WHERE {$column} IS NOT NULL AND {$column} <> ''
+             WHERE {$where}
              ORDER BY {$column} ASC
-             LIMIT 200"
+             LIMIT 200",
+            $params
         )->get() ?: [];
+    }
+
+    private function tableExists(string $table): bool
+    {
+        return (bool)db()->query("SHOW TABLES LIKE ?", [$table])->getColumn();
     }
 }

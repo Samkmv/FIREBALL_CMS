@@ -177,8 +177,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Theme switcher (color modes) -->
     <script src="<?= theme_asset('js/theme-switcher.js') ?>"></script>
 
-    <!-- Preloaded local web font (Inter) -->
-    <link rel="preload" href="<?= theme_asset('fonts/inter-variable-latin.woff2') ?>" as="font" type="font/woff2" crossorigin="">
+    <!-- Preloaded local web font (Roboto) -->
+    <link rel="preload" href="<?= theme_asset('fonts/roboto-cyrillic.woff2') ?>" as="font" type="font/woff2" crossorigin="">
+    <link rel="preload" href="<?= theme_asset('fonts/roboto-latin.woff2') ?>" as="font" type="font/woff2" crossorigin="">
 
     <!-- Font icons -->
     <link rel="preload" href="<?= theme_asset('icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
@@ -262,7 +263,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                         <i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?>
                     </button>
                     <button type="button" class="btn btn-danger rounded-pill d-inline-flex align-items-center gap-2" data-admin-delete-modal-confirm>
-                        <i class="ci-trash"></i><?= print_translation('admin_btn_delete') ?>
+                        <i class="ci-trash"></i><span data-admin-delete-modal-confirm-label><?= print_translation('admin_btn_delete') ?></span>
                     </button>
                 </div>
             </div>

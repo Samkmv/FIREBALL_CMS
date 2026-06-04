@@ -5,6 +5,8 @@ $filterOptions = (array)($analytics['filter_options'] ?? []);
 $pages = (array)($analytics['pages'] ?? []);
 $visits = (array)($analytics['visits'] ?? []);
 $query = $_GET ?? [];
+$canResetAnalytics = !empty($can_reset_analytics);
+$unknownCountryLabel = return_translation('admin_analytics_country_unknown');
 
 $urlFor = static function (array $overrides = []) use ($query): string {
     $params = array_merge($query, $overrides);
@@ -53,6 +55,20 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
 <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin') ?>">
     <i class="ci-arrow-left"></i><?= print_translation('admin_analytics_back_to_dashboard') ?>
 </a>
+<?php if ($canResetAnalytics): ?>
+    <form
+        method="post"
+        action="<?= base_href('/admin/analytics/reset') ?>"
+        data-admin-delete-form
+        data-delete-message="<?= htmlSC(return_translation('admin_analytics_reset_confirm')) ?>"
+        data-delete-confirm-label="<?= htmlSC(return_translation('admin_analytics_reset_confirm_button')) ?>"
+    >
+        <?= get_csrf_field() ?>
+        <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+            <i class="ci-trash"></i><?= print_translation('admin_analytics_reset_button') ?>
+        </button>
+    </form>
+<?php endif; ?>
 <?php $adminPageActions = ob_get_clean(); ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_analytics_full_heading'),
@@ -170,7 +186,6 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                         <thead class="position-sticky top-0">
                         <tr>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('created_at') ?>"><?= print_translation('admin_analytics_col_time') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'created_at') ?></a></th>
-                            <th scope="col">IP</th>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('country') ?>"><?= print_translation('admin_analytics_col_country') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'country') ?></a></th>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('device') ?>"><?= print_translation('admin_analytics_col_device') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'device') ?></a></th>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('browser') ?>"><?= print_translation('admin_analytics_col_browser') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'browser') ?></a></th>
@@ -182,8 +197,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                         <?php foreach (($visits['items'] ?? []) as $row): ?>
                             <tr>
                                 <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)($row['created_at'] ?? 'now')))) ?></td>
-                                <td class="text-nowrap"><?= htmlSC((string)($row['ip'] ?? '')) ?></td>
-                                <td><?= htmlSC((string)($row['country'] ?? 'Unknown')) ?></td>
+                                <td><?= htmlSC((string)($row['country'] ?? $unknownCountryLabel)) ?></td>
                                 <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
                                 <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
                                 <td><?= htmlSC((string)($row['source'] ?? '')) ?></td>
@@ -191,7 +205,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($visits['items'])): ?>
-                            <tr><td colspan="7" class="text-body-secondary"><?= print_translation('admin_analytics_empty') ?></td></tr>
+                            <tr><td colspan="6" class="text-body-secondary"><?= print_translation('admin_analytics_empty') ?></td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>

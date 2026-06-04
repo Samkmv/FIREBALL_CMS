@@ -19,19 +19,43 @@
     }
 
     const charts = {};
-    const colors = ['#212529', '#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#20c997'];
+    let activeRange = '7';
+
+    function cssVar(name, fallback) {
+        const value = getComputedStyle(root).getPropertyValue(name).trim();
+        return value || fallback;
+    }
+
+    function palette() {
+        return {
+            line: cssVar('--chart-line', '#2563eb'),
+            grid: cssVar('--chart-grid', 'rgba(108, 114, 127, .22)'),
+            text: cssVar('--chart-text', '#4e5562'),
+            tooltipBg: cssVar('--chart-tooltip-bg', '#ffffff'),
+            tooltipText: cssVar('--chart-tooltip-text', '#181d25'),
+            series: [
+                cssVar('--chart-primary', '#2563eb'),
+                cssVar('--chart-secondary', '#0f766e'),
+                cssVar('--chart-accent-1', '#f59e0b'),
+                cssVar('--chart-accent-2', '#dc3545'),
+                cssVar('--chart-accent-3', '#6f42c1'),
+                cssVar('--chart-accent-4', '#20c997')
+            ]
+        };
+    }
 
     function seriesRows(rows) {
         rows = Array.isArray(rows) ? rows : [];
         return {
-            labels: rows.map((row) => String(row.label || 'Unknown')),
+            labels: rows.map((row) => String(row.label || i18n.unknown || 'Not determined')),
             values: rows.map((row) => Number(row.total || 0))
         };
     }
 
     function renderTraffic(range) {
+        activeRange = String(range || '7');
         const target = root.querySelector('[data-analytics-chart="traffic"]');
-        const data = payload.traffic && payload.traffic[String(range)] ? payload.traffic[String(range)] : { labels: [], values: [] };
+        const data = payload.traffic && payload.traffic[activeRange] ? payload.traffic[activeRange] : { labels: [], values: [] };
         renderChart('traffic', target, {
             type: 'line',
             labels: data.labels || [],
@@ -90,24 +114,54 @@
     }
 
     function renderApex(target, config) {
-        const options = config.type === 'line'
+        const theme = palette();
+        const isLine = config.type === 'line';
+        const options = isLine
             ? {
-                chart: { type: 'area', height: 320, toolbar: { show: false } },
+                chart: {
+                    type: 'area',
+                    height: 320,
+                    toolbar: { show: false },
+                    foreColor: theme.text
+                },
                 series: [{ name: config.label, data: config.values }],
-                xaxis: { categories: config.labels },
-                colors: [colors[0]],
-                stroke: { curve: 'smooth', width: 3 },
-                fill: { opacity: 0.18 },
+                xaxis: {
+                    categories: config.labels,
+                    labels: { style: { colors: theme.text } },
+                    axisBorder: { color: theme.grid },
+                    axisTicks: { color: theme.grid }
+                },
+                yaxis: {
+                    labels: { style: { colors: theme.text } }
+                },
+                colors: [theme.line],
+                stroke: { curve: 'smooth', width: 3, colors: [theme.line] },
+                fill: { type: 'solid', opacity: 0.18, colors: [theme.line] },
+                markers: { colors: [theme.line], strokeColors: theme.tooltipBg },
                 dataLabels: { enabled: false },
-                grid: { borderColor: 'rgba(108,117,125,.18)' }
+                grid: { borderColor: theme.grid },
+                tooltip: { theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light' }
             }
             : {
-                chart: { type: 'donut', height: 320 },
+                chart: {
+                    type: 'donut',
+                    height: 320,
+                    foreColor: theme.text
+                },
                 series: config.values,
                 labels: config.labels,
-                colors: colors,
-                legend: { position: 'bottom' },
-                dataLabels: { enabled: true }
+                colors: theme.series,
+                legend: {
+                    position: 'bottom',
+                    labels: { colors: theme.text }
+                },
+                dataLabels: {
+                    enabled: true,
+                    style: { colors: [theme.tooltipText] },
+                    dropShadow: { enabled: false }
+                },
+                stroke: { colors: [theme.tooltipBg] },
+                tooltip: { theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light' }
             };
 
         const chart = new window.ApexCharts(target, options);
@@ -116,6 +170,7 @@
     }
 
     function renderChartJs(target, config) {
+        const theme = palette();
         const canvas = document.createElement('canvas');
         target.appendChild(canvas);
 
@@ -126,8 +181,10 @@
                 datasets: [{
                     label: config.label,
                     data: config.values,
-                    borderColor: colors[0],
-                    backgroundColor: config.type === 'line' ? 'rgba(33,37,41,.14)' : colors,
+                    borderColor: theme.line,
+                    backgroundColor: config.type === 'line' ? colorWithAlpha(theme.line, 0.14) : theme.series,
+                    pointBackgroundColor: theme.line,
+                    pointBorderColor: theme.tooltipBg,
                     tension: 0.35,
                     fill: config.type === 'line'
                 }]
@@ -135,12 +192,57 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: config.type === 'line' ? 'top' : 'bottom' } },
-                scales: config.type === 'line' ? { y: { beginAtZero: true, ticks: { precision: 0 } } } : {}
+                plugins: {
+                    legend: {
+                        position: config.type === 'line' ? 'top' : 'bottom',
+                        labels: { color: theme.text }
+                    },
+                    tooltip: {
+                        backgroundColor: theme.tooltipBg,
+                        titleColor: theme.tooltipText,
+                        bodyColor: theme.tooltipText,
+                        borderColor: theme.grid,
+                        borderWidth: 1
+                    }
+                },
+                scales: config.type === 'line'
+                    ? {
+                        x: {
+                            grid: { color: theme.grid },
+                            ticks: { color: theme.text }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: theme.grid },
+                            ticks: { color: theme.text, precision: 0 }
+                        }
+                    }
+                    : {}
             }
         });
 
         return { destroy: () => chart.destroy() };
+    }
+
+    function colorWithAlpha(color, alpha) {
+        if (color.startsWith('#') && (color.length === 7 || color.length === 4)) {
+            const hex = color.length === 4
+                ? color.slice(1).split('').map((item) => item + item).join('')
+                : color.slice(1);
+            const value = parseInt(hex, 16);
+            const red = (value >> 16) & 255;
+            const green = (value >> 8) & 255;
+            const blue = value & 255;
+            return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+        }
+
+        return color;
+    }
+
+    function renderAll() {
+        renderTraffic(activeRange);
+        renderSources();
+        renderDevices();
     }
 
     root.querySelectorAll('[data-analytics-range]').forEach((button) => {
@@ -151,7 +253,10 @@
         });
     });
 
-    renderTraffic('7');
-    renderSources();
-    renderDevices();
+    new MutationObserver(renderAll).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-bs-theme']
+    });
+
+    renderAll();
 })();

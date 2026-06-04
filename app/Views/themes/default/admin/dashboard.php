@@ -4,12 +4,14 @@ $updateLocal = $updateCenter['local'] ?? [];
 $installedVersionLabel = (string)($updateLocal['version'] ?? ($engine_release['version'] ?? '0.0.0'));
 $analytics = $analytics_dashboard ?? [];
 $analyticsCards = $analytics['cards'] ?? [];
+$unknownCountryLabel = return_translation('admin_analytics_country_unknown');
 $analyticsJson = json_encode($analytics, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 $analyticsI18nJson = json_encode([
     'visits' => return_translation('admin_analytics_chart_visits'),
     'sources' => return_translation('admin_analytics_chart_sources'),
     'devices' => return_translation('admin_analytics_chart_devices'),
     'unavailable' => return_translation('admin_analytics_chart_unavailable'),
+    'unknown' => return_translation('admin_analytics_country_unknown'),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 echo view()->renderPartial('admin/shell_open', [
@@ -130,7 +132,7 @@ echo view()->renderPartial('admin/shell_open', [
                             <tbody>
                             <?php foreach (($analytics['countries'] ?? []) as $row): ?>
                                 <tr>
-                                    <td><?= htmlSC((string)($row['label'] ?? 'Unknown')) ?></td>
+                                    <td><?= htmlSC((string)($row['label'] ?? $unknownCountryLabel)) ?></td>
                                     <td class="text-end"><?= (int)($row['total'] ?? 0) ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -194,7 +196,7 @@ echo view()->renderPartial('admin/shell_open', [
                             <?php foreach (($analytics['latest'] ?? []) as $row): ?>
                                 <tr>
                                     <td class="text-nowrap"><?= htmlSC(date('d.m H:i', strtotime((string)($row['created_at'] ?? 'now')))) ?></td>
-                                    <td><?= htmlSC((string)($row['country'] ?? 'Unknown')) ?></td>
+                                    <td><?= htmlSC((string)($row['country'] ?? $unknownCountryLabel)) ?></td>
                                     <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
                                     <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
                                     <td><?= htmlSC((string)($row['source'] ?? '')) ?></td>

@@ -84,10 +84,10 @@ final class AnalyticsService
                 '90' => $this->normalizeSeries($this->repository->visitsByDay(90), 90),
             ],
             'sources' => $this->compactSources($this->repository->topGrouped('source', $last30, 20)),
-            'countries' => $this->repository->topGrouped('country', $last30, 10),
+            'countries' => $this->normalizeCountryRows($this->repository->topGrouped('country', $last30, 10)),
             'devices' => $this->repository->topGrouped('os', $last30, 10),
             'pages' => $this->repository->popularPages($last30, 20),
-            'latest' => $this->repository->latest(20),
+            'latest' => $this->normalizeVisitRows($this->repository->latest(20)),
         ];
 
         cache()->set('analytics:dashboard', $data, $this->cacheTtl);
@@ -114,19 +114,23 @@ final class AnalyticsService
             'to' => $dateRange['to'],
         ];
 
+        $pages = $this->repository->paginatedPopularPages(array_merge($filters, [
+            'per_page' => 20,
+            'sort' => (string)($query['pages_sort'] ?? 'views'),
+            'direction' => (string)($query['pages_direction'] ?? 'desc'),
+        ]));
+        $visits = $this->repository->paginatedVisits(array_merge($filters, [
+            'per_page' => 20,
+            'sort' => (string)($query['visits_sort'] ?? 'created_at'),
+            'direction' => (string)($query['visits_direction'] ?? 'desc'),
+        ]));
+        $visits['items'] = $this->normalizeVisitRows((array)($visits['items'] ?? []));
+
         return [
             'filters' => $filters,
             'filter_options' => $this->repository->filterOptions(),
-            'pages' => $this->repository->paginatedPopularPages(array_merge($filters, [
-                'per_page' => 20,
-                'sort' => (string)($query['pages_sort'] ?? 'views'),
-                'direction' => (string)($query['pages_direction'] ?? 'desc'),
-            ])),
-            'visits' => $this->repository->paginatedVisits(array_merge($filters, [
-                'per_page' => 20,
-                'sort' => (string)($query['visits_sort'] ?? 'created_at'),
-                'direction' => (string)($query['visits_direction'] ?? 'desc'),
-            ])),
+            'pages' => $pages,
+            'visits' => $visits,
         ];
     }
 
@@ -141,6 +145,14 @@ final class AnalyticsService
     public function ensureSchema(): void
     {
         $this->repository->ensureSchema();
+    }
+
+    public function resetAll(): void
+    {
+        $this->repository->resetAll();
+        cache()->remove('analytics:dashboard');
+        session()->remove('analytics.landing_page');
+        session()->remove('analytics.last_visit_at');
     }
 
     private function shouldTrackRequest(): bool
@@ -185,25 +197,41 @@ final class AnalyticsService
 
     private function clientIp(): string
     {
-        $candidates = [
+        $headers = [
             $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
             $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
             $_SERVER['HTTP_X_REAL_IP'] ?? '',
             $_SERVER['REMOTE_ADDR'] ?? '',
         ];
+        $fallback = '';
 
-        foreach ($candidates as $candidate) {
-            $ip = trim(explode(',', (string)$candidate)[0]);
-            if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                return $ip;
+        foreach ($headers as $header) {
+            foreach (explode(',', (string)$header) as $candidate) {
+                $ip = $this->normalizeIp($candidate);
+                if ($ip === '') {
+                    continue;
+                }
+
+                if ($fallback === '') {
+                    $fallback = $ip;
+                }
+
+                if (!$this->isPrivateIp($ip)) {
+                    return $ip;
+                }
             }
         }
 
-        return '0.0.0.0';
+        return $fallback !== '' ? $fallback : '0.0.0.0';
     }
 
     private function resolveGeo(string $ip): array
     {
+        $cloudflareCountry = $this->cloudflareCountry();
+        if ($cloudflareCountry !== null) {
+            return $cloudflareCountry;
+        }
+
         if (!filter_var($ip, FILTER_VALIDATE_IP) || $this->isPrivateIp($ip)) {
             return ['country' => null, 'country_code' => null, 'city' => null];
         }
@@ -236,6 +264,38 @@ final class AnalyticsService
         }
 
         return ['country' => null, 'country_code' => null, 'city' => null];
+    }
+
+    private function normalizeIp(string $candidate): string
+    {
+        $candidate = trim($candidate);
+        if ($candidate === '') {
+            return '';
+        }
+
+        $candidate = trim($candidate, " \t\n\r\0\x0B\"'");
+
+        if (str_starts_with($candidate, '[') && str_contains($candidate, ']')) {
+            $candidate = substr($candidate, 1, strpos($candidate, ']') - 1);
+        } elseif (substr_count($candidate, ':') === 1 && preg_match('/^(.+):\d+$/', $candidate, $matches)) {
+            $candidate = $matches[1];
+        }
+
+        return filter_var($candidate, FILTER_VALIDATE_IP) ? $candidate : '';
+    }
+
+    private function cloudflareCountry(): ?array
+    {
+        $code = strtoupper(trim((string)($_SERVER['HTTP_CF_IPCOUNTRY'] ?? '')));
+        if ($code === '' || in_array($code, ['XX', 'T1'], true) || !preg_match('/^[A-Z]{2}$/', $code)) {
+            return null;
+        }
+
+        return [
+            'country' => $this->countryNameFromCode($code),
+            'country_code' => $code,
+            'city' => null,
+        ];
     }
 
     private function isPrivateIp(string $ip): bool
@@ -373,6 +433,81 @@ final class AnalyticsService
         }
 
         return ['labels' => $labels, 'values' => $values];
+    }
+
+    private function normalizeCountryRows(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            $label = trim((string)($row['label'] ?? ''));
+            $row['label'] = $this->displayCountryName($label);
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function normalizeVisitRows(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            $row['country'] = $this->displayCountryName((string)($row['country'] ?? ''));
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function displayCountryName(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '' || in_array(mb_strtolower($value), ['unknown', 'неизвестно'], true)) {
+            return return_translation('admin_analytics_country_unknown');
+        }
+
+        if (preg_match('/^[A-Z]{2}$/', strtoupper($value))) {
+            return $this->countryNameFromCode(strtoupper($value));
+        }
+
+        return $value;
+    }
+
+    private function countryNameFromCode(string $code): string
+    {
+        $code = strtoupper(trim($code));
+        $locale = $this->analyticsLocale();
+
+        if (class_exists('\\Locale')) {
+            $name = trim((string)\Locale::getDisplayRegion('-' . $code, $locale));
+            if ($name !== '' && strtoupper($name) !== $code) {
+                return $name;
+            }
+        }
+
+        $fallback = [
+            'RU' => 'Россия',
+            'US' => 'United States',
+            'DE' => 'Germany',
+            'CN' => 'China',
+            'GB' => 'United Kingdom',
+            'FR' => 'France',
+            'KZ' => 'Kazakhstan',
+            'BY' => 'Belarus',
+            'UA' => 'Ukraine',
+            'TR' => 'Turkey',
+        ];
+
+        return $fallback[$code] ?? return_translation('admin_analytics_country_unknown');
+    }
+
+    private function analyticsLocale(): string
+    {
+        $code = (string)(app()->get('lang')['code'] ?? 'ru');
+
+        return match ($code) {
+            'en' => 'en_US',
+            'de' => 'de_DE',
+            'zh-cn' => 'zh_CN',
+            default => 'ru_RU',
+        };
     }
 
     private function compactSources(array $rows): array

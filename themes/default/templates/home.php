@@ -18,6 +18,8 @@ foreach (array_slice($featured_posts ?? [], 0, 6) as $post) {
     $popularCameras[] = [
         'title' => $title,
         'city' => trim((string)($post['category_label'] ?? $post['category'] ?? 'MAXIPAPA')),
+        'category_url' => base_href('/posts') . (!empty($post['category_slug']) ? '?category=' . rawurlencode((string)$post['category_slug']) : ''),
+        'date' => date('d.m.Y', strtotime((string)($post['published_at'] ?? 'now'))),
         'image' => get_image($post['image'] ?? ''),
         'url' => $postUrl($post),
     ];
@@ -90,34 +92,63 @@ $benefits = [
     </section>
 
     <?php if (!empty($popularCameras)): ?>
-        <section class="home-section home-popular" id="home-popular-cameras">
-            <div class="container">
-                <div class="home-section-head home-reveal">
-                    <div>
-                        <span class="home-section-kicker">Featured on homepage</span>
-                        <h2>Записи на главной</h2>
-                        <p>Подборка объектов, которые сейчас вынесены на главную страницу сайта.</p>
-                    </div>
-                    <div class="home-slider-actions" aria-label="Навигация по популярным камерам">
-                        <button class="home-slider-btn" type="button" data-home-slider-prev aria-label="Назад"><i class="ci-chevron-left"></i></button>
-                        <button class="home-slider-btn" type="button" data-home-slider-next aria-label="Вперёд"><i class="ci-chevron-right"></i></button>
+        <section class="container-start pt-5" id="home-popular-cameras">
+            <div class="row align-items-center g-0 pt-2 pt-sm-3 pt-md-4 pt-lg-5">
+                <div class="col-md-4 col-lg-3 pb-1 pb-md-0 pe-3 ps-md-0 mb-4 mb-md-0">
+                    <div class="d-flex flex-md-column align-items-end align-items-md-start home-reveal">
+                        <div class="home-featured-head mb-md-5 me-3 me-md-0">
+                            <span class="home-section-kicker">Featured on homepage</span>
+                            <h2>Записи на главной</h2>
+                            <p>Подборка объектов, которые сейчас вынесены на главную страницу сайта.</p>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" id="prev-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-start me-1" aria-label="Назад">
+                                <i class="ci-chevron-left fs-xl animate-target"></i>
+                            </button>
+                            <button type="button" id="next-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-end" aria-label="Вперёд">
+                                <i class="ci-chevron-right fs-xl animate-target"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="home-slider home-reveal" data-home-slider tabindex="0" aria-label="Популярные камеры">
-                    <?php foreach ($popularCameras as $camera): ?>
-                        <article class="home-camera-card">
-                            <a class="home-camera-card__media" href="<?= htmlSC($camera['url']) ?>">
-                                <img src="<?= htmlSC($camera['image']) ?>" alt="<?= htmlSC($camera['city'] . ' — ' . $camera['title']) ?>" loading="lazy">
-                                <span class="home-online-badge"><span class="home-live-dot"></span> Онлайн</span>
-                            </a>
-                            <div class="home-camera-card__body">
-                                <span><?= htmlSC($camera['city']) ?></span>
-                                <h3><?= htmlSC($camera['title']) ?></h3>
-                                <a class="home-card-link" href="<?= htmlSC($camera['url']) ?>">Смотреть <i class="ci-arrow-right"></i></a>
+                <div class="col-md-8 col-lg-9">
+                    <div class="ps-md-4 ps-lg-5 home-reveal">
+                        <div class="swiper" data-swiper="{
+                            &quot;slidesPerView&quot;: &quot;auto&quot;,
+                            &quot;spaceBetween&quot;: 24,
+                            &quot;loop&quot;: <?= count($popularCameras) > 1 ? 'true' : 'false' ?>,
+                            &quot;navigation&quot;: {
+                                &quot;prevEl&quot;: &quot;#prev-home-featured&quot;,
+                                &quot;nextEl&quot;: &quot;#next-home-featured&quot;
+                            }
+                        }">
+                            <div class="swiper-wrapper">
+                                <?php foreach ($popularCameras as $camera): ?>
+                                    <div class="swiper-slide w-auto h-auto">
+                                        <article class="col" style="width: 306px; max-width: 72vw;">
+                                            <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= htmlSC($camera['url']) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
+                                                <img src="<?= htmlSC($camera['image']) ?>" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($camera['title']) ?>" loading="lazy">
+                                            </a>
+                                            <div class="pt-4">
+                                                <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
+                                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="<?= htmlSC($camera['category_url']) ?>">
+                                                        <?= htmlSC($camera['city']) ?>
+                                                    </a>
+                                                    <hr class="vr my-1 mx-1">
+                                                    <span class="text-body-tertiary fs-xs"><?= htmlSC($camera['date']) ?></span>
+                                                </div>
+                                                <h3 class="h5 mb-0">
+                                                    <a class="hover-effect-underline" href="<?= htmlSC($camera['url']) ?>"><?= htmlSC($camera['title']) ?></a>
+                                                </h3>
+                                            </div>
+                                        </article>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
-                        </article>
-                    <?php endforeach; ?>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

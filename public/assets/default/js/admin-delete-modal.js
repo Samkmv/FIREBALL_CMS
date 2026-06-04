@@ -17,7 +17,9 @@ $(function () {
     const itemWrap = modalElement.find('[data-admin-delete-modal-item-wrap]');
     const itemElement = modalElement.find('[data-admin-delete-modal-item]');
     const confirmButton = modalElement.find('[data-admin-delete-modal-confirm]');
+    const confirmLabel = modalElement.find('[data-admin-delete-modal-confirm-label]');
     const defaultMessage = String(messageElement.text() || '').trim();
+    const defaultConfirmLabel = String(confirmLabel.text() || '').trim();
     let activeForm = null;
 
     $(document).on('submit', '[data-admin-delete-form]', function (event) {
@@ -33,9 +35,11 @@ $(function () {
 
         const message = String(form.dataset.deleteMessage || '').trim() || defaultMessage;
         const item = String(form.dataset.deleteItem || '').trim();
+        const confirmText = String(form.dataset.deleteConfirmLabel || '').trim() || defaultConfirmLabel;
 
         messageElement.text(message);
         itemElement.text(item);
+        confirmLabel.text(confirmText);
         itemWrap.toggleClass('d-none', item === '');
         modal.show();
     });
@@ -54,6 +58,7 @@ $(function () {
     modalElement.on('hidden.bs.modal', function () {
         activeForm = null;
         messageElement.text(defaultMessage);
+        confirmLabel.text(defaultConfirmLabel);
         itemElement.text('');
         itemWrap.addClass('d-none');
     });

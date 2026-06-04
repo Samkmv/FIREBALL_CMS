@@ -1647,6 +1647,45 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
     margin-top: auto;
 }
 
+[data-admin-analytics] {
+    --chart-line: #2563eb;
+    --chart-grid: rgba(108, 114, 127, .22);
+    --chart-text: #4e5562;
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-text: #181d25;
+    --chart-primary: #2563eb;
+    --chart-secondary: #0f766e;
+    --chart-accent-1: #f59e0b;
+    --chart-accent-2: #dc3545;
+    --chart-accent-3: #6f42c1;
+    --chart-accent-4: #20c997;
+}
+
+[data-bs-theme="dark"] [data-admin-analytics] {
+    --chart-line: #60a5fa;
+    --chart-grid: rgba(202, 208, 217, .2);
+    --chart-text: #cad0d9;
+    --chart-tooltip-bg: #222934;
+    --chart-tooltip-text: #f8fafc;
+    --chart-primary: #60a5fa;
+    --chart-secondary: #2dd4bf;
+    --chart-accent-1: #fbbf24;
+    --chart-accent-2: #f87171;
+    --chart-accent-3: #c084fc;
+    --chart-accent-4: #34d399;
+}
+
+[data-admin-analytics] .apexcharts-tooltip,
+[data-admin-analytics] .apexcharts-tooltip-title {
+    border-color: var(--chart-grid) !important;
+    background: var(--chart-tooltip-bg) !important;
+    color: var(--chart-tooltip-text) !important;
+}
+
+[data-admin-analytics] .apexcharts-legend-text {
+    color: var(--chart-text) !important;
+}
+
 .admin-analytics-table--pages {
     min-width: 640px;
 }
@@ -1697,7 +1736,7 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 }
 
 .admin-analytics-table--visits-full {
-    min-width: 1120px;
+    min-width: 980px;
 }
 
 [data-admin-shell] {

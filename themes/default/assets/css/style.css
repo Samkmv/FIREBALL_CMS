@@ -52,6 +52,21 @@
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+:root {
+    --cz-font-sans-serif: "Roboto", "Helvetica Neue", Arial, sans-serif;
+    --cz-body-font-family: var(--cz-font-sans-serif);
+    --bs-font-sans-serif: var(--cz-font-sans-serif);
+}
+
+body,
+button,
+input,
+optgroup,
+select,
+textarea {
+    font-family: var(--cz-font-sans-serif);
+}
+
 html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -1627,6 +1642,45 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
     min-width: 720px;
 }
 
+[data-admin-analytics] {
+    --chart-line: #2563eb;
+    --chart-grid: rgba(108, 114, 127, .22);
+    --chart-text: #4e5562;
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-text: #181d25;
+    --chart-primary: #2563eb;
+    --chart-secondary: #0f766e;
+    --chart-accent-1: #f59e0b;
+    --chart-accent-2: #dc3545;
+    --chart-accent-3: #6f42c1;
+    --chart-accent-4: #20c997;
+}
+
+[data-bs-theme="dark"] [data-admin-analytics] {
+    --chart-line: #60a5fa;
+    --chart-grid: rgba(202, 208, 217, .2);
+    --chart-text: #cad0d9;
+    --chart-tooltip-bg: #222934;
+    --chart-tooltip-text: #f8fafc;
+    --chart-primary: #60a5fa;
+    --chart-secondary: #2dd4bf;
+    --chart-accent-1: #fbbf24;
+    --chart-accent-2: #f87171;
+    --chart-accent-3: #c084fc;
+    --chart-accent-4: #34d399;
+}
+
+[data-admin-analytics] .apexcharts-tooltip,
+[data-admin-analytics] .apexcharts-tooltip-title {
+    border-color: var(--chart-grid) !important;
+    background: var(--chart-tooltip-bg) !important;
+    color: var(--chart-tooltip-text) !important;
+}
+
+[data-admin-analytics] .apexcharts-legend-text {
+    color: var(--chart-text) !important;
+}
+
 [data-admin-shell] {
     --admin-shell-panel-bg: color-mix(in srgb, var(--cz-body-bg) 94%, var(--cz-tertiary-bg));
     --admin-shell-panel-border: color-mix(in srgb, var(--cz-border-color) 78%, transparent);
@@ -2256,7 +2310,7 @@ body.is-site-fullscreen .plyr * {
 .jodit-container .jodit-source textarea,
 .jodit-container .jodit-source pre,
 .jodit-container .jodit-source code {
-    font-family: Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-family: var(--cz-font-sans-serif) !important;
 }
 
 @media (pointer: coarse), (hover: none) {
@@ -2327,6 +2381,7 @@ body.is-site-fullscreen .plyr * {
 }
 
 .home-section-head h2,
+.home-featured-head h2,
 .home-cta h2 {
     margin: 0;
     max-width: 760px;
@@ -2336,6 +2391,7 @@ body.is-site-fullscreen .plyr * {
 }
 
 .home-section-head p,
+.home-featured-head p,
 .home-cta p {
     max-width: 620px;
     margin: 1rem 0 0;
@@ -2996,7 +3052,12 @@ body.is-site-fullscreen .plyr * {
     }
 
     .home-hero__title {
-        font-size: clamp(2.85rem, 15vw, 4.6rem);
+        max-width: 100%;
+        font-size: clamp(2.35rem, 11.5vw, 3.4rem);
+        line-height: .98;
+        letter-spacing: -.045em;
+        overflow-wrap: anywhere;
+        word-break: normal;
     }
 
     .home-slider-actions {
