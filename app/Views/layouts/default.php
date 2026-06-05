@@ -42,6 +42,21 @@ $metaKeywords = $pageSeoKeywords !== '' ? $pageSeoKeywords : $seoMetaKeywords;
 $metaAuthor = $seoMetaAuthor !== '' ? $seoMetaAuthor : $siteTitle;
 $metaRobots = $pageSeoRobots !== '' ? $pageSeoRobots : $seoRobots;
 $canonicalUrl = $pageSeoCanonical !== '' ? $pageSeoCanonical : base_href(uri_without_lang());
+$languageSwitchPath = uri_without_lang();
+$homeCanonicalUrls = array_unique(array_map(
+    static fn(string $url): string => rtrim($url, '/'),
+    [base_href('/'), base_url('/')]
+));
+if ($languageSwitchPath === '' || ($canonicalUrl !== '' && in_array(rtrim($canonicalUrl, '/'), $homeCanonicalUrls, true))) {
+    $languageSwitchPath = '/';
+}
+$languageSwitchHref = static function (string $key, array $language) use ($languageSwitchPath): string {
+    if ((int)($language['base'] ?? 0) === 1) {
+        return base_url($languageSwitchPath);
+    }
+
+    return base_url('/' . $key . ($languageSwitchPath === '/' ? '/' : $languageSwitchPath));
+};
 $normalizeSeoImage = static function (string $value): string {
     $value = trim($value);
     if ($value === '') {
@@ -200,8 +215,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php endif; ?>
 
     <!-- Bootstrap + Theme styles -->
-    <link rel="preload" href="<?= base_url('/assets/default/css/theme.min.css') ?>" as="style">
-    <link rel="preload" href="<?= base_url('/assets/default/css/theme.rtl.min.css') ?>" as="style">
     <link rel="stylesheet" href="<?= base_url('/assets/default/css/theme.min.css') ?>" id="theme-styles">
 
     <!-- Customs styles -->
@@ -440,25 +453,13 @@ $postCategoryUrl = static function (?string $slug = null): string {
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
 
-                <?php $request_uri = uri_without_lang(); ?>
-
                 <?php foreach (LANGS as $key => $val): ?>
 
                     <?php if (app()->get('lang')['code'] == $key) continue; ?>
 
-                    <?php if ($val['base'] == 1): ?>
-
-                        <li>
-                            <a class="dropdown-item" href="<?= base_url("{$request_uri}"); ?>"><?= $val['title']; ?></a>
-                        </li>
-
-                    <?php else: ?>
-
-                        <li>
-                            <a class="dropdown-item" href="<?= base_url("/{$key}{$request_uri}"); ?>"><?= $val['title']; ?></a>
-                        </li>
-
-                    <?php endif; ?>
+                    <li>
+                        <a class="dropdown-item" href="<?= htmlSC($languageSwitchHref((string)$key, $val)); ?>"><?= $val['title']; ?></a>
+                    </li>
 
                 <?php endforeach; ?>
 

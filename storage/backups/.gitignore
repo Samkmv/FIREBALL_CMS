@@ -1,0 +1,4 @@
+*.sql
+!.gitkeep
+!.htaccess
+!.gitignore

@@ -43,7 +43,7 @@ final class BlockRenderer
             'newsletter' => $this->newsletter($data),
             'html' => (string)($data['html'] ?? ''),
             'code' => '<pre><code>' . htmlSC((string)($data['code'] ?? '')) . '</code></pre>',
-            default => (string)($data['html'] ?? ''),
+            default => $this->textHtml((string)($data['html'] ?? '')),
         };
     }
 
@@ -53,7 +53,63 @@ final class BlockRenderer
             ? (string)$data['level']
             : 'h2';
 
-        return '<' . $level . '>' . sanitize_content_html((string)($data['html'] ?? '')) . '</' . $level . '>';
+        return '<' . $level . '>' . sanitize_content_html($this->cleanEditorTypography((string)($data['html'] ?? ''))) . '</' . $level . '>';
+    }
+
+    private function textHtml(string $html): string
+    {
+        return $this->cleanEditorTypography($html);
+    }
+
+    private function cleanEditorTypography(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+
+        $html = preg_replace('/<\s*font\b[^>]*>/i', '<span>', $html) ?? $html;
+        $html = preg_replace('/<\s*\/\s*font\s*>/i', '</span>', $html) ?? $html;
+        $html = preg_replace('/\s+(class|id|data-[a-z0-9_-]+|aria-[a-z0-9_-]+)\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
+
+        $html = preg_replace_callback(
+            '/\s+style\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i',
+            static function (array $matches): string {
+                $style = trim($matches[1], "\"' \t\n\r\0\x0B");
+                $allowed = [
+                    'color',
+                    'background-color',
+                    'text-align',
+                    'font-weight',
+                    'font-style',
+                    'text-decoration',
+                    'text-decoration-line',
+                    'vertical-align',
+                ];
+                $clean = [];
+
+                foreach (explode(';', $style) as $declaration) {
+                    $separator = strpos($declaration, ':');
+                    if ($separator === false) {
+                        continue;
+                    }
+
+                    $property = strtolower(trim(substr($declaration, 0, $separator)));
+                    $value = trim(substr($declaration, $separator + 1));
+
+                    if (!in_array($property, $allowed, true) || $value === '' || preg_match('/(?:expression\s*\(|javascript\s*:|url\s*\()/i', $value)) {
+                        continue;
+                    }
+
+                    $clean[] = $property . ': ' . $value;
+                }
+
+                return $clean === [] ? '' : ' style="' . htmlSC(implode('; ', $clean)) . '"';
+            },
+            $html
+        ) ?? $html;
+
+        return trim($html);
     }
 
     private function image(array $data): string

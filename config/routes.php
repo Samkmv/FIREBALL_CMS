@@ -10,7 +10,9 @@ use App\Controllers\PostsController;
 use App\Controllers\SearchController;
 use App\Controllers\CartController;
 use App\Controllers\ChatController;
+use App\Controllers\InstallController;
 use App\Controllers\AdminController;
+use App\Controllers\AdminMaintenanceController;
 use App\Controllers\AdminPostController;
 use App\Controllers\AdminPagesController;
 use App\Controllers\AnalyticsController;
@@ -31,6 +33,10 @@ const MIDDLEWARE = [
 $app->router->get('/product/(?P<slug>[a-z0-9-]+)/?', function () {
     return 'Product ' . get_route_param('slug');
 });
+
+// Installer ---------- //
+$app->router->get('/install', [InstallController::class, 'index']);
+$app->router->post('/install', [InstallController::class, 'submit']);
 
 // Site pages ---------- //
 $app->router->get('/login', [AuthController::class, 'login'])->middleware(['guest']);
@@ -109,6 +115,8 @@ $app->router->post('/admin/roles/edit/(?P<id>\d+)/?', [AdminController::class, '
 $app->router->post('/admin/roles/delete', [AdminController::class, 'roleDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/system/database-maintenance', [AdminMaintenanceController::class, 'index'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/system/database-maintenance/run', [AdminMaintenanceController::class, 'run'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/themes', [AdminController::class, 'themes'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/themes/create', [AdminController::class, 'themeCreate'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/themes/create', [AdminController::class, 'themeCreate'])->middleware(['auth', 'admin']);
@@ -139,19 +147,8 @@ $app->router->get('/admin/docs/themes/(?P<article>[a-z0-9_-]+)/?', [AdminControl
 $app->router->post('/add-to-cart', [CartController::class, 'addToCart']);
 $app->router->post('/remove-from-cart', [CartController::class, 'removeFromCart']);
 
-// CMS pages ---------- //
-$app->router->get('/(?P<slug>[a-z0-9-]+)/?', [PagesController::class, 'show']);
-
-// Home (keep last among dynamic routes to avoid locale false-positive)
+// Home must be checked before the generic page slug so localized roots like /en/ do not become slug "en".
 $app->router->get('/', [HomeController::class, 'index']);
 
-// Seed
-//$app->router->get('/seed-reset-creator', function () {
-//    $result = require __DIR__ . '/seeders/reset_creator.php';
-//    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-//});
-//
-//$app->router->get('/seed-demo', function () {
-//    $result = require __DIR__ . '/seeders/reset_demo.php';
-//    return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-//});
+// CMS pages ---------- //
+$app->router->get('/(?P<slug>[a-z0-9-]+)/?', [PagesController::class, 'show']);

@@ -34,6 +34,7 @@ $navItems = [
     ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor'],
     ['href' => base_href('/admin/updates'), 'label' => return_translation('admin_nav_updates'), 'icon' => 'ci-refresh-cw'],
     ['href' => base_href('/admin/settings'), 'label' => return_translation('admin_nav_settings'), 'icon' => 'ci-settings'],
+    ['href' => base_href('/admin/system/database-maintenance'), 'label' => return_translation('admin_nav_database_maintenance'), 'icon' => 'ci-database', 'creator_only' => true],
     ['href' => base_href('/admin/docs/themes'), 'label' => return_translation('admin_nav_docs'), 'icon' => 'ci-book-open'],
 ];
 
@@ -57,6 +58,7 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
 
     <div class="list-group list-group-flush gap-1">
         <?php foreach ($navItems as $item): ?>
+            <?php if (!empty($item['creator_only']) && !check_creator()) { continue; } ?>
             <?php $active = $isActive($item['href']); ?>
             <a
                 class="list-group-item list-group-item-action d-flex align-items-center gap-3 rounded-4 px-3 py-2 border-0 <?= $active ? 'active shadow-sm' : 'bg-transparent' ?>"

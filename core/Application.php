@@ -16,9 +16,9 @@ class Application
     public Router $router;
     public Session $session;
     public Cache $cache;
-    public Database $db;
+    public ?Database $db = null;
     public View $view;
-    public ThemeManager $theme;
+    public ?ThemeManager $theme = null;
     public static Application $app;
     protected array $container = [];
 
@@ -36,9 +36,9 @@ class Application
         $this->session = new Session();
         $this->cache = new Cache();
         $this->generateCSRFToken();
-        $this->db = new Database();
-        $this->theme = new ThemeManager();
-        Auth::setUser();
+        if ($this->isInstalled()) {
+            $this->bootInstalledServices();
+        }
     }
 
     /**
@@ -46,7 +46,85 @@ class Application
      */
     public function run(): void
     {
+        if (!$this->isInstalled() && !$this->isInstallRequest()) {
+            $this->response->redirect($this->installUrl());
+        }
+
+        if ($this->isInstalled() && $this->isInstallRequest() && !$this->isInstallFinishRequest()) {
+            $this->response->redirect(base_url('/admin'));
+        }
+
         echo $this->router->dispatch();
+    }
+
+    public function isInstalled(): bool
+    {
+        if (is_file(INSTALLED_LOCK)) {
+            return true;
+        }
+
+        try {
+            $dsn = 'mysql:host=' . DB_SETTINGS['host'] . ';dbname=' . DB_SETTINGS['database'] . ';charset=' . DB_SETTINGS['charset'];
+            if (!empty(DB_SETTINGS['port'])) {
+                $dsn .= ';port=' . (int)DB_SETTINGS['port'];
+            }
+
+            $pdo = new \PDO($dsn, DB_SETTINGS['username'], DB_SETTINGS['password'], DB_SETTINGS['options']);
+            $hasUsersTable = (int)$pdo->query(
+                "SELECT COUNT(*)
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'users'"
+            )->fetchColumn() > 0;
+
+            if (!$hasUsersTable) {
+                return false;
+            }
+
+            $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'creator'");
+
+            return (int)$stmt->fetchColumn() > 0;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public function bootInstalledServices(): void
+    {
+        if ($this->db === null) {
+            $this->db = new Database();
+        }
+        if ($this->theme === null) {
+            $this->theme = new ThemeManager();
+        }
+
+        Auth::setUser();
+    }
+
+    protected function isInstallRequest(): bool
+    {
+        $path = '/' . trim($this->request->getPath(), '/');
+        if (MULTILANGS) {
+            $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+            if (isset($segments[0]) && array_key_exists($segments[0], LANGS)) {
+                array_shift($segments);
+            }
+            $path = '/' . implode('/', $segments);
+        }
+
+        return $path === '/install' || str_starts_with($path, '/install/');
+    }
+
+    protected function isInstallFinishRequest(): bool
+    {
+        return $this->isInstallRequest()
+            && (string)($_GET['step'] ?? '') === 'finish'
+            && (string)$this->session->get('install.result.status', '') === 'success';
+    }
+
+    protected function installUrl(): string
+    {
+        return base_url('/install');
     }
 
     /**

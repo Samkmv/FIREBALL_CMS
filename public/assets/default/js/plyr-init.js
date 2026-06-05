@@ -236,6 +236,14 @@
         return isIosLike;
     };
 
+    const isDesktopSafariBrowser = function () {
+        return isSafariBrowser() && !isIosLikeBrowser();
+    };
+
+    if (isDesktopSafariBrowser()) {
+        document.documentElement.classList.add('is-desktop-safari');
+    }
+
     const shouldUseNativeHls = function (element) {
         if (!(element instanceof HTMLVideoElement)) {
             return false;
@@ -301,6 +309,24 @@
                 // Plyr may not be fully ready while HLS is initializing.
             }
         }
+    };
+
+    const syncVideoAspectRatio = function (element) {
+        if (!(element instanceof HTMLVideoElement) || !element.videoWidth || !element.videoHeight) {
+            return;
+        }
+
+        const ratio = element.videoHeight / element.videoWidth;
+        if (!Number.isFinite(ratio) || ratio < 0.35 || ratio > 2) {
+            return;
+        }
+
+        const playerWrap = element.closest('[data-plyr-player-wrap]');
+        if (!playerWrap) {
+            return;
+        }
+
+        playerWrap.style.setProperty('--fb-plyr-aspect-ratio', (ratio * 100).toFixed(4) + '%');
     };
 
     const detachNativeHlsSource = function (element) {
@@ -1982,8 +2008,6 @@
             detachNativeHlsSource(element);
         }
 
-        prewarmHlsSource(element);
-
         if (!shouldUseNativeHls(element)) {
             loadHlsScript().catch(function (error) {
                 console.error('Preload HLS init failed', error);
@@ -2161,11 +2185,13 @@
                 element.plyr = new window.Plyr(element, options);
                 syncFullVolume(element, !isPrimerPlaybackActive(element));
 
-                ['loadedmetadata', 'canplay', 'play', 'playing'].forEach(function (eventName) {
+                ['loadedmetadata', 'loadeddata', 'canplay', 'play', 'playing'].forEach(function (eventName) {
                     element.addEventListener(eventName, function () {
+                        syncVideoAspectRatio(element);
                         syncFullVolume(element, !isPrimerPlaybackActive(element));
                     });
                 });
+                syncVideoAspectRatio(element);
 
                 if (!shouldUseNativeHls(element)) {
                     forceDetachNativeHlsSource(element);

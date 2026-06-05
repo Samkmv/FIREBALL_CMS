@@ -208,26 +208,6 @@ function initPostEditor() {
         { value: 'ci-phone', label: labels.socialPhone },
         { value: 'ci-message-circle', label: labels.socialMessage }
     ];
-    const fontSizeCommandMap = {
-        '10px': '1',
-        '12px': '2',
-        '14px': '3',
-        '16px': '4',
-        '18px': '5',
-        '20px': '5',
-        '24px': '6',
-        '32px': '7'
-    };
-    const fontSizeCssMap = {
-        '1': '10px',
-        '2': '12px',
-        '3': '14px',
-        '4': '16px',
-        '5': '18px',
-        '6': '24px',
-        '7': '32px'
-    };
-
     let state = parseInitialState();
     const ui = {
         activeBlockId: state.blocks[0] ? state.blocks[0].id : null,
@@ -340,11 +320,16 @@ function initPostEditor() {
         }
 
         const type = getAllowedBlockType(block.type);
+        const data = Object.assign(defaultBlockData(type), cloneData(block.data));
+        if ((type === 'text' || type === 'heading') && typeof data.html === 'string') {
+            data.html = sanitizeHtml(data.html);
+        }
+
         return {
             id: String(block.id || makeId()),
             type: type,
             hidden: block.hidden === true,
-            data: Object.assign(defaultBlockData(type), cloneData(block.data))
+            data: data
         };
     }
 
@@ -377,6 +362,7 @@ function initPostEditor() {
         renderSettingsModal();
         closeStylePanels();
         refreshAllCodeEditors();
+        normalizeRenderedEditors();
     }
 
     function sync() {
@@ -815,6 +801,41 @@ function initPostEditor() {
             }
         });
 
+        app.addEventListener('paste', function (event) {
+            const editor = event.target.closest('[data-block-rich], [data-block-heading]');
+            if (!editor) {
+                return;
+            }
+
+            const clipboard = event.clipboardData || window.clipboardData;
+            if (!clipboard) {
+                return;
+            }
+
+            const cleanHtml = buildEditorPasteHtml(
+                String(clipboard.getData('text/html') || ''),
+                String(clipboard.getData('text/plain') || '')
+            );
+            if (cleanHtml === '') {
+                return;
+            }
+
+            event.preventDefault();
+            editor.focus();
+            restoreSelection(editor);
+            document.execCommand('insertHTML', false, cleanHtml);
+
+            if (editor.matches('[data-block-heading]')) {
+                updateBlock(
+                    String(editor.getAttribute('data-block-id') || ''),
+                    { html: sanitizeHtml(editor.innerHTML) }
+                );
+                return;
+            }
+
+            syncRichEditor(editor);
+        });
+
         app.addEventListener('input', function (event) {
             const richEditor = event.target.closest('[data-block-rich]');
             const headingEditor = event.target.closest('[data-block-heading]');
@@ -924,9 +945,6 @@ function initPostEditor() {
                     String(fontSizeSelect.value || ''),
                     editor
                 );
-                if (fontSizeSelect.value !== '') {
-                    applyCommand(editor, 'fontSize', String(fontSizeSelect.value || ''));
-                }
                 return;
             }
 
@@ -1722,6 +1740,54 @@ function initPostEditor() {
         return String(value).replace(/["\\]/g, '\\$&');
     }
 
+    function sanitizeEditorStyle(styleValue) {
+        const allowed = [
+            'color',
+            'background-color',
+            'text-align',
+            'font-weight',
+            'font-style',
+            'text-decoration',
+            'text-decoration-line',
+            'vertical-align'
+        ];
+        const declarations = String(styleValue || '').split(';');
+        const clean = [];
+
+        declarations.forEach(function (declaration) {
+            const separator = declaration.indexOf(':');
+            if (separator === -1) {
+                return;
+            }
+
+            const property = declaration.slice(0, separator).trim().toLowerCase();
+            const value = declaration.slice(separator + 1).trim();
+
+            if (allowed.indexOf(property) === -1 || value === '' || /(?:expression\s*\(|javascript\s*:|url\s*\()/i.test(value)) {
+                return;
+            }
+
+            clean.push(property + ': ' + value);
+        });
+
+        return clean.join('; ');
+    }
+
+    function buildEditorPasteHtml(html, plainText) {
+        if (html !== '') {
+            return sanitizeHtml(html);
+        }
+
+        const text = String(plainText || '').replace(/\r\n?/g, '\n').trim();
+        if (text === '') {
+            return '';
+        }
+
+        return text.split(/\n{2,}/).map(function (paragraph) {
+            return '<p>' + escapeHtml(paragraph).replace(/\n/g, '<br>') + '</p>';
+        }).join('');
+    }
+
     function sanitizeHtml(html, options) {
         const settings = Object.assign({
             htmlBlock: false
@@ -1756,13 +1822,31 @@ function initPostEditor() {
                     return;
                 }
 
+                if (!settings.htmlBlock && (name === 'class' || name === 'id' || name.indexOf('data-') === 0 || name.indexOf('aria-') === 0)) {
+                    node.removeAttribute(attribute.name);
+                    return;
+                }
+
                 if ((name === 'href' || name === 'src' || name === 'action' || name === 'formaction' || name === 'xlink:href') && /^\s*javascript:/i.test(value)) {
                     node.removeAttribute(attribute.name);
                     return;
                 }
 
-                if (name === 'style' && /(?:expression\s*\(|javascript\s*:)/i.test(value)) {
-                    node.removeAttribute(attribute.name);
+                if (name === 'style') {
+                    if (settings.htmlBlock) {
+                        if (/(?:expression\s*\(|javascript\s*:)/i.test(value)) {
+                            node.removeAttribute(attribute.name);
+                        }
+                        return;
+                    }
+
+                    const cleanStyle = sanitizeEditorStyle(value);
+                    if (cleanStyle === '') {
+                        node.removeAttribute(attribute.name);
+                        return;
+                    }
+
+                    node.setAttribute(attribute.name, cleanStyle);
                 }
             });
         });
@@ -1844,11 +1928,7 @@ function initPostEditor() {
 
     function normalizeFontTags(scope) {
         scope.querySelectorAll('font[size]').forEach(function (fontNode) {
-            const size = String(fontNode.getAttribute('size') || '');
             const span = document.createElement('span');
-            if (fontSizeCssMap[size]) {
-                span.style.fontSize = fontSizeCssMap[size];
-            }
             span.innerHTML = fontNode.innerHTML;
             fontNode.replaceWith(span);
         });
@@ -1883,10 +1963,64 @@ function initPostEditor() {
             const fontSize = getAllowedOptionValue(sizes, value);
             block.data.fontSize = fontSize;
             if (editor) {
+                cleanEditorDom(editor);
                 editor.style.fontSize = fontSize;
+                syncRichEditor(editor);
+                return;
             }
             sync();
         }
+    }
+
+    function cleanEditorDom(editor) {
+        if (!editor) {
+            return;
+        }
+
+        const cleanHtml = sanitizeHtml(editor.innerHTML);
+        if (editor.innerHTML !== cleanHtml) {
+            editor.innerHTML = cleanHtml;
+        }
+        normalizeEditorLayout(editor);
+    }
+
+    function normalizeRenderedEditors() {
+        app.querySelectorAll('[data-block-rich]').forEach(function (editor) {
+            normalizeEditorLayout(editor);
+        });
+    }
+
+    function normalizeEditorLayout(editor) {
+        if (!editor) {
+            return;
+        }
+
+        editor.style.lineHeight = '1.6';
+        editor.querySelectorAll('*').forEach(function (node) {
+            if (!node.style) {
+                return;
+            }
+
+            node.style.removeProperty('font-size');
+            node.style.removeProperty('font-family');
+            node.style.removeProperty('line-height');
+            node.style.removeProperty('letter-spacing');
+            node.style.removeProperty('margin-top');
+            node.style.removeProperty('margin-bottom');
+            node.style.removeProperty('padding-top');
+            node.style.removeProperty('padding-bottom');
+
+            if (node.matches('p,ul,ol,blockquote,pre,table,figure,h1,h2,h3,h4,h5,h6')) {
+                node.style.lineHeight = node.matches('h1,h2,h3,h4,h5,h6') ? '1.25' : '1.5';
+                node.style.marginTop = node.matches('h1,h2,h3,h4,h5,h6') ? '1.1em' : '0';
+                node.style.marginBottom = node.matches('h1,h2,h3,h4,h5,h6') ? '.65em' : '1em';
+                return;
+            }
+
+            if (node.matches('li,span,a,strong,em,b,i,u')) {
+                node.style.lineHeight = 'inherit';
+            }
+        });
     }
 
     function saveSelection(editor) {
@@ -1947,7 +2081,8 @@ function initPostEditor() {
             document.execCommand('hiliteColor', false, value);
             document.execCommand('backColor', false, value);
         } else if (command === 'fontSize') {
-            document.execCommand('fontSize', false, fontSizeCommandMap[value] || '4');
+            syncRichEditor(editor);
+            return;
         } else {
             document.execCommand(command, false, value);
         }
@@ -1957,6 +2092,7 @@ function initPostEditor() {
 
     function syncRichEditor(editor) {
         normalizeFontTags(editor);
+        normalizeEditorLayout(editor);
         updateBlock(String(editor.getAttribute('data-block-id') || ''), {
             html: sanitizeHtml(editor.innerHTML)
         });
@@ -2864,6 +3000,7 @@ function initPostEditor() {
         }
         if (fontSize) {
             styles.push('font-size: ' + fontSize);
+            styles.push('line-height: 1.6');
         }
 
         return styles.join('; ');

@@ -1921,7 +1921,89 @@
 
     .fb-post-block__rich {
         min-height: 180px;
-        line-height: 1.7;
+        line-height: 1.6 !important;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        white-space: normal;
+    }
+
+    .fb-post-block__rich * {
+        line-height: 1.5 !important;
+    }
+
+    .fb-post-block__rich p,
+    .fb-post-block__rich ul,
+    .fb-post-block__rich ol,
+    .fb-post-block__rich blockquote,
+    .fb-post-block__rich pre,
+    .fb-post-block__rich table,
+    .fb-post-block__rich figure,
+    .fb-post-block__rich h1,
+    .fb-post-block__rich h2,
+    .fb-post-block__rich h3,
+    .fb-post-block__rich h4,
+    .fb-post-block__rich h5,
+    .fb-post-block__rich h6 {
+        display: block;
+        line-height: 1.5 !important;
+        margin-top: 0 !important;
+        margin-bottom: 1em !important;
+    }
+
+    .fb-post-block__rich p,
+    .fb-post-block__rich li,
+    .fb-post-block__rich blockquote,
+    .fb-post-block__rich h1,
+    .fb-post-block__rich h2,
+    .fb-post-block__rich h3,
+    .fb-post-block__rich h4,
+    .fb-post-block__rich h5,
+    .fb-post-block__rich h6,
+    .fb-post-block__rich span,
+    .fb-post-block__rich a,
+    .fb-post-block__rich strong,
+    .fb-post-block__rich em,
+    .fb-post-block__rich b,
+    .fb-post-block__rich i,
+    .fb-post-block__rich u {
+        line-height: inherit !important;
+    }
+
+    .fb-post-block__rich h1,
+    .fb-post-block__rich h2,
+    .fb-post-block__rich h3,
+    .fb-post-block__rich h4,
+    .fb-post-block__rich h5,
+    .fb-post-block__rich h6 {
+        font-size: 1.18em;
+        font-weight: 700;
+        line-height: 1.25 !important;
+        margin-top: 1.1em !important;
+        margin-bottom: .65em !important;
+    }
+
+    .fb-post-block__rich ul,
+    .fb-post-block__rich ol {
+        padding-left: 1.35em !important;
+    }
+
+    .fb-post-block__rich li + li {
+        margin-top: .35em !important;
+    }
+
+    .fb-post-block__rich > :last-child,
+    .fb-post-block__rich li:last-child,
+    .fb-post-block__rich p:last-child,
+    .fb-post-block__rich ul:last-child,
+    .fb-post-block__rich ol:last-child,
+    .fb-post-block__rich blockquote:last-child,
+    .fb-post-block__rich h1:last-child,
+    .fb-post-block__rich h2:last-child,
+    .fb-post-block__rich h3:last-child,
+    .fb-post-block__rich h4:last-child,
+    .fb-post-block__rich h5:last-child,
+    .fb-post-block__rich h6:last-child {
+        margin-bottom: 0 !important;
     }
 
     .fb-post-block__heading {

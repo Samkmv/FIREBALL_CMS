@@ -123,25 +123,32 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
 
-                <?php $request_uri = uri_without_lang(); ?>
+                <?php
+                $request_uri = uri_without_lang();
+                $headerCanonicalUrl = (string)($canonicalUrl ?? $seo_canonical ?? '');
+                $homeCanonicalUrls = array_unique(array_map(
+                    static fn(string $url): string => rtrim($url, '/'),
+                    [base_href('/'), base_url('/')]
+                ));
+                if ($request_uri === '' || ($headerCanonicalUrl !== '' && in_array(rtrim($headerCanonicalUrl, '/'), $homeCanonicalUrls, true))) {
+                    $request_uri = '/';
+                }
+                $headerLanguageSwitchHref = static function (string $key, array $language) use ($request_uri): string {
+                    if ((int)($language['base'] ?? 0) === 1) {
+                        return base_url($request_uri);
+                    }
+
+                    return base_url('/' . $key . ($request_uri === '/' ? '/' : $request_uri));
+                };
+                ?>
 
                 <?php foreach (LANGS as $key => $val): ?>
 
                     <?php if (app()->get('lang')['code'] == $key) continue; ?>
 
-                    <?php if ($val['base'] == 1): ?>
-
-                        <li>
-                            <a class="dropdown-item" href="<?= base_url("{$request_uri}"); ?>"><?= $val['title']; ?></a>
-                        </li>
-
-                    <?php else: ?>
-
-                        <li>
-                            <a class="dropdown-item" href="<?= base_url("/{$key}{$request_uri}"); ?>"><?= $val['title']; ?></a>
-                        </li>
-
-                    <?php endif; ?>
+                    <li>
+                        <a class="dropdown-item" href="<?= htmlSC($headerLanguageSwitchHref((string)$key, $val)); ?>"><?= $val['title']; ?></a>
+                    </li>
 
                 <?php endforeach; ?>
 

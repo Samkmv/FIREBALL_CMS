@@ -262,6 +262,7 @@ class UpdateCenter
         }
 
         $previousCommit = (string)($localGitState['commit_hash'] ?? '');
+        $this->createPreUpdateBackups();
         $this->fetchRemoteBranch($branch);
         $branchState = $this->getBranchStateFromGit($branch);
 
@@ -304,6 +305,9 @@ class UpdateCenter
             'updater_last_installed_commit' => $currentCommit,
         ]);
         $this->refreshLastCheckAfterUpdate();
+
+        $this->runPendingMigrations();
+        $this->clearRuntimeCache();
 
         if (is_array($composerResult)) {
             return $composerResult;
@@ -423,10 +427,15 @@ class UpdateCenter
             );
 
             $packageRoot = $this->extractArchive($archivePath, $extractPath);
+            $manifest = $this->loadUpdateManifest($packageRoot);
+            $this->validateUpdateManifest($manifest);
+            $this->createPreUpdateBackups();
             $this->ensureLocalConfigExists();
             $this->copyPackageToRoot($packageRoot, ROOT);
 
             $composerResult = $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
+            $this->runPendingMigrations();
+            $this->clearRuntimeCache();
 
             $this->siteSettings->setMany([
                 'updater_last_updated_at' => date('Y-m-d H:i:s'),
@@ -1210,7 +1219,10 @@ class UpdateCenter
         $preservePrefixes = [
             '.git',
             'tmp',
+            'storage',
+            'uploads',
             'public/uploads',
+            'themes/custom',
         ];
 
         foreach ($preservePrefixes as $prefix) {
@@ -1220,6 +1232,132 @@ class UpdateCenter
         }
 
         return in_array($relativePath, ['config/config.local.php'], true);
+    }
+
+    protected function loadUpdateManifest(string $packageRoot): array
+    {
+        $path = rtrim($packageRoot, '/') . '/update.json';
+        if (!is_file($path)) {
+            return [];
+        }
+
+        $payload = json_decode((string)file_get_contents($path), true);
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    protected function validateUpdateManifest(array $manifest): void
+    {
+        if ($manifest === []) {
+            return;
+        }
+
+        $minVersion = trim((string)($manifest['minVersion'] ?? ''));
+        if ($minVersion !== '' && version_compare((string)($this->engineRelease['version'] ?? '0.0.0'), $minVersion, '<')) {
+            throw new RuntimeException('Update requires FIREBALL CMS ' . $minVersion . ' or newer.');
+        }
+    }
+
+    protected function createPreUpdateBackups(): void
+    {
+        $databaseBackup = (new DatabaseMaintenanceService())->createBackup();
+        if ($databaseBackup === '') {
+            throw new RuntimeException('Database backup failed. Update aborted.');
+        }
+        $this->createFileBackup();
+    }
+
+    protected function createFileBackup(): void
+    {
+        if (!class_exists(\ZipArchive::class)) {
+            return;
+        }
+
+        $backupDir = STORAGE . '/backups';
+        $this->ensureDirectory($backupDir);
+        $path = $backupDir . '/files-backup-' . date('Y-m-d-H-i') . '.zip';
+        $zip = new \ZipArchive();
+        if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return;
+        }
+
+        foreach (['config/config.local.php', 'storage', 'public/uploads', 'uploads', 'themes/custom'] as $relative) {
+            $absolute = ROOT . '/' . $relative;
+            if (!file_exists($absolute)) {
+                continue;
+            }
+            $this->addPathToZip($zip, $absolute, $relative);
+        }
+
+        $zip->close();
+    }
+
+    protected function addPathToZip(\ZipArchive $zip, string $absolute, string $relative): void
+    {
+        if (is_file($absolute)) {
+            $zip->addFile($absolute, $relative);
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($absolute, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $path = $item->getPathname();
+            $local = $relative . '/' . str_replace('\\', '/', substr($path, strlen($absolute) + 1));
+            if ($item->isDir()) {
+                $zip->addEmptyDir($local);
+                continue;
+            }
+            $zip->addFile($path, $local);
+        }
+    }
+
+    protected function runPendingMigrations(): void
+    {
+        $dir = ROOT . '/database/migrations';
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        db()->query(
+            'CREATE TABLE IF NOT EXISTS update_migrations (
+                id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                migration VARCHAR(255) NOT NULL,
+                executed_at DATETIME NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE KEY migration (migration)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+
+        foreach (glob($dir . '/*.sql') ?: [] as $file) {
+            $name = basename($file);
+            $exists = (int)db()->query('SELECT COUNT(*) FROM update_migrations WHERE migration = ?', [$name])->getColumn() > 0;
+            if ($exists) {
+                continue;
+            }
+
+            $sql = trim((string)file_get_contents($file));
+            if ($sql !== '') {
+                db()->query($sql);
+            }
+            db()->query('INSERT INTO update_migrations (migration, executed_at) VALUES (?, ?)', [$name, date('Y-m-d H:i:s')]);
+        }
+    }
+
+    protected function clearRuntimeCache(): void
+    {
+        if (!is_dir(CACHE)) {
+            return;
+        }
+
+        foreach (glob(CACHE . '/*') ?: [] as $file) {
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
     }
 
     /**

@@ -36,6 +36,14 @@ if (!defined('CACHE')) {
     define('CACHE', ROOT . '/tmp/cache');
 }
 
+if (!defined('STORAGE')) {
+    define('STORAGE', ROOT . '/storage');
+}
+
+if (!defined('INSTALLED_LOCK')) {
+    define('INSTALLED_LOCK', STORAGE . '/installed.lock');
+}
+
 $defaults = [
     'DEBUG' => 1,
     'LAYOUT' => 'default',
@@ -43,6 +51,7 @@ $defaults = [
     'PATH' => 'http://localhost:8888',
     'UPLOADS' => WWW . '/uploads',
     'SITE_NAME' => 'fbl',
+    'DEFAULT_LOCALE' => 'ru',
     'CHAT_ENCRYPTION_KEY' => 'change-this-chat-key-in-production',
     'APP_TIMEZONE' => 'Europe/Moscow',
     'PAGINATION_SETTINGS' => [
@@ -128,6 +137,7 @@ $scalarKeys = [
     'PATH',
     'UPLOADS',
     'SITE_NAME',
+    'DEFAULT_LOCALE',
     'CHAT_ENCRYPTION_KEY',
     'APP_TIMEZONE',
     'MULTILANGS',

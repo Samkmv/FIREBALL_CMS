@@ -9,7 +9,7 @@ $homeCityCategories = array_values(array_filter(
 ));
 
 $popularCameras = [];
-foreach (array_slice($featured_posts ?? [], 0, 6) as $post) {
+foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
     $title = trim((string)($post['title'] ?? ''));
     if ($title === '') {
         continue;
@@ -27,27 +27,28 @@ foreach (array_slice($featured_posts ?? [], 0, 6) as $post) {
 
 $objectCards = [
     [
-        'title' => 'Многоквартирные дома',
-        'text' => 'Контроль дворов, парковок, детских площадок и общественных зон. Жители получают удобный доступ к камерам и архиву, а управляющие компании — инструмент для повышения безопасности.',
+        'title' => return_translation('home_index_object_apartments_title'),
+        'text' => return_translation('home_index_object_apartments_text'),
         'image' => theme_asset('images/about/v2/hero.jpg'),
     ],
     [
-        'title' => 'Бизнес',
-        'text' => 'Покажите клиентам свой объект в прямом эфире. Онлайн-трансляция повышает доверие и помогает демонстрировать работу объекта открыто и честно.',
+        'title' => return_translation('home_index_object_business_title'),
+        'text' => return_translation('home_index_object_business_text'),
         'image' => theme_asset('images/about/v2/feature02.jpg'),
     ],
     [
-        'title' => 'Общественные пространства',
-        'text' => 'Парки, площади, набережные, спортивные зоны и туристические локации становятся доступнее для жителей и гостей города.',
+        'title' => return_translation('home_index_object_public_title'),
+        'text' => return_translation('home_index_object_public_text'),
         'image' => theme_asset('images/about/v2/feature03.jpg'),
     ],
 ];
 $benefits = [
-    ['icon' => 'ci-monitor', 'title' => 'Простота', 'text' => 'Просмотр работает через браузер без сложных настроек и приложений.'],
-    ['icon' => 'ci-check-shield', 'title' => 'Надёжность', 'text' => 'Стабильная работа камер и доступ к архиву.'],
-    ['icon' => 'ci-lock', 'title' => 'Безопасность', 'text' => 'Камеры помогают быстро разбирать спорные ситуации.'],
-    ['icon' => 'ci-eye', 'title' => 'Прозрачность', 'text' => 'Жители и клиенты видят происходящее в режиме реального времени.'],
+    ['icon' => 'ci-monitor', 'title' => return_translation('home_index_benefit_simple_title'), 'text' => return_translation('home_index_benefit_simple_text')],
+    ['icon' => 'ci-check-shield', 'title' => return_translation('home_index_benefit_reliable_title'), 'text' => return_translation('home_index_benefit_reliable_text')],
+    ['icon' => 'ci-lock', 'title' => return_translation('home_index_benefit_secure_title'), 'text' => return_translation('home_index_benefit_secure_text')],
+    ['icon' => 'ci-eye', 'title' => return_translation('home_index_benefit_transparent_title'), 'text' => return_translation('home_index_benefit_transparent_text')],
 ];
+$featuredCount = count($popularCameras);
 
 ?>
 <main class="home-page content-wrapper">
@@ -61,31 +62,31 @@ $benefits = [
         <div class="container home-hero__inner">
             <div class="home-hero__content home-reveal">
                 <span class="home-eyebrow"><span class="home-live-dot"></span> MAXIPAPA live platform</span>
-                <h1 class="home-hero__title">Онлайн-видеонаблюдение нового поколения</h1>
-                <p class="home-hero__lead">Следите за двором, домом, парковкой или бизнесом в режиме реального времени из любой точки мира.</p>
-                <p class="home-hero__text">24/7 онлайн-трансляции, удобный просмотр с любого устройства и быстрый доступ к архиву записей.</p>
+                <h1 class="home-hero__title"><?= print_translation('home_index_hero_title') ?></h1>
+                <p class="home-hero__lead"><?= print_translation('home_index_hero_lead') ?></p>
+                <p class="home-hero__text"><?= print_translation('home_index_hero_text') ?></p>
                 <div class="home-hero__actions">
-                    <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts') ?>">Смотреть камеры</a>
-                    <a class="btn btn-outline-secondary rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>">Подключить объект</a>
+                    <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts') ?>"><?= print_translation('home_index_hero_watch_cameras') ?></a>
+                    <a class="btn btn-outline-secondary rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="home-section home-stats" aria-label="Статистика MAXIPAPA">
+    <section class="home-section home-stats" aria-label="<?= htmlSC(return_translation('home_index_stats_aria')) ?>">
         <div class="container">
             <div class="home-stats__grid home-reveal" data-home-stats>
                 <div class="home-stat">
                     <strong><span data-home-counter="365">365</span>+</strong>
-                    <span>Камер онлайн</span>
+                    <span><?= print_translation('home_index_stats_cameras') ?></span>
                 </div>
                 <div class="home-stat">
                     <strong>24/7</strong>
-                    <span>Доступ к просмотру</span>
+                    <span><?= print_translation('home_index_stats_access') ?></span>
                 </div>
                 <div class="home-stat">
                     <strong><span data-home-counter="7">7</span></strong>
-                    <span>Дней архива</span>
+                    <span><?= print_translation('home_index_stats_archive_days') ?></span>
                 </div>
             </div>
         </div>
@@ -98,15 +99,15 @@ $benefits = [
                     <div class="d-flex flex-md-column align-items-end align-items-md-start home-reveal">
                         <div class="home-featured-head mb-md-5 me-3 me-md-0">
                             <span class="home-section-kicker">Featured on homepage</span>
-                            <h2>Записи на главной</h2>
-                            <p>Подборка объектов, которые сейчас вынесены на главную страницу сайта.</p>
+                            <h2><?= print_translation('home_index_featured_posts') ?></h2>
+                            <p><?= print_translation('home_index_featured_posts_subtitle') ?></p>
                         </div>
 
                         <div class="d-flex gap-2">
-                            <button type="button" id="prev-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-start me-1" aria-label="Назад">
+                            <button type="button" id="prev-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-start me-1 home-featured-nav-btn" aria-label="<?= htmlSC(return_translation('home_index_slider_prev')) ?>">
                                 <i class="ci-chevron-left fs-xl animate-target"></i>
                             </button>
-                            <button type="button" id="next-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-end" aria-label="Вперёд">
+                            <button type="button" id="next-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-end home-featured-nav-btn" aria-label="<?= htmlSC(return_translation('home_index_slider_next')) ?>">
                                 <i class="ci-chevron-right fs-xl animate-target"></i>
                             </button>
                         </div>
@@ -118,11 +119,19 @@ $benefits = [
                         <div class="swiper" data-swiper="{
                             &quot;slidesPerView&quot;: &quot;auto&quot;,
                             &quot;spaceBetween&quot;: 24,
-                            &quot;loop&quot;: <?= count($popularCameras) > 1 ? 'true' : 'false' ?>,
+                            &quot;loop&quot;: false,
+                            &quot;rewind&quot;: false,
+                            &quot;watchOverflow&quot;: true,
                             &quot;navigation&quot;: {
                                 &quot;prevEl&quot;: &quot;#prev-home-featured&quot;,
                                 &quot;nextEl&quot;: &quot;#next-home-featured&quot;
+                            }<?= $featuredCount > 1 ? ',' : '' ?>
+                            <?php if ($featuredCount > 1): ?>
+                            &quot;pagination&quot;: {
+                                &quot;el&quot;: &quot;#home-featured-progress&quot;,
+                                &quot;type&quot;: &quot;progressbar&quot;
                             }
+                            <?php endif; ?>
                         }">
                             <div class="swiper-wrapper">
                                 <?php foreach ($popularCameras as $camera): ?>
@@ -142,12 +151,18 @@ $benefits = [
                                                 <h3 class="h5 mb-0">
                                                     <a class="hover-effect-underline" href="<?= htmlSC($camera['url']) ?>"><?= htmlSC($camera['title']) ?></a>
                                                 </h3>
+                                                <a class="btn btn-outline-secondary rounded-pill btn-sm mt-3" href="<?= htmlSC($camera['url']) ?>">
+                                                    <?= print_translation('home_index_featured_posts_watch') ?>
+                                                </a>
                                             </div>
                                         </article>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
                         </div>
+                        <?php if ($featuredCount > 1): ?>
+                            <div id="home-featured-progress" class="swiper-pagination home-featured-progress" aria-label="<?= htmlSC(return_translation('home_index_slider_progress')) ?>"></div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -159,8 +174,8 @@ $benefits = [
             <div class="home-section-head home-reveal">
                 <div>
                     <span class="home-section-kicker">Use cases</span>
-                    <h2>Что можно подключить</h2>
-                    <p>MAXIPAPA подходит для жилых комплексов, бизнеса и городских пространств.</p>
+                    <h2><?= print_translation('home_index_use_cases_title') ?></h2>
+                    <p><?= print_translation('home_index_use_cases_subtitle') ?></p>
                 </div>
             </div>
 
@@ -184,7 +199,7 @@ $benefits = [
             <div class="home-section-head home-reveal">
                 <div>
                     <span class="home-section-kicker">Why MAXIPAPA</span>
-                    <h2>Почему выбирают MAXIPAPA</h2>
+                    <h2><?= print_translation('home_index_benefits_title') ?></h2>
                 </div>
             </div>
             <div class="home-benefit-grid">
@@ -204,18 +219,22 @@ $benefits = [
             <div class="home-geo-card home-reveal">
                 <div class="home-geo-card__content">
                     <span class="home-section-kicker">Coverage</span>
-                    <h2>Города присутствия</h2>
-                    <p>Выберите город, чтобы перейти к опубликованным объектам и камерам MAXIPAPA.</p>
-                    <?php if (!empty($homeCityCategories)): ?>
-                        <div class="home-city-list" aria-label="Города присутствия">
+                    <h2><?= print_translation('home_index_cities_title') ?></h2>
+                    <p><?= print_translation('home_index_cities_subtitle') ?></p>
+                    <div class="home-city-list" aria-label="<?= htmlSC(return_translation('home_index_cities_title')) ?>">
+                        <?php if (!empty($homeCityCategories)): ?>
                             <?php foreach ($homeCityCategories as $city): ?>
                                 <a class="btn btn-outline-secondary rounded-pill home-city-link" href="<?= base_href('/posts') . '?category=' . rawurlencode((string)$city['slug']) ?>">
                                     <span><?= htmlSC((string)($city['label'] ?? $city['name'] ?? $city['slug'])) ?></span>
                                     <small><?= (int)($city['total'] ?? 0) ?></small>
                                 </a>
                             <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                        <a class="btn btn-dark rounded-pill home-city-link home-city-link--all" href="<?= base_href('/posts') ?>">
+                            <span><?= print_translation('home_index_cities_all') ?></span>
+                            <i class="ci-arrow-right"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -227,9 +246,9 @@ $benefits = [
                 <div class="home-cta__glow home-cta__glow--one" aria-hidden="true"></div>
                 <div class="home-cta__glow home-cta__glow--two" aria-hidden="true"></div>
                 <span class="home-section-kicker">Start live</span>
-                <h2>Подключите видеонаблюдение уже сегодня</h2>
-                <p>Создайте безопасное и прозрачное пространство для жителей, клиентов и посетителей.</p>
-                <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>">Подключить объект</a>
+                <h2><?= print_translation('home_index_cta_title') ?></h2>
+                <p><?= print_translation('home_index_cta_text') ?></p>
+                <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>
             </div>
         </div>
     </section>
@@ -259,18 +278,56 @@ $benefits = [
         script.onerror = reject;
         document.head.appendChild(script);
     });
+    let heroPlayAttempts = 0;
+    let heroGestureFallbackBound = false;
+    const maxHeroPlayAttempts = 3;
+    const markHeroVideoReady = () => {
+        if (hero) {
+            hero.classList.add('home-hero--video-ready');
+            hero.classList.remove('home-hero--video-paused');
+        }
+    };
+    const bindHeroGestureFallback = () => {
+        if (heroGestureFallbackBound) {
+            return;
+        }
+        heroGestureFallbackBound = true;
+        const retryOnGesture = () => {
+            document.removeEventListener('pointerdown', retryOnGesture);
+            document.removeEventListener('touchstart', retryOnGesture);
+            document.removeEventListener('keydown', retryOnGesture);
+            heroPlayAttempts = Math.min(heroPlayAttempts, maxHeroPlayAttempts - 1);
+            playHeroVideo();
+        };
+        document.addEventListener('pointerdown', retryOnGesture, { once: true, passive: true });
+        document.addEventListener('touchstart', retryOnGesture, { once: true, passive: true });
+        document.addEventListener('keydown', retryOnGesture, { once: true });
+    };
     const playHeroVideo = () => {
+        if (!heroVideo || heroPlayAttempts >= maxHeroPlayAttempts) {
+            return;
+        }
+        heroPlayAttempts += 1;
+        heroVideo.muted = true;
+        heroVideo.defaultMuted = true;
+        heroVideo.setAttribute('muted', '');
+        heroVideo.setAttribute('playsinline', '');
+        heroVideo.setAttribute('webkit-playsinline', '');
         const playPromise = heroVideo.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(() => {});
+        if (playPromise && typeof playPromise.then === 'function') {
+            playPromise.then(markHeroVideoReady).catch(() => {
+                if (hero) {
+                    hero.classList.add('home-hero--video-paused');
+                }
+                bindHeroGestureFallback();
+            });
+        } else {
+            markHeroVideoReady();
         }
     };
     if (heroVideo && !reduceMotion) {
-        heroVideo.addEventListener('loadeddata', () => {
-            if (hero) {
-                hero.classList.add('home-hero--video-ready');
-            }
-        }, { once: true });
+        heroVideo.addEventListener('loadeddata', markHeroVideoReady, { once: true });
+        heroVideo.addEventListener('canplay', markHeroVideoReady, { once: true });
         if (heroVideo.canPlayType('application/vnd.apple.mpegurl') || heroVideo.canPlayType('application/x-mpegURL')) {
             playHeroVideo();
         } else {
@@ -279,13 +336,41 @@ $benefits = [
                     if (!Hls.isSupported()) {
                         return;
                     }
-                    const hls = new Hls({ liveDurationInfinity: true });
+                    let recoveries = 0;
+                    const hls = new Hls({
+                        liveDurationInfinity: true,
+                        lowLatencyMode: true,
+                        backBufferLength: 30,
+                    });
                     hls.loadSource(heroStream);
                     hls.attachMedia(heroVideo);
                     hls.on(Hls.Events.MANIFEST_PARSED, playHeroVideo);
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        if (!data || !data.fatal || recoveries >= 2) {
+                            return;
+                        }
+                        recoveries += 1;
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            hls.startLoad();
+                        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                            hls.recoverMediaError();
+                        } else {
+                            hls.destroy();
+                        }
+                    });
                 })
                 .catch(() => {});
         }
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && heroVideo.paused) {
+                playHeroVideo();
+            }
+        });
+        window.addEventListener('pageshow', () => {
+            if (heroVideo.paused) {
+                playHeroVideo();
+            }
+        });
     }
 
     const revealItems = root.querySelectorAll('.home-reveal');

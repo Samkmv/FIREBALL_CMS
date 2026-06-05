@@ -4,6 +4,7 @@ return [
     'DEBUG' => 0,
     'PATH' => 'https://example.com',
     'SITE_NAME' => 'FIREBALL_CMS',
+    'DEFAULT_LOCALE' => 'ru',
     'CHAT_ENCRYPTION_KEY' => 'change-this-chat-key-in-production',
     'APP_TIMEZONE' => 'Europe/Moscow',
     'DB_SETTINGS' => [

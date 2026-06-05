@@ -1,0 +1,23 @@
+{
+  "version": "1.5.2",
+  "minVersion": "1.0.0",
+  "type": "patch",
+  "migrations": true,
+  "protected": [
+    "config/config.local.php",
+    "storage",
+    "uploads",
+    "public/uploads",
+    "themes/custom"
+  ],
+  "update": [
+    "app",
+    "core",
+    "public",
+    "config/config.php",
+    "config/version.php",
+    "database",
+    "helpers",
+    "themes/default"
+  ]
+}

@@ -126,7 +126,9 @@
                     <div class="swiper swiper-initialized swiper-horizontal swiper-backface-hidden" data-swiper="{
                 &quot;slidesPerView&quot;: &quot;auto&quot;,
                 &quot;spaceBetween&quot;: 24,
-                &quot;loop&quot;: true,
+                &quot;loop&quot;: false,
+                &quot;rewind&quot;: false,
+                &quot;watchOverflow&quot;: true,
                 &quot;navigation&quot;: {
                   &quot;prevEl&quot;: &quot;#prev-values&quot;,
                   &quot;nextEl&quot;: &quot;#next-values&quot;

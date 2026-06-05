@@ -64,7 +64,7 @@ class HomeController extends BaseController
      */
     protected function renderDefaultHomepage(): string
     {
-        $featured_posts = $this->posts->getHomeFeaturedPosts(8);
+        $featured_posts = $this->posts->getHomeFeaturedPosts(10);
 
         return Theme::render('home', [
             'title' => return_translation('home_index_title'),

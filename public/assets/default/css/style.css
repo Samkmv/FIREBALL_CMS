@@ -251,16 +251,31 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 .post-content [data-plyr-player-wrap] {
     position: relative;
     display: block;
-    aspect-ratio: 16 / 9;
-    min-height: clamp(190px, 56vw, 420px);
+    height: auto;
     overflow: hidden;
     border-radius: .75rem;
     background: #05070a;
 }
 
+.post-content [data-plyr-player-wrap]::before {
+    content: "";
+    display: block;
+    padding-top: var(--fb-plyr-aspect-ratio, 56.25%);
+}
+
+.post-content [data-plyr-player-wrap]:fullscreen::before,
+.post-content [data-plyr-player-wrap]:-webkit-full-screen::before,
+[data-plyr-player-wrap].is-site-plyr-fullscreen::before,
+[data-plyr-player-wrap].plyr--fullscreen-fallback::before {
+    display: none;
+}
+
 .post-content [data-plyr-player-wrap] > .plyr {
     position: absolute;
     inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .post-content [data-plyr-player-wrap] > video,
@@ -287,9 +302,31 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 }
 
 .post-content [data-plyr-player-wrap] .plyr video {
+    position: absolute;
+    inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
+    margin: auto;
     object-fit: contain;
+    object-position: center center;
+}
+
+html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr__video-wrapper,
+html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr__video-wrapper--fixed-ratio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
+    position: static;
+    flex: 0 0 auto;
+    max-width: 100%;
+    max-height: 100%;
+    transform: none !important;
+    object-fit: contain;
+    object-position: 50% 50%;
 }
 
 .post-content [data-plyr-player-wrap] .plyr__poster {
@@ -368,7 +405,6 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 
 @media (max-width: 575.98px) {
     .post-content [data-plyr-player-wrap] {
-        min-height: clamp(180px, 58vw, 260px);
         border-radius: .5rem;
     }
 

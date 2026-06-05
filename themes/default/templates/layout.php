@@ -201,8 +201,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php endif; ?>
 
     <!-- Bootstrap + Theme styles -->
-    <link rel="preload" href="<?= theme_asset('css/theme.min.css') ?>" as="style">
-    <link rel="preload" href="<?= theme_asset('css/theme.rtl.min.css') ?>" as="style">
     <link rel="stylesheet" href="<?= theme_asset('css/theme.min.css') ?>" id="theme-styles">
 
     <!-- Customs styles -->
