@@ -312,24 +312,6 @@
         }
     };
 
-    const syncVideoAspectRatio = function (element) {
-        if (!(element instanceof HTMLVideoElement) || !element.videoWidth || !element.videoHeight) {
-            return;
-        }
-
-        const ratio = element.videoHeight / element.videoWidth;
-        if (!Number.isFinite(ratio) || ratio < 0.35 || ratio > 2) {
-            return;
-        }
-
-        const playerWrap = element.closest('[data-plyr-player-wrap]');
-        if (!playerWrap) {
-            return;
-        }
-
-        playerWrap.style.setProperty('--fb-plyr-aspect-ratio', (ratio * 100).toFixed(4) + '%');
-    };
-
     const detachNativeHlsSource = function (element) {
         if (element.dataset.hlsNativeSourceDetached === 'true') {
             return;
@@ -1441,7 +1423,10 @@
             const hls = new Hls({
                 autoStartLoad: true,
                 enableWorker: true,
-                lowLatencyMode: true,
+                lowLatencyMode: false,
+                liveSyncDurationCount: 3,
+                liveMaxLatencyDurationCount: 8,
+                maxLiveSyncPlaybackRate: 1,
                 backBufferLength: 90,
                 capLevelToPlayerSize: true,
                 manifestLoadingMaxRetry: 4,
@@ -2188,11 +2173,9 @@
 
                 ['loadedmetadata', 'loadeddata', 'canplay', 'play', 'playing'].forEach(function (eventName) {
                     element.addEventListener(eventName, function () {
-                        syncVideoAspectRatio(element);
                         syncFullVolume(element, !isPrimerPlaybackActive(element));
                     });
                 });
-                syncVideoAspectRatio(element);
 
                 if (!shouldUseNativeHls(element)) {
                     forceDetachNativeHlsSource(element);

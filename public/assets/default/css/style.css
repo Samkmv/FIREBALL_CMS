@@ -251,16 +251,18 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 .post-content [data-plyr-player-wrap] {
     position: relative;
     display: block;
+    width: 100%;
     height: auto;
+    aspect-ratio: 16 / 9;
     overflow: hidden;
     border-radius: .75rem;
     background: #05070a;
+    contain: layout paint;
 }
 
 .post-content [data-plyr-player-wrap]::before {
-    content: "";
-    display: block;
-    padding-top: var(--fb-plyr-aspect-ratio, 56.25%);
+    content: none;
+    display: none;
 }
 
 .post-content [data-plyr-player-wrap]:fullscreen::before,
@@ -310,6 +312,7 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
     margin: auto;
     object-fit: contain;
     object-position: center center;
+    backface-visibility: hidden;
 }
 
 html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr__video-wrapper,
