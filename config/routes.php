@@ -18,6 +18,7 @@ use App\Controllers\AdminPagesController;
 use App\Controllers\AnalyticsController;
 use App\Controllers\NotificationController;
 use App\Controllers\FileManagerController;
+use App\Controllers\ThemeEditorController;
 use App\Controllers\Api\V1\MenuController;
 use App\Modules\BlockEditor\BlockEditorController;
 
@@ -131,7 +132,16 @@ $app->router->get('/admin/themes/preview/(?P<slug>[a-z0-9_-]+)/?', [AdminControl
 $app->router->get('/admin/themes/export/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeExport'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/themes/edit/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeEdit'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/themes/edit/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeEdit'])->middleware(['auth', 'admin']);
-$app->router->get('/admin/themes/files/(?P<slug>[a-z0-9_-]+)/?', [AdminController::class, 'themeFiles'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/themes/files/(?P<slug>[a-z0-9_-]+)/?', [ThemeEditorController::class, 'index'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/theme-editor/(?P<slug>[a-z0-9_-]+)/?', [ThemeEditorController::class, 'index'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/save', [ThemeEditorController::class, 'save'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/create-file', [ThemeEditorController::class, 'createFile'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/create-directory', [ThemeEditorController::class, 'createDirectory'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/rename', [ThemeEditorController::class, 'rename'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/delete', [ThemeEditorController::class, 'delete'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/replace-image', [ThemeEditorController::class, 'replaceImage'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/restore', [ThemeEditorController::class, 'restore'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/theme-editor/copy', [ThemeEditorController::class, 'copyTheme'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/themes/delete', [AdminController::class, 'themeDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin']);

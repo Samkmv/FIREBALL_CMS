@@ -1168,6 +1168,7 @@ class AdminController extends BaseController
             'assets' => 'Assets',
             'helpers' => 'Helper-функции',
             'create-theme' => 'Создание темы',
+            'theme-editor' => 'Редактор тем',
             'import-export' => 'Импорт и экспорт',
         ];
     }
