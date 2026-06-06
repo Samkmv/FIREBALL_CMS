@@ -1,5 +1,5 @@
 {
-  "version": "1.5.2",
+  "version": "1.5.20",
   "minVersion": "1.0.0",
   "type": "patch",
   "migrations": true,
@@ -14,8 +14,11 @@
     "app",
     "core",
     "public",
-    "config/config.php",
-    "config/version.php",
+    "config",
+    ".gitignore",
+    "composer.json",
+    "composer.lock",
+    "update.json",
     "database",
     "helpers",
     "themes/default"

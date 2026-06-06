@@ -2,6 +2,7 @@
 
 namespace FBL;
 
+use App\Services\ConfigService;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
 /**
@@ -21,6 +22,7 @@ class Application
     public ?ThemeManager $theme = null;
     public static Application $app;
     protected array $container = [];
+    protected ?array $installationStatus = null;
 
     /**
      * Создаёт основные сервисы приложения и подготавливает окружение для текущего запроса.
@@ -46,6 +48,11 @@ class Application
      */
     public function run(): void
     {
+        $installation = $this->inspectInstallation();
+        if (($installation['state'] ?? '') === 'broken') {
+            $this->renderInstallationProblem((array)($installation['errors'] ?? []));
+        }
+
         if (!$this->isInstalled() && !$this->isInstallRequest()) {
             $this->response->redirect($this->installUrl());
         }
@@ -59,34 +66,116 @@ class Application
 
     public function isInstalled(): bool
     {
-        if (is_file(INSTALLED_LOCK)) {
-            return true;
+        return ($this->inspectInstallation()['state'] ?? '') === 'installed';
+    }
+
+    public function inspectInstallation(): array
+    {
+        if ($this->installationStatus !== null) {
+            return $this->installationStatus;
         }
 
+        $hasLock = is_file(INSTALLED_LOCK);
+        $hasLocalConfig = is_file(CONFIG . '/config.local.php');
+        if (!$hasLock && !$hasLocalConfig) {
+            return $this->installationStatus = ['state' => 'not_installed', 'errors' => []];
+        }
+
+        $errors = [];
+        if (!$hasLocalConfig) {
+            $errors[] = 'Missing config/config.local.php.';
+        }
+
+        if ($hasLocalConfig) {
+            $errors = array_merge($errors, $this->validateInstalledDatabase());
+        }
+
+        if (!$hasLock && $errors === []) {
+            $this->createLegacyInstalledLock();
+            $hasLock = is_file(INSTALLED_LOCK);
+        }
+        if (!$hasLock) {
+            $errors[] = 'Missing storage/installed.lock.';
+        }
+
+        return $this->installationStatus = $errors === []
+            ? ['state' => 'installed', 'errors' => []]
+            : ['state' => 'broken', 'errors' => array_values(array_unique($errors))];
+    }
+
+    protected function validateInstalledDatabase(): array
+    {
+        $errors = [];
         try {
+            if (trim((string)(DB_SETTINGS['database'] ?? '')) === '') {
+                return ['Database name is missing in config/config.local.php.'];
+            }
+
             $dsn = 'mysql:host=' . DB_SETTINGS['host'] . ';dbname=' . DB_SETTINGS['database'] . ';charset=' . DB_SETTINGS['charset'];
             if (!empty(DB_SETTINGS['port'])) {
                 $dsn .= ';port=' . (int)DB_SETTINGS['port'];
             }
 
             $pdo = new \PDO($dsn, DB_SETTINGS['username'], DB_SETTINGS['password'], DB_SETTINGS['options']);
-            $hasUsersTable = (int)$pdo->query(
-                "SELECT COUNT(*)
-                 FROM information_schema.TABLES
-                 WHERE TABLE_SCHEMA = DATABASE()
-                   AND TABLE_NAME = 'users'"
-            )->fetchColumn() > 0;
-
-            if (!$hasUsersTable) {
-                return false;
+            foreach (['users', 'user_roles', 'site_settings'] as $table) {
+                $statement = $pdo->prepare(
+                    'SELECT COUNT(*)
+                     FROM information_schema.TABLES
+                     WHERE TABLE_SCHEMA = DATABASE()
+                       AND TABLE_NAME = ?'
+                );
+                $statement->execute([$table]);
+                if ((int)$statement->fetchColumn() === 0) {
+                    $errors[] = 'Missing required database table: ' . $table . '.';
+                }
             }
 
-            $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'creator'");
-
-            return (int)$stmt->fetchColumn() > 0;
-        } catch (\Throwable) {
-            return false;
+            if ($errors === []) {
+                $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'creator'");
+                if ((int)$stmt->fetchColumn() === 0) {
+                    $errors[] = 'Creator account is missing.';
+                }
+            }
+        } catch (\Throwable $exception) {
+            $errors[] = 'Database connection failed: ' . $exception->getMessage();
         }
+
+        return $errors;
+    }
+
+    protected function createLegacyInstalledLock(): void
+    {
+        if (!is_dir(STORAGE)) {
+            @mkdir(STORAGE, 0755, true);
+        }
+        if (!is_dir(STORAGE) || !is_writable(STORAGE)) {
+            return;
+        }
+
+        @file_put_contents(INSTALLED_LOCK, json_encode([
+            'installed_at' => date('Y-m-d H:i:s'),
+            'migrated_from_legacy_installation' => true,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    }
+
+    protected function renderInstallationProblem(array $errors): never
+    {
+        http_response_code(503);
+        header('Content-Type: text/html; charset=utf-8');
+        $items = '';
+        foreach ($errors as $error) {
+            $items .= '<li>' . htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') . '</li>';
+        }
+
+        exit(
+            '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            . '<title>FIREBALL CMS installation error</title><body style="font-family:sans-serif;padding:40px;max-width:760px;margin:auto">'
+            . '<h1>FIREBALL CMS installation is incomplete</h1>'
+            . '<p>The installation marker exists, but required configuration or database data is unavailable.</p>'
+            . '<ul>' . $items . '</ul>'
+            . '<p>Restore the missing files or database from backup. Do not run installation over existing data.</p>'
+            . '</body></html>'
+        );
     }
 
     public function bootInstalledServices(): void
@@ -98,6 +187,7 @@ class Application
             $this->theme = new ThemeManager();
         }
 
+        $this->set('config', new ConfigService());
         Auth::setUser();
     }
 

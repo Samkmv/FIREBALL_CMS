@@ -64,7 +64,7 @@ final class InstallService
         $db = (array)($payload['db'] ?? []);
         $site = (array)($payload['site'] ?? []);
         $admin = (array)($payload['admin'] ?? []);
-        $locale = (string)($payload['locale'] ?? 'ru');
+        $locale = (string)($payload['locale'] ?? DEFAULT_LOCALE);
         $demo = !empty($payload['demo']);
         $now = date('Y-m-d H:i:s');
 
@@ -73,8 +73,12 @@ final class InstallService
             return ['ok' => false, 'message' => $validationError];
         }
 
-        $pdo = $this->pdo($db);
-        $tables = $this->existingTables($pdo);
+        try {
+            $pdo = $this->pdo($db);
+            $tables = $this->existingTables($pdo);
+        } catch (Throwable $exception) {
+            return ['ok' => false, 'message' => $exception->getMessage()];
+        }
         if ($tables !== [] && empty($payload['allow_existing'])) {
             return [
                 'ok' => false,
@@ -84,17 +88,55 @@ final class InstallService
             ];
         }
 
-        $this->writeLocalConfig($db, $site, $locale);
-        $this->runSqlFile($pdo, ROOT . '/database/schema.sql', ['now' => $now]);
-        $this->runSqlFile($pdo, ROOT . '/database/seed.sql', ['now' => $now]);
-        $this->insertSiteSettings($pdo, $site, $locale, $now);
-        $this->insertCreator($pdo, $admin, $now);
+        $temporaryConfig = CONFIG . '/config.local.php.tmp';
+        $finalConfig = CONFIG . '/config.local.php';
+        $temporaryLock = INSTALLED_LOCK . '.tmp';
+        $configPromoted = false;
 
-        if ($demo) {
-            $this->runSqlFile($pdo, ROOT . '/database/demo.sql', ['now' => $now]);
+        try {
+            $this->writeTemporaryLocalConfig($temporaryConfig, $db, $site, $locale);
+            $this->runSqlFile($pdo, ROOT . '/database/schema.sql', ['now' => $now]);
+            $this->runMigrationFiles($pdo);
+
+            $pdo->beginTransaction();
+            $this->runSqlFile($pdo, ROOT . '/database/seed.sql', ['now' => $now]);
+            $this->insertSiteSettings($pdo, $site, $locale, $now);
+            $this->insertCreator($pdo, $admin, $now);
+
+            if ($demo) {
+                $this->runSqlFile($pdo, ROOT . '/database/demo.sql', ['now' => $now]);
+            }
+
+            if (!@rename($temporaryConfig, $finalConfig)) {
+                throw new \RuntimeException('Unable to activate config.local.php.');
+            }
+            $configPromoted = true;
+            $this->writeInstalledLock($temporaryLock, $site, $admin, $locale);
+            $pdo->commit();
+
+            if (!@rename($temporaryLock, INSTALLED_LOCK)) {
+                throw new \RuntimeException('Unable to activate installed.lock.');
+            }
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if (is_file($temporaryConfig)) {
+                @unlink($temporaryConfig);
+            }
+            if (is_file($temporaryLock)) {
+                @unlink($temporaryLock);
+            }
+            if (is_file(INSTALLED_LOCK)) {
+                @unlink(INSTALLED_LOCK);
+            }
+            if ($configPromoted && is_file($finalConfig)) {
+                @unlink($finalConfig);
+            }
+            $this->removeTablesCreatedByAttempt($pdo, $tables);
+
+            return ['ok' => false, 'message' => $exception->getMessage()];
         }
-
-        $this->writeInstalledLock($site, $admin, $locale);
 
         return [
             'ok' => true,
@@ -148,6 +190,27 @@ final class InstallService
         return array_values(array_map(static fn(array $row): string => (string)($row[0] ?? ''), $rows ?: []));
     }
 
+    private function removeTablesCreatedByAttempt(PDO $pdo, array $tablesBefore): void
+    {
+        try {
+            $createdTables = array_values(array_diff($this->existingTables($pdo), $tablesBefore));
+            if ($createdTables === []) {
+                return;
+            }
+
+            $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+            try {
+                foreach ($createdTables as $table) {
+                    $pdo->exec('DROP TABLE IF EXISTS `' . str_replace('`', '``', $table) . '`');
+                }
+            } finally {
+                $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+            }
+        } catch (Throwable) {
+            // Preserve the original installation error; diagnostics can report any remaining tables.
+        }
+    }
+
     private function runSqlFile(PDO $pdo, string $path, array $params = []): void
     {
         if (!is_file($path)) {
@@ -155,46 +218,24 @@ final class InstallService
         }
 
         $sql = (string)file_get_contents($path);
-        foreach ($this->splitSqlStatements($sql) as $statement) {
-            $stmt = $pdo->prepare($statement);
-            foreach ($params as $key => $value) {
-                $stmt->bindValue(':' . $key, $value);
-            }
-            $stmt->execute();
-        }
+        (new SqlFileRunner())->executePdo($pdo, $sql, $params);
     }
 
-    private function splitSqlStatements(string $sql): array
+    private function runMigrationFiles(PDO $pdo): void
     {
-        $statements = [];
-        $current = '';
-        $quote = null;
-        $length = strlen($sql);
-
-        for ($i = 0; $i < $length; $i++) {
-            $char = $sql[$i];
-            $current .= $char;
-
-            if (($char === "'" || $char === '"') && ($i === 0 || $sql[$i - 1] !== '\\')) {
-                $quote = $quote === $char ? null : ($quote === null ? $char : $quote);
+        $runner = new SqlFileRunner();
+        foreach (glob(ROOT . '/database/migrations/*.sql') ?: [] as $file) {
+            $name = basename($file);
+            $check = $pdo->prepare('SELECT COUNT(*) FROM update_migrations WHERE migration = ?');
+            $check->execute([$name]);
+            if ((int)$check->fetchColumn() > 0) {
                 continue;
             }
 
-            if ($char === ';' && $quote === null) {
-                $statement = trim(substr($current, 0, -1));
-                if ($statement !== '') {
-                    $statements[] = $statement;
-                }
-                $current = '';
-            }
+            $runner->executePdo($pdo, (string)file_get_contents($file));
+            $insert = $pdo->prepare('INSERT INTO update_migrations (migration, executed_at) VALUES (?, ?)');
+            $insert->execute([$name, date('Y-m-d H:i:s')]);
         }
-
-        $tail = trim($current);
-        if ($tail !== '') {
-            $statements[] = $tail;
-        }
-
-        return $statements;
     }
 
     private function insertSiteSettings(PDO $pdo, array $site, string $locale, string $now): void
@@ -214,6 +255,8 @@ final class InstallService
             'homepage_type' => 'default',
             'posts_per_page' => '20',
             'default_locale' => $locale,
+            'site_url' => (string)($site['url'] ?? ''),
+            'timezone' => (string)($site['timezone'] ?? 'Europe/Moscow'),
             'cms_version' => (string)((require CONFIG . '/version.php')['version'] ?? ''),
             'updater_github_repository' => 'Samkmv/FIREBALL_CMS',
             'updater_github_branch' => 'main',
@@ -253,11 +296,14 @@ final class InstallService
         ]);
     }
 
-    private function writeLocalConfig(array $db, array $site, string $locale): void
+    private function writeTemporaryLocalConfig(string $path, array $db, array $site, string $locale): void
     {
-        $path = CONFIG . '/config.local.php';
-        if (is_file($path) && !is_file(INSTALLED_LOCK)) {
+        $finalPath = CONFIG . '/config.local.php';
+        if (is_file($finalPath) && !is_file(INSTALLED_LOCK)) {
             throw new \RuntimeException('config.local.php already exists. Remove it before reinstalling.');
+        }
+        if (is_file($path)) {
+            @unlink($path);
         }
 
         $config = [
@@ -284,8 +330,8 @@ final class InstallService
         ];
 
         $php = "<?php\n\nreturn " . $this->exportConfig($config) . ";\n";
-        if (file_put_contents($path, $php) === false) {
-            throw new \RuntimeException('Unable to write config.local.php.');
+        if (file_put_contents($path, $php, LOCK_EX) === false) {
+            throw new \RuntimeException('Unable to write temporary config.local.php.');
         }
     }
 
@@ -300,7 +346,7 @@ final class InstallService
         return $export;
     }
 
-    private function writeInstalledLock(array $site, array $admin, string $locale): void
+    private function writeInstalledLock(string $path, array $site, array $admin, string $locale): void
     {
         $this->ensureWritableDirectory(STORAGE);
         $payload = [
@@ -311,8 +357,11 @@ final class InstallService
             'locale' => $locale,
         ];
 
-        if (file_put_contents(INSTALLED_LOCK, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) {
-            throw new \RuntimeException('Unable to create installed.lock.');
+        if (is_file($path)) {
+            @unlink($path);
+        }
+        if (file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+            throw new \RuntimeException('Unable to create temporary installed.lock.');
         }
     }
 

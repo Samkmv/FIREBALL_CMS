@@ -20,12 +20,14 @@ final class InstallController extends Controller
         $data = (array)session()->get('install.data', []);
         $result = (array)session()->get('install.result', []);
         session()->remove('install.result');
+        $locale = (string)($data['locale'] ?? DEFAULT_LOCALE);
 
         return view('install/index', [
-            'title' => 'FIREBALL CMS Installation',
+            'title' => 'FIREBALL CMS',
             'step' => $step,
             'data' => $data,
             'result' => $result,
+            'translations' => $this->loadTranslations($locale),
             'requirements' => $this->installer->requirements(),
             'requirements_pass' => $this->installer->requirementsPass(),
             'languages' => LANGS,
@@ -40,7 +42,7 @@ final class InstallController extends Controller
         $data = (array)session()->get('install.data', []);
 
         if ($step === 'language') {
-            $locale = (string)request()->post('locale', 'ru');
+            $locale = (string)request()->post('locale', DEFAULT_LOCALE);
             if (!array_key_exists($locale, LANGS)) {
                 $locale = array_key_first(LANGS);
             }
@@ -100,7 +102,7 @@ final class InstallController extends Controller
             $data['allow_existing'] = (bool)request()->post('allow_existing', false);
 
             $result = $this->installer->install([
-                'locale' => (string)($data['locale'] ?? 'ru'),
+                'locale' => (string)($data['locale'] ?? DEFAULT_LOCALE),
                 'db' => (array)($data['db'] ?? []),
                 'site' => (array)($data['site'] ?? []),
                 'admin' => (array)($data['admin'] ?? []),
@@ -125,5 +127,14 @@ final class InstallController extends Controller
         }
 
         response()->redirect(base_url('/install'));
+    }
+
+    private function loadTranslations(string $locale): array
+    {
+        $fallback = APP . '/Languages/ru/install/index.php';
+        $path = APP . '/Languages/' . $locale . '/install/index.php';
+        $translations = is_file($path) ? require $path : (is_file($fallback) ? require $fallback : []);
+
+        return is_array($translations) ? $translations : [];
     }
 }

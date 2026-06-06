@@ -32,7 +32,7 @@ class NotificationCenter
         $limit = max(1, min(20, $limit));
         $chatUnreadCount = $this->chatMessages->getUnreadCountForUser($userId);
         $contactUnreadCount = $isAdmin ? $this->contactRequests->countUnread() : 0;
-        $updateItem = $isAdmin ? $this->getUpdateNotificationItem() : null;
+        $updateItem = $isAdmin && check_creator() ? $this->getUpdateNotificationItem() : null;
         $updateUnreadCount = $updateItem !== null ? 1 : 0;
 
         $chatItems = $this->chatMessages->getUnreadNotificationItemsForUser($userId, $limit);

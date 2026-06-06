@@ -238,7 +238,7 @@ return [
     'admin_maintenance_action_delete_demo_content' => 'Demo-Inhalte loeschen',
     'admin_maintenance_action_delete_demo_content_desc' => 'Loescht Standard-Demo-Inhalte.',
     'admin_maintenance_action_full_reset' => 'Vollstaendiger CMS-Reset',
-    'admin_maintenance_action_full_reset_desc' => 'Leert CMS-Tabellen und erstellt Creator, Rollen und Einstellungen neu.',
+    'admin_maintenance_action_full_reset_desc' => 'Leert CMS-Daten, behaelt den aktuellen Creator und stellt Systemrollen und Einstellungen wieder her.',
     'admin_stat_posts' => 'Beitraege',
     'admin_stat_contacts' => 'Anfragen',
     'admin_stat_categories' => 'Staedte',

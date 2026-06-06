@@ -10,7 +10,9 @@ tmp/theme-exports/
 tmp/theme-import-*
 public/assets/cartzilla-html
 config/config.local.php
+config/config.local.php.tmp
 storage/installed.lock
+storage/installed.lock.tmp
 storage/backups/*.sql
 storage/backups/*.zip
 AGENT.md

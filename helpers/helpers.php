@@ -437,19 +437,26 @@ function get_user_role_label(?string $role = null): string
 
 function site_setting(string $key, string $default = ''): string
 {
-    static $settings = null;
+    return config_service()->site($key, $default);
+}
 
-    if ($settings === null && class_exists(\App\Models\SiteSetting::class)) {
-        $settings = (new \App\Models\SiteSetting())->all();
+function config_service(): \App\Services\ConfigService
+{
+    static $fallback = null;
+    try {
+        $service = app()->get('config');
+        if ($service instanceof \App\Services\ConfigService) {
+            return $service;
+        }
+    } catch (\Throwable) {
     }
 
-    if (!is_array($settings) || !array_key_exists($key, $settings)) {
-        return $default;
-    }
+    return $fallback ??= new \App\Services\ConfigService();
+}
 
-    $value = (string)$settings[$key];
-
-    return $value !== '' ? $value : $default;
+function config_value(string $key, mixed $default = null): mixed
+{
+    return config_service()->get($key, $default);
 }
 
 function site_social_network_options(): array
@@ -551,19 +558,20 @@ function return_translation($key): string
 function send_mail(array $to, string $subject, string $tpl, array $data = [], array $attachments = []): bool
 {
     $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $mailSettings = config_service()->mail();
 
     try {
         //Server settings
-        $mail->SMTPDebug = MAIL_SETTINGS['debug'];
+        $mail->SMTPDebug = $mailSettings['debug'];
         $mail->isSMTP();
-        $mail->Host       = MAIL_SETTINGS['host'];
-        $mail->SMTPAuth   = MAIL_SETTINGS['auth'];
-        $mail->Username   = MAIL_SETTINGS['username'];
-        $mail->Password   = MAIL_SETTINGS['password'];
-        $mail->SMTPSecure = MAIL_SETTINGS['secure'];
-        $mail->Port       = MAIL_SETTINGS['port'];
+        $mail->Host       = $mailSettings['host'];
+        $mail->SMTPAuth   = $mailSettings['auth'];
+        $mail->Username   = $mailSettings['username'];
+        $mail->Password   = $mailSettings['password'];
+        $mail->SMTPSecure = $mailSettings['secure'];
+        $mail->Port       = $mailSettings['port'];
 
-        $mail->setFrom(MAIL_SETTINGS['from_email'], MAIL_SETTINGS['from_name']);
+        $mail->setFrom($mailSettings['from_email'], $mailSettings['from_name']);
         foreach ($to as $email) {
             $mail->addAddress($email);
         }
@@ -574,8 +582,8 @@ function send_mail(array $to, string $subject, string $tpl, array $data = [], ar
             }
         }
 
-        $mail->isHTML(MAIL_SETTINGS['is_html']);
-        $mail->CharSet = MAIL_SETTINGS['charset'];
+        $mail->isHTML($mailSettings['is_html']);
+        $mail->CharSet = $mailSettings['charset'];
         $mail->Subject = $subject;
         $mail->Body    = view($tpl, $data, false);
 

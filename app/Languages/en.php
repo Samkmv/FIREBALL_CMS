@@ -239,7 +239,7 @@ return [
     'admin_maintenance_action_delete_demo_content' => 'Delete demo content',
     'admin_maintenance_action_delete_demo_content_desc' => 'Deletes default demo posts and demo categories when unused.',
     'admin_maintenance_action_full_reset' => 'Full CMS reset',
-    'admin_maintenance_action_full_reset_desc' => 'Clears CMS tables and recreates Creator, roles and default settings.',
+    'admin_maintenance_action_full_reset_desc' => 'Clears CMS data while preserving the current Creator and restores system roles and default settings.',
     'admin_stat_posts' => 'Posts',
     'admin_stat_contacts' => 'Requests',
     'admin_stat_categories' => 'Cities',

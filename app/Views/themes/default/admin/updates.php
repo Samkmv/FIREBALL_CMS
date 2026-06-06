@@ -299,19 +299,6 @@ if (is_array($lastCheck)) {
                             </div>
                         <?php endif; ?>
 
-                        <form action="<?= base_href('/admin/settings/update-center/check') ?>" method="post">
-                            <?= get_csrf_field() ?>
-                            <button class="btn btn-outline-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
-                                <i class="ci-refresh"></i><?= print_translation('admin_update_check_btn') ?>
-                            </button>
-                        </form>
-
-                        <form action="<?= base_href('/admin/settings/update-center/update') ?>" method="post">
-                            <?= get_csrf_field() ?>
-                            <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit" <?= !empty($updateBlockers) ? 'disabled' : '' ?>>
-                                <i class="ci-download"></i><?= print_translation('admin_update_run_btn') ?>
-                            </button>
-                        </form>
                     </div>
                 </div>
             <?php endif; ?>

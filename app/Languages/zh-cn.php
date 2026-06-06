@@ -238,7 +238,7 @@ return [
     'admin_maintenance_action_delete_demo_content' => '删除演示内容',
     'admin_maintenance_action_delete_demo_content_desc' => '删除默认演示内容。',
     'admin_maintenance_action_full_reset' => '完整 CMS 重置',
-    'admin_maintenance_action_full_reset_desc' => '清空 CMS 表并重新创建 Creator、角色和默认设置。',
+    'admin_maintenance_action_full_reset_desc' => '清空 CMS 数据，保留当前 Creator，并恢复系统角色和默认设置。',
     'admin_stat_posts' => '文章',
     'admin_stat_contacts' => '请求',
     'admin_stat_categories' => '城市',

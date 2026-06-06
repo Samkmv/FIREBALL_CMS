@@ -244,6 +244,28 @@ class UpdateCenter
      */
     public function runUpdate(): array
     {
+        $fromVersion = (string)($this->engineRelease['version'] ?? '0.0.0');
+        $user = function_exists('get_user') ? (get_user() ?: []) : [];
+
+        try {
+            $result = $this->performUpdate();
+            $this->reloadEngineRelease();
+            $this->writeUpdateLog(
+                $user,
+                $fromVersion,
+                (string)($this->engineRelease['version'] ?? $fromVersion),
+                (string)($result['status'] ?? 'success')
+            );
+
+            return $result;
+        } catch (\Throwable $exception) {
+            $this->writeUpdateLog($user, $fromVersion, null, 'error', $exception->getMessage());
+            throw $exception;
+        }
+    }
+
+    protected function performUpdate(): array
+    {
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
@@ -262,8 +284,9 @@ class UpdateCenter
         }
 
         $previousCommit = (string)($localGitState['commit_hash'] ?? '');
-        $this->createPreUpdateBackups();
         $this->fetchRemoteBranch($branch);
+        $manifest = $this->loadRemoteGitManifest($branch);
+        $this->validateUpdateManifest($manifest);
         $branchState = $this->getBranchStateFromGit($branch);
 
         if (($branchState['status'] ?? '') === 'identical') {
@@ -284,6 +307,8 @@ class UpdateCenter
             throw new RuntimeException(return_translation('admin_update_branch_diverged'));
         }
 
+        $this->validateGitDiffAgainstManifest($branch, $manifest);
+        $this->createPreUpdateBackups();
         $pullResult = $this->runCommand(
             'git pull --ff-only origin ' . escapeshellarg($branch),
             ROOT
@@ -428,10 +453,10 @@ class UpdateCenter
 
             $packageRoot = $this->extractArchive($archivePath, $extractPath);
             $manifest = $this->loadUpdateManifest($packageRoot);
-            $this->validateUpdateManifest($manifest);
+            $this->validateUpdateManifest($manifest, $packageRoot);
             $this->createPreUpdateBackups();
             $this->ensureLocalConfigExists();
-            $this->copyPackageToRoot($packageRoot, ROOT);
+            $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
 
             $composerResult = $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
             $this->runPendingMigrations();
@@ -1176,7 +1201,7 @@ class UpdateCenter
     /**
      * Копирует файлы из распакованного релиза в корень приложения, сохраняя локальные данные.
      */
-    protected function copyPackageToRoot(string $packageRoot, string $targetRoot): void
+    protected function copyPackageToRoot(string $packageRoot, string $targetRoot, array $manifest): void
     {
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($packageRoot, \FilesystemIterator::SKIP_DOTS),
@@ -1191,7 +1216,12 @@ class UpdateCenter
             $sourcePath = $item->getPathname();
             $relativePath = str_replace('\\', '/', substr($sourcePath, strlen($packageRoot) + 1));
 
-            if ($relativePath === '' || $this->shouldSkipExtractedPath($relativePath) || $this->shouldPreservePath($relativePath)) {
+            if (
+                $relativePath === ''
+                || $this->shouldSkipExtractedPath($relativePath)
+                || $this->shouldPreservePath($relativePath, $manifest)
+                || !$this->shouldUpdatePath($relativePath, $manifest)
+            ) {
                 continue;
             }
 
@@ -1212,7 +1242,7 @@ class UpdateCenter
     /**
      * Возвращает true для путей, которые нельзя перезаписывать релизом.
      */
-    protected function shouldPreservePath(string $relativePath): bool
+    protected function shouldPreservePath(string $relativePath, array $manifest = []): bool
     {
         $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
 
@@ -1223,6 +1253,10 @@ class UpdateCenter
             'uploads',
             'public/uploads',
             'themes/custom',
+            ...array_map(
+                static fn($path): string => trim(str_replace('\\', '/', (string)$path), '/'),
+                (array)($manifest['protected'] ?? [])
+            ),
         ];
 
         foreach ($preservePrefixes as $prefix) {
@@ -1234,43 +1268,156 @@ class UpdateCenter
         return in_array($relativePath, ['config/config.local.php'], true);
     }
 
+    protected function shouldUpdatePath(string $relativePath, array $manifest): bool
+    {
+        $relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+        foreach ((array)($manifest['update'] ?? []) as $allowedPath) {
+            $allowedPath = trim(str_replace('\\', '/', (string)$allowedPath), '/');
+            if ($allowedPath !== '' && ($relativePath === $allowedPath || str_starts_with($relativePath, $allowedPath . '/'))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     protected function loadUpdateManifest(string $packageRoot): array
     {
         $path = rtrim($packageRoot, '/') . '/update.json';
         if (!is_file($path)) {
-            return [];
+            throw new RuntimeException('Update manifest update.json is missing.');
         }
 
         $payload = json_decode((string)file_get_contents($path), true);
-
-        return is_array($payload) ? $payload : [];
-    }
-
-    protected function validateUpdateManifest(array $manifest): void
-    {
-        if ($manifest === []) {
-            return;
+        if (!is_array($payload) || json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('Update manifest update.json is invalid.');
         }
 
+        return $payload;
+    }
+
+    protected function validateUpdateManifest(array $manifest, ?string $packageRoot = null): void
+    {
+        $version = trim((string)($manifest['version'] ?? ''));
         $minVersion = trim((string)($manifest['minVersion'] ?? ''));
+        if (!$this->isSemanticVersion($version) || !$this->isSemanticVersion($minVersion)) {
+            throw new RuntimeException('Update manifest contains an invalid semantic version.');
+        }
+        if (!isset($manifest['protected'], $manifest['update'])
+            || !is_array($manifest['protected'])
+            || !is_array($manifest['update'])
+            || $manifest['update'] === []
+        ) {
+            throw new RuntimeException('Update manifest must define protected and update paths.');
+        }
+        foreach (array_merge($manifest['protected'], $manifest['update']) as $path) {
+            if (!is_string($path) || trim($path, " \t\n\r\0\x0B/\\") === '' || str_contains($path, '..')) {
+                throw new RuntimeException('Update manifest contains an unsafe path.');
+            }
+        }
+        if (!in_array((string)($manifest['type'] ?? ''), ['patch', 'minor', 'major'], true)) {
+            throw new RuntimeException('Update manifest contains an invalid update type.');
+        }
+
+        if ($packageRoot !== null) {
+            $versionFile = rtrim($packageRoot, '/') . '/config/version.php';
+            if (!is_file($versionFile)) {
+                throw new RuntimeException('Update package version metadata is missing.');
+            }
+            $versionContents = (string)file_get_contents($versionFile);
+            $packageVersion = preg_match("/['\"]version['\"]\s*=>\s*['\"]([^'\"]+)['\"]/", $versionContents, $matches) === 1
+                ? trim((string)$matches[1])
+                : '';
+            if ($packageVersion !== $version) {
+                throw new RuntimeException('Update manifest version does not match config/version.php.');
+            }
+        }
+
         if ($minVersion !== '' && version_compare((string)($this->engineRelease['version'] ?? '0.0.0'), $minVersion, '<')) {
             throw new RuntimeException('Update requires FIREBALL CMS ' . $minVersion . ' or newer.');
         }
     }
 
-    protected function createPreUpdateBackups(): void
+    protected function isSemanticVersion(string $version): bool
     {
-        $databaseBackup = (new DatabaseMaintenanceService())->createBackup();
-        if ($databaseBackup === '') {
-            throw new RuntimeException('Database backup failed. Update aborted.');
-        }
-        $this->createFileBackup();
+        return preg_match('/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/', $version) === 1;
     }
 
-    protected function createFileBackup(): void
+    protected function loadRemoteGitManifest(string $branch): array
+    {
+        $result = $this->runCommand(
+            'git show ' . escapeshellarg('origin/' . $branch . ':update.json'),
+            ROOT
+        );
+        if ($result['exit_code'] !== 0) {
+            throw new RuntimeException('Remote update manifest update.json is missing.');
+        }
+
+        $manifest = json_decode((string)$result['stdout'], true);
+        if (!is_array($manifest) || json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('Remote update manifest update.json is invalid.');
+        }
+        $versionResult = $this->runCommand(
+            'git show ' . escapeshellarg('origin/' . $branch . ':config/version.php'),
+            ROOT
+        );
+        $remoteVersion = preg_match(
+            "/['\"]version['\"]\s*=>\s*['\"]([^'\"]+)['\"]/",
+            (string)$versionResult['stdout'],
+            $matches
+        ) === 1 ? trim((string)$matches[1]) : '';
+        if ($versionResult['exit_code'] !== 0 || $remoteVersion !== (string)($manifest['version'] ?? '')) {
+            throw new RuntimeException('Remote update manifest version does not match config/version.php.');
+        }
+
+        return $manifest;
+    }
+
+    protected function validateGitDiffAgainstManifest(string $branch, array $manifest): void
+    {
+        $result = $this->runCommand(
+            'git diff --name-only HEAD ' . escapeshellarg('origin/' . $branch),
+            ROOT
+        );
+        if ($result['exit_code'] !== 0) {
+            throw new RuntimeException('Unable to validate update files against update.json.');
+        }
+
+        foreach (preg_split('/\r\n|\r|\n/', trim((string)$result['stdout'])) ?: [] as $path) {
+            $path = trim($path);
+            if ($path === '') {
+                continue;
+            }
+            if ($this->shouldPreservePath($path, $manifest)) {
+                throw new RuntimeException('Update attempts to modify a protected path: ' . $path);
+            }
+            if (!$this->shouldUpdatePath($path, $manifest)) {
+                throw new RuntimeException('Update contains a path not allowed by update.json: ' . $path);
+            }
+        }
+    }
+
+    protected function createPreUpdateBackups(): void
+    {
+        try {
+            $databaseBackup = (new DatabaseMaintenanceService())->createBackup();
+            if ($databaseBackup === '') {
+                throw new RuntimeException('Database backup failed. Update aborted.');
+            }
+            $fileBackup = $this->createFileBackup();
+            if ($fileBackup === '') {
+                throw new RuntimeException('File backup failed. Update aborted.');
+            }
+        } catch (\Throwable $exception) {
+            log_error_details('Pre-update backup failed', [], $exception);
+            throw $exception;
+        }
+    }
+
+    protected function createFileBackup(): string
     {
         if (!class_exists(\ZipArchive::class)) {
-            return;
+            throw new RuntimeException('ZipArchive is required to create an update backup.');
         }
 
         $backupDir = STORAGE . '/backups';
@@ -1278,24 +1425,36 @@ class UpdateCenter
         $path = $backupDir . '/files-backup-' . date('Y-m-d-H-i') . '.zip';
         $zip = new \ZipArchive();
         if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            return;
+            throw new RuntimeException('Unable to create the file backup archive.');
         }
 
-        foreach (['config/config.local.php', 'storage', 'public/uploads', 'uploads', 'themes/custom'] as $relative) {
-            $absolute = ROOT . '/' . $relative;
-            if (!file_exists($absolute)) {
-                continue;
+        try {
+            foreach (['config/config.local.php', 'storage', 'public/uploads', 'uploads', 'themes/custom'] as $relative) {
+                $absolute = ROOT . '/' . $relative;
+                if (!file_exists($absolute)) {
+                    continue;
+                }
+                $this->addPathToZip($zip, $absolute, $relative, ['storage/backups']);
             }
-            $this->addPathToZip($zip, $absolute, $relative);
+
+            if (!$zip->close() || !is_file($path) || filesize($path) === 0) {
+                throw new RuntimeException('File backup archive was not written.');
+            }
+        } catch (\Throwable $exception) {
+            $zip->close();
+            @unlink($path);
+            throw $exception;
         }
 
-        $zip->close();
+        return $path;
     }
 
-    protected function addPathToZip(\ZipArchive $zip, string $absolute, string $relative): void
+    protected function addPathToZip(\ZipArchive $zip, string $absolute, string $relative, array $excluded = []): void
     {
         if (is_file($absolute)) {
-            $zip->addFile($absolute, $relative);
+            if (!$zip->addFile($absolute, $relative)) {
+                throw new RuntimeException('Unable to add file to backup: ' . $relative);
+            }
             return;
         }
 
@@ -1307,11 +1466,21 @@ class UpdateCenter
         foreach ($iterator as $item) {
             $path = $item->getPathname();
             $local = $relative . '/' . str_replace('\\', '/', substr($path, strlen($absolute) + 1));
+            foreach ($excluded as $excludedPath) {
+                $excludedPath = trim(str_replace('\\', '/', $excludedPath), '/');
+                if ($local === $excludedPath || str_starts_with($local, $excludedPath . '/')) {
+                    continue 2;
+                }
+            }
             if ($item->isDir()) {
-                $zip->addEmptyDir($local);
+                if (!$zip->addEmptyDir($local)) {
+                    throw new RuntimeException('Unable to add directory to backup: ' . $local);
+                }
                 continue;
             }
-            $zip->addFile($path, $local);
+            if (!$zip->addFile($path, $local)) {
+                throw new RuntimeException('Unable to add file to backup: ' . $local);
+            }
         }
     }
 
@@ -1341,9 +1510,56 @@ class UpdateCenter
 
             $sql = trim((string)file_get_contents($file));
             if ($sql !== '') {
-                db()->query($sql);
+                (new SqlFileRunner())->executeDatabase($sql);
             }
             db()->query('INSERT INTO update_migrations (migration, executed_at) VALUES (?, ?)', [$name, date('Y-m-d H:i:s')]);
+        }
+    }
+
+    protected function ensureUpdateLogTable(): void
+    {
+        db()->query(
+            'CREATE TABLE IF NOT EXISTS cms_update_logs (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_id INT(10) UNSIGNED NULL,
+                user_name VARCHAR(255) NULL,
+                from_version VARCHAR(50) NOT NULL,
+                to_version VARCHAR(50) NULL,
+                result VARCHAR(20) NOT NULL,
+                error TEXT NULL,
+                created_at DATETIME NOT NULL,
+                PRIMARY KEY (id),
+                KEY result (result),
+                KEY created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+    }
+
+    protected function writeUpdateLog(
+        array $user,
+        string $fromVersion,
+        ?string $toVersion,
+        string $result,
+        ?string $error = null
+    ): void {
+        try {
+            $this->ensureUpdateLogTable();
+            db()->query(
+                'INSERT INTO cms_update_logs
+                 (user_id, user_name, from_version, to_version, result, error, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [
+                    (int)($user['id'] ?? 0) ?: null,
+                    (string)($user['name'] ?? ''),
+                    $fromVersion,
+                    $toVersion,
+                    $result,
+                    $error,
+                    date('Y-m-d H:i:s'),
+                ]
+            );
+        } catch (\Throwable $exception) {
+            log_error_details('Update log write failed', ['Result' => $result], $exception);
         }
     }
 

@@ -44,11 +44,16 @@ if (!defined('INSTALLED_LOCK')) {
     define('INSTALLED_LOCK', STORAGE . '/installed.lock');
 }
 
+$requestHost = preg_replace('/[^a-zA-Z0-9.:[\]-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost')) ?: 'localhost';
+$forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0] ?? ''));
+$requestIsSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https';
+$detectedAppUrl = ($requestIsSecure ? 'https' : 'http') . '://' . $requestHost;
+
 $defaults = [
     'DEBUG' => 1,
     'LAYOUT' => 'default',
     'THEME' => 'default',
-    'PATH' => 'http://localhost:8888',
+    'PATH' => $detectedAppUrl,
     'UPLOADS' => WWW . '/uploads',
     'SITE_NAME' => 'fbl',
     'DEFAULT_LOCALE' => 'ru',
@@ -89,13 +94,13 @@ $defaults = [
     ],
     'DB_SETTINGS' => [
         'driver' => 'mysql',
-        'host' => 'localhost',
-        'database' => 'fbl',
-        'username' => 'root',
-        'password' => 'root',
+        'host' => '127.0.0.1',
+        'database' => '',
+        'username' => '',
+        'password' => '',
         'charset' => 'utf8mb4',
         'collation' => 'utf8mb4_unicode_ci',
-        'port' => 8889,
+        'port' => 3306,
         'prefix' => '',
         'options' => [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -103,14 +108,14 @@ $defaults = [
         ],
     ],
     'MAIL_SETTINGS' => [
-        'host' => 'sandbox.smtp.mailtrap.io',
+        'host' => '',
         'auth' => true,
-        'username' => '5a8227c0fb4058',
-        'password' => '4ca21db6c36d9a',
+        'username' => '',
+        'password' => '',
         'secure' => 'tls',
         'port' => 587,
-        'from_email' => '809dd70a9c-b1e56f@inbox.mailtrap.io',
-        'from_name' => 'FBL',
+        'from_email' => '',
+        'from_name' => 'FIREBALL CMS',
         'is_html' => true,
         'charset' => 'UTF-8',
         'debug' => 0,
@@ -129,6 +134,12 @@ if (is_file($localConfigPath)) {
 }
 
 $config = array_replace_recursive($defaults, $localConfig);
+$defaultLocale = (string)($config['DEFAULT_LOCALE'] ?? $defaults['DEFAULT_LOCALE']);
+if (isset($config['LANGS'][$defaultLocale])) {
+    foreach ($config['LANGS'] as $code => $language) {
+        $config['LANGS'][$code]['base'] = $code === $defaultLocale ? 1 : 0;
+    }
+}
 
 $scalarKeys = [
     'DEBUG',

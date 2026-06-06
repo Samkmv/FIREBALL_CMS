@@ -74,7 +74,7 @@ final class DatabaseMaintenanceService
                 'recreate_system_seeds' => $this->recreateSystemSeeds(),
                 'recreate_roles' => $this->recreateRolesAndPermissions(),
                 'delete_demo_content' => $this->deleteDemoContent(),
-                'full_reset' => $this->fullResetCms(),
+                'full_reset' => $this->fullResetCms($user),
                 default => ['message' => 'Unsupported action.'],
             };
 
@@ -314,10 +314,21 @@ final class DatabaseMaintenanceService
         ];
     }
 
-    private function fullResetCms(): array
+    private function fullResetCms(array $actor): array
     {
         $now = date('Y-m-d H:i:s');
         $this->ensureCoreSchemas();
+        $creatorId = (int)($actor['id'] ?? 0);
+        $creator = $creatorId > 0
+            ? db()->query("SELECT * FROM users WHERE id = ? AND role = 'creator' LIMIT 1", [$creatorId])->getOne()
+            : false;
+        if (!$creator) {
+            $creator = db()->query("SELECT * FROM users WHERE role = 'creator' ORDER BY id ASC LIMIT 1")->getOne();
+        }
+        if (!$creator) {
+            throw new \RuntimeException('Current Creator account could not be preserved.');
+        }
+
         $this->truncateTables([
             'chat_audit_logs',
             'chat_messages',
@@ -325,24 +336,29 @@ final class DatabaseMaintenanceService
             'password_resets',
             'posts',
             'post_categories',
-            'users',
-            'user_roles',
-            'site_settings',
+            'pages',
             'products',
             'categories',
+            'analytics_visits',
             'site_metrics',
+            'database_maintenance_logs',
+            'cms_update_logs',
+            'update_migrations',
         ]);
+        db()->query('DELETE FROM users WHERE id <> ?', [(int)$creator['id']]);
+        db()->query("UPDATE users SET role = 'creator' WHERE id = ?", [(int)$creator['id']]);
+        db()->query('TRUNCATE TABLE user_roles');
+        db()->query('TRUNCATE TABLE site_settings');
         $this->recreateRolesAndPermissions();
-        $this->insertCreator($now);
         $this->upsertDefaultSettings('FIREBALL CMS', 'Clean FIREBALL CMS installation after reset.', $now);
         $this->resetMetrics($now);
 
         return [
-            'message' => 'CMS reset completed. Creator account recreated.',
+            'message' => 'CMS reset completed. Current Creator account was preserved.',
             'account' => [
-                'login' => 'creator',
-                'email' => 'creator@admin.com',
-                'password' => 'creator',
+                'id' => (int)$creator['id'],
+                'login' => (string)($creator['login'] ?? ''),
+                'email' => (string)($creator['email'] ?? ''),
             ],
         ];
     }
@@ -441,33 +457,18 @@ final class DatabaseMaintenanceService
         );
     }
 
-    private function insertCreator(string $now): void
-    {
-        db()->query(
-            'INSERT INTO users (name, login, email, password, avatar, role, last_seen_at, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                'Creator',
-                'creator',
-                'creator@admin.com',
-                password_hash('creator', PASSWORD_DEFAULT),
-                null,
-                'creator',
-                null,
-                $now,
-            ]
-        );
-    }
-
     private function truncateTables(array $tables): void
     {
         db()->query('SET FOREIGN_KEY_CHECKS = 0');
-        foreach ($tables as $table) {
-            if ($this->tableExists($table)) {
-                db()->query('TRUNCATE TABLE ' . $this->quoteIdentifier($table));
+        try {
+            foreach ($tables as $table) {
+                if ($this->tableExists($table)) {
+                    db()->query('TRUNCATE TABLE ' . $this->quoteIdentifier($table));
+                }
             }
+        } finally {
+            db()->query('SET FOREIGN_KEY_CHECKS = 1');
         }
-        db()->query('SET FOREIGN_KEY_CHECKS = 1');
     }
 
     private function tableExists(string $table): bool

@@ -239,7 +239,7 @@ return [
     'admin_maintenance_action_delete_demo_content' => 'Удалить демо-контент',
     'admin_maintenance_action_delete_demo_content_desc' => 'Удаляет стандартные демо-записи и демо-категории, если они не используются.',
     'admin_maintenance_action_full_reset' => 'Полный сброс CMS',
-    'admin_maintenance_action_full_reset_desc' => 'Очищает CMS-таблицы и пересоздает Creator, системные роли и базовые настройки.',
+    'admin_maintenance_action_full_reset_desc' => 'Очищает данные CMS, сохраняя текущего Creator, и восстанавливает системные роли и базовые настройки.',
     'admin_stat_posts' => 'Записи',
     'admin_stat_contacts' => 'Заявки',
     'admin_stat_categories' => 'Города',

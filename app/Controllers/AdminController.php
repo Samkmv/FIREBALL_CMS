@@ -723,6 +723,8 @@ class AdminController extends BaseController
      */
     public function checkForUpdates()
     {
+        $this->requireCreatorForUpdates();
+
         try {
             $result = $this->updateCenter->checkForUpdates();
             session()->setFlash('success', (string)($result['message'] ?? return_translation('admin_update_check_available')));
@@ -738,6 +740,8 @@ class AdminController extends BaseController
      */
     public function runUpdate()
     {
+        $this->requireCreatorForUpdates();
+
         try {
             $result = $this->updateCenter->runUpdate();
             $status = (string)($result['status'] ?? 'success');
@@ -753,6 +757,13 @@ class AdminController extends BaseController
         }
 
         response()->redirect(base_href('/admin/updates#update-center'));
+    }
+
+    private function requireCreatorForUpdates(): void
+    {
+        if (!Auth::hasRole('creator')) {
+            abort(return_translation('error_403_message'), 403);
+        }
     }
 
     /**
