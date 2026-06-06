@@ -5,7 +5,7 @@ namespace FBL;
 /**
  * Строит пагинацию для списков записей и генерирует ссылки на страницы.
  */
-class Pagination
+class Pagination implements \ArrayAccess, \JsonSerializable
 {
 
     protected int $countPages;
@@ -154,6 +154,45 @@ class Pagination
         } else {
             return "{$this->uri}?{$this->pageParam}={$page}";
         }
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'current_page' => $this->currentPage,
+            'total_pages' => $this->countPages,
+            'total_records' => $this->totalRecords,
+            'per_page' => $this->perPage,
+            'has_next' => $this->currentPage < $this->countPages,
+            'has_prev' => $this->currentPage > 1,
+            'next_url' => $this->currentPage < $this->countPages ? $this->getLink($this->currentPage + 1) : '',
+            'prev_url' => $this->currentPage > 1 ? $this->getLink($this->currentPage - 1) : '',
+        ];
+    }
+
+    public function offsetExists(mixed $offset): bool
+    {
+        return array_key_exists((string)$offset, $this->toArray());
+    }
+
+    public function offsetGet(mixed $offset): mixed
+    {
+        return $this->toArray()[(string)$offset] ?? null;
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        throw new \LogicException('Pagination is read-only.');
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        throw new \LogicException('Pagination is read-only.');
+    }
+
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 
     /**

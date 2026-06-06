@@ -26,11 +26,11 @@
 
 ## home.php
 
-Используется для главной страницы. Доступные данные зависят от контроллера, например `title` и списки записей.
+Доступны `$page`, `$posts`, `$settings`, `$user`, `$locale`.
 
 ## page.php
 
-Используется для обычных CMS-страниц. Обычно доступна переменная `$page`.
+Доступны `$page`, `$settings`, `$user`, `$locale`.
 
 ```php
 <h1><?= htmlSC($page['title'] ?? '') ?></h1>
@@ -39,12 +39,34 @@
 
 ## post.php
 
-Используется для записи. Обычно доступна переменная `$post`.
+Доступны `$post`, `$author`, `$category`, `$settings`, `$user`.
 
 ```php
 <h1><?= htmlSC($post['title'] ?? '') ?></h1>
 <div><?= $post['content'] ?? '' ?></div>
 ```
+
+## category.php
+
+Доступны `$category`, `$posts`, `$pagination`.
+
+## search.php
+
+Доступны `$query`, `$results`, `$total`, `$pagination`.
+
+## archive.php
+
+Доступны `$posts`, `$pagination`.
+
+## 404.php
+
+Доступна `$settings`. Ошибка 404 рендерится через общий `layout.php`.
+
+## Fallback
+
+Если в старой теме отсутствует `category.php`, `search.php`, `archive.php` или
+`404.php`, CMS использует соответствующий шаблон дефолтной темы. При этом
+сохраняется `layout.php` активной темы.
 
 ## Безопасность в шаблонах
 

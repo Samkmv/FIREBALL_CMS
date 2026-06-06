@@ -26,12 +26,12 @@ $navItems = [
     ['href' => base_href('/admin/analytics'), 'label' => return_translation('admin_nav_analytics'), 'icon' => 'ci-activity'],
     ['href' => base_href('/admin/contact-requests'), 'label' => return_translation('admin_nav_contacts'), 'icon' => 'ci-mail'],
     ['href' => base_href('/admin/posts'), 'label' => return_translation('admin_nav_posts'), 'icon' => 'ci-file-text'],
-    ['href' => base_href('/admin/pages'), 'label' => return_translation('admin_nav_pages'), 'icon' => 'ci-file', 'badge' => 'Beta'],
+    ['href' => base_href('/admin/pages'), 'label' => return_translation('admin_nav_pages'), 'icon' => 'ci-file'],
     ['href' => base_href('/admin/categories'), 'label' => return_translation('admin_nav_categories'), 'icon' => 'ci-folder'],
     ['href' => base_href('/admin/users'), 'label' => return_translation('admin_nav_users'), 'icon' => 'ci-user'],
     ['href' => base_href('/admin/roles'), 'label' => return_translation('admin_nav_roles'), 'icon' => 'ci-shield'],
     ['href' => base_href('/admin/files'), 'label' => return_translation('admin_nav_files'), 'icon' => 'ci-folder-plus'],
-    ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor'],
+    ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'badge' => 'Beta'],
     ['href' => base_href('/admin/updates'), 'label' => return_translation('admin_nav_updates'), 'icon' => 'ci-refresh-cw'],
     ['href' => base_href('/admin/settings'), 'label' => return_translation('admin_nav_settings'), 'icon' => 'ci-settings'],
     ['href' => base_href('/admin/system/database-maintenance'), 'label' => return_translation('admin_nav_database_maintenance'), 'icon' => 'ci-database', 'creator_only' => true],
@@ -67,10 +67,10 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0 admin-shell-nav-icon">
                     <i class="<?= htmlSC($item['icon']) ?>"></i>
                 </span>
-                <span class="fw-medium d-inline-flex align-items-center flex-wrap gap-1">
-                    <?= htmlSC($item['label']) ?>
+                <span class="fw-medium d-inline-flex align-items-center gap-2 min-w-0 admin-shell-nav-label">
+                    <span class="text-truncate"><?= htmlSC($item['label']) ?></span>
                     <?php if (!empty($item['badge'])): ?>
-                        <span class="badge text-bg-warning ms-2"><?= htmlSC($item['badge']) ?></span>
+                        <span class="admin-shell-beta-badge" title="<?= htmlSC(return_translation('admin_nav_themes_beta_hint')) ?>"><?= htmlSC($item['badge']) ?></span>
                     <?php endif; ?>
                 </span>
             </a>

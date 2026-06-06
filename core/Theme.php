@@ -87,6 +87,23 @@ class Theme
         return theme()->partial($name, $data);
     }
 
+    public static function getLegalInformationMenu(): array
+    {
+        return theme()->getLegalInformationMenu();
+    }
+
+    public static function siteName(): string { return theme()->siteName(); }
+    public static function siteUrl(string $path = ''): string { return theme()->siteUrl($path); }
+    public static function setting(string $key, mixed $default = null): mixed { return theme()->setting($key, $default); }
+    public static function currentUser(): ?array { return theme()->currentUser(); }
+    public static function currentLocale(): string { return theme()->currentLocale(); }
+    public static function availableLocales(): array { return theme()->availableLocales(); }
+    public static function switchLocaleUrl(string $locale): string { return theme()->switchLocaleUrl($locale); }
+    public static function getMenu(string $location = 'header'): array { return theme()->getMenu($location); }
+    public static function getPages(array $options = []): array { return theme()->getPages($options); }
+    public static function getPosts(array $options = []): array { return theme()->getPosts($options); }
+    public static function renderPartial(string $name, array $data = []): string { return theme()->renderPartial($name, $data); }
+
     public static function asset($path): string
     {
         return theme()->asset($path);

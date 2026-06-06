@@ -389,9 +389,14 @@ class ThemeManager
         $this->writeThemeFile($themeRoot, 'templates/home.php', $this->defaultHomeTemplate());
         $this->writeThemeFile($themeRoot, 'templates/page.php', $this->defaultPageTemplate());
         $this->writeThemeFile($themeRoot, 'templates/post.php', $this->defaultPostTemplate());
+        $this->writeThemeFile($themeRoot, 'templates/category.php', $this->defaultCategoryTemplate());
+        $this->writeThemeFile($themeRoot, 'templates/search.php', $this->defaultSearchTemplate());
+        $this->writeThemeFile($themeRoot, 'templates/archive.php', $this->defaultArchiveTemplate());
+        $this->writeThemeFile($themeRoot, 'templates/404.php', $this->default404Template());
         $this->writeThemeFile($themeRoot, 'partials/header.php', $this->defaultHeaderPartial());
         $this->writeThemeFile($themeRoot, 'partials/footer.php', $this->defaultFooterPartial());
         $this->writeThemeFile($themeRoot, 'partials/menu.php', $this->defaultMenuPartial());
+        $this->writeThemeFile($themeRoot, 'partials/sidebar.php', $this->defaultSidebarPartial());
         $this->writeThemeFile($themeRoot, 'assets/css/style.css', $this->defaultThemeCss());
         $this->writeThemeFile($themeRoot, 'assets/js/theme.js', $this->defaultThemeJs());
 
@@ -509,14 +514,11 @@ class ThemeManager
         unset($data['this']);
 
         $theme = $this->getActiveTheme();
-        $templateFile = $this->themeFile($theme, 'templates', (string)$template);
-        $layoutFile = $this->themeFile($theme, 'templates', 'layout');
-
-        if (($templateFile === null || $layoutFile === null) && $theme['slug'] !== self::DEFAULT_THEME) {
-            $theme = $this->loadTheme(self::DEFAULT_THEME);
-            $templateFile = $theme ? $this->themeFile($theme, 'templates', (string)$template) : null;
-            $layoutFile = $theme ? $this->themeFile($theme, 'templates', 'layout') : null;
-        }
+        $defaultTheme = $theme['slug'] === self::DEFAULT_THEME ? $theme : $this->loadTheme(self::DEFAULT_THEME);
+        $templateFile = $this->themeFile($theme, 'templates', (string)$template)
+            ?: ($defaultTheme ? $this->themeFile($defaultTheme, 'templates', (string)$template) : null);
+        $layoutFile = $this->themeFile($theme, 'templates', 'layout')
+            ?: ($defaultTheme ? $this->themeFile($defaultTheme, 'templates', 'layout') : null);
 
         if ($templateFile === null) {
             abort('Theme template not found: ' . (string)$template, 500);
@@ -526,6 +528,7 @@ class ThemeManager
             abort('Theme layout not found.', 500);
         }
 
+        $data = $this->standardizeTemplateData((string)$template, $data);
         extract($data);
         ob_start();
         require $templateFile;
@@ -558,6 +561,174 @@ class ThemeManager
         require $partialFile;
 
         return ob_get_clean();
+    }
+
+    public function getLegalInformationMenu(): array
+    {
+        return (new \App\Models\Page())->getLegalInformationMenu();
+    }
+
+    public function siteName(): string
+    {
+        return (string)$this->setting('site_title', SITE_NAME);
+    }
+
+    public function siteUrl(string $path = ''): string
+    {
+        $path = trim($path);
+        return $path === '' ? base_href('/') : base_href('/' . ltrim($path, '/'));
+    }
+
+    public function setting(string $key, mixed $default = null): mixed
+    {
+        $settings = (new SiteSetting())->all();
+        if (!array_key_exists($key, $settings) || $settings[$key] === '') {
+            return $default;
+        }
+
+        return $settings[$key];
+    }
+
+    public function currentUser(): ?array
+    {
+        return check_auth() ? (get_user() ?: null) : null;
+    }
+
+    public function currentLocale(): string
+    {
+        return (string)(app()->get('lang')['code'] ?? DEFAULT_LOCALE);
+    }
+
+    public function availableLocales(): array
+    {
+        return array_values(array_map(function (array $locale): array {
+            $code = (string)($locale['code'] ?? '');
+            return [
+                'code' => $code,
+                'title' => (string)($locale['title'] ?? $code),
+                'active' => $code === $this->currentLocale(),
+                'url' => $this->switchLocaleUrl($code),
+            ];
+        }, LANGS));
+    }
+
+    public function switchLocaleUrl(string $locale): string
+    {
+        if (!array_key_exists($locale, LANGS)) {
+            return $this->siteUrl();
+        }
+
+        $segments = explode('/', trim(request()->getPath(), '/'));
+        if ($segments !== [] && array_key_exists((string)$segments[0], LANGS)) {
+            array_shift($segments);
+        }
+        $path = trim(implode('/', $segments), '/');
+        $query = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '');
+        $prefix = !empty(LANGS[$locale]['base']) ? '' : '/' . $locale;
+        $url = rtrim(app_base_url(), '/') . $prefix . ($path !== '' ? '/' . $path : '/');
+
+        return $url . ($query !== '' ? '?' . $query : '');
+    }
+
+    public function getMenu(string $location = 'header'): array
+    {
+        $location = $location === 'main' ? 'header' : $location;
+        $items = (new \App\Models\Page())->getMenuPages($location);
+        $currentPath = rtrim(current_path(), '/') ?: '/';
+
+        return array_map(static function (array $item) use ($currentPath): array {
+            $url = (string)($item['href'] ?? '');
+            $path = rtrim((string)(parse_url($url, PHP_URL_PATH) ?? ''), '/') ?: '/';
+            return $item + [
+                'title' => (string)($item['label'] ?? ''),
+                'url' => $url,
+                'active' => $path === $currentPath,
+                'children' => [],
+            ];
+        }, $items);
+    }
+
+    public function getPages(array $options = []): array
+    {
+        $limit = max(0, (int)($options['limit'] ?? 0));
+        $pages = (new \App\Models\Page())->getPublishedOptions();
+        $pages = array_map(static fn(array $page): array => $page + [
+            'url' => base_href('/' . ltrim((string)$page['slug'], '/')),
+        ], $pages);
+
+        return $limit > 0 ? array_slice($pages, 0, $limit) : $pages;
+    }
+
+    public function getPosts(array $options = []): array
+    {
+        $limit = max(1, min(100, (int)($options['limit'] ?? 10)));
+        return (new \App\Models\Post())->getLatestPublishedPosts($limit);
+    }
+
+    public function renderPartial(string $name, array $data = []): string
+    {
+        return $this->partial($name, $data);
+    }
+
+    protected function standardizeTemplateData(string $template, array $data): array
+    {
+        $data += [
+            'settings' => (new SiteSetting())->all(),
+            'user' => $this->currentUser(),
+            'locale' => $this->currentLocale(),
+            'available_locales' => $this->availableLocales(),
+        ];
+
+        if (isset($data['page']) && is_array($data['page'])) {
+            $data['page'] += [
+                'seo_title' => (string)($data['page']['meta_title'] ?? $data['page']['title'] ?? ''),
+                'seo_description' => (string)($data['page']['meta_description'] ?? ''),
+                'seo_keywords' => '',
+                'url' => base_href('/' . ltrim((string)($data['page']['slug'] ?? ''), '/')),
+            ];
+        }
+
+        if (isset($data['post']) && is_array($data['post'])) {
+            $post = $data['post'];
+            $data['author'] ??= [
+                'name' => (string)($post['author_name'] ?? ''),
+                'role' => (string)($post['author_role'] ?? ''),
+            ];
+            $data['category'] ??= $this->normalizeCategory([
+                'id' => (int)($post['category_id'] ?? 0),
+                'name' => (string)($post['category_label'] ?? $post['category'] ?? ''),
+                'slug' => (string)($post['category_slug'] ?? ''),
+            ]);
+            $data['post'] += [
+                'url' => base_href('/posts/' . ltrim((string)($post['slug'] ?? ''), '/')),
+                'seo_title' => (string)($post['seo_title'] ?? $post['title'] ?? ''),
+                'seo_description' => (string)($post['seo_description'] ?? ''),
+                'seo_keywords' => (string)($post['seo_keywords'] ?? ''),
+            ];
+        }
+
+        if (isset($data['category']) && is_array($data['category'])) {
+            $data['category'] = $this->normalizeCategory($data['category']);
+        }
+
+        if ($template === 'home') {
+            $data['page'] ??= null;
+            $data['posts'] ??= $data['featured_posts'] ?? [];
+        }
+
+        return $data;
+    }
+
+    protected function normalizeCategory(array $category): array
+    {
+        $slug = trim((string)($category['slug'] ?? ''));
+        return $category + [
+            'id' => (int)($category['id'] ?? 0),
+            'name' => (string)($category['label'] ?? $category['name'] ?? ''),
+            'slug' => $slug,
+            'description' => (string)($category['description'] ?? ''),
+            'url' => base_href('/category/' . rawurlencode($slug)),
+        ];
     }
 
     public function asset($path): string
@@ -1208,9 +1379,14 @@ class ThemeManager
             'templates/home.php',
             'templates/page.php',
             'templates/post.php',
+            'templates/category.php',
+            'templates/search.php',
+            'templates/archive.php',
+            'templates/404.php',
             'partials/header.php',
             'partials/footer.php',
             'partials/menu.php',
+            'partials/sidebar.php',
             'assets/css/style.css',
             'assets/js/theme.js',
         ], true);
@@ -1228,8 +1404,16 @@ class ThemeManager
     protected function defaultLayoutTemplate(): string
     {
         return <<<'PHP'
+<?php
+/**
+ * Layout Template
+ *
+ * Available variables: $settings, $user, $locale, $available_locales.
+ * Page-specific variables are also available.
+ */
+?>
 <!doctype html>
-<html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>">
+<html lang="<?= htmlSC(current_locale()) ?>">
 <head>
     <meta charset="utf-8">
     <?= get_csrf_meta() ?>
@@ -1238,14 +1422,14 @@ class ThemeManager
     <link rel="stylesheet" href="<?= theme_asset('css/style.css') ?>">
 </head>
 <body>
-    <?= $this->partial('header', get_defined_vars()) ?>
-    <?= $this->partial('menu', get_defined_vars()) ?>
+    <?= render_partial('header', get_defined_vars()) ?>
+    <?= render_partial('menu', get_defined_vars()) ?>
 
     <main class="theme-main">
         <?= $this->content ?>
     </main>
 
-    <?= $this->partial('footer', get_defined_vars()) ?>
+    <?= render_partial('footer', get_defined_vars()) ?>
     <script src="<?= theme_asset('js/theme.js') ?>"></script>
 </body>
 </html>
@@ -1255,6 +1439,13 @@ PHP;
     protected function defaultHomeTemplate(): string
     {
         return <<<'PHP'
+<?php
+/**
+ * Home Template
+ *
+ * Available variables: $page, $posts, $settings, $user, $locale.
+ */
+?>
 <section class="theme-section">
     <div class="theme-container">
         <h1><?= htmlSC($title ?? site_setting('site_title', SITE_NAME)) ?></h1>
@@ -1267,6 +1458,13 @@ PHP;
     protected function defaultPageTemplate(): string
     {
         return <<<'PHP'
+<?php
+/**
+ * Page Template
+ *
+ * Available variables: $page, $settings, $user, $locale.
+ */
+?>
 <section class="theme-section">
     <div class="theme-container">
         <h1><?= htmlSC($page['title'] ?? $title ?? '') ?></h1>
@@ -1281,6 +1479,13 @@ PHP;
     protected function defaultPostTemplate(): string
     {
         return <<<'PHP'
+<?php
+/**
+ * Post Template
+ *
+ * Available variables: $post, $author, $category, $settings, $user.
+ */
+?>
 <article class="theme-section">
     <div class="theme-container">
         <h1><?= htmlSC($post['title'] ?? $title ?? '') ?></h1>
@@ -1295,12 +1500,114 @@ PHP;
 PHP;
     }
 
+    protected function defaultCategoryTemplate(): string
+    {
+        return <<<'PHP'
+<?php
+/**
+ * Category Template
+ *
+ * Available variables: $category, $posts, $pagination.
+ */
+?>
+<section class="theme-section">
+    <div class="theme-container">
+        <h1><?= htmlSC($category['name'] ?? '') ?></h1>
+        <?php if (!empty($category['description'])): ?>
+            <p class="theme-muted"><?= htmlSC($category['description']) ?></p>
+        <?php endif; ?>
+        <?php foreach ($posts ?? [] as $post): ?>
+            <article>
+                <h2><a href="<?= htmlSC($post['url'] ?? base_href('/posts/' . $post['slug'])) ?>"><?= htmlSC($post['title']) ?></a></h2>
+                <p><?= htmlSC($post['excerpt'] ?? '') ?></p>
+            </article>
+        <?php endforeach; ?>
+        <?= $pagination ?? '' ?>
+    </div>
+</section>
+PHP;
+    }
+
+    protected function defaultSearchTemplate(): string
+    {
+        return <<<'PHP'
+<?php
+/**
+ * Search Template
+ *
+ * Available variables: $query, $results, $total, $pagination.
+ */
+?>
+<section class="theme-section">
+    <div class="theme-container">
+        <h1>Search</h1>
+        <form action="<?= base_href('/search') ?>" method="get">
+            <input type="search" name="q" value="<?= htmlSC($query ?? '') ?>">
+            <button type="submit">Search</button>
+        </form>
+        <?php foreach ($results ?? [] as $result): ?>
+            <article>
+                <h2><a href="<?= htmlSC($result['url']) ?>"><?= htmlSC($result['title']) ?></a></h2>
+                <p><?= htmlSC($result['excerpt'] ?? '') ?></p>
+            </article>
+        <?php endforeach; ?>
+        <?= $pagination ?? '' ?>
+    </div>
+</section>
+PHP;
+    }
+
+    protected function defaultArchiveTemplate(): string
+    {
+        return <<<'PHP'
+<?php
+/**
+ * Archive Template
+ *
+ * Available variables: $posts, $pagination.
+ */
+?>
+<section class="theme-section">
+    <div class="theme-container">
+        <h1><?= htmlSC($title ?? 'Archive') ?></h1>
+        <?php foreach ($posts ?? [] as $post): ?>
+            <article>
+                <h2><a href="<?= base_href('/posts/' . $post['slug']) ?>"><?= htmlSC($post['title']) ?></a></h2>
+                <p><?= htmlSC($post['excerpt'] ?? '') ?></p>
+            </article>
+        <?php endforeach; ?>
+        <?= $pagination ?? '' ?>
+    </div>
+</section>
+PHP;
+    }
+
+    protected function default404Template(): string
+    {
+        return <<<'PHP'
+<?php
+/**
+ * 404 Template
+ *
+ * Available variables: $settings.
+ */
+?>
+<section class="theme-section">
+    <div class="theme-container">
+        <h1>404</h1>
+        <p>Page not found.</p>
+        <a href="<?= base_href('/') ?>">Home</a>
+    </div>
+</section>
+PHP;
+    }
+
     protected function defaultHeaderPartial(): string
     {
         return <<<'PHP'
 <header class="theme-header">
     <div class="theme-container theme-header-inner">
-        <a class="theme-brand" href="<?= base_href('/') ?>"><?= htmlSC(site_setting('site_title', SITE_NAME)) ?></a>
+        <a class="theme-brand" href="<?= site_url() ?>"><?= htmlSC(site_name()) ?></a>
     </div>
 </header>
 PHP;
@@ -1309,8 +1616,17 @@ PHP;
     protected function defaultFooterPartial(): string
     {
         return <<<'PHP'
+<?php $legalInformationMenu = $this->getLegalInformationMenu(); ?>
 <footer class="theme-footer">
     <div class="theme-container">
+        <?php if ($legalInformationMenu): ?>
+            <nav aria-label="<?= htmlSC(return_translation('footer_heading_legal_information')) ?>">
+                <strong><?= print_translation('footer_heading_legal_information') ?></strong>
+                <?php foreach ($legalInformationMenu as $item): ?>
+                    <a href="<?= htmlSC($item['href']) ?>"><?= htmlSC($item['label']) ?></a>
+                <?php endforeach; ?>
+            </nav>
+        <?php endif; ?>
         <p>&copy; <?= date('Y') ?> <?= htmlSC(site_setting('site_title', SITE_NAME)) ?></p>
     </div>
 </footer>
@@ -1322,11 +1638,34 @@ PHP;
         return <<<'PHP'
 <nav class="theme-menu" aria-label="Main menu">
     <div class="theme-container">
-        <a href="<?= base_href('/') ?>">Home</a>
-        <a href="<?= base_href('/posts') ?>">Posts</a>
-        <a href="<?= base_href('/contacts') ?>">Contacts</a>
+        <a href="<?= site_url() ?>">Home</a>
+        <?php foreach (get_menu('header') as $item): ?>
+            <a href="<?= htmlSC($item['url']) ?>" <?= $item['active'] ? 'aria-current="page"' : '' ?>>
+                <?= htmlSC($item['title']) ?>
+            </a>
+        <?php endforeach; ?>
     </div>
 </nav>
+PHP;
+    }
+
+    protected function defaultSidebarPartial(): string
+    {
+        return <<<'PHP'
+<?php
+/**
+ * Sidebar Partial
+ *
+ * Pass data explicitly: render_partial('sidebar', ['items' => $items]).
+ */
+?>
+<?php if (!empty($items)): ?>
+    <aside class="theme-sidebar">
+        <?php foreach ($items as $item): ?>
+            <a href="<?= htmlSC($item['url'] ?? '#') ?>"><?= htmlSC($item['title'] ?? '') ?></a>
+        <?php endforeach; ?>
+    </aside>
+<?php endif; ?>
 PHP;
     }
 

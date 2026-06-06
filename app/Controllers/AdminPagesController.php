@@ -283,6 +283,7 @@ class AdminPagesController extends BaseController
             'is_published' => (int)($data['is_published'] ?? 0),
             'show_in_header' => $showInHeader,
             'show_in_footer' => $showInFooter,
+            'show_in_legal_information' => !empty($data['show_in_legal_information']) ? 1 : 0,
             'menu_visibility' => $visibility,
             'menu_order' => max(0, (int)($data['menu_order'] ?? 0)),
         ];

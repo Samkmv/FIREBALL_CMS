@@ -17,6 +17,7 @@ return [
     'home_index_slider_prev' => 'Previous',
     'home_index_slider_next' => 'Next',
     'home_index_slider_progress' => 'Camera slider position',
+    'home_index_camera_online' => 'Online',
     'home_index_use_cases_title' => 'What you can connect',
     'home_index_use_cases_subtitle' => 'MAXIPAPA fits residential complexes, businesses and urban spaces.',
     'home_index_object_apartments_title' => 'Apartment buildings',

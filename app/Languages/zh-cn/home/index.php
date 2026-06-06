@@ -17,6 +17,7 @@ return [
     'home_index_slider_prev' => '上一张',
     'home_index_slider_next' => '下一张',
     'home_index_slider_progress' => '摄像头滑块位置',
+    'home_index_camera_online' => '在线',
     'home_index_use_cases_title' => '可以接入哪些场景',
     'home_index_use_cases_subtitle' => 'MAXIPAPA 适用于住宅小区、商业空间和城市公共空间。',
     'home_index_object_apartments_title' => '多户住宅',

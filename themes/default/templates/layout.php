@@ -1,9 +1,21 @@
 <?php
 
+/**
+ * Layout Template
+ *
+ * Available variables:
+ *
+ * $content
+ * $settings
+ * $user
+ * $locale
+ */
+
 $postNavigationCategories = (new \App\Models\Post())->getNavigationCategories();
 $pageNavigationModel = new \App\Models\Page();
 $headerPageLinks = $pageNavigationModel->getMenuPages('header');
 $footerPageLinks = $pageNavigationModel->getMenuPages('footer');
+$legalInformationLinks = $pageNavigationModel->getLegalInformationMenu();
 $currentPostCategorySlug = trim((string)request()->get('category', ''));
 $siteTitle = site_setting('site_title', SITE_NAME);
 $siteDescription = site_setting('site_description', '');

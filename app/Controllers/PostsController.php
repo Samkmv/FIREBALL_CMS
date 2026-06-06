@@ -57,6 +57,52 @@ class PostsController extends BaseController
         ]);
     }
 
+    public function category()
+    {
+        $slug = trim((string)get_route_param('slug', ''));
+        $postsData = $this->posts->getPaginatedPosts($slug);
+        $meta = $postsData['current_category_meta'] ?? null;
+        if ($meta === null && (int)($postsData['total'] ?? 0) === 0) {
+            abort();
+        }
+        $meta ??= [];
+
+        $category = [
+            'id' => (int)($meta['id'] ?? 0),
+            'name' => (string)$postsData['current_category_label'],
+            'slug' => $slug,
+            'description' => (string)($meta['seo_description'] ?? ''),
+            'seo_title' => (string)($meta['seo_title'] ?? ''),
+            'seo_description' => (string)($meta['seo_description'] ?? ''),
+            'seo_keywords' => (string)($meta['seo_keywords'] ?? ''),
+        ];
+
+        return Theme::render('category', [
+            'title' => $category['name'],
+            'category' => $category,
+            'posts' => $postsData['posts'],
+            'pagination' => $postsData['pagination'],
+            'total_posts' => $postsData['total'],
+            'seo_title' => $category['seo_title'] ?: $category['name'],
+            'seo_description' => $category['seo_description'],
+            'seo_keywords' => $category['seo_keywords'],
+            'seo_canonical' => base_href('/category/' . $slug),
+        ]);
+    }
+
+    public function archive()
+    {
+        $postsData = $this->posts->getPaginatedPosts();
+
+        return Theme::render('archive', [
+            'title' => return_translation('theme_archive_title'),
+            'posts' => $postsData['posts'],
+            'pagination' => $postsData['pagination'],
+            'total_posts' => $postsData['total'],
+            'seo_canonical' => base_href('/archive'),
+        ]);
+    }
+
     /**
      * Показывает страницу конкретного опубликованного поста по его slug.
      */

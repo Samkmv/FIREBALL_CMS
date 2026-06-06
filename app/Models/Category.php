@@ -116,7 +116,7 @@ class Category
     {
         $categoryNameSql = $this->nameSql();
         $category = db()->query(
-            "SELECT {$categoryNameSql} AS name, slug, seo_title, seo_description, seo_keywords, seo_image
+            "SELECT id, {$categoryNameSql} AS name, slug, seo_title, seo_description, seo_keywords, seo_image
              FROM {$this->table}
              WHERE slug = ?
              LIMIT 1",
@@ -128,6 +128,7 @@ class Category
         }
 
         return [
+            'id' => (int)($category['id'] ?? 0),
             'name' => trim((string)($category['name'] ?? '')),
             'slug' => trim((string)($category['slug'] ?? '')),
             'seo_title' => trim((string)($category['seo_title'] ?? '')),

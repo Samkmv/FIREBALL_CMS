@@ -105,7 +105,17 @@ $requiredSummaryLabel = $translateOrFallback('admin_form_required_summary', 'Ð—Ð
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label"><?= $isPageEditor ? print_translation('admin_page_field_title') : print_translation('admin_posts_col_title') ?></label>
-                <input class="form-control <?= get_validation_class('title') ?>" type="text" name="title" value="<?= old('title') ?: htmlSC($entity['title'] ?? '') ?>" data-slug-source="#post_slug" required>
+                <input class="form-control <?= get_validation_class('title') ?>" type="text" name="title" value="<?= old('title') ?: htmlSC($entity['title'] ?? '') ?>" data-slug-source="#post_slug" <?= $isPageEditor ? 'list="legal-page-title-presets"' : '' ?> required>
+                <?php if ($isPageEditor): ?>
+                    <datalist id="legal-page-title-presets">
+                        <option value="<?= htmlSC(return_translation('admin_page_legal_preset_user_agreement')) ?>">
+                        <option value="<?= htmlSC(return_translation('admin_page_legal_preset_privacy_policy')) ?>">
+                        <option value="<?= htmlSC(return_translation('admin_page_legal_preset_personal_data_policy')) ?>">
+                        <option value="<?= htmlSC(return_translation('admin_page_legal_preset_terms_of_use')) ?>">
+                        <option value="<?= htmlSC(return_translation('admin_page_legal_preset_personal_data_consent')) ?>">
+                        <option value="<?= htmlSC(return_translation('admin_page_legal_preset_disclaimer')) ?>">
+                    </datalist>
+                <?php endif; ?>
                 <?= get_errors('title') ?>
             </div>
             <div class="col-md-6">
@@ -149,6 +159,18 @@ $requiredSummaryLabel = $translateOrFallback('admin_form_required_summary', 'Ð—Ð
                     </select>
                     <div class="form-text"><?= print_translation('admin_page_field_menu_visibility_hint') ?></div>
                     <?= get_errors('menu_visibility') ?>
+                </div>
+                <div class="col-12">
+                    <?php
+                    $showInLegalInformation = array_key_exists('show_in_legal_information', $formData)
+                        ? (int)$formData['show_in_legal_information']
+                        : (int)($entity['show_in_legal_information'] ?? 0);
+                    ?>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="show_in_legal_information" name="show_in_legal_information" value="1" <?= $showInLegalInformation === 1 ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="show_in_legal_information"><?= print_translation('admin_page_show_in_legal_information') ?></label>
+                    </div>
+                    <div class="form-text"><?= print_translation('admin_page_show_in_legal_information_hint') ?></div>
                 </div>
             <?php else: ?>
             <div class="col-md-6">

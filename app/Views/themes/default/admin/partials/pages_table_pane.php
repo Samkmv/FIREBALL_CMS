@@ -73,6 +73,9 @@ $pageVisibilityLabel = static function (array $page): string {
                             <td>
                                 <div class="fw-medium"><?= htmlSC($page['title']) ?></div>
                                 <div class="text-body-tertiary small"><?= htmlSC($visibilityLabel) ?></div>
+                                <?php if ((int)($page['show_in_legal_information'] ?? 0) === 1): ?>
+                                    <span class="badge fs-xs text-info bg-info-subtle rounded-pill mt-1"><?= print_translation('footer_heading_legal_information') ?></span>
+                                <?php endif; ?>
                             </td>
                             <td><?= htmlSC($page['menu_label']) ?></td>
                             <td class="text-nowrap">/<?= htmlSC($page['slug']) ?></td>

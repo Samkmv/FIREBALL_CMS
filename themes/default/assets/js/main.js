@@ -23,6 +23,9 @@ $(function(){
             document.body.classList.toggle('has-open-offcanvas', document.querySelector('.offcanvas.show, .offcanvas.showing') !== null);
         }
     };
+    const setAdminSidebarState = (isOpen) => {
+        document.body?.classList.toggle('admin-sidebar-open', isOpen);
+    };
     const slugMap = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
         'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i',
@@ -37,6 +40,16 @@ $(function(){
     document.addEventListener('shown.bs.offcanvas', syncOffcanvasState);
     document.addEventListener('hide.bs.offcanvas', syncOffcanvasState);
     document.addEventListener('hidden.bs.offcanvas', syncOffcanvasState);
+    document.addEventListener('show.bs.offcanvas', (event) => {
+        if (event.target?.classList.contains('admin-shell-offcanvas')) {
+            setAdminSidebarState(true);
+        }
+    });
+    document.addEventListener('hidden.bs.offcanvas', (event) => {
+        if (event.target?.classList.contains('admin-shell-offcanvas')) {
+            setAdminSidebarState(false);
+        }
+    });
 
     const initBootstrapTooltips = (container) => {
         if (!window.bootstrap?.Tooltip || !container) {

@@ -1,5 +1,17 @@
 <?php
 
+/**
+ * Post Template
+ *
+ * Available variables:
+ *
+ * $post
+ * $author
+ * $category
+ * $settings
+ * $user
+ */
+
 $postUrl = static fn(array $item): string => base_href('/posts/' . $item['slug']);
 $categoryUrl = static fn(?string $category = null): string => $category === null || $category === ''
     ? base_href('/posts')

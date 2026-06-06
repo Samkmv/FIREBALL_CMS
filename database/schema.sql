@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS pages (
     is_published TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
     show_in_header TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
     show_in_footer TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+    show_in_legal_information TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
     menu_order INT(10) UNSIGNED NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
@@ -125,7 +126,8 @@ CREATE TABLE IF NOT EXISTS pages (
     UNIQUE KEY slug (slug),
     KEY published_order (is_published, menu_order, title),
     KEY header_order (show_in_header, is_published, menu_order),
-    KEY footer_order (show_in_footer, is_published, menu_order)
+    KEY footer_order (show_in_footer, is_published, menu_order),
+    KEY show_in_legal_information (show_in_legal_information, is_published, menu_order, title)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS contact_requests (

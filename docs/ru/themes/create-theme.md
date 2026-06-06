@@ -25,9 +25,14 @@ templates/layout.php
 templates/home.php
 templates/page.php
 templates/post.php
+templates/category.php
+templates/search.php
+templates/archive.php
+templates/404.php
 partials/header.php
 partials/footer.php
 partials/menu.php
+partials/sidebar.php
 assets/css/style.css
 assets/js/theme.js
 assets/images/

@@ -126,6 +126,61 @@ function theme_asset($path): string
     return theme()->asset($path);
 }
 
+function site_name(): string
+{
+    return theme()->siteName();
+}
+
+function site_url(string $path = ''): string
+{
+    return theme()->siteUrl($path);
+}
+
+function setting(string $key, mixed $default = null): mixed
+{
+    return theme()->setting($key, $default);
+}
+
+function current_user(): ?array
+{
+    return theme()->currentUser();
+}
+
+function current_locale(): string
+{
+    return theme()->currentLocale();
+}
+
+function available_locales(): array
+{
+    return theme()->availableLocales();
+}
+
+function switch_locale_url(string $locale): string
+{
+    return theme()->switchLocaleUrl($locale);
+}
+
+function get_menu(string $location = 'header'): array
+{
+    return theme()->getMenu($location);
+}
+
+function get_pages(array $options = []): array
+{
+    return theme()->getPages($options);
+}
+
+function get_posts(array $options = []): array
+{
+    return theme()->getPosts($options);
+}
+
+function render_partial(string $name, array $data = []): string
+{
+    return theme()->partial($name, $data);
+}
+
 function abort($error = '', $code = 404)
 {
     if (!is_array(app()->get('lang'))) {
@@ -146,6 +201,18 @@ function abort($error = '', $code = 404)
     }
 
     response()->setResponseCode($code);
+    if ($code === 404 && isset(app()->theme)) {
+        try {
+            echo theme()->render('404', [
+                'title' => '404',
+                'error' => $error,
+                'seo_robots' => 'noindex,follow',
+            ]);
+            die;
+        } catch (\Throwable) {
+            // Installation and broken-theme errors still use the system error view.
+        }
+    }
     echo view("errors/{$code}", ['error' => $error], false);
     die;
 }

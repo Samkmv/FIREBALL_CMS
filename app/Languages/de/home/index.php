@@ -17,6 +17,7 @@ return [
     'home_index_slider_prev' => 'Zurueck',
     'home_index_slider_next' => 'Weiter',
     'home_index_slider_progress' => 'Position im Kamera-Slider',
+    'home_index_camera_online' => 'Online',
     'home_index_use_cases_title' => 'Was angebunden werden kann',
     'home_index_use_cases_subtitle' => 'MAXIPAPA eignet sich fuer Wohnanlagen, Unternehmen und urbane Raeume.',
     'home_index_object_apartments_title' => 'Mehrfamilienhaeuser',

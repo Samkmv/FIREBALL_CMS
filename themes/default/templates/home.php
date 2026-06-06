@@ -1,5 +1,17 @@
 <?php
 
+/**
+ * Home Template
+ *
+ * Available variables:
+ *
+ * $page
+ * $posts
+ * $settings
+ * $user
+ * $locale
+ */
+
 $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
 $heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
 $heroHlsScript = theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js'));
@@ -125,9 +137,18 @@ $featuredCount = count($popularCameras);
                         <div class="swiper" data-swiper="{
                             &quot;slidesPerView&quot;: &quot;auto&quot;,
                             &quot;spaceBetween&quot;: 24,
+                            &quot;slidesOffsetAfter&quot;: 16,
                             &quot;loop&quot;: false,
                             &quot;rewind&quot;: false,
                             &quot;watchOverflow&quot;: true,
+                            &quot;breakpoints&quot;: {
+                                &quot;768&quot;: {
+                                    &quot;slidesOffsetAfter&quot;: 24
+                                },
+                                &quot;992&quot;: {
+                                    &quot;slidesOffsetAfter&quot;: 48
+                                }
+                            },
                             &quot;navigation&quot;: {
                                 &quot;prevEl&quot;: &quot;#prev-home-featured&quot;,
                                 &quot;nextEl&quot;: &quot;#next-home-featured&quot;
@@ -145,6 +166,10 @@ $featuredCount = count($popularCameras);
                                         <article class="col" style="width: 306px; max-width: 72vw;">
                                             <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= htmlSC($camera['url']) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
                                                 <img src="<?= htmlSC($camera['image']) ?>" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($camera['title']) ?>" loading="lazy">
+                                                <span class="home-online-badge">
+                                                    <span class="home-online-dot" aria-hidden="true"></span>
+                                                    <?= print_translation('home_index_camera_online') ?>
+                                                </span>
                                             </a>
                                             <div class="pt-4">
                                                 <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">

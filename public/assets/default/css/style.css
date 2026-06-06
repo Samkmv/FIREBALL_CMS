@@ -1838,6 +1838,34 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     color: currentColor;
 }
 
+.admin-shell-nav-label {
+    white-space: nowrap;
+}
+
+.admin-shell-beta-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    padding: .18rem .45rem;
+    border: 1px solid rgba(var(--cz-primary-rgb), .42);
+    border: 1px solid color-mix(in srgb, var(--cz-primary) 42%, transparent);
+    border-radius: .4rem;
+    color: var(--cz-primary);
+    color: var(--cz-primary-text-emphasis);
+    background: rgba(var(--cz-primary-rgb), .12);
+    background: color-mix(in srgb, var(--cz-primary) 12%, transparent);
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: .01em;
+}
+
+.admin-shell-nav .list-group-item.active .admin-shell-beta-badge {
+    border-color: rgba(255, 255, 255, .28);
+    color: currentColor;
+    background: rgba(255, 255, 255, .14);
+}
+
 .admin-posts-tabs {
     overflow-x: auto;
     overflow-y: hidden;
@@ -1993,14 +2021,27 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 
 .admin-shell-offcanvas {
     width: min(100vw - 1.25rem, 24rem);
+    height: 100vh;
+    max-height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
+    overflow: hidden;
     z-index: 1090;
 }
 
 .admin-shell-offcanvas .offcanvas-body {
     background: var(--cz-body-bg);
     min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+}
+
+body.admin-sidebar-open {
+    overflow: hidden !important;
+    overscroll-behavior: none;
 }
 
 [data-admin-sidebar-panel] {
@@ -2241,25 +2282,17 @@ body.is-site-fullscreen .plyr * {
     }
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
     .admin-shell-offcanvas .offcanvas-body {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+        display: block;
     }
 
     .admin-shell-offcanvas [data-admin-sidebar-panel] {
-        display: flex;
-        min-height: 0;
-        flex: 1 1 auto;
-        flex-direction: column;
-        gap: .75rem;
+        display: block;
     }
 
     .admin-shell-offcanvas .admin-shell-profile-card {
-        flex: 0 0 auto;
-        margin-bottom: 0 !important;
+        margin-bottom: .75rem !important;
         padding: 1rem !important;
         border-radius: 1.25rem !important;
     }
@@ -2270,11 +2303,8 @@ body.is-site-fullscreen .plyr * {
     }
 
     .admin-shell-offcanvas .admin-shell-nav {
-        min-height: 0;
-        flex: 1 1 auto;
         overflow-x: hidden;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-y: visible;
         padding: .75rem !important;
         border-radius: 1.25rem !important;
     }
@@ -2294,8 +2324,7 @@ body.is-site-fullscreen .plyr * {
     }
 
     .admin-shell-offcanvas .admin-shell-quicklinks {
-        flex: 0 0 auto;
-        margin-top: 0 !important;
+        margin-top: .75rem !important;
         padding: .75rem !important;
         border-radius: 1.25rem !important;
     }
@@ -2308,7 +2337,7 @@ body.is-site-fullscreen .plyr * {
 
     .admin-shell-offcanvas [data-admin-nav] {
         overflow-x: hidden;
-        overflow-y: auto;
+        overflow-y: visible;
     }
 
     [data-admin-nav] .list-group-item {

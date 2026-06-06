@@ -2685,7 +2685,7 @@ body.is-site-fullscreen .plyr * {
 
 .home-featured-nav-btn:hover,
 .home-featured-nav-btn:focus-visible {
-    transform: translateY(-2px);
+    transform: none;
     box-shadow: 0 1rem 2.2rem rgba(15, 118, 110, .22);
 }
 
@@ -2812,17 +2812,52 @@ body.is-site-fullscreen .plyr * {
     position: absolute;
     z-index: 1;
     top: 1rem;
+    right: auto;
+    bottom: auto;
     left: 1rem;
+    width: auto;
+    height: auto;
     display: inline-flex;
     align-items: center;
     gap: .5rem;
     padding: .45rem .75rem;
-    border: 1px solid rgba(255, 255, 255, .24);
+    border: 1px solid rgba(255, 255, 255, .3);
     border-radius: 999px;
-    background: rgba(15, 23, 42, .44);
+    color: #fff;
+    background: rgba(15, 23, 42, .52);
+    box-shadow: 0 .45rem 1.25rem rgba(2, 6, 23, .2);
     font-size: .8rem;
     font-weight: 800;
+    line-height: 1;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(16px) saturate(135%);
     backdrop-filter: blur(16px);
+}
+
+.home-online-dot {
+    width: .5rem;
+    height: .5rem;
+    flex: 0 0 .5rem;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 0 .22rem rgba(52, 211, 153, .18);
+    animation: home-online-blink 1.8s ease-in-out infinite;
+}
+
+@keyframes home-online-blink {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 .22rem rgba(52, 211, 153, .18);
+    }
+    50% {
+        opacity: .5;
+        transform: scale(.82);
+        box-shadow: 0 0 0 .4rem rgba(52, 211, 153, .06);
+    }
 }
 
 .home-camera-card__body {

@@ -924,14 +924,16 @@ function initPostEditor() {
             if (commandSelect) {
                 const blockElement = commandSelect.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
-                updateBlockStyle(
-                    String(blockElement ? blockElement.dataset.blockId || '' : ''),
-                    String(commandSelect.getAttribute('data-editor-command') || ''),
-                    String(commandSelect.value || ''),
-                    editor
-                );
-                if (commandSelect.value !== '') {
-                    applyCommand(editor, String(commandSelect.getAttribute('data-editor-command') || ''), String(commandSelect.value || ''));
+                const command = String(commandSelect.getAttribute('data-editor-command') || '');
+                const value = command === 'fontName'
+                    ? getAllowedOptionValue(fonts, commandSelect.value)
+                    : String(commandSelect.value || '');
+                if (value !== '') {
+                    if (command === 'fontName') {
+                        applyFontToSelection(editor, value);
+                    } else {
+                        applyCommand(editor, command, value);
+                    }
                 }
                 return;
             }
@@ -939,12 +941,10 @@ function initPostEditor() {
             if (fontSizeSelect) {
                 const blockElement = fontSizeSelect.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
-                updateBlockStyle(
-                    String(blockElement ? blockElement.dataset.blockId || '' : ''),
-                    'fontSize',
-                    String(fontSizeSelect.value || ''),
-                    editor
-                );
+                const fontSize = getAllowedOptionValue(sizes, fontSizeSelect.value);
+                if (fontSize !== '') {
+                    applyTextStyleToSelection(editor, 'fontSize', fontSize);
+                }
                 return;
             }
 
@@ -1699,7 +1699,7 @@ function initPostEditor() {
             return { language: 'html', code: '' };
         }
 
-        return { html: '', fontName: '', fontSize: '' };
+        return { html: '' };
     }
 
     function getAllowedBlockType(type) {
@@ -1747,6 +1747,8 @@ function initPostEditor() {
             'text-align',
             'font-weight',
             'font-style',
+            'font-family',
+            'font-size',
             'text-decoration',
             'text-decoration-line',
             'vertical-align'
@@ -1927,8 +1929,12 @@ function initPostEditor() {
     }
 
     function normalizeFontTags(scope) {
-        scope.querySelectorAll('font[size]').forEach(function (fontNode) {
+        scope.querySelectorAll('font').forEach(function (fontNode) {
             const span = document.createElement('span');
+            const fontFace = String(fontNode.getAttribute('face') || '').trim();
+            if (fontFace !== '') {
+                span.style.fontFamily = fontFace;
+            }
             span.innerHTML = fontNode.innerHTML;
             fontNode.replaceWith(span);
         });
@@ -1941,35 +1947,6 @@ function initPostEditor() {
         });
 
         return found ? String(found.value || '') : '';
-    }
-
-    function updateBlockStyle(blockId, command, value, editor) {
-        const block = findBlock(blockId);
-        if (!block || block.type !== 'text') {
-            return;
-        }
-
-        if (command === 'fontName') {
-            const fontName = getAllowedOptionValue(fonts, value);
-            block.data.fontName = fontName;
-            if (editor) {
-                editor.style.fontFamily = fontName;
-            }
-            sync();
-            return;
-        }
-
-        if (command === 'fontSize') {
-            const fontSize = getAllowedOptionValue(sizes, value);
-            block.data.fontSize = fontSize;
-            if (editor) {
-                cleanEditorDom(editor);
-                editor.style.fontSize = fontSize;
-                syncRichEditor(editor);
-                return;
-            }
-            sync();
-        }
     }
 
     function cleanEditorDom(editor) {
@@ -2001,8 +1978,6 @@ function initPostEditor() {
                 return;
             }
 
-            node.style.removeProperty('font-size');
-            node.style.removeProperty('font-family');
             node.style.removeProperty('line-height');
             node.style.removeProperty('letter-spacing');
             node.style.removeProperty('margin-top');
@@ -2058,6 +2033,42 @@ function initPostEditor() {
         } catch (error) {
             return false;
         }
+    }
+
+    function applyFontToSelection(editor, fontName) {
+        applyTextStyleToSelection(editor, 'fontFamily', fontName);
+    }
+
+    function applyTextStyleToSelection(editor, property, value) {
+        if (!editor || !restoreSelection(editor) || typeof window.getSelection !== 'function') {
+            return;
+        }
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            return;
+        }
+
+        const range = selection.getRangeAt(0);
+        if (
+            range.collapsed
+            || (!editor.contains(range.startContainer) && range.startContainer !== editor)
+            || (!editor.contains(range.endContainer) && range.endContainer !== editor)
+        ) {
+            return;
+        }
+
+        const span = document.createElement('span');
+        span.style[property] = value;
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
+
+        const appliedRange = document.createRange();
+        appliedRange.selectNodeContents(span);
+        selection.removeAllRanges();
+        selection.addRange(appliedRange);
+        saveSelection(editor);
+        syncRichEditor(editor);
     }
 
     function applyCommand(editor, command, value) {
@@ -2939,10 +2950,6 @@ function initPostEditor() {
     }
 
     function renderTextBlock(block) {
-        const fontName = getAllowedOptionValue(fonts, block.data.fontName || '');
-        const fontSize = getAllowedOptionValue(sizes, block.data.fontSize || '');
-        const richStyle = buildTextBlockStyle(fontName, fontSize);
-
         return '' +
             '<div class="fb-post-block__toolbar" data-block-toolbar>' +
                 '<div class="fb-post-block__toolbar-group">' +
@@ -2969,14 +2976,14 @@ function initPostEditor() {
                             '<span>' + escapeHtml(labels.font) + '</span>' +
                             '<select class="form-select form-select-sm" data-editor-command="fontName">' +
                                 '<option value="">' + escapeHtml(labels.font) + '</option>' +
-                                renderOptions(fonts, fontName) +
+                                renderOptions(fonts, '') +
                             '</select>' +
                         '</label>' +
                         '<label class="fb-post-style-menu__field">' +
                             '<span>' + escapeHtml(labels.size) + '</span>' +
                             '<select class="form-select form-select-sm" data-editor-font-size>' +
                                 '<option value="">' + escapeHtml(labels.size) + '</option>' +
-                                renderOptions(sizes, fontSize) +
+                                renderOptions(sizes, '') +
                             '</select>' +
                         '</label>' +
                         '<label class="fb-post-style-menu__field">' +
@@ -2990,20 +2997,7 @@ function initPostEditor() {
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="fb-post-block__rich" contenteditable="true" data-block-rich data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.textPlaceholder) + '"' + (richStyle ? ' style="' + escapeAttr(richStyle) + '"' : '') + '>' + sanitizeHtml(block.data.html || '') + '</div>';
-    }
-
-    function buildTextBlockStyle(fontName, fontSize) {
-        const styles = [];
-        if (fontName) {
-            styles.push('font-family: ' + fontName);
-        }
-        if (fontSize) {
-            styles.push('font-size: ' + fontSize);
-            styles.push('line-height: 1.6');
-        }
-
-        return styles.join('; ');
+            '<div class="fb-post-block__rich" contenteditable="true" data-block-rich data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.textPlaceholder) + '">' + sanitizeHtml(block.data.html || '') + '</div>';
     }
 
     function renderMediaPreview(block) {
@@ -3736,15 +3730,7 @@ function initPostEditor() {
             return '';
         }
 
-        const fontName = getAllowedOptionValue(fonts, block.data.fontName || '');
-        const fontSize = getAllowedOptionValue(sizes, block.data.fontSize || '');
-        const style = buildTextBlockStyle(fontName, fontSize);
-
-        if (!style) {
-            return html;
-        }
-
-        return '<div data-fb-text-block="1" style="' + escapeAttr(style) + '">' + html + '</div>';
+        return html;
     }
 
     function serializeNewsletterBlock(block) {
@@ -3930,10 +3916,20 @@ function initPostEditor() {
         const wrapper = root && root.children.length === 1 ? root.children[0] : null;
 
         if (wrapper && wrapper.matches('[data-fb-text-block]')) {
+            const legacyFontName = getAllowedOptionValue(fonts, wrapper.style.fontFamily || '');
+            const legacyFontSize = getAllowedOptionValue(sizes, wrapper.style.fontSize || '');
+            const innerHtml = sanitizeHtml(wrapper.innerHTML);
+            const legacyStyles = [];
+            if (legacyFontName) {
+                legacyStyles.push('font-family: ' + legacyFontName);
+            }
+            if (legacyFontSize) {
+                legacyStyles.push('font-size: ' + legacyFontSize);
+            }
             return createImportedBlock('text', {
-                html: sanitizeHtml(wrapper.innerHTML),
-                fontName: getAllowedOptionValue(fonts, wrapper.style.fontFamily || ''),
-                fontSize: getAllowedOptionValue(sizes, wrapper.style.fontSize || '')
+                html: legacyStyles.length
+                    ? '<span style="' + escapeAttr(legacyStyles.join('; ')) + '">' + innerHtml + '</span>'
+                    : innerHtml
             });
         }
 

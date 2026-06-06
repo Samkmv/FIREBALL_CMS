@@ -55,7 +55,7 @@ class Post extends Model
     {
         $categoryNameSql = $this->categories->nameSql('c');
 
-        return "p.id, p.title, p.slug, p.excerpt, p.content, p.image,
+        return "p.id, p.title, p.slug, p.category_id, p.excerpt, p.content, p.image,
                 p.seo_title, p.seo_description, p.seo_keywords, p.seo_image,
                 p.hide_placeholder_image, p.show_on_home, p.priority,
                 p.author_name, p.author_role, p.published_at, p.views_count,
@@ -644,6 +644,8 @@ class Post extends Model
         $post['category'] = trim((string)($post['category'] ?? 'General'));
         $post['category_slug'] = trim((string)($post['category_slug'] ?? $this->makeSlug($post['category'])));
         $post['category_label'] = $post['category'];
+        $post['url'] = base_href('/posts/' . $post['slug']);
+        $post['category_url'] = base_href('/category/' . $post['category_slug']);
         $post['original_image'] = ltrim((string)($post['image'] ?? ''), '/');
         $post['has_image'] = $post['original_image'] !== '';
         $post['hide_placeholder_image'] = max(0, (int)($post['hide_placeholder_image'] ?? 0));

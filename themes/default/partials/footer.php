@@ -28,7 +28,7 @@
                     <?php endif; ?>
                 </div>
                 <div class="col-lg-8">
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 gx-3 gx-md-4">
+                    <div class="row row-cols-1 row-cols-sm-2 <?= !empty($legalInformationLinks) ? 'row-cols-lg-4' : 'row-cols-lg-3' ?> gx-3 gx-md-4">
                         <div class="accordion-item col border-0">
                             <h6 class="accordion-header" id="footerNavHeading">
                                 <span class="text-dark-emphasis d-none d-sm-block"><?= print_translation('footer_heading_navigation') ?></span>
@@ -90,6 +90,24 @@
                             </div>
                             <hr class="d-sm-none my-0">
                         </div>
+                        <?php if (!empty($legalInformationLinks)): ?>
+                            <div class="accordion-item col border-0">
+                                <h6 class="accordion-header" id="footerLegalHeading">
+                                    <span class="text-dark-emphasis d-none d-sm-block"><?= print_translation('footer_heading_legal_information') ?></span>
+                                    <button type="button" class="accordion-button py-3 d-sm-none collapsed" data-bs-toggle="collapse" data-bs-target="#footerLegalLinks" aria-expanded="false" aria-controls="footerLegalLinks"><?= print_translation('footer_heading_legal_information') ?></button>
+                                </h6>
+                                <div class="accordion-collapse d-sm-block collapse" id="footerLegalLinks" aria-labelledby="footerLegalHeading" data-bs-parent="#footerLinks">
+                                    <ul class="nav flex-column gap-2 pt-sm-3 pb-3 mt-n1 mb-1">
+                                        <?php foreach ($legalInformationLinks as $link): ?>
+                                            <li class="d-flex w-100 pt-1">
+                                                <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= htmlSC($link['href']) ?>"><?= htmlSC($link['label']) ?></a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                                <hr class="d-sm-none my-0">
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

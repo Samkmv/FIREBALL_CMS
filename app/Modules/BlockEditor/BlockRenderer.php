@@ -82,6 +82,8 @@ final class BlockRenderer
                     'text-align',
                     'font-weight',
                     'font-style',
+                    'font-family',
+                    'font-size',
                     'text-decoration',
                     'text-decoration-line',
                     'vertical-align',

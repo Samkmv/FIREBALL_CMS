@@ -18,6 +18,7 @@ return [
     'home_index_slider_prev' => 'Назад',
     'home_index_slider_next' => 'Вперёд',
     'home_index_slider_progress' => 'Позиция в слайдере камер',
+    'home_index_camera_online' => 'Онлайн',
     'home_index_use_cases_title' => 'Что можно подключить',
     'home_index_use_cases_subtitle' => 'MAXIPAPA подходит для жилых комплексов, бизнеса и городских пространств.',
     'home_index_object_apartments_title' => 'Многоквартирные дома',

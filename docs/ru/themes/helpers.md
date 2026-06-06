@@ -63,3 +63,36 @@
 ## $this->content
 
 В layout содержит HTML текущего шаблона страницы.
+
+## Стандартизированный API
+
+Для новых тем используйте `site_name()`, `site_url()`, `setting()`,
+`current_user()`, `current_locale()`, `available_locales()`,
+`switch_locale_url()`, `get_menu()`, `get_pages()`, `get_posts()` и
+`render_partial()`. Полное описание и примеры находятся в главе **Theme API**.
+
+## getLegalInformationMenu()
+
+Theme API возвращает опубликованные страницы, отмеченные флагом
+`show_in_legal_information`. Результат уже отсортирован и кешируется CMS.
+
+```php
+<?php $legalMenu = theme()->getLegalInformationMenu(); ?>
+
+<?php foreach ($legalMenu as $item): ?>
+    <a href="<?= htmlSC($item['href']) ?>"><?= htmlSC($item['label']) ?></a>
+<?php endforeach; ?>
+```
+
+Также доступен статический фасад:
+
+```php
+<?php $legalMenu = \FBL\Theme::getLegalInformationMenu(); ?>
+```
+
+Элемент меню содержит `id`, `href`, `label` и `menu_order`.
+
+Для перевода подписи добавьте в языковой файл ключ
+`page_menu_<slug>`, заменив дефисы slug на подчёркивания. Например, для
+`privacy-policy` используется `page_menu_privacy_policy`. Если ключ отсутствует,
+CMS выводит `menu_title` или `title` страницы на языке по умолчанию.

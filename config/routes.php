@@ -18,6 +18,7 @@ use App\Controllers\AdminPagesController;
 use App\Controllers\AnalyticsController;
 use App\Controllers\NotificationController;
 use App\Controllers\FileManagerController;
+use App\Controllers\Api\V1\MenuController;
 use App\Modules\BlockEditor\BlockEditorController;
 
 /* Documentation:
@@ -39,6 +40,7 @@ $app->router->get('/install', [InstallController::class, 'index']);
 $app->router->post('/install', [InstallController::class, 'submit']);
 
 // Site pages ---------- //
+$app->router->get('/api/v1/menu/(?P<type>[a-z_]+)', [MenuController::class, 'index']);
 $app->router->get('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->post('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['guest']);
@@ -61,6 +63,8 @@ $app->router->get('/search/suggest', [SearchController::class, 'suggest']);
 $app->router->get('/search', [SearchController::class, 'index']);
 $app->router->get('/contacts', [HomeController::class, 'contacts']);
 $app->router->post('/contacts', [HomeController::class, 'contacts']);
+$app->router->get('/category/(?P<slug>[a-z0-9-]+)/?', [PostsController::class, 'category']);
+$app->router->get('/archive', [PostsController::class, 'archive']);
 $app->router->get('/posts/(?P<slug>[a-z0-9-]+)/?', [PostsController::class, 'show']);
 $app->router->get('/posts', [PostsController::class, 'index']);
 
