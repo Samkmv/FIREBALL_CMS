@@ -59,6 +59,7 @@ class Category
              FROM {$this->table} c
              LEFT JOIN {$postsTable} p ON p.category_id = c.id AND p.is_published = 1
              GROUP BY c.id, c.name, c.name_ru, c.name_en, c.slug
+             HAVING total > 0
              ORDER BY c.name ASC"
         )->get() ?: [];
 

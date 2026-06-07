@@ -136,6 +136,7 @@ class HomeController extends BaseController
 
         return view('home/contacts', [
             'title' => return_translation('contacts_page_title'),
+            'contact_subjects' => $this->getContactSubjectOptions(),
             'footer_scripts' => [
                 base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
             ],
@@ -172,7 +173,7 @@ class HomeController extends BaseController
             $errors['email'][] = return_translation('contacts_validation_email_invalid');
         }
 
-        if ($data['subject'] === '') {
+        if ($data['subject'] === '' || !in_array($data['subject'], $this->getContactSubjectOptions(), true)) {
             $errors['subject'][] = return_translation('contacts_validation_subject');
         }
 
@@ -181,6 +182,34 @@ class HomeController extends BaseController
         }
 
         return $errors;
+    }
+
+    protected function getContactSubjectOptions(): array
+    {
+        $stored = json_decode($this->siteSettings->get('contacts_form_subjects', '[]'), true);
+        if (is_array($stored)) {
+            $stored = array_values(array_filter(array_map(
+                static fn(mixed $subject): string => trim((string)$subject),
+                $stored
+            )));
+        }
+
+        if (!empty($stored)) {
+            return $stored;
+        }
+
+        return array_map(
+            static fn(string $key): string => return_translation($key),
+            [
+                'contacts_subject_general_inquiry',
+                'contacts_subject_order_status',
+                'contacts_subject_product_information',
+                'contacts_subject_technical_support',
+                'contacts_subject_website_feedback',
+                'contacts_subject_account_assistance',
+                'contacts_subject_security_concerns',
+            ]
+        );
     }
 
 }

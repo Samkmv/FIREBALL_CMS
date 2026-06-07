@@ -1,6 +1,7 @@
 <?php
 $activeSlug = (string)($active_theme['slug'] ?? 'default');
-$actions = '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/import') . '"><i class="ci-upload"></i>' . htmlSC(return_translation('admin_themes_import')) . '</a>'
+$actions = '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/theme-editor/' . rawurlencode($activeSlug)) . '"><i class="ci-code"></i>' . htmlSC(return_translation('admin_nav_theme_editor')) . '</a>'
+    . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/import') . '"><i class="ci-upload"></i>' . htmlSC(return_translation('admin_themes_import')) . '</a>'
     . '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/create') . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_themes_create')) . '</a>';
 ?>
 
@@ -71,7 +72,7 @@ $actions = '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align
                             </div>
                             <div class="d-flex flex-wrap gap-2">
                                 <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= base_href('/admin/themes/files/' . $theme['slug']) ?>">
-                                    <?= print_translation('admin_themes_files') ?>
+                                    <?= print_translation('admin_nav_theme_editor') ?>
                                 </a>
                                 <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= base_href('/admin/themes/export/' . $theme['slug']) ?>">
                                     <?= print_translation('admin_themes_export') ?>

@@ -44,7 +44,7 @@ class View
         if (is_file($layout_file)) {
             ob_start();
             require_once $layout_file;
-            return ob_get_clean();
+            return $this->injectCmsComponents((string)ob_get_clean());
         } else {
             abort("Not Found layout - {$layout_file}", 500);
         }
@@ -68,6 +68,20 @@ class View
         } else {
             return "File - {$view_file} not found";
         }
+    }
+
+    protected function injectCmsComponents(string $html): string
+    {
+        $cookieConsent = renderCookieConsent();
+        if ($cookieConsent === '') {
+            return $html;
+        }
+
+        $position = strripos($html, '</body>');
+
+        return $position === false
+            ? $html . $cookieConsent
+            : substr($html, 0, $position) . $cookieConsent . substr($html, $position);
     }
 
 }

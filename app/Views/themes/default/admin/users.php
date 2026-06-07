@@ -20,7 +20,7 @@ $onlineSortUrl = current_url_with_query([
     'actions' => '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/users/create') . '"><i class="ci-plus"></i>' . return_translation('admin_users_create') . '</a>',
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4" data-admin-live-table>
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-live-table>
         <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-live-table-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
@@ -162,20 +162,12 @@ $onlineSortUrl = current_url_with_query([
                 </table>
             </div>
 
-            <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
-                <div class="fs-sm">
-                    <?= print_translation('admin_table_showing') ?>
-                    <span class="fw-semibold" data-admin-live-table-visible><?= count($users) ?></span>
-                    <?= print_translation('admin_table_of') ?>
-                    <span class="fw-semibold"><?= (int)$total ?></span>
-                    <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
-                </div>
-                <?php if (!empty($pagination)): ?>
-                    <nav aria-label="Pagination">
-                        <?= $pagination ?>
-                    </nav>
-                <?php endif; ?>
-            </div>
+            <?= view()->renderPartial('admin/partials/table_footer', [
+                'visible' => count($users),
+                'total' => (int)$total,
+                'pagination' => $pagination,
+                'visible_attributes' => ['data-admin-live-table-visible' => true],
+            ]) ?>
             <p class="text-body-secondary d-none mb-0" data-admin-live-table-empty><?= print_translation('admin_table_empty_search') ?></p>
         <?php endif; ?>
     </div>

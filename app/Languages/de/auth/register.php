@@ -8,7 +8,11 @@ return [
     'auth_register_login_field' => 'Login',
     'auth_register_email' => 'E-Mail',
     'auth_register_password' => 'Passwort',
+    'auth_register_password_placeholder' => 'Mindestens 8 Zeichen',
     'auth_register_password_confirmation' => 'Passwort bestaetigen',
+    'auth_password_toggle' => 'Passwort anzeigen oder ausblenden',
+    'auth_register_privacy_prefix' => 'Ich habe die',
+    'auth_register_privacy_link' => 'Datenschutzerklaerung gelesen und akzeptiere sie',
     'auth_register_submit' => 'Registrieren',
     'auth_register_login_text' => 'Sie haben bereits ein Konto?',
     'auth_register_login_link' => 'Anmelden',
@@ -27,4 +31,5 @@ return [
     'auth_validation_password_strength' => 'Das Passwort muss mindestens einen Grossbuchstaben und eine Zahl enthalten.',
     'auth_validation_password_confirmation_required' => 'Bestaetigen Sie Ihr Passwort.',
     'auth_validation_password_confirmation_match' => 'Die Passwoerter stimmen nicht ueberein.',
+    'auth_validation_privacy_required' => 'Sie muessen die Datenschutzerklaerung akzeptieren.',
 ];

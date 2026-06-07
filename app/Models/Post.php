@@ -282,10 +282,16 @@ class Post extends Model
         $cacheKey = $this->publicCacheKey('navigation_categories');
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached;
+            return array_values(array_filter(
+                $cached,
+                static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
+            ));
         }
 
-        $items = $this->categories->getNavigationCategories($this->table);
+        $items = array_values(array_filter(
+            $this->categories->getNavigationCategories($this->table),
+            static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
+        ));
         cache()->set($cacheKey, $items, 600);
 
         return $items;

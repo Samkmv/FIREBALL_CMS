@@ -30,7 +30,7 @@ $formAction = $isEdit ? base_href('/admin/themes/edit/' . $slug) : base_href('/a
                     <input type="hidden" name="slug" value="<?= htmlSC($slug) ?>">
                     <button class="btn btn-sm btn-dark rounded-pill" type="submit"><?= print_translation('admin_themes_activate') ?></button>
                 </form>
-                <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/themes/files/' . $slug) ?>"><?= print_translation('admin_themes_files') ?></a>
+                <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/themes/files/' . $slug) ?>"><?= print_translation('admin_nav_theme_editor') ?></a>
             </div>
         </div>
     <?php endif; ?>
@@ -108,7 +108,7 @@ $formAction = $isEdit ? base_href('/admin/themes/edit/' . $slug) : base_href('/a
             <div class="col-12 d-flex flex-wrap gap-2 pt-2">
                 <button class="btn btn-dark rounded-pill" type="submit"><?= print_translation('admin_btn_save') ?></button>
                 <?php if ($isEdit): ?>
-                    <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/themes/files/' . $slug) ?>"><?= print_translation('admin_themes_files') ?></a>
+                    <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/themes/files/' . $slug) ?>"><?= print_translation('admin_nav_theme_editor') ?></a>
                     <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/themes/preview/' . $slug) ?>" target="_blank" rel="noopener noreferrer"><?= print_translation('admin_themes_preview') ?></a>
                 <?php endif; ?>
             </div>

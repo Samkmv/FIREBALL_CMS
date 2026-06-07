@@ -126,6 +126,11 @@ function theme_asset($path): string
     return theme()->asset($path);
 }
 
+function renderCookieConsent(): string
+{
+    return (new \App\Components\CookieConsent())->render();
+}
+
 function site_name(): string
 {
     return theme()->siteName();

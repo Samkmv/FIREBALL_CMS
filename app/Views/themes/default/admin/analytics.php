@@ -146,7 +146,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
 
     <div class="row g-3">
         <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h2>
                 <div class="table-responsive overflow-auto admin-table-scroll">
                     <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--pages-full">
@@ -169,17 +169,17 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                         </tbody>
                     </table>
                 </div>
-                <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
-                    <div class="fs-sm"><?= print_translation('admin_table_showing') ?> <span class="fw-semibold"><?= count((array)($pages['items'] ?? [])) ?></span> <?= print_translation('admin_table_of') ?> <span class="fw-semibold"><?= (int)($pages['total'] ?? 0) ?></span></div>
-                    <?php if (!empty($pages['pagination'])): ?>
-                        <nav aria-label="Pagination"><?= $pages['pagination'] ?></nav>
-                    <?php endif; ?>
-                </div>
+                <?= view()->renderPartial('admin/partials/table_footer', [
+                    'visible' => count((array)($pages['items'] ?? [])),
+                    'total' => (int)($pages['total'] ?? 0),
+                    'pagination' => $pages['pagination'] ?? null,
+                    'show_results_label' => false,
+                ]) ?>
             </div>
         </div>
 
         <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h2>
                 <div class="table-responsive overflow-auto admin-table-scroll">
                     <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--visits-full">
@@ -210,12 +210,12 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                         </tbody>
                     </table>
                 </div>
-                <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
-                    <div class="fs-sm"><?= print_translation('admin_table_showing') ?> <span class="fw-semibold"><?= count((array)($visits['items'] ?? [])) ?></span> <?= print_translation('admin_table_of') ?> <span class="fw-semibold"><?= (int)($visits['total'] ?? 0) ?></span></div>
-                    <?php if (!empty($visits['pagination'])): ?>
-                        <nav aria-label="Pagination"><?= $visits['pagination'] ?></nav>
-                    <?php endif; ?>
-                </div>
+                <?= view()->renderPartial('admin/partials/table_footer', [
+                    'visible' => count((array)($visits['items'] ?? [])),
+                    'total' => (int)($visits['total'] ?? 0),
+                    'pagination' => $visits['pagination'] ?? null,
+                    'show_results_label' => false,
+                ]) ?>
             </div>
         </div>
     </div>

@@ -18,7 +18,7 @@ $emptyText = $searchValue !== '' ? return_translation('admin_table_empty_search'
     'actions' => $adminPageActions,
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4" data-admin-posts-tabs data-admin-posts-url="<?= htmlSC(base_href('/admin/posts')) ?>">
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-posts-tabs data-admin-posts-url="<?= htmlSC(base_href('/admin/posts')) ?>">
         <form method="get" class="position-relative mb-3" style="max-width: 320px" data-admin-posts-live-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">

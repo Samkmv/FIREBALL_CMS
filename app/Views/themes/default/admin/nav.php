@@ -32,7 +32,6 @@ $navItems = [
     ['href' => base_href('/admin/roles'), 'label' => return_translation('admin_nav_roles'), 'icon' => 'ci-shield'],
     ['href' => base_href('/admin/files'), 'label' => return_translation('admin_nav_files'), 'icon' => 'ci-folder-plus'],
     ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'badge' => 'Beta'],
-    ['href' => base_href('/admin/theme-editor/default'), 'label' => return_translation('admin_nav_theme_editor'), 'icon' => 'ci-code', 'child' => true],
     ['href' => base_href('/admin/updates'), 'label' => return_translation('admin_nav_updates'), 'icon' => 'ci-refresh-cw'],
     ['href' => base_href('/admin/settings'), 'label' => return_translation('admin_nav_settings'), 'icon' => 'ci-settings'],
     ['href' => base_href('/admin/system/database-maintenance'), 'label' => return_translation('admin_nav_database_maintenance'), 'icon' => 'ci-database', 'creator_only' => true],
@@ -62,7 +61,7 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
             <?php if (!empty($item['creator_only']) && !check_creator()) { continue; } ?>
             <?php $active = $isActive($item['href']); ?>
             <a
-                class="list-group-item list-group-item-action d-flex align-items-center gap-3 rounded-4 px-3 py-2 border-0 <?= $active ? 'active shadow-sm' : 'bg-transparent' ?> <?= !empty($item['child']) ? 'admin-shell-nav-child' : '' ?>"
+                class="list-group-item list-group-item-action d-flex align-items-center gap-3 rounded-4 px-3 py-2 border-0 <?= $active ? 'active shadow-sm' : 'bg-transparent' ?>"
                 href="<?= $item['href'] ?>"
             >
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0 admin-shell-nav-icon">

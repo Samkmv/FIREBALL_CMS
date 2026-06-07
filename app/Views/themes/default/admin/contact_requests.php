@@ -13,7 +13,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
     'actions' => '',
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4" data-admin-live-table>
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-live-table>
         <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-live-table-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
@@ -83,20 +83,12 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                 </table>
             </div>
 
-            <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
-                <div class="fs-sm">
-                    <?= print_translation('admin_table_showing') ?>
-                    <span class="fw-semibold" data-admin-live-table-visible><?= count($requests) ?></span>
-                    <?= print_translation('admin_table_of') ?>
-                    <span class="fw-semibold"><?= (int)$total ?></span>
-                    <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
-                </div>
-                <?php if (!empty($pagination)): ?>
-                    <nav aria-label="Pagination">
-                        <?= $pagination ?>
-                    </nav>
-                <?php endif; ?>
-            </div>
+            <?= view()->renderPartial('admin/partials/table_footer', [
+                'visible' => count($requests),
+                'total' => (int)$total,
+                'pagination' => $pagination,
+                'visible_attributes' => ['data-admin-live-table-visible' => true],
+            ]) ?>
             <p class="text-body-secondary d-none mb-0" data-admin-live-table-empty><?= print_translation('admin_table_empty_search') ?></p>
         <?php endif; ?>
     </div>

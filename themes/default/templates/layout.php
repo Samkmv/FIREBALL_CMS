@@ -109,31 +109,6 @@ $footerNavigationLinks = [
     ],
 ];
 $footerNavigationLinks = array_merge($footerNavigationLinks, $footerPageLinks);
-$footerAccountLinks = check_auth()
-    ? [
-        [
-            'href' => base_href('/profile'),
-            'label' => return_translation('tpl_auth_profile'),
-        ],
-        [
-            'href' => base_href('/chat'),
-            'label' => return_translation('tpl_auth_chat'),
-        ],
-    ]
-    : [
-        [
-            'href' => base_href('/login'),
-            'label' => return_translation('tpl_auth_login'),
-        ],
-        [
-            'href' => base_href('/register'),
-            'label' => return_translation('tpl_auth_register'),
-        ],
-        [
-            'href' => base_href('/contacts'),
-            'label' => return_translation('footer_account_support'),
-        ],
-    ];
 $footerCategoryLinks = array_slice($postNavigationCategories, 0, 6);
 $postCategoryUrl = static function (?string $slug = null): string {
     $url = base_href('/posts');

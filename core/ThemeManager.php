@@ -537,7 +537,21 @@ class ThemeManager
         ob_start();
         require $layoutFile;
 
-        return ob_get_clean();
+        return $this->injectCmsComponents((string)ob_get_clean());
+    }
+
+    protected function injectCmsComponents(string $html): string
+    {
+        $cookieConsent = renderCookieConsent();
+        if ($cookieConsent === '') {
+            return $html;
+        }
+
+        $position = strripos($html, '</body>');
+
+        return $position === false
+            ? $html . $cookieConsent
+            : substr($html, 0, $position) . $cookieConsent . substr($html, $position);
     }
 
     public function partial($name, $data = []): string

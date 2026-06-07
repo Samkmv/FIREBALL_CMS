@@ -26,7 +26,7 @@ return [
     'contacts_image_alt' => '联系表单图片',
     'contacts_block_call_title' => '直接致电我们',
     'contacts_block_message_title' => '发送消息',
-    'contacts_block_location_title' => '门店地址',
+    'contacts_block_location_title' => '地址',
     'contacts_block_hours_title' => '营业时间',
     'contacts_label_customers' => '客户',
     'contacts_label_support' => '技术支持',

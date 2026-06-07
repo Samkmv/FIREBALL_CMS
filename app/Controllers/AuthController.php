@@ -192,18 +192,23 @@ class AuthController extends BaseController
         $data = request()->getData();
         $data['login'] = trim((string)($data['login'] ?? ''));
         $data['email'] = mb_strtolower(trim((string)($data['email'] ?? '')));
+        $data['privacy_accepted'] = !empty($data['privacy_accepted']) ? 1 : 0;
         $this->assertValidCsrfToken('/register', [
             'name' => trim((string)($data['name'] ?? '')),
             'login' => $data['login'],
             'email' => $data['email'],
         ]);
         $errors = $this->users->validateRegistration($data);
+        if (empty($data['privacy_accepted'])) {
+            $errors['privacy_accepted'][] = return_translation('auth_validation_privacy_required');
+        }
 
         if ($errors) {
             $this->setFormState([
                 'name' => trim((string)($data['name'] ?? '')),
                 'login' => $data['login'],
                 'email' => $data['email'],
+                'privacy_accepted' => $data['privacy_accepted'],
             ], $errors);
             response()->redirect(base_href('/register'));
         }

@@ -437,6 +437,38 @@ class AdminController extends BaseController
     }
 
     /**
+     * Shows and saves cookie consent and privacy settings.
+     */
+    public function privacySettings()
+    {
+        if (request()->isPost()) {
+            $data = $this->normalizePrivacySettingsData(request()->getData());
+            $errors = $this->validatePrivacySettingsData($data);
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/settings/privacy'));
+            }
+
+            $this->siteSettings->setMany($data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_privacy_saved'));
+            response()->redirect(base_href('/admin/settings/privacy'));
+        }
+
+        return view('admin/privacy_settings', [
+            'title' => return_translation('admin_privacy_title'),
+            'settings' => $this->siteSettings->all(),
+            'published_pages' => $this->pages->getPublishedOptions(),
+            'footer_scripts' => [
+                base_url('/assets/default/js/admin-cookie-consent.js?v=' . filemtime(WWW . '/assets/default/js/admin-cookie-consent.js')),
+            ],
+        ]);
+    }
+
+    /**
      * Shows installed CMS themes and the active theme state.
      */
     public function themes()
@@ -882,6 +914,7 @@ class AdminController extends BaseController
             'contacts_hours_weekends' => trim((string)($data['contacts_hours_weekends'] ?? '')),
             'contacts_support_title' => trim((string)($data['contacts_support_title'] ?? '')),
             'contacts_support_text' => trim((string)($data['contacts_support_text'] ?? '')),
+            'contacts_form_subjects' => $this->normalizeContactSubjectsSetting((string)($data['contacts_form_subjects'] ?? '')),
             'seo_home_title' => trim((string)($data['seo_home_title'] ?? '')),
             'seo_default_title_suffix' => trim((string)($data['seo_default_title_suffix'] ?? '')),
             'seo_meta_description' => trim((string)($data['seo_meta_description'] ?? '')),
@@ -896,9 +929,88 @@ class AdminController extends BaseController
         ];
     }
 
+    protected function normalizeContactSubjectsSetting(string $value): string
+    {
+        $subjects = preg_split('/\R/u', $value) ?: [];
+        $subjects = array_values(array_unique(array_filter(array_map(
+            static fn(string $subject): string => mb_substr(trim($subject), 0, 150),
+            $subjects
+        ))));
+        $defaultSubjects = array_map(
+            static fn(string $key): string => return_translation($key),
+            [
+                'contacts_subject_general_inquiry',
+                'contacts_subject_order_status',
+                'contacts_subject_product_information',
+                'contacts_subject_technical_support',
+                'contacts_subject_website_feedback',
+                'contacts_subject_account_assistance',
+                'contacts_subject_security_concerns',
+            ]
+        );
+
+        if ($subjects === $defaultSubjects) {
+            return '[]';
+        }
+
+        return json_encode(array_slice($subjects, 0, 30), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+    }
+
     protected function normalizeHomepageType(string $type): string
     {
         return in_array($type, ['default', 'page', 'posts'], true) ? $type : 'default';
+    }
+
+    protected function normalizePrivacySettingsData(array $data): array
+    {
+        $style = (string)($data['cookie_style'] ?? 'card');
+        $position = (string)($data['cookie_position'] ?? 'bottom_right');
+
+        return [
+            'cookie_enabled' => !empty($data['cookie_enabled']) ? '1' : '0',
+            'cookie_message' => trim((string)($data['cookie_message'] ?? '')),
+            'cookie_button_text' => trim((string)($data['cookie_button_text'] ?? '')),
+            'cookie_policy_page_id' => (string)max(0, (int)($data['cookie_policy_page_id'] ?? 0)),
+            'cookie_policy_use_on_registration' => !empty($data['cookie_policy_use_on_registration']) ? '1' : '0',
+            'cookie_position' => in_array($position, ['bottom_right', 'bottom_left', 'bottom_center', 'top'], true)
+                ? $position
+                : 'bottom_right',
+            'cookie_style' => in_array($style, ['card', 'bar'], true) ? $style : 'card',
+            'cookie_expiration_days' => (string)(int)($data['cookie_expiration_days'] ?? 365),
+            'cookie_consent_categories' => '["necessary"]',
+        ];
+    }
+
+    protected function validatePrivacySettingsData(array $data): array
+    {
+        $errors = [];
+
+        if ($data['cookie_message'] === '') {
+            $errors['cookie_message'][] = return_translation('admin_validation_cookie_message_required');
+        } elseif (mb_strlen($data['cookie_message']) > 2000) {
+            $errors['cookie_message'][] = return_translation('admin_validation_cookie_message_length');
+        }
+
+        if ($data['cookie_button_text'] === '') {
+            $errors['cookie_button_text'][] = return_translation('admin_validation_cookie_button_required');
+        } elseif (mb_strlen($data['cookie_button_text']) > 100) {
+            $errors['cookie_button_text'][] = return_translation('admin_validation_cookie_button_length');
+        }
+
+        $expirationDays = (int)$data['cookie_expiration_days'];
+        if ($expirationDays < 1 || $expirationDays > 3650) {
+            $errors['cookie_expiration_days'][] = return_translation('admin_validation_cookie_expiration');
+        }
+
+        $policyPageId = (int)$data['cookie_policy_page_id'];
+        if ($policyPageId > 0 && !$this->pages->findPublishedById($policyPageId)) {
+            $errors['cookie_policy_page_id'][] = return_translation('admin_validation_cookie_policy_page');
+        }
+        if ($data['cookie_policy_use_on_registration'] === '1' && $policyPageId <= 0) {
+            $errors['cookie_policy_use_on_registration'][] = return_translation('admin_validation_cookie_registration_page');
+        }
+
+        return $errors;
     }
 
     /**

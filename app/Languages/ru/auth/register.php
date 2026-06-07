@@ -8,7 +8,11 @@ return [
     'auth_register_login_field' => 'Логин',
     'auth_register_email' => 'Email',
     'auth_register_password' => 'Пароль',
+    'auth_register_password_placeholder' => 'Минимум 8 символов',
     'auth_register_password_confirmation' => 'Подтверждение пароля',
+    'auth_password_toggle' => 'Показать или скрыть пароль',
+    'auth_register_privacy_prefix' => 'Я прочитал(а) и принимаю',
+    'auth_register_privacy_link' => 'Политику конфиденциальности',
     'auth_register_submit' => 'Зарегистрироваться',
     'auth_register_login_text' => 'Уже есть аккаунт?',
     'auth_register_login_link' => 'Войти',
@@ -27,4 +31,5 @@ return [
     'auth_validation_password_strength' => 'Пароль должен содержать минимум одну заглавную букву и одну цифру.',
     'auth_validation_password_confirmation_required' => 'Подтвердите пароль.',
     'auth_validation_password_confirmation_match' => 'Пароли не совпадают.',
+    'auth_validation_privacy_required' => 'Необходимо принять Политику конфиденциальности.',
 ];

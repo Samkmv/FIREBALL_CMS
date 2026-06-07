@@ -376,20 +376,13 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     </div>
                 </form>
 
-                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between pt-4 gap-3">
-                    <div class="fs-sm text-body-secondary">
-                        <?= print_translation('admin_table_showing') ?>
-                        <span class="fw-semibold"><?= count($items) ?></span>
-                        <?= print_translation('admin_table_of') ?>
-                        <span class="fw-semibold"><?= $total ?></span>
-                        <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
-                    </div>
-                    <?php if (!empty($pagination)): ?>
-                        <nav aria-label="Pagination" data-fm-pagination>
-                            <?= $pagination ?>
-                        </nav>
-                    <?php endif; ?>
-                </div>
+                <?= view()->renderPartial('admin/partials/table_footer', [
+                    'visible' => count($items),
+                    'total' => $total,
+                    'pagination' => $pagination,
+                    'info_class' => 'text-body-secondary',
+                    'pagination_attributes' => ['data-fm-pagination' => true],
+                ]) ?>
             <?php endif; ?>
         </div>
     </div>

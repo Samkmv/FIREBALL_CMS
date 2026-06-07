@@ -123,7 +123,7 @@ $actionDescription = static fn(string $action): string => return_translation('ad
         </div>
     </div>
 
-    <div class="border rounded-5 p-3 p-md-4">
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card">
         <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
             <div>
                 <h2 class="h5 mb-1"><?= print_translation('admin_maintenance_logs_title') ?></h2>

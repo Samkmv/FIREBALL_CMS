@@ -8,7 +8,11 @@ return [
     'auth_register_login_field' => '登录名',
     'auth_register_email' => '邮箱',
     'auth_register_password' => '密码',
+    'auth_register_password_placeholder' => '至少 8 个字符',
     'auth_register_password_confirmation' => '确认密码',
+    'auth_password_toggle' => '显示或隐藏密码',
+    'auth_register_privacy_prefix' => '我已阅读并接受',
+    'auth_register_privacy_link' => '隐私政策',
     'auth_register_submit' => '注册',
     'auth_register_login_text' => '已经有账户了？',
     'auth_register_login_link' => '去登录',
@@ -27,4 +31,5 @@ return [
     'auth_validation_password_strength' => '密码必须至少包含一个大写字母和一个数字。',
     'auth_validation_password_confirmation_required' => '请确认密码。',
     'auth_validation_password_confirmation_match' => '两次输入的密码不一致。',
+    'auth_validation_privacy_required' => '您必须接受隐私政策。',
 ];

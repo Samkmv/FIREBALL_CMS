@@ -2427,6 +2427,12 @@ body.is-site-fullscreen .plyr * {
     font-size: clamp(2rem, 3.8vw, 3.85rem);
     line-height: 1;
     letter-spacing: -.055em;
+    overflow-wrap: anywhere;
+}
+
+.home-featured-head {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .home-section-head p,
@@ -3214,6 +3220,17 @@ body.is-site-fullscreen .plyr * {
         letter-spacing: -.045em;
         overflow-wrap: anywhere;
         word-break: normal;
+    }
+
+    .home-featured-toolbar {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1.25rem;
+    }
+
+    .home-featured-toolbar .home-featured-head {
+        width: 100%;
+        margin-right: 0 !important;
     }
 
     .home-slider-actions {

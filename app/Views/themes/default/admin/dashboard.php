@@ -96,7 +96,7 @@ echo view()->renderPartial('admin/shell_open', [
 
         <div class="row g-3 mt-1">
             <div class="col-xl-8">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card">
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                         <div>
                             <h3 class="h5 mb-1"><?= print_translation('admin_analytics_traffic_title') ?></h3>
@@ -112,7 +112,7 @@ echo view()->renderPartial('admin/shell_open', [
                 </div>
             </div>
             <div class="col-xl-4">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card">
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
                     <h3 class="h5 mb-1"><?= print_translation('admin_analytics_sources_title') ?></h3>
                     <p class="text-body-secondary mb-3"><?= print_translation('admin_analytics_sources_subtitle') ?></p>
                     <div style="min-height: 320px" data-analytics-chart="sources"></div>
@@ -122,7 +122,7 @@ echo view()->renderPartial('admin/shell_open', [
 
         <div class="row g-3 mt-1">
             <div class="col-lg-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card">
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_geo_title') ?></h3>
                     <div class="table-responsive">
                         <table class="table align-middle mb-0">

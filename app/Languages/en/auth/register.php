@@ -8,7 +8,11 @@ return [
     'auth_register_login_field' => 'Login',
     'auth_register_email' => 'Email',
     'auth_register_password' => 'Password',
+    'auth_register_password_placeholder' => 'Minimum 8 characters',
     'auth_register_password_confirmation' => 'Confirm password',
+    'auth_password_toggle' => 'Show or hide password',
+    'auth_register_privacy_prefix' => 'I have read and accept the',
+    'auth_register_privacy_link' => 'Privacy Policy',
     'auth_register_submit' => 'Register',
     'auth_register_login_text' => 'Already have an account?',
     'auth_register_login_link' => 'Sign in',
@@ -27,4 +31,5 @@ return [
     'auth_validation_password_strength' => 'Password must include at least one uppercase letter and one number.',
     'auth_validation_password_confirmation_required' => 'Confirm your password.',
     'auth_validation_password_confirmation_match' => 'Passwords do not match.',
+    'auth_validation_privacy_required' => 'You must accept the Privacy Policy.',
 ];

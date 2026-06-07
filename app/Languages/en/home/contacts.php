@@ -26,7 +26,7 @@ return [
     'contacts_image_alt' => 'Contact form image',
     'contacts_block_call_title' => 'Call us directly',
     'contacts_block_message_title' => 'Send a message',
-    'contacts_block_location_title' => 'Store location',
+    'contacts_block_location_title' => 'Address',
     'contacts_block_hours_title' => 'Working hours',
     'contacts_label_customers' => 'Customers',
     'contacts_label_support' => 'Technical support',

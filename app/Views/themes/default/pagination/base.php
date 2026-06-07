@@ -1,4 +1,4 @@
-<nav aria-label="Page navigation example">
+<nav class="admin-pagination-nav" aria-label="Pagination">
     <ul class="pagination">
 
         <?php if (!empty($first_page)): ?>

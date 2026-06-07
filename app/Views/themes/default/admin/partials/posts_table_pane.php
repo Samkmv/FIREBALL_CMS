@@ -126,16 +126,12 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
             </div>
         <?php endif; ?>
     </div>
-    <div class="d-flex align-items-center justify-content-between pt-4 gap-3">
-        <div class="fs-sm">
-            <?= print_translation('admin_table_showing') ?>
-            <span class="fw-semibold" data-admin-posts-visible="<?= htmlSC($tableKey) ?>"><?= count($items) ?></span>
-            <?= print_translation('admin_table_of') ?>
-            <span class="fw-semibold" data-admin-posts-total="<?= htmlSC($tableKey) ?>"><?= $total ?></span>
-            <span class="d-none d-sm-inline"><?= print_translation('admin_table_results') ?></span>
-        </div>
-        <nav aria-label="Pagination" data-admin-posts-pagination="<?= htmlSC($tableKey) ?>">
-            <?= !empty($pagination) ? $pagination : '' ?>
-        </nav>
-    </div>
+    <?= view()->renderPartial('admin/partials/table_footer', [
+        'visible' => count($items),
+        'total' => $total,
+        'pagination' => $pagination,
+        'visible_attributes' => ['data-admin-posts-visible' => $tableKey],
+        'total_attributes' => ['data-admin-posts-total' => $tableKey],
+        'pagination_attributes' => ['data-admin-posts-pagination' => $tableKey],
+    ]) ?>
 </div>

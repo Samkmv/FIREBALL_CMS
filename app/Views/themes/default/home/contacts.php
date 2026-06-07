@@ -12,6 +12,10 @@ $contactsHoursWeekdays = site_setting('contacts_hours_weekdays', '');
 $contactsHoursWeekends = site_setting('contacts_hours_weekends', '');
 $contactsSupportTitle = site_setting('contacts_support_title', '');
 $contactsSupportText = site_setting('contacts_support_text', '');
+$contactSubjects = array_values(array_filter(array_map(
+    static fn(mixed $subject): string => trim((string)$subject),
+    (array)($contact_subjects ?? [])
+)));
 $contactsImageUrl = $contactsImage !== ''
     ? (filter_var($contactsImage, FILTER_VALIDATE_URL) ? $contactsImage : base_url($contactsImage))
     : '';
@@ -104,13 +108,9 @@ $hasSupportBlock = $contactsSupportTitle !== '' || $contactsSupportText !== '';
                         <?php $selectedSubject = old('subject'); ?>
                         <select class="form-select form-select-lg rounded-pill <?= get_validation_class('subject') ?>" id="subject" name="subject" data-select aria-label="<?= htmlSC(return_translation('contacts_form_subject')) ?>" required>
                             <option value="" <?= $selectedSubject === '' ? 'selected' : '' ?>><?= print_translation('contacts_subject_placeholder') ?></option>
-                            <option value="<?= return_translation('contacts_subject_general_inquiry') ?>" <?= $selectedSubject === return_translation('contacts_subject_general_inquiry') ? 'selected' : '' ?>><?= print_translation('contacts_subject_general_inquiry') ?></option>
-                            <option value="<?= return_translation('contacts_subject_order_status') ?>" <?= $selectedSubject === return_translation('contacts_subject_order_status') ? 'selected' : '' ?>><?= print_translation('contacts_subject_order_status') ?></option>
-                            <option value="<?= return_translation('contacts_subject_product_information') ?>" <?= $selectedSubject === return_translation('contacts_subject_product_information') ? 'selected' : '' ?>><?= print_translation('contacts_subject_product_information') ?></option>
-                            <option value="<?= return_translation('contacts_subject_technical_support') ?>" <?= $selectedSubject === return_translation('contacts_subject_technical_support') ? 'selected' : '' ?>><?= print_translation('contacts_subject_technical_support') ?></option>
-                            <option value="<?= return_translation('contacts_subject_website_feedback') ?>" <?= $selectedSubject === return_translation('contacts_subject_website_feedback') ? 'selected' : '' ?>><?= print_translation('contacts_subject_website_feedback') ?></option>
-                            <option value="<?= return_translation('contacts_subject_account_assistance') ?>" <?= $selectedSubject === return_translation('contacts_subject_account_assistance') ? 'selected' : '' ?>><?= print_translation('contacts_subject_account_assistance') ?></option>
-                            <option value="<?= return_translation('contacts_subject_security_concerns') ?>" <?= $selectedSubject === return_translation('contacts_subject_security_concerns') ? 'selected' : '' ?>><?= print_translation('contacts_subject_security_concerns') ?></option>
+                            <?php foreach ($contactSubjects as $subject): ?>
+                                <option value="<?= htmlSC($subject) ?>" <?= $selectedSubject === $subject ? 'selected' : '' ?>><?= htmlSC($subject) ?></option>
+                            <?php endforeach; ?>
                         </select>
                         <div class="invalid-tooltip bg-transparent z-0 py-0 ps-3"><?= print_translation('contacts_validation_subject') ?></div>
                         <?= get_errors('subject') ?>

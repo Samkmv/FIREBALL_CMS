@@ -77,7 +77,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
         <?php endif; ?>
 
         <div class="theme-editor-toolbar border rounded-4 p-3 mb-3">
-            <div class="d-flex align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 theme-editor-toolbar-actions">
                 <select class="form-select theme-editor-theme-select" aria-label="<?= htmlSC(return_translation('admin_theme_editor_select_theme')) ?>" data-theme-editor-theme-select>
                     <?php foreach ($themes as $item): ?>
                         <option value="<?= htmlSC($editorBase . rawurlencode((string)$item['slug'])) ?>" <?= (string)$item['slug'] === $slug ? 'selected' : '' ?>>
@@ -111,7 +111,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                     </button>
                 <?php endif; ?>
                 <?php if ($selected && ($selected['type'] ?? '') === 'file'): ?>
-                    <button class="btn btn-outline-secondary rounded-pill ms-lg-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#themeHistory">
+                    <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="offcanvas" data-bs-target="#themeHistory">
                         <?= print_translation('admin_theme_editor_backups') ?>
                     </button>
                 <?php endif; ?>

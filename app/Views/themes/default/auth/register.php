@@ -1,3 +1,33 @@
+<?php
+$legalInformation = \FBL\Theme::getLegalInformationMenu();
+$privacyUrl = '#';
+$privacySettings = (new \App\Models\SiteSetting())->all();
+$configuredPrivacyPageId = (int)($privacySettings['cookie_policy_page_id'] ?? 0);
+$useConfiguredPrivacyPage = ($privacySettings['cookie_policy_use_on_registration'] ?? '0') === '1';
+$formErrors = session()->get('form_errors') ?: [];
+$errorText = static function (string $field, string $fallback) use ($formErrors): string {
+    return htmlSC((string)($formErrors[$field][0] ?? return_translation($fallback)));
+};
+if ($useConfiguredPrivacyPage && $configuredPrivacyPageId > 0) {
+    $configuredPrivacyPage = (new \App\Models\Page())->findPublishedById($configuredPrivacyPageId);
+    if ($configuredPrivacyPage) {
+        $privacyUrl = (string)$configuredPrivacyPage['url'];
+    }
+}
+if ($privacyUrl === '#') {
+    foreach ($legalInformation as $legalPage) {
+        $legalSlug = mb_strtolower((string)($legalPage['slug'] ?? ''));
+        $legalTitle = mb_strtolower((string)($legalPage['title'] ?? $legalPage['label'] ?? ''));
+        if (str_contains($legalSlug, 'privacy') || str_contains($legalTitle, 'конфиденциаль')
+            || str_contains($legalTitle, 'privacy') || str_contains($legalTitle, 'datenschutz')
+            || str_contains($legalTitle, '隐私')
+        ) {
+            $privacyUrl = (string)($legalPage['url'] ?? $legalPage['href'] ?? '#');
+            break;
+        }
+    }
+}
+?>
 <section class="container py-5 my-2 my-md-4 my-lg-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6 col-xl-5">
@@ -5,38 +35,52 @@
                 <h1 class="h3 mb-2"><?= print_translation('auth_register_heading') ?></h1>
                 <p class="text-body-secondary mb-4"><?= print_translation('auth_register_subtitle') ?></p>
 
-                <form action="<?= base_href('/register') ?>" method="post" novalidate>
+                <form class="needs-validation" action="<?= base_href('/register') ?>" method="post" novalidate>
                     <?= get_csrf_field() ?>
 
-                    <div class="mb-3">
+                    <div class="position-relative mb-4">
                         <label class="form-label" for="register-name"><?= print_translation('auth_register_name') ?></label>
-                        <input id="register-name" type="text" name="name" value="<?= old('name') ?>" class="form-control <?= get_validation_class('name') ?>" placeholder="<?= print_translation('auth_register_name') ?>">
-                        <?= get_errors('name') ?>
+                        <input id="register-name" type="text" name="name" value="<?= old('name') ?>" class="form-control form-control-lg <?= get_validation_class('name') ?>" placeholder="<?= htmlSC(return_translation('auth_register_name')) ?>" autocomplete="name" required>
+                        <div class="invalid-feedback"><?= $errorText('name', 'auth_validation_name_required') ?></div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="position-relative mb-4">
                         <label class="form-label" for="register-login"><?= print_translation('auth_register_login_field') ?></label>
-                        <input id="register-login" type="text" name="login" value="<?= old('login') ?>" class="form-control <?= get_validation_class('login') ?>" placeholder="user-login">
-                        <?= get_errors('login') ?>
+                        <input id="register-login" type="text" name="login" value="<?= old('login') ?>" class="form-control form-control-lg <?= get_validation_class('login') ?>" placeholder="user-login" autocomplete="username" minlength="3" pattern="[a-zA-Z0-9-]+" required>
+                        <div class="invalid-feedback"><?= $errorText('login', 'auth_validation_login_format') ?></div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="position-relative mb-4">
                         <label class="form-label" for="register-email"><?= print_translation('auth_register_email') ?></label>
-                        <input id="register-email" type="email" name="email" value="<?= old('email') ?>" class="form-control <?= get_validation_class('email') ?>" placeholder="name@example.com">
-                        <?= get_errors('email') ?>
+                        <input id="register-email" type="email" name="email" value="<?= old('email') ?>" class="form-control form-control-lg <?= get_validation_class('email') ?>" placeholder="name@example.com" autocomplete="email" required>
+                        <div class="invalid-feedback"><?= $errorText('email', 'auth_validation_email_invalid') ?></div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="position-relative mb-4 password-field">
                         <label class="form-label" for="register-password"><?= print_translation('auth_register_password') ?></label>
-                        <input id="register-password" type="password" name="password" class="form-control <?= get_validation_class('password') ?>" placeholder="••••••••">
-                        <div class="form-text"><?= print_translation('auth_validation_password_strength') ?></div>
-                        <?= get_errors('password') ?>
+                        <div class="password-toggle">
+                            <input id="register-password" type="password" name="password" class="form-control form-control-lg <?= get_validation_class('password') ?>" minlength="8" placeholder="<?= htmlSC(return_translation('auth_register_password_placeholder')) ?>" autocomplete="new-password" required>
+                            <div class="invalid-feedback"><?= $errorText('password', 'auth_validation_password_strength') ?></div>
+                            <label class="password-toggle-button fs-lg" aria-label="<?= htmlSC(return_translation('auth_password_toggle')) ?>">
+                                <input type="checkbox" class="btn-check">
+                            </label>
+                        </div>
+                        <div class="form-text password-strength-hint"><?= print_translation('auth_validation_password_strength') ?></div>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="position-relative mb-4">
                         <label class="form-label" for="register-password-confirmation"><?= print_translation('auth_register_password_confirmation') ?></label>
-                        <input id="register-password-confirmation" type="password" name="password_confirmation" class="form-control <?= get_validation_class('password_confirmation') ?>" placeholder="••••••••">
-                        <?= get_errors('password_confirmation') ?>
+                        <input id="register-password-confirmation" type="password" name="password_confirmation" class="form-control form-control-lg <?= get_validation_class('password_confirmation') ?>" minlength="8" placeholder="<?= htmlSC(return_translation('auth_register_password_confirmation')) ?>" autocomplete="new-password" required>
+                        <div class="invalid-feedback"><?= $errorText('password_confirmation', 'auth_validation_password_confirmation_required') ?></div>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input type="checkbox" class="form-check-input <?= get_validation_class('privacy_accepted') ?>" id="privacy-accepted" name="privacy_accepted" value="1" <?= old('privacy_accepted') === '1' ? 'checked' : '' ?> required>
+                        <label for="privacy-accepted" class="form-check-label">
+                            <?= print_translation('auth_register_privacy_prefix') ?>
+                            <a class="text-dark-emphasis" href="<?= htmlSC($privacyUrl) ?>" <?= $privacyUrl === '#' ? '' : 'target="_blank" rel="noopener noreferrer"' ?>><?= print_translation('auth_register_privacy_link') ?></a>
+                        </label>
+                        <div class="invalid-feedback"><?= $errorText('privacy_accepted', 'auth_validation_privacy_required') ?></div>
                     </div>
 
                     <button type="submit" class="btn btn-dark w-100 rounded-pill"><?= print_translation('auth_register_submit') ?></button>

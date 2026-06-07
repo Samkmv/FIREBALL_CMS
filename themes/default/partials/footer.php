@@ -28,7 +28,7 @@
                     <?php endif; ?>
                 </div>
                 <div class="col-lg-8">
-                    <div class="row row-cols-1 row-cols-sm-2 <?= !empty($legalInformationLinks) ? 'row-cols-lg-4' : 'row-cols-lg-3' ?> gx-3 gx-md-4">
+                    <div class="row row-cols-1 row-cols-sm-2 <?= !empty($legalInformationLinks) ? 'row-cols-lg-3' : 'row-cols-lg-2' ?> gx-3 gx-md-4">
                         <div class="accordion-item col border-0">
                             <h6 class="accordion-header" id="footerNavHeading">
                                 <span class="text-dark-emphasis d-none d-sm-block"><?= print_translation('footer_heading_navigation') ?></span>
@@ -60,32 +60,6 @@
                                             <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= $postCategoryUrl($category['slug']) ?>"><?= htmlSC($category['label']) ?></a>
                                         </li>
                                     <?php endforeach; ?>
-                                </ul>
-                            </div>
-                            <hr class="d-sm-none my-0">
-                        </div>
-                        <div class="accordion-item col border-0">
-                            <h6 class="accordion-header" id="footerAccountHeading">
-                                <span class="text-dark-emphasis d-none d-sm-block"><?= print_translation('footer_heading_account') ?></span>
-                                <button type="button" class="accordion-button py-3 d-sm-none collapsed" data-bs-toggle="collapse" data-bs-target="#footerAccountLinks" aria-expanded="false" aria-controls="footerAccountLinks"><?= print_translation('footer_heading_account') ?></button>
-                            </h6>
-                            <div class="accordion-collapse d-sm-block collapse" id="footerAccountLinks" aria-labelledby="footerAccountHeading" data-bs-parent="#footerLinks">
-                                <ul class="nav flex-column gap-2 pt-sm-3 pb-3 mt-n1 mb-1">
-                                    <?php foreach ($footerAccountLinks as $link): ?>
-                                        <li class="d-flex w-100 pt-1">
-                                            <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= $link['href'] ?>"><?= $link['label'] ?></a>
-                                        </li>
-                                    <?php endforeach; ?>
-                                    <?php if (check_auth()): ?>
-                                        <li class="d-flex w-100 pt-1">
-                                            <form action="<?= $logoutAction ?>" method="post" class="w-100">
-                                                <?= get_csrf_field() ?>
-                                                <button class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0 border-0 bg-transparent text-start" type="submit">
-                                                    <?= print_translation('tpl_auth_logout') ?>
-                                                </button>
-                                            </form>
-                                        </li>
-                                    <?php endif; ?>
                                 </ul>
                             </div>
                             <hr class="d-sm-none my-0">

@@ -26,7 +26,7 @@ return [
     'contacts_image_alt' => 'Bild des Kontaktformulars',
     'contacts_block_call_title' => 'Rufen Sie uns direkt an',
     'contacts_block_message_title' => 'Schreiben Sie uns',
-    'contacts_block_location_title' => 'Standort',
+    'contacts_block_location_title' => 'Adresse',
     'contacts_block_hours_title' => 'Arbeitszeiten',
     'contacts_label_customers' => 'Kunden',
     'contacts_label_support' => 'Technischer Support',

@@ -26,7 +26,7 @@ return [
     'contacts_image_alt' => 'Изображение формы обратной связи',
     'contacts_block_call_title' => 'Позвоните нам напрямую',
     'contacts_block_message_title' => 'Напишите нам',
-    'contacts_block_location_title' => 'Адрес магазина',
+    'contacts_block_location_title' => 'Адрес',
     'contacts_block_hours_title' => 'Часы работы',
     'contacts_label_customers' => 'Клиенты',
     'contacts_label_support' => 'Техподдержка',

@@ -22,13 +22,13 @@ $homeCityCategories = array_values(array_filter(
 
 $popularCameras = [];
 foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
-    $title = trim((string)($post['title'] ?? ''));
-    if ($title === '') {
+    $cameraTitle = trim((string)($post['title'] ?? ''));
+    if ($cameraTitle === '') {
         continue;
     }
 
     $popularCameras[] = [
-        'title' => $title,
+        'title' => $cameraTitle,
         'city' => trim((string)($post['category_label'] ?? $post['category'] ?? 'MAXIPAPA')),
         'category_url' => base_href('/posts') . (!empty($post['category_slug']) ? '?category=' . rawurlencode((string)$post['category_slug']) : ''),
         'date' => date('d.m.Y', strtotime((string)($post['published_at'] ?? 'now'))),
@@ -114,7 +114,7 @@ $featuredCount = count($popularCameras);
         <section class="container-start pt-5" id="home-popular-cameras">
             <div class="row align-items-center g-0 pt-2 pt-sm-3 pt-md-4 pt-lg-5">
                 <div class="col-md-4 col-lg-3 pb-1 pb-md-0 pe-3 ps-md-0 mb-4 mb-md-0">
-                    <div class="d-flex flex-md-column align-items-end align-items-md-start home-reveal">
+                    <div class="d-flex flex-md-column align-items-end align-items-md-start home-featured-toolbar home-reveal">
                         <div class="home-featured-head mb-md-5 me-3 me-md-0">
                             <span class="home-section-kicker">Featured on homepage</span>
                             <h2><?= print_translation('home_index_featured_posts') ?></h2>
