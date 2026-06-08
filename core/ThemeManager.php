@@ -542,16 +542,16 @@ class ThemeManager
 
     protected function injectCmsComponents(string $html): string
     {
-        $cookieConsent = renderCookieConsent();
-        if ($cookieConsent === '') {
+        $components = renderAnalyticsTracker() . renderCookieConsent();
+        if ($components === '') {
             return $html;
         }
 
         $position = strripos($html, '</body>');
 
         return $position === false
-            ? $html . $cookieConsent
-            : substr($html, 0, $position) . $cookieConsent . substr($html, $position);
+            ? $html . $components
+            : substr($html, 0, $position) . $components . substr($html, $position);
     }
 
     public function partial($name, $data = []): string
@@ -833,6 +833,18 @@ class ThemeManager
         $size = (int)($zipFile['size'] ?? 0);
         if ($tmpName === '' || !is_file($tmpName) || $size <= 0 || $size > self::MAX_PACKAGE_BYTES || strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'zip') {
             throw new RuntimeException('Uploaded file must be a ZIP archive.');
+        }
+
+        try {
+            (new \App\Services\SafeUploadService())->validate(
+                $tmpName,
+                $name,
+                $size,
+                self::MAX_PACKAGE_BYTES,
+                ['zip']
+            );
+        } catch (\RuntimeException $exception) {
+            throw new RuntimeException('Uploaded file must be a valid ZIP archive.', 0, $exception);
         }
 
         return $tmpName;
@@ -1179,9 +1191,17 @@ class ThemeManager
         $size = (int)($file['size'] ?? 0);
         $extension = $this->previewExtension($name);
 
-        if ($error !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName) || $size <= 0 || $size > 5 * 1024 * 1024 || $extension === '') {
+        if ($error !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName) || $size <= 0 || $size > 5 * 1024 * 1024 || $extension === '' || $extension === 'svg') {
             throw new RuntimeException('Invalid preview upload.');
         }
+
+        (new \App\Services\SafeUploadService())->validate(
+            $tmpName,
+            $name,
+            $size,
+            5 * 1024 * 1024,
+            ['png', 'jpg', 'jpeg', 'webp', 'gif']
+        );
 
         $targetName = 'preview.' . $extension;
         $target = $themeRoot . '/' . $targetName;

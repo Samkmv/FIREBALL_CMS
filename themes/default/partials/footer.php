@@ -38,7 +38,7 @@
                                 <ul class="nav flex-column gap-2 pt-sm-3 pb-3 mt-n1 mb-1">
                                     <?php foreach ($footerNavigationLinks as $link): ?>
                                         <li class="d-flex w-100 pt-1">
-                                            <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= $link['href'] ?>"><?= $link['label'] ?></a>
+                                            <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= htmlSC($link['href']) ?>"><?= htmlSC($link['label']) ?></a>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>

@@ -70,8 +70,13 @@ if ($privacyUrl === '#') {
 
                     <div class="position-relative mb-4">
                         <label class="form-label" for="register-password-confirmation"><?= print_translation('auth_register_password_confirmation') ?></label>
-                        <input id="register-password-confirmation" type="password" name="password_confirmation" class="form-control form-control-lg <?= get_validation_class('password_confirmation') ?>" minlength="8" placeholder="<?= htmlSC(return_translation('auth_register_password_confirmation')) ?>" autocomplete="new-password" required>
-                        <div class="invalid-feedback"><?= $errorText('password_confirmation', 'auth_validation_password_confirmation_required') ?></div>
+                        <div class="password-toggle">
+                            <input id="register-password-confirmation" type="password" name="password_confirmation" class="form-control form-control-lg <?= get_validation_class('password_confirmation') ?>" minlength="8" placeholder="<?= htmlSC(return_translation('auth_register_password_confirmation')) ?>" autocomplete="new-password" required>
+                            <div class="invalid-feedback"><?= $errorText('password_confirmation', 'auth_validation_password_confirmation_required') ?></div>
+                            <label class="password-toggle-button fs-lg" aria-label="<?= htmlSC(return_translation('auth_password_toggle')) ?>">
+                                <input type="checkbox" class="btn-check">
+                            </label>
+                        </div>
                     </div>
 
                     <div class="form-check mb-4">

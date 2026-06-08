@@ -61,7 +61,40 @@ class Application
             $this->response->redirect(base_url('/admin'));
         }
 
+        if ($this->isInstalled() && $this->isUpdateInProgress()) {
+            http_response_code(503);
+            header('Retry-After: 60');
+            header('Content-Type: text/html; charset=utf-8');
+            exit('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maintenance</title><body style="font-family:sans-serif;padding:40px;text-align:center"><h1>FIREBALL CMS maintenance</h1><p>The site is being updated. Please try again shortly.</p></body></html>');
+        }
+
         echo $this->router->dispatch();
+    }
+
+    protected function isUpdateInProgress(): bool
+    {
+        $maintenancePath = STORAGE . '/update.maintenance';
+        if (!is_file($maintenancePath)) {
+            return false;
+        }
+
+        $lockPath = STORAGE . '/update.lock';
+        $handle = @fopen($lockPath, 'c+');
+        if (!is_resource($handle)) {
+            return true;
+        }
+
+        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+            return true;
+        }
+
+        flock($handle, LOCK_UN);
+        fclose($handle);
+        @unlink($maintenancePath);
+        @unlink($lockPath);
+
+        return false;
     }
 
     public function isInstalled(): bool

@@ -20,14 +20,26 @@ final class AnalyticsService
             return;
         }
 
-        $currentPage = $this->currentPage();
+        $this->track([]);
+    }
+
+    public function track(array $payload): void
+    {
+        $currentPage = $this->sanitizePage((string)($payload['page'] ?? '/'));
         if (!session()->get('analytics.landing_page')) {
-            session()->set('analytics.landing_page', $currentPage);
+            session()->set(
+                'analytics.landing_page',
+                $this->sanitizePage((string)($payload['landing_page'] ?? $currentPage))
+            );
         }
 
         $ip = $this->clientIp();
+        if ($this->isPrivateIp($ip)) {
+            return;
+        }
+
         $userAgent = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
-        $referer = trim((string)($_SERVER['HTTP_REFERER'] ?? ''));
+        $referer = $this->limitString((string)($payload['referer'] ?? ($_SERVER['HTTP_REFERER'] ?? '')), 2048);
         $geo = $this->resolveGeo($ip);
 
         $this->repository->insertVisit([
@@ -40,18 +52,16 @@ final class AnalyticsService
             'os' => $this->detectOs($userAgent),
             'browser' => $this->detectBrowser($userAgent),
             'referer' => $referer,
-            'source' => $this->detectSource($referer, request()->get('utm_source', '')),
+            'source' => $this->detectSource($referer, $this->payloadValue($payload, 'utm_source')),
             'landing_page' => (string)session()->get('analytics.landing_page', $currentPage),
             'current_page' => $currentPage,
-            'utm_source' => request()->get('utm_source', ''),
-            'utm_medium' => request()->get('utm_medium', ''),
-            'utm_campaign' => request()->get('utm_campaign', ''),
-            'utm_content' => request()->get('utm_content', ''),
-            'utm_term' => request()->get('utm_term', ''),
+            'utm_source' => $this->payloadValue($payload, 'utm_source'),
+            'utm_medium' => $this->payloadValue($payload, 'utm_medium'),
+            'utm_campaign' => $this->payloadValue($payload, 'utm_campaign'),
+            'utm_content' => $this->payloadValue($payload, 'utm_content'),
+            'utm_term' => $this->payloadValue($payload, 'utm_term'),
             'created_at' => date('Y-m-d H:i:s'),
         ]);
-
-        cache()->remove('analytics:dashboard');
     }
 
     public function dashboardData(): array
@@ -155,6 +165,23 @@ final class AnalyticsService
         session()->remove('analytics.last_visit_at');
     }
 
+    public function clearDashboardCache(): void
+    {
+        cache()->remove('analytics:dashboard');
+    }
+
+    public function geoIpStatus(): array
+    {
+        $databasePath = $this->geoIpDatabasePath();
+
+        return [
+            'connected' => $databasePath !== null && class_exists('\\GeoIp2\\Database\\Reader'),
+            'database_found' => $databasePath !== null,
+            'reader_available' => class_exists('\\GeoIp2\\Database\\Reader'),
+            'path' => $databasePath,
+        ];
+    }
+
     private function shouldTrackRequest(): bool
     {
         if (!request()->isGet() || request()->isAjax()) {
@@ -187,12 +214,6 @@ final class AnalyticsService
         }
 
         return true;
-    }
-
-    private function currentPage(): string
-    {
-        $uri = (string)($_SERVER['REQUEST_URI'] ?? current_path());
-        return $uri !== '' ? mb_substr($uri, 0, 2048) : '/';
     }
 
     private function clientIp(): string
@@ -233,37 +254,74 @@ final class AnalyticsService
         }
 
         if (!filter_var($ip, FILTER_VALIDATE_IP) || $this->isPrivateIp($ip)) {
-            return ['country' => null, 'country_code' => null, 'city' => null];
+            return $this->unknownGeo();
         }
 
-        if (class_exists('\\GeoIp2\\Database\\Reader')) {
-            $paths = [
-                ROOT . '/storage/geoip/GeoLite2-City.mmdb',
-                ROOT . '/var/geoip/GeoLite2-City.mmdb',
-                CONFIG . '/GeoLite2-City.mmdb',
-            ];
+        $databasePath = $this->geoIpDatabasePath();
+        if ($databasePath !== null && class_exists('\\GeoIp2\\Database\\Reader')) {
+            try {
+                $reader = new \GeoIp2\Database\Reader($databasePath);
+                $record = $reader->city($ip);
 
-            foreach ($paths as $path) {
-                if (!is_file($path)) {
-                    continue;
-                }
-
-                try {
-                    $reader = new \GeoIp2\Database\Reader($path);
-                    $record = $reader->city($ip);
-
-                    return [
-                        'country' => $record->country->names['ru'] ?? $record->country->name ?? null,
-                        'country_code' => $record->country->isoCode ?? null,
-                        'city' => $record->city->names['ru'] ?? $record->city->name ?? null,
-                    ];
-                } catch (\Throwable) {
-                    return ['country' => null, 'country_code' => null, 'city' => null];
-                }
+                return [
+                    'country' => $record->country->names['ru'] ?? $record->country->name ?? 'Unknown',
+                    'country_code' => $record->country->isoCode ?? null,
+                    'city' => $record->city->names['ru'] ?? $record->city->name ?? null,
+                ];
+            } catch (\Throwable $exception) {
+                log_error_details('GeoIP lookup failed', ['Database' => $databasePath, 'IP' => $ip], $exception);
             }
         }
 
-        return ['country' => null, 'country_code' => null, 'city' => null];
+        return $this->unknownGeo();
+    }
+
+    private function geoIpDatabasePath(): ?string
+    {
+        foreach ([
+            ROOT . '/storage/geoip/GeoLite2-City.mmdb',
+            ROOT . '/var/geoip/GeoLite2-City.mmdb',
+            CONFIG . '/GeoLite2-City.mmdb',
+        ] as $path) {
+            if (is_file($path) && is_readable($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private function unknownGeo(): array
+    {
+        return ['country' => 'Unknown', 'country_code' => null, 'city' => null];
+    }
+
+    private function sanitizePage(string $page): string
+    {
+        $page = trim($page);
+        if ($page === '' || preg_match('/[\r\n\0]/', $page)) {
+            return '/';
+        }
+
+        $parts = parse_url($page);
+        if ($parts === false || isset($parts['scheme']) || isset($parts['host'])) {
+            return '/';
+        }
+
+        $path = '/' . ltrim((string)($parts['path'] ?? '/'), '/');
+        $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+
+        return $this->limitString($path . $query, 2048);
+    }
+
+    private function payloadValue(array $payload, string $key): string
+    {
+        return $this->limitString((string)($payload[$key] ?? ''), 255);
+    }
+
+    private function limitString(string $value, int $length): string
+    {
+        return mb_substr(trim($value), 0, $length);
     }
 
     private function normalizeIp(string $candidate): string

@@ -51,6 +51,11 @@ class Request
         return $this->getMethod() == 'POST';
     }
 
+    public function isStateChanging(): bool
+    {
+        return in_array($this->getMethod(), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
+    }
+
     /**
      * Проверяет, был ли запрос отправлен как Ajax-запрос.
      */

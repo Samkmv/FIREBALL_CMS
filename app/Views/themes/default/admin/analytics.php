@@ -6,6 +6,7 @@ $pages = (array)($analytics['pages'] ?? []);
 $visits = (array)($analytics['visits'] ?? []);
 $query = $_GET ?? [];
 $canResetAnalytics = !empty($can_reset_analytics);
+$geoIpStatus = (array)($geoip_status ?? []);
 $unknownCountryLabel = return_translation('admin_analytics_country_unknown');
 
 $urlFor = static function (array $overrides = []) use ($query): string {
@@ -55,6 +56,12 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
 <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin') ?>">
     <i class="ci-arrow-left"></i><?= print_translation('admin_analytics_back_to_dashboard') ?>
 </a>
+<form method="post" action="<?= base_href('/admin/analytics/refresh') ?>">
+    <?= get_csrf_field() ?>
+    <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+        <i class="ci-refresh-cw"></i><?= print_translation('admin_analytics_refresh_button') ?>
+    </button>
+</form>
 <?php if ($canResetAnalytics): ?>
     <form
         method="post"
@@ -75,6 +82,15 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
     'subtitle' => return_translation('admin_analytics_full_subtitle'),
     'actions' => $adminPageActions,
 ]) ?>
+
+    <div class="alert <?= !empty($geoIpStatus['connected']) ? 'alert-success' : 'alert-warning' ?> rounded-4 mb-3" role="status">
+        <?= print_translation(!empty($geoIpStatus['connected']) ? 'admin_geoip_connected' : 'admin_geoip_missing') ?>
+        <?php if (!empty($geoIpStatus['connected'])): ?>
+            <span class="ms-2">
+                <a class="alert-link" href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>
+            </span>
+        <?php endif; ?>
+    </div>
 
     <form class="border rounded-5 p-3 p-md-4 mb-3" method="get">
         <input type="hidden" name="pages_sort" value="<?= htmlSC((string)($pages['sort'] ?? 'views')) ?>">
@@ -146,7 +162,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
 
     <div class="row g-3">
         <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4 admin-table-card">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-ajax-table="analytics-pages">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h2>
                 <div class="table-responsive overflow-auto admin-table-scroll">
                     <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--pages-full">
@@ -179,7 +195,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         </div>
 
         <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4 admin-table-card">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-ajax-table="analytics-visits">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h2>
                 <div class="table-responsive overflow-auto admin-table-scroll">
                     <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--visits-full">

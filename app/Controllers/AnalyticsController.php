@@ -24,13 +24,34 @@ final class AnalyticsController extends BaseController
         ]);
     }
 
+    public function track(): void
+    {
+        try {
+            $this->analytics->track(request()->getData());
+        } catch (\Throwable $exception) {
+            log_error_details('Analytics tracking failed', [
+                'Payload' => request()->getData(),
+            ], $exception);
+        }
+
+        response()->json(['status' => 'accepted']);
+    }
+
     public function index()
     {
         return view('admin/analytics', [
             'title' => return_translation('admin_analytics_full_title'),
             'analytics' => $this->analytics->fullAnalyticsData(request()->getData()),
+            'geoip_status' => $this->analytics->geoIpStatus(),
             'can_reset_analytics' => false,
         ]);
+    }
+
+    public function refresh(): void
+    {
+        $this->analytics->clearDashboardCache();
+        session()->setFlash('success', return_translation('admin_analytics_refresh_success'));
+        response()->redirect(base_href('/admin/analytics'));
     }
 
     public function reset(): void

@@ -13,7 +13,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
     'actions' => '',
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-live-table>
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-live-table data-ajax-table="contact-requests">
         <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-live-table-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">

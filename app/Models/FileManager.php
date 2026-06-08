@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SafeUploadService;
 use FBL\Pagination;
 
 /**
@@ -578,6 +579,18 @@ class FileManager
 
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         if ($extension === '' || !in_array($extension, $this->allowedExtensions, true)) {
+            throw new \RuntimeException(return_translation('admin_files_type_error'));
+        }
+
+        try {
+            (new SafeUploadService())->validate(
+                $tmpName,
+                $originalName,
+                $size,
+                self::MAX_UPLOAD_SIZE_BYTES,
+                $this->allowedExtensions
+            );
+        } catch (\RuntimeException) {
             throw new \RuntimeException(return_translation('admin_files_type_error'));
         }
 

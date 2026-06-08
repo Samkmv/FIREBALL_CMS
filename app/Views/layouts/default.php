@@ -122,7 +122,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
     return $url . '?category=' . rawurlencode($slug);
 };
-
 ?>
 <!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true"><head>
     <meta charset="utf-8">
@@ -434,7 +433,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                     <?php if (app()->get('lang')['code'] == $key) continue; ?>
 
                     <li>
-                        <a class="dropdown-item" href="<?= htmlSC($languageSwitchHref((string)$key, $val)); ?>"><?= $val['title']; ?></a>
+                        <a class="dropdown-item" href="<?= htmlSC($languageSwitchHref((string)$key, $val)); ?>"><?= htmlSC($val['title']); ?></a>
                     </li>
 
                 <?php endforeach; ?>
@@ -637,7 +636,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                                 <ul class="nav flex-column gap-2 pt-sm-3 pb-3 mt-n1 mb-1">
                                     <?php foreach ($footerNavigationLinks as $link): ?>
                                         <li class="d-flex w-100 pt-1">
-                                            <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= $link['href'] ?>"><?= $link['label'] ?></a>
+                                            <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= htmlSC($link['href']) ?>"><?= htmlSC($link['label']) ?></a>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
@@ -743,7 +742,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     const baseUrl = '<?= base_url(); ?>';
     window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
 </script>
-
 <script src="<?= base_url('/assets/default/js/jquery-3.7.1.min.js') ?>"></script>
 
 <!-- Vendor scripts -->

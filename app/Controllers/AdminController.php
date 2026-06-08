@@ -59,7 +59,7 @@ class AdminController extends BaseController
             'stats' => $stats,
             'analytics_dashboard' => $this->analyticsService->dashboardData(),
             'engine_release' => require CONFIG . '/version.php',
-            'update_center' => $this->updateCenter->getDashboardData(),
+            'update_center' => check_creator() ? $this->updateCenter->getDashboardData() : [],
             'footer_scripts' => [
                 base_url('/assets/default/vendor/chart.js/chart.umd.js'),
                 base_url('/assets/default/vendor/apexcharts/apexcharts.min.js?v=' . filemtime(WWW . '/assets/default/vendor/apexcharts/apexcharts.min.js')),
@@ -720,12 +720,9 @@ class AdminController extends BaseController
      */
     public function updates()
     {
-        if (request()->isPost()) {
-            if (!Auth::hasRole('creator')) {
-                session()->setFlash('error', return_translation('admin_updates_creator_only'));
-                response()->redirect(base_href('/admin/updates'));
-            }
+        $this->requireCreatorForUpdates();
 
+        if (request()->isPost()) {
             $data = $this->normalizeUpdateSettingsData(request()->getData());
             $errors = $this->validateUpdateSettingsData($data);
 
@@ -1257,7 +1254,7 @@ class AdminController extends BaseController
 
         return $size > 0
             && $size <= 5 * 1024 * 1024
-            && preg_match('/\.(png|jpe?g|webp|gif|svg)$/i', $name) === 1;
+            && preg_match('/\.(png|jpe?g|webp|gif)$/i', $name) === 1;
     }
 
     protected function themeDocsArticles(): array

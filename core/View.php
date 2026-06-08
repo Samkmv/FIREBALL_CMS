@@ -72,16 +72,16 @@ class View
 
     protected function injectCmsComponents(string $html): string
     {
-        $cookieConsent = renderCookieConsent();
-        if ($cookieConsent === '') {
+        $components = renderAnalyticsTracker() . renderCookieConsent();
+        if ($components === '') {
             return $html;
         }
 
         $position = strripos($html, '</body>');
 
         return $position === false
-            ? $html . $cookieConsent
-            : substr($html, 0, $position) . $cookieConsent . substr($html, $position);
+            ? $html . $components
+            : substr($html, 0, $position) . $components . substr($html, $position);
     }
 
 }

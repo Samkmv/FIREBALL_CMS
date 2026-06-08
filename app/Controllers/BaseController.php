@@ -2,7 +2,6 @@
 
 namespace App\Controllers;
 
-use App\Models\Analytics;
 use FBL\Controller;
 
 /**
@@ -11,13 +10,8 @@ use FBL\Controller;
 class BaseController extends Controller
 {
 
-    /**
-     * Запускает общие действия для публичных страниц, например сбор аналитики.
-     */
     public function __construct()
     {
-        (new Analytics())->trackPublicRequest();
-
 //        if (!$menu = cache()->get('menu')) {
 //            cache()->set('menu', $this->renderMenu(), 1);
 //        }

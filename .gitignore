@@ -3,6 +3,7 @@
 .gigaide
 .gigacode
 public/uploads/*
+!public/uploads/.htaccess
 tmp/cache/*
 !tmp/cache/.gitkeep
 tmp/theme-actions.log

@@ -147,7 +147,7 @@
                     <?php if (app()->get('lang')['code'] == $key) continue; ?>
 
                     <li>
-                        <a class="dropdown-item" href="<?= htmlSC($headerLanguageSwitchHref((string)$key, $val)); ?>"><?= $val['title']; ?></a>
+                        <a class="dropdown-item" href="<?= htmlSC($headerLanguageSwitchHref((string)$key, $val)); ?>"><?= htmlSC($val['title']); ?></a>
                     </li>
 
                 <?php endforeach; ?>

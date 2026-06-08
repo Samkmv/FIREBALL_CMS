@@ -131,6 +131,11 @@ function renderCookieConsent(): string
     return (new \App\Components\CookieConsent())->render();
 }
 
+function renderAnalyticsTracker(): string
+{
+    return (new \App\Components\AnalyticsTracker())->render();
+}
+
 function site_name(): string
 {
     return theme()->siteName();

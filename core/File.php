@@ -2,8 +2,10 @@
 
 namespace FBL;
 
+use App\Services\SafeUploadService;
+
 /**
- * Представляет загруженный файл и предоставляет методы для его сохранения и удаления.
+ * @deprecated Use SafeUploadService for new upload flows. Kept for compatibility.
  */
 class File
 {
@@ -46,6 +48,21 @@ class File
     public function save($folder = '', $file_name = ''): bool|string
     {
         if (!$this->isFile) {
+            return false;
+        }
+
+        try {
+            (new SafeUploadService())->validate(
+                $this->tmpName,
+                $this->name,
+                $this->size,
+                200 * 1024 * 1024
+            );
+        } catch (\RuntimeException $exception) {
+            log_error_details('Unsafe upload rejected', [
+                'Name' => $this->name,
+                'Reason' => $exception->getMessage(),
+            ]);
             return false;
         }
 

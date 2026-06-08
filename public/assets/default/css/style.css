@@ -2893,3 +2893,6 @@ body.is-site-fullscreen .plyr * {
         min-height: 28rem;
     }
 }
+[data-ajax-table] {
+    scroll-margin-top: 90px;
+}

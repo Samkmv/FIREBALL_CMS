@@ -142,6 +142,9 @@ echo view()->renderPartial('admin/shell_open', [
                             </tbody>
                         </table>
                     </div>
+                    <div class="small text-body-tertiary mt-3">
+                        <a class="text-body-tertiary" href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-6">
@@ -233,6 +236,7 @@ echo view()->renderPartial('admin/shell_open', [
                 </span>
             </a>
         </div>
+        <?php if (check_creator()): ?>
         <div class="col-md-6 col-xl-4">
             <a class="border rounded-5 p-4 h-100 d-flex align-items-start gap-3 text-decoration-none text-reset admin-shell-profile-card admin-shell-action-card" href="<?= base_href('/admin/updates') ?>">
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary flex-shrink-0 admin-shell-action-card__icon" style="width: 3rem; height: 3rem;"><i class="ci-refresh-cw"></i></span>
@@ -242,5 +246,6 @@ echo view()->renderPartial('admin/shell_open', [
                 </span>
             </a>
         </div>
+        <?php endif; ?>
     </div>
     <?= view()->renderPartial('admin/shell_close') ?>

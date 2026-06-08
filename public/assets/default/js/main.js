@@ -347,7 +347,9 @@ $(function(){
         });
     });
 
-    document.querySelectorAll('[data-admin-live-table]').forEach((root) => {
+    const ajaxTableLoaders = new WeakMap();
+
+    document.querySelectorAll('[data-ajax-table]').forEach((root) => {
         let activeRequest = null;
         let searchTimer = null;
 
@@ -402,9 +404,12 @@ $(function(){
 
         const replaceLiveTableHtml = (html) => {
             const doc = new DOMParser().parseFromString(html, 'text/html');
-            const nextRoot = doc.querySelector('[data-admin-live-table]');
+            const tableKey = root.getAttribute('data-ajax-table') || '';
+            const nextRoot = Array.from(doc.querySelectorAll('[data-ajax-table]')).find((candidate) => {
+                return (candidate.getAttribute('data-ajax-table') || '') === tableKey;
+            });
             if (!nextRoot) {
-                throw new Error('Admin live table response is missing table root');
+                throw new Error('Admin Ajax table response is missing table root');
             }
 
             root.innerHTML = nextRoot.innerHTML;
@@ -438,6 +443,10 @@ $(function(){
                     replaceLiveTableHtml(html);
                     initAdminTableScrollbars(root);
                     initBootstrapTooltips(root);
+                    root.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
                     if (pushState) {
                         window.history.pushState({ adminLiveTableUrl: url.toString() }, '', url.toString());
                     }
@@ -445,6 +454,7 @@ $(function(){
                 .catch((error) => {
                     if (error.name !== 'AbortError') {
                         console.error(error);
+                        window.location.assign(url.toString());
                     }
                 })
                 .finally(() => {
@@ -452,6 +462,8 @@ $(function(){
                     activeRequest = null;
                 });
         };
+
+        ajaxTableLoaders.set(root, loadLiveTable);
 
         if (!getInput()) {
             return;
@@ -477,19 +489,32 @@ $(function(){
             loadLiveTable(buildLiveTableUrl(1));
         });
 
-        root.addEventListener('click', (event) => {
-            const link = event.target.closest('.pagination a, thead a');
-            if (!link || !link.href || !root.contains(link)) {
-                return;
-            }
-
-            event.preventDefault();
-            loadLiveTable(new URL(link.href, window.location.origin));
-        });
-
         window.addEventListener('popstate', () => {
             loadLiveTable(new URL(window.location.href), false);
         });
+    });
+
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('[data-ajax-table] .pagination a, [data-ajax-table] thead a');
+        if (!link) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const url = link.getAttribute('href');
+        if (!url || url === '#') {
+            return;
+        }
+
+        const table = link.closest('[data-ajax-table]');
+        const loader = table ? ajaxTableLoaders.get(table) : null;
+        if (!loader) {
+            window.location.assign(url);
+            return;
+        }
+
+        loader(new URL(url, window.location.origin));
     });
 
     const makeSlug = (value) => String(value || '')

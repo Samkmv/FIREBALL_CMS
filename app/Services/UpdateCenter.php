@@ -246,6 +246,8 @@ class UpdateCenter
     {
         $fromVersion = (string)($this->engineRelease['version'] ?? '0.0.0');
         $user = function_exists('get_user') ? (get_user() ?: []) : [];
+        $lock = $this->acquireUpdateLock();
+        $this->enableMaintenanceMode($user);
 
         try {
             $result = $this->performUpdate();
@@ -261,6 +263,9 @@ class UpdateCenter
         } catch (\Throwable $exception) {
             $this->writeUpdateLog($user, $fromVersion, null, 'error', $exception->getMessage());
             throw $exception;
+        } finally {
+            $this->disableMaintenanceMode();
+            $this->releaseUpdateLock($lock);
         }
     }
 
@@ -309,30 +314,41 @@ class UpdateCenter
 
         $this->validateGitDiffAgainstManifest($branch, $manifest);
         $this->createPreUpdateBackups();
-        $pullResult = $this->runCommand(
-            'git pull --ff-only origin ' . escapeshellarg($branch),
-            ROOT
-        );
+        try {
+            $pullResult = $this->runCommand(
+                'git pull --ff-only origin ' . escapeshellarg($branch),
+                ROOT
+            );
 
-        if ($pullResult['exit_code'] !== 0) {
-            throw new RuntimeException($this->formatCommandError($pullResult, return_translation('admin_update_pull_failed')));
+            if ($pullResult['exit_code'] !== 0) {
+                throw new RuntimeException($this->formatCommandError($pullResult, return_translation('admin_update_pull_failed')));
+            }
+
+            $currentCommit = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
+            $composerResult = null;
+
+            if ($previousCommit !== '' && $currentCommit !== '' && $previousCommit !== $currentCommit) {
+                $composerResult = $this->runComposerIfNeeded($previousCommit, $currentCommit);
+            }
+
+            $this->runPendingMigrations();
+            $this->clearRuntimeCache();
+            $this->siteSettings->setMany([
+                'updater_last_updated_at' => date('Y-m-d H:i:s'),
+                'updater_last_installed_commit' => $currentCommit,
+            ]);
+            $this->refreshLastCheckAfterUpdate();
+        } catch (\Throwable $exception) {
+            if ($previousCommit !== '') {
+                $rollback = $this->runCommand('git reset --hard ' . escapeshellarg($previousCommit), ROOT);
+                log_error_details('Git update rollback executed', [
+                    'Commit' => $previousCommit,
+                    'Exit Code' => $rollback['exit_code'] ?? -1,
+                    'Output' => $rollback['stderr'] ?? $rollback['stdout'] ?? '',
+                ], $exception);
+            }
+            throw $exception;
         }
-
-        $currentCommit = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
-        $composerResult = null;
-
-        if ($previousCommit !== '' && $currentCommit !== '' && $previousCommit !== $currentCommit) {
-            $composerResult = $this->runComposerIfNeeded($previousCommit, $currentCommit);
-        }
-
-        $this->siteSettings->setMany([
-            'updater_last_updated_at' => date('Y-m-d H:i:s'),
-            'updater_last_installed_commit' => $currentCommit,
-        ]);
-        $this->refreshLastCheckAfterUpdate();
-
-        $this->runPendingMigrations();
-        $this->clearRuntimeCache();
 
         if (is_array($composerResult)) {
             return $composerResult;
@@ -1574,6 +1590,49 @@ class UpdateCenter
                 @unlink($file);
             }
         }
+    }
+
+    protected function acquireUpdateLock()
+    {
+        $path = STORAGE . '/update.lock';
+        $handle = @fopen($path, 'c+');
+        if (!is_resource($handle) || !flock($handle, LOCK_EX | LOCK_NB)) {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+            throw new RuntimeException('Another CMS update is already running.');
+        }
+
+        ftruncate($handle, 0);
+        fwrite($handle, json_encode([
+            'started_at' => date('c'),
+            'pid' => getmypid(),
+        ], JSON_UNESCAPED_SLASHES));
+        fflush($handle);
+
+        return $handle;
+    }
+
+    protected function releaseUpdateLock($handle): void
+    {
+        if (is_resource($handle)) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+        @unlink(STORAGE . '/update.lock');
+    }
+
+    protected function enableMaintenanceMode(array $user): void
+    {
+        @file_put_contents(STORAGE . '/update.maintenance', json_encode([
+            'started_at' => date('c'),
+            'user_id' => (int)($user['id'] ?? 0),
+        ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    }
+
+    protected function disableMaintenanceMode(): void
+    {
+        @unlink(STORAGE . '/update.maintenance');
     }
 
     /**

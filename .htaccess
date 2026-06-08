@@ -14,6 +14,13 @@ Options -MultiViews
 
 
 RewriteEngine On
+
+# Block internal application directories even when Apache serves the project root.
+RewriteRule ^(?:config|storage|database|backups|logs|vendor)(?:/|$) - [F,L,NC]
+
+# Never expose script files from writable/public asset directories.
+RewriteRule ^(?:public/)?uploads/.*\.(?:php[0-9]?|phtml|phar)$ - [F,L,NC]
+RewriteRule ^themes/[^/]+/assets/.*\.(?:php[0-9]?|phtml|phar)$ - [F,L,NC]
 # Prevent direct access to the "public" folder - redirect to root
 RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /public/
 RewriteRule ^public/(.*) /$1 [R=302,L]

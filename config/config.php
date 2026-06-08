@@ -50,7 +50,7 @@ $requestIsSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
 $detectedAppUrl = ($requestIsSecure ? 'https' : 'http') . '://' . $requestHost;
 
 $defaults = [
-    'DEBUG' => 1,
+    'DEBUG' => 0,
     'LAYOUT' => 'default',
     'THEME' => 'default',
     'PATH' => $detectedAppUrl,

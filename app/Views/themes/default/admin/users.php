@@ -20,7 +20,7 @@ $onlineSortUrl = current_url_with_query([
     'actions' => '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/users/create') . '"><i class="ci-plus"></i>' . return_translation('admin_users_create') . '</a>',
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-live-table>
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-live-table data-ajax-table="users">
         <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-live-table-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">

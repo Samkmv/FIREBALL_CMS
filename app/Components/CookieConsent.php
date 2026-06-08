@@ -74,7 +74,7 @@ class CookieConsent
             .fireball-cookie-consent--bar{left:0;right:0;width:100%}
             .fireball-cookie-consent--bar.fireball-cookie-consent--bottom-right,.fireball-cookie-consent--bar.fireball-cookie-consent--bottom-left,.fireball-cookie-consent--bar.fireball-cookie-consent--bottom-center{bottom:0;transform:none}
             .fireball-cookie-consent--bar.fireball-cookie-consent--top{top:0;transform:none}
-            .fireball-cookie-consent__inner{padding:20px;border:1px solid rgba(128,128,128,.25);border-radius:20px;background:var(--bs-body-bg,#fff);background:color-mix(in srgb,var(--bs-body-bg,#fff) 88%,transparent);box-shadow:0 18px 55px rgba(15,23,42,.18);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+            .fireball-cookie-consent__inner{max-height:min(70vh,520px);overflow:auto;padding:20px;border:1px solid rgba(128,128,128,.25);border-radius:20px;background:var(--bs-body-bg,#fff);background:color-mix(in srgb,var(--bs-body-bg,#fff) 88%,transparent);box-shadow:0 18px 55px rgba(15,23,42,.18);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
             .fireball-cookie-consent--bar .fireball-cookie-consent__inner{display:flex;align-items:center;justify-content:center;gap:24px;width:100%;border-radius:0;padding:16px max(20px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
             .fireball-cookie-consent__message{flex:0 1 760px;margin:0}
             .fireball-cookie-consent__actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px}
@@ -83,7 +83,7 @@ class CookieConsent
             .fireball-cookie-consent__accept{border:1px solid var(--bs-primary,#dc2626);background:var(--bs-primary,#dc2626);color:#fff}
             .fireball-cookie-consent__policy{border:1px solid rgba(128,128,128,.35);background:transparent;color:inherit}
             .fireball-cookie-consent__accept:focus-visible,.fireball-cookie-consent__policy:focus-visible{outline:3px solid color-mix(in srgb,var(--bs-primary,#dc2626) 35%,transparent);outline-offset:2px}
-            @media(max-width:767.98px){.fireball-cookie-consent--bar .fireball-cookie-consent__inner{align-items:stretch;flex-direction:column;gap:14px}.fireball-cookie-consent--bar .fireball-cookie-consent__actions{margin-top:0}.fireball-cookie-consent__actions>*{flex:1 1 auto}}
+            @media(max-width:767.98px){.fireball-cookie-consent{font-size:14px}.fireball-cookie-consent--card{width:calc(100vw - 24px)}.fireball-cookie-consent--bottom-right{right:12px;bottom:max(12px,env(safe-area-inset-bottom))}.fireball-cookie-consent--bottom-left{left:12px;bottom:max(12px,env(safe-area-inset-bottom))}.fireball-cookie-consent__inner{padding:16px;border-radius:16px}.fireball-cookie-consent--bar .fireball-cookie-consent__inner{align-items:stretch;flex-direction:column;gap:14px}.fireball-cookie-consent--bar .fireball-cookie-consent__actions{margin-top:0}.fireball-cookie-consent__actions>*{flex:1 1 auto}}
             @media(prefers-reduced-motion:no-preference){.fireball-cookie-consent{animation:fireball-cookie-consent-in .28s ease-out both}@keyframes fireball-cookie-consent-in{from{opacity:0}to{opacity:1}}.fireball-cookie-consent--card.fireball-cookie-consent--bottom-center,.fireball-cookie-consent--card.fireball-cookie-consent--top{animation-name:fireball-cookie-consent-center-in}@keyframes fireball-cookie-consent-center-in{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}}
         </style>
         <script>

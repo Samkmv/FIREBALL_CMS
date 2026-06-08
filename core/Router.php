@@ -70,6 +70,11 @@ class Router
         return $this->add($path, $callback, 'PUT');
     }
 
+    public function delete($path, $callback): self
+    {
+        return $this->add($path, $callback, 'DELETE');
+    }
+
     /**
      * Возвращает список всех зарегистрированных маршрутов.
      */
@@ -147,7 +152,7 @@ class Router
 
                 Language::load($route['callback']);
 
-                if (request()->isPost()) {
+                if (request()->isStateChanging()) {
                     if ($route['needCSRFToken'] && !$this->checkCSRFToken()) {
                         if (request()->isAjax()) {
                             response()->json([

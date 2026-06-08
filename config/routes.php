@@ -42,6 +42,7 @@ $app->router->post('/install', [InstallController::class, 'submit']);
 
 // Site pages ---------- //
 $app->router->get('/api/v1/menu/(?P<type>[a-z_]+)', [MenuController::class, 'index']);
+$app->router->post('/api/analytics/track', [AnalyticsController::class, 'track'])->withoutCSRFToken();
 $app->router->get('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->post('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['guest']);
@@ -73,6 +74,7 @@ $app->router->get('/posts', [PostsController::class, 'index']);
 $app->router->get('/admin', [AdminController::class, 'dashboard'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/analytics', [AnalyticsController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/analytics/data', [AnalyticsController::class, 'dashboardData'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/analytics/refresh', [AnalyticsController::class, 'refresh'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/analytics/reset', [AnalyticsController::class, 'reset'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/contact-requests', [AdminController::class, 'contactRequests'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/contact-requests/delete', [AdminController::class, 'contactRequestDelete'])->middleware(['auth', 'admin']);
