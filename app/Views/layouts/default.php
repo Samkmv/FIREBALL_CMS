@@ -167,9 +167,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Theme switcher (color modes) -->
     <script src="<?= base_url('/assets/default/js/theme-switcher.js') ?>"></script>
 
-    <!-- Preloaded local web font (Inter) -->
-    <link rel="preload" href="<?= base_url('/assets/default/fonts/inter-variable-latin.woff2') ?>" as="font" type="font/woff2" crossorigin="">
-
     <!-- Font icons -->
     <link rel="preload" href="<?= base_url('/assets/default/icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
     <link rel="stylesheet" href="<?= base_url('/assets/default/icons/cartzilla-icons.min.css') ?>">

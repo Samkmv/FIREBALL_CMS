@@ -164,10 +164,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Theme switcher (color modes) -->
     <script src="<?= theme_asset('js/theme-switcher.js') ?>"></script>
 
-    <!-- Preloaded local web font (Roboto) -->
-    <link rel="preload" href="<?= theme_asset('fonts/roboto-cyrillic.woff2') ?>" as="font" type="font/woff2" crossorigin="">
-    <link rel="preload" href="<?= theme_asset('fonts/roboto-latin.woff2') ?>" as="font" type="font/woff2" crossorigin="">
-
     <!-- Font icons -->
     <link rel="preload" href="<?= theme_asset('icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
     <link rel="stylesheet" href="<?= theme_asset('icons/cartzilla-icons.min.css') ?>">
