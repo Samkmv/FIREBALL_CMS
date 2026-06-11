@@ -74,15 +74,27 @@ $deleteBlockedMessage = $isCurrentUser
                     <?= get_errors('role') ?>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label"><?= print_translation('admin_user_password') ?></label>
-                    <input class="form-control <?= get_validation_class('password') ?>" type="password" name="password" autocomplete="new-password" <?= $isProtectedCreator ? 'disabled' : '' ?> <?= !$isEdit ? 'required' : '' ?>>
-                    <div class="form-text"><?= print_translation($isEdit ? 'admin_user_password_hint' : 'admin_user_password_create_hint') ?></div>
-                    <?= get_errors('password') ?>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'admin-user-password',
+                        'name' => 'password',
+                        'label' => return_translation('admin_user_password'),
+                        'autocomplete' => 'new-password',
+                        'disabled' => $isProtectedCreator,
+                        'required' => !$isEdit,
+                        'minlength' => 8,
+                        'hint' => return_translation($isEdit ? 'admin_user_password_hint' : 'admin_user_password_create_hint'),
+                    ]) ?>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label"><?= print_translation('admin_user_password_confirmation') ?></label>
-                    <input class="form-control <?= get_validation_class('password_confirmation') ?>" type="password" name="password_confirmation" autocomplete="new-password" <?= $isProtectedCreator ? 'disabled' : '' ?> <?= !$isEdit ? 'required' : '' ?>>
-                    <?= get_errors('password_confirmation') ?>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'admin-user-password-confirmation',
+                        'name' => 'password_confirmation',
+                        'label' => return_translation('admin_user_password_confirmation'),
+                        'autocomplete' => 'new-password',
+                        'disabled' => $isProtectedCreator,
+                        'required' => !$isEdit,
+                        'minlength' => 8,
+                    ]) ?>
                 </div>
             </div>
         </form>

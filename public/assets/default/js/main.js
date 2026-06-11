@@ -188,334 +188,222 @@ $(function(){
         adminPostActionDropdowns.delete(dropdown);
     });
 
-    document.querySelectorAll('[data-admin-posts-tabs]').forEach((root) => {
-        const input = root.querySelector('[data-admin-posts-live-search]');
-        const panes = Array.from(root.querySelectorAll('[data-admin-posts-pane]'));
-        const form = root.querySelector('[data-admin-posts-live-form]');
-        const statusInput = root.querySelector('[data-admin-posts-status-input]');
-        const pageInput = root.querySelector('[data-admin-posts-page-input]');
-        const sortInput = form ? form.querySelector('input[name="sort"]') : null;
-        const directionInput = form ? form.querySelector('input[name="direction"]') : null;
-        const endpoint = root.getAttribute('data-admin-posts-url') || window.location.pathname;
-        let activeStatus = root.querySelector('[data-admin-posts-tab-button].active')?.getAttribute('data-admin-posts-tab-button') || 'published';
+    const adminAjaxTables = (() => {
         let activeRequest = null;
         let searchTimer = null;
 
-        if (!input || !panes.length) {
-            return;
-        }
-
-        const getPane = (status) => root.querySelector('[data-admin-posts-pane="' + status + '"]');
+        const tableRoots = () => Array.from(document.querySelectorAll('[data-ajax-table]'));
         const setLoading = (isLoading) => {
-            root.classList.toggle('admin-posts-tabs--loading', isLoading);
+            tableRoots().forEach((root) => {
+                root.classList.toggle('admin-table--loading', isLoading);
+                root.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+            });
         };
-
-        const buildUrl = (status, page = 1) => {
-            const url = new URL(endpoint, window.location.origin);
-            const search = input.value.trim();
-            const sort = sortInput ? sortInput.value.trim() : '';
-            const direction = directionInput ? directionInput.value.trim() : '';
-
-            if (search !== '') {
-                url.searchParams.set('search', search);
-            }
-            url.searchParams.set('status', status);
+        const buildFormUrl = (form, page = 1) => {
+            const url = new URL(form.action || window.location.href, window.location.origin);
+            const formData = new FormData(form);
+            url.search = '';
+            formData.forEach((value, key) => {
+                const normalizedValue = String(value || '').trim();
+                if (key === 'page' || normalizedValue === '') {
+                    return;
+                }
+                url.searchParams.set(key === 'q' ? 'search' : key, normalizedValue);
+            });
             url.searchParams.set('page', String(Math.max(1, parseInt(page, 10) || 1)));
-            if (sort !== '') {
-                url.searchParams.set('sort', sort);
-            }
-            if (direction !== '') {
-                url.searchParams.set('direction', direction);
-            }
-
             return url;
         };
-
-        const applyUrlState = (url) => {
-            const status = url.searchParams.get('status') === 'drafts' ? 'drafts' : 'published';
-            activeStatus = status;
-            input.value = url.searchParams.get('search') || '';
-
-            if (statusInput) {
-                statusInput.value = status;
-            }
-            if (pageInput) {
-                pageInput.value = url.searchParams.get('page') || '1';
-            }
-            if (sortInput) {
-                sortInput.value = url.searchParams.get('sort') || sortInput.value || '';
-            }
-            if (directionInput) {
-                directionInput.value = url.searchParams.get('direction') || directionInput.value || '';
-            }
+        const syncForms = (url) => {
+            document.querySelectorAll('[data-admin-table-form]').forEach((form) => {
+                Array.from(form.elements).forEach((field) => {
+                    if (!field.name || field.type === 'submit') {
+                        return;
+                    }
+                    const queryName = field.name === 'q' ? 'search' : field.name;
+                    if (field.type === 'checkbox' || field.type === 'radio') {
+                        field.checked = url.searchParams.getAll(queryName).includes(field.value);
+                        return;
+                    }
+                    if (url.searchParams.has(queryName) || field.type === 'hidden') {
+                        field.value = url.searchParams.get(queryName) || (field.name === 'page' ? '1' : '');
+                    }
+                });
+            });
         };
-
-        const updateTabCounts = (counts) => {
-            if (!counts) {
-                return;
+        const setPostsStatus = (root, status) => {
+            root.querySelectorAll('[data-admin-posts-tab-button]').forEach((button) => {
+                const active = button.getAttribute('data-admin-posts-tab-button') === status;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            root.querySelectorAll('[data-admin-posts-pane]').forEach((pane) => {
+                const active = pane.getAttribute('data-admin-posts-pane') === status;
+                pane.classList.toggle('show', active);
+                pane.classList.toggle('active', active);
+            });
+        };
+        const applyJsonTable = (root, data, url) => {
+            const status = url.searchParams.get('status') === 'drafts' ? 'drafts' : 'published';
+            const pane = root.querySelector('[data-admin-posts-pane="' + status + '"]');
+            if (!pane) {
+                throw new Error('Admin Ajax table response is missing the active pane');
             }
-
-            ['published', 'drafts'].forEach((status) => {
-                const countNode = root.querySelector('[data-admin-posts-count="' + status + '"]');
-                if (countNode) {
-                    countNode.textContent = String(counts[status] ?? 0);
+            setPostsStatus(root, status);
+            pane.innerHTML = data.html || '';
+            ['published', 'drafts'].forEach((key) => {
+                const count = root.querySelector('[data-admin-posts-count="' + key + '"]');
+                if (count && data.counts) {
+                    count.textContent = String(data.counts[key] ?? 0);
                 }
             });
         };
-
-        const loadTable = (url, pushState = true) => {
-            applyUrlState(url);
-
-            const pane = getPane(activeStatus);
-            if (!pane) {
+        const applyHtmlTables = (html) => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            let replaced = 0;
+            tableRoots().forEach((root) => {
+                const key = root.getAttribute('data-ajax-table') || '';
+                const nextRoot = Array.from(doc.querySelectorAll('[data-ajax-table]')).find((candidate) => {
+                    return (candidate.getAttribute('data-ajax-table') || '') === key;
+                });
+                if (!nextRoot) {
+                    return;
+                }
+                root.innerHTML = nextRoot.innerHTML;
+                replaced += 1;
+            });
+            if (replaced === 0) {
+                throw new Error('Admin Ajax table response is missing table roots');
+            }
+        };
+        const showError = () => {
+            tableRoots().forEach((root) => {
+                let state = root.querySelector('[data-admin-table-error]');
+                if (!state) {
+                    state = document.createElement('div');
+                    state.className = 'admin-table-state admin-table-state--error';
+                    state.setAttribute('data-admin-table-error', '');
+                    const title = bodyDataset.adminTableErrorTitle || 'Failed to load data';
+                    const text = bodyDataset.adminTableErrorText || 'Try refreshing the page';
+                    const retry = bodyDataset.adminTableRetryLabel || 'Retry';
+                    state.innerHTML = '<strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(text) + '</span><button class="btn btn-sm btn-outline-danger rounded-pill" type="button" data-admin-table-retry>' + escapeHtml(retry) + '</button>';
+                    root.appendChild(state);
+                }
+            });
+        };
+        const load = (url, options = {}) => {
+            const roots = tableRoots();
+            if (roots.length === 0) {
+                window.location.href = url.toString();
                 return Promise.resolve();
             }
-
             if (activeRequest) {
                 activeRequest.abort();
             }
-
-            activeRequest = new AbortController();
+            const request = new AbortController();
+            activeRequest = request;
+            const jsonRoot = roots.find((root) => root.getAttribute('data-ajax-table-format') === 'json');
             setLoading(true);
+            syncForms(url);
 
             return fetch(url.toString(), {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
+                    'Accept': jsonRoot ? 'application/json' : 'text/html'
                 },
-                signal: activeRequest.signal
+                signal: request.signal
             })
                 .then((response) => {
                     if (!response.ok) {
                         throw new Error('Admin table request failed');
                     }
-
-                    return response.json();
+                    return jsonRoot ? response.json() : response.text();
                 })
-                .then((data) => {
-                    pane.innerHTML = data.html || '';
-                    initAdminTableScrollbars(pane);
-                    initBootstrapTooltips(pane);
-                    updateTabCounts(data.counts);
-                    if (pushState) {
+                .then((payload) => {
+                    if (jsonRoot) {
+                        applyJsonTable(jsonRoot, payload, url);
+                    } else {
+                        applyHtmlTables(payload);
+                    }
+                    tableRoots().forEach((root) => {
+                        root.querySelector('[data-admin-table-error]')?.remove();
+                        initAdminTableScrollbars(root);
+                        initBootstrapTooltips(root);
+                    });
+                    const scrollTarget = options.scrollTarget || jsonRoot || tableRoots()[0];
+                    if (options.scroll !== false && scrollTarget) {
+                        scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    if (options.pushState !== false) {
                         window.history.pushState({ adminTableUrl: url.toString() }, '', url.toString());
                     }
                 })
                 .catch((error) => {
-                    if (error.name !== 'AbortError') {
-                        console.error(error);
+                    if (error.name === 'AbortError') {
+                        return;
                     }
+                    console.error(error);
+                    showError();
+                    window.location.href = url.toString();
                 })
                 .finally(() => {
-                    setLoading(false);
-                    activeRequest = null;
+                    if (activeRequest === request) {
+                        setLoading(false);
+                        activeRequest = null;
+                    }
                 });
         };
 
-        root.querySelectorAll('[data-admin-posts-tab-button]').forEach((button) => {
-            button.addEventListener('shown.bs.tab', () => {
-                const status = button.getAttribute('data-admin-posts-tab-button') === 'drafts' ? 'drafts' : 'published';
-                loadTable(buildUrl(status, 1));
-            });
-        });
-
-        input.addEventListener('input', () => {
-            window.clearTimeout(searchTimer);
-            searchTimer = window.setTimeout(() => {
-                loadTable(buildUrl(activeStatus, 1));
-            }, 300);
-        });
-
-        form?.addEventListener('submit', (event) => {
-            event.preventDefault();
-            loadTable(buildUrl(activeStatus, 1));
-        });
-
-        root.addEventListener('click', (event) => {
-            const link = event.target.closest('[data-admin-posts-pane] .pagination a, [data-admin-posts-pane] thead a');
-            if (!link || !link.href) {
+        document.addEventListener('click', (event) => {
+            const retry = event.target.closest('[data-admin-table-retry]');
+            if (retry) {
+                load(new URL(window.location.href), { pushState: false });
                 return;
             }
-
-            event.preventDefault();
-            const url = new URL(link.href, window.location.origin);
-            loadTable(url);
-        });
-
-        window.addEventListener('popstate', () => {
-            loadTable(new URL(window.location.href), false);
-        });
-    });
-
-    const ajaxTableLoaders = new WeakMap();
-
-    document.querySelectorAll('[data-ajax-table]').forEach((root) => {
-        let activeRequest = null;
-        let searchTimer = null;
-
-        const getInput = () => root.querySelector('[data-admin-live-table-search]');
-        const getForm = () => root.querySelector('[data-admin-live-table-form]');
-        const setLoading = (isLoading) => {
-            root.classList.toggle('admin-live-table--loading', isLoading);
-        };
-
-        const buildLiveTableUrl = (page = 1) => {
-            const form = getForm();
-            const input = getInput();
-            const url = new URL(form ? form.action || window.location.href : window.location.href, window.location.origin);
-            const formData = form ? new FormData(form) : new FormData();
-            const search = input ? input.value.trim() : '';
-
-            url.search = '';
-            formData.forEach((value, key) => {
-                const normalizedValue = String(value || '').trim();
-                if (key === 'q' || key === 'page' || normalizedValue === '') {
-                    return;
-                }
-
-                url.searchParams.set(key, normalizedValue);
-            });
-            if (search !== '') {
-                url.searchParams.set('search', search);
+            const link = event.target.closest('[data-ajax-table] .pagination a, [data-ajax-table] thead a');
+            if (!link || !link.href || link.getAttribute('href') === '#') {
+                return;
             }
-            url.searchParams.set('page', String(Math.max(1, parseInt(page, 10) || 1)));
-
-            return url;
-        };
-
-        const syncFormFromUrl = (url) => {
-            const form = getForm();
-            const input = getInput();
+            event.preventDefault();
+            load(new URL(link.href, window.location.origin), {
+                scrollTarget: link.closest('[data-ajax-table]')
+            });
+        });
+        document.addEventListener('submit', (event) => {
+            const form = event.target.closest('[data-admin-table-form]');
             if (!form) {
                 return;
             }
-
-            form.querySelectorAll('input[type="hidden"]').forEach((field) => {
-                field.value = url.searchParams.get(field.name) || field.value || '';
-            });
-            const pageInput = form.querySelector('[data-admin-live-table-page-input]');
-            if (pageInput) {
-                pageInput.value = url.searchParams.get('page') || '1';
-            }
-            if (input) {
-                input.value = url.searchParams.get('search') || '';
-            }
-        };
-
-        const replaceLiveTableHtml = (html) => {
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            const tableKey = root.getAttribute('data-ajax-table') || '';
-            const nextRoot = Array.from(doc.querySelectorAll('[data-ajax-table]')).find((candidate) => {
-                return (candidate.getAttribute('data-ajax-table') || '') === tableKey;
-            });
-            if (!nextRoot) {
-                throw new Error('Admin Ajax table response is missing table root');
-            }
-
-            root.innerHTML = nextRoot.innerHTML;
-        };
-
-        const loadLiveTable = (url, pushState = true) => {
-            syncFormFromUrl(url);
-
-            if (activeRequest) {
-                activeRequest.abort();
-            }
-
-            activeRequest = new AbortController();
-            setLoading(true);
-
-            return fetch(url.toString(), {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'text/html'
-                },
-                signal: activeRequest.signal
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Admin live table request failed');
-                    }
-
-                    return response.text();
-                })
-                .then((html) => {
-                    replaceLiveTableHtml(html);
-                    initAdminTableScrollbars(root);
-                    initBootstrapTooltips(root);
-                    root.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                    if (pushState) {
-                        window.history.pushState({ adminLiveTableUrl: url.toString() }, '', url.toString());
-                    }
-                })
-                .catch((error) => {
-                    if (error.name !== 'AbortError') {
-                        console.error(error);
-                        window.location.assign(url.toString());
-                    }
-                })
-                .finally(() => {
-                    setLoading(false);
-                    activeRequest = null;
-                });
-        };
-
-        ajaxTableLoaders.set(root, loadLiveTable);
-
-        if (!getInput()) {
-            return;
-        }
-
-        root.addEventListener('input', (event) => {
-            if (!event.target.matches('[data-admin-live-table-search]')) {
-                return;
-            }
-
-            window.clearTimeout(searchTimer);
-            searchTimer = window.setTimeout(() => {
-                loadLiveTable(buildLiveTableUrl(1));
-            }, 300);
-        });
-
-        root.addEventListener('submit', (event) => {
-            if (!event.target.matches('[data-admin-live-table-form]')) {
-                return;
-            }
-
             event.preventDefault();
-            loadLiveTable(buildLiveTableUrl(1));
+            load(buildFormUrl(form, 1));
         });
-
+        document.addEventListener('input', (event) => {
+            const input = event.target.closest('[data-admin-table-search]');
+            const form = input?.closest('[data-admin-table-form]');
+            if (!input || !form) {
+                return;
+            }
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(() => load(buildFormUrl(form, 1)), 300);
+        });
+        document.addEventListener('shown.bs.tab', (event) => {
+            const button = event.target.closest('[data-admin-posts-tab-button]');
+            const root = button?.closest('[data-ajax-table-format="json"]');
+            if (!button || !root) {
+                return;
+            }
+            const form = root.querySelector('[data-admin-table-form]');
+            const status = button.getAttribute('data-admin-posts-tab-button') === 'drafts' ? 'drafts' : 'published';
+            if (form?.elements.status) {
+                form.elements.status.value = status;
+            }
+            load(buildFormUrl(form, 1), { scrollTarget: root });
+        });
         window.addEventListener('popstate', () => {
-            loadLiveTable(new URL(window.location.href), false);
+            load(new URL(window.location.href), { pushState: false, scroll: false });
         });
-    });
 
-    document.addEventListener('click', (event) => {
-        const link = event.target.closest('[data-ajax-table] .pagination a, [data-ajax-table] thead a');
-        if (!link) {
-            return;
-        }
-
-        event.preventDefault();
-
-        const url = link.getAttribute('href');
-        if (!url || url === '#') {
-            return;
-        }
-
-        const table = link.closest('[data-ajax-table]');
-        const loader = table ? ajaxTableLoaders.get(table) : null;
-        if (!loader) {
-            window.location.assign(url);
-            return;
-        }
-
-        loader(new URL(url, window.location.origin));
-    });
+        return { load };
+    })();
 
     const makeSlug = (value) => String(value || '')
         .trim()

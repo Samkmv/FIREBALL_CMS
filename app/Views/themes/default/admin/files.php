@@ -487,6 +487,7 @@
         class="position-relative"
         data-file-manager-page
         data-file-manager-shell
+        data-admin-table
         data-fm-selection-required="<?= htmlSC(return_translation('admin_files_selection_required')) ?>"
         data-fm-rename-single="<?= htmlSC(return_translation('admin_files_rename_single_required')) ?>"
         data-fm-open-single="<?= htmlSC(return_translation('admin_files_open_single_required')) ?>"

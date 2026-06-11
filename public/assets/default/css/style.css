@@ -1927,18 +1927,6 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     white-space: nowrap;
 }
 
-.admin-posts-tabs--loading [data-admin-posts-pane].active {
-    opacity: .62;
-    pointer-events: none;
-    transition: opacity .18s ease;
-}
-
-.admin-live-table--loading {
-    opacity: .62;
-    pointer-events: none;
-    transition: opacity .18s ease;
-}
-
 .admin-posts-table {
     min-width: 1180px;
     table-layout: fixed;
@@ -2721,18 +2709,63 @@ body.is-site-fullscreen .plyr * {
     }
 }
 
-.password-toggle .form-control.is-invalid,
-.was-validated .password-toggle .form-control:invalid {
+.password-field,
+.password-field__control {
+    position: relative;
+}
+
+.password-field__input {
+    padding-right: 5.5rem;
+}
+
+.password-field__input.is-invalid,
+.was-validated .password-field__input:invalid {
     padding-right: 5.5rem;
     background-position: right 3.25rem center;
 }
 
-.password-toggle-button {
+.password-field .password-toggle-button {
+    position: absolute;
     z-index: 2;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.25rem;
+    height: calc(1.5em + 1.125rem + 2px);
+    padding: 0;
+    color: var(--bs-body-color);
+    cursor: pointer;
 }
 
-.password-field:has(.form-control.is-invalid) .password-strength-hint,
-.was-validated .password-field:has(.form-control:invalid) .password-strength-hint {
+.password-field__input.form-control-lg ~ .password-toggle-button {
+    height: calc(1.5em + 1.5rem + 2px);
+}
+
+.password-field--auth .password-toggle-button {
+    top: 0;
+    bottom: 0;
+    height: auto;
+}
+
+.password-field--auth .password-toggle-button-icon {
+    align-items: center;
+    justify-content: center;
+}
+
+.password-field .password-toggle-button:has(input:disabled) {
+    pointer-events: none;
+    opacity: .45;
+}
+
+.password-field .password-toggle-button:has(input:focus-visible) {
+    outline: 3px solid color-mix(in srgb, var(--bs-primary) 35%, transparent);
+    outline-offset: 1px;
+}
+
+.password-field:has(.password-field__input.is-invalid) .password-field__hint,
+.was-validated .password-field:has(.password-field__input:invalid) .password-field__hint {
     display: none;
 }
 
@@ -2813,7 +2846,7 @@ body.is-site-fullscreen .plyr * {
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
-    margin-top: .85rem;
+    margin-top: .65rem;
 }
 
 .cookie-preview-banner--bottom-right {
@@ -2861,6 +2894,97 @@ body.is-site-fullscreen .plyr * {
         min-height: 28rem;
     }
 }
+
+@media (max-width: 767.98px) {
+    .cookie-preview-actions {
+        flex-direction: column;
+    }
+
+    .cookie-preview-actions > * {
+        width: 100%;
+    }
+}
 [data-ajax-table] {
     scroll-margin-top: 90px;
+}
+
+[data-admin-table] {
+    position: relative;
+    min-width: 0;
+}
+
+[data-admin-table] .table {
+    --cz-table-hover-bg: color-mix(in srgb, var(--cz-emphasis-color) 4%, transparent);
+}
+
+[data-admin-table] .table > :not(caption) > * > * {
+    padding-top: .9rem;
+    padding-bottom: .9rem;
+    border-bottom-color: color-mix(in srgb, var(--cz-border-color) 72%, transparent);
+}
+
+[data-admin-table] .table thead th {
+    color: var(--cz-emphasis-color);
+    font-size: .875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+[data-admin-table] .table tbody tr {
+    transition: background-color .16s ease;
+}
+
+[data-admin-table] .table tbody tr:hover {
+    background: var(--cz-table-hover-bg);
+}
+
+.admin-table--loading {
+    pointer-events: none;
+}
+
+.admin-table--loading::before {
+    position: absolute;
+    z-index: 1080;
+    inset: 0;
+    content: "";
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--cz-body-bg) 72%, transparent);
+    backdrop-filter: blur(1px);
+}
+
+.admin-table--loading::after {
+    position: absolute;
+    z-index: 1081;
+    top: 50%;
+    left: 50%;
+    width: 2rem;
+    height: 2rem;
+    margin: -1rem 0 0 -1rem;
+    content: "";
+    border: .2rem solid color-mix(in srgb, var(--cz-secondary-color) 28%, transparent);
+    border-top-color: var(--cz-emphasis-color);
+    border-radius: 50%;
+    animation: admin-table-spinner .7s linear infinite;
+}
+
+.admin-table-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: .45rem;
+    min-height: 10rem;
+    padding: 2rem;
+    text-align: center;
+    color: var(--cz-secondary-color);
+}
+
+.admin-table-state strong {
+    color: var(--cz-emphasis-color);
+}
+
+@keyframes admin-table-spinner {
+    to {
+        transform: rotate(360deg);
+    }
 }

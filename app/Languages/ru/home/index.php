@@ -13,7 +13,7 @@ return [
     'home_index_stats_access' => 'Доступ к просмотру',
     'home_index_stats_archive_days' => 'Дней архива',
     'home_index_featured_posts' => 'Камеры онлайн',
-    'home_index_featured_posts_subtitle' => 'Камеры и объекты, отмеченные в админ-панели для показа на главной.',
+    'home_index_featured_posts_subtitle' => 'Следите за камерами и важными объектами в режиме реального времени.',
     'home_index_featured_posts_watch' => 'Смотреть',
     'home_index_slider_prev' => 'Назад',
     'home_index_slider_next' => 'Вперёд',

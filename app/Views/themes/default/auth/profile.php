@@ -137,15 +137,23 @@ $createdAt = !empty($user['created_at']) ? date('d.m.Y H:i', strtotime((string)$
 
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label" for="profile-password"><?= print_translation('auth_profile_new_password') ?></label>
-                        <input id="profile-password" type="password" name="password" class="form-control <?= get_validation_class('password') ?>" placeholder="••••••••">
-                        <div class="form-text"><?= print_translation('auth_profile_password_hint') ?></div>
-                        <?= get_errors('password') ?>
+                        <?= view()->renderPartial('incs/password_field', [
+                            'id' => 'profile-password',
+                            'name' => 'password',
+                            'label' => return_translation('auth_profile_new_password'),
+                            'placeholder' => '********',
+                            'autocomplete' => 'new-password',
+                            'hint' => return_translation('auth_profile_password_hint'),
+                        ]) ?>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="profile-password-confirmation"><?= print_translation('auth_profile_password_confirmation') ?></label>
-                        <input id="profile-password-confirmation" type="password" name="password_confirmation" class="form-control <?= get_validation_class('password_confirmation') ?>" placeholder="••••••••">
-                        <?= get_errors('password_confirmation') ?>
+                        <?= view()->renderPartial('incs/password_field', [
+                            'id' => 'profile-password-confirmation',
+                            'name' => 'password_confirmation',
+                            'label' => return_translation('auth_profile_password_confirmation'),
+                            'placeholder' => '********',
+                            'autocomplete' => 'new-password',
+                        ]) ?>
                     </div>
                 </div>
 

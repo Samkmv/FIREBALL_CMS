@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS contact_subjects (
+    id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(190) NOT NULL,
+    is_active TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    recipient_email VARCHAR(190) NULL,
+    responsible_user_id INT(10) UNSIGNED NULL,
+    category VARCHAR(100) NULL,
+    auto_reply TEXT NULL,
+    color_label VARCHAR(32) NULL,
+    priority TINYINT(3) UNSIGNED NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY name (name),
+    KEY active_sort (is_active, sort_order, id),
+    KEY responsible_user_id (responsible_user_id),
+    KEY category (category),
+    KEY priority (priority)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

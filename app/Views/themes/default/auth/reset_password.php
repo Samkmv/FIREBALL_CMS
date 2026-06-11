@@ -14,18 +14,28 @@
                         <input type="email" class="form-control" value="<?= htmlSC($reset_request['email'] ?? '') ?>" disabled>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label" for="reset-password"><?= print_translation('auth_reset_password') ?></label>
-                        <input id="reset-password" type="password" name="password" class="form-control <?= get_validation_class('password') ?>" placeholder="••••••••">
-                        <div class="form-text"><?= print_translation('auth_validation_password_strength') ?></div>
-                        <?= get_errors('password') ?>
-                    </div>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'reset-password',
+                        'name' => 'password',
+                        'label' => return_translation('auth_reset_password'),
+                        'placeholder' => '********',
+                        'autocomplete' => 'new-password',
+                        'wrapper_class' => 'mb-3',
+                        'required' => true,
+                        'minlength' => 8,
+                        'hint' => return_translation('auth_validation_password_strength'),
+                    ]) ?>
 
-                    <div class="mb-4">
-                        <label class="form-label" for="reset-password-confirmation"><?= print_translation('auth_reset_password_confirmation') ?></label>
-                        <input id="reset-password-confirmation" type="password" name="password_confirmation" class="form-control <?= get_validation_class('password_confirmation') ?>" placeholder="••••••••">
-                        <?= get_errors('password_confirmation') ?>
-                    </div>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'reset-password-confirmation',
+                        'name' => 'password_confirmation',
+                        'label' => return_translation('auth_reset_password_confirmation'),
+                        'placeholder' => '********',
+                        'autocomplete' => 'new-password',
+                        'wrapper_class' => 'mb-4',
+                        'required' => true,
+                        'minlength' => 8,
+                    ]) ?>
 
                     <button type="submit" class="btn btn-dark w-100 rounded-pill"><?= print_translation('auth_reset_submit') ?></button>
                 </form>

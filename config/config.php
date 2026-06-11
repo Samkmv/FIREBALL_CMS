@@ -59,6 +59,7 @@ $defaults = [
     'DEFAULT_LOCALE' => 'ru',
     'CHAT_ENCRYPTION_KEY' => 'change-this-chat-key-in-production',
     'APP_TIMEZONE' => 'Europe/Moscow',
+    'UPDATE_CHANNEL' => 'stable',
     'PAGINATION_SETTINGS' => [
         'perPage' => 20,
         'midSize' => 2,
@@ -151,6 +152,7 @@ $scalarKeys = [
     'DEFAULT_LOCALE',
     'CHAT_ENCRYPTION_KEY',
     'APP_TIMEZONE',
+    'UPDATE_CHANNEL',
     'MULTILANGS',
 ];
 

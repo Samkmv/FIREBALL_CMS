@@ -92,7 +92,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         <?php endif; ?>
     </div>
 
-    <form class="border rounded-5 p-3 p-md-4 mb-3" method="get">
+    <form class="border rounded-5 p-3 p-md-4 mb-3" method="get" data-admin-table-form>
         <input type="hidden" name="pages_sort" value="<?= htmlSC((string)($pages['sort'] ?? 'views')) ?>">
         <input type="hidden" name="pages_direction" value="<?= htmlSC((string)($pages['direction'] ?? 'desc')) ?>">
         <input type="hidden" name="visits_sort" value="<?= htmlSC((string)($visits['sort'] ?? 'created_at')) ?>">
@@ -103,7 +103,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         <div class="row g-3 align-items-end">
             <div class="col-md-6 col-xl-3">
                 <label class="form-label" for="analytics-search"><?= print_translation('admin_analytics_filter_search') ?></label>
-                <input id="analytics-search" class="form-control" type="search" name="search" value="<?= htmlSC((string)($filters['search'] ?? '')) ?>" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off">
+                <input id="analytics-search" class="form-control" type="search" name="search" value="<?= htmlSC((string)($filters['search'] ?? '')) ?>" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off" data-admin-table-search>
             </div>
             <div class="col-sm-6 col-xl-2">
                 <label class="form-label" for="analytics-period"><?= print_translation('admin_analytics_filter_period') ?></label>
@@ -162,7 +162,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
 
     <div class="row g-3">
         <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-ajax-table="analytics-pages">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-pages">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h2>
                 <div class="table-responsive overflow-auto admin-table-scroll">
                     <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--pages-full">
@@ -180,7 +180,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($pages['items'])): ?>
-                            <tr><td colspan="2" class="text-body-secondary"><?= print_translation('admin_analytics_empty') ?></td></tr>
+                            <tr><td colspan="2" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>
@@ -195,7 +195,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         </div>
 
         <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-ajax-table="analytics-visits">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-visits">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h2>
                 <div class="table-responsive overflow-auto admin-table-scroll">
                     <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--visits-full">
@@ -221,7 +221,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($visits['items'])): ?>
-                            <tr><td colspan="6" class="text-body-secondary"><?= print_translation('admin_analytics_empty') ?></td></tr>
+                            <tr><td colspan="6" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>

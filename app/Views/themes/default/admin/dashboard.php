@@ -122,7 +122,7 @@ echo view()->renderPartial('admin/shell_open', [
 
         <div class="row g-3 mt-1">
             <div class="col-lg-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_geo_title') ?></h3>
                     <div class="table-responsive">
                         <table class="table align-middle mb-0">
@@ -137,7 +137,7 @@ echo view()->renderPartial('admin/shell_open', [
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($analytics['countries'])): ?>
-                                <tr><td colspan="2" class="text-body-secondary"><?= print_translation('admin_analytics_empty') ?></td></tr>
+                                <tr><td colspan="2" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                             <?php endif; ?>
                             </tbody>
                         </table>
@@ -148,7 +148,7 @@ echo view()->renderPartial('admin/shell_open', [
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card">
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
                     <h3 class="h5 mb-1"><?= print_translation('admin_analytics_devices_title') ?></h3>
                     <p class="text-body-secondary mb-3"><?= print_translation('admin_analytics_devices_subtitle') ?></p>
                     <div style="min-height: 300px" data-analytics-chart="devices"></div>
@@ -158,7 +158,7 @@ echo view()->renderPartial('admin/shell_open', [
 
         <div class="row g-3 mt-1">
             <div class="col-xl-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card">
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h3>
                     <div class="analytics-scroll-container table-responsive overflow-auto admin-table-scroll">
                         <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--pages">
@@ -173,7 +173,7 @@ echo view()->renderPartial('admin/shell_open', [
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($analytics['pages'])): ?>
-                                <tr><td colspan="2" class="text-body-secondary"><?= print_translation('admin_analytics_empty') ?></td></tr>
+                                <tr><td colspan="2" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                             <?php endif; ?>
                             </tbody>
                         </table>
@@ -181,7 +181,7 @@ echo view()->renderPartial('admin/shell_open', [
                 </div>
             </div>
             <div class="col-xl-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card">
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h3>
                     <div class="analytics-scroll-container table-responsive overflow-auto admin-table-scroll">
                         <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--latest">
@@ -207,7 +207,7 @@ echo view()->renderPartial('admin/shell_open', [
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($analytics['latest'])): ?>
-                                <tr><td colspan="6" class="text-body-secondary"><?= print_translation('admin_analytics_empty') ?></td></tr>
+                                <tr><td colspan="6" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                             <?php endif; ?>
                             </tbody>
                         </table>

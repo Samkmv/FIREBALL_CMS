@@ -8,6 +8,11 @@ $updateBlockers = $updateCenter['update_blockers'] ?? [];
 $updaterRepository = $formData['updater_github_repository'] ?? ($settings['updater_github_repository'] ?? ($updateConfig['repository'] ?? ''));
 $updaterBranch = $formData['updater_github_branch'] ?? ($settings['updater_github_branch'] ?? ($updateConfig['branch'] ?? 'main'));
 $updaterToken = $formData['updater_github_token'] ?? '';
+$updaterChannel = $formData['update_channel'] ?? ($settings['update_channel'] ?? ($updateConfig['channel'] ?? 'stable'));
+$updaterChannel = $updaterChannel === 'dev' ? 'dev' : 'stable';
+$updateSourceLabel = $updaterChannel === 'dev'
+    ? return_translation('admin_update_source_main_branch')
+    : return_translation('admin_update_source_github_releases');
 $release = is_array($lastCheck['release'] ?? null) ? $lastCheck['release'] : [];
 $localReleaseName = trim((string)($updateLocal['name'] ?? ($engine_release['name'] ?? 'FIREBALL_CMS')));
 $localReleaseSummary = trim((string)($updateLocal['summary'] ?? ($engine_release['summary'] ?? '')));
@@ -28,6 +33,9 @@ $statusVariant = 'secondary';
 $statusLabel = return_translation('admin_update_status_unknown');
 $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
 $isGitRepo = !empty($updateLocal['is_git_repo']);
+$canRollback = $isGitRepo
+    && !empty($updateLocal['git_available'])
+    && trim((string)($updateConfig['rollback_commit'] ?? '')) !== '';
 $gitStatusLabel = !$isGitRepo
     ? return_translation('admin_update_git_not_applicable')
     : (!empty($updateLocal['is_update_clean'])
@@ -77,22 +85,39 @@ if (is_array($lastCheck)) {
         <form class="border rounded-5 p-3 p-md-4 mb-4" action="<?= base_href('/admin/updates') ?>" method="post">
             <?= get_csrf_field() ?>
             <div class="row g-3">
-                <div class="col-md-7">
+                <div class="col-md-5">
                     <label class="form-label"><?= print_translation('admin_settings_update_repository') ?></label>
                     <input class="form-control <?= get_validation_class('updater_github_repository') ?>" type="text" name="updater_github_repository" value="<?= htmlSC($updaterRepository) ?>" placeholder="owner/repository">
                     <div class="form-text"><?= print_translation('admin_settings_update_repository_hint') ?></div>
                     <?= get_errors('updater_github_repository') ?>
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-3">
+                    <label class="form-label" for="update-channel"><?= print_translation('admin_update_channel_label') ?></label>
+                    <select class="form-select <?= get_validation_class('update_channel') ?>" id="update-channel" name="update_channel">
+                        <option value="stable" <?= $updaterChannel === 'stable' ? 'selected' : '' ?>>Stable</option>
+                        <option value="dev" <?= $updaterChannel === 'dev' ? 'selected' : '' ?>>Dev</option>
+                    </select>
+                    <?= get_errors('update_channel') ?>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label"><?= print_translation('admin_settings_update_branch') ?></label>
                     <input class="form-control <?= get_validation_class('updater_github_branch') ?>" type="text" name="updater_github_branch" value="<?= htmlSC($updaterBranch) ?>" placeholder="main">
                     <div class="form-text"><?= print_translation('admin_settings_update_branch_hint') ?></div>
                     <?= get_errors('updater_github_branch') ?>
                 </div>
                 <div class="col-12">
-                    <label class="form-label"><?= print_translation('admin_settings_update_token') ?></label>
-                    <input class="form-control" type="password" name="updater_github_token" value="<?= htmlSC($updaterToken) ?>" autocomplete="off" placeholder="ghp_...">
-                    <div class="form-text"><?= print_translation('admin_settings_update_token_hint') ?><?php if (($settings['updater_github_token'] ?? '') !== ''): ?> <?= print_translation('admin_settings_update_token_keep_hint') ?><?php endif; ?></div>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'updater-github-token',
+                        'name' => 'updater_github_token',
+                        'label' => return_translation('admin_settings_update_token'),
+                        'value' => $updaterToken,
+                        'placeholder' => 'ghp_...',
+                        'autocomplete' => 'off',
+                        'hint' => return_translation('admin_settings_update_token_hint')
+                            . (($settings['updater_github_token'] ?? '') !== ''
+                                ? ' ' . return_translation('admin_settings_update_token_keep_hint')
+                                : ''),
+                    ]) ?>
                 </div>
                 <div class="col-12 d-flex gap-2">
                     <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
@@ -107,9 +132,20 @@ if (is_array($lastCheck)) {
             <div>
                 <h2 class="h4 mb-1"><?= print_translation('admin_update_center_heading') ?></h2>
                 <p class="text-body-secondary mb-0"><?= print_translation('admin_update_center_subtitle') ?></p>
+                <div class="d-flex flex-wrap gap-3 mt-2 fs-sm">
+                    <span><span class="text-body-secondary"><?= print_translation('admin_update_channel_label') ?>:</span> <?= htmlSC($updaterChannel === 'dev' ? 'Dev' : 'Stable') ?></span>
+                    <span><span class="text-body-secondary"><?= print_translation('admin_update_source_label') ?>:</span> <?= htmlSC($updateSourceLabel) ?></span>
+                </div>
             </div>
             <span class="badge text-bg-<?= $statusVariant ?> fs-sm"><?= htmlSC($statusLabel) ?></span>
         </div>
+
+        <?php if ($updaterChannel === 'dev'): ?>
+            <div class="alert alert-warning mb-4">
+                <strong><?= print_translation('admin_update_dev_warning_title') ?></strong><br>
+                <?= print_translation('admin_update_dev_warning_text') ?>
+            </div>
+        <?php endif; ?>
 
         <?php if (is_array($lastCheck) && ($lastCheck['message'] ?? '') !== ''): ?>
             <div class="alert alert-<?= ($lastCheck['status'] ?? '') === 'error' ? 'danger' : (($lastCheck['update_available'] ?? false) ? 'warning' : 'success') ?> mb-4">
@@ -256,6 +292,19 @@ if (is_array($lastCheck)) {
                             <?= get_csrf_field() ?>
                             <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit" <?= !empty($updateBlockers) ? 'disabled' : '' ?>>
                                 <i class="ci-download"></i><?= print_translation('admin_update_run_btn') ?>
+                            </button>
+                        </form>
+
+                        <form
+                            action="<?= base_href('/admin/settings/update-center/rollback') ?>"
+                            method="post"
+                            data-admin-delete-form
+                            data-delete-message="<?= htmlSC(return_translation('admin_update_rollback_confirm')) ?>"
+                            data-delete-confirm-label="<?= htmlSC(return_translation('admin_update_rollback_btn')) ?>"
+                        >
+                            <?= get_csrf_field() ?>
+                            <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit" <?= !$canRollback ? 'disabled' : '' ?>>
+                                <i class="ci-rotate-ccw"></i><?= print_translation('admin_update_rollback_btn') ?>
                             </button>
                         </form>
                     </div>

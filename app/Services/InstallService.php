@@ -270,9 +270,11 @@ final class InstallService
             'updater_github_repository' => 'Samkmv/FIREBALL_CMS',
             'updater_github_branch' => 'main',
             'updater_github_token' => '',
+            'update_channel' => 'stable',
             'updater_last_check_payload' => '',
             'updater_last_checked_at' => '',
             'updater_last_updated_at' => '',
+            'updater_rollback_commit' => '',
         ];
 
         $stmt = $pdo->prepare(

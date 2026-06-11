@@ -213,6 +213,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-toast-warning-title="<?= htmlSC(return_translation('toast_warning_title')) ?>"
     data-code-copy-label="<?= htmlSC(return_translation('code_copy_button')) ?>"
     data-code-copied-label="<?= htmlSC(return_translation('code_copied_button')) ?>"
+    data-admin-table-error-title="<?= htmlSC(return_translation('admin_table_error_title')) ?>"
+    data-admin-table-error-text="<?= htmlSC(return_translation('admin_table_error_text')) ?>"
+    data-admin-table-retry-label="<?= htmlSC(return_translation('admin_table_retry')) ?>"
 >
 
 <nav class="offcanvas offcanvas-start" id="navbarNav" tabindex="-1" aria-labelledby="navbarNavLabel">

@@ -12,7 +12,7 @@ return [
     'home_index_stats_access' => '观看权限',
     'home_index_stats_archive_days' => '归档天数',
     'home_index_featured_posts' => '在线摄像头',
-    'home_index_featured_posts_subtitle' => '在管理面板中选择并显示在首页的摄像头和地点。',
+    'home_index_featured_posts_subtitle' => '实时查看摄像头和重要地点。',
     'home_index_featured_posts_watch' => '观看',
     'home_index_slider_prev' => '上一张',
     'home_index_slider_next' => '下一张',

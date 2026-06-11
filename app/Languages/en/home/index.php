@@ -12,7 +12,7 @@ return [
     'home_index_stats_access' => 'Viewing access',
     'home_index_stats_archive_days' => 'Archive days',
     'home_index_featured_posts' => 'Online cameras',
-    'home_index_featured_posts_subtitle' => 'Cameras and locations selected in the admin panel for the home page.',
+    'home_index_featured_posts_subtitle' => 'Monitor cameras and important locations in real time.',
     'home_index_featured_posts_watch' => 'Watch',
     'home_index_slider_prev' => 'Previous',
     'home_index_slider_next' => 'Next',

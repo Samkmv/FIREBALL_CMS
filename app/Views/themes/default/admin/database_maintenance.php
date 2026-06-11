@@ -94,10 +94,14 @@ $actionDescription = static fn(string $action): string => return_translation('ad
                                         <div class="alert alert-danger rounded-4">
                                             <?= print_translation('admin_maintenance_danger_confirm_text') ?>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label"><?= print_translation('admin_maintenance_current_password') ?></label>
-                                            <input class="form-control" type="password" name="current_password" autocomplete="current-password" required>
-                                        </div>
+                                        <?= view()->renderPartial('incs/password_field', [
+                                            'id' => 'maintenance-current-password-' . $action,
+                                            'name' => 'current_password',
+                                            'label' => return_translation('admin_maintenance_current_password'),
+                                            'autocomplete' => 'current-password',
+                                            'wrapper_class' => 'mb-3',
+                                            'required' => true,
+                                        ]) ?>
                                         <div>
                                             <label class="form-label">
                                                 <?= print_translation('admin_maintenance_confirmation_phrase') ?>
@@ -123,7 +127,7 @@ $actionDescription = static fn(string $action): string => return_translation('ad
         </div>
     </div>
 
-    <div class="border rounded-5 p-3 p-md-4 admin-table-card">
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
         <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
             <div>
                 <h2 class="h5 mb-1"><?= print_translation('admin_maintenance_logs_title') ?></h2>
@@ -132,7 +136,7 @@ $actionDescription = static fn(string $action): string => return_translation('ad
         </div>
 
         <?php if (empty($logs)): ?>
-            <div class="text-body-secondary"><?= print_translation('admin_maintenance_logs_empty') ?></div>
+            <div class="admin-table-state"><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table align-middle">

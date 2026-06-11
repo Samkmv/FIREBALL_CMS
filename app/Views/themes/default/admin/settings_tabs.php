@@ -8,6 +8,12 @@ $settingsTabs = [
         'icon' => 'ci-settings',
     ],
     [
+        'key' => 'contact_subjects',
+        'href' => base_href('/admin/settings/contact-subjects'),
+        'label' => return_translation('admin_settings_tab_contact_subjects'),
+        'icon' => 'ci-message-square',
+    ],
+    [
         'key' => 'privacy',
         'href' => base_href('/admin/settings/privacy'),
         'label' => return_translation('admin_settings_tab_privacy'),

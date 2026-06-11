@@ -18,6 +18,8 @@ $t = static fn(string $key): string => (string)($translations[$key] ?? $key);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlSC($t('title')) ?> — FIREBALL CMS</title>
     <link rel="stylesheet" href="<?= base_url('/assets/default/bootstrap/css/bootstrap.min.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('/assets/default/icons/cartzilla-icons.min.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('/assets/default/css/style.css?v=' . filemtime(WWW . '/assets/default/css/style.css')) ?>">
     <style>
         body { min-height: 100vh; background: radial-gradient(circle at top left, #e9f5ef, transparent 34rem), #f6f7f9; }
         .install-shell { max-width: 980px; margin: 0 auto; padding: 48px 16px; }
@@ -87,7 +89,15 @@ $t = static fn(string $key): string => (string)($translations[$key] ?? $key);
                     <div class="col-md-6"><label class="form-label"><?= htmlSC($t('port')) ?></label><input class="form-control" name="db_port" value="<?= htmlSC((string)($db['port'] ?? '3306')) ?>" required></div>
                     <div class="col-md-6"><label class="form-label"><?= htmlSC($t('db_name')) ?></label><input class="form-control" name="db_name" value="<?= htmlSC((string)($db['database'] ?? '')) ?>" required></div>
                     <div class="col-md-6"><label class="form-label"><?= htmlSC($t('db_user')) ?></label><input class="form-control" name="db_user" value="<?= htmlSC((string)($db['username'] ?? '')) ?>" required></div>
-                    <div class="col-md-6"><label class="form-label"><?= htmlSC($t('password')) ?></label><input class="form-control" type="password" name="db_password" value="<?= htmlSC((string)($db['password'] ?? '')) ?>"></div>
+                    <div class="col-md-6">
+                        <?= view()->renderPartial('incs/password_field', [
+                            'id' => 'install-db-password',
+                            'name' => 'db_password',
+                            'label' => $t('password'),
+                            'value' => (string)($db['password'] ?? ''),
+                            'autocomplete' => 'off',
+                        ]) ?>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label"><?= htmlSC($t('prefix')) ?></label>
                         <input class="form-control" name="db_prefix" value="<?= htmlSC((string)($db['prefix'] ?? '')) ?>" placeholder="<?= htmlSC($t('prefix_placeholder')) ?>">
@@ -115,8 +125,26 @@ $t = static fn(string $key): string => (string)($translations[$key] ?? $key);
                 <div class="row g-3 mb-4">
                     <div class="col-md-6"><label class="form-label"><?= htmlSC($t('login')) ?></label><input class="form-control" name="admin_login" value="<?= htmlSC((string)($admin['login'] ?? 'creator')) ?>" required></div>
                     <div class="col-md-6"><label class="form-label"><?= htmlSC($t('email')) ?></label><input class="form-control" type="email" name="admin_email" value="<?= htmlSC((string)($admin['email'] ?? '')) ?>" required></div>
-                    <div class="col-md-6"><label class="form-label"><?= htmlSC($t('password')) ?></label><input class="form-control" type="password" name="admin_password" required></div>
-                    <div class="col-md-6"><label class="form-label"><?= htmlSC($t('password_confirm')) ?></label><input class="form-control" type="password" name="admin_password_confirmation" required></div>
+                    <div class="col-md-6">
+                        <?= view()->renderPartial('incs/password_field', [
+                            'id' => 'install-admin-password',
+                            'name' => 'admin_password',
+                            'label' => $t('password'),
+                            'autocomplete' => 'new-password',
+                            'required' => true,
+                            'minlength' => 8,
+                        ]) ?>
+                    </div>
+                    <div class="col-md-6">
+                        <?= view()->renderPartial('incs/password_field', [
+                            'id' => 'install-admin-password-confirmation',
+                            'name' => 'admin_password_confirmation',
+                            'label' => $t('password_confirm'),
+                            'autocomplete' => 'new-password',
+                            'required' => true,
+                            'minlength' => 8,
+                        ]) ?>
+                    </div>
                 </div>
                 <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="install_demo" value="1"> <span class="form-check-label"><?= htmlSC($t('install_demo')) ?></span></label>
                 <?php if (!empty($dbTables) || !empty($result['requires_confirmation'])): ?>
@@ -139,5 +167,6 @@ $t = static fn(string $key): string => (string)($translations[$key] ?? $key);
         <?php endif; ?>
     </div>
 </div>
+<script src="<?= base_url('/assets/default/js/password-field.js?v=' . filemtime(WWW . '/assets/default/js/password-field.js')) ?>"></script>
 </body>
 </html>

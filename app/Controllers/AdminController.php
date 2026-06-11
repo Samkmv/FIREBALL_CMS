@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\Admin;
 use App\Models\Analytics;
 use App\Models\ContactRequest;
+use App\Models\ContactSubject;
 use App\Models\Page;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -24,6 +25,7 @@ class AdminController extends BaseController
     protected Admin $blog;
     protected Analytics $analytics;
     protected ContactRequest $contactRequests;
+    protected ContactSubject $contactSubjects;
     protected Page $pages;
     protected User $users;
     protected SiteSetting $siteSettings;
@@ -38,6 +40,7 @@ class AdminController extends BaseController
         $this->blog = new Admin();
         $this->analytics = new Analytics();
         $this->contactRequests = new ContactRequest();
+        $this->contactSubjects = new ContactSubject();
         $this->pages = new Page();
         $this->users = new User();
         $this->siteSettings = new SiteSetting();
@@ -469,6 +472,117 @@ class AdminController extends BaseController
     }
 
     /**
+     * Shows contact subjects managed by the site administrator.
+     */
+    public function contactSubjects()
+    {
+        return view('admin/contact_subjects', [
+            'title' => return_translation('admin_contact_subjects_title'),
+            'subjects' => $this->contactSubjects->getAll(),
+        ]);
+    }
+
+    /**
+     * Creates or updates a contact subject.
+     */
+    public function contactSubjectForm()
+    {
+        $id = (int)(get_route_param('id') ?? 0);
+        $subject = $id > 0 ? $this->contactSubjects->find($id) : null;
+        if ($id > 0 && $subject === null) {
+            session()->setFlash('error', return_translation('admin_contact_subject_not_found'));
+            response()->redirect(base_href('/admin/settings/contact-subjects'));
+        }
+
+        if (request()->isPost()) {
+            $data = [
+                'name' => trim((string)request()->post('name', '')),
+                'is_active' => request()->post('is_active', '0') === '1' ? 1 : 0,
+                'sort_order' => trim((string)request()->post('sort_order', '0')),
+            ];
+            $errors = [];
+
+            if ($data['name'] === '') {
+                $errors['name'][] = return_translation('admin_validation_contact_subject_name_required');
+            } elseif (mb_strlen($data['name']) > 190) {
+                $errors['name'][] = return_translation('admin_validation_contact_subject_name_length');
+            } elseif ($this->contactSubjects->existsByName($data['name'], $id)) {
+                $errors['name'][] = return_translation('admin_validation_contact_subject_duplicate');
+            }
+
+            if (
+                filter_var($data['sort_order'], FILTER_VALIDATE_INT) === false
+                || (int)$data['sort_order'] < -999999
+                || (int)$data['sort_order'] > 999999
+            ) {
+                $errors['sort_order'][] = return_translation('admin_validation_contact_subject_sort_order');
+            }
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                response()->redirect($id > 0
+                    ? base_href('/admin/settings/contact-subjects/edit/' . $id)
+                    : base_href('/admin/settings/contact-subjects/create'));
+            }
+
+            $data['sort_order'] = (int)$data['sort_order'];
+            if ($id > 0) {
+                $this->contactSubjects->update($id, $data);
+                $message = return_translation('admin_contact_subject_updated');
+            } else {
+                $this->contactSubjects->create($data);
+                $message = return_translation('admin_contact_subject_created');
+            }
+
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', $message);
+            response()->redirect(base_href('/admin/settings/contact-subjects'));
+        }
+
+        return view('admin/contact_subject_form', [
+            'title' => return_translation($id > 0
+                ? 'admin_contact_subject_edit_title'
+                : 'admin_contact_subject_create_title'),
+            'subject' => $subject,
+            'is_edit' => $id > 0,
+        ]);
+    }
+
+    public function contactSubjectToggle()
+    {
+        $id = (int)request()->post('id');
+        $isActive = request()->post('is_active', '0') === '1';
+
+        if (!$this->contactSubjects->setActive($id, $isActive)) {
+            session()->setFlash('error', return_translation('admin_contact_subject_not_found'));
+        } else {
+            session()->setFlash(
+                'success',
+                return_translation($isActive
+                    ? 'admin_contact_subject_enabled'
+                    : 'admin_contact_subject_disabled')
+            );
+        }
+
+        response()->redirect(base_href('/admin/settings/contact-subjects'));
+    }
+
+    public function contactSubjectDelete()
+    {
+        $id = (int)request()->post('id');
+
+        if (!$this->contactSubjects->delete($id)) {
+            session()->setFlash('error', return_translation('admin_contact_subject_not_found'));
+        } else {
+            session()->setFlash('success', return_translation('admin_contact_subject_deleted'));
+        }
+
+        response()->redirect(base_href('/admin/settings/contact-subjects'));
+    }
+
+    /**
      * Shows installed CMS themes and the active theme state.
      */
     public function themes()
@@ -788,6 +902,23 @@ class AdminController extends BaseController
         response()->redirect(base_href('/admin/updates#update-center'));
     }
 
+    /**
+     * Откатывает git-установку к состоянию перед последним обновлением.
+     */
+    public function rollbackUpdate()
+    {
+        $this->requireCreatorForUpdates();
+
+        try {
+            $result = $this->updateCenter->runRollback();
+            session()->setFlash('info', (string)($result['message'] ?? return_translation('admin_update_rollback_success')));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        }
+
+        response()->redirect(base_href('/admin/updates#update-center'));
+    }
+
     private function requireCreatorForUpdates(): void
     {
         if (!Auth::hasRole('creator')) {
@@ -911,7 +1042,6 @@ class AdminController extends BaseController
             'contacts_hours_weekends' => trim((string)($data['contacts_hours_weekends'] ?? '')),
             'contacts_support_title' => trim((string)($data['contacts_support_title'] ?? '')),
             'contacts_support_text' => trim((string)($data['contacts_support_text'] ?? '')),
-            'contacts_form_subjects' => $this->normalizeContactSubjectsSetting((string)($data['contacts_form_subjects'] ?? '')),
             'seo_home_title' => trim((string)($data['seo_home_title'] ?? '')),
             'seo_default_title_suffix' => trim((string)($data['seo_default_title_suffix'] ?? '')),
             'seo_meta_description' => trim((string)($data['seo_meta_description'] ?? '')),
@@ -924,33 +1054,6 @@ class AdminController extends BaseController
             'homepage_page_id' => (string)max(0, (int)($data['homepage_page_id'] ?? 0)),
             'posts_per_page' => (string)max(1, min(100, (int)($data['posts_per_page'] ?? 10))),
         ];
-    }
-
-    protected function normalizeContactSubjectsSetting(string $value): string
-    {
-        $subjects = preg_split('/\R/u', $value) ?: [];
-        $subjects = array_values(array_unique(array_filter(array_map(
-            static fn(string $subject): string => mb_substr(trim($subject), 0, 150),
-            $subjects
-        ))));
-        $defaultSubjects = array_map(
-            static fn(string $key): string => return_translation($key),
-            [
-                'contacts_subject_general_inquiry',
-                'contacts_subject_order_status',
-                'contacts_subject_product_information',
-                'contacts_subject_technical_support',
-                'contacts_subject_website_feedback',
-                'contacts_subject_account_assistance',
-                'contacts_subject_security_concerns',
-            ]
-        );
-
-        if ($subjects === $defaultSubjects) {
-            return '[]';
-        }
-
-        return json_encode(array_slice($subjects, 0, 30), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
     }
 
     protected function normalizeHomepageType(string $type): string
@@ -1117,6 +1220,7 @@ class AdminController extends BaseController
             'updater_github_repository' => trim((string)($data['updater_github_repository'] ?? '')),
             'updater_github_branch' => trim((string)($data['updater_github_branch'] ?? 'main')),
             'updater_github_token' => $submittedToken !== '' ? $submittedToken : $currentToken,
+            'update_channel' => trim(mb_strtolower((string)($data['update_channel'] ?? 'stable'))),
         ];
     }
 
@@ -1132,6 +1236,9 @@ class AdminController extends BaseController
         }
         if ($data['updater_github_branch'] !== '' && !$this->isValidGithubBranch($data['updater_github_branch'])) {
             $errors['updater_github_branch'][] = return_translation('admin_validation_updater_branch_invalid');
+        }
+        if (!in_array($data['update_channel'], ['stable', 'dev'], true)) {
+            $errors['update_channel'][] = return_translation('admin_validation_update_channel_invalid');
         }
 
         return $errors;

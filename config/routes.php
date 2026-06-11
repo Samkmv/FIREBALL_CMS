@@ -122,6 +122,13 @@ $app->router->post('/admin/roles/edit/(?P<id>\d+)/?', [AdminController::class, '
 $app->router->post('/admin/roles/delete', [AdminController::class, 'roleDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/contact-subjects', [AdminController::class, 'contactSubjects'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/contact-subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/contact-subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/contact-subjects/edit/(?P<id>\d+)/?', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/contact-subjects/edit/(?P<id>\d+)/?', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/contact-subjects/toggle', [AdminController::class, 'contactSubjectToggle'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/contact-subjects/delete', [AdminController::class, 'contactSubjectDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/privacy', [AdminController::class, 'privacySettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/privacy', [AdminController::class, 'privacySettings'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/system/database-maintenance', [AdminMaintenanceController::class, 'index'])->middleware(['auth', 'admin']);
@@ -151,6 +158,7 @@ $app->router->get('/admin/updates', [AdminController::class, 'updates'])->middle
 $app->router->post('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/update-center/check', [AdminController::class, 'checkForUpdates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/update-center/update', [AdminController::class, 'runUpdate'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/update-center/rollback', [AdminController::class, 'rollbackUpdate'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/files', [FileManagerController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/upload', [FileManagerController::class, 'upload'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/folder/create', [FileManagerController::class, 'createDirectory'])->middleware(['auth', 'admin']);

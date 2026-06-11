@@ -12,7 +12,7 @@ return [
     'home_index_stats_access' => 'Zugriff zur Ansicht',
     'home_index_stats_archive_days' => 'Archivtage',
     'home_index_featured_posts' => 'Online-Kameras',
-    'home_index_featured_posts_subtitle' => 'Kameras und Standorte, die im Adminbereich fuer die Startseite markiert wurden.',
+    'home_index_featured_posts_subtitle' => 'Behalten Sie Kameras und wichtige Standorte in Echtzeit im Blick.',
     'home_index_featured_posts_watch' => 'Ansehen',
     'home_index_slider_prev' => 'Zurueck',
     'home_index_slider_next' => 'Weiter',

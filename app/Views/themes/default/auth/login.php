@@ -28,23 +28,17 @@ $errorText = static function (string $field, string $fallback) use ($formErrors)
                         <div class="invalid-feedback"><?= $errorText('login', 'auth_validation_login_required') ?></div>
                     </div>
 
-                    <div class="mb-4">
-                        <div class="password-toggle">
-                            <input
-                                id="login-password"
-                                type="password"
-                                name="password"
-                                class="form-control form-control-lg <?= get_validation_class('password') ?>"
-                                placeholder="<?= htmlSC(return_translation('auth_login_password')) ?>"
-                                autocomplete="current-password"
-                                required
-                            >
-                            <div class="invalid-feedback"><?= $errorText('password', 'auth_validation_password_required') ?></div>
-                            <label class="password-toggle-button fs-lg" aria-label="<?= htmlSC(return_translation('auth_password_toggle')) ?>">
-                                <input type="checkbox" class="btn-check">
-                            </label>
-                        </div>
-                    </div>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'login-password',
+                        'name' => 'password',
+                        'placeholder' => return_translation('auth_login_password'),
+                        'autocomplete' => 'current-password',
+                        'input_class' => 'form-control-lg',
+                        'wrapper_class' => 'password-field--auth mb-4',
+                        'required' => true,
+                        'feedback_class' => 'invalid-tooltip bg-transparent py-0',
+                        'error_fallback' => return_translation('auth_validation_password_required'),
+                    ]) ?>
 
                     <button type="submit" class="btn btn-dark w-100 rounded-pill"><?= print_translation('auth_login_submit') ?></button>
                 </form>

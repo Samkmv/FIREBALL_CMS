@@ -20,17 +20,17 @@ $onlineSortUrl = current_url_with_query([
     'actions' => '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/users/create') . '"><i class="ci-plus"></i>' . return_translation('admin_users_create') . '</a>',
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-live-table data-ajax-table="users">
-        <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-live-table-form>
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="users">
+        <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-table-form>
             <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
             <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
-            <input type="hidden" name="page" value="1" data-admin-live-table-page-input>
+            <input type="hidden" name="page" value="1">
             <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-            <input type="search" name="search" value="<?= htmlSC((string)($search ?? '')) ?>" class="table-search form-control form-icon-start" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off" data-admin-live-table-search>
+            <input type="search" name="search" value="<?= htmlSC((string)($search ?? '')) ?>" class="table-search form-control form-icon-start" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off" data-admin-table-search>
         </form>
 
         <?php if (empty($users)): ?>
-            <p class="text-body-secondary mb-0" data-admin-live-table-empty><?= ($search ?? '') !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_users_empty') ?></p>
+            <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
             <div class="table-responsive overflow-auto admin-table-scroll admin-users-table-wrap" data-admin-users-table-wrap data-admin-live-table-wrap>
                 <table class="table align-middle mb-0 admin-users-table" data-admin-users-table>
@@ -168,7 +168,7 @@ $onlineSortUrl = current_url_with_query([
                 'pagination' => $pagination,
                 'visible_attributes' => ['data-admin-live-table-visible' => true],
             ]) ?>
-            <p class="text-body-secondary d-none mb-0" data-admin-live-table-empty><?= print_translation('admin_table_empty_search') ?></p>
+            <div class="admin-table-state d-none" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php endif; ?>
     </div>
 <?= view()->renderPartial('admin/shell_close') ?>

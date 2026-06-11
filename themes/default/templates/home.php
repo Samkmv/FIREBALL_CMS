@@ -41,17 +41,17 @@ $objectCards = [
     [
         'title' => return_translation('home_index_object_apartments_title'),
         'text' => return_translation('home_index_object_apartments_text'),
-        'image' => theme_asset('images/about/v2/hero.jpg'),
+        'image' => theme_asset('images/home/home.png'),
     ],
     [
         'title' => return_translation('home_index_object_business_title'),
         'text' => return_translation('home_index_object_business_text'),
-        'image' => theme_asset('images/about/v2/feature02.jpg'),
+        'image' => theme_asset('images/home/business.png'),
     ],
     [
         'title' => return_translation('home_index_object_public_title'),
         'text' => return_translation('home_index_object_public_text'),
-        'image' => theme_asset('images/about/v2/feature03.jpg'),
+        'image' => theme_asset('images/home/social.png'),
     ],
 ];
 $benefits = [

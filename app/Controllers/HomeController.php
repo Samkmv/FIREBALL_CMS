@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Helpers\Cart\Cart;
 use App\Models\ContactRequest;
+use App\Models\ContactSubject;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\SiteSetting;
@@ -16,6 +17,7 @@ class HomeController extends BaseController
 {
 
     protected ContactRequest $contactRequests;
+    protected ContactSubject $contactSubjects;
     protected Page $pages;
     protected Post $posts;
     protected SiteSetting $siteSettings;
@@ -27,6 +29,7 @@ class HomeController extends BaseController
     {
         parent::__construct();
         $this->contactRequests = new ContactRequest();
+        $this->contactSubjects = new ContactSubject();
         $this->pages = new Page();
         $this->posts = new Post();
         $this->siteSettings = new SiteSetting();
@@ -186,30 +189,7 @@ class HomeController extends BaseController
 
     protected function getContactSubjectOptions(): array
     {
-        $stored = json_decode($this->siteSettings->get('contacts_form_subjects', '[]'), true);
-        if (is_array($stored)) {
-            $stored = array_values(array_filter(array_map(
-                static fn(mixed $subject): string => trim((string)$subject),
-                $stored
-            )));
-        }
-
-        if (!empty($stored)) {
-            return $stored;
-        }
-
-        return array_map(
-            static fn(string $key): string => return_translation($key),
-            [
-                'contacts_subject_general_inquiry',
-                'contacts_subject_order_status',
-                'contacts_subject_product_information',
-                'contacts_subject_technical_support',
-                'contacts_subject_website_feedback',
-                'contacts_subject_account_assistance',
-                'contacts_subject_security_concerns',
-            ]
-        );
+        return $this->contactSubjects->getActiveNames();
     }
 
 }

@@ -56,28 +56,34 @@ if ($privacyUrl === '#') {
                         <div class="invalid-feedback"><?= $errorText('email', 'auth_validation_email_invalid') ?></div>
                     </div>
 
-                    <div class="position-relative mb-4 password-field">
-                        <label class="form-label" for="register-password"><?= print_translation('auth_register_password') ?></label>
-                        <div class="password-toggle">
-                            <input id="register-password" type="password" name="password" class="form-control form-control-lg <?= get_validation_class('password') ?>" minlength="8" placeholder="<?= htmlSC(return_translation('auth_register_password_placeholder')) ?>" autocomplete="new-password" required>
-                            <div class="invalid-feedback"><?= $errorText('password', 'auth_validation_password_strength') ?></div>
-                            <label class="password-toggle-button fs-lg" aria-label="<?= htmlSC(return_translation('auth_password_toggle')) ?>">
-                                <input type="checkbox" class="btn-check">
-                            </label>
-                        </div>
-                        <div class="form-text password-strength-hint"><?= print_translation('auth_validation_password_strength') ?></div>
-                    </div>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'register-password',
+                        'name' => 'password',
+                        'label' => return_translation('auth_register_password'),
+                        'placeholder' => return_translation('auth_register_password_placeholder'),
+                        'autocomplete' => 'new-password',
+                        'input_class' => 'form-control-lg',
+                        'wrapper_class' => 'password-field--auth mb-4',
+                        'required' => true,
+                        'minlength' => 8,
+                        'hint' => return_translation('auth_validation_password_strength'),
+                        'feedback_class' => 'invalid-tooltip bg-transparent py-0',
+                        'error_fallback' => return_translation('auth_validation_password_strength'),
+                    ]) ?>
 
-                    <div class="position-relative mb-4">
-                        <label class="form-label" for="register-password-confirmation"><?= print_translation('auth_register_password_confirmation') ?></label>
-                        <div class="password-toggle">
-                            <input id="register-password-confirmation" type="password" name="password_confirmation" class="form-control form-control-lg <?= get_validation_class('password_confirmation') ?>" minlength="8" placeholder="<?= htmlSC(return_translation('auth_register_password_confirmation')) ?>" autocomplete="new-password" required>
-                            <div class="invalid-feedback"><?= $errorText('password_confirmation', 'auth_validation_password_confirmation_required') ?></div>
-                            <label class="password-toggle-button fs-lg" aria-label="<?= htmlSC(return_translation('auth_password_toggle')) ?>">
-                                <input type="checkbox" class="btn-check">
-                            </label>
-                        </div>
-                    </div>
+                    <?= view()->renderPartial('incs/password_field', [
+                        'id' => 'register-password-confirmation',
+                        'name' => 'password_confirmation',
+                        'label' => return_translation('auth_register_password_confirmation'),
+                        'placeholder' => return_translation('auth_register_password_confirmation'),
+                        'autocomplete' => 'new-password',
+                        'input_class' => 'form-control-lg',
+                        'wrapper_class' => 'password-field--auth mb-4',
+                        'required' => true,
+                        'minlength' => 8,
+                        'feedback_class' => 'invalid-tooltip bg-transparent py-0',
+                        'error_fallback' => return_translation('auth_validation_password_confirmation_required'),
+                    ]) ?>
 
                     <div class="form-check mb-4">
                         <input type="checkbox" class="form-check-input <?= get_validation_class('privacy_accepted') ?>" id="privacy-accepted" name="privacy_accepted" value="1" <?= old('privacy_accepted') === '1' ? 'checked' : '' ?> required>

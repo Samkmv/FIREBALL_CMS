@@ -212,7 +212,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <div class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px;">
                         <i class="ci-folder fs-2 text-body-secondary"></i>
                     </div>
-                    <p class="text-body-secondary mb-0"><?= $search !== '' ? return_translation('admin_table_empty_search') : return_translation('admin_files_empty') ?></p>
+                    <p class="text-body-secondary mb-0"><?= print_translation('admin_table_empty') ?></p>
                 </div>
             <?php else: ?>
                 <form action="<?= base_href('/admin/files/action') ?>" method="post" data-file-manager-bulk-form>

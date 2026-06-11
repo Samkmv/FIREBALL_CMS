@@ -39,7 +39,7 @@ $pageVisibilityLabel = static function (array $page): string {
 <div data-admin-posts-pane-content="<?= htmlSC($tableKey) ?>">
     <div data-admin-posts-table-shell="<?= htmlSC($tableKey) ?>">
         <?php if (empty($items)): ?>
-            <p class="text-body-secondary mb-0" data-admin-posts-empty><?= htmlSC($emptyText) ?></p>
+            <div class="admin-table-state" data-admin-posts-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
             <div class="table-responsive overflow-auto admin-table-scroll">
                 <table class="table align-middle mb-0 admin-pages-table">

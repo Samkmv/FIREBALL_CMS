@@ -35,23 +35,6 @@ $contactsHoursWeekdays = $formData['contacts_hours_weekdays'] ?? ($settings['con
 $contactsHoursWeekends = $formData['contacts_hours_weekends'] ?? ($settings['contacts_hours_weekends'] ?? '');
 $contactsSupportTitle = $formData['contacts_support_title'] ?? ($settings['contacts_support_title'] ?? '');
 $contactsSupportText = $formData['contacts_support_text'] ?? ($settings['contacts_support_text'] ?? '');
-$storedContactSubjects = $formData['contacts_form_subjects'] ?? ($settings['contacts_form_subjects'] ?? '[]');
-$contactSubjects = is_string($storedContactSubjects) ? json_decode($storedContactSubjects, true) : null;
-if (!is_array($contactSubjects) || empty($contactSubjects)) {
-    $contactSubjects = array_map(
-        static fn(string $key): string => return_translation($key),
-        [
-            'contacts_subject_general_inquiry',
-            'contacts_subject_order_status',
-            'contacts_subject_product_information',
-            'contacts_subject_technical_support',
-            'contacts_subject_website_feedback',
-            'contacts_subject_account_assistance',
-            'contacts_subject_security_concerns',
-        ]
-    );
-}
-$contactSubjectsText = implode(PHP_EOL, array_map('strval', $contactSubjects));
 $seoHomeTitle = $formData['seo_home_title'] ?? ($settings['seo_home_title'] ?? '');
 $seoDefaultTitleSuffix = $formData['seo_default_title_suffix'] ?? ($settings['seo_default_title_suffix'] ?? '');
 $seoMetaDescription = $formData['seo_meta_description'] ?? ($settings['seo_meta_description'] ?? '');
@@ -293,11 +276,6 @@ $publishedPages = (array)($published_pages ?? []);
                             <label class="form-label"><?= print_translation('admin_settings_contacts_support_text') ?></label>
                             <textarea class="form-control" name="contacts_support_text" rows="3"><?= htmlSC($contactsSupportText) ?></textarea>
                             <div class="form-text"><?= print_translation('admin_settings_contacts_support_text_hint') ?></div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label"><?= print_translation('admin_settings_contacts_form_subjects') ?></label>
-                            <textarea class="form-control" name="contacts_form_subjects" rows="7"><?= htmlSC($contactSubjectsText) ?></textarea>
-                            <div class="form-text"><?= print_translation('admin_settings_contacts_form_subjects_hint') ?></div>
                         </div>
                     </div>
                 </div>

@@ -32,6 +32,7 @@ class UpdateCenter
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
         $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
+        $channel = $this->resolveUpdateChannel($settings);
         $lastCheck = $this->decodeLastCheck((string)($settings['updater_last_check_payload'] ?? ''));
         $storedCommit = $this->getStoredInstalledCommit($settings);
         $displayCommit = (string)($localGitState['commit_hash'] ?? '') !== ''
@@ -45,9 +46,12 @@ class UpdateCenter
             'config' => [
                 'repository' => $repository,
                 'branch' => $branch,
+                'channel' => $channel,
+                'source' => $channel === 'dev' ? 'main_branch' : 'github_releases',
                 'has_token' => trim((string)($settings['updater_github_token'] ?? '')) !== '',
                 'last_checked_at' => trim((string)($settings['updater_last_checked_at'] ?? '')),
                 'last_updated_at' => trim((string)($settings['updater_last_updated_at'] ?? '')),
+                'rollback_commit' => trim((string)($settings['updater_rollback_commit'] ?? '')),
             ],
             'local' => [
                 'name' => (string)($this->engineRelease['name'] ?? 'FIREBALL_CMS'),
@@ -70,7 +74,7 @@ class UpdateCenter
                 'ignored_dirty_files' => $localGitState['ignored_dirty_files'],
             ],
             'last_check' => $lastCheck,
-            'update_blockers' => $this->buildUpdateBlockers($repository, $localGitState),
+            'update_blockers' => $this->buildUpdateBlockers($repository, $localGitState, $channel),
         ];
     }
 
@@ -85,6 +89,7 @@ class UpdateCenter
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
         $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
+        $channel = $this->resolveUpdateChannel($settings);
         $storedCommit = $this->getStoredInstalledCommit($settings);
         $localCommit = !empty($localGitState['is_git_repo'])
             ? (string)($localGitState['commit_hash'] ?? '')
@@ -96,6 +101,7 @@ class UpdateCenter
             'message' => '',
             'repository' => $repository,
             'branch' => $branch,
+            'channel' => $channel,
             'local_version' => (string)($this->engineRelease['version'] ?? '0.0.0'),
             'local_commit' => $localCommit,
             'remote_version' => '',
@@ -110,6 +116,14 @@ class UpdateCenter
         try {
             if ($repository === '') {
                 throw new RuntimeException(return_translation('admin_update_repository_required'));
+            }
+
+            if ($channel === 'stable') {
+                return $this->checkStableRelease(
+                    $basePayload,
+                    $repository,
+                    (string)($settings['updater_github_token'] ?? '')
+                );
             }
 
             $release = null;
@@ -202,6 +216,52 @@ class UpdateCenter
     }
 
     /**
+     * Проверяет только опубликованные GitHub Releases для Stable-канала.
+     */
+    protected function checkStableRelease(array $basePayload, string $repository, string $token): array
+    {
+        $release = $this->fetchLatestStableRelease($repository, $token);
+
+        if ($release === null) {
+            $payload = array_merge($basePayload, [
+                'status' => 'ok',
+                'message' => return_translation('admin_update_no_releases'),
+                'branch_status' => 'not_applicable',
+            ]);
+            $this->persistLastCheck($payload);
+
+            return $payload;
+        }
+
+        $remoteVersion = $this->extractReleaseVersion($release);
+        $comparison = $this->compareVersions(
+            (string)($this->engineRelease['version'] ?? '0.0.0'),
+            $remoteVersion
+        );
+        $updateAvailable = $comparison === null
+            ? $this->fallbackReleaseComparison(
+                (string)($this->engineRelease['released_at'] ?? ''),
+                (string)($release['published_at'] ?? '')
+            )
+            : $comparison < 0;
+
+        $payload = array_merge($basePayload, [
+            'status' => 'ok',
+            'message' => $updateAvailable
+                ? return_translation('admin_update_stable_available')
+                : return_translation('admin_update_stable_none'),
+            'remote_version' => $remoteVersion,
+            'branch_status' => 'not_applicable',
+            'version_update_available' => $updateAvailable,
+            'update_available' => $updateAvailable,
+            'release' => $release,
+        ]);
+        $this->persistLastCheck($payload);
+
+        return $payload;
+    }
+
+    /**
      * Возвращает сохранённый результат последней проверки обновлений.
      */
     public function getLastCheckPayload(): ?array
@@ -275,9 +335,17 @@ class UpdateCenter
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
         $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
+        $channel = $this->resolveUpdateChannel($settings);
 
-        foreach ($this->buildUpdateBlockers($repository, $localGitState) as $blocker) {
+        foreach ($this->buildUpdateBlockers($repository, $localGitState, $channel) as $blocker) {
             throw new RuntimeException($blocker);
+        }
+
+        if ($channel === 'stable') {
+            return $this->runStableReleaseUpdate(
+                $repository,
+                (string)($settings['updater_github_token'] ?? '')
+            );
         }
 
         if (empty($localGitState['is_git_repo'])) {
@@ -312,9 +380,10 @@ class UpdateCenter
             throw new RuntimeException(return_translation('admin_update_branch_diverged'));
         }
 
-        $this->validateGitDiffAgainstManifest($branch, $manifest);
-        $this->createPreUpdateBackups();
-        try {
+            $this->validateGitDiffAgainstManifest($branch, $manifest);
+            $this->createPreUpdateBackups();
+            $this->siteSettings->set('updater_rollback_commit', $previousCommit);
+            try {
             $pullResult = $this->runCommand(
                 'git pull --ff-only origin ' . escapeshellarg($branch),
                 ROOT
@@ -364,14 +433,35 @@ class UpdateCenter
     /**
      * Возвращает список причин, по которым запуск обновления нужно заблокировать.
      */
-    protected function buildUpdateBlockers(string $repository, array $localGitState): array
+    protected function buildUpdateBlockers(string $repository, array $localGitState, ?string $channel = null): array
     {
         $blockers = [];
         $canRunProcesses = $this->canRunProcesses();
         $isGitRepo = !empty($localGitState['is_git_repo']);
+        $channel = $channel ?? $this->resolveUpdateChannel($this->siteSettings->all());
 
         if ($repository === '') {
             $blockers[] = return_translation('admin_update_repository_required');
+        }
+
+        if ($channel === 'stable') {
+            if ($isGitRepo && !($localGitState['is_update_clean'] ?? false)) {
+                $blockers[] = return_translation('admin_update_dirty_worktree');
+            }
+            if (!$this->supportsZipUpdates()) {
+                $blockers[] = return_translation('admin_update_zip_missing');
+            }
+            if (!$this->isWritablePath(ROOT . '/tmp')) {
+                $blockers[] = return_translation('admin_update_tmp_not_writable');
+            }
+            if (!$this->isWritablePath(ROOT)) {
+                $blockers[] = return_translation('admin_update_root_not_writable');
+            }
+            if (!$this->isWritablePath(CONFIG)) {
+                $blockers[] = return_translation('admin_update_config_not_writable');
+            }
+
+            return $blockers;
         }
 
         if ($isGitRepo) {
@@ -499,6 +589,119 @@ class UpdateCenter
     }
 
     /**
+     * Устанавливает Stable-обновление только из ZIP-asset опубликованного Release.
+     */
+    protected function runStableReleaseUpdate(string $repository, string $token = ''): array
+    {
+        $release = $this->fetchLatestStableRelease($repository, $token);
+        if ($release === null) {
+            throw new RuntimeException(return_translation('admin_update_no_releases'));
+        }
+
+        $remoteVersion = $this->extractReleaseVersion($release);
+        $comparison = $this->compareVersions(
+            (string)($this->engineRelease['version'] ?? '0.0.0'),
+            $remoteVersion
+        );
+        if ($comparison !== null && $comparison >= 0) {
+            $this->refreshLastCheckAfterUpdate();
+
+            return [
+                'status' => 'success',
+                'message' => return_translation('admin_update_already_latest'),
+                'release' => $release,
+            ];
+        }
+
+        $workspace = ROOT . '/tmp/update-' . date('YmdHis') . '-' . bin2hex(random_bytes(4));
+        $archivePath = $workspace . '/package.zip';
+        $extractPath = $workspace . '/extract';
+        $composerFingerprintBefore = $this->captureDependencyFingerprint();
+
+        try {
+            $this->ensureDirectory($workspace);
+            $this->ensureDirectory($extractPath);
+            $archive = $this->resolveReleaseArchive($release, $repository, false);
+            $localGitState = $this->getLocalGitState();
+            if (!empty($localGitState['is_git_repo']) && trim((string)($localGitState['commit_hash'] ?? '')) !== '') {
+                $this->siteSettings->set('updater_rollback_commit', (string)$localGitState['commit_hash']);
+            }
+
+            $this->downloadFile(
+                (string)($archive['download_url'] ?? ''),
+                $archivePath,
+                $this->buildGithubDownloadHeaders($token, (string)($archive['download_mode'] ?? 'direct'))
+            );
+
+            $packageRoot = $this->extractArchive($archivePath, $extractPath);
+            $manifest = $this->loadUpdateManifest($packageRoot);
+            $this->validateUpdateManifest($manifest, $packageRoot);
+            $this->createPreUpdateBackups();
+            $this->ensureLocalConfigExists();
+            $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
+
+            $composerResult = $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
+            $this->runPendingMigrations();
+            $this->clearRuntimeCache();
+            $this->siteSettings->setMany([
+                'updater_last_updated_at' => date('Y-m-d H:i:s'),
+                'updater_last_installed_commit' => '',
+            ]);
+            $this->refreshLastCheckAfterUpdate();
+
+            if (is_array($composerResult)) {
+                return $composerResult;
+            }
+
+            return [
+                'status' => 'success',
+                'message' => return_translation('admin_update_success'),
+                'release' => $release,
+            ];
+        } finally {
+            $this->deleteDirectory($workspace);
+        }
+    }
+
+    /**
+     * Возвращает git-установку к коммиту, сохранённому перед последним обновлением.
+     */
+    public function runRollback(): array
+    {
+        $settings = $this->siteSettings->all();
+        $targetCommit = trim((string)($settings['updater_rollback_commit'] ?? ''));
+        $localGitState = $this->getLocalGitState();
+
+        if (empty($localGitState['is_git_repo']) || empty($localGitState['git_available'])) {
+            throw new RuntimeException(return_translation('admin_update_rollback_git_required'));
+        }
+        if (preg_match('/^[a-f0-9]{7,40}$/i', $targetCommit) !== 1) {
+            throw new RuntimeException(return_translation('admin_update_rollback_unavailable'));
+        }
+
+        $currentCommit = trim((string)($localGitState['commit_hash'] ?? ''));
+        $result = $this->runCommand('git reset --hard ' . escapeshellarg($targetCommit), ROOT);
+        if ($result['exit_code'] !== 0) {
+            throw new RuntimeException($this->formatCommandError($result, return_translation('admin_update_rollback_failed')));
+        }
+
+        if ($currentCommit !== '' && $currentCommit !== $targetCommit) {
+            $this->runComposerIfNeeded($currentCommit, $targetCommit);
+        }
+        $this->clearRuntimeCache();
+        $this->siteSettings->setMany([
+            'updater_rollback_commit' => '',
+            'updater_last_check_payload' => '',
+            'updater_last_checked_at' => '',
+        ]);
+
+        return [
+            'status' => 'warning',
+            'message' => return_translation('admin_update_rollback_success'),
+        ];
+    }
+
+    /**
      * Пытается получить релиз GitHub, но не валит git-based проверку, если API недоступен.
      */
     protected function tryFetchLatestRelease(string $repository, string $token, string $branch): ?array
@@ -579,6 +782,40 @@ class UpdateCenter
             'body' => trim((string)($payload['body'] ?? '')),
             'excerpt' => $this->buildReleaseExcerpt((string)($payload['body'] ?? '')),
             'zipball_url' => trim((string)($payload['zipball_url'] ?? '')),
+            'assets' => $this->normalizeReleaseAssets($payload['assets'] ?? []),
+        ];
+    }
+
+    /**
+     * Возвращает последний стабильный Release без fallback на tags или ветки.
+     */
+    protected function fetchLatestStableRelease(string $repository, string $token = ''): ?array
+    {
+        $response = $this->httpGet(
+            $this->buildGithubApiUrl($repository, '/releases/latest'),
+            $this->buildGithubHeaders($token)
+        );
+        $payload = json_decode($response['body'], true);
+
+        if ($response['status_code'] === 404) {
+            return null;
+        }
+        if ($response['status_code'] < 200 || $response['status_code'] >= 300 || !is_array($payload)) {
+            $message = is_array($payload) ? (string)($payload['message'] ?? '') : '';
+            throw new RuntimeException(trim(return_translation('admin_update_release_fetch_failed') . ' ' . $message));
+        }
+        if (!empty($payload['draft']) || !empty($payload['prerelease'])) {
+            return null;
+        }
+
+        return [
+            'name' => trim((string)($payload['name'] ?? '')),
+            'tag_name' => trim((string)($payload['tag_name'] ?? '')),
+            'html_url' => trim((string)($payload['html_url'] ?? '')),
+            'published_at' => trim((string)($payload['published_at'] ?? '')),
+            'body' => trim((string)($payload['body'] ?? '')),
+            'excerpt' => $this->buildReleaseExcerpt((string)($payload['body'] ?? '')),
+            'zipball_url' => '',
             'assets' => $this->normalizeReleaseAssets($payload['assets'] ?? []),
         ];
     }
@@ -926,7 +1163,7 @@ class UpdateCenter
     /**
      * Выбирает ZIP-архив, который будет использоваться для обновления.
      */
-    protected function resolveReleaseArchive(array $release, string $repository): array
+    protected function resolveReleaseArchive(array $release, string $repository, bool $allowZipball = true): array
     {
         foreach ($release['assets'] ?? [] as $asset) {
             $name = trim((string)($asset['name'] ?? ''));
@@ -943,7 +1180,7 @@ class UpdateCenter
         }
 
         $zipballUrl = trim((string)($release['zipball_url'] ?? ''));
-        if ($zipballUrl !== '') {
+        if ($allowZipball && $zipballUrl !== '') {
             $tagName = trim((string)($release['tag_name'] ?? 'release'));
 
             return [
@@ -1201,6 +1438,7 @@ class UpdateCenter
             'SITE_NAME' => SITE_NAME,
             'CHAT_ENCRYPTION_KEY' => CHAT_ENCRYPTION_KEY,
             'APP_TIMEZONE' => APP_TIMEZONE,
+            'UPDATE_CHANNEL' => defined('UPDATE_CHANNEL') ? UPDATE_CHANNEL : 'stable',
             'MULTILANGS' => MULTILANGS,
             'LANGS' => LANGS,
             'DB_SETTINGS' => DB_SETTINGS,
@@ -1991,6 +2229,20 @@ class UpdateCenter
         }
 
         return $branch !== '' ? $branch : 'main';
+    }
+
+    /**
+     * Возвращает разрешённый канал обновлений. Stable используется по умолчанию.
+     */
+    protected function resolveUpdateChannel(array $settings): string
+    {
+        $channel = trim(mb_strtolower((string)($settings['update_channel'] ?? '')));
+        if ($channel === '') {
+            $configuredChannel = defined('UPDATE_CHANNEL') ? UPDATE_CHANNEL : getenv('UPDATE_CHANNEL');
+            $channel = trim(mb_strtolower((string)($configuredChannel ?: 'stable')));
+        }
+
+        return $channel === 'dev' ? 'dev' : 'stable';
     }
 
     /**
