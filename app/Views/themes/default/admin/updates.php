@@ -10,9 +10,12 @@ $updaterBranch = $formData['updater_github_branch'] ?? ($settings['updater_githu
 $updaterToken = $formData['updater_github_token'] ?? '';
 $updaterChannel = $formData['update_channel'] ?? ($settings['update_channel'] ?? ($updateConfig['channel'] ?? 'stable'));
 $updaterChannel = $updaterChannel === 'dev' ? 'dev' : 'stable';
+$isGitRepo = !empty($updateLocal['is_git_repo']);
 $updateSourceLabel = $updaterChannel === 'dev'
     ? return_translation('admin_update_source_main_branch')
-    : return_translation('admin_update_source_github_releases');
+    : return_translation($isGitRepo
+        ? 'admin_update_source_github_release_git'
+        : 'admin_update_source_github_release_archive');
 $release = is_array($lastCheck['release'] ?? null) ? $lastCheck['release'] : [];
 $localReleaseName = trim((string)($updateLocal['name'] ?? ($engine_release['name'] ?? 'FIREBALL_CMS')));
 $localReleaseSummary = trim((string)($updateLocal['summary'] ?? ($engine_release['summary'] ?? '')));
@@ -32,7 +35,6 @@ if ($remoteReleaseDescription === '') {
 $statusVariant = 'secondary';
 $statusLabel = return_translation('admin_update_status_unknown');
 $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
-$isGitRepo = !empty($updateLocal['is_git_repo']);
 $canRollback = $isGitRepo
     && !empty($updateLocal['git_available'])
     && trim((string)($updateConfig['rollback_commit'] ?? '')) !== '';

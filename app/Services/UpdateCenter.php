@@ -300,7 +300,7 @@ class UpdateCenter
     }
 
     /**
-     * Обновляет код сайта через git pull или branch ZIP fallback.
+     * Обновляет код сайта через GitHub Release/tag, git pull или ZIP fallback.
      */
     public function runUpdate(): array
     {
@@ -342,6 +342,14 @@ class UpdateCenter
         }
 
         if ($channel === 'stable') {
+            if (!empty($localGitState['is_git_repo'])) {
+                return $this->runStableReleaseGitUpdate(
+                    $repository,
+                    $branch,
+                    (string)($settings['updater_github_token'] ?? '')
+                );
+            }
+
             return $this->runStableReleaseUpdate(
                 $repository,
                 (string)($settings['updater_github_token'] ?? '')
@@ -441,6 +449,23 @@ class UpdateCenter
         if ($channel === 'stable') {
             if ($isGitRepo && !($localGitState['is_update_clean'] ?? false)) {
                 $blockers[] = return_translation('admin_update_dirty_worktree');
+            }
+            if ($isGitRepo && !$canRunProcesses) {
+                $blockers[] = return_translation('admin_update_process_disabled');
+            }
+            if ($isGitRepo && $canRunProcesses && empty($localGitState['git_available'])) {
+                $blockers[] = return_translation('admin_update_git_missing');
+            }
+            if ($isGitRepo) {
+                $localBranch = trim((string)($localGitState['branch'] ?? ''));
+                $targetBranch = $this->resolveBranch($this->siteSettings->all(), $localBranch);
+                if ($localBranch === '' || $localBranch !== $targetBranch) {
+                    $blockers[] = str_replace(
+                        [':local', ':target'],
+                        [$localBranch !== '' ? $localBranch : 'HEAD', $targetBranch],
+                        return_translation('admin_update_branch_mismatch')
+                    );
+                }
             }
             if (!$this->supportsZipUpdates()) {
                 $blockers[] = return_translation('admin_update_zip_missing');
@@ -580,7 +605,133 @@ class UpdateCenter
     }
 
     /**
-     * Устанавливает Stable-обновление только из ZIP-asset опубликованного Release.
+     * Обновляет Git-установку до commit опубликованного стабильного GitHub Release.
+     */
+    protected function runStableReleaseGitUpdate(string $repository, string $branch, string $token = ''): array
+    {
+        $release = $this->fetchLatestStableRelease($repository, $token);
+        if ($release === null) {
+            throw new RuntimeException(return_translation('admin_update_no_releases'));
+        }
+
+        $tagName = trim((string)($release['tag_name'] ?? ''));
+        $this->validateGitTagName($tagName);
+
+        $previousCommit = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
+        if ($previousCommit === '') {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        $this->fetchRemoteBranch($branch);
+        $this->fetchReleaseTag($tagName);
+
+        $releaseRef = 'refs/tags/' . $tagName;
+        $releaseCommitResult = $this->runCommand(
+            'git rev-list -n 1 ' . escapeshellarg($releaseRef),
+            ROOT
+        );
+        $releaseCommit = trim((string)$releaseCommitResult['stdout']);
+        if ($releaseCommitResult['exit_code'] !== 0 || preg_match('/^[a-f0-9]{40}$/i', $releaseCommit) !== 1) {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        $release['commit_hash'] = $releaseCommit;
+        if ($previousCommit === $releaseCommit) {
+            $this->refreshLastCheckAfterUpdate();
+
+            return [
+                'status' => 'success',
+                'message' => return_translation('admin_update_already_latest'),
+                'release' => $release,
+            ];
+        }
+
+        $remoteBranchRef = 'refs/remotes/origin/' . $branch;
+        $belongsToBranch = $this->runCommand(
+            'git merge-base --is-ancestor '
+                . escapeshellarg($releaseCommit)
+                . ' '
+                . escapeshellarg($remoteBranchRef),
+            ROOT
+        );
+        if ($belongsToBranch['exit_code'] !== 0) {
+            throw new RuntimeException(return_translation('admin_update_release_not_on_branch'));
+        }
+
+        $canFastForward = $this->runCommand(
+            'git merge-base --is-ancestor '
+                . escapeshellarg($previousCommit)
+                . ' '
+                . escapeshellarg($releaseCommit),
+            ROOT
+        );
+        if ($canFastForward['exit_code'] !== 0) {
+            $releaseIsOlder = $this->runCommand(
+                'git merge-base --is-ancestor '
+                    . escapeshellarg($releaseCommit)
+                    . ' '
+                    . escapeshellarg($previousCommit),
+                ROOT
+            );
+            if ($releaseIsOlder['exit_code'] === 0) {
+                $this->refreshLastCheckAfterUpdate();
+
+                return [
+                    'status' => 'success',
+                    'message' => return_translation('admin_update_already_latest'),
+                    'release' => $release,
+                ];
+            }
+
+            throw new RuntimeException(return_translation('admin_update_release_diverged'));
+        }
+
+        $manifest = $this->loadGitManifestAtRef($releaseCommit);
+        $this->validateUpdateManifest($manifest);
+        $releaseVersion = $this->normalizeComparableVersion($this->extractReleaseVersion($release));
+        if ($releaseVersion !== '' && $releaseVersion !== (string)($manifest['version'] ?? '')) {
+            throw new RuntimeException(return_translation('admin_update_release_version_mismatch'));
+        }
+        $this->validateGitDiffAgainstRef($releaseCommit, $manifest);
+        $this->createPreUpdateBackups();
+        $this->siteSettings->setMany(['updater_rollback_commit' => $previousCommit]);
+
+        try {
+            $mergeResult = $this->runCommand(
+                'git merge --ff-only ' . escapeshellarg($releaseCommit),
+                ROOT
+            );
+            if ($mergeResult['exit_code'] !== 0) {
+                throw new RuntimeException($this->formatCommandError($mergeResult, return_translation('admin_update_pull_failed')));
+            }
+
+            $this->runComposerIfNeeded($previousCommit, $releaseCommit);
+            $this->runPendingMigrations();
+            $this->clearRuntimeCache();
+            $this->siteSettings->setMany([
+                'updater_last_updated_at' => date('Y-m-d H:i:s'),
+                'updater_last_installed_commit' => $releaseCommit,
+            ]);
+            $this->refreshLastCheckAfterUpdate();
+        } catch (\Throwable $exception) {
+            $rollback = $this->runCommand('git reset --hard ' . escapeshellarg($previousCommit), ROOT);
+            log_error_details('Stable release update rollback executed', [
+                'Commit' => $previousCommit,
+                'Exit Code' => $rollback['exit_code'] ?? -1,
+                'Output' => $rollback['stderr'] ?? $rollback['stdout'] ?? '',
+            ], $exception);
+            throw $exception;
+        }
+
+        return [
+            'status' => 'success',
+            'message' => return_translation('admin_update_success'),
+            'release' => $release,
+        ];
+    }
+
+    /**
+     * Устанавливает Stable-обновление из ZIP-asset для установки без локального Git.
      */
     protected function runStableReleaseUpdate(string $repository, string $token = ''): array
     {
@@ -1062,6 +1213,41 @@ class UpdateCenter
 
         if ($fetchResult['exit_code'] !== 0) {
             throw new RuntimeException($this->formatCommandError($fetchResult, return_translation('admin_update_branch_fetch_failed')));
+        }
+    }
+
+    protected function validateGitTagName(string $tagName): void
+    {
+        if ($tagName === ''
+            || strlen($tagName) > 200
+            || str_starts_with($tagName, '-')
+            || str_contains($tagName, '..')
+            || str_contains($tagName, '@{')
+            || preg_match('#[\s\\\\~^:?*\[]#', $tagName) === 1
+            || str_ends_with($tagName, '.')
+            || str_ends_with($tagName, '/')
+        ) {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        $check = $this->runCommand(
+            'git check-ref-format ' . escapeshellarg('refs/tags/' . $tagName),
+            ROOT
+        );
+        if ($check['exit_code'] !== 0) {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+    }
+
+    protected function fetchReleaseTag(string $tagName): void
+    {
+        $ref = 'refs/tags/' . $tagName;
+        $result = $this->runCommand(
+            'git fetch origin ' . escapeshellarg($ref . ':' . $ref),
+            ROOT
+        );
+        if ($result['exit_code'] !== 0) {
+            throw new RuntimeException($this->formatCommandError($result, return_translation('admin_update_branch_fetch_failed')));
         }
     }
 
@@ -1618,6 +1804,41 @@ class UpdateCenter
         return $manifest;
     }
 
+    protected function loadGitManifestAtRef(string $ref): array
+    {
+        if (preg_match('/^[a-f0-9]{40}$/i', $ref) !== 1) {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        $manifestResult = $this->runCommand(
+            'git show ' . escapeshellarg($ref . ':update.json'),
+            ROOT
+        );
+        if ($manifestResult['exit_code'] !== 0) {
+            throw new RuntimeException('Release update manifest update.json is missing.');
+        }
+
+        $manifest = json_decode((string)$manifestResult['stdout'], true);
+        if (!is_array($manifest) || json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('Release update manifest update.json is invalid.');
+        }
+
+        $versionResult = $this->runCommand(
+            'git show ' . escapeshellarg($ref . ':config/version.php'),
+            ROOT
+        );
+        $remoteVersion = preg_match(
+            "/['\"]version['\"]\s*=>\s*['\"]([^'\"]+)['\"]/",
+            (string)$versionResult['stdout'],
+            $matches
+        ) === 1 ? trim((string)$matches[1]) : '';
+        if ($versionResult['exit_code'] !== 0 || $remoteVersion !== (string)($manifest['version'] ?? '')) {
+            throw new RuntimeException('Release update manifest version does not match config/version.php.');
+        }
+
+        return $manifest;
+    }
+
     protected function validateGitDiffAgainstManifest(string $branch, array $manifest): void
     {
         $result = $this->runCommand(
@@ -1638,6 +1859,34 @@ class UpdateCenter
             }
             if (!$this->shouldUpdatePath($path, $manifest)) {
                 throw new RuntimeException('Update contains a path not allowed by update.json: ' . $path);
+            }
+        }
+    }
+
+    protected function validateGitDiffAgainstRef(string $ref, array $manifest): void
+    {
+        if (preg_match('/^[a-f0-9]{40}$/i', $ref) !== 1) {
+            throw new RuntimeException(return_translation('admin_update_release_invalid'));
+        }
+
+        $result = $this->runCommand(
+            'git diff --name-only HEAD ' . escapeshellarg($ref),
+            ROOT
+        );
+        if ($result['exit_code'] !== 0) {
+            throw new RuntimeException('Unable to validate stable release files against update.json.');
+        }
+
+        foreach (preg_split('/\r\n|\r|\n/', trim((string)$result['stdout'])) ?: [] as $path) {
+            $path = trim($path);
+            if ($path === '') {
+                continue;
+            }
+            if ($this->shouldPreservePath($path, $manifest)) {
+                throw new RuntimeException('Stable release attempts to modify a protected path: ' . $path);
+            }
+            if (!$this->shouldUpdatePath($path, $manifest)) {
+                throw new RuntimeException('Stable release contains a path not allowed by update.json: ' . $path);
             }
         }
     }
