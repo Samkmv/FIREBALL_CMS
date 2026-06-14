@@ -1807,33 +1807,6 @@
         wrapper.addEventListener('click', handleWakeGesture, true);
     };
 
-    const initLazyHlsPlayback = function (element) {
-        const playerWrap = element.closest('[data-plyr-player-wrap]');
-        const lazyEnabled = element.dataset.plyrLazy === 'true'
-            || (playerWrap && playerWrap.dataset.plyrLazy === 'true');
-        if (!element.hlsSource || !lazyEnabled || element.dataset.hlsLazyBound === 'true') {
-            return;
-        }
-
-        element.dataset.hlsLazyBound = 'true';
-        const target = playerWrap || element.closest('.plyr') || element;
-        if (typeof IntersectionObserver !== 'function') {
-            return;
-        }
-
-        const observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (!entry.isIntersecting || element.hlsAutoplayRequested || element.hlsPlaybackStarted) {
-                    return;
-                }
-                observer.disconnect();
-                wakeAndPlay(element);
-            });
-        }, { threshold: 0.01 });
-        observer.observe(target);
-        element.hlsLazyObserver = observer;
-    };
-
     const getZoomLocale = function () {
         const lang = (document.documentElement.getAttribute('lang') || 'en').toLowerCase();
 
@@ -2460,7 +2433,6 @@
                 initPlyrZoom(element);
                 bindFullscreenStateSync(element);
                 ensureVideoDebugBlock(element);
-                initLazyHlsPlayback(element);
             };
 
             attachHls(element).finally(finalizePlyr);

@@ -151,7 +151,7 @@ return [
     'admin_analytics_full_subtitle' => 'Полная статистика посещений, страниц, устройств и источников трафика.',
     'admin_analytics_back_to_dashboard' => 'К обзору',
     'admin_analytics_refresh_button' => 'Обновить статистику',
-    'admin_analytics_refresh_success' => 'Кэш статистики обновлён.',
+    'admin_analytics_refresh_success' => 'Статистика обновлена, страны для сохранённых визитов пересчитаны.',
     'admin_geoip_connected' => 'GeoIP: подключён',
     'admin_geoip_missing' => 'GeoIP: база не найдена',
     'admin_analytics_filter_search' => 'Поиск',

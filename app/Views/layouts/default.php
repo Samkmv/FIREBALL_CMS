@@ -636,7 +636,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                                 <ul class="nav flex-column gap-2 pt-sm-3 pb-3 mt-n1 mb-1">
                                     <?php foreach ($footerNavigationLinks as $link): ?>
                                         <li class="d-flex w-100 pt-1">
-                                            <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= htmlSC($link['href']) ?>"><?= htmlSC($link['label']) ?></a>
+                                            <a class="nav-link footer-link animate-underline animate-target d-inline fw-normal p-0" href="<?= htmlSC($link['href']) ?>"><?= htmlSC($link['label']) ?></a>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
@@ -651,11 +651,11 @@ $postCategoryUrl = static function (?string $slug = null): string {
                             <div class="accordion-collapse d-sm-block collapse" id="footerCategoryLinks" aria-labelledby="footerCategoryHeading" data-bs-parent="#footerLinks">
                                 <ul class="nav flex-column gap-2 pt-sm-3 pb-3 mt-n1 mb-1">
                                     <li class="d-flex w-100 pt-1">
-                                        <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= $postCategoryUrl() ?>"><?= print_translation('tpl_menu_all_posts') ?></a>
+                                        <a class="nav-link footer-link animate-underline animate-target d-inline fw-normal p-0" href="<?= $postCategoryUrl() ?>"><?= print_translation('tpl_menu_all_posts') ?></a>
                                     </li>
                                     <?php foreach ($footerCategoryLinks as $category): ?>
                                         <li class="d-flex w-100 pt-1">
-                                            <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= $postCategoryUrl($category['slug']) ?>"><?= htmlSC($category['label']) ?></a>
+                                            <a class="nav-link footer-link animate-underline animate-target d-inline fw-normal p-0" href="<?= $postCategoryUrl($category['slug']) ?>"><?= htmlSC($category['label']) ?></a>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
@@ -672,7 +672,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                                     <ul class="nav flex-column gap-2 pt-sm-3 pb-3 mt-n1 mb-1">
                                         <?php foreach ($legalInformationLinks as $link): ?>
                                             <li class="d-flex w-100 pt-1">
-                                                <a class="nav-link animate-underline animate-target d-inline fw-normal text-truncate p-0" href="<?= htmlSC($link['href']) ?>"><?= htmlSC($link['label']) ?></a>
+                                                <a class="nav-link footer-link animate-underline animate-target d-inline fw-normal p-0" href="<?= htmlSC($link['href']) ?>"><?= htmlSC($link['label']) ?></a>
                                             </li>
                                         <?php endforeach; ?>
                                     </ul>

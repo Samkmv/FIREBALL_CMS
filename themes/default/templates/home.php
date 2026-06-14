@@ -165,7 +165,7 @@ $featuredCount = count($popularCameras);
                                     <div class="swiper-slide w-auto h-auto">
                                         <article class="col" style="width: 306px; max-width: 72vw;">
                                             <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= htmlSC($camera['url']) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                                                <img src="<?= htmlSC($camera['image']) ?>" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($camera['title']) ?>" loading="lazy">
+                                                <img src="<?= htmlSC($camera['image']) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($camera['title']) ?>" loading="lazy">
                                                 <span class="home-online-badge">
                                                     <span class="home-online-dot" aria-hidden="true"></span>
                                                     <?= print_translation('home_index_camera_online') ?>
@@ -336,7 +336,13 @@ $featuredCount = count($popularCameras);
     let heroInitialized = false;
     let heroPlayAttempts = 0;
     let heroGestureFallbackBound = false;
+    let heroRecoveryTimer = null;
+    let heroHealthTimer = null;
+    let heroLastCurrentTime = 0;
+    let heroStalledChecks = 0;
+    let heroMediaRecoveries = 0;
     const maxHeroPlayAttempts = 2;
+    const heroRecoveryDelay = 3000;
     const markHeroVideoReady = () => {
         if (!hero || heroPlaybackStarted) {
             return;
@@ -409,6 +415,49 @@ $featuredCount = count($popularCameras);
             heroPlayPromise = null;
         }
     };
+    const scheduleHeroRecovery = (recreateHls = false) => {
+        if (!heroVideo || document.hidden || reduceMotion || heroRecoveryTimer) {
+            return;
+        }
+
+        heroRecoveryTimer = window.setTimeout(() => {
+            heroRecoveryTimer = null;
+
+            if (document.hidden) {
+                return;
+            }
+
+            if (recreateHls && heroHls) {
+                heroHls.destroy();
+                heroHls = null;
+                heroInitialized = false;
+                heroVideo.removeAttribute('src');
+                heroVideo.load();
+                initializeHeroVideo();
+                return;
+            }
+
+            if (heroHls) {
+                try {
+                    heroHls.startLoad(-1);
+                } catch (error) {
+                    heroHls.destroy();
+                    heroHls = null;
+                    heroInitialized = false;
+                    initializeHeroVideo();
+                    return;
+                }
+            } else if (heroVideo.canPlayType('application/vnd.apple.mpegurl') || heroVideo.canPlayType('application/x-mpegURL')) {
+                heroVideo.src = heroStream;
+                heroVideo.load();
+            } else if (!heroInitialized) {
+                initializeHeroVideo();
+                return;
+            }
+
+            playHeroVideo();
+        }, heroRecoveryDelay);
+    };
     const initializeHeroVideo = () => {
         if (!heroVideo || !heroStream || heroInitialized || reduceMotion) {
             return;
@@ -427,30 +476,40 @@ $featuredCount = count($popularCameras);
                 if (!Hls.isSupported()) {
                     return;
                 }
-                let recoveries = 0;
                 heroHls = new Hls({
                     lowLatencyMode: false,
                     liveSyncDurationCount: 3,
                     liveMaxLatencyDurationCount: 8,
                     maxLiveSyncPlaybackRate: 1,
                     backBufferLength: 30,
+                    manifestLoadingMaxRetry: 15,
+                    manifestLoadingRetryDelay: 1000,
+                    manifestLoadingMaxRetryTimeout: 3000,
+                    levelLoadingMaxRetry: 10,
+                    fragLoadingMaxRetry: 10,
                 });
                 heroHls.on(Hls.Events.MEDIA_ATTACHED, () => {
                     heroHls.loadSource(heroStream);
                 });
                 heroHls.on(Hls.Events.MANIFEST_PARSED, playHeroVideo);
                 heroHls.on(Hls.Events.ERROR, (event, data) => {
-                    if (!data || !data.fatal || recoveries >= 1) {
+                    if (!data || !data.fatal) {
                         return;
                     }
-                    recoveries += 1;
+
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        heroHls.startLoad();
+                        scheduleHeroRecovery(false);
                     } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                        heroHls.recoverMediaError();
+                        heroMediaRecoveries += 1;
+                        if (heroMediaRecoveries <= 2) {
+                            heroHls.recoverMediaError();
+                            scheduleHeroRecovery(false);
+                        } else {
+                            heroMediaRecoveries = 0;
+                            scheduleHeroRecovery(true);
+                        }
                     } else {
-                        heroHls.destroy();
-                        heroHls = null;
+                        scheduleHeroRecovery(true);
                     }
                 });
                 heroHls.attachMedia(heroVideo);
@@ -459,20 +518,70 @@ $featuredCount = count($popularCameras);
     };
     initializeHeroVideo();
     if (heroVideo && !reduceMotion) {
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && heroVideo.paused) {
-                playHeroVideo();
+        heroVideo.addEventListener('playing', () => {
+            if (heroRecoveryTimer) {
+                clearTimeout(heroRecoveryTimer);
+                heroRecoveryTimer = null;
+            }
+            heroStalledChecks = 0;
+            heroMediaRecoveries = 0;
+            heroLastCurrentTime = heroVideo.currentTime;
+            if (hero) {
+                hero.classList.remove('home-hero--video-paused');
             }
         });
-        window.addEventListener('pageshow', (event) => {
-            if (event.persisted && heroVideo.paused) {
+        ['stalled', 'waiting', 'ended', 'error'].forEach((eventName) => {
+            heroVideo.addEventListener(eventName, () => {
+                scheduleHeroRecovery(eventName === 'error');
+            });
+        });
+        heroVideo.addEventListener('pause', () => {
+            if (!document.hidden && !heroVideo.ended) {
+                scheduleHeroRecovery(false);
+            }
+        });
+
+        heroHealthTimer = window.setInterval(() => {
+            if (document.hidden || !heroInitialized) {
+                return;
+            }
+
+            if (heroVideo.paused || heroVideo.ended) {
+                scheduleHeroRecovery(false);
+                return;
+            }
+
+            if (Math.abs(heroVideo.currentTime - heroLastCurrentTime) < 0.05) {
+                heroStalledChecks += 1;
+                if (heroStalledChecks >= 2) {
+                    heroStalledChecks = 0;
+                    scheduleHeroRecovery(false);
+                }
+            } else {
+                heroStalledChecks = 0;
+                heroLastCurrentTime = heroVideo.currentTime;
+            }
+        }, 4000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
                 if (heroHls) {
-                    heroHls.startLoad();
+                    heroHls.startLoad(-1);
                 }
                 playHeroVideo();
             }
         });
+        window.addEventListener('pageshow', (event) => {
+            if (heroHls) {
+                heroHls.startLoad(-1);
+            }
+            playHeroVideo();
+        });
         window.addEventListener('pagehide', () => {
+            if (heroRecoveryTimer) {
+                clearTimeout(heroRecoveryTimer);
+                heroRecoveryTimer = null;
+            }
             if (heroHls) {
                 heroHls.stopLoad();
             }

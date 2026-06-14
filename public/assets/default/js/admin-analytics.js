@@ -97,13 +97,13 @@
 
         target.innerHTML = '';
 
-        if (window.ApexCharts) {
-            charts[key] = renderApex(target, config);
+        if (window.Chart) {
+            charts[key] = renderChartJs(target, config);
             return;
         }
 
-        if (window.Chart) {
-            charts[key] = renderChartJs(target, config);
+        if (window.ApexCharts) {
+            charts[key] = renderApex(target, config);
             return;
         }
 
@@ -173,48 +173,101 @@
         const theme = palette();
         const canvas = document.createElement('canvas');
         target.appendChild(canvas);
+        const context = canvas.getContext('2d');
+        const isLine = config.type === 'line';
+        let lineFill = colorWithAlpha(theme.line, 0.12);
+
+        if (isLine && context) {
+            const gradient = context.createLinearGradient(0, 0, 0, Math.max(target.clientHeight || 320, 240));
+            gradient.addColorStop(0, colorWithAlpha(theme.line, 0.34));
+            gradient.addColorStop(0.7, colorWithAlpha(theme.line, 0.08));
+            gradient.addColorStop(1, colorWithAlpha(theme.line, 0));
+            lineFill = gradient;
+        }
 
         const chart = new window.Chart(canvas, {
-            type: config.type === 'line' ? 'line' : 'doughnut',
+            type: isLine ? 'line' : 'doughnut',
             data: {
                 labels: config.labels,
                 datasets: [{
                     label: config.label,
                     data: config.values,
-                    borderColor: theme.line,
-                    backgroundColor: config.type === 'line' ? colorWithAlpha(theme.line, 0.14) : theme.series,
-                    pointBackgroundColor: theme.line,
-                    pointBorderColor: theme.tooltipBg,
-                    tension: 0.35,
-                    fill: config.type === 'line'
+                    borderColor: isLine ? theme.line : theme.series,
+                    backgroundColor: isLine ? lineFill : theme.series,
+                    borderWidth: isLine ? 3 : 2,
+                    pointRadius: isLine ? 3 : 0,
+                    pointHoverRadius: isLine ? 6 : 0,
+                    pointBackgroundColor: theme.tooltipBg,
+                    pointBorderColor: theme.line,
+                    pointBorderWidth: 2,
+                    pointHoverBackgroundColor: theme.line,
+                    pointHoverBorderColor: theme.tooltipText,
+                    tension: 0.38,
+                    fill: isLine
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                layout: {
+                    padding: { top: 4, right: 8, bottom: 0, left: 4 }
+                },
                 plugins: {
                     legend: {
-                        position: config.type === 'line' ? 'top' : 'bottom',
-                        labels: { color: theme.text }
+                        display: !isLine,
+                        position: 'bottom',
+                        labels: {
+                            color: theme.text,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 18
+                        }
                     },
                     tooltip: {
                         backgroundColor: theme.tooltipBg,
                         titleColor: theme.tooltipText,
                         bodyColor: theme.tooltipText,
                         borderColor: theme.grid,
-                        borderWidth: 1
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: !isLine,
+                        cornerRadius: 10
                     }
                 },
-                scales: config.type === 'line'
+                scales: isLine
                     ? {
                         x: {
-                            grid: { color: theme.grid },
-                            ticks: { color: theme.text }
+                            border: { display: false },
+                            grid: {
+                                color: colorWithAlpha(theme.text, 0.08),
+                                drawTicks: false
+                            },
+                            ticks: {
+                                color: theme.text,
+                                padding: 10,
+                                maxRotation: 0,
+                                autoSkip: true,
+                                callback: function (value) {
+                                    return formatChartDate(this.getLabelForValue(value));
+                                }
+                            }
                         },
                         y: {
                             beginAtZero: true,
-                            grid: { color: theme.grid },
-                            ticks: { color: theme.text, precision: 0 }
+                            border: { display: false },
+                            grid: {
+                                color: colorWithAlpha(theme.text, 0.1),
+                                drawTicks: false
+                            },
+                            ticks: {
+                                color: theme.text,
+                                padding: 10,
+                                precision: 0
+                            }
                         }
                     }
                     : {}
@@ -222,6 +275,11 @@
         });
 
         return { destroy: () => chart.destroy() };
+    }
+
+    function formatChartDate(value) {
+        const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return match ? `${match[3]}.${match[2]}` : value;
     }
 
     function colorWithAlpha(color, alpha) {

@@ -3044,3 +3044,10 @@ body.is-site-fullscreen .plyr * {
         transform: rotate(360deg);
     }
 }
+.footer .footer-link {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: auto;
+}

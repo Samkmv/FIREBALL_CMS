@@ -2603,6 +2603,14 @@ body.is-site-fullscreen .plyr * {
     box-shadow: 0 0 0 .35rem rgba(52, 211, 153, .16);
 }
 
+.footer .footer-link {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: auto;
+}
+
 .home-live-dot::after {
     content: "";
     position: absolute;
@@ -3224,11 +3232,12 @@ body.is-site-fullscreen .plyr * {
 
     .home-hero__title {
         max-width: 100%;
-        font-size: clamp(2.35rem, 11.5vw, 3.4rem);
-        line-height: .98;
-        letter-spacing: -.045em;
-        overflow-wrap: anywhere;
+        font-size: clamp(1.9rem, 8.6vw, 2.75rem);
+        line-height: 1.02;
+        letter-spacing: -.035em;
+        overflow-wrap: normal;
         word-break: normal;
+        hyphens: manual;
     }
 
     .home-featured-toolbar {

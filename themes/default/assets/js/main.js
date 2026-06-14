@@ -18,6 +18,30 @@ $(function(){
     let unreadBadgesReady = false;
     let lastUnreadTotal = 0;
     let notificationsReady = false;
+    const applyImageFallback = (image) => {
+        const fallbackSource = image?.getAttribute?.('data-image-fallback');
+        if (!fallbackSource || image.dataset.imageFallbackApplied === 'true') {
+            return;
+        }
+
+        image.dataset.imageFallbackApplied = 'true';
+        image.removeAttribute('srcset');
+        image.src = fallbackSource;
+    };
+
+    document.addEventListener('error', (event) => {
+        const image = event.target;
+        if (image instanceof HTMLImageElement && image.hasAttribute('data-image-fallback')) {
+            applyImageFallback(image);
+        }
+    }, true);
+
+    document.querySelectorAll('img[data-image-fallback]').forEach((image) => {
+        if (image.complete && image.naturalWidth === 0) {
+            applyImageFallback(image);
+        }
+    });
+
     const syncOffcanvasState = () => {
         if (document.body) {
             document.body.classList.toggle('has-open-offcanvas', document.querySelector('.offcanvas.show, .offcanvas.showing') !== null);

@@ -55,6 +55,7 @@ final class AnalyticsController extends BaseController
 
     public function refresh(): void
     {
+        $this->analytics->refreshGeoData();
         $this->analytics->clearDashboardCache();
         session()->setFlash('success', return_translation('admin_analytics_refresh_success'));
         response()->redirect(base_href('/admin/analytics'));

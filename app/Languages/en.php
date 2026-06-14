@@ -151,7 +151,7 @@ return [
     'admin_analytics_full_subtitle' => 'Full visit, page, device and traffic source statistics.',
     'admin_analytics_back_to_dashboard' => 'Back to overview',
     'admin_analytics_refresh_button' => 'Refresh statistics',
-    'admin_analytics_refresh_success' => 'Statistics cache refreshed.',
+    'admin_analytics_refresh_success' => 'Statistics refreshed and countries recalculated for saved visits.',
     'admin_geoip_connected' => 'GeoIP: connected',
     'admin_geoip_missing' => 'GeoIP: database not found',
     'admin_analytics_filter_search' => 'Search',

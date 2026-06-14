@@ -280,6 +280,42 @@ final class AnalyticsRepository
         ];
     }
 
+    public function visitsWithoutGeo(int $limit = 500): array
+    {
+        $this->ensureSchema();
+        $limit = max(1, min(2000, $limit));
+
+        return db()->query(
+            "SELECT id, ip
+             FROM {$this->table}
+             WHERE country IS NULL
+                OR country = ''
+                OR country IN ('Unknown', 'Неизвестно')
+             ORDER BY id DESC
+             LIMIT {$limit}"
+        )->get() ?: [];
+    }
+
+    public function updateVisitGeo(int $id, array $geo): void
+    {
+        if ($id <= 0) {
+            return;
+        }
+
+        $this->ensureSchema();
+        db()->query(
+            "UPDATE {$this->table}
+             SET country = :country, country_code = :country_code, city = :city
+             WHERE id = :id",
+            [
+                'country' => $this->nullableString($geo['country'] ?? null),
+                'country_code' => $this->nullableString($geo['country_code'] ?? null),
+                'city' => $this->nullableString($geo['city'] ?? null),
+                'id' => $id,
+            ]
+        );
+    }
+
     public function resetAll(): void
     {
         $this->ensureSchema();

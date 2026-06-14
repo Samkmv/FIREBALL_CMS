@@ -174,6 +174,49 @@ final class AnalyticsService
         cache()->remove('analytics:dashboard');
     }
 
+    public function refreshGeoData(int $limit = 1000): int
+    {
+        $databasePath = $this->geoIpDatabasePath();
+        if ($databasePath === null || !class_exists('\\GeoIp2\\Database\\Reader')) {
+            return 0;
+        }
+
+        $updated = 0;
+        $reader = new \GeoIp2\Database\Reader($databasePath);
+
+        try {
+            foreach ($this->repository->visitsWithoutGeo($limit) as $visit) {
+                $id = (int)($visit['id'] ?? 0);
+                $ip = $this->normalizeIp((string)($visit['ip'] ?? ''));
+                if ($id <= 0 || $ip === '' || $this->isPrivateIp($ip)) {
+                    continue;
+                }
+
+                try {
+                    $geo = $this->geoFromReader($reader, $ip);
+                    if (empty($geo['country_code'])) {
+                        continue;
+                    }
+
+                    $this->repository->updateVisitGeo($id, $geo);
+                    $updated++;
+                } catch (\GeoIp2\Exception\AddressNotFoundException) {
+                    continue;
+                } catch (\Throwable $exception) {
+                    log_error_details('Analytics GeoIP refresh failed', ['Visit ID' => $id, 'IP' => $ip], $exception);
+                }
+            }
+        } finally {
+            $reader->close();
+        }
+
+        if ($updated > 0) {
+            $this->clearDashboardCache();
+        }
+
+        return $updated;
+    }
+
     public function geoIpStatus(): array
     {
         $databasePath = $this->geoIpDatabasePath();
@@ -222,7 +265,30 @@ final class AnalyticsService
 
     private function clientIp(): string
     {
-        return client_ip() ?: '0.0.0.0';
+        $ip = $this->normalizeIp(client_ip());
+        if ($ip !== '' && !$this->isPrivateIp($ip)) {
+            return $ip;
+        }
+
+        $remoteAddress = $this->normalizeIp((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+        if ($remoteAddress === '' || !$this->isPrivateIp($remoteAddress)) {
+            return $ip !== '' ? $ip : '0.0.0.0';
+        }
+
+        foreach ([
+            $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
+            $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
+            $_SERVER['HTTP_X_REAL_IP'] ?? '',
+        ] as $header) {
+            foreach (explode(',', (string)$header) as $candidate) {
+                $candidate = $this->normalizeIp($candidate);
+                if ($candidate !== '' && !$this->isPrivateIp($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return $ip !== '' ? $ip : '0.0.0.0';
     }
 
     private function resolveGeo(string $ip): array
@@ -240,13 +306,11 @@ final class AnalyticsService
         if ($databasePath !== null && class_exists('\\GeoIp2\\Database\\Reader')) {
             try {
                 $reader = new \GeoIp2\Database\Reader($databasePath);
-                $record = $reader->city($ip);
-
-                return [
-                    'country' => $record->country->names['ru'] ?? $record->country->name ?? 'Unknown',
-                    'country_code' => $record->country->isoCode ?? null,
-                    'city' => $record->city->names['ru'] ?? $record->city->name ?? null,
-                ];
+                try {
+                    return $this->geoFromReader($reader, $ip);
+                } finally {
+                    $reader->close();
+                }
             } catch (\Throwable $exception) {
                 log_error_details('GeoIP lookup failed', ['Database' => $databasePath, 'IP' => $ip], $exception);
             }
@@ -268,6 +332,17 @@ final class AnalyticsService
         }
 
         return null;
+    }
+
+    private function geoFromReader(\GeoIp2\Database\Reader $reader, string $ip): array
+    {
+        $record = $reader->city($ip);
+
+        return [
+            'country' => $record->country->names['ru'] ?? $record->country->name ?? 'Unknown',
+            'country_code' => $record->country->isoCode ?? null,
+            'city' => $record->city->names['ru'] ?? $record->city->name ?? null,
+        ];
     }
 
     private function unknownGeo(): array
@@ -490,7 +565,15 @@ final class AnalyticsService
     private function normalizeVisitRows(array $rows): array
     {
         foreach ($rows as &$row) {
-            $row['country'] = $this->displayCountryName((string)($row['country'] ?? ''));
+            $country = trim((string)($row['country'] ?? ''));
+            $countryCode = strtoupper(trim((string)($row['country_code'] ?? '')));
+            if (($country === '' || in_array(mb_strtolower($country), ['unknown', 'неизвестно'], true))
+                && preg_match('/^[A-Z]{2}$/', $countryCode)
+            ) {
+                $country = $countryCode;
+            }
+
+            $row['country'] = $this->displayCountryName($country);
         }
         unset($row);
 
