@@ -165,7 +165,7 @@ $featuredCount = count($popularCameras);
                                     <div class="swiper-slide w-auto h-auto">
                                         <article class="col" style="width: 306px; max-width: 72vw;">
                                             <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= htmlSC($camera['url']) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                                                <img src="<?= htmlSC($camera['image']) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($camera['title']) ?>" loading="lazy">
+                                                <img src="<?= htmlSC($camera['image']) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($camera['title']) ?>" loading="lazy">
                                                 <span class="home-online-badge">
                                                     <span class="home-online-dot" aria-hidden="true"></span>
                                                     <?= print_translation('home_index_camera_online') ?>

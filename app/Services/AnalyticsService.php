@@ -10,6 +10,7 @@ final class AnalyticsService
     private int $cacheTtl = 120;
     private const GEOIP_DOWNLOAD_MAX_BYTES = 33554432;
     private const GEOIP_DATABASE_MAX_BYTES = 134217728;
+    private string $geoIpInstallError = '';
 
     public function __construct(?AnalyticsRepository $repository = null)
     {
@@ -219,12 +220,20 @@ final class AnalyticsService
 
     public function installGeoIpDatabase(): bool
     {
+        $this->geoIpInstallError = '';
+
         if ($this->geoIpDatabasePath() !== null && class_exists('\\MaxMind\\Db\\Reader')) {
             return true;
         }
 
-        $directory = ROOT . '/storage/geoip';
-        if ((!is_dir($directory) && !@mkdir($directory, 0755, true)) || !is_writable($directory)) {
+        if (!class_exists('\\MaxMind\\Db\\Reader')) {
+            $this->geoIpInstallError = 'MMDB reader is unavailable. Run composer install.';
+            return false;
+        }
+
+        $directory = $this->geoIpWritableDirectory();
+        if ($directory === null) {
+            $this->geoIpInstallError = 'No writable GeoIP directory: storage/geoip, var/geoip or tmp/cache/geoip.';
             return false;
         }
 
@@ -232,6 +241,7 @@ final class AnalyticsService
         $token = bin2hex(random_bytes(6));
         $archivePath = $directory . '/geoip-' . $token . '.mmdb.gz';
         $databasePath = $directory . '/geoip-' . $token . '.mmdb';
+        $errors = [];
 
         try {
             foreach ($this->geoIpDownloadUrls() as $url) {
@@ -259,6 +269,7 @@ final class AnalyticsService
                 } catch (\Throwable $exception) {
                     @unlink($archivePath);
                     @unlink($databasePath);
+                    $errors[] = basename($url) . ': ' . $exception->getMessage();
                     log_error_details('GeoIP database download failed', ['URL' => $url], $exception);
                 }
             }
@@ -267,7 +278,13 @@ final class AnalyticsService
             @unlink($databasePath);
         }
 
+        $this->geoIpInstallError = implode(' | ', array_slice(array_unique($errors), 0, 3));
         return false;
+    }
+
+    public function geoIpInstallError(): string
+    {
+        return $this->geoIpInstallError;
     }
 
     public function geoIpStatus(): array
@@ -377,10 +394,29 @@ final class AnalyticsService
         foreach ([
             ROOT . '/storage/geoip/GeoLite2-City.mmdb',
             ROOT . '/var/geoip/GeoLite2-City.mmdb',
+            CACHE . '/geoip/GeoLite2-City.mmdb',
             CONFIG . '/GeoLite2-City.mmdb',
         ] as $path) {
             if (is_file($path) && is_readable($path)) {
                 return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private function geoIpWritableDirectory(): ?string
+    {
+        foreach ([
+            ROOT . '/storage/geoip',
+            ROOT . '/var/geoip',
+            CACHE . '/geoip',
+        ] as $directory) {
+            if (!is_dir($directory) && !@mkdir($directory, 0755, true)) {
+                continue;
+            }
+            if (is_writable($directory)) {
+                return $directory;
             }
         }
 
@@ -419,60 +455,178 @@ final class AnalyticsService
 
     private function downloadGeoIpArchive(string $url, string $targetPath): void
     {
+        $errors = [];
+
+        if (function_exists('curl_init')) {
+            try {
+                $this->downloadGeoIpWithCurl($url, $targetPath);
+                $this->validateGeoIpArchiveSize($targetPath);
+                return;
+            } catch (\Throwable $exception) {
+                $errors[] = 'PHP cURL: ' . $exception->getMessage();
+                @unlink($targetPath);
+            }
+        }
+
+        if (filter_var((string)ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOLEAN)) {
+            try {
+                $this->downloadGeoIpWithStream($url, $targetPath);
+                $this->validateGeoIpArchiveSize($targetPath);
+                return;
+            } catch (\Throwable $exception) {
+                $errors[] = 'PHP stream: ' . $exception->getMessage();
+                @unlink($targetPath);
+            }
+        }
+
+        if ($this->canRunSystemProcess()) {
+            try {
+                $this->downloadGeoIpWithSystemCurl($url, $targetPath);
+                $this->validateGeoIpArchiveSize($targetPath);
+                return;
+            } catch (\Throwable $exception) {
+                $errors[] = 'system curl: ' . $exception->getMessage();
+                @unlink($targetPath);
+            }
+        }
+
+        throw new \RuntimeException($errors !== []
+            ? implode('; ', $errors)
+            : 'No HTTPS download transport is available.');
+    }
+
+    private function downloadGeoIpWithCurl(string $url, string $targetPath): void
+    {
         $handle = @fopen($targetPath, 'wb');
         if (!is_resource($handle)) {
-            throw new \RuntimeException('Unable to create GeoIP download file.');
+            throw new \RuntimeException('Unable to create download file.');
+        }
+
+        $curl = null;
+        try {
+            $curl = curl_init($url);
+            if ($curl === false) {
+                throw new \RuntimeException('Unable to initialize cURL.');
+            }
+            if (!curl_setopt_array($curl, [
+                CURLOPT_FILE => $handle,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS => 3,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => 90,
+                CURLOPT_FAILONERROR => true,
+                CURLOPT_USERAGENT => 'FIREBALL-CMS GeoIP Updater',
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+            ])) {
+                throw new \RuntimeException('Unable to configure cURL.');
+            }
+
+            $success = curl_exec($curl);
+            $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+            $error = curl_error($curl);
+            if ($success !== true || $status < 200 || $status >= 300) {
+                throw new \RuntimeException($error !== '' ? $error : 'HTTP ' . $status);
+            }
+        } finally {
+            if ($curl instanceof \CurlHandle) {
+                curl_close($curl);
+            }
+            fclose($handle);
+        }
+    }
+
+    private function downloadGeoIpWithStream(string $url, string $targetPath): void
+    {
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 90,
+                'follow_location' => 1,
+                'max_redirects' => 3,
+                'user_agent' => 'FIREBALL-CMS GeoIP Updater',
+            ],
+        ]);
+        $source = @fopen($url, 'rb', false, $context);
+        $target = @fopen($targetPath, 'wb');
+        if (!is_resource($source) || !is_resource($target)) {
+            if (is_resource($source)) {
+                fclose($source);
+            }
+            if (is_resource($target)) {
+                fclose($target);
+            }
+            throw new \RuntimeException('Unable to open HTTPS stream.');
         }
 
         try {
-            if (function_exists('curl_init')) {
-                $curl = curl_init($url);
-                curl_setopt_array($curl, [
-                    CURLOPT_FILE => $handle,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_MAXREDIRS => 3,
-                    CURLOPT_CONNECTTIMEOUT => 10,
-                    CURLOPT_TIMEOUT => 90,
-                    CURLOPT_FAILONERROR => true,
-                    CURLOPT_USERAGENT => 'FIREBALL-CMS GeoIP Updater',
-                    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-                ]);
-                $success = curl_exec($curl);
-                $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-                $error = curl_error($curl);
-                curl_close($curl);
-
-                if ($success !== true || $status < 200 || $status >= 300) {
-                    throw new \RuntimeException('GeoIP download failed: ' . ($error !== '' ? $error : 'HTTP ' . $status));
-                }
-            } else {
-                $context = stream_context_create([
-                    'http' => [
-                        'timeout' => 90,
-                        'follow_location' => 1,
-                        'max_redirects' => 3,
-                        'user_agent' => 'FIREBALL-CMS GeoIP Updater',
-                    ],
-                ]);
-                $source = @fopen($url, 'rb', false, $context);
-                if (!is_resource($source)) {
-                    throw new \RuntimeException('GeoIP download failed.');
-                }
-                stream_copy_to_stream($source, $handle, self::GEOIP_DOWNLOAD_MAX_BYTES + 1);
-                fclose($source);
+            $copied = stream_copy_to_stream($source, $target, self::GEOIP_DOWNLOAD_MAX_BYTES + 1);
+            if ($copied === false) {
+                throw new \RuntimeException('Unable to copy response.');
             }
         } finally {
-            fclose($handle);
+            fclose($source);
+            fclose($target);
+        }
+    }
+
+    private function downloadGeoIpWithSystemCurl(string $url, string $targetPath): void
+    {
+        $process = proc_open([
+            'curl',
+            '--fail',
+            '--location',
+            '--silent',
+            '--show-error',
+            '--connect-timeout',
+            '10',
+            '--max-time',
+            '90',
+            '--output',
+            $targetPath,
+            $url,
+        ], [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ], $pipes);
+        if (!is_resource($process)) {
+            throw new \RuntimeException('Unable to start curl.');
         }
 
+        $stdout = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+        if ($exitCode !== 0) {
+            throw new \RuntimeException(trim((string)$stderr) ?: trim((string)$stdout) ?: 'curl exit ' . $exitCode);
+        }
+    }
+
+    private function validateGeoIpArchiveSize(string $targetPath): void
+    {
+        clearstatcache(true, $targetPath);
         $size = @filesize($targetPath);
         if (!is_int($size) || $size <= 0 || $size > self::GEOIP_DOWNLOAD_MAX_BYTES) {
             throw new \RuntimeException('GeoIP archive has an invalid size.');
         }
     }
 
+    private function canRunSystemProcess(): bool
+    {
+        if (!function_exists('proc_open')) {
+            return false;
+        }
+
+        $disabled = array_filter(array_map('trim', explode(',', (string)ini_get('disable_functions'))));
+        return !in_array('proc_open', $disabled, true);
+    }
+
     private function extractGeoIpArchive(string $archivePath, string $targetPath): void
     {
+        if (!function_exists('gzopen')) {
+            $this->extractGeoIpWithSystemGzip($archivePath, $targetPath);
+            return;
+        }
+
         $source = @gzopen($archivePath, 'rb');
         $target = @fopen($targetPath, 'wb');
         if (!is_resource($source) || !is_resource($target)) {
@@ -500,6 +654,42 @@ final class AnalyticsService
         } finally {
             gzclose($source);
             fclose($target);
+        }
+    }
+
+    private function extractGeoIpWithSystemGzip(string $archivePath, string $targetPath): void
+    {
+        if (!$this->canRunSystemProcess()) {
+            throw new \RuntimeException('Neither PHP zlib nor system gzip is available.');
+        }
+
+        $target = @fopen($targetPath, 'wb');
+        if (!is_resource($target)) {
+            throw new \RuntimeException('Unable to create GeoIP database file.');
+        }
+
+        $process = proc_open(['gzip', '--decompress', '--stdout', $archivePath], [
+            1 => $target,
+            2 => ['pipe', 'w'],
+        ], $pipes);
+        if (!is_resource($process)) {
+            fclose($target);
+            throw new \RuntimeException('Unable to start gzip.');
+        }
+
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+        fclose($target);
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException(trim((string)$stderr) ?: 'gzip exit ' . $exitCode);
+        }
+
+        clearstatcache(true, $targetPath);
+        $size = @filesize($targetPath);
+        if (!is_int($size) || $size <= 0 || $size > self::GEOIP_DATABASE_MAX_BYTES) {
+            throw new \RuntimeException('GeoIP database has an invalid size.');
         }
     }
 
