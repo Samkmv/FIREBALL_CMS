@@ -2265,6 +2265,10 @@ class UpdateCenter
             return;
         }
 
+        if ($this->composerVendorMatchesLock(ROOT)) {
+            return;
+        }
+
         $composerBinary = $this->detectComposerBinary();
         if ($composerBinary === '') {
             throw new RuntimeException(return_translation('admin_update_composer_required'));
@@ -2310,6 +2314,10 @@ class UpdateCenter
             return;
         }
 
+        if ($this->composerVendorMatchesLock($packageRoot)) {
+            return;
+        }
+
         if (!$this->canRunProcesses() || $this->detectComposerBinary() === '') {
             throw new RuntimeException(return_translation('admin_update_composer_required'));
         }
@@ -2324,6 +2332,10 @@ class UpdateCenter
         if (($before['composer_json'] ?? '') === ($after['composer_json'] ?? '')
             && ($before['composer_lock'] ?? '') === ($after['composer_lock'] ?? '')
         ) {
+            return;
+        }
+
+        if ($this->composerVendorMatchesLock(ROOT)) {
             return;
         }
 
@@ -2347,6 +2359,50 @@ class UpdateCenter
             );
         }
 
+    }
+
+    /**
+     * Проверяет, что production-зависимости из lock-файла уже включены в vendor.
+     */
+    protected function composerVendorMatchesLock(string $root): bool
+    {
+        $lockPath = rtrim($root, '/') . '/composer.lock';
+        $installedPath = rtrim($root, '/') . '/vendor/composer/installed.json';
+        $autoloadPath = rtrim($root, '/') . '/vendor/autoload.php';
+
+        if (!is_file($lockPath) || !is_file($installedPath) || !is_file($autoloadPath)) {
+            return false;
+        }
+
+        $lock = json_decode((string)file_get_contents($lockPath), true);
+        $installed = json_decode((string)file_get_contents($installedPath), true);
+        if (!is_array($lock) || !is_array($installed)) {
+            return false;
+        }
+
+        $installedPackages = $installed['packages'] ?? $installed;
+        if (!is_array($installedPackages)) {
+            return false;
+        }
+
+        $installedVersions = [];
+        foreach ($installedPackages as $package) {
+            $name = trim((string)($package['name'] ?? ''));
+            $version = trim((string)($package['version'] ?? ''));
+            if ($name !== '' && $version !== '') {
+                $installedVersions[$name] = $version;
+            }
+        }
+
+        foreach ((array)($lock['packages'] ?? []) as $package) {
+            $name = trim((string)($package['name'] ?? ''));
+            $version = trim((string)($package['version'] ?? ''));
+            if ($name === '' || $version === '' || ($installedVersions[$name] ?? null) !== $version) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

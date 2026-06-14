@@ -14,7 +14,20 @@ final class AnalyticsService
 
     public function __construct(?AnalyticsRepository $repository = null)
     {
+        $this->loadGeoIpReader();
         $this->repository = $repository ?: new AnalyticsRepository();
+    }
+
+    private function loadGeoIpReader(): void
+    {
+        if (class_exists('\\MaxMind\\Db\\Reader')) {
+            return;
+        }
+
+        $autoloadPath = ROOT . '/vendor/maxmind-db/reader/autoload.php';
+        if (is_file($autoloadPath)) {
+            require_once $autoloadPath;
+        }
     }
 
     public function trackPublicRequest(): void
