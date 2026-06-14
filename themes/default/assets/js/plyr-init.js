@@ -4,8 +4,9 @@
     const hlsAssetBase = activeThemeAssetBase + '/vendor/hls.js';
     const plyrBlankVideoUrl = plyrAssetBase + '/blank.mp4';
     const hlsScriptUrl = hlsAssetBase + '/hls.min.js';
-    const hlsWarmupDurationMs = 15000;
-    const hlsRetryDelayMs = 1200;
+    const hlsStartupMaxAttempts = 15;
+    const hlsRetryDelayMs = 1000;
+    const hlsReconnectDelayMs = 5000;
     const hlsPlayRetryDurationMs = 10000;
     const hlsPlayRetryDelayMs = 1000;
     const hlsHealthCheckIntervalMs = 2000;
@@ -15,81 +16,83 @@
     const hlsStartTimeEpsilon = 0.08;
     const hlsStatusHideDelayMs = 1400;
     const hlsPosterRefreshIntervalMs = 5000;
-    const canViewVideoStatus = window.canViewVideoStatus === true;
+    const canViewVideoStatus = window.canViewVideoDiagnostics === true || window.canViewVideoStatus === true;
     let hlsScriptPromise = null;
     const hlsLocale = ((document.documentElement.getAttribute('lang') || 'en').toLowerCase().startsWith('ru')) ? 'ru' : 'en';
     const hlsMessages = {
         ru: {
-            holding_session: 'Сохраняем сессию воспроизведения, пока поток просыпается...',
-            preparing_native: 'Подготавливаем native HLS воспроизведение...',
-            stream_playing: 'Поток воспроизводится.',
-            checking_attempt: 'Проверяем доступность потока... попытка {attempt}',
-            manifest_available: 'Манифест потока доступен. Инициализируем плеер...',
-            stream_responded: 'Поток ответил. Инициализируем плеер...',
-            stream_sleeping: 'Поток еще спит. Ждем перед повторной попыткой...',
-            playback_pending: 'Поток готов, но воспроизведение еще не началось. {state}',
-            native_metadata: 'Метаданные native HLS загружены. Повторяем запуск...',
-            native_first_data: 'Native HLS получил первые данные видео. Повторяем запуск...',
-            native_ready: 'Native HLS готов к воспроизведению.',
-            native_error: 'Ошибка native HLS. {state}',
-            native_stalled: 'Native HLS остановился. Перезагружаем поток...',
-            native_fallback: 'Native HLS не стартовал. Переключаемся на HLS.js...',
-            stream_error_load: 'Ошибка потока: не удалось загрузить HLS источник{details}',
-            stream_restarting: 'Поток завис в состоянии загрузки. Пересоздаем HLS... {state}',
-            media_recover: 'Обнаружена ошибка медиа. Пытаемся восстановить...',
-            stream_error_play: 'Ошибка потока: не удалось воспроизвести HLS источник{details}',
-            loading_manifest: 'Загружаем манифест потока...',
-            media_attached: 'HLS подключен к видеоэлементу. Переключаемся с прогрева на live поток...',
-            manifest_loaded: 'Манифест загружен. Запускаем воспроизведение...',
-            loading_segments: 'Загружаем сегменты потока...',
-            stream_buffered: 'Поток буферизован. Ожидаем воспроизведение...',
-            primed_waiting: 'Сессия воспроизведения подготовлена. Ждем live поток...',
-            metadata_loaded: 'Метаданные потока загружены. Повторяем запуск...',
-            first_video_data: 'Получены первые данные видео. Повторяем запуск...',
-            stream_ready: 'Поток готов к воспроизведению.',
-            attaching_hls: 'Подключаем HLS к видеоэлементу...',
-            hls_unavailable: 'Ошибка потока: HLS воспроизведение недоступно',
-            first_play: 'Первое нажатие Play получено. Будим поток...',
-            native_available: 'Native HLS доступен. Запускаем воспроизведение...',
-            source_timeout: 'Источник потока пока не отвечает. Камера или HLS-сервер вернул недоступный манифест.',
-            poster_fallback: 'Live HLS пока недоступен. Показываем обновляемый кадр камеры.',
-            stream_initialized: 'Поток инициализирован. Запрашиваем воспроизведение...'
+            holding_session: 'Подключение...',
+            preparing_native: 'Подключение...',
+            stream_playing: 'Загрузка видео...',
+            checking_attempt: 'Подключение...',
+            manifest_available: 'Загрузка видео...',
+            stream_responded: 'Загрузка видео...',
+            stream_sleeping: 'Подключение...',
+            playback_pending: 'Загрузка видео...',
+            native_metadata: 'Загрузка видео...',
+            native_first_data: 'Загрузка видео...',
+            native_ready: 'Загрузка видео...',
+            native_error: 'Не удалось воспроизвести видео',
+            native_stalled: 'Повторное подключение...',
+            native_fallback: 'Повторное подключение...',
+            stream_error_load: 'Повторное подключение...',
+            stream_restarting: 'Повторное подключение...',
+            media_recover: 'Повторное подключение...',
+            stream_error_play: 'Не удалось воспроизвести видео',
+            loading_manifest: 'Загрузка видео...',
+            media_attached: 'Загрузка видео...',
+            manifest_loaded: 'Загрузка видео...',
+            loading_segments: 'Загрузка видео...',
+            stream_buffered: 'Загрузка видео...',
+            primed_waiting: 'Загрузка видео...',
+            metadata_loaded: 'Загрузка видео...',
+            first_video_data: 'Загрузка видео...',
+            stream_ready: 'Загрузка видео...',
+            attaching_hls: 'Подключение...',
+            hls_unavailable: 'Не удалось воспроизвести видео',
+            first_play: 'Подключение...',
+            native_available: 'Загрузка видео...',
+            source_timeout: 'Источник временно недоступен',
+            retry_manual: 'Нажмите, чтобы попробовать снова',
+            poster_fallback: 'Источник временно недоступен',
+            stream_initialized: 'Загрузка видео...'
         },
         en: {
-            holding_session: 'Holding playback session while stream wakes...',
-            preparing_native: 'Preparing native HLS playback...',
-            stream_playing: 'Stream is playing.',
-            checking_attempt: 'Checking stream availability... attempt {attempt}',
-            manifest_available: 'Stream manifest is available. Initializing player...',
-            stream_responded: 'Stream responded. Initializing player...',
-            stream_sleeping: 'Stream is still sleeping. Waiting before retry...',
-            playback_pending: 'Stream is ready but playback is still pending. {state}',
-            native_metadata: 'Native HLS metadata loaded. Retrying playback...',
-            native_first_data: 'Native HLS received first video data. Retrying playback...',
-            native_ready: 'Native HLS is ready to play.',
-            native_error: 'Native HLS error. {state}',
-            native_stalled: 'Native HLS stalled. Reloading stream...',
-            native_fallback: 'Native HLS did not start. Switching to HLS.js...',
-            stream_error_load: 'Stream error: failed to load HLS source{details}',
-            stream_restarting: 'Stream is stuck while loading. Recreating HLS... {state}',
-            media_recover: 'Media error detected. Trying to recover...',
-            stream_error_play: 'Stream error: failed to play HLS source{details}',
-            loading_manifest: 'Loading stream manifest...',
-            media_attached: 'HLS media attached. Switching from wake-up playback to live stream...',
-            manifest_loaded: 'Manifest loaded. Starting playback...',
-            loading_segments: 'Loading stream segments...',
-            stream_buffered: 'Stream buffered. Waiting for playback...',
-            primed_waiting: 'Playback session primed. Waiting for live stream...',
-            metadata_loaded: 'Stream metadata loaded. Retrying playback...',
-            first_video_data: 'First video data received. Retrying playback...',
-            stream_ready: 'Stream is ready to play.',
-            attaching_hls: 'Attaching HLS to video element...',
-            hls_unavailable: 'Stream error: HLS playback is unavailable',
-            first_play: 'First play captured. Waking stream...',
-            native_available: 'Native HLS is available. Starting playback...',
-            source_timeout: 'Stream source is not responding yet. The camera or HLS server returned an unavailable manifest.',
-            poster_fallback: 'Live HLS is unavailable. Showing refreshed camera snapshot.',
-            stream_initialized: 'Stream initialized. Requesting playback...'
+            holding_session: 'Connecting...',
+            preparing_native: 'Connecting...',
+            stream_playing: 'Loading video...',
+            checking_attempt: 'Connecting...',
+            manifest_available: 'Loading video...',
+            stream_responded: 'Loading video...',
+            stream_sleeping: 'Connecting...',
+            playback_pending: 'Loading video...',
+            native_metadata: 'Loading video...',
+            native_first_data: 'Loading video...',
+            native_ready: 'Loading video...',
+            native_error: 'Unable to play video',
+            native_stalled: 'Reconnecting...',
+            native_fallback: 'Reconnecting...',
+            stream_error_load: 'Reconnecting...',
+            stream_restarting: 'Reconnecting...',
+            media_recover: 'Reconnecting...',
+            stream_error_play: 'Unable to play video',
+            loading_manifest: 'Loading video...',
+            media_attached: 'Loading video...',
+            manifest_loaded: 'Loading video...',
+            loading_segments: 'Loading video...',
+            stream_buffered: 'Loading video...',
+            primed_waiting: 'Loading video...',
+            metadata_loaded: 'Loading video...',
+            first_video_data: 'Loading video...',
+            stream_ready: 'Loading video...',
+            attaching_hls: 'Connecting...',
+            hls_unavailable: 'Unable to play video',
+            first_play: 'Connecting...',
+            native_available: 'Loading video...',
+            source_timeout: 'Source is temporarily unavailable',
+            retry_manual: 'Click to try again',
+            poster_fallback: 'Source is temporarily unavailable',
+            stream_initialized: 'Loading video...'
         }
     };
 
@@ -312,6 +315,166 @@
         }
     };
 
+    const getClientInfo = function () {
+        const userAgent = window.navigator.userAgent || '';
+        const isIos = /iPhone|iPad|iPod/i.test(userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        let browser = 'Unknown';
+
+        if (/Edg\//i.test(userAgent)) {
+            browser = 'Edge';
+        } else if (/FxiOS/i.test(userAgent)) {
+            browser = 'Firefox iOS';
+        } else if (/Firefox\//i.test(userAgent)) {
+            browser = 'Firefox';
+        } else if (/CriOS/i.test(userAgent)) {
+            browser = 'Chrome iOS';
+        } else if (/Chrome\//i.test(userAgent)) {
+            browser = 'Chrome';
+        } else if (/Safari/i.test(userAgent) && /Apple/i.test(window.navigator.vendor || '')) {
+            browser = isIos
+                ? (/iPad/i.test(userAgent) || navigator.maxTouchPoints > 1 ? 'iPad Safari' : 'iPhone Safari')
+                : 'Safari macOS';
+        }
+
+        let device = 'Desktop';
+        if (/iPhone|iPod/i.test(userAgent)) {
+            device = 'iPhone';
+        } else if (/iPad/i.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+            device = 'iPad';
+        } else if (/Android/i.test(userAgent)) {
+            device = /Mobile/i.test(userAgent) ? 'Android phone' : 'Android tablet';
+        }
+
+        return { browser, device, userAgent };
+    };
+
+    const getSourceType = function (url) {
+        const value = String(url || '').split('#')[0].split('?')[0].toLowerCase();
+        if (value.endsWith('.m3u8')) {
+            return 'hls';
+        }
+        if (value.endsWith('.webm')) {
+            return 'webm';
+        }
+        if (value.endsWith('.mp4') || value.endsWith('.m4v')) {
+            return 'mp4';
+        }
+        return value ? 'external' : 'unknown';
+    };
+
+    const getPlaybackMode = function (element) {
+        if (element && element.hlsSource) {
+            return shouldUseNativeHls(element) ? 'native_hls' : 'hls.js';
+        }
+        return 'html5_video';
+    };
+
+    const videoDebugLabels = hlsLocale === 'ru' ? {
+        source: 'Источник',
+        poster: 'Постер',
+        sourceType: 'Тип',
+        playbackMode: 'Режим',
+        httpStatus: 'HTTP',
+        errorType: 'Ошибка',
+        attempt: 'Попытка',
+        checkedAt: 'Последняя проверка',
+        browser: 'Браузер',
+        device: 'Устройство',
+        userAgent: 'User-Agent',
+    } : {
+        source: 'Source',
+        poster: 'Poster',
+        sourceType: 'Type',
+        playbackMode: 'Mode',
+        httpStatus: 'HTTP',
+        errorType: 'Error',
+        attempt: 'Attempt',
+        checkedAt: 'Last check',
+        browser: 'Browser',
+        device: 'Device',
+        userAgent: 'User-Agent',
+    };
+
+    const renderVideoDebug = function (element) {
+        if (!canViewVideoStatus || !element.fbVideoDebugNode) {
+            return;
+        }
+
+        const state = element.fbVideoDebugState || {};
+        Object.keys(videoDebugLabels).forEach(function (key) {
+            const target = element.fbVideoDebugNode.querySelector('[data-video-debug-value="' + key + '"]');
+            if (target) {
+                target.textContent = state[key] === undefined || state[key] === '' ? '—' : String(state[key]);
+            }
+        });
+    };
+
+    const updateVideoDebug = function (element, values) {
+        if (!canViewVideoStatus || !(element instanceof HTMLMediaElement)) {
+            return;
+        }
+
+        const client = getClientInfo();
+        element.fbVideoDebugState = Object.assign({
+            source: element.hlsSource || element.currentSrc || element.getAttribute('src') || '',
+            poster: element.getAttribute('poster') || element.dataset.poster || '',
+            sourceType: getSourceType(element.hlsSource || element.currentSrc || element.getAttribute('src') || ''),
+            playbackMode: getPlaybackMode(element),
+            httpStatus: '',
+            errorType: '',
+            attempt: '0/' + hlsStartupMaxAttempts,
+            checkedAt: '',
+            browser: client.browser,
+            device: client.device,
+            userAgent: client.userAgent,
+        }, element.fbVideoDebugState || {}, values || {});
+        renderVideoDebug(element);
+    };
+
+    const ensureVideoDebugBlock = function (element) {
+        if (!canViewVideoStatus || !(element instanceof HTMLMediaElement)) {
+            return;
+        }
+
+        let playerContainer = element.closest('[data-plyr-player-wrap]') || element.closest('.plyr') || element;
+        let block = playerContainer.closest('.fb-video-block');
+        if (!block) {
+            block = document.createElement('div');
+            block.className = 'fb-video-block';
+            playerContainer.parentNode.insertBefore(block, playerContainer);
+            block.appendChild(playerContainer);
+        }
+
+        let details = block.querySelector(':scope > .fb-video-debug');
+        if (!details) {
+            details = document.createElement('details');
+            details.className = 'fb-video-debug';
+            const summary = document.createElement('summary');
+            summary.textContent = hlsLocale === 'ru' ? 'Техническая информация' : 'Technical information';
+            const content = document.createElement('div');
+            content.className = 'fb-video-debug__content';
+
+            Object.keys(videoDebugLabels).forEach(function (key) {
+                const label = document.createElement('div');
+                label.className = 'fb-video-debug__label';
+                label.textContent = videoDebugLabels[key] + ':';
+                const value = document.createElement('div');
+                value.className = 'fb-video-debug__value';
+                value.dataset.videoDebugValue = key;
+                content.appendChild(label);
+                content.appendChild(value);
+            });
+
+            details.appendChild(summary);
+            details.appendChild(content);
+            block.appendChild(details);
+        }
+
+        element.fbVideoDebugNode = details;
+        updateVideoDebug(element);
+    };
+
     const detachNativeHlsSource = function (element) {
         if (element.dataset.hlsNativeSourceDetached === 'true') {
             return;
@@ -413,6 +576,10 @@
         }
 
         messageNode.style.removeProperty('display');
+        messageNode.classList.remove('fb-plyr-hls-message--retry');
+        messageNode.onclick = null;
+        messageNode.onkeydown = null;
+        messageNode.removeAttribute('tabindex');
 
         const statusType = type || 'info';
         container.classList.add('has-hls-status');
@@ -439,6 +606,42 @@
         renderHlsMessage(element, message, 'warning');
     };
 
+    const showHlsUnavailable = function (element, errorType) {
+        renderHlsMessage(element, t('source_timeout') + '\n' + t('retry_manual'), 'error');
+        const playerRoot = element.closest('.plyr');
+        const playerWrap = element.closest('[data-plyr-player-wrap]');
+        const container = playerRoot || playerWrap || element.parentElement;
+        const messageNode = container ? (playerWrap || container).querySelector('[data-plyr-hls-message]') : null;
+
+        updateVideoDebug(element, {
+            errorType: errorType || 'source_unavailable',
+            checkedAt: new Date().toLocaleString(),
+        });
+
+        if (!messageNode) {
+            return;
+        }
+
+        messageNode.classList.add('fb-plyr-hls-message--retry');
+        messageNode.setAttribute('role', 'button');
+        messageNode.setAttribute('tabindex', '0');
+        const retry = function () {
+            messageNode.onclick = null;
+            messageNode.removeAttribute('tabindex');
+            element.hlsSourcePrewarmed = false;
+            element.hlsSourcePrewarmedAt = 0;
+            element.hlsAutoplayRequested = false;
+            wakeAndPlay(element);
+        };
+        messageNode.onclick = retry;
+        messageNode.onkeydown = function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                retry();
+            }
+        };
+    };
+
     const clearHlsMessage = function (element) {
         if (element.hlsStatusClearTimer) {
             clearTimeout(element.hlsStatusClearTimer);
@@ -461,6 +664,9 @@
 
         if (messageNode) {
             messageNode.className = 'fb-plyr-hls-message';
+            messageNode.onclick = null;
+            messageNode.onkeydown = null;
+            messageNode.removeAttribute('tabindex');
             messageNode.hidden = true;
             messageNode.textContent = '';
         }
@@ -662,12 +868,24 @@
 
     const markPlaybackStarted = function (element) {
         cleanupPlayRetryTimer(element);
+        if (element.hlsAutoReconnectTimer) {
+            clearTimeout(element.hlsAutoReconnectTimer);
+            element.hlsAutoReconnectTimer = null;
+        }
         element.hlsPlayRetryStartedAt = 0;
         element.hlsStuckSince = 0;
         element.hlsPlaybackStarted = true;
+        element.hlsEverPlayed = true;
+        updateVideoDebug(element, {
+            httpStatus: element.fbVideoDebugState && element.fbVideoDebugState.httpStatus
+                ? element.fbVideoDebugState.httpStatus
+                : 200,
+            errorType: '',
+            playbackMode: getPlaybackMode(element),
+            checkedAt: new Date().toLocaleString(),
+        });
         syncFullVolume(element, true);
-        showHlsSuccess(element, t('stream_playing'));
-        scheduleHlsMessageClear(element);
+        clearHlsMessage(element);
 
         if (element.dataset.hlsForceMutedAutoplay === 'true') {
             element.dataset.hlsForceMutedAutoplay = 'false';
@@ -734,23 +952,27 @@
                 }
 
                 if (xhr.status >= 200 && xhr.status < 400 && xhr.status !== 404) {
-                    finish(true);
+                    finish({ ok: true, status: xhr.status, errorType: '' });
                     return;
                 }
 
-                finish(false);
+                finish({
+                    ok: false,
+                    status: xhr.status,
+                    errorType: xhr.status === 404 ? 'manifest_not_found' : 'http_error',
+                });
             };
             xhr.onerror = function () {
-                finish(false);
+                finish({ ok: false, status: xhr.status || 0, errorType: 'network_error' });
             };
             xhr.ontimeout = function () {
-                finish(false);
+                finish({ ok: false, status: xhr.status || 0, errorType: 'timeout' });
             };
 
             try {
                 xhr.send();
             } catch (error) {
-                finish(false);
+                finish({ ok: false, status: 0, errorType: 'request_error' });
             }
         });
     };
@@ -761,10 +983,9 @@
             emitStatus: true,
             wake: false,
         }, options || {});
-        const startedAt = Date.now();
         let attempt = 0;
 
-        while ((Date.now() - startedAt) < hlsWarmupDurationMs) {
+        while (attempt < hlsStartupMaxAttempts) {
             if (settings.requirePlayIntent && !element.hlsAutoplayRequested) {
                 return false;
             }
@@ -774,38 +995,27 @@
                 showHlsInfo(element, t('checking_attempt', { attempt }));
             }
 
-            const wakeExists = await urlExists(url, 'GET', { cacheBust: settings.wake });
-            if (wakeExists) {
+            const result = await urlExists(url, 'GET', { cacheBust: settings.wake });
+            updateVideoDebug(element, {
+                httpStatus: result.status || 0,
+                errorType: result.errorType,
+                attempt: attempt + '/' + hlsStartupMaxAttempts,
+                checkedAt: new Date().toLocaleString(),
+            });
+
+            if (result.ok) {
                 if (settings.emitStatus) {
                     showHlsSuccess(element, t('stream_responded'));
                 }
                 return true;
             }
 
-            if (!settings.wake) {
-                const headExists = await urlExists(url, 'HEAD');
-                if (headExists) {
-                    if (settings.emitStatus) {
-                        showHlsSuccess(element, t('manifest_available'));
-                    }
-                    return true;
-                }
-            }
-
-            if (settings.wake) {
-                const headExists = await urlExists(url, 'HEAD', { cacheBust: true });
-                if (headExists) {
-                    if (settings.emitStatus) {
-                        showHlsSuccess(element, t('manifest_available'));
-                    }
-                    return true;
-                }
-            }
-
             if (settings.emitStatus) {
                 showHlsWarning(element, t('stream_sleeping'));
             }
-            await sleep(hlsRetryDelayMs);
+            if (attempt < hlsStartupMaxAttempts) {
+                await sleep(hlsRetryDelayMs);
+            }
         }
 
         return false;
@@ -1080,36 +1290,45 @@
         element.hlsLastRestartAt = now;
         element.hlsStuckSince = 0;
         element.hlsPlayRetryStartedAt = now;
-        showHlsWarning(element, t('stream_restarting', { state: reason || describeMediaState(element) }));
+        showHlsWarning(element, t('stream_restarting'));
+        updateVideoDebug(element, {
+            errorType: reason || 'playback_error',
+            checkedAt: new Date().toLocaleString(),
+        });
 
-        if (shouldUseNativeHls(element)) {
-            resetNativePlaybackState(element);
+        element.hlsReconnectTimer = setTimeout(function () {
+            const useNative = shouldUseNativeHls(element);
+            if (useNative) {
+                resetNativePlaybackState(element);
+            } else {
+                destroyHlsInstance(element);
+            }
+
             element.hlsAutoplayRequested = true;
-            prepareNativeHlsPlayback(element).then(function (isReady) {
+            element.hlsSourcePrewarmed = false;
+            element.hlsSourcePrewarmedAt = 0;
+            const prepare = useNative ? prepareNativeHlsPlayback(element) : prepareHlsPlayback(element);
+
+            prepare.then(function (isReady) {
                 if (!isReady) {
-                    showHlsError(element, t('source_timeout'));
+                    showHlsUnavailable(element, 'reconnect_failed');
+                    if (element.hlsEverPlayed) {
+                        element.hlsAutoReconnectTimer = setTimeout(function () {
+                            element.hlsRestarting = false;
+                            restartHlsPlayback(element, 'automatic_reconnect');
+                        }, hlsReconnectDelayMs);
+                    }
                     return;
                 }
 
                 scheduleDeferredPlay(element, t('stream_initialized'));
             }).finally(function () {
-                element.hlsRestarting = false;
+                element.hlsReconnectTimer = null;
+                if (!element.hlsAutoReconnectTimer) {
+                    element.hlsRestarting = false;
+                }
             });
-            return;
-        }
-
-        destroyHlsInstance(element);
-        element.hlsAutoplayRequested = true;
-        prepareHlsPlayback(element).then(function (isReady) {
-            if (!isReady) {
-                showHlsError(element, t('source_timeout'));
-                return;
-            }
-
-            scheduleDeferredPlay(element, t('stream_initialized'));
-        }).finally(function () {
-            element.hlsRestarting = false;
-        });
+        }, hlsReconnectDelayMs);
     };
 
     const startHlsHealthMonitor = function (element) {
@@ -1204,6 +1423,11 @@
                 return;
             }
 
+            if (element.hlsEverPlayed) {
+                restartHlsPlayback(element, 'native_network_or_media_error');
+                return;
+            }
+
             if (!element.hlsPlayRetryStartedAt) {
                 element.hlsPlayRetryStartedAt = Date.now();
             }
@@ -1212,7 +1436,11 @@
                 const state = describeMediaState(element);
                 fallbackToHlsJsPlayback(element, state).then(function (switched) {
                     if (!switched) {
-                        showHlsError(element, t('native_error', { state }));
+                        updateVideoDebug(element, {
+                            errorType: 'native_media_error',
+                            checkedAt: new Date().toLocaleString(),
+                        });
+                        restartHlsPlayback(element, 'native_media_error');
                     }
                 });
                 return;
@@ -1235,7 +1463,7 @@
         });
 
         element.addEventListener('stalled', function () {
-            if (!shouldUseNativeHls(element) || !element.hlsAutoplayRequested || element.hlsPlaybackStarted) {
+            if (!shouldUseNativeHls(element) || !element.hlsAutoplayRequested) {
                 return;
             }
 
@@ -1260,6 +1488,11 @@
             }
 
             const details = data.details ? ' (' + data.details + ')' : '';
+            updateVideoDebug(element, {
+                httpStatus: data.response && data.response.code ? data.response.code : '',
+                errorType: data.details || data.type || 'hls_error',
+                checkedAt: new Date().toLocaleString(),
+            });
 
             switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
@@ -1286,8 +1519,11 @@
                     restartHlsPlayback(element, details || describeMediaState(element));
                     break;
                 default:
-                    showHlsError(element, t('stream_error_play', { details }));
-                    destroyHlsInstance(element);
+                    updateVideoDebug(element, {
+                        errorType: data.details || data.type || 'hls_error',
+                        checkedAt: new Date().toLocaleString(),
+                    });
+                    restartHlsPlayback(element, data.details || data.type || 'hls_error');
                     break;
             }
         });
@@ -1429,9 +1665,9 @@
                 maxLiveSyncPlaybackRate: 1,
                 backBufferLength: 90,
                 capLevelToPlayerSize: true,
-                manifestLoadingMaxRetry: 4,
+                manifestLoadingMaxRetry: 15,
                 manifestLoadingRetryDelay: 1000,
-                manifestLoadingMaxRetryTimeout: 5000,
+                manifestLoadingMaxRetryTimeout: 1000,
                 manifestLoadingTimeOut: 8000,
                 levelLoadingMaxRetry: 4,
                 levelLoadingRetryDelay: 1000,
@@ -1453,6 +1689,10 @@
             return true;
         }).catch(function (error) {
             console.error('HLS init failed', error);
+            updateVideoDebug(element, {
+                errorType: 'hls_initialization_error',
+                checkedAt: new Date().toLocaleString(),
+            });
             showHlsError(element, t('hls_unavailable'));
             return false;
         }).finally(function () {
@@ -1500,7 +1740,7 @@
             if (!shouldUseNativeHls(element)) {
                 releasePrimedPlayback(element);
             }
-            showHlsError(element, t('source_timeout'));
+            showHlsUnavailable(element, 'source_unavailable');
             return;
         }
 
@@ -1565,6 +1805,33 @@
         };
 
         wrapper.addEventListener('click', handleWakeGesture, true);
+    };
+
+    const initLazyHlsPlayback = function (element) {
+        const playerWrap = element.closest('[data-plyr-player-wrap]');
+        const lazyEnabled = element.dataset.plyrLazy === 'true'
+            || (playerWrap && playerWrap.dataset.plyrLazy === 'true');
+        if (!element.hlsSource || !lazyEnabled || element.dataset.hlsLazyBound === 'true') {
+            return;
+        }
+
+        element.dataset.hlsLazyBound = 'true';
+        const target = playerWrap || element.closest('.plyr') || element;
+        if (typeof IntersectionObserver !== 'function') {
+            return;
+        }
+
+        const observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting || element.hlsAutoplayRequested || element.hlsPlaybackStarted) {
+                    return;
+                }
+                observer.disconnect();
+                wakeAndPlay(element);
+            });
+        }, { threshold: 0.01 });
+        observer.observe(target);
+        element.hlsLazyObserver = observer;
     };
 
     const getZoomLocale = function () {
@@ -1970,7 +2237,7 @@
         element.hlsSource = hlsSource;
         normalizeHlsPoster(element, hlsSource);
         element.hlsAutoplayRequested = false;
-        element.hlsMediaReady = shouldUseNativeHls(element);
+        element.hlsMediaReady = false;
         element.hlsPreparePromise = null;
         element.hlsSourcePrewarmed = false;
         element.hlsSourcePrewarmedAt = 0;
@@ -1980,6 +2247,7 @@
         element.hlsLastRestartAt = 0;
         element.hlsRestarting = false;
         element.hlsPlaybackStarted = false;
+        element.hlsEverPlayed = false;
         element.dataset.hlsNativeSourceDetached = 'false';
         element.dataset.hlsPrimerActive = 'false';
         element.dataset.hlsForceJsPlayback = 'false';
@@ -1989,16 +2257,13 @@
         bindNativePlaybackEvents(element);
         startHlsHealthMonitor(element);
         clearHlsMessage(element);
-
-        if (!shouldUseNativeHls(element)) {
-            detachNativeHlsSource(element);
-        }
-
-        if (!shouldUseNativeHls(element)) {
-            loadHlsScript().catch(function (error) {
-                console.error('Preload HLS init failed', error);
-            });
-        }
+        detachNativeHlsSource(element);
+        updateVideoDebug(element, {
+            source: hlsSource,
+            poster: element.getAttribute('poster') || element.dataset.poster || '',
+            sourceType: 'hls',
+            playbackMode: getPlaybackMode(element),
+        });
 
         return Promise.resolve();
     };
@@ -2168,7 +2433,17 @@
 
             const finalizePlyr = function () {
                 element.dataset.plyrInitialized = 'true';
-                element.plyr = new window.Plyr(element, options);
+                try {
+                    element.plyr = new window.Plyr(element, options);
+                } catch (error) {
+                    console.error('Plyr initialization failed', error);
+                    updateVideoDebug(element, {
+                        errorType: 'plyr_initialization_error',
+                        checkedAt: new Date().toLocaleString(),
+                    });
+                    ensureVideoDebugBlock(element);
+                    return;
+                }
                 syncFullVolume(element, !isPrimerPlaybackActive(element));
 
                 ['loadedmetadata', 'loadeddata', 'canplay', 'play', 'playing'].forEach(function (eventName) {
@@ -2184,6 +2459,8 @@
                 bindPlyrPlayButton(element);
                 initPlyrZoom(element);
                 bindFullscreenStateSync(element);
+                ensureVideoDebugBlock(element);
+                initLazyHlsPlayback(element);
             };
 
             attachHls(element).finally(finalizePlyr);

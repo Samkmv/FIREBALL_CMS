@@ -25,6 +25,10 @@ final class AnalyticsService
 
     public function track(array $payload): void
     {
+        $payload = array_intersect_key($payload, array_flip([
+            'page', 'landing_page', 'referer', 'utm_source', 'utm_medium',
+            'utm_campaign', 'utm_content', 'utm_term',
+        ]));
         $currentPage = $this->sanitizePage((string)($payload['page'] ?? '/'));
         if (!session()->get('analytics.landing_page')) {
             session()->set(
@@ -218,32 +222,7 @@ final class AnalyticsService
 
     private function clientIp(): string
     {
-        $headers = [
-            $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
-            $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
-            $_SERVER['HTTP_X_REAL_IP'] ?? '',
-            $_SERVER['REMOTE_ADDR'] ?? '',
-        ];
-        $fallback = '';
-
-        foreach ($headers as $header) {
-            foreach (explode(',', (string)$header) as $candidate) {
-                $ip = $this->normalizeIp($candidate);
-                if ($ip === '') {
-                    continue;
-                }
-
-                if ($fallback === '') {
-                    $fallback = $ip;
-                }
-
-                if (!$this->isPrivateIp($ip)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return $fallback !== '' ? $fallback : '0.0.0.0';
+        return client_ip() ?: '0.0.0.0';
     }
 
     private function resolveGeo(string $ip): array
@@ -344,6 +323,10 @@ final class AnalyticsService
 
     private function cloudflareCountry(): ?array
     {
+        if (!is_trusted_proxy()) {
+            return null;
+        }
+
         $code = strtoupper(trim((string)($_SERVER['HTTP_CF_IPCOUNTRY'] ?? '')));
         if ($code === '' || in_array($code, ['XX', 'T1'], true) || !preg_match('/^[A-Z]{2}$/', $code)) {
             return null;

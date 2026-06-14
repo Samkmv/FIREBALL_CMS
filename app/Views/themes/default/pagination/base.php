@@ -32,7 +32,7 @@
         <?php if (!empty($pages_right)): ?>
             <?php foreach ($pages_right as $page_right): ?>
                 <li class="page-item">
-                    <a class="page-link" href="<?= $page_right['link']; ?>">
+                    <a class="page-link" href="<?= htmlSC($page_right['link']); ?>">
                         <?= $page_right['number']; ?>
                     </a>
                 </li>

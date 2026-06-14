@@ -153,10 +153,7 @@ final class InstallService
             return 'http://localhost';
         }
 
-        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-
-        return ($secure ? 'https' : 'http') . '://' . $host;
+        return (request_is_secure() ? 'https' : 'http') . '://' . $host;
     }
 
     private function pdo(array $db): PDO
@@ -321,8 +318,10 @@ final class InstallService
             'DEBUG' => 0,
             'PATH' => rtrim((string)($site['url'] ?? $this->defaultSiteUrl()), '/'),
             'SITE_NAME' => (string)($site['name'] ?? 'FIREBALL CMS'),
+            'CHAT_ENCRYPTION_KEY' => bin2hex(random_bytes(32)),
             'APP_TIMEZONE' => (string)($site['timezone'] ?? 'Europe/Moscow'),
             'DEFAULT_LOCALE' => $locale,
+            'TRUSTED_PROXIES' => [],
             'DB_SETTINGS' => [
                 'driver' => 'mysql',
                 'host' => (string)($db['host'] ?? 'localhost'),

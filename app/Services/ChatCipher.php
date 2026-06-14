@@ -9,6 +9,7 @@ class ChatCipher
     protected const CURRENT_CIPHER_METHOD = 'aes-256-gcm';
     protected const LEGACY_CIPHER_METHOD = 'AES-256-CBC';
     protected const GCM_TAG_LENGTH = 16;
+    protected const LEGACY_DEFAULT_MASTER_KEY = 'change-this-chat-key-in-production';
 
     public static function encrypt(string $plainText): string
     {
@@ -81,17 +82,23 @@ class ChatCipher
             return '';
         }
 
-        $plainText = openssl_decrypt(
-            $cipherText,
-            self::CURRENT_CIPHER_METHOD,
-            self::deriveKey($keyDate),
-            OPENSSL_RAW_DATA,
-            $iv,
-            $tag,
-            self::buildAad($keyDate)
-        );
+        foreach (self::masterSecrets() as $masterSecret) {
+            $plainText = openssl_decrypt(
+                $cipherText,
+                self::CURRENT_CIPHER_METHOD,
+                self::deriveKey($keyDate, $masterSecret),
+                OPENSSL_RAW_DATA,
+                $iv,
+                $tag,
+                self::buildAad($keyDate)
+            );
 
-        return $plainText === false ? '' : $plainText;
+            if ($plainText !== false) {
+                return $plainText;
+            }
+        }
+
+        return '';
     }
 
     protected static function decryptLegacyPayload(string $payload): string
@@ -109,14 +116,26 @@ class ChatCipher
         $iv = substr($decoded, 0, $ivLength);
         $cipherText = substr($decoded, $ivLength);
 
-        $plainText = openssl_decrypt($cipherText, self::LEGACY_CIPHER_METHOD, self::getLegacyKey(), OPENSSL_RAW_DATA, $iv);
+        foreach (self::masterSecrets() as $masterSecret) {
+            $plainText = openssl_decrypt(
+                $cipherText,
+                self::LEGACY_CIPHER_METHOD,
+                self::legacyKey($masterSecret),
+                OPENSSL_RAW_DATA,
+                $iv
+            );
 
-        return $plainText === false ? '' : $plainText;
+            if ($plainText !== false) {
+                return $plainText;
+            }
+        }
+
+        return '';
     }
 
-    protected static function deriveKey(string $keyDate): string
+    protected static function deriveKey(string $keyDate, ?string $masterSecret = null): string
     {
-        $masterKey = self::getLegacyKey();
+        $masterKey = self::legacyKey($masterSecret ?? CHAT_ENCRYPTION_KEY);
         $info = 'fireball-chat:' . $keyDate;
 
         if (function_exists('hash_hkdf')) {
@@ -131,9 +150,17 @@ class ChatCipher
         return 'fireball-chat|' . self::CURRENT_VERSION . '|' . $keyDate;
     }
 
-    protected static function getLegacyKey(): string
+    protected static function legacyKey(string $masterSecret): string
     {
-        return hash('sha256', CHAT_ENCRYPTION_KEY, true);
+        return hash('sha256', $masterSecret, true);
+    }
+
+    protected static function masterSecrets(): array
+    {
+        return array_values(array_unique([
+            (string)CHAT_ENCRYPTION_KEY,
+            self::LEGACY_DEFAULT_MASTER_KEY,
+        ]));
     }
 
 }

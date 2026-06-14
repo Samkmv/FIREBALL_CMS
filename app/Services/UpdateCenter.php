@@ -382,7 +382,7 @@ class UpdateCenter
 
             $this->validateGitDiffAgainstManifest($branch, $manifest);
             $this->createPreUpdateBackups();
-            $this->siteSettings->set('updater_rollback_commit', $previousCommit);
+            $this->siteSettings->setMany(['updater_rollback_commit' => $previousCommit]);
             try {
             $pullResult = $this->runCommand(
                 'git pull --ff-only origin ' . escapeshellarg($branch),
@@ -394,10 +394,8 @@ class UpdateCenter
             }
 
             $currentCommit = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
-            $composerResult = null;
-
             if ($previousCommit !== '' && $currentCommit !== '' && $previousCommit !== $currentCommit) {
-                $composerResult = $this->runComposerIfNeeded($previousCommit, $currentCommit);
+                $this->runComposerIfNeeded($previousCommit, $currentCommit);
             }
 
             $this->runPendingMigrations();
@@ -417,10 +415,6 @@ class UpdateCenter
                 ], $exception);
             }
             throw $exception;
-        }
-
-        if (is_array($composerResult)) {
-            return $composerResult;
         }
 
         return [
@@ -560,11 +554,12 @@ class UpdateCenter
             $packageRoot = $this->extractArchive($archivePath, $extractPath);
             $manifest = $this->loadUpdateManifest($packageRoot);
             $this->validateUpdateManifest($manifest, $packageRoot);
+            $this->assertPackageComposerReady($packageRoot, $composerFingerprintBefore);
             $this->createPreUpdateBackups();
             $this->ensureLocalConfigExists();
             $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
 
-            $composerResult = $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
+            $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
             $this->runPendingMigrations();
             $this->clearRuntimeCache();
 
@@ -573,10 +568,6 @@ class UpdateCenter
                 'updater_last_installed_commit' => $remoteCommit,
             ]);
             $this->refreshLastCheckAfterUpdate();
-
-            if (is_array($composerResult)) {
-                return $composerResult;
-            }
 
             return [
                 'status' => 'success',
@@ -624,7 +615,9 @@ class UpdateCenter
             $archive = $this->resolveReleaseArchive($release, $repository, false);
             $localGitState = $this->getLocalGitState();
             if (!empty($localGitState['is_git_repo']) && trim((string)($localGitState['commit_hash'] ?? '')) !== '') {
-                $this->siteSettings->set('updater_rollback_commit', (string)$localGitState['commit_hash']);
+                $this->siteSettings->setMany([
+                    'updater_rollback_commit' => (string)$localGitState['commit_hash'],
+                ]);
             }
 
             $this->downloadFile(
@@ -636,11 +629,12 @@ class UpdateCenter
             $packageRoot = $this->extractArchive($archivePath, $extractPath);
             $manifest = $this->loadUpdateManifest($packageRoot);
             $this->validateUpdateManifest($manifest, $packageRoot);
+            $this->assertPackageComposerReady($packageRoot, $composerFingerprintBefore);
             $this->createPreUpdateBackups();
             $this->ensureLocalConfigExists();
             $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
 
-            $composerResult = $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
+            $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
             $this->runPendingMigrations();
             $this->clearRuntimeCache();
             $this->siteSettings->setMany([
@@ -648,10 +642,6 @@ class UpdateCenter
                 'updater_last_installed_commit' => '',
             ]);
             $this->refreshLastCheckAfterUpdate();
-
-            if (is_array($composerResult)) {
-                return $composerResult;
-            }
 
             return [
                 'status' => 'success',
@@ -1439,6 +1429,7 @@ class UpdateCenter
             'CHAT_ENCRYPTION_KEY' => CHAT_ENCRYPTION_KEY,
             'APP_TIMEZONE' => APP_TIMEZONE,
             'UPDATE_CHANNEL' => defined('UPDATE_CHANNEL') ? UPDATE_CHANNEL : 'stable',
+            'TRUSTED_PROXIES' => defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : [],
             'MULTILANGS' => MULTILANGS,
             'LANGS' => LANGS,
             'DB_SETTINGS' => DB_SETTINGS,
@@ -2014,7 +2005,7 @@ class UpdateCenter
     /**
      * Определяет, нужен ли запуск Composer после обновления кода.
      */
-    protected function runComposerIfNeeded(string $previousCommit, string $currentCommit): ?array
+    protected function runComposerIfNeeded(string $previousCommit, string $currentCommit): void
     {
         $diffResult = $this->runCommand(
             'git diff --name-only ' . escapeshellarg($previousCommit) . ' ' . escapeshellarg($currentCommit) . ' -- composer.json composer.lock',
@@ -2022,15 +2013,12 @@ class UpdateCenter
         );
 
         if ($diffResult['exit_code'] !== 0 || trim($diffResult['stdout']) === '') {
-            return null;
+            return;
         }
 
         $composerBinary = $this->detectComposerBinary();
         if ($composerBinary === '') {
-            return [
-                'status' => 'warning',
-                'message' => return_translation('admin_update_composer_required'),
-            ];
+            throw new RuntimeException(return_translation('admin_update_composer_required'));
         }
 
         $installResult = $this->runCommand(
@@ -2039,16 +2027,11 @@ class UpdateCenter
         );
 
         if ($installResult['exit_code'] !== 0) {
-            return [
-                'status' => 'warning',
-                'message' => $this->formatCommandError($installResult, return_translation('admin_update_composer_failed')),
-            ];
+            throw new RuntimeException(
+                $this->formatCommandError($installResult, return_translation('admin_update_composer_failed'))
+            );
         }
 
-        return [
-            'status' => 'success',
-            'message' => return_translation('admin_update_success'),
-        ];
     }
 
     /**
@@ -2062,31 +2045,46 @@ class UpdateCenter
         ];
     }
 
+    protected function assertPackageComposerReady(string $packageRoot, array $before): void
+    {
+        $packageJson = $packageRoot . '/composer.json';
+        $packageLock = $packageRoot . '/composer.lock';
+        $dependencyFilesChanged = (
+            is_file($packageJson)
+            && sha1_file($packageJson) !== ($before['composer_json'] ?? '')
+        ) || (
+            is_file($packageLock)
+            && sha1_file($packageLock) !== ($before['composer_lock'] ?? '')
+        );
+
+        if (!$dependencyFilesChanged) {
+            return;
+        }
+
+        if (!$this->canRunProcesses() || $this->detectComposerBinary() === '') {
+            throw new RuntimeException(return_translation('admin_update_composer_required'));
+        }
+    }
+
     /**
-     * При изменении composer-файлов запускает Composer либо возвращает warning.
+     * При изменении composer-файлов запускает Composer или прерывает обновление.
      */
-    protected function runComposerIfDependencyFilesChanged(array $before): ?array
+    protected function runComposerIfDependencyFilesChanged(array $before): void
     {
         $after = $this->captureDependencyFingerprint();
         if (($before['composer_json'] ?? '') === ($after['composer_json'] ?? '')
             && ($before['composer_lock'] ?? '') === ($after['composer_lock'] ?? '')
         ) {
-            return null;
+            return;
         }
 
         if (!$this->canRunProcesses()) {
-            return [
-                'status' => 'warning',
-                'message' => return_translation('admin_update_composer_required'),
-            ];
+            throw new RuntimeException(return_translation('admin_update_composer_required'));
         }
 
         $composerBinary = $this->detectComposerBinary();
         if ($composerBinary === '') {
-            return [
-                'status' => 'warning',
-                'message' => return_translation('admin_update_composer_required'),
-            ];
+            throw new RuntimeException(return_translation('admin_update_composer_required'));
         }
 
         $installResult = $this->runCommand(
@@ -2095,16 +2093,11 @@ class UpdateCenter
         );
 
         if ($installResult['exit_code'] !== 0) {
-            return [
-                'status' => 'warning',
-                'message' => $this->formatCommandError($installResult, return_translation('admin_update_composer_failed')),
-            ];
+            throw new RuntimeException(
+                $this->formatCommandError($installResult, return_translation('admin_update_composer_failed'))
+            );
         }
 
-        return [
-            'status' => 'success',
-            'message' => return_translation('admin_update_success'),
-        ];
     }
 
     /**

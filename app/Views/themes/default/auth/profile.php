@@ -136,6 +136,16 @@ $createdAt = !empty($user['created_at']) ? date('d.m.Y H:i', strtotime((string)$
                 <hr class="my-4">
 
                 <div class="row g-3">
+                    <div class="col-12">
+                        <?= view()->renderPartial('incs/password_field', [
+                            'id' => 'profile-current-password',
+                            'name' => 'current_password',
+                            'label' => return_translation('auth_profile_current_password'),
+                            'placeholder' => '********',
+                            'autocomplete' => 'current-password',
+                            'hint' => return_translation('auth_profile_current_password_hint'),
+                        ]) ?>
+                    </div>
                     <div class="col-md-6">
                         <?= view()->renderPartial('incs/password_field', [
                             'id' => 'profile-password',

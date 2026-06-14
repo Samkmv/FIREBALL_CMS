@@ -3625,7 +3625,9 @@ function initPostEditor() {
                 }
 
                 const poster = String(block.data.poster || '').trim();
-                return '<div data-plyr-player-wrap=""><video controls playsinline webkit-playsinline preload="metadata" data-plyr-player=""' + (poster ? ' poster="' + escapeAttr(poster) + '"' : '') + '><source src="' + escapeAttr(src) + '" type="' + escapeAttr(getVideoMimeType(src)) + '"></video></div>' +
+                const mimeType = getVideoMimeType(src);
+                const isHls = mimeType === 'application/vnd.apple.mpegurl';
+                return '<div data-plyr-player-wrap="" data-plyr-lazy="true"><video controls playsinline webkit-playsinline preload="metadata" data-plyr-player=""' + (isHls ? ' data-hls-src="' + escapeAttr(src) + '"' : '') + (poster ? ' poster="' + escapeAttr(poster) + '"' : '') + '>' + (isHls ? '' : '<source src="' + escapeAttr(src) + '" type="' + escapeAttr(mimeType) + '">') + '</video></div>' +
                     (caption ? '<p>' + escapeHtml(caption) + '</p>' : '');
             }
 

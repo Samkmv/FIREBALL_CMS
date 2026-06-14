@@ -58,7 +58,7 @@ class Post extends Model
         return "p.id, p.title, p.slug, p.category_id, p.excerpt, p.content, p.image,
                 p.seo_title, p.seo_description, p.seo_keywords, p.seo_image,
                 p.hide_placeholder_image, p.show_on_home, p.priority,
-                p.author_name, p.author_role, p.published_at, p.views_count,
+                p.author_id, p.author_name, p.author_role, p.published_at, p.views_count,
                 COALESCE({$categoryNameSql}, p.category, 'General') AS category,
                 c.slug AS category_slug,
                 c.seo_title AS category_seo_title,
@@ -153,6 +153,12 @@ class Post extends Model
      */
     public function incrementViews(int $id): void
     {
+        $sessionKey = 'posts.viewed.' . $id;
+        $lastCountedAt = (int)session()->get($sessionKey, 0);
+        if ($lastCountedAt > 0 && $lastCountedAt + 1800 > time()) {
+            return;
+        }
+
         $this->ensureSchema();
         db()->query(
             "UPDATE {$this->table}
@@ -160,6 +166,7 @@ class Post extends Model
              WHERE id = ? AND is_published = 1",
             [$id]
         );
+        session()->set($sessionKey, time());
     }
 
     /**
@@ -676,7 +683,7 @@ class Post extends Model
         $excerpt = trim((string)($post['excerpt'] ?? ''));
         $content = trim((string)($post['content'] ?? ''));
 
-        if ($content !== '' && $content[0] === '{') {
+        if ($content !== '') {
             $content = (new BlockRenderer())->renderPublicContent($content);
         }
 

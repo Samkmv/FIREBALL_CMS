@@ -90,7 +90,7 @@ $isAdmin = check_admin();
 $hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="#adminSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
-$canViewVideoStatus = $isAdmin || check_creator();
+$canViewVideoStatus = can_view_video_diagnostics(isset($video_owner_id) ? (int)$video_owner_id : null);
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 $logoutAction = base_href('/logout');
 $siteFaviconUrl = site_favicon_url();
@@ -741,6 +741,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script>
     const baseUrl = '<?= base_url(); ?>';
     window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
+    window.canViewVideoDiagnostics = window.canViewVideoStatus;
 </script>
 <script src="<?= base_url('/assets/default/js/jquery-3.7.1.min.js') ?>"></script>
 

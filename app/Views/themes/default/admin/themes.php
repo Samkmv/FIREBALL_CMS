@@ -1,8 +1,11 @@
 <?php
 $activeSlug = (string)($active_theme['slug'] ?? 'default');
-$actions = '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/theme-editor/' . rawurlencode($activeSlug)) . '"><i class="ci-code"></i>' . htmlSC(return_translation('admin_nav_theme_editor')) . '</a>'
-    . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/import') . '"><i class="ci-upload"></i>' . htmlSC(return_translation('admin_themes_import')) . '</a>'
-    . '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/create') . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_themes_create')) . '</a>';
+$canManageThemes = check_creator();
+$actions = $canManageThemes
+    ? '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/theme-editor/' . rawurlencode($activeSlug)) . '"><i class="ci-code"></i>' . htmlSC(return_translation('admin_nav_theme_editor')) . '</a>'
+        . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/import') . '"><i class="ci-upload"></i>' . htmlSC(return_translation('admin_themes_import')) . '</a>'
+        . '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/create') . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_themes_create')) . '</a>'
+    : '';
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -50,13 +53,19 @@ $actions = '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align
                     <div class="card-footer bg-transparent border-0 p-4 pt-0">
                         <div class="d-grid gap-2">
                             <?php if (!$isActive): ?>
-                                <form action="<?= base_href('/admin/themes/activate') ?>" method="post">
-                                    <?= get_csrf_field() ?>
-                                    <input type="hidden" name="slug" value="<?= htmlSC((string)$theme['slug']) ?>">
-                                    <button class="btn btn-dark rounded-pill w-100" type="submit">
+                                <?php if ($canManageThemes): ?>
+                                    <form action="<?= base_href('/admin/themes/activate') ?>" method="post">
+                                        <?= get_csrf_field() ?>
+                                        <input type="hidden" name="slug" value="<?= htmlSC((string)$theme['slug']) ?>">
+                                        <button class="btn btn-dark rounded-pill w-100" type="submit">
+                                            <?= print_translation('admin_themes_activate') ?>
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <button class="btn btn-outline-secondary rounded-pill w-100" type="button" disabled>
                                         <?= print_translation('admin_themes_activate') ?>
                                     </button>
-                                </form>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <button class="btn btn-outline-secondary rounded-pill w-100" type="button" disabled>
                                     <?= print_translation('admin_themes_active') ?>
@@ -66,20 +75,24 @@ $actions = '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align
                                 <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= htmlSC($sitePreviewUrl) ?>" target="_blank" rel="noopener noreferrer">
                                     <?= print_translation('admin_themes_preview') ?>
                                 </a>
-                                <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= base_href('/admin/themes/edit/' . $theme['slug']) ?>">
-                                    <?= print_translation('admin_themes_edit') ?>
-                                </a>
+                                <?php if ($canManageThemes): ?>
+                                    <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= base_href('/admin/themes/edit/' . $theme['slug']) ?>">
+                                        <?= print_translation('admin_themes_edit') ?>
+                                    </a>
+                                <?php endif; ?>
                             </div>
                             <div class="d-flex flex-wrap gap-2">
-                                <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= base_href('/admin/themes/files/' . $theme['slug']) ?>">
-                                    <?= print_translation('admin_nav_theme_editor') ?>
-                                </a>
+                                <?php if ($canManageThemes): ?>
+                                    <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= base_href('/admin/themes/files/' . $theme['slug']) ?>">
+                                        <?= print_translation('admin_nav_theme_editor') ?>
+                                    </a>
+                                <?php endif; ?>
                                 <a class="btn btn-outline-secondary rounded-pill flex-fill" href="<?= base_href('/admin/themes/export/' . $theme['slug']) ?>">
                                     <?= print_translation('admin_themes_export') ?>
                                 </a>
                             </div>
                             <div class="d-flex flex-wrap gap-2">
-                                <?php if ($canDelete): ?>
+                                <?php if ($canManageThemes && $canDelete): ?>
                                     <form class="flex-fill" action="<?= base_href('/admin/themes/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_theme')) ?>" data-delete-item="<?= htmlSC((string)$theme['name']) ?>">
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="slug" value="<?= htmlSC((string)$theme['slug']) ?>">

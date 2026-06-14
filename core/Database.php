@@ -49,7 +49,8 @@ class Database
         } catch (\PDOException $e) {
             log_error_details('Database query error', [
                 'SQL' => $query,
-                'Params' => $params,
+                'Param Count' => count($params),
+                'Param Keys' => array_map('strval', array_keys($params)),
             ], $e);
             throw $e;
         }

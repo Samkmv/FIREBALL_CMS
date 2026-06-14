@@ -32,10 +32,21 @@ class SiteSetting
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
 
-        foreach ($this->defaults() as $key => $value) {
+        $defaults = $this->defaults();
+        if ($defaults !== []) {
+            $placeholders = [];
+            $params = [];
+            $now = date('Y-m-d H:i:s');
+
+            foreach ($defaults as $key => $value) {
+                $placeholders[] = '(?, ?, ?)';
+                array_push($params, $key, $value, $now);
+            }
+
             db()->query(
-                "INSERT IGNORE INTO {$this->table} (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
-                [$key, $value, date('Y-m-d H:i:s')]
+                "INSERT IGNORE INTO {$this->table} (setting_key, setting_value, updated_at) VALUES "
+                . implode(', ', $placeholders),
+                $params
             );
         }
 

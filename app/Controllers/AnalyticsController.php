@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Services\AnalyticsService;
 use App\Services\DatabaseMaintenanceService;
+use FBL\RateLimiter;
 
 final class AnalyticsController extends BaseController
 {
@@ -26,6 +27,11 @@ final class AnalyticsController extends BaseController
 
     public function track(): void
     {
+        $rateKey = 'analytics|' . client_ip();
+        if (!RateLimiter::attempt($rateKey, 60, 60)) {
+            response()->json(['status' => 'accepted']);
+        }
+
         try {
             $this->analytics->track(request()->getData());
         } catch (\Throwable $exception) {
@@ -67,20 +73,6 @@ final class AnalyticsController extends BaseController
 
     private function clientIp(): string
     {
-        foreach ([
-            $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
-            $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
-            $_SERVER['HTTP_X_REAL_IP'] ?? '',
-            $_SERVER['REMOTE_ADDR'] ?? '',
-        ] as $header) {
-            foreach (explode(',', (string)$header) as $candidate) {
-                $candidate = trim($candidate);
-                if (filter_var($candidate, FILTER_VALIDATE_IP)) {
-                    return $candidate;
-                }
-            }
-        }
-
-        return '';
+        return client_ip();
     }
 }

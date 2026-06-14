@@ -272,10 +272,55 @@ function detect_request_origin(): string
         return '';
     }
 
-    $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    return (request_is_secure() ? 'https' : 'http') . '://' . $host;
+}
 
-    return ($isSecure ? 'https' : 'http') . '://' . $host;
+function is_trusted_proxy(): bool
+{
+    $remoteAddress = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+
+    return $remoteAddress !== ''
+        && defined('TRUSTED_PROXIES')
+        && in_array($remoteAddress, (array)TRUSTED_PROXIES, true);
+}
+
+function request_is_secure(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') {
+        return true;
+    }
+
+    if (!is_trusted_proxy()) {
+        return false;
+    }
+
+    $forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0] ?? ''));
+
+    return $forwardedProto === 'https';
+}
+
+function client_ip(): string
+{
+    $candidates = [];
+    if (is_trusted_proxy()) {
+        $candidates = [
+            $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
+            $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
+            $_SERVER['HTTP_X_REAL_IP'] ?? '',
+        ];
+    }
+    $candidates[] = $_SERVER['REMOTE_ADDR'] ?? '';
+
+    foreach ($candidates as $header) {
+        foreach (explode(',', (string)$header) as $candidate) {
+            $candidate = trim($candidate);
+            if (filter_var($candidate, FILTER_VALIDATE_IP)) {
+                return $candidate;
+            }
+        }
+    }
+
+    return '';
 }
 
 function is_local_host(string $host): bool
@@ -358,7 +403,7 @@ function get_errors($field_name): string
     if (isset($errors[$field_name])) {
         $output .= '<div class="invalid-feedback d-block"><ul class="list-unstyled">';
         foreach ($errors[$field_name] as $error) {
-            $output .= "<li>{$error}</li>";
+            $output .= '<li>' . htmlSC((string)$error) . '</li>';
         }
         $output .= '</ul></div>';
     }
@@ -462,6 +507,21 @@ function can_manage_chat_cleanup(): bool
 function can_view_chat_audit(): bool
 {
     return has_role_level('creator');
+}
+
+function can_view_video_diagnostics(?int $ownerId = null): bool
+{
+    if (!check_auth()) {
+        return false;
+    }
+
+    $user = get_user();
+    $userId = (int)($user['id'] ?? 0);
+
+    return check_admin()
+        || ($ownerId !== null && $ownerId > 0 && $userId === $ownerId)
+        || !empty($user['can_view_video_diagnostics'])
+        || in_array((string)($user['role'] ?? ''), ['video-diagnostics', 'video_diagnostics'], true);
 }
 
 function get_user()
@@ -727,23 +787,137 @@ function sanitize_content_html(string $html): string
         return '';
     }
 
-    $html = preg_replace('#<\s*script\b[^>]*>.*?<\s*/\s*script\s*>#is', '', $html) ?? $html;
-    $html = preg_replace('#<\s*/?\s*(object|embed|form|input|textarea|select)\b[^>]*>#is', '', $html) ?? $html;
-    $html = preg_replace('/\s+on[a-z0-9_-]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
-    $html = preg_replace('/\s+srcdoc\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
-    $html = preg_replace_callback(
-        '/\s+(href|src|action|formaction|xlink:href)\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i',
-        static function (array $matches): string {
-            $value = trim($matches[2], "\"' \t\n\r\0\x0B");
+    if (!class_exists(\DOMDocument::class)) {
+        return strip_tags($html, '<p><br><div><span><strong><b><em><i><u><s><blockquote><pre><code><ul><ol><li><h1><h2><h3><h4><h5><h6><a><img><figure><figcaption><table><thead><tbody><tfoot><tr><th><td><hr>');
+    }
 
-            return preg_match('/^\s*javascript:/i', $value)
-                ? ''
-                : $matches[0];
-        },
-        $html
-    ) ?? $html;
+    $document = new \DOMDocument('1.0', 'UTF-8');
+    $previousErrors = libxml_use_internal_errors(true);
+    $loaded = $document->loadHTML(
+        '<?xml encoding="UTF-8"><div id="fbl-sanitizer-root">' . $html . '</div>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors($previousErrors);
 
-    return trim($html);
+    if (!$loaded) {
+        return '';
+    }
+
+    $xpath = new \DOMXPath($document);
+    $videos = $xpath->query('//video');
+    if ($videos !== false) {
+        foreach ($videos as $video) {
+            if (!$video instanceof \DOMElement) {
+                continue;
+            }
+
+            $hlsSource = '';
+            $directSource = trim($video->getAttribute('src'));
+            if ($directSource !== '' && preg_match('/\.m3u8(?:$|[?#])/i', $directSource)) {
+                $hlsSource = $directSource;
+                $video->removeAttribute('src');
+            }
+
+            foreach (iterator_to_array($video->getElementsByTagName('source')) as $sourceNode) {
+                if (!$sourceNode instanceof \DOMElement) {
+                    continue;
+                }
+
+                $sourceUrl = trim($sourceNode->getAttribute('src'));
+                $sourceType = strtolower(trim($sourceNode->getAttribute('type')));
+                $isHls = $sourceType === 'application/vnd.apple.mpegurl'
+                    || $sourceType === 'application/x-mpegurl'
+                    || preg_match('/\.m3u8(?:$|[?#])/i', $sourceUrl);
+                if (!$isHls) {
+                    continue;
+                }
+
+                if ($hlsSource === '' && $sourceUrl !== '') {
+                    $hlsSource = $sourceUrl;
+                }
+                $sourceNode->parentNode?->removeChild($sourceNode);
+            }
+
+            if ($hlsSource === '' || !is_safe_content_url($hlsSource, true)) {
+                continue;
+            }
+
+            $video->setAttribute('data-hls-src', $hlsSource);
+            $video->setAttribute('data-plyr-player', '');
+            $video->setAttribute('preload', 'none');
+
+            $parent = $video->parentNode;
+            if ($parent instanceof \DOMElement && $parent->hasAttribute('data-plyr-player-wrap')) {
+                $parent->setAttribute('data-plyr-lazy', 'true');
+            } else {
+                $video->setAttribute('data-plyr-lazy', 'true');
+            }
+        }
+    }
+
+    $forbidden = $xpath->query('//script|//object|//embed|//form|//input|//textarea|//select|//option|//button|//base|//meta|//link|//style|//svg|//math');
+    if ($forbidden !== false) {
+        foreach (iterator_to_array($forbidden) as $node) {
+            $node->parentNode?->removeChild($node);
+        }
+    }
+
+    $elements = $xpath->query('//*');
+    if ($elements !== false) {
+        foreach ($elements as $element) {
+            if (!$element instanceof \DOMElement || !$element->hasAttributes()) {
+                continue;
+            }
+
+            foreach (iterator_to_array($element->attributes) as $attribute) {
+                $name = strtolower($attribute->name);
+                $value = html_entity_decode($attribute->value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+                if (str_starts_with($name, 'on') || in_array($name, ['srcdoc', 'formaction', 'xlink:href'], true)) {
+                    $element->removeAttributeNode($attribute);
+                    continue;
+                }
+
+                if (in_array($name, ['href', 'src', 'action'], true) && !is_safe_content_url($value, $name === 'src')) {
+                    $element->removeAttributeNode($attribute);
+                    continue;
+                }
+
+                if ($name === 'style' && preg_match('/(?:expression\s*\(|(?:java|vb)script\s*:|url\s*\(\s*[\'"]?\s*(?:java|vb)script:)/i', $value)) {
+                    $element->removeAttributeNode($attribute);
+                }
+            }
+        }
+    }
+
+    $root = $document->getElementById('fbl-sanitizer-root');
+    if (!$root) {
+        return '';
+    }
+
+    $output = '';
+    foreach ($root->childNodes as $child) {
+        $output .= $document->saveHTML($child);
+    }
+
+    return trim($output);
+}
+
+function is_safe_content_url(string $url, bool $allowImageData = false): bool
+{
+    $normalized = preg_replace('/[\x00-\x20\x7f]+/u', '', trim($url)) ?? '';
+    if ($normalized === '' || str_starts_with($normalized, '#') || str_starts_with($normalized, '/')) {
+        return true;
+    }
+
+    if ($allowImageData && preg_match('#^data:image/(?:png|gif|jpe?g|webp);base64,#i', $normalized)) {
+        return true;
+    }
+
+    $scheme = strtolower((string)(parse_url($normalized, PHP_URL_SCHEME) ?? ''));
+
+    return $scheme === '' || in_array($scheme, ['http', 'https', 'mailto', 'tel'], true);
 }
 
 function get_user_avatar(?string $path = null, string $size = 'default'): string

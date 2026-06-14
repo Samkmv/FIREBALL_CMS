@@ -752,6 +752,7 @@ class User
         $name = trim((string)($data['name'] ?? ''));
         $login = $this->normalizeLogin((string)($data['login'] ?? ''));
         $email = mb_strtolower(trim((string)($data['email'] ?? '')));
+        $currentPassword = (string)($data['current_password'] ?? '');
         $password = (string)($data['password'] ?? '');
         $passwordConfirmation = (string)($data['password_confirmation'] ?? '');
 
@@ -784,6 +785,18 @@ class User
             $errors['password_confirmation'][] = $this->translate('auth_validation_password_confirmation_required');
         } elseif ($password !== '' && $password !== $passwordConfirmation) {
             $errors['password_confirmation'][] = $this->translate('auth_validation_password_confirmation_match');
+        }
+
+        $currentUser = $this->findById($userId);
+        $sensitiveChange = $currentUser
+            && (
+                $login !== $this->normalizeLogin((string)($currentUser['login'] ?? ''))
+                || $email !== mb_strtolower(trim((string)($currentUser['email'] ?? '')))
+                || $password !== ''
+            );
+
+        if ($sensitiveChange && ($currentPassword === '' || !password_verify($currentPassword, (string)($currentUser['password'] ?? '')))) {
+            $errors['current_password'][] = $this->translate('auth_validation_current_password');
         }
 
         return $errors;
@@ -847,26 +860,61 @@ class User
      */
     public function resetPasswordByToken(string $token, string $password): bool
     {
-        $reset = $this->findActivePasswordResetByToken($token);
-        if (!$reset) {
-            return false;
+        $this->ensureUsersTableExists();
+        $database = db();
+        $database->beginTransaction();
+
+        try {
+            $tokenHash = hash('sha256', $token);
+            $now = date('Y-m-d H:i:s');
+            $reset = $database->query(
+                "SELECT id, user_id
+                 FROM {$this->passwordResetsTable}
+                 WHERE token_hash = ?
+                   AND used_at IS NULL
+                   AND expires_at >= ?
+                 LIMIT 1
+                 FOR UPDATE",
+                [$tokenHash, $now]
+            )->getOne();
+
+            if (!$reset) {
+                $database->rollBack();
+                return false;
+            }
+
+            $database->query(
+                "UPDATE {$this->passwordResetsTable}
+                 SET used_at = ?
+                 WHERE id = ? AND used_at IS NULL",
+                [$now, (int)$reset['id']]
+            );
+
+            if ($database->rowCount() !== 1) {
+                $database->rollBack();
+                return false;
+            }
+
+            $database->query(
+                "UPDATE {$this->usersTable} SET password = ? WHERE id = ?",
+                [password_hash($password, PASSWORD_DEFAULT), (int)$reset['user_id']]
+            );
+            $database->query(
+                "UPDATE {$this->passwordResetsTable}
+                 SET used_at = COALESCE(used_at, ?)
+                 WHERE user_id = ?",
+                [$now, (int)$reset['user_id']]
+            );
+            $database->commit();
+
+            return true;
+        } catch (\Throwable $exception) {
+            try {
+                $database->rollBack();
+            } catch (\Throwable) {
+            }
+            throw $exception;
         }
-
-        db()->query(
-            "UPDATE {$this->usersTable}
-             SET password = ?
-             WHERE id = ?",
-            [password_hash($password, PASSWORD_DEFAULT), (int)$reset['user_id']]
-        );
-
-        db()->query(
-            "UPDATE {$this->passwordResetsTable}
-             SET used_at = ?
-             WHERE id = ?",
-            [date('Y-m-d H:i:s'), (int)$reset['id']]
-        );
-
-        return true;
     }
 
     /**

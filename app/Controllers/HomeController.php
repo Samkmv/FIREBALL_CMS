@@ -2,13 +2,13 @@
 
 namespace App\Controllers;
 
-use App\Helpers\Cart\Cart;
 use App\Models\ContactRequest;
 use App\Models\ContactSubject;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\SiteSetting;
 use FBL\Theme;
+use FBL\RateLimiter;
 
 /**
  * Обрабатывает главную страницу и страницу контактов сайта.
@@ -40,12 +40,6 @@ class HomeController extends BaseController
      */
     public function index()
     {
-//        session()->setFlash('success', 'Успешно!');
-//        session()->setFlash('error', 'Ошибка!');
-
-//        Cart::clearCart();
-//        dump(Cart::getCart());
-
         $homepageType = $this->siteSettings->get('homepage_type', 'default');
 
         if ($homepageType === 'page') {
@@ -122,6 +116,10 @@ class HomeController extends BaseController
         if (request()->isPost()) {
             $data = $this->normalizeContactData(request()->getData());
             $errors = $this->validateContactData($data);
+            $rateKey = 'contacts|' . client_ip();
+            if (!RateLimiter::attempt($rateKey, 3, 600)) {
+                $errors['message'][] = return_translation('contacts_form_rate_limited');
+            }
 
             if (!empty($errors)) {
                 session()->set('form_data', $data);
@@ -168,11 +166,15 @@ class HomeController extends BaseController
 
         if ($data['name'] === '') {
             $errors['name'][] = return_translation('contacts_validation_name');
+        } elseif (mb_strlen($data['name']) > 120) {
+            $errors['name'][] = return_translation('contacts_validation_name_length');
         }
 
         if ($data['email'] === '') {
             $errors['email'][] = return_translation('contacts_validation_email');
         } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'][] = return_translation('contacts_validation_email_invalid');
+        } elseif (mb_strlen($data['email']) > 254) {
             $errors['email'][] = return_translation('contacts_validation_email_invalid');
         }
 
@@ -182,6 +184,8 @@ class HomeController extends BaseController
 
         if ($data['message'] === '') {
             $errors['message'][] = return_translation('contacts_validation_message');
+        } elseif (mb_strlen($data['message']) > 10000) {
+            $errors['message'][] = return_translation('contacts_validation_message_length');
         }
 
         return $errors;

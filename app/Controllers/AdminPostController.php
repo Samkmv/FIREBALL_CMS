@@ -117,6 +117,7 @@ class AdminPostController extends BaseController
             'categories' => $sidebarData['categories'],
             'trending_posts' => $sidebarData['trending_posts'],
             'popular_posts' => $popularPosts,
+            'video_owner_id' => (int)($post['author_id'] ?? 0),
             'seo_title' => $post['seo_title'] !== '' ? $post['seo_title'] : $post['title'],
             'seo_description' => $post['seo_description'],
             'seo_keywords' => $post['seo_keywords'],

@@ -6,9 +6,12 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
 
     return strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓';
 };
+$canManageRoles = check_creator();
 ?>
 <?php ob_start(); ?>
-<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/roles/create') ?>"><i class="ci-plus"></i><?= print_translation('admin_roles_create') ?></a>
+<?php if ($canManageRoles): ?>
+    <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/roles/create') ?>"><i class="ci-plus"></i><?= print_translation('admin_roles_create') ?></a>
+<?php endif; ?>
 <?php $adminPageActions = ob_get_clean(); ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_roles_heading'),
@@ -66,7 +69,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">
-                                    <?php if (!$isProtectedCreatorRole): ?>
+                                    <?php if ($canManageRoles && !$isProtectedCreatorRole): ?>
                                         <a
                                             class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
                                             href="<?= base_href('/admin/roles/edit/' . (int)$role['id']) ?>"
@@ -85,7 +88,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                                             data-bs-toggle="tooltip"
                                         ><i class="ci-lock"></i></button>
                                     <?php endif; ?>
-                                    <?php if (!$isSystemRole && !$hasAssignedUsers && !$isProtectedCreatorRole): ?>
+                                    <?php if ($canManageRoles && !$isSystemRole && !$hasAssignedUsers && !$isProtectedCreatorRole): ?>
                                         <form
                                             action="<?= base_href('/admin/roles/delete') ?>"
                                             method="post"

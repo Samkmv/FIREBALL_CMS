@@ -45,8 +45,7 @@ if (!defined('INSTALLED_LOCK')) {
 }
 
 $requestHost = preg_replace('/[^a-zA-Z0-9.:[\]-]/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost')) ?: 'localhost';
-$forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0] ?? ''));
-$requestIsSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https';
+$requestIsSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 $detectedAppUrl = ($requestIsSecure ? 'https' : 'http') . '://' . $requestHost;
 
 $defaults = [
@@ -60,6 +59,7 @@ $defaults = [
     'CHAT_ENCRYPTION_KEY' => 'change-this-chat-key-in-production',
     'APP_TIMEZONE' => 'Europe/Moscow',
     'UPDATE_CHANNEL' => 'stable',
+    'TRUSTED_PROXIES' => [],
     'PAGINATION_SETTINGS' => [
         'perPage' => 20,
         'midSize' => 2,
@@ -134,6 +134,41 @@ if (is_file($localConfigPath)) {
     }
 }
 
+if (
+    is_file(INSTALLED_LOCK)
+    && is_file($localConfigPath)
+    && empty($localConfig['CHAT_ENCRYPTION_KEY'])
+) {
+    $lockPath = sys_get_temp_dir() . '/fireball-chat-key-' . hash('sha256', ROOT) . '.lock';
+    $lockHandle = @fopen($lockPath, 'c');
+
+    if ($lockHandle !== false && flock($lockHandle, LOCK_EX)) {
+        try {
+            $latestLocalConfig = require $localConfigPath;
+            if (is_array($latestLocalConfig) && empty($latestLocalConfig['CHAT_ENCRYPTION_KEY'])) {
+                $latestLocalConfig['CHAT_ENCRYPTION_KEY'] = bin2hex(random_bytes(32));
+                $temporaryPath = $localConfigPath . '.tmp-' . bin2hex(random_bytes(4));
+                $content = "<?php\n\nreturn " . var_export($latestLocalConfig, true) . ";\n";
+
+                if (@file_put_contents($temporaryPath, $content, LOCK_EX) === false || !@rename($temporaryPath, $localConfigPath)) {
+                    @unlink($temporaryPath);
+                    throw new \RuntimeException('Unable to persist CHAT_ENCRYPTION_KEY.');
+                }
+
+                @chmod($localConfigPath, 0600);
+                $localConfig = $latestLocalConfig;
+            } elseif (is_array($latestLocalConfig)) {
+                $localConfig = $latestLocalConfig;
+            }
+        } catch (\Throwable $exception) {
+            error_log('Unable to initialize CHAT_ENCRYPTION_KEY: ' . $exception->getMessage());
+        } finally {
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+        }
+    }
+}
+
 $config = array_replace_recursive($defaults, $localConfig);
 $defaultLocale = (string)($config['DEFAULT_LOCALE'] ?? $defaults['DEFAULT_LOCALE']);
 if (isset($config['LANGS'][$defaultLocale])) {
@@ -167,6 +202,7 @@ $arrayKeys = [
     'MAIL_SETTINGS',
     'PAGINATION_SETTINGS',
     'LANGS',
+    'TRUSTED_PROXIES',
 ];
 
 foreach ($arrayKeys as $key) {

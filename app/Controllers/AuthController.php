@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\User;
 use FBL\Auth;
 use FBL\File;
+use FBL\RateLimiter;
 
 /**
  * Обрабатывает аутентификацию, регистрацию, восстановление пароля и профиль пользователя.
@@ -65,7 +66,6 @@ class AuthController extends BaseController
             'login' => $data['login'],
             'password' => (string)($data['password'] ?? ''),
         ])) {
-            $this->recordLoginFailure($data['login']);
             $this->setFormState([
                 'login' => $data['login'],
             ], [
@@ -97,6 +97,12 @@ class AuthController extends BaseController
 
         if ($errors) {
             $this->setFormState($data, $errors);
+            response()->redirect(base_href('/login'));
+        }
+
+        if (!RateLimiter::attempt($this->passwordResetThrottleKey(), 3, 3600)) {
+            $this->clearFormState();
+            session()->setFlash('success', return_translation('auth_reset_request_success'));
             response()->redirect(base_href('/login'));
         }
 
@@ -246,6 +252,7 @@ class AuthController extends BaseController
                     'name' => trim((string)request()->post('name', '')),
                     'login' => trim((string)request()->post('login', '')),
                     'email' => mb_strtolower(trim((string)request()->post('email', ''))),
+                    'current_password' => (string)request()->post('current_password', ''),
                     'password' => (string)request()->post('password', ''),
                     'password_confirmation' => (string)request()->post('password_confirmation', ''),
                 ];
@@ -262,6 +269,8 @@ class AuthController extends BaseController
 
                 $this->users->updateProfile((int)$user['id'], $data);
                 Auth::setUser();
+                session()->regenerateId();
+                app()->regenerateCSRFToken();
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_profile_updated'));
                 response()->redirect(base_href('/profile'));
@@ -339,35 +348,11 @@ class AuthController extends BaseController
      */
     protected function isLoginLocked(string $login): bool
     {
-        $state = session()->get($this->loginThrottleKey($login), []);
-        $lockedUntil = (int)($state['locked_until'] ?? 0);
-
-        if ($lockedUntil <= time()) {
-            if ($lockedUntil > 0) {
-                session()->remove($this->loginThrottleKey($login));
-            }
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Учитывает неудачную попытку входа и при необходимости включает временную блокировку.
-     */
-    protected function recordLoginFailure(string $login): void
-    {
-        $key = $this->loginThrottleKey($login);
-        $state = session()->get($key, []);
-        if ((int)($state['locked_until'] ?? 0) > 0 && (int)$state['locked_until'] <= time()) {
-            $state = [];
-        }
-        $attempts = (int)($state['attempts'] ?? 0) + 1;
-
-        session()->set($key, [
-            'attempts' => $attempts,
-            'locked_until' => $attempts >= self::MAX_LOGIN_ATTEMPTS ? time() + self::LOGIN_LOCK_SECONDS : 0,
-        ]);
+        return !RateLimiter::attempt(
+            $this->loginThrottleKey($login),
+            self::MAX_LOGIN_ATTEMPTS,
+            self::LOGIN_LOCK_SECONDS
+        );
     }
 
     /**
@@ -375,7 +360,7 @@ class AuthController extends BaseController
      */
     protected function clearLoginThrottle(string $login): void
     {
-        session()->remove($this->loginThrottleKey($login));
+        RateLimiter::clear($this->loginThrottleKey($login));
     }
 
     /**
@@ -383,8 +368,15 @@ class AuthController extends BaseController
      */
     protected function loginThrottleKey(string $login): string
     {
-        $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
-        return 'auth.login_throttle.' . hash('sha256', make_slug($login, '') . '|' . $ip);
+        $ip = client_ip();
+        return 'auth.login.' . make_slug($login, '') . '|' . $ip;
+    }
+
+    protected function passwordResetThrottleKey(): string
+    {
+        $ip = client_ip();
+
+        return 'auth.password-reset|' . $ip;
     }
 
     /**

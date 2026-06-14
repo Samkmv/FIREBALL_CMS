@@ -3,8 +3,6 @@
 namespace FBL;
 
 use App\Services\ConfigService;
-use Illuminate\Database\Capsule\Manager as Capsule;
-
 /**
  * Основной объект приложения, который инициализирует базовые сервисы и запускает обработку запроса.
  */
@@ -30,7 +28,7 @@ class Application
     public function __construct()
     {
         self::$app = $this;
-        $this->uri = $_SERVER['REQUEST_URI'];
+        $this->uri = (string)($_SERVER['REQUEST_URI'] ?? '/');
         $this->request = new Request($this->uri);
         $this->response = new Response();
         $this->router = new Router($this->request, $this->response);

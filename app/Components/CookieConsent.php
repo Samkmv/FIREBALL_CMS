@@ -140,7 +140,6 @@ class CookieConsent
 
     protected function isHttps(): bool
     {
-        return (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
-            || (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+        return request_is_secure();
     }
 }

@@ -13,11 +13,14 @@ $onlineSortUrl = current_url_with_query([
     'direction' => $onlineSortDirection,
     'page' => 1,
 ]);
+$canManageUsers = check_creator();
 ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_users_heading'),
     'subtitle' => return_translation('admin_users_subtitle'),
-    'actions' => '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/users/create') . '"><i class="ci-plus"></i>' . return_translation('admin_users_create') . '</a>',
+    'actions' => $canManageUsers
+        ? '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/users/create') . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_users_create')) . '</a>'
+        : '',
 ]) ?>
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="users">
@@ -108,7 +111,7 @@ $onlineSortUrl = current_url_with_query([
                             </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">
-                                    <?php if (!$isProtectedCreator): ?>
+                                    <?php if ($canManageUsers && !$isProtectedCreator): ?>
                                         <a
                                             class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
                                             href="<?= base_href('/admin/users/edit/' . (int)$item['id']) ?>"
@@ -127,7 +130,7 @@ $onlineSortUrl = current_url_with_query([
                                             data-bs-toggle="tooltip"
                                         ><i class="ci-lock"></i></button>
                                     <?php endif; ?>
-                                    <?php if (!$isCurrentUser && !$isLastAdmin && !$isProtectedCreator): ?>
+                                    <?php if ($canManageUsers && !$isCurrentUser && !$isLastAdmin && !$isProtectedCreator): ?>
                                         <form
                                             action="<?= base_href('/admin/users/delete') ?>"
                                             method="post"

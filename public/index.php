@@ -4,9 +4,9 @@ $start_framework = microtime(true);
 
 /* I recommend using the phpstorm editor. */
 
-if (PHP_MAJOR_VERSION < 8) {
+if (PHP_VERSION_ID < 80200) {
 
-    echo "Requires PHP version 8.0 or higher!";
+    echo "Requires PHP version 8.2 or higher!";
     exit;
 }
 
@@ -28,6 +28,13 @@ if (!file_exists(ROOT . '/vendor/autoload.php')) {
 
 require_once ROOT . '/vendor/autoload.php';
 require_once HELPERS . '/helpers.php';
+
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+}
 
 register_shutdown_function('log_last_php_error');
 

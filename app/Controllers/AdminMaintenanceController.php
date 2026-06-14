@@ -76,22 +76,6 @@ final class AdminMaintenanceController extends BaseController
 
     private function clientIp(): string
     {
-        $headers = [
-            $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
-            $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
-            $_SERVER['HTTP_X_REAL_IP'] ?? '',
-            $_SERVER['REMOTE_ADDR'] ?? '',
-        ];
-
-        foreach ($headers as $header) {
-            foreach (explode(',', (string)$header) as $candidate) {
-                $candidate = trim($candidate);
-                if (filter_var($candidate, FILTER_VALIDATE_IP)) {
-                    return $candidate;
-                }
-            }
-        }
-
-        return '';
+        return client_ip();
     }
 }

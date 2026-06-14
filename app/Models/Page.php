@@ -613,7 +613,7 @@ class Page extends Model
         $page['created_at'] = (string)($page['created_at'] ?? '');
         $page['updated_at'] = (string)($page['updated_at'] ?? '');
 
-        if ($page['content'] !== '' && $page['content'][0] === '{') {
+        if ($page['content'] !== '') {
             $page['content'] = (new BlockRenderer())->renderPublicContent($page['content']);
         }
 

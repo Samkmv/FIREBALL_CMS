@@ -14,6 +14,8 @@ class Session
     public function __construct()
     {
         if (session_status() === PHP_SESSION_NONE) {
+            ini_set('session.use_strict_mode', '1');
+            ini_set('session.use_only_cookies', '1');
             $params = session_get_cookie_params();
             session_set_cookie_params([
                 'lifetime' => $params['lifetime'],
@@ -107,6 +109,14 @@ class Session
     }
 
     /**
+     * Removes all session data while keeping the active session usable for flash messages.
+     */
+    public function clear(): void
+    {
+        $_SESSION = [];
+    }
+
+    /**
      * Сохраняет flash-сообщение до следующего чтения.
      */
     public function setFlash($key, $value): void
@@ -131,8 +141,7 @@ class Session
      */
     protected function isSecureRequest(): bool
     {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        return request_is_secure();
     }
 
 }

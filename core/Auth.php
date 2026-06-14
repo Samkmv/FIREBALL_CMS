@@ -78,8 +78,7 @@ class Auth
      */
     public static function logout(): void
     {
-        session()->remove('user');
-        session()->remove(self::ADMIN_SESSION_LAST_ACTIVITY_KEY);
+        session()->clear();
         session()->regenerateId();
         app()->regenerateCSRFToken();
     }

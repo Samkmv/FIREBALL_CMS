@@ -183,7 +183,7 @@ class Router
             header("Allow: " . implode(', ', $allowed_methods));
 
             if (str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')) {
-                response()->json(['status' => 'error', 'Method not allowed'], 405);
+                response()->json(['status' => 'error', 'message' => 'Method not allowed'], 405);
             }
 
             abort('Method not allowed', 405);
