@@ -8,6 +8,8 @@ final class AnalyticsService
 {
     private AnalyticsRepository $repository;
     private int $cacheTtl = 120;
+    private const GEOIP_DOWNLOAD_MAX_BYTES = 33554432;
+    private const GEOIP_DATABASE_MAX_BYTES = 134217728;
 
     public function __construct(?AnalyticsRepository $repository = null)
     {
@@ -177,12 +179,12 @@ final class AnalyticsService
     public function refreshGeoData(int $limit = 1000): int
     {
         $databasePath = $this->geoIpDatabasePath();
-        if ($databasePath === null || !class_exists('\\GeoIp2\\Database\\Reader')) {
+        if ($databasePath === null || !class_exists('\\MaxMind\\Db\\Reader')) {
             return 0;
         }
 
         $updated = 0;
-        $reader = new \GeoIp2\Database\Reader($databasePath);
+        $reader = new \MaxMind\Db\Reader($databasePath);
 
         try {
             foreach ($this->repository->visitsWithoutGeo($limit) as $visit) {
@@ -200,8 +202,6 @@ final class AnalyticsService
 
                     $this->repository->updateVisitGeo($id, $geo);
                     $updated++;
-                } catch (\GeoIp2\Exception\AddressNotFoundException) {
-                    continue;
                 } catch (\Throwable $exception) {
                     log_error_details('Analytics GeoIP refresh failed', ['Visit ID' => $id, 'IP' => $ip], $exception);
                 }
@@ -217,14 +217,67 @@ final class AnalyticsService
         return $updated;
     }
 
+    public function installGeoIpDatabase(): bool
+    {
+        if ($this->geoIpDatabasePath() !== null && class_exists('\\MaxMind\\Db\\Reader')) {
+            return true;
+        }
+
+        $directory = ROOT . '/storage/geoip';
+        if ((!is_dir($directory) && !@mkdir($directory, 0755, true)) || !is_writable($directory)) {
+            return false;
+        }
+
+        $targetPath = $directory . '/GeoLite2-City.mmdb';
+        $token = bin2hex(random_bytes(6));
+        $archivePath = $directory . '/geoip-' . $token . '.mmdb.gz';
+        $databasePath = $directory . '/geoip-' . $token . '.mmdb';
+
+        try {
+            foreach ($this->geoIpDownloadUrls() as $url) {
+                try {
+                    $this->downloadGeoIpArchive($url, $archivePath);
+                    $this->extractGeoIpArchive($archivePath, $databasePath);
+                    $this->validateGeoIpDatabase($databasePath);
+
+                    if (!@rename($databasePath, $targetPath)) {
+                        throw new \RuntimeException('Unable to install GeoIP database.');
+                    }
+
+                    @chmod($targetPath, 0644);
+                    @file_put_contents(
+                        $directory . '/database.json',
+                        json_encode([
+                            'provider' => 'DB-IP',
+                            'source' => $url,
+                            'installed_at' => date('c'),
+                        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+                        LOCK_EX
+                    );
+
+                    return true;
+                } catch (\Throwable $exception) {
+                    @unlink($archivePath);
+                    @unlink($databasePath);
+                    log_error_details('GeoIP database download failed', ['URL' => $url], $exception);
+                }
+            }
+        } finally {
+            @unlink($archivePath);
+            @unlink($databasePath);
+        }
+
+        return false;
+    }
+
     public function geoIpStatus(): array
     {
         $databasePath = $this->geoIpDatabasePath();
 
         return [
-            'connected' => $databasePath !== null && class_exists('\\GeoIp2\\Database\\Reader'),
+            'connected' => $databasePath !== null && class_exists('\\MaxMind\\Db\\Reader'),
             'database_found' => $databasePath !== null,
-            'reader_available' => class_exists('\\GeoIp2\\Database\\Reader'),
+            'reader_available' => class_exists('\\MaxMind\\Db\\Reader'),
             'path' => $databasePath,
         ];
     }
@@ -303,9 +356,9 @@ final class AnalyticsService
         }
 
         $databasePath = $this->geoIpDatabasePath();
-        if ($databasePath !== null && class_exists('\\GeoIp2\\Database\\Reader')) {
+        if ($databasePath !== null && class_exists('\\MaxMind\\Db\\Reader')) {
             try {
-                $reader = new \GeoIp2\Database\Reader($databasePath);
+                $reader = new \MaxMind\Db\Reader($databasePath);
                 try {
                     return $this->geoFromReader($reader, $ip);
                 } finally {
@@ -334,15 +387,137 @@ final class AnalyticsService
         return null;
     }
 
-    private function geoFromReader(\GeoIp2\Database\Reader $reader, string $ip): array
+    private function geoFromReader(\MaxMind\Db\Reader $reader, string $ip): array
     {
-        $record = $reader->city($ip);
+        $record = $reader->get($ip);
+        if (!is_array($record)) {
+            return $this->unknownGeo();
+        }
+
+        $country = is_array($record['country'] ?? null) ? $record['country'] : [];
+        $city = is_array($record['city'] ?? null) ? $record['city'] : [];
+        $countryNames = is_array($country['names'] ?? null) ? $country['names'] : [];
+        $cityNames = is_array($city['names'] ?? null) ? $city['names'] : [];
 
         return [
-            'country' => $record->country->names['ru'] ?? $record->country->name ?? 'Unknown',
-            'country_code' => $record->country->isoCode ?? null,
-            'city' => $record->city->names['ru'] ?? $record->city->name ?? null,
+            'country' => $countryNames['ru'] ?? $countryNames['en'] ?? 'Unknown',
+            'country_code' => $country['iso_code'] ?? null,
+            'city' => $cityNames['ru'] ?? $cityNames['en'] ?? null,
         ];
+    }
+
+    private function geoIpDownloadUrls(): array
+    {
+        $urls = [];
+        for ($offset = 0; $offset < 3; $offset++) {
+            $month = date('Y-m', strtotime('-' . $offset . ' month'));
+            $urls[] = 'https://download.db-ip.com/free/dbip-country-lite-' . $month . '.mmdb.gz';
+        }
+
+        return $urls;
+    }
+
+    private function downloadGeoIpArchive(string $url, string $targetPath): void
+    {
+        $handle = @fopen($targetPath, 'wb');
+        if (!is_resource($handle)) {
+            throw new \RuntimeException('Unable to create GeoIP download file.');
+        }
+
+        try {
+            if (function_exists('curl_init')) {
+                $curl = curl_init($url);
+                curl_setopt_array($curl, [
+                    CURLOPT_FILE => $handle,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_MAXREDIRS => 3,
+                    CURLOPT_CONNECTTIMEOUT => 10,
+                    CURLOPT_TIMEOUT => 90,
+                    CURLOPT_FAILONERROR => true,
+                    CURLOPT_USERAGENT => 'FIREBALL-CMS GeoIP Updater',
+                    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+                ]);
+                $success = curl_exec($curl);
+                $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+                $error = curl_error($curl);
+                curl_close($curl);
+
+                if ($success !== true || $status < 200 || $status >= 300) {
+                    throw new \RuntimeException('GeoIP download failed: ' . ($error !== '' ? $error : 'HTTP ' . $status));
+                }
+            } else {
+                $context = stream_context_create([
+                    'http' => [
+                        'timeout' => 90,
+                        'follow_location' => 1,
+                        'max_redirects' => 3,
+                        'user_agent' => 'FIREBALL-CMS GeoIP Updater',
+                    ],
+                ]);
+                $source = @fopen($url, 'rb', false, $context);
+                if (!is_resource($source)) {
+                    throw new \RuntimeException('GeoIP download failed.');
+                }
+                stream_copy_to_stream($source, $handle, self::GEOIP_DOWNLOAD_MAX_BYTES + 1);
+                fclose($source);
+            }
+        } finally {
+            fclose($handle);
+        }
+
+        $size = @filesize($targetPath);
+        if (!is_int($size) || $size <= 0 || $size > self::GEOIP_DOWNLOAD_MAX_BYTES) {
+            throw new \RuntimeException('GeoIP archive has an invalid size.');
+        }
+    }
+
+    private function extractGeoIpArchive(string $archivePath, string $targetPath): void
+    {
+        $source = @gzopen($archivePath, 'rb');
+        $target = @fopen($targetPath, 'wb');
+        if (!is_resource($source) || !is_resource($target)) {
+            if (is_resource($source)) {
+                gzclose($source);
+            }
+            if (is_resource($target)) {
+                fclose($target);
+            }
+            throw new \RuntimeException('Unable to extract GeoIP archive.');
+        }
+
+        $written = 0;
+        try {
+            while (!gzeof($source)) {
+                $chunk = gzread($source, 1048576);
+                if ($chunk === false) {
+                    throw new \RuntimeException('Unable to read GeoIP archive.');
+                }
+                $written += strlen($chunk);
+                if ($written > self::GEOIP_DATABASE_MAX_BYTES || fwrite($target, $chunk) === false) {
+                    throw new \RuntimeException('GeoIP database has an invalid size.');
+                }
+            }
+        } finally {
+            gzclose($source);
+            fclose($target);
+        }
+    }
+
+    private function validateGeoIpDatabase(string $path): void
+    {
+        if (!class_exists('\\MaxMind\\Db\\Reader')) {
+            throw new \RuntimeException('MMDB reader is unavailable.');
+        }
+
+        $reader = new \MaxMind\Db\Reader($path);
+        try {
+            $record = $reader->get('8.8.8.8');
+            if (!is_array($record) || strtoupper((string)($record['country']['iso_code'] ?? '')) !== 'US') {
+                throw new \RuntimeException('Downloaded GeoIP database failed validation.');
+            }
+        } finally {
+            $reader->close();
+        }
     }
 
     private function unknownGeo(): array

@@ -153,6 +153,8 @@ return [
     'admin_analytics_refresh_success' => '统计缓存已刷新。',
     'admin_geoip_connected' => 'GeoIP：已连接',
     'admin_geoip_missing' => 'GeoIP：未找到数据库',
+    'admin_geoip_install_hint' => '点击刷新统计以下载并安装免费的 DB-IP 数据库。',
+    'admin_geoip_install_failed' => '无法下载或安装 GeoIP 数据库。请检查服务器对 download.db-ip.com 的访问权限以及 storage/geoip 的写入权限。',
     'admin_analytics_filter_search' => '搜索',
     'admin_analytics_filter_period' => '周期',
     'admin_analytics_filter_all' => '全部',

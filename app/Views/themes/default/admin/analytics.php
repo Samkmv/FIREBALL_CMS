@@ -89,6 +89,8 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
             <span class="ms-2">
                 <a class="alert-link" href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>
             </span>
+        <?php else: ?>
+            <span class="ms-2"><?= print_translation('admin_geoip_install_hint') ?></span>
         <?php endif; ?>
     </div>
 
