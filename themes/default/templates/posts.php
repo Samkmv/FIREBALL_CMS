@@ -47,7 +47,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
     ?>
     <article class="col">
         <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-            <img src="<?= get_image($post['image']) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($post['title']) ?>">
+            <img src="<?= htmlSC(get_image($post['image'])) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($post['title']) ?>">
         </a>
         <div class="pt-4">
             <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
@@ -154,7 +154,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                                     </div>
                                 </div>
                                 <div class="ratio w-100" style="max-width: 86px; --cz-aspect-ratio: calc(64 / 86 * 100%)">
-                                    <img src="<?= get_image($post['image']) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" class="rounded-2" alt="<?= htmlSC($post['title']) ?>" style="object-fit: cover;">
+                                    <img src="<?= htmlSC(get_image($post['image'])) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-2" alt="<?= htmlSC($post['title']) ?>" style="object-fit: cover;">
                                 </div>
                             </article>
                         <?php endforeach; ?>
