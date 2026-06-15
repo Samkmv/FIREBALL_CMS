@@ -268,6 +268,14 @@
         return /\.m3u8(?:$|\?)/i.test(url || '');
     };
 
+    const isCrossOriginUrl = function (url) {
+        try {
+            return new URL(url, window.location.href).origin !== window.location.origin;
+        } catch (error) {
+            return false;
+        }
+    };
+
     const inferHlsPoster = function (url) {
         if (!url) {
             return '';
@@ -847,10 +855,16 @@
     };
 
     const prepareNativeHlsPlayback = async function (element) {
-        const isAwake = await ensureHlsSourceAwake(element, {
-            emitStatus: true,
-            requirePlayIntent: true,
-        });
+        let isAwake = true;
+
+        // Native Safari can load cross-origin HLS without exposing it to XHR.
+        // Probing it first would require CORS and some stream servers reject cache-busting queries.
+        if (!isCrossOriginUrl(element.hlsSource)) {
+            isAwake = await ensureHlsSourceAwake(element, {
+                emitStatus: true,
+                requirePlayIntent: true,
+            });
+        }
 
         if (!isAwake) {
             return false;
