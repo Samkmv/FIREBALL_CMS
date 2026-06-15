@@ -38,9 +38,12 @@ final class PostImageService
         $relativePath = ltrim((string)(parse_url($image, PHP_URL_PATH) ?: $image), '/');
         $sourcePath = $this->resolvePublicPath($relativePath);
         if ($sourcePath === null || !is_file($sourcePath)) {
-            $url = get_image($image);
+            if ($relativePath !== 'assets/img/no-image.png') {
+                return $this->prepare('assets/img/no-image.png', $version);
+            }
 
-            return $this->result($url, $url, $url, $url, '', 0, 0);
+            $fallbackUrl = get_image('assets/img/no-image.png');
+            return $this->result($fallbackUrl, $fallbackUrl, $fallbackUrl, $fallbackUrl, '', 0, 0);
         }
 
         return $this->prepareLocal($relativePath, $sourcePath);

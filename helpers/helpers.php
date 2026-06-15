@@ -934,5 +934,17 @@ function get_user_avatar(?string $path = null, string $size = 'default'): string
 
     $fallback = $fallbacks[$size] ?? $fallbacks['default'];
 
-    return $path ? get_image($path) : base_url($fallback);
+    if (!$path) {
+        return base_url($fallback);
+    }
+
+    $normalizedPath = ltrim((string)(parse_url($path, PHP_URL_PATH) ?: $path), '/');
+    if (!filter_var($path, FILTER_VALIDATE_URL)
+        && !str_starts_with($path, '//')
+        && ($normalizedPath === '' || !is_file(WWW . '/' . $normalizedPath))
+    ) {
+        return base_url($fallback);
+    }
+
+    return get_image($path);
 }

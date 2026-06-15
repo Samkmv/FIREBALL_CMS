@@ -878,6 +878,15 @@ $(function(){
         notifyChatItems(response.items || []);
     };
 
+    const sameOriginUrl = (url) => {
+        try {
+            const parsed = new URL(String(url || ''), window.location.href);
+            return parsed.pathname + parsed.search + parsed.hash;
+        } catch (error) {
+            return url;
+        }
+    };
+
     const pollNotificationFeed = () => {
         if (!notificationCenter.length) {
             return;
@@ -889,7 +898,7 @@ $(function(){
         }
 
         $.ajax({
-            url: feedUrl,
+            url: sameOriginUrl(feedUrl),
             method: 'GET',
             dataType: 'json',
             success: function (response) {
@@ -909,7 +918,7 @@ $(function(){
         }
 
         $.ajax({
-            url: unreadUrl,
+            url: sameOriginUrl(unreadUrl),
             method: 'GET',
             dataType: 'json',
             success: function (response) {

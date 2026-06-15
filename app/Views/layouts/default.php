@@ -779,6 +779,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php endif; ?>
 
 <!-- Bootstrap + Theme scripts -->
+<script src="<?= base_url('/assets/default/js/bootstrap-guard.js?v=' . filemtime(WWW . '/assets/default/js/bootstrap-guard.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/theme.min.js') ?>"></script>
 
 <!-- Customs scripts -->
