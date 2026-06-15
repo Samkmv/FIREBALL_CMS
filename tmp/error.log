@@ -1,0 +1,14 @@
+[2026-06-15 08:49:44] Unhandled application exception
+Request URI: /admin/roles
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method App\Models\User::getPaginatedRoles()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php
+Line: 308
+Trace: #0 [internal function]: App\Controllers\AdminController->roles()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(69): FBL\Router->dispatch()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(56): FBL\Application->run()
+#4 {main}
+========================================================================

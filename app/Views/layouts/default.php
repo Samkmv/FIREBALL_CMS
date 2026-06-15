@@ -782,6 +782,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script src="<?= base_url('/assets/default/js/theme.min.js') ?>"></script>
 
 <!-- Customs scripts -->
+<script src="<?= base_url('/assets/default/js/password-field.js?v=' . filemtime(WWW . '/assets/default/js/password-field.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/select-init.js?v=' . filemtime(WWW . '/assets/default/js/select-init.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/plyr-init.js?v=' . filemtime(WWW . '/assets/default/js/plyr-init.js')) ?>"></script>
 <?php if ($isAdmin): ?>

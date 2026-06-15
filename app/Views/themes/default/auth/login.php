@@ -36,7 +36,6 @@ $errorText = static function (string $field, string $fallback) use ($formErrors)
                         'input_class' => 'form-control-lg',
                         'wrapper_class' => 'password-field--auth mb-4',
                         'required' => true,
-                        'feedback_class' => 'invalid-tooltip bg-transparent py-0',
                         'error_fallback' => return_translation('auth_validation_password_required'),
                     ]) ?>
 

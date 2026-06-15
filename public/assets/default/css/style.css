@@ -2765,49 +2765,51 @@ body.is-site-fullscreen .plyr * {
     }
 }
 
-.password-field,
+.password-field {
+    position: relative;
+}
+
 .password-field__control {
+    --password-toggle-width: 3rem;
+    --password-validation-icon-offset: 3.75rem;
     position: relative;
 }
 
 .password-field__input {
-    padding-right: 5.5rem;
+    padding-inline-end: 5.5rem;
 }
 
 .password-field__input.is-invalid,
-.was-validated .password-field__input:invalid {
-    padding-right: 5.5rem;
-    background-position: right 3.25rem center;
+.password-field__input.is-valid,
+.was-validated .password-field__input:invalid,
+.was-validated .password-field__input:valid {
+    padding-inline-end: 5.5rem;
+    background-position: right var(--password-validation-icon-offset) center;
 }
 
 .password-field .password-toggle-button {
     position: absolute;
     z-index: 2;
-    top: 0;
-    right: 0;
+    inset: 0 0 0 auto;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 3.25rem;
-    height: calc(1.5em + 1.125rem + 2px);
+    width: var(--password-toggle-width);
+    height: 100%;
     padding: 0;
-    color: var(--bs-body-color);
+    justify-content: center;
+    color: var(--cz-body-color, var(--bs-body-color));
     cursor: pointer;
+    transition: color .2s ease-in-out;
 }
 
-.password-field__input.form-control-lg ~ .password-toggle-button {
-    height: calc(1.5em + 1.5rem + 2px);
+.password-field .password-toggle-button:hover {
+    color: var(--cz-emphasis-color, var(--bs-emphasis-color));
 }
 
-.password-field--auth .password-toggle-button {
-    top: 0;
-    bottom: 0;
-    height: auto;
-}
-
-.password-field--auth .password-toggle-button-icon {
+.password-field .password-toggle-button-icon {
     align-items: center;
     justify-content: center;
+    pointer-events: none;
 }
 
 .password-field .password-toggle-button:has(input:disabled) {
@@ -2820,9 +2822,29 @@ body.is-site-fullscreen .plyr * {
     outline-offset: 1px;
 }
 
+.password-field > .invalid-feedback {
+    margin-top: .25rem;
+}
+
+.was-validated .password-field:has(.password-field__input:invalid) > .invalid-feedback,
+.was-validated .password-field:has(.password-field__input:invalid) > .invalid-tooltip {
+    display: block;
+}
+
 .password-field:has(.password-field__input.is-invalid) .password-field__hint,
 .was-validated .password-field:has(.password-field__input:invalid) .password-field__hint {
     display: none;
+}
+
+[dir="rtl"] .password-field__input.is-invalid,
+[dir="rtl"] .password-field__input.is-valid,
+[dir="rtl"] .was-validated .password-field__input:invalid,
+[dir="rtl"] .was-validated .password-field__input:valid {
+    background-position: left var(--password-validation-icon-offset) center;
+}
+
+[dir="rtl"] .password-field .password-toggle-button {
+    inset: 0 auto 0 0;
 }
 
 .cookie-settings-option {

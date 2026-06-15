@@ -67,7 +67,6 @@ if ($privacyUrl === '#') {
                         'required' => true,
                         'minlength' => 8,
                         'hint' => return_translation('auth_validation_password_strength'),
-                        'feedback_class' => 'invalid-tooltip bg-transparent py-0',
                         'error_fallback' => return_translation('auth_validation_password_strength'),
                     ]) ?>
 
@@ -81,7 +80,6 @@ if ($privacyUrl === '#') {
                         'wrapper_class' => 'password-field--auth mb-4',
                         'required' => true,
                         'minlength' => 8,
-                        'feedback_class' => 'invalid-tooltip bg-transparent py-0',
                         'error_fallback' => return_translation('auth_validation_password_confirmation_required'),
                     ]) ?>
 
