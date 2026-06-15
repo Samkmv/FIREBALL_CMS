@@ -60,6 +60,9 @@ $defaults = [
     'APP_TIMEZONE' => 'Europe/Moscow',
     'UPDATE_CHANNEL' => 'stable',
     'TRUSTED_PROXIES' => [],
+    'ANALYTICS_SETTINGS' => [
+        'geoip_enabled' => true,
+    ],
     'PAGINATION_SETTINGS' => [
         'perPage' => 20,
         'midSize' => 2,
@@ -203,6 +206,7 @@ $arrayKeys = [
     'PAGINATION_SETTINGS',
     'LANGS',
     'TRUSTED_PROXIES',
+    'ANALYTICS_SETTINGS',
 ];
 
 foreach ($arrayKeys as $key) {

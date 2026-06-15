@@ -11,6 +11,7 @@ final class AnalyticsService
     private const GEOIP_DOWNLOAD_MAX_BYTES = 33554432;
     private const GEOIP_DATABASE_MAX_BYTES = 134217728;
     private string $geoIpInstallError = '';
+    private ?array $geoIpStatusCache = null;
 
     public function __construct(?AnalyticsRepository $repository = null)
     {
@@ -20,13 +21,17 @@ final class AnalyticsService
 
     private function loadGeoIpReader(): void
     {
+        if (!$this->isGeoIpEnabled()) {
+            return;
+        }
+
         if (class_exists('\\MaxMind\\Db\\Reader')) {
             return;
         }
 
-        $autoloadPath = ROOT . '/vendor/maxmind-db/reader/autoload.php';
-        if (is_file($autoloadPath)) {
-            require_once $autoloadPath;
+        $composerAutoload = ROOT . '/vendor/autoload.php';
+        if (is_file($composerAutoload) && is_readable($composerAutoload)) {
+            require_once $composerAutoload;
         }
     }
 
@@ -192,13 +197,18 @@ final class AnalyticsService
 
     public function refreshGeoData(int $limit = 1000): int
     {
-        $databasePath = $this->geoIpDatabasePath();
-        if ($databasePath === null || !class_exists('\\MaxMind\\Db\\Reader')) {
+        $status = $this->geoIpStatus();
+        if (($status['state'] ?? '') !== 'enabled') {
+            return 0;
+        }
+
+        $databasePath = (string)($status['path'] ?? '');
+        $reader = $this->openGeoIpReader($databasePath, 'Analytics GeoIP refresh reader failed');
+        if ($reader === null) {
             return 0;
         }
 
         $updated = 0;
-        $reader = new \MaxMind\Db\Reader($databasePath);
 
         try {
             foreach ($this->repository->visitsWithoutGeo($limit) as $visit) {
@@ -234,13 +244,19 @@ final class AnalyticsService
     public function installGeoIpDatabase(): bool
     {
         $this->geoIpInstallError = '';
+        $this->geoIpStatusCache = null;
 
-        if ($this->geoIpDatabasePath() !== null && class_exists('\\MaxMind\\Db\\Reader')) {
+        if (!$this->isGeoIpEnabled()) {
+            return false;
+        }
+
+        $status = $this->geoIpStatus();
+        if (($status['state'] ?? '') === 'enabled') {
             return true;
         }
 
-        if (!class_exists('\\MaxMind\\Db\\Reader')) {
-            $this->geoIpInstallError = 'MMDB reader is unavailable. Run composer install.';
+        if (($status['state'] ?? '') === 'missing_reader') {
+            $this->geoIpInstallError = 'MMDB reader is unavailable.';
             return false;
         }
 
@@ -278,6 +294,7 @@ final class AnalyticsService
                         LOCK_EX
                     );
 
+                    $this->geoIpStatusCache = null;
                     return true;
                 } catch (\Throwable $exception) {
                     @unlink($archivePath);
@@ -302,12 +319,61 @@ final class AnalyticsService
 
     public function geoIpStatus(): array
     {
-        $databasePath = $this->geoIpDatabasePath();
+        if ($this->geoIpStatusCache !== null) {
+            return $this->geoIpStatusCache;
+        }
 
-        return [
+        if (!$this->isGeoIpEnabled()) {
+            return $this->geoIpStatusCache = [
+                'state' => 'disabled',
+                'connected' => false,
+                'database_found' => false,
+                'reader_available' => false,
+                'path' => null,
+            ];
+        }
+
+        $this->loadGeoIpReader();
+        $databasePath = $this->geoIpDatabasePath();
+        $readerAvailable = class_exists('\\MaxMind\\Db\\Reader');
+
+        if (!$readerAvailable) {
+            return $this->geoIpStatusCache = [
+                'state' => 'missing_reader',
+                'connected' => false,
+                'database_found' => $databasePath !== null,
+                'reader_available' => false,
+                'path' => $databasePath,
+            ];
+        }
+
+        if ($databasePath === null) {
+            return $this->geoIpStatusCache = [
+                'state' => 'missing_database',
+                'connected' => false,
+                'database_found' => false,
+                'reader_available' => true,
+                'path' => null,
+            ];
+        }
+
+        $reader = $this->openGeoIpReader($databasePath, 'GeoIP database status check failed');
+        if ($reader === null) {
+            return $this->geoIpStatusCache = [
+                'state' => 'error',
+                'connected' => false,
+                'database_found' => true,
+                'reader_available' => true,
+                'path' => $databasePath,
+            ];
+        }
+        $reader->close();
+
+        return $this->geoIpStatusCache = [
+            'state' => 'enabled',
             'connected' => $databasePath !== null && class_exists('\\MaxMind\\Db\\Reader'),
             'database_found' => $databasePath !== null,
-            'reader_available' => class_exists('\\MaxMind\\Db\\Reader'),
+            'reader_available' => true,
             'path' => $databasePath,
         ];
     }
@@ -376,6 +442,10 @@ final class AnalyticsService
 
     private function resolveGeo(string $ip): array
     {
+        if (!$this->isGeoIpEnabled()) {
+            return $this->unknownGeo();
+        }
+
         $cloudflareCountry = $this->cloudflareCountry();
         if ($cloudflareCountry !== null) {
             return $cloudflareCountry;
@@ -385,18 +455,23 @@ final class AnalyticsService
             return $this->unknownGeo();
         }
 
-        $databasePath = $this->geoIpDatabasePath();
-        if ($databasePath !== null && class_exists('\\MaxMind\\Db\\Reader')) {
-            try {
-                $reader = new \MaxMind\Db\Reader($databasePath);
-                try {
-                    return $this->geoFromReader($reader, $ip);
-                } finally {
-                    $reader->close();
-                }
-            } catch (\Throwable $exception) {
-                log_error_details('GeoIP lookup failed', ['Database' => $databasePath, 'IP' => $ip], $exception);
-            }
+        $status = $this->geoIpStatus();
+        if (($status['state'] ?? '') !== 'enabled') {
+            return $this->unknownGeo();
+        }
+
+        $databasePath = (string)($status['path'] ?? '');
+        $reader = $this->openGeoIpReader($databasePath, 'GeoIP lookup reader failed', ['IP' => $ip]);
+        if ($reader === null) {
+            return $this->unknownGeo();
+        }
+
+        try {
+            return $this->geoFromReader($reader, $ip);
+        } catch (\Throwable $exception) {
+            log_error_details('GeoIP lookup failed', ['Database' => $databasePath, 'IP' => $ip], $exception);
+        } finally {
+            $reader->close();
         }
 
         return $this->unknownGeo();
@@ -410,7 +485,7 @@ final class AnalyticsService
             CACHE . '/geoip/GeoLite2-City.mmdb',
             CONFIG . '/GeoLite2-City.mmdb',
         ] as $path) {
-            if (is_file($path) && is_readable($path)) {
+            if (is_file($path)) {
                 return $path;
             }
         }
@@ -436,7 +511,7 @@ final class AnalyticsService
         return null;
     }
 
-    private function geoFromReader(\MaxMind\Db\Reader $reader, string $ip): array
+    private function geoFromReader(object $reader, string $ip): array
     {
         $record = $reader->get($ip);
         if (!is_array($record)) {
@@ -708,7 +783,12 @@ final class AnalyticsService
 
     private function validateGeoIpDatabase(string $path): void
     {
-        if (!class_exists('\\MaxMind\\Db\\Reader')) {
+        if (
+            !$this->isGeoIpEnabled()
+            || !class_exists('\\MaxMind\\Db\\Reader')
+            || !is_file($path)
+            || !is_readable($path)
+        ) {
             throw new \RuntimeException('MMDB reader is unavailable.');
         }
 
@@ -725,7 +805,53 @@ final class AnalyticsService
 
     private function unknownGeo(): array
     {
-        return ['country' => 'Unknown', 'country_code' => null, 'city' => null];
+        return ['country' => null, 'country_code' => null, 'city' => null];
+    }
+
+    private function isGeoIpEnabled(): bool
+    {
+        return (bool)(ANALYTICS_SETTINGS['geoip_enabled'] ?? true);
+    }
+
+    private function openGeoIpReader(string $databasePath, string $logTitle, array $context = []): ?object
+    {
+        if (
+            !$this->isGeoIpEnabled()
+            || !class_exists('\\MaxMind\\Db\\Reader')
+            || $databasePath === ''
+            || !is_file($databasePath)
+        ) {
+            return null;
+        }
+
+        if (!is_readable($databasePath)) {
+            $exception = new \RuntimeException('GeoIP database is not readable.');
+            $this->geoIpStatusCache = [
+                'state' => 'error',
+                'connected' => false,
+                'database_found' => true,
+                'reader_available' => true,
+                'path' => $databasePath,
+            ];
+            log_error_details($logTitle, array_merge(['Database' => $databasePath], $context), $exception);
+
+            return null;
+        }
+
+        try {
+            return new \MaxMind\Db\Reader($databasePath);
+        } catch (\Throwable $exception) {
+            $this->geoIpStatusCache = [
+                'state' => 'error',
+                'connected' => false,
+                'database_found' => true,
+                'reader_available' => true,
+                'path' => $databasePath,
+            ];
+            log_error_details($logTitle, array_merge(['Database' => $databasePath], $context), $exception);
+
+            return null;
+        }
     }
 
     private function sanitizePage(string $page): string

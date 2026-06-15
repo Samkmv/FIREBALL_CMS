@@ -694,10 +694,14 @@ function return_translation($key): string
 
 function send_mail(array $to, string $subject, string $tpl, array $data = [], array $attachments = []): bool
 {
-    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-    $mailSettings = config_service()->mail();
-
     try {
+        if (!class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+            throw new \RuntimeException('PHPMailer is unavailable.');
+        }
+
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        $mailSettings = config_service()->mail();
+
         //Server settings
         $mail->SMTPDebug = $mailSettings['debug'];
         $mail->isSMTP();

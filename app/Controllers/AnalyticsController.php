@@ -55,20 +55,10 @@ final class AnalyticsController extends BaseController
 
     public function refresh(): void
     {
-        if (!$this->analytics->installGeoIpDatabase()) {
-            $reason = trim($this->analytics->geoIpInstallError());
-            session()->setFlash(
-                'error',
-                str_replace(
-                    ':error',
-                    $reason !== '' ? $reason : return_translation('admin_geoip_install_unknown'),
-                    return_translation('admin_geoip_install_failed')
-                )
-            );
-            response()->redirect(base_href('/admin/analytics'));
-        }
-
-        $updated = $this->analytics->refreshGeoData();
+        $geoIpStatus = $this->analytics->geoIpStatus();
+        $updated = ($geoIpStatus['state'] ?? '') === 'enabled'
+            ? $this->analytics->refreshGeoData()
+            : 0;
         $this->analytics->clearDashboardCache();
         session()->setFlash(
             'success',

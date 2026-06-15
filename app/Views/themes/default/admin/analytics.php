@@ -7,6 +7,14 @@ $visits = (array)($analytics['visits'] ?? []);
 $query = $_GET ?? [];
 $canResetAnalytics = !empty($can_reset_analytics);
 $geoIpStatus = (array)($geoip_status ?? []);
+$geoIpState = (string)($geoIpStatus['state'] ?? 'error');
+$geoIpStatusKey = match ($geoIpState) {
+    'enabled' => 'admin_geoip_status_enabled',
+    'disabled' => 'admin_geoip_status_disabled',
+    'missing_reader' => 'admin_geoip_status_missing_reader',
+    'missing_database' => 'admin_geoip_status_missing_database',
+    default => 'admin_geoip_status_error',
+};
 $unknownCountryLabel = return_translation('admin_analytics_country_unknown');
 
 $urlFor = static function (array $overrides = []) use ($query): string {
@@ -83,14 +91,12 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
     'actions' => $adminPageActions,
 ]) ?>
 
-    <div class="alert <?= !empty($geoIpStatus['connected']) ? 'alert-success' : 'alert-warning' ?> rounded-4 mb-3" role="status">
-        <?= print_translation(!empty($geoIpStatus['connected']) ? 'admin_geoip_connected' : 'admin_geoip_missing') ?>
-        <?php if (!empty($geoIpStatus['connected'])): ?>
+    <div class="alert <?= $geoIpState === 'enabled' ? 'alert-success' : 'alert-warning' ?> rounded-4 mb-3" role="status" data-geoip-status="<?= htmlSC($geoIpState) ?>">
+        <?= print_translation($geoIpStatusKey) ?>
+        <?php if ($geoIpState === 'enabled'): ?>
             <span class="ms-2">
                 <a class="alert-link" href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>
             </span>
-        <?php else: ?>
-            <span class="ms-2"><?= print_translation('admin_geoip_install_hint') ?></span>
         <?php endif; ?>
     </div>
 

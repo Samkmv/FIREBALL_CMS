@@ -15,7 +15,7 @@ final class InstallService
             ['label' => 'PDO MySQL', 'ok' => extension_loaded('pdo_mysql')],
             ['label' => 'OpenSSL', 'ok' => extension_loaded('openssl')],
             ['label' => 'JSON', 'ok' => extension_loaded('json')],
-            ['label' => 'vendor/autoload.php', 'ok' => is_file(ROOT . '/vendor/autoload.php')],
+            ['label' => 'vendor/autoload.php (optional)', 'ok' => true],
             ['label' => 'config writable', 'ok' => is_writable(CONFIG)],
             ['label' => 'storage writable', 'ok' => $this->ensureWritableDirectory(STORAGE)],
             ['label' => 'uploads writable', 'ok' => $this->ensureWritableDirectory(UPLOADS)],

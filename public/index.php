@@ -20,13 +20,32 @@ ini_set('log_errors', '1');
 ini_set('error_log', ERROR_LOGS);
 error_reporting(E_ALL);
 
-if (!file_exists(ROOT . '/vendor/autoload.php')) {
-    error_log('[' . date('Y-m-d H:i:s') . '] Bootstrap error: vendor/autoload.php not found' . PHP_EOL, 3, ERROR_LOGS);
-    http_response_code(500);
-    exit('Autoloader not found.');
+$vendorAutoload = ROOT . '/vendor/autoload.php';
+if (is_file($vendorAutoload)) {
+    require_once $vendorAutoload;
+} else {
+    spl_autoload_register(static function (string $class): void {
+        $prefixes = [
+            'FBL\\' => CORE . '/',
+            'App\\' => APP . '/',
+        ];
+
+        foreach ($prefixes as $prefix => $directory) {
+            if (!str_starts_with($class, $prefix)) {
+                continue;
+            }
+
+            $relativeClass = substr($class, strlen($prefix));
+            $path = $directory . str_replace('\\', '/', $relativeClass) . '.php';
+            if (is_file($path)) {
+                require_once $path;
+            }
+
+            return;
+        }
+    });
 }
 
-require_once ROOT . '/vendor/autoload.php';
 require_once HELPERS . '/helpers.php';
 
 if (!headers_sent()) {
@@ -38,18 +57,25 @@ if (!headers_sent()) {
 
 register_shutdown_function('log_last_php_error');
 
-$whoops = new \Whoops\Run();
+if (class_exists(\Whoops\Run::class)) {
+    $whoops = new \Whoops\Run();
 
-if (DEBUG) {
-    $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler());
+    if (DEBUG) {
+        $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler());
+    } else {
+        $whoops->pushHandler(new \Whoops\Handler\CallbackHandler(function (Throwable $e) {
+            log_error_details('Unhandled application exception', [], $e);
+            abort('Sorry! An error has occurred!', 500);
+        }));
+    }
+
+    $whoops->register();
 } else {
-    $whoops->pushHandler(new \Whoops\Handler\CallbackHandler(function (Throwable $e) {
+    set_exception_handler(static function (Throwable $e): void {
         log_error_details('Unhandled application exception', [], $e);
         abort('Sorry! An error has occurred!', 500);
-    }));
+    });
 }
-
-$whoops->register();
 
 $app = new \FBL\Application();
 require_once CONFIG . '/routes.php';

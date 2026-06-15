@@ -8,6 +8,7 @@ use App\Models\ChatMessage;
 use App\Models\ContactRequest;
 use App\Models\SiteSetting;
 use App\Models\User;
+use FBL\Pagination;
 use PDO;
 use Throwable;
 
@@ -97,13 +98,38 @@ final class DatabaseMaintenanceService
         }
     }
 
-    public function logs(int $limit = 50): array
+    public function getPaginatedLogs(int $perPage = 20): array
     {
         $this->ensureLogTable();
+        $perPage = max(1, min(100, $perPage));
+        $total = (int)db()->query(
+            'SELECT COUNT(*) FROM ' . self::LOG_TABLE
+        )->getColumn();
+        $pagination = new Pagination(
+            $total,
+            $perPage,
+            PAGINATION_SETTINGS['midSize'],
+            PAGINATION_SETTINGS['maxPages'],
+            PAGINATION_SETTINGS['tpl'],
+            'logs_page'
+        );
+        $offset = $pagination->getOffset();
 
-        return db()->query(
-            'SELECT * FROM ' . self::LOG_TABLE . ' ORDER BY id DESC LIMIT ' . max(1, min(200, $limit))
-        )->get() ?: [];
+        return [
+            'items' => db()->query(
+                'SELECT * FROM ' . self::LOG_TABLE . " ORDER BY id DESC LIMIT {$offset}, {$perPage}"
+            )->get() ?: [],
+            'total' => $total,
+            'pagination' => $pagination,
+        ];
+    }
+
+    public function clearMaintenanceLogs(): int
+    {
+        $this->ensureLogTable();
+        db()->query('DELETE FROM ' . self::LOG_TABLE);
+
+        return db()->rowCount();
     }
 
     public function ensureLogTable(): void

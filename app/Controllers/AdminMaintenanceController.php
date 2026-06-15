@@ -16,11 +16,14 @@ final class AdminMaintenanceController extends BaseController
     public function index()
     {
         $this->requireCreator();
+        $logs = $this->maintenance->getPaginatedLogs();
 
         return view('admin/database_maintenance', [
             'title' => return_translation('admin_maintenance_title'),
             'actions' => $this->maintenance->actions(),
-            'logs' => $this->maintenance->logs(),
+            'logs' => $logs['items'],
+            'logs_total' => $logs['total'],
+            'logs_pagination' => $logs['pagination'],
             'confirmation_phrase' => DatabaseMaintenanceService::CONFIRMATION_PHRASE,
         ]);
     }
@@ -46,6 +49,18 @@ final class AdminMaintenanceController extends BaseController
             session()->setFlash('error', return_translation('admin_maintenance_action_error') . ' ' . (string)($result['message'] ?? ''));
         }
 
+        response()->redirect(base_href('/admin/system/database-maintenance'));
+    }
+
+    public function clearLogs(): void
+    {
+        $this->requireCreator();
+        $deleted = $this->maintenance->clearMaintenanceLogs();
+
+        session()->setFlash(
+            'success',
+            str_replace(':count', (string)$deleted, return_translation('admin_maintenance_logs_cleared'))
+        );
         response()->redirect(base_href('/admin/system/database-maintenance'));
     }
 

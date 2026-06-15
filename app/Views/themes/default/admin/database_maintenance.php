@@ -3,6 +3,8 @@ $actions = (array)($actions ?? []);
 $safeActions = (array)($actions['safe'] ?? []);
 $dangerousActions = (array)($actions['dangerous'] ?? []);
 $logs = (array)($logs ?? []);
+$logsTotal = max(0, (int)($logs_total ?? count($logs)));
+$logsPagination = $logs_pagination ?? null;
 $confirmationPhrase = (string)($confirmation_phrase ?? 'СБРОСИТЬ FIREBALL');
 
 $actionLabel = static fn(string $action): string => return_translation('admin_maintenance_action_' . $action);
@@ -128,15 +130,29 @@ $actionDescription = static fn(string $action): string => return_translation('ad
     </div>
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
-        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
             <div>
                 <h2 class="h5 mb-1"><?= print_translation('admin_maintenance_logs_title') ?></h2>
                 <p class="text-body-secondary mb-0"><?= print_translation('admin_maintenance_logs_subtitle') ?></p>
             </div>
+            <?php if ($logsTotal > 0): ?>
+                <form
+                    action="<?= base_href('/admin/system/database-maintenance/logs/clear') ?>"
+                    method="post"
+                    data-admin-delete-form
+                    data-delete-message="<?= htmlSC(return_translation('admin_maintenance_logs_clear_confirm')) ?>"
+                >
+                    <?= get_csrf_field() ?>
+                    <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                        <i class="ci-trash"></i>
+                        <?= print_translation('admin_maintenance_logs_clear') ?>
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
 
         <?php if (empty($logs)): ?>
-            <div class="admin-table-state"><?= print_translation('admin_table_empty') ?></div>
+            <div class="admin-table-state"><?= print_translation('admin_maintenance_logs_empty') ?></div>
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table align-middle">
@@ -172,6 +188,12 @@ $actionDescription = static fn(string $action): string => return_translation('ad
                     </tbody>
                 </table>
             </div>
+
+            <?= view()->renderPartial('admin/partials/table_footer', [
+                'visible' => count($logs),
+                'total' => $logsTotal,
+                'pagination' => $logsPagination,
+            ]) ?>
         <?php endif; ?>
     </div>
 
