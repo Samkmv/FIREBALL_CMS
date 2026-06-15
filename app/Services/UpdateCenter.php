@@ -1922,6 +1922,7 @@ class UpdateCenter
             throw new RuntimeException('Unable to create the file backup archive.');
         }
 
+        $closeAttempted = false;
         try {
             foreach (['config/config.local.php', 'storage', 'public/uploads', 'uploads', 'themes/custom'] as $relative) {
                 $absolute = ROOT . '/' . $relative;
@@ -1931,11 +1932,18 @@ class UpdateCenter
                 $this->addPathToZip($zip, $absolute, $relative, ['storage/backups']);
             }
 
+            $closeAttempted = true;
             if (!$zip->close() || !is_file($path) || filesize($path) === 0) {
                 throw new RuntimeException('File backup archive was not written.');
             }
         } catch (\Throwable $exception) {
-            $zip->close();
+            if (!$closeAttempted) {
+                try {
+                    $zip->close();
+                } catch (\Throwable) {
+                    // Preserve the original backup error if cleanup also fails.
+                }
+            }
             @unlink($path);
             throw $exception;
         }
