@@ -1364,3 +1364,66 @@ $(function(){
         },
     };
 })();
+
+(() => {
+    const copyText = async (text) => {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+    };
+
+    document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-share-button]');
+        if (!button) {
+            return;
+        }
+
+        const title = button.dataset.shareTitle || document.title;
+        const url = button.dataset.shareUrl || window.location.href;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({title, url});
+                return;
+            } catch (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+            }
+        }
+
+        try {
+            await copyText(url);
+            const label = button.querySelector('[data-share-label]');
+            const icon = button.querySelector('[data-share-icon]');
+            const originalLabel = label ? label.textContent : '';
+            if (label) {
+                label.textContent = button.dataset.shareCopied || originalLabel;
+            }
+            if (icon) {
+                icon.className = 'ci-check';
+            }
+            window.setTimeout(() => {
+                if (label) {
+                    label.textContent = originalLabel;
+                }
+                if (icon) {
+                    icon.className = 'ci-share-2';
+                }
+            }, 2000);
+        } catch (error) {
+            console.error('Unable to share or copy the post URL.', error);
+        }
+    });
+})();

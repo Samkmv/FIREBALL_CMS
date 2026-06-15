@@ -947,7 +947,7 @@ return [
     'admin_validation_content_required' => 'Введите содержимое записи.',
     'admin_validation_content_invalid' => 'Структура блоков повреждена. Обновите страницу и повторите сохранение.',
     'admin_validation_image_type' => 'Выберите изображение JPG, PNG, WebP или GIF.',
-    'admin_validation_image_size' => 'Размер изображения не должен превышать 5 МБ.',
+    'admin_validation_image_size' => 'Размер изображения не должен превышать 25 МБ.',
     'admin_validation_image_upload' => 'Не удалось загрузить изображение.',
     'admin_validation_image_url_invalid' => 'Укажите корректный URL изображения или локальный путь к файлу.',
     'admin_validation_user_name_required' => 'Введите имя пользователя.',

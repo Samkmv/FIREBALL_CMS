@@ -418,7 +418,7 @@ class AdminPostController extends BaseController
             return ['image_file' => [return_translation('admin_validation_image_upload')]];
         }
 
-        if ($file->getSize() > 5 * 1024 * 1024) {
+        if ($file->getSize() > 25 * 1024 * 1024) {
             return ['image_file' => [return_translation('admin_validation_image_size')]];
         }
 

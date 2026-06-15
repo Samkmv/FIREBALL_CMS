@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Modules\BlockEditor\BlockRenderer;
+use App\Services\PostImageService;
 use App\Services\PostSeo;
 use FBL\Model;
 use FBL\Pagination;
@@ -18,6 +19,7 @@ class Post extends Model
     protected string $categoriesTable = 'post_categories';
     protected Category $categories;
     protected PostSeo $seo;
+    protected PostImageService $images;
     protected static bool $schemaReady = false;
     protected static array $runtimeCache = [];
 
@@ -25,6 +27,7 @@ class Post extends Model
     {
         $this->categories = new Category();
         $this->seo = new PostSeo();
+        $this->images = new PostImageService();
     }
 
     public static function clearPublicCache(): void
@@ -72,8 +75,27 @@ class Post extends Model
      */
     public function getPaginatedPosts(?string $category = null, int $perPage = PAGINATION_SETTINGS['perPage']): array
     {
-        $this->ensureSchema();
         $category = $this->normalizeCategoryFilter($category);
+        $perPage = max(1, (int)$perPage);
+        $page = max(1, (int)request()->get('page', 1));
+        $language = (string)(app()->get('lang')['code'] ?? DEFAULT_LOCALE);
+        $categoryHash = md5(($category ?? 'all') . '|' . $language);
+        $cacheKey = $this->publicCacheKey("paginated:{$categoryHash}:{$perPage}:{$page}");
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            $pagination = new Pagination((int)($cached['total'] ?? 0), $perPage);
+
+            return [
+                'posts' => is_array($cached['posts'] ?? null) ? $cached['posts'] : [],
+                'total' => (int)($cached['total'] ?? 0),
+                'pagination' => $pagination,
+                'current_category' => $category,
+                'current_category_label' => $cached['current_category_label'] ?? null,
+                'current_category_meta' => $cached['current_category_meta'] ?? null,
+            ];
+        }
+
+        $this->ensureSchema();
         $total = $this->countPublished($category);
         $pagination = new Pagination($total, $perPage);
         $offset = $pagination->getOffset();
@@ -90,14 +112,17 @@ class Post extends Model
             $params
         )->get() ?: [];
 
-        return [
+        $result = [
             'posts' => $this->normalizePosts($posts),
             'total' => $total,
-            'pagination' => $pagination,
             'current_category' => $category,
             'current_category_label' => $category ? $this->getCategoryNameBySlug($category) : null,
             'current_category_meta' => $category ? $this->getCategoryMetaBySlug($category) : null,
         ];
+        cache()->set($cacheKey, $result, 300);
+        $result['pagination'] = $pagination;
+
+        return $result;
     }
 
     /**
@@ -105,6 +130,13 @@ class Post extends Model
      */
     public function findPublishedBySlug(string $slug): array|false
     {
+        $slug = trim($slug);
+        $cacheKey = $this->publicCacheKey('published:' . md5($slug));
+        $cached = cache()->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached ?: false;
+        }
+
         $this->ensureSchema();
         $post = db()->query(
             "SELECT {$this->publicPostSelectColumns()}
@@ -116,10 +148,14 @@ class Post extends Model
         )->getOne();
 
         if (!$post) {
+            cache()->set($cacheKey, [], 300);
             return false;
         }
 
-        return $this->normalizePost($post);
+        $item = $this->normalizePost($post);
+        cache()->set($cacheKey, $item, 600);
+
+        return $item;
     }
 
     /**
@@ -190,7 +226,6 @@ class Post extends Model
      */
     public function getHomeFeaturedPosts(int $limit = 8): array
     {
-        $this->ensureSchema();
         $limit = max(1, (int)$limit);
         $cacheKey = $this->publicCacheKey('home_featured:' . $limit);
         $cached = cache()->get($cacheKey);
@@ -198,6 +233,7 @@ class Post extends Model
             return $cached;
         }
 
+        $this->ensureSchema();
         $posts = db()->query(
             "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
@@ -219,7 +255,6 @@ class Post extends Model
      */
     public function getLatestPublishedPosts(int $limit = 10): array
     {
-        $this->ensureSchema();
         $limit = max(1, min(100, (int)$limit));
         $cacheKey = $this->publicCacheKey('latest:' . $limit);
         $cached = cache()->get($cacheKey);
@@ -227,6 +262,7 @@ class Post extends Model
             return $cached;
         }
 
+        $this->ensureSchema();
         $posts = db()->query(
             "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
@@ -247,7 +283,6 @@ class Post extends Model
      */
     public function getPopularPosts(int $limit = 6, ?string $excludeSlug = null): array
     {
-        $this->ensureSchema();
         $limit = max(1, (int)$limit);
         $excludeSlug = trim((string)$excludeSlug);
         $cacheKey = $this->publicCacheKey('popular:' . $limit . ':' . md5($excludeSlug));
@@ -256,6 +291,7 @@ class Post extends Model
             return $cached;
         }
 
+        $this->ensureSchema();
         $params = [];
         $where = 'WHERE p.is_published = 1';
 
@@ -285,7 +321,6 @@ class Post extends Model
      */
     public function getNavigationCategories(): array
     {
-        $this->ensureSchema();
         $cacheKey = $this->publicCacheKey('navigation_categories');
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
@@ -295,6 +330,7 @@ class Post extends Model
             ));
         }
 
+        $this->ensureSchema();
         $items = array_values(array_filter(
             $this->categories->getNavigationCategories($this->table),
             static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
@@ -507,6 +543,7 @@ class Post extends Model
             return $cached;
         }
 
+        $this->ensureSchema();
         $items = $this->categories->getSidebarCategories($this->table);
         cache()->set($cacheKey, $items, 600);
 
@@ -526,6 +563,7 @@ class Post extends Model
             return $cached;
         }
 
+        $this->ensureSchema();
         $params = [];
         $where = 'WHERE p.is_published = 1';
 
@@ -666,6 +704,7 @@ class Post extends Model
         $post['show_on_home'] = max(0, (int)($post['show_on_home'] ?? 0));
         $post['priority'] = max(0, (int)($post['priority'] ?? 0));
         $post['image'] = $post['has_image'] ? $post['original_image'] : 'assets/img/no-image.png';
+        $post = array_merge($post, $this->images->prepare($post['image'], $this->publicCacheVersion()));
         $post['seo_title'] = trim((string)($post['seo_title'] ?? ''));
         $post['seo_description'] = trim((string)($post['seo_description'] ?? ''));
         $post['seo_keywords'] = trim((string)($post['seo_keywords'] ?? ''));

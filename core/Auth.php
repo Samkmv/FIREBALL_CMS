@@ -20,9 +20,27 @@ class Auth
      */
     public static function login(array $credentials): bool
     {
-        $password = $credentials['password'];
+        $user = self::validateCredentials($credentials);
+        if (!$user) {
+            return false;
+        }
+
+        self::loginUser($user);
+
+        return true;
+    }
+
+    /**
+     * Validates credentials without creating an authenticated session.
+     */
+    public static function validateCredentials(array $credentials): array|false
+    {
+        $password = (string)($credentials['password'] ?? '');
         unset($credentials['password']);
         $field = array_key_first($credentials);
+        if ($field === null) {
+            return false;
+        }
         $value = $credentials[$field];
 
         if ($field === 'login') {
@@ -37,24 +55,30 @@ class Auth
             return false;
         }
 
-        if (password_verify($password, $user['password'])) {
-            session()->regenerateId();
-            app()->regenerateCSRFToken();
-            $sessionUser = [
-                'id' => $user['id'],
-                'name' => $user['name'],
-                'login' => $user['login'] ?? null,
-                'email' => $user['email'],
-                'avatar' => $user['avatar'] ?? null,
-                'role' => $user['role'] ?? 'user',
-            ];
-            session()->set('user', $sessionUser);
-            self::syncAdminSession($sessionUser);
-
-            return true;
+        if (!password_verify($password, $user['password'])) {
+            return false;
         }
 
-        return false;
+        return $user;
+    }
+
+    /**
+     * Creates an authenticated session for an already verified user.
+     */
+    public static function loginUser(array $user): void
+    {
+        session()->regenerateId();
+        app()->regenerateCSRFToken();
+        $sessionUser = [
+            'id' => $user['id'],
+            'name' => $user['name'],
+            'login' => $user['login'] ?? null,
+            'email' => $user['email'],
+            'avatar' => $user['avatar'] ?? null,
+            'role' => $user['role'] ?? 'user',
+        ];
+        session()->set('user', $sessionUser);
+        self::syncAdminSession($sessionUser);
     }
 
     /**

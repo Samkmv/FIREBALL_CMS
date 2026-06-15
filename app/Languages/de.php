@@ -938,7 +938,7 @@ return [
     'admin_validation_content_required' => 'Inhalt ist erforderlich.',
     'admin_validation_content_invalid' => 'Die Blockstruktur ist ungueltig. Aktualisieren Sie die Seite und speichern Sie erneut.',
     'admin_validation_image_type' => 'Waehlen Sie ein JPG-, PNG-, WebP- oder GIF-Bild aus.',
-    'admin_validation_image_size' => 'Das Bild darf 5 MB nicht ueberschreiten.',
+    'admin_validation_image_size' => 'Das Bild darf 25 MB nicht ueberschreiten.',
     'admin_validation_image_upload' => 'Das Bild konnte nicht hochgeladen werden.',
     'admin_validation_image_url_invalid' => 'Geben Sie eine gueltige Bild-URL oder einen lokalen Bildpfad ein.',
     'admin_validation_user_name_required' => 'Der Benutzername ist erforderlich.',

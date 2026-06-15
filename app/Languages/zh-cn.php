@@ -938,7 +938,7 @@ return [
     'admin_validation_content_required' => '内容为必填项。',
     'admin_validation_content_invalid' => '区块结构无效。请刷新页面后再次保存。',
     'admin_validation_image_type' => '请选择 JPG、PNG、WebP 或 GIF 图片。',
-    'admin_validation_image_size' => '图片大小不能超过 5 MB。',
+    'admin_validation_image_size' => '图片大小不能超过 25 MB。',
     'admin_validation_image_upload' => '无法上传图片。',
     'admin_validation_image_url_invalid' => '请输入有效的图片 URL 或本地图片路径。',
     'admin_validation_user_name_required' => '用户名为必填项。',

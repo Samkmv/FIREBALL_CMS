@@ -5,8 +5,6 @@ $categoryUrl = static fn(?string $category = null): string => $category === null
     ? base_href('/posts')
     : base_href('/posts') . '?category=' . rawurlencode($category);
 $shareUrl = base_href('/posts/' . $post['slug']);
-$shareTitle = rawurlencode($post['title']);
-$shareLink = rawurlencode($shareUrl);
 $socialLinks = site_social_links();
 $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '');
 $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($category['total'] ?? 0), $categories ?? []));
@@ -44,7 +42,7 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
             <?php if (!empty($post['show_post_image'])): ?>
                 <figure class="figure w-100 py-3 py-md-4 mb-3">
                     <div class="ratio" style="--cz-aspect-ratio: calc(560 / 856 * 100%)">
-                        <img src="<?= htmlSC(get_image($post['image'])) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-4" alt="<?= htmlSC($post['title']) ?>" style="object-fit: cover;">
+                        <img src="<?= htmlSC($post['image_webp'] ?? $post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 991px) 100vw, 856px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-4" width="<?= (int)($post['image_width'] ?: 856) ?>" height="<?= (int)($post['image_height'] ?: 560) ?>" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async" style="object-fit: cover;">
                     </div>
                 </figure>
             <?php endif; ?>
@@ -61,45 +59,17 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                         <?= htmlSC($post['category_label'] ?? $post['category']) ?>
                     </a>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <div class="text-body-emphasis fs-sm fw-medium"><?= print_translation('posts_show_share') ?></div>
-                    <a
-                        class="btn btn-icon fs-base btn-outline-secondary border-0"
-                        href="https://x.com/intent/tweet?text=<?= $shareTitle ?>&url=<?= $shareLink ?>"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        data-bs-toggle="tooltip"
-                        data-bs-template="<div class=&quot;tooltip fs-xs mb-n2&quot; role=&quot;tooltip&quot;><div class=&quot;tooltip-inner bg-transparent text-body p-0&quot;></div></div>"
-                        aria-label="Share on X"
-                        data-bs-original-title="X (Twitter)"
-                    >
-                        <i class="ci-x"></i>
-                    </a>
-                    <a
-                        class="btn btn-icon fs-base btn-outline-secondary border-0"
-                        href="https://www.facebook.com/sharer/sharer.php?u=<?= $shareLink ?>"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        data-bs-toggle="tooltip"
-                        data-bs-template="<div class=&quot;tooltip fs-xs mb-n2&quot; role=&quot;tooltip&quot;><div class=&quot;tooltip-inner bg-transparent text-body p-0&quot;></div></div>"
-                        aria-label="Share on Facebook"
-                        data-bs-original-title="Facebook"
-                    >
-                        <i class="ci-facebook"></i>
-                    </a>
-                    <a
-                        class="btn btn-icon fs-base btn-outline-secondary border-0"
-                        href="https://t.me/share/url?url=<?= $shareLink ?>&text=<?= $shareTitle ?>"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        data-bs-toggle="tooltip"
-                        data-bs-template="<div class=&quot;tooltip fs-xs mb-n2&quot; role=&quot;tooltip&quot;><div class=&quot;tooltip-inner bg-transparent text-body p-0&quot;></div></div>"
-                        aria-label="Share on Telegram"
-                        data-bs-original-title="Telegram"
-                    >
-                        <i class="ci-telegram"></i>
-                    </a>
-                </div>
+                <button
+                    class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2"
+                    type="button"
+                    data-share-button
+                    data-share-title="<?= htmlSC($post['title']) ?>"
+                    data-share-url="<?= htmlSC($shareUrl) ?>"
+                    data-share-copied="<?= htmlSC(return_translation('posts_show_share_copied')) ?>"
+                >
+                    <i class="ci-share-2" data-share-icon></i>
+                    <span data-share-label><?= print_translation('posts_show_share') ?></span>
+                </button>
             </div>
 
             <div class="border-top mt-5 pt-4">
@@ -148,7 +118,7 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                                     </div>
                                 </div>
                                 <div class="ratio w-100" style="max-width: 86px; --cz-aspect-ratio: calc(64 / 86 * 100%)">
-                                    <img src="<?= htmlSC(get_image($item['image'])) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-2" alt="<?= htmlSC($item['title']) ?>" style="object-fit: cover;">
+                                    <img src="<?= htmlSC($item['image_mobile'] ?? get_image($item['image'])) ?>" srcset="<?= htmlSC($item['image_srcset'] ?? '') ?>" sizes="86px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-2" width="86" height="64" alt="<?= htmlSC($item['title']) ?>" loading="lazy" decoding="async" style="object-fit: cover;">
                                 </div>
                             </article>
                         <?php endforeach; ?>
@@ -200,7 +170,7 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                     <?php foreach ($popular_posts as $item): ?>
                     <article class="swiper-slide">
                         <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= $postUrl($item) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                            <img src="<?= htmlSC(get_image($item['image'])) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($item['title']) ?>">
+                            <img src="<?= htmlSC($item['image_thumb'] ?? get_image($item['image'])) ?>" srcset="<?= htmlSC($item['image_srcset'] ?? '') ?>" sizes="(max-width: 499px) 100vw, (max-width: 899px) 50vw, 33vw" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)($item['image_width'] ?: 416) ?>" height="<?= (int)($item['image_height'] ?: 305) ?>" alt="<?= htmlSC($item['title']) ?>" loading="lazy" decoding="async">
                         </a>
                         <div class="pt-4">
                             <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">

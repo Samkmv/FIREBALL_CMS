@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TwoFactorService;
 use FBL\File;
 use FBL\Pagination;
 
@@ -41,6 +42,9 @@ class User
                 password VARCHAR(255) NOT NULL,
                 avatar VARCHAR(255) NULL,
                 role VARCHAR(50) NOT NULL DEFAULT 'user',
+                two_factor_secret TEXT NULL,
+                two_factor_recovery_codes TEXT NULL,
+                two_factor_enabled_at DATETIME NULL,
                 last_seen_at DATETIME NULL,
                 created_at DATETIME NOT NULL,
                 PRIMARY KEY (id),
@@ -55,6 +59,7 @@ class User
         $this->ensureLoginColumnExists();
         $this->ensureRoleColumnExists();
         $this->ensureAvatarColumnExists();
+        $this->ensureTwoFactorColumnsExist();
         $this->ensureLastSeenColumnExists();
         $this->ensureUserIndexes();
         $this->ensureCreatorUserExists();
@@ -463,6 +468,91 @@ class User
         if ($currentUser) {
             $this->syncUserContent($id, (string)$currentUser['name'], (string)($currentUser['role'] ?? 'user'));
         }
+    }
+
+    public function hasTwoFactorEnabled(array $user): bool
+    {
+        return !empty($user['two_factor_enabled_at']) && !empty($user['two_factor_secret']);
+    }
+
+    public function enableTwoFactor(int $id, string $secret, array $recoveryCodes): void
+    {
+        $this->ensureUsersTableExists();
+        $twoFactor = new TwoFactorService();
+        $recoveryHashes = array_map(
+            static fn(string $code): string => $twoFactor->hashRecoveryCode($code),
+            $recoveryCodes
+        );
+
+        db()->query(
+            "UPDATE {$this->usersTable}
+             SET two_factor_secret = ?,
+                 two_factor_recovery_codes = ?,
+                 two_factor_enabled_at = ?
+             WHERE id = ?",
+            [
+                $twoFactor->encryptSecret($secret),
+                json_encode($recoveryHashes, JSON_UNESCAPED_SLASHES),
+                date('Y-m-d H:i:s'),
+                $id,
+            ]
+        );
+    }
+
+    public function disableTwoFactor(int $id): void
+    {
+        $this->ensureUsersTableExists();
+        db()->query(
+            "UPDATE {$this->usersTable}
+             SET two_factor_secret = NULL,
+                 two_factor_recovery_codes = NULL,
+                 two_factor_enabled_at = NULL
+             WHERE id = ?",
+            [$id]
+        );
+    }
+
+    public function verifyTwoFactorCode(array $user, string $code): bool
+    {
+        if (!$this->hasTwoFactorEnabled($user)) {
+            return false;
+        }
+
+        $twoFactor = new TwoFactorService();
+        $secret = $twoFactor->decryptSecret((string)$user['two_factor_secret']);
+
+        return $secret !== '' && $twoFactor->verifyCode($secret, $code);
+    }
+
+    public function consumeRecoveryCode(int $id, string $code): bool
+    {
+        $this->ensureUsersTableExists();
+        $user = $this->findById($id);
+        if (!$user || !$this->hasTwoFactorEnabled($user)) {
+            return false;
+        }
+
+        $twoFactor = new TwoFactorService();
+        $candidate = $twoFactor->hashRecoveryCode($code);
+        $hashes = json_decode((string)($user['two_factor_recovery_codes'] ?? ''), true);
+        if (!is_array($hashes)) {
+            return false;
+        }
+
+        foreach ($hashes as $index => $hash) {
+            if (is_string($hash) && hash_equals($hash, $candidate)) {
+                unset($hashes[$index]);
+                db()->query(
+                    "UPDATE {$this->usersTable}
+                     SET two_factor_recovery_codes = ?
+                     WHERE id = ?",
+                    [json_encode(array_values($hashes), JSON_UNESCAPED_SLASHES), $id]
+                );
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1375,6 +1465,22 @@ class User
 
         if (!$columnExists) {
             db()->query("ALTER TABLE {$this->usersTable} ADD COLUMN avatar VARCHAR(255) NULL AFTER password");
+        }
+    }
+
+    protected function ensureTwoFactorColumnsExist(): void
+    {
+        $columns = [
+            'two_factor_secret' => "ALTER TABLE {$this->usersTable} ADD COLUMN two_factor_secret TEXT NULL AFTER role",
+            'two_factor_recovery_codes' => "ALTER TABLE {$this->usersTable} ADD COLUMN two_factor_recovery_codes TEXT NULL AFTER two_factor_secret",
+            'two_factor_enabled_at' => "ALTER TABLE {$this->usersTable} ADD COLUMN two_factor_enabled_at DATETIME NULL AFTER two_factor_recovery_codes",
+        ];
+
+        foreach ($columns as $column => $sql) {
+            $exists = (bool)db()->query("SHOW COLUMNS FROM {$this->usersTable} LIKE ?", [$column])->getColumn();
+            if (!$exists) {
+                db()->query($sql);
+            }
         }
     }
 

@@ -11,5 +11,6 @@ return [
     'posts_show_follow' => 'Follow us',
     'posts_show_author' => 'Published by:',
     'posts_show_views' => 'Views:',
-    'posts_show_share' => 'Share:',
+    'posts_show_share' => 'Share',
+    'posts_show_share_copied' => 'Link copied',
 ];

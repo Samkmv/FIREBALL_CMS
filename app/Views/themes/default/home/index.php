@@ -265,7 +265,7 @@
                                 <!-- Article -->
                                 <article class="swiper-slide">
                                     <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
-                                        <img src="<?= htmlSC(get_image($post['image'])) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($post['title']) ?>">
+                                        <img src="<?= htmlSC($post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 767px) 72vw, 306px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)($post['image_width'] ?: 416) ?>" height="<?= (int)($post['image_height'] ?: 305) ?>" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async">
                                     </a>
                                     <div class="pt-4">
                                         <div class="nav pb-2 mb-1">

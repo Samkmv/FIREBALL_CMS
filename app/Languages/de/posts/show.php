@@ -11,5 +11,6 @@ return [
     'posts_show_follow' => 'Folgen Sie uns',
     'posts_show_author' => 'Veroeffentlicht von:',
     'posts_show_views' => 'Aufrufe:',
-    'posts_show_share' => 'Teilen:',
+    'posts_show_share' => 'Teilen',
+    'posts_show_share_copied' => 'Link kopiert',
 ];

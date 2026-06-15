@@ -92,7 +92,7 @@ $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']
                                     <div class="row g-3 align-items-center">
                                         <div class="col-md-3">
                                             <a class="ratio d-block rounded-4 overflow-hidden" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(180 / 240 * 100%)">
-                                                <img src="<?= htmlSC(get_image($post['image'])) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" alt="<?= htmlSC($post['title']) ?>" style="object-fit: cover;">
+                                                <img src="<?= htmlSC($post['image_mobile'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="120px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" width="120" height="90" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async" style="object-fit: cover;">
                                             </a>
                                         </div>
                                         <div class="col-md-9">

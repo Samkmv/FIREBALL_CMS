@@ -947,7 +947,7 @@ return [
     'admin_validation_content_required' => 'Content is required.',
     'admin_validation_content_invalid' => 'The block structure is invalid. Refresh the page and try saving again.',
     'admin_validation_image_type' => 'Choose a JPG, PNG, WebP or GIF image.',
-    'admin_validation_image_size' => 'Image size must not exceed 5 MB.',
+    'admin_validation_image_size' => 'Image size must not exceed 25 MB.',
     'admin_validation_image_upload' => 'Could not upload image.',
     'admin_validation_image_url_invalid' => 'Enter a valid image URL or local image path.',
     'admin_validation_user_name_required' => 'User name is required.',

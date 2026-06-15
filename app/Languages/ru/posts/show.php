@@ -11,5 +11,6 @@ return [
     'posts_show_follow' => 'Следите за нами',
     'posts_show_author' => 'Опубликовал:',
     'posts_show_views' => 'Просмотры:',
-    'posts_show_share' => 'Поделиться:',
+    'posts_show_share' => 'Поделиться',
+    'posts_show_share_copied' => 'Ссылка скопирована',
 ];

@@ -46,6 +46,8 @@ $app->router->get('/api/v1/menu/(?P<type>[a-z_]+)', [MenuController::class, 'ind
 $app->router->post('/api/analytics/track', [AnalyticsController::class, 'track'])->withoutCSRFToken();
 $app->router->get('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->post('/login', [AuthController::class, 'login'])->middleware(['guest']);
+$app->router->get('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware(['guest']);
+$app->router->post('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware(['guest']);
 $app->router->post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['guest']);
 $app->router->get('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['guest']);
 $app->router->post('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['guest']);

@@ -265,7 +265,6 @@ class Page extends Model
      */
     public function findPublishedBySlug(string $slug): array|false
     {
-        $this->ensureSchema();
         $slug = trim($slug, '/');
         $cacheKey = $this->publicCacheKey('published:' . md5($slug));
         $cached = cache()->get($cacheKey);
@@ -273,6 +272,7 @@ class Page extends Model
             return $cached ?: false;
         }
 
+        $this->ensureSchema();
         $page = db()->query(
             "SELECT {$this->pageSelectColumns()}
              FROM {$this->table}
@@ -301,13 +301,13 @@ class Page extends Model
             return false;
         }
 
-        $this->ensureSchema();
         $cacheKey = $this->publicCacheKey('published_id:' . $id);
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
             return $cached ?: false;
         }
 
+        $this->ensureSchema();
         $page = db()->query(
             "SELECT {$this->pageSelectColumns()}
              FROM {$this->table}
@@ -507,8 +507,6 @@ class Page extends Model
      */
     public function getMenuPages(string $location): array
     {
-        $this->ensureSchema();
-
         $locations = [
             'header' => 'show_in_header',
             'footer' => 'show_in_footer',
@@ -526,6 +524,7 @@ class Page extends Model
             return self::$runtimeCache[$cacheKey] = $cached;
         }
 
+        $this->ensureSchema();
         $column = $locations[$location];
         $pages = db()->query(
             "SELECT id, title, menu_title, slug, menu_order

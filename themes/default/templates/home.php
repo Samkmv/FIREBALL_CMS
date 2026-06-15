@@ -32,7 +32,10 @@ foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
         'city' => trim((string)($post['category_label'] ?? $post['category'] ?? 'MAXIPAPA')),
         'category_url' => base_href('/posts') . (!empty($post['category_slug']) ? '?category=' . rawurlencode((string)$post['category_slug']) : ''),
         'date' => date('d.m.Y', strtotime((string)($post['published_at'] ?? 'now'))),
-        'image' => get_image($post['image'] ?? ''),
+        'image' => (string)($post['image_thumb'] ?? get_image($post['image'] ?? '')),
+        'image_srcset' => (string)($post['image_srcset'] ?? ''),
+        'image_width' => (int)($post['image_width'] ?: 416),
+        'image_height' => (int)($post['image_height'] ?: 305),
         'url' => $postUrl($post),
     ];
 }
@@ -165,7 +168,7 @@ $featuredCount = count($popularCameras);
                                     <div class="swiper-slide w-auto h-auto">
                                         <article class="col" style="width: 306px; max-width: 72vw;">
                                             <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= htmlSC($camera['url']) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                                                <img src="<?= htmlSC($camera['image']) ?>" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" class="hover-effect-target w-100 h-100 object-fit-cover" alt="<?= htmlSC($camera['title']) ?>" loading="lazy">
+                                                <img src="<?= htmlSC($camera['image']) ?>" srcset="<?= htmlSC($camera['image_srcset']) ?>" sizes="(max-width: 767px) 72vw, 306px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)$camera['image_width'] ?>" height="<?= (int)$camera['image_height'] ?>" alt="<?= htmlSC($camera['title']) ?>" loading="lazy" decoding="async">
                                                 <span class="home-online-badge">
                                                     <span class="home-online-dot" aria-hidden="true"></span>
                                                     <?= print_translation('home_index_camera_online') ?>
@@ -213,7 +216,7 @@ $featuredCount = count($popularCameras);
             <div class="home-object-grid">
                 <?php foreach ($objectCards as $index => $card): ?>
                     <article class="home-object-card home-reveal <?= $index === 0 ? 'home-object-card--large' : '' ?>">
-                        <img src="<?= htmlSC($card['image']) ?>" alt="<?= htmlSC($card['title']) ?>" loading="lazy">
+                        <img src="<?= htmlSC($card['image']) ?>" alt="<?= htmlSC($card['title']) ?>" loading="lazy" decoding="async">
                         <div class="home-object-card__content">
                             <span>0<?= $index + 1 ?></span>
                             <h3><?= htmlSC($card['title']) ?></h3>

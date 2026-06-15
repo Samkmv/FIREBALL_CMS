@@ -11,5 +11,6 @@ return [
     'posts_show_follow' => '关注我们',
     'posts_show_author' => '发布者：',
     'posts_show_views' => '浏览量：',
-    'posts_show_share' => '分享：',
+    'posts_show_share' => '分享',
+    'posts_show_share_copied' => '链接已复制',
 ];

@@ -6,6 +6,8 @@ use App\Models\Admin;
 use App\Models\Analytics;
 use App\Models\ChatMessage;
 use App\Models\ContactRequest;
+use App\Models\Page;
+use App\Models\Post;
 use App\Models\SiteSetting;
 use App\Models\User;
 use FBL\Pagination;
@@ -237,6 +239,9 @@ final class DatabaseMaintenanceService
     private function clearCache(): array
     {
         $deleted = $this->clearDirectoryContents(CACHE);
+        $deleted += PostImageService::clearGeneratedCache();
+        Post::clearPublicCache();
+        Page::clearPublicCache();
 
         return ['message' => 'Cache cleared.', 'deleted' => $deleted];
     }
@@ -333,6 +338,8 @@ final class DatabaseMaintenanceService
             db()->query("DELETE FROM products WHERE slug LIKE 'demo-%' OR title LIKE 'Demo %'");
         }
 
+        Post::clearPublicCache();
+
         return [
             'message' => 'Demo content deleted.',
             'deleted_posts' => $deletedPosts,
@@ -378,6 +385,9 @@ final class DatabaseMaintenanceService
         $this->recreateRolesAndPermissions();
         $this->upsertDefaultSettings('FIREBALL CMS', 'Clean FIREBALL CMS installation after reset.', $now);
         $this->resetMetrics($now);
+        PostImageService::clearGeneratedCache();
+        Post::clearPublicCache();
+        Page::clearPublicCache();
 
         return [
             'message' => 'CMS reset completed. Current Creator account was preserved.',
