@@ -11,6 +11,7 @@ use App\Controllers\SearchController;
 use App\Controllers\CartController;
 use App\Controllers\ChatController;
 use App\Controllers\InstallController;
+use App\Controllers\StreamController;
 use App\Controllers\AdminController;
 use App\Controllers\AdminMaintenanceController;
 use App\Controllers\AdminPostController;
@@ -44,6 +45,7 @@ $app->router->post('/install', [InstallController::class, 'submit']);
 // Site pages ---------- //
 $app->router->get('/api/v1/menu/(?P<type>[a-z_]+)', [MenuController::class, 'index']);
 $app->router->post('/api/analytics/track', [AnalyticsController::class, 'track'])->withoutCSRFToken();
+$app->router->post('/api/streams/wake', [StreamController::class, 'wake'])->withoutCSRFToken();
 $app->router->get('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->post('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->get('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware(['guest']);

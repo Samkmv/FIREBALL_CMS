@@ -269,6 +269,92 @@
         return /\.m3u8(?:$|\?)/i.test(url || '');
     };
 
+    const inferStreamIdFromHlsUrl = function (url) {
+        const match = String(url || '').match(/\/stream-([^/]+)\/index\.m3u8(?:[?#].*)?$/i);
+        return match ? match[1] : '';
+    };
+
+    const getBackendWakeDebugText = function (key, replacements) {
+        const messages = hlsLocale === 'ru' ? {
+            pending: 'ожидание',
+            skipped: 'не требуется',
+            success: 'OK HTTP {status}, success={success}, woke={woke}',
+            http_error: 'HTTP {status}, success={success}, woke={woke}',
+            network_error: 'ошибка сети',
+        } : {
+            pending: 'pending',
+            skipped: 'not required',
+            success: 'OK HTTP {status}, success={success}, woke={woke}',
+            http_error: 'HTTP {status}, success={success}, woke={woke}',
+            network_error: 'network error',
+        };
+        let message = messages[key] || key;
+
+        Object.entries(replacements || {}).forEach(function ([name, value]) {
+            message = message.replace(new RegExp('\\{' + name + '\\}', 'g'), String(value));
+        });
+
+        return message;
+    };
+
+    const wakeBackendStream = async function (element) {
+        const streamId = element.dataset.streamId || inferStreamIdFromHlsUrl(element.hlsSource);
+
+        if (!streamId) {
+            if (element.hlsSource) {
+                updateVideoDebug(element, {
+                    streamId: '',
+                    backendWake: getBackendWakeDebugText('skipped'),
+                    attempt: '—',
+                });
+            }
+            return true;
+        }
+
+        updateVideoDebug(element, {
+            streamId: streamId,
+            backendWake: getBackendWakeDebugText('pending'),
+            attempt: '1/1',
+        });
+
+        try {
+            const response = await fetch((typeof baseUrl === 'string' ? baseUrl : '') + '/api/streams/wake', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ stream_id: streamId })
+            });
+            let data = {};
+
+            try {
+                data = await response.json();
+            } catch (error) {
+                data = {};
+            }
+
+            updateVideoDebug(element, {
+                streamId: data.stream_id || streamId,
+                backendWake: getBackendWakeDebugText(response.ok && data.success !== false ? 'success' : 'http_error', {
+                    status: response.status || 0,
+                    success: data.success === undefined ? 'unknown' : data.success,
+                    woke: data.woke === undefined ? 'unknown' : data.woke,
+                }),
+                attempt: '1/1',
+            });
+        } catch (error) {
+            updateVideoDebug(element, {
+                streamId: streamId,
+                backendWake: getBackendWakeDebugText('network_error'),
+                attempt: '1/1',
+            });
+            console.warn('Backend stream wake failed', error);
+        }
+
+        return true;
+    };
+
     const isCrossOriginUrl = function (url) {
         try {
             return new URL(url, window.location.href).origin !== window.location.origin;
@@ -312,12 +398,16 @@
             return;
         }
 
-        element.setAttribute('poster', poster);
-        element.dataset.poster = poster;
+        const currentPoster = element.getAttribute('poster') || element.dataset.poster || '';
+        if (currentPoster !== poster) {
+            element.setAttribute('poster', poster);
+            element.dataset.poster = poster;
+        }
 
-        if (element.plyr) {
+        if (element.plyr && element.dataset.hlsPlyrPosterSynced !== poster) {
             try {
                 element.plyr.poster = poster;
+                element.dataset.hlsPlyrPosterSynced = poster;
             } catch (error) {
                 // Plyr may not be fully ready while HLS is initializing.
             }
@@ -381,6 +471,8 @@
 
     const videoDebugLabels = hlsLocale === 'ru' ? {
         source: 'Источник',
+        streamId: 'ID потока',
+        backendWake: 'Backend wake',
         poster: 'Постер',
         sourceType: 'Тип',
         playbackMode: 'Режим',
@@ -393,6 +485,8 @@
         userAgent: 'User-Agent',
     } : {
         source: 'Source',
+        streamId: 'Stream ID',
+        backendWake: 'Backend wake',
         poster: 'Poster',
         sourceType: 'Type',
         playbackMode: 'Mode',
@@ -427,6 +521,8 @@
         const client = getClientInfo();
         element.fbVideoDebugState = Object.assign({
             source: element.hlsSource || element.currentSrc || element.getAttribute('src') || '',
+            streamId: inferStreamIdFromHlsUrl(element.hlsSource || element.currentSrc || element.getAttribute('src') || ''),
+            backendWake: '',
             poster: element.getAttribute('poster') || element.dataset.poster || '',
             sourceType: getSourceType(element.hlsSource || element.currentSrc || element.getAttribute('src') || ''),
             playbackMode: getPlaybackMode(element),
@@ -1765,6 +1861,8 @@
         let isReady = false;
 
         try {
+            await wakeBackendStream(element);
+
             if (shouldUseNativeHls(element)) {
                 isReady = await prepareNativeHlsPlayback(element);
                 if (isReady) {
