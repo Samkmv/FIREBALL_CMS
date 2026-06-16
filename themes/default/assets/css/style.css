@@ -1979,28 +1979,6 @@ body.has-open-offcanvas .admin-shell-mobile-toggle {
     pointer-events: none;
 }
 
-@media (max-width: 991.98px) {
-    body:not(.is-site-fullscreen) > header.navbar-sticky,
-    body:not(.is-site-fullscreen) > header[data-sticky-element] {
-        position: sticky !important;
-        top: 0 !important;
-        transform: none !important;
-        translate: none !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        z-index: 1030 !important;
-        will-change: auto !important;
-    }
-
-    body:not(.is-site-fullscreen) > header.navbar-sticky.is-stuck,
-    body:not(.is-site-fullscreen) > header.navbar-sticky.navbar-stuck,
-    body:not(.is-site-fullscreen) > header.navbar-sticky.stuck,
-    body:not(.is-site-fullscreen).has-open-offcanvas > header.navbar-sticky {
-        transform: none !important;
-        translate: none !important;
-    }
-}
-
 .admin-shell-mobile-toggle::before,
 .admin-shell-mobile-toggle::after {
     display: none !important;
