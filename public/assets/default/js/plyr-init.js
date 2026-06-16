@@ -10,6 +10,7 @@
     const hlsPlayRetryDelayMs = 1000;
     const hlsHealthCheckIntervalMs = 2000;
     const hlsStuckResetAfterMs = 5000;
+    const hlsStartupGraceMs = 30000;
     const hlsRestartCooldownMs = 6000;
     const hlsPrewarmTtlMs = 45000;
     const hlsStartTimeEpsilon = 0.08;
@@ -856,6 +857,12 @@
     const prepareNativeHlsPlayback = async function (element) {
         let isAwake = true;
 
+        if (element.hlsMediaReady
+            && !element.error
+            && (element.currentSrc === element.hlsSource || element.getAttribute('src') === element.hlsSource)) {
+            return true;
+        }
+
         // Native Safari can load cross-origin HLS without exposing it to XHR.
         // Probing it first would require CORS and some stream servers reject cache-busting queries.
         if (!isCrossOriginUrl(element.hlsSource)) {
@@ -869,11 +876,14 @@
             return false;
         }
 
-        if (element.getAttribute('src') !== element.hlsSource) {
+        const sourceChanged = element.getAttribute('src') !== element.hlsSource;
+        if (sourceChanged) {
             element.setAttribute('src', element.hlsSource);
         }
 
-        element.load();
+        if (sourceChanged || !element.currentSrc) {
+            element.load();
+        }
         element.hlsMediaReady = true;
         showHlsInfo(element, t('preparing_native'));
         return true;
@@ -1045,6 +1055,12 @@
         }
 
         if (element.hlsSourcePrewarmed && element.hlsSourcePrewarmedAt && (Date.now() - element.hlsSourcePrewarmedAt) < hlsPrewarmTtlMs) {
+            return Promise.resolve(true);
+        }
+
+        if (isCrossOriginUrl(element.hlsSource)) {
+            element.hlsSourcePrewarmed = true;
+            element.hlsSourcePrewarmedAt = Date.now();
             return Promise.resolve(true);
         }
 
@@ -1285,6 +1301,11 @@
             && !element.ended
             && element.readyState === haveNothing
             && element.networkState === networkLoading;
+
+        if (loadingWithoutData) {
+            const startedAt = element.hlsStartupStartedAt || element.hlsPlayRetryStartedAt || 0;
+            return startedAt > 0 && (Date.now() - startedAt) >= hlsStartupGraceMs;
+        }
 
         return decodeErrorAtStart || idleAtStartWithoutProgress || loadingWithoutData;
     };
@@ -1678,9 +1699,9 @@
                 maxLiveSyncPlaybackRate: 1,
                 backBufferLength: 90,
                 capLevelToPlayerSize: true,
-                manifestLoadingMaxRetry: 15,
+                manifestLoadingMaxRetry: 3,
                 manifestLoadingRetryDelay: 1000,
-                manifestLoadingMaxRetryTimeout: 1000,
+                manifestLoadingMaxRetryTimeout: 5000,
                 manifestLoadingTimeOut: 8000,
                 levelLoadingMaxRetry: 4,
                 levelLoadingRetryDelay: 1000,
@@ -1720,6 +1741,11 @@
             return;
         }
 
+        if (isMediaPlaybackActive(element)) {
+            markPlaybackStarted(element);
+            return;
+        }
+
         if (!shouldUseNativeHls(element)) {
             forceDetachNativeHlsSource(element);
         }
@@ -1727,6 +1753,7 @@
         element.hlsAutoplayRequested = true;
         element.hlsPlaybackStarted = false;
         element.hlsPlayRetryStartedAt = Date.now();
+        element.hlsStartupStartedAt = Date.now();
         element.dataset.hlsForceMutedAutoplay = 'true';
         element.hlsWarmupActive = true;
         showHlsInfo(element, t('first_play'));

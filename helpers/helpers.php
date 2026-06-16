@@ -255,10 +255,19 @@ function app_base_url(): string
     $configuredHost = strtolower((string)(parse_url($configuredUrl, PHP_URL_HOST) ?? ''));
     $requestHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
     $requestHost = explode(':', $requestHost)[0] ?? '';
+    $configuredPath = trim((string)(parse_url($configuredUrl, PHP_URL_PATH) ?? ''), '/');
 
     if ($requestOrigin !== '' && is_local_host($configuredHost) && $requestHost !== '' && !is_local_host($requestHost)) {
-        $configuredPath = trim((string)(parse_url($configuredUrl, PHP_URL_PATH) ?? ''), '/');
+        return rtrim($requestOrigin . ($configuredPath !== '' ? '/' . $configuredPath : ''), '/');
+    }
 
+    if ($requestOrigin !== '' && $configuredHost !== '' && $requestHost !== '' && $configuredHost !== $requestHost) {
+        return rtrim($requestOrigin . ($configuredPath !== '' ? '/' . $configuredPath : ''), '/');
+    }
+
+    $configuredScheme = strtolower((string)(parse_url($configuredUrl, PHP_URL_SCHEME) ?? ''));
+    $requestScheme = strtolower((string)(parse_url($requestOrigin, PHP_URL_SCHEME) ?? ''));
+    if ($requestOrigin !== '' && $configuredScheme !== '' && $requestScheme !== '' && $configuredScheme !== $requestScheme) {
         return rtrim($requestOrigin . ($configuredPath !== '' ? '/' . $configuredPath : ''), '/');
     }
 
@@ -290,11 +299,18 @@ function request_is_secure(): bool
         return true;
     }
 
+    $forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0] ?? ''));
+    if ($forwardedProto === 'https') {
+        return true;
+    }
+
+    if (strtolower((string)($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')) === 'on') {
+        return true;
+    }
+
     if (!is_trusted_proxy()) {
         return false;
     }
-
-    $forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0] ?? ''));
 
     return $forwardedProto === 'https';
 }
@@ -742,9 +758,10 @@ function send_mail(array $to, string $subject, string $tpl, array $data = [], ar
 function get_image($path): string
 {
     $path = trim((string)$path);
+    $fallback = '/assets/img/no-image.png';
 
     if ($path === '') {
-        return base_url('/assets/img/no-image.png');
+        return base_url($fallback);
     }
 
     if (filter_var($path, FILTER_VALIDATE_URL)) {
@@ -756,6 +773,13 @@ function get_image($path): string
     }
 
     $normalizedPath = ltrim($path, '/');
+    $extension = strtolower((string)pathinfo((string)(parse_url($normalizedPath, PHP_URL_PATH) ?: $normalizedPath), PATHINFO_EXTENSION));
+    $isImage = in_array($extension, ['avif', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'svg', 'webp'], true);
+
+    if ($isImage && !is_file(WWW . '/' . $normalizedPath)) {
+        return base_url($fallback);
+    }
+
     return base_url('/' . $normalizedPath);
 }
 
