@@ -3,6 +3,7 @@
 namespace FBL;
 
 use App\Models\SiteSetting;
+use App\Services\Themes\ThemeAssets;
 use InvalidArgumentException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -27,10 +28,13 @@ class ThemeManager
     public string $content = '';
     protected string $themesPath;
     protected ?array $activeTheme = null;
+    protected ThemeAssets $themeAssets;
 
     public function __construct(?string $themesPath = null)
     {
         $this->themesPath = rtrim($themesPath ?: ROOT . '/themes', '/');
+        // Keep ThemeManager as the public facade while moving asset path logic into a focused service.
+        $this->themeAssets = new ThemeAssets();
     }
 
     public function getThemes(): array
@@ -748,50 +752,22 @@ class ThemeManager
     public function asset($path): string
     {
         $theme = $this->getActiveTheme();
-        if (trim((string)$path) === '') {
-            return base_url('/themes/' . rawurlencode($theme['slug']) . '/assets');
-        }
+        $default = $theme['slug'] !== self::DEFAULT_THEME ? $this->loadTheme(self::DEFAULT_THEME) : null;
 
-        $assetPath = $this->safePath((string)$path);
-        if ($assetPath === null) {
-            return '';
-        }
-
-        $assetFile = $this->assetFile($theme, $assetPath);
-        if ($assetFile === null && $theme['slug'] !== self::DEFAULT_THEME) {
-            $default = $this->loadTheme(self::DEFAULT_THEME);
-            if ($default && $this->assetFile($default, $assetPath) !== null) {
-                $theme = $default;
-            }
-        }
-
-        return base_url('/themes/' . rawurlencode($theme['slug']) . '/assets/' . str_replace('%2F', '/', rawurlencode($assetPath)));
+        return $this->themeAssets->asset((string)$path, $theme, $default);
     }
 
     public function assetPath($path): string
     {
         $theme = $this->getActiveTheme();
-        $assetPath = $this->safePath((string)$path);
-        if ($assetPath === null) {
-            return '';
-        }
+        $default = $theme['slug'] !== self::DEFAULT_THEME ? $this->loadTheme(self::DEFAULT_THEME) : null;
 
-        $assetFile = $this->assetFile($theme, $assetPath);
-        if ($assetFile !== null) {
-            return $assetFile;
-        }
-
-        $default = $this->loadTheme(self::DEFAULT_THEME);
-        $defaultAsset = $default ? $this->assetFile($default, $assetPath) : null;
-
-        return $defaultAsset ?: $this->themeDirectory($theme['slug']) . '/assets/' . $assetPath;
+        return $this->themeAssets->assetPath((string)$path, $theme, $default);
     }
 
     public function previewUrl(array $theme): string
     {
-        $preview = $this->sanitizePreview((string)($theme['preview'] ?? 'preview.png'));
-
-        return base_url('/themes/' . rawurlencode((string)$theme['slug']) . '/' . rawurlencode($preview));
+        return $this->themeAssets->previewUrl($theme);
     }
 
     protected function getPreviewSlug(): ?string

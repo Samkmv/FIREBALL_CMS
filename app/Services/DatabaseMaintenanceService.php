@@ -10,15 +10,14 @@ use App\Models\Page;
 use App\Models\Post;
 use App\Models\SiteSetting;
 use App\Models\User;
-use FBL\Pagination;
-use PDO;
+use App\Services\Maintenance\CacheCleanupService;
+use App\Services\Maintenance\DatabaseBackupService;
+use App\Services\Maintenance\MaintenanceLogService;
 use Throwable;
 
 final class DatabaseMaintenanceService
 {
     public const CONFIRMATION_PHRASE = 'СБРОСИТЬ FIREBALL';
-
-    private const LOG_TABLE = 'database_maintenance_logs';
 
     private const SAFE_ACTIONS = [
         'clear_cache',
@@ -33,6 +32,18 @@ final class DatabaseMaintenanceService
         'delete_demo_content',
         'full_reset',
     ];
+
+    private CacheCleanupService $cacheCleanup;
+    private DatabaseBackupService $backupService;
+    private MaintenanceLogService $logService;
+
+    public function __construct()
+    {
+        // Service extraction keeps this class as the legacy facade for controllers and updater code.
+        $this->cacheCleanup = new CacheCleanupService();
+        $this->backupService = new DatabaseBackupService();
+        $this->logService = new MaintenanceLogService();
+    }
 
     public function actions(): array
     {
@@ -102,158 +113,32 @@ final class DatabaseMaintenanceService
 
     public function getPaginatedLogs(int $perPage = 20): array
     {
-        $this->ensureLogTable();
-        $perPage = max(1, min(100, $perPage));
-        $total = (int)db()->query(
-            'SELECT COUNT(*) FROM ' . self::LOG_TABLE
-        )->getColumn();
-        $pagination = new Pagination(
-            $total,
-            $perPage,
-            PAGINATION_SETTINGS['midSize'],
-            PAGINATION_SETTINGS['maxPages'],
-            PAGINATION_SETTINGS['tpl'],
-            'logs_page'
-        );
-        $offset = $pagination->getOffset();
-
-        return [
-            'items' => db()->query(
-                'SELECT * FROM ' . self::LOG_TABLE . " ORDER BY id DESC LIMIT {$offset}, {$perPage}"
-            )->get() ?: [],
-            'total' => $total,
-            'pagination' => $pagination,
-        ];
+        return $this->logService->getPaginatedLogs($perPage);
     }
 
     public function clearMaintenanceLogs(): int
     {
-        $this->ensureLogTable();
-        db()->query('DELETE FROM ' . self::LOG_TABLE);
-
-        return db()->rowCount();
+        return $this->logService->clearMaintenanceLogs();
     }
 
     public function ensureLogTable(): void
     {
-        db()->query(
-            'CREATE TABLE IF NOT EXISTS ' . self::LOG_TABLE . ' (
-                id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-                user_id INT(10) UNSIGNED NULL,
-                user_name VARCHAR(255) NULL,
-                ip_address VARCHAR(64) NULL,
-                action VARCHAR(100) NOT NULL,
-                result VARCHAR(20) NOT NULL,
-                error TEXT NULL,
-                backup_path VARCHAR(500) NULL,
-                created_at DATETIME NOT NULL,
-                PRIMARY KEY (id),
-                KEY action (action),
-                KEY result (result),
-                KEY created_at (created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-        );
+        $this->logService->ensureLogTable();
     }
 
     public function createBackup(): string
     {
-        $directory = ROOT . '/storage/backups';
-        if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
-            return '';
-        }
-
-        $path = $directory . '/db-backup-' . date('Y-m-d-H-i') . '.sql';
-        $suffix = 1;
-        while (is_file($path)) {
-            $path = $directory . '/db-backup-' . date('Y-m-d-H-i') . '-' . $suffix . '.sql';
-            $suffix++;
-        }
-
-        $sql = $this->buildSqlDump();
-        if ($sql === '' || file_put_contents($path, $sql) === false) {
-            return '';
-        }
-
-        return $path;
-    }
-
-    private function buildSqlDump(): string
-    {
-        $pdo = $this->pdo();
-        $database = (string)(DB_SETTINGS['database'] ?? '');
-        $tables = $pdo->query('SHOW FULL TABLES WHERE Table_type = ' . $pdo->quote('BASE TABLE'))->fetchAll(PDO::FETCH_NUM);
-        if (!is_array($tables)) {
-            return '';
-        }
-
-        $lines = [
-            '-- FIREBALL CMS database backup',
-            '-- Created at: ' . date('Y-m-d H:i:s'),
-            '-- Database: ' . $database,
-            'SET FOREIGN_KEY_CHECKS=0;',
-            '',
-        ];
-
-        foreach ($tables as $row) {
-            $table = (string)($row[0] ?? '');
-            if ($table === '') {
-                continue;
-            }
-
-            $quotedTable = $this->quoteIdentifier($table);
-            $create = $pdo->query('SHOW CREATE TABLE ' . $quotedTable)->fetch(PDO::FETCH_ASSOC);
-            $createSql = (string)($create['Create Table'] ?? '');
-
-            $lines[] = 'DROP TABLE IF EXISTS ' . $quotedTable . ';';
-            $lines[] = $createSql . ';';
-
-            $stmt = $pdo->query('SELECT * FROM ' . $quotedTable);
-            while ($record = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $columns = array_map([$this, 'quoteIdentifier'], array_keys($record));
-                $values = array_map(
-                    static fn($value): string => $value === null ? 'NULL' : $pdo->quote((string)$value),
-                    array_values($record)
-                );
-
-                $lines[] = 'INSERT INTO ' . $quotedTable . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ');';
-            }
-
-            $lines[] = '';
-        }
-
-        $lines[] = 'SET FOREIGN_KEY_CHECKS=1;';
-
-        return implode(PHP_EOL, $lines) . PHP_EOL;
-    }
-
-    private function pdo(): PDO
-    {
-        $dsn = 'mysql:host=' . DB_SETTINGS['host'] . ';dbname=' . DB_SETTINGS['database'] . ';charset=' . DB_SETTINGS['charset'];
-        if (!empty(DB_SETTINGS['port'])) {
-            $dsn .= ';port=' . (int)DB_SETTINGS['port'];
-        }
-
-        return new PDO($dsn, DB_SETTINGS['username'], DB_SETTINGS['password'], DB_SETTINGS['options']);
+        return $this->backupService->createBackup();
     }
 
     private function clearCache(): array
     {
-        $deleted = $this->clearDirectoryContents(CACHE);
-        $deleted += PostImageService::clearGeneratedCache();
-        Post::clearPublicCache();
-        Page::clearPublicCache();
-
-        return ['message' => 'Cache cleared.', 'deleted' => $deleted];
+        return $this->cacheCleanup->clearCache();
     }
 
     private function clearTempFiles(): array
     {
-        $deleted = 0;
-        foreach ([ROOT . '/tmp/temp', ROOT . '/tmp/uploads', ROOT . '/storage/temp'] as $directory) {
-            $deleted += $this->clearDirectoryContents($directory);
-        }
-
-        return ['message' => 'Temporary files cleared.', 'deleted' => $deleted];
+        return $this->cacheCleanup->clearTempFiles();
     }
 
     private function clearAnalytics(): array
@@ -265,16 +150,7 @@ final class DatabaseMaintenanceService
 
     private function clearLogs(): array
     {
-        $deleted = 0;
-        foreach ([ROOT . '/tmp/logs', ROOT . '/storage/logs'] as $directory) {
-            $deleted += $this->clearDirectoryContents($directory);
-        }
-
-        if (is_file(ERROR_LOGS) && file_put_contents(ERROR_LOGS, '') !== false) {
-            $deleted++;
-        }
-
-        return ['message' => 'System logs cleared.', 'deleted' => $deleted];
+        return $this->cacheCleanup->clearLogs();
     }
 
     private function recreateSystemSeeds(): array
@@ -529,54 +405,10 @@ final class DatabaseMaintenanceService
         )->getColumn() > 0;
     }
 
-    private function clearDirectoryContents(string $directory): int
-    {
-        if ($directory === '' || !is_dir($directory)) {
-            return 0;
-        }
-
-        $deleted = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
-
-        foreach ($iterator as $item) {
-            $path = $item->getPathname();
-            if ($item->isDir()) {
-                if (@rmdir($path)) {
-                    $deleted++;
-                }
-                continue;
-            }
-
-            if (@unlink($path)) {
-                $deleted++;
-            }
-        }
-
-        return $deleted;
-    }
-
     private function writeLog(array $user, string $ip, string $action, string $result, ?string $error, ?string $backupPath): void
     {
         try {
-            $this->ensureLogTable();
-            db()->query(
-                'INSERT INTO ' . self::LOG_TABLE . '
-                 (user_id, user_name, ip_address, action, result, error, backup_path, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [
-                    (int)($user['id'] ?? 0) ?: null,
-                    (string)($user['name'] ?? ''),
-                    $ip,
-                    $action,
-                    $result,
-                    $error,
-                    $backupPath,
-                    date('Y-m-d H:i:s'),
-                ]
-            );
+            $this->logService->writeLog($user, $ip, $action, $result, $error, $backupPath);
         } catch (Throwable $exception) {
             log_error_details('Database maintenance log write failed', [
                 'Action' => $action,

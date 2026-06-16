@@ -1,6 +1,6 @@
 <IfModule mod_php.c>
-php_value upload_max_filesize 200M
-php_value post_max_size 210M
+php_value upload_max_filesize 50M
+php_value post_max_size 55M
 php_value max_execution_time 300
 php_value max_input_time 300
 </IfModule>
@@ -16,7 +16,7 @@ Options -MultiViews
 RewriteEngine On
 
 # Block internal application directories even when Apache serves the project root.
-RewriteRule ^(?:config|storage|database|backups|logs|vendor)(?:/|$) - [F,L,NC]
+RewriteRule ^(?:tmp|storage|database|config|backups|logs|vendor)(?:/|$) - [F,L,NC]
 
 # Never expose script files from writable/public asset directories.
 RewriteRule ^(?:public/)?uploads/.*\.(?:php[0-9]?|phtml|phar)$ - [F,L,NC]

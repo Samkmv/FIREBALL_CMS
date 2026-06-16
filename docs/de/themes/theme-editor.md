@@ -4,9 +4,14 @@ Der Editor ist unter **Design → Theme-Editor** erreichbar. Er arbeitet
 ausschliesslich innerhalb des ausgewaehlten Themes und hat keinen Zugriff auf
 Dateien des CMS-Kerns.
 
-Dateien und Ordner koennen in `templates`, `partials`, `assets/css`,
-`assets/js` und `assets/images` erstellt werden. PHP ist nur in `templates`
-und `partials` erlaubt. Textdateien sind auf 1 MB, Bilder auf 5 MB begrenzt.
+PHP, HTML, CSS, JavaScript, JSON, Markdown und TXT koennen als Text bearbeitet
+werden. Vorhandene Bilder in `assets/images` koennen angesehen und ersetzt
+werden.
+
+Neue Dateien duerfen nur `.php`, `.css`, `.js`, `.json`, `.md` oder `.txt`
+verwenden. Ordner koennen nur in `templates`, `partials` und `assets` erstellt
+werden. PHP ist nur in `templates` und `partials` erlaubt. Textdateien sind auf
+1 MB, Bilder auf 5 MB begrenzt.
 
 Vor dem Speichern wird PHP syntaktisch geprueft. JSON muss gueltig sein und
 `theme.json` benoetigt `name`, `slug`, `version`, `author`, `description` und

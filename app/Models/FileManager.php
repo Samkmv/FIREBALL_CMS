@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\SafeUploadService;
+use App\Services\UploadSettings;
 use FBL\Pagination;
 
 /**
@@ -10,8 +11,6 @@ use FBL\Pagination;
  */
 class FileManager
 {
-    protected const MAX_UPLOAD_SIZE_BYTES = 209715200;
-
     protected string $rootPath;
     protected string $rootUrl;
     protected array $protectedDirectories = [
@@ -573,7 +572,8 @@ class FileManager
             throw new \RuntimeException(return_translation('admin_files_upload_error'));
         }
 
-        if ($size > self::MAX_UPLOAD_SIZE_BYTES) {
+        $maxUploadSize = UploadSettings::maxFileSizeBytes();
+        if ($size > $maxUploadSize) {
             throw new \RuntimeException(return_translation('admin_files_size_error'));
         }
 
@@ -587,7 +587,7 @@ class FileManager
                 $tmpName,
                 $originalName,
                 $size,
-                self::MAX_UPLOAD_SIZE_BYTES,
+                $maxUploadSize,
                 $this->allowedExtensions
             );
         } catch (\RuntimeException) {

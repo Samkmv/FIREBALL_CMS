@@ -4,6 +4,10 @@
 .gigacode
 public/uploads/*
 !public/uploads/.htaccess
+!public/uploads/.gitkeep
+tmp/*
+!tmp/.htaccess
+!tmp/cache/
 tmp/cache/*
 !tmp/cache/.gitkeep
 tmp/theme-actions.log
@@ -14,7 +18,10 @@ config/config.local.php
 config/config.local.php.tmp
 storage/installed.lock
 storage/installed.lock.tmp
-storage/backups/*.sql
-storage/backups/*.zip
-AGENT.md
-UPDATE_CHEATSHEET.md
+storage/backups/*
+!storage/backups/.gitkeep
+!storage/backups/.htaccess
+!storage/backups/.gitignore
+storage/logs/*
+!storage/logs/.gitkeep
+!storage/logs/.htaccess

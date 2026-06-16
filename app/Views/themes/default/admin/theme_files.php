@@ -16,9 +16,22 @@ $collectDirectories = static function (array $nodes) use (&$collectDirectories, 
     }
 };
 $collectDirectories($tree ?? []);
-$directories = array_values(array_filter($directories, static fn(string $directory): bool => $directory !== 'assets'));
 
-$renderTree = static function (array $nodes) use (&$renderTree, $slug, $selectedPath, $editorBase): string {
+$fileIcon = static function (array $node): string {
+    if (!empty($node['is_image'])) {
+        return 'ci-image';
+    }
+    return match (strtolower((string)($node['extension'] ?? pathinfo((string)($node['name'] ?? ''), PATHINFO_EXTENSION)))) {
+        'php', 'html', 'htm' => 'ci-code',
+        'css' => 'ci-palette',
+        'js' => 'ci-terminal',
+        'json' => 'ci-code',
+        'md', 'txt' => 'ci-file-text',
+        default => 'ci-file',
+    };
+};
+
+$renderTree = static function (array $nodes) use (&$renderTree, $slug, $selectedPath, $editorBase, $fileIcon): string {
     ob_start();
     ?>
     <ul class="theme-editor-tree-list list-unstyled mb-0">
@@ -27,8 +40,8 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 <?php $directoryHref = $editorBase . rawurlencode($slug) . '?' . http_build_query(['directory' => (string)$node['path']]); ?>
                 <li>
                     <details open>
-                        <summary class="theme-editor-tree-directory">
-                            <i class="ci-folder"></i>
+                        <summary class="theme-editor-tree-directory <?= (string)$node['path'] === $selectedPath ? 'active' : '' ?>">
+                            <i class="ci-folder flex-shrink-0"></i>
                             <a class="<?= (string)$node['path'] === $selectedPath ? 'active' : '' ?>" href="<?= htmlSC($directoryHref) ?>" data-theme-editor-file-link onclick="event.stopPropagation()">
                                 <?= htmlSC((string)$node['name']) ?>
                             </a>
@@ -43,8 +56,8 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 ?>
                 <li>
                     <a class="theme-editor-tree-file <?= $path === $selectedPath ? 'active' : '' ?>" href="<?= htmlSC($href) ?>" data-theme-editor-file-link>
-                        <i class="<?= !empty($node['is_image']) ? 'ci-image' : 'ci-file-text' ?>"></i>
-                        <span class="text-truncate"><?= htmlSC((string)$node['name']) ?></span>
+                        <i class="<?= htmlSC($fileIcon($node)) ?> flex-shrink-0"></i>
+                        <span><?= htmlSC((string)$node['name']) ?></span>
                     </a>
                 </li>
             <?php endif; ?>
@@ -58,12 +71,12 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_theme_editor_heading'),
     'subtitle' => return_translation('admin_theme_editor_subtitle'),
-    'container_class' => 'container-fluid px-3 px-lg-4',
-    'sidebar_col_class' => 'col-lg-3 col-xxl-2',
-    'main_col_class' => 'col-lg-9 col-xxl-10',
+    'container_class' => 'container-fluid px-3 px-lg-4 px-xxl-5',
+    'sidebar_col_class' => 'col-lg-4 col-xl-3',
+    'main_col_class' => 'col-lg-8 col-xl-9',
 ]) ?>
 
-    <div class="theme-editor" data-theme-editor data-unsaved-message="<?= htmlSC(return_translation('admin_theme_editor_unsaved')) ?>">
+    <div class="theme-editor" data-theme-editor data-editor-adapter="textarea" data-unsaved-message="<?= htmlSC(return_translation('admin_theme_editor_unsaved')) ?>">
         <?php if ($slug === 'default'): ?>
             <div class="alert alert-warning d-flex align-items-start justify-content-between flex-wrap gap-3" role="alert">
                 <div>
@@ -118,15 +131,15 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
             </div>
         </div>
 
-        <div class="row g-3">
-            <div class="col-xl-3">
+        <div class="row g-3 theme-editor-layout">
+            <div class="col-xl-3 theme-editor-sidebar-col">
                 <div class="theme-editor-tree border rounded-4 p-3">
-                    <div class="fw-semibold mb-3">/themes/<?= htmlSC($slug) ?></div>
+                    <div class="theme-editor-current-path fw-semibold mb-3">/themes/<?= htmlSC($slug) ?></div>
                     <?= $renderTree($tree ?? []) ?>
                 </div>
             </div>
 
-            <div class="col-xl-9">
+            <div class="col-xl-9 theme-editor-main-col">
                 <div class="theme-editor-workspace border rounded-4 overflow-hidden">
                     <?php if ($editor_error !== ''): ?>
                         <div class="alert alert-danger rounded-0 mb-0"><?= htmlSC($editor_error) ?></div>
@@ -140,7 +153,10 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                         </div>
                     <?php else: ?>
                         <div class="theme-editor-file-header d-flex align-items-center justify-content-between gap-3 border-bottom px-3 py-2">
-                            <code class="text-break"><?= htmlSC((string)$selected['path']) ?></code>
+                            <div class="min-w-0">
+                                <div class="small text-body-secondary"><?= print_translation('admin_theme_editor_current_path') ?></div>
+                                <code class="theme-editor-current-path text-break"><?= htmlSC((string)$selected['path']) ?></code>
+                            </div>
                             <span class="badge text-bg-secondary">
                                 <?= ($selected['type'] ?? '') === 'directory'
                                     ? htmlSC(return_translation('admin_theme_editor_directory'))
@@ -171,6 +187,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                                     name="content"
                                     spellcheck="false"
                                     data-theme-editor-code
+                                    data-editor-adapter="textarea"
                                     data-editor-language="<?= htmlSC((string)$selected['language']) ?>"
                                 ><?= htmlSC((string)$selected['content']) ?></textarea>
                             </form>
@@ -199,7 +216,8 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                     <?php foreach ($directories as $directory): ?><option value="<?= htmlSC($directory) ?>"><?= htmlSC($directory) ?></option><?php endforeach; ?>
                 </select>
                 <label class="form-label"><?= print_translation('admin_theme_editor_name') ?></label>
-                <input class="form-control" name="name" placeholder="custom.php" required>
+                <input class="form-control" name="name" placeholder="custom.php" pattern="^[A-Za-z0-9][A-Za-z0-9._-]*\.(php|css|js|json|md|txt)$" required>
+                <div class="form-text"><?= print_translation('admin_theme_editor_allowed_file_extensions') ?></div>
             </div>
             <div class="modal-footer"><button class="btn btn-primary rounded-pill" type="submit"><?= print_translation('admin_theme_editor_create') ?></button></div>
         </form></div>
@@ -246,6 +264,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                         <?php foreach ($history as $backup): ?>
                             <div class="border rounded-4 p-3">
                                 <div class="fw-semibold"><?= htmlSC(date('d.m.Y H:i:s', strtotime((string)$backup['created_at']))) ?></div>
+                                <div class="small text-body-secondary"><?= htmlSC((string)($backup['path'] ?? $selected['path'])) ?></div>
                                 <div class="small text-body-secondary mb-2"><?= htmlSC((string)$backup['user']) ?> · <?= number_format((int)$backup['size'] / 1024, 1) ?> KB</div>
                                 <form method="post" action="<?= base_href('/admin/theme-editor/restore') ?>">
                                     <?= get_csrf_field() ?><input type="hidden" name="slug" value="<?= htmlSC($slug) ?>"><input type="hidden" name="path" value="<?= htmlSC((string)$selected['path']) ?>"><input type="hidden" name="backup_id" value="<?= htmlSC((string)$backup['id']) ?>">

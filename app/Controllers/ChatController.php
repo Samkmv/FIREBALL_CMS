@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\Services\UploadSettings;
 use FBL\File;
 
 /**
@@ -339,7 +340,7 @@ class ChatController extends BaseController
                 continue;
             }
 
-            if ($file->getSize() > 200 * 1024 * 1024) {
+            if ($file->getSize() > UploadSettings::maxFileSizeBytes()) {
                 $errors[] = return_translation('chat_file_size_error');
                 continue;
             }
@@ -488,7 +489,7 @@ class ChatController extends BaseController
             }
 
             $size = (int)@filesize($absolutePath);
-            if ($size > 200 * 1024 * 1024) {
+            if ($size > UploadSettings::maxFileSizeBytes()) {
                 $errors[] = return_translation('chat_file_size_error');
                 continue;
             }

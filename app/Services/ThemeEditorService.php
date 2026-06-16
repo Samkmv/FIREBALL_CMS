@@ -16,8 +16,9 @@ class ThemeEditorService
     public const MAX_IMAGE_BYTES = 5242880;
 
     protected const TEXT_EXTENSIONS = ['php', 'html', 'htm', 'css', 'js', 'json', 'md', 'txt', 'svg'];
+    protected const CREATABLE_FILE_EXTENSIONS = ['php', 'css', 'js', 'json', 'md', 'txt'];
     protected const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'];
-    protected const EDITOR_ROOTS = ['templates', 'partials', 'assets/css', 'assets/js', 'assets/images'];
+    protected const EDITOR_ROOTS = ['templates', 'partials', 'assets'];
     protected const REQUIRED_MANIFEST_FIELDS = ['name', 'slug', 'version', 'author', 'description', 'preview'];
     protected const PROTECTED_PATHS = ['theme.json', 'templates/layout.php'];
     protected const PROTECTED_DIRECTORIES = ['templates', 'partials', 'assets', 'assets/css', 'assets/js', 'assets/images'];
@@ -145,6 +146,7 @@ class ThemeEditorService
         $relativePath = ltrim($directory . '/' . $name, '/');
         $this->assertAllowedPath($relativePath);
         $this->assertAllowedFile($relativePath);
+        $this->assertCreatableFile($relativePath);
         $target = $parent . '/' . $name;
 
         if (file_exists($target) || is_link($target)) {
@@ -536,6 +538,7 @@ class ThemeEditorService
             'type' => 'file',
             'name' => basename($relativePath),
             'path' => $relativePath,
+            'extension' => strtolower(pathinfo($relativePath, PATHINFO_EXTENSION)),
             'size' => (int)filesize($path),
             'is_image' => $this->isImagePath($relativePath),
         ];
@@ -598,10 +601,13 @@ class ThemeEditorService
         if ($path === 'theme.json') {
             return !$directory;
         }
-        if ($path === 'templates' || $path === 'partials' || $path === 'assets'
-            || $path === 'assets/css' || $path === 'assets/js' || $path === 'assets/images'
-        ) {
-            return $directory;
+        if ($directory) {
+            return $path === 'templates'
+                || $path === 'partials'
+                || $path === 'assets'
+                || str_starts_with($path, 'templates/')
+                || str_starts_with($path, 'partials/')
+                || str_starts_with($path, 'assets/');
         }
         foreach (self::EDITOR_ROOTS as $root) {
             if (str_starts_with($path, $root . '/')) {
@@ -620,6 +626,14 @@ class ThemeEditorService
     {
         if (!$this->isAllowedFile($path)) {
             throw new RuntimeException('This file type or location is not allowed.');
+        }
+    }
+
+    protected function assertCreatableFile(string $path): void
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (!in_array($extension, self::CREATABLE_FILE_EXTENSIONS, true)) {
+            throw new RuntimeException('New files can use only .php, .css, .js, .json, .md or .txt extensions.');
         }
     }
 

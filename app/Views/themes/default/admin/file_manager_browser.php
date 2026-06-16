@@ -186,7 +186,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                         <span class="badge rounded-pill px-3 py-2 fw-medium" data-file-manager-selection-badge>
                             <?= print_translation('admin_files_selected_count') ?>: <span data-file-manager-selection-count>0</span>
                         </span>
-                        <span class="small text-body-secondary"><?= str_replace(':size', '200', return_translation('admin_files_upload_limit_hint')) ?></span>
+                        <span class="small text-body-secondary"><?= str_replace(':size', (string)\App\Services\UploadSettings::maxFileSizeMb(), return_translation('admin_files_upload_limit_hint')) ?></span>
                     </div>
 
                     <form method="get" class="position-relative" data-fm-search-form data-file-manager-search-form>

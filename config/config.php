@@ -63,6 +63,10 @@ $defaults = [
     'ANALYTICS_SETTINGS' => [
         'geoip_enabled' => true,
     ],
+    'UPLOAD_SETTINGS' => [
+        // Security default: keep the global upload ceiling conservative; local config may raise it deliberately.
+        'max_file_size' => 50 * 1024 * 1024,
+    ],
     'PAGINATION_SETTINGS' => [
         'perPage' => 20,
         'midSize' => 2,
@@ -207,6 +211,7 @@ $arrayKeys = [
     'LANGS',
     'TRUSTED_PROXIES',
     'ANALYTICS_SETTINGS',
+    'UPLOAD_SETTINGS',
 ];
 
 foreach ($arrayKeys as $key) {

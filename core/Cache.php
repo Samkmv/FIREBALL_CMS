@@ -7,12 +7,19 @@ namespace FBL;
  */
 class Cache
 {
+    private const DEFAULT_TTL = 3600;
 
     /**
      * Сохраняет данные в кэш на указанное количество секунд.
      */
     public function set($key, $data, $seconds = 3600): void
     {
+        $seconds = (int)$seconds;
+        if ($seconds <= 0) {
+            // Safety fallback: invalid TTL values should not create immediately stale cache entries.
+            $seconds = self::DEFAULT_TTL;
+        }
+
         $content['data'] = $data;
         $content['end_time'] = time() + $seconds;
 
@@ -26,7 +33,7 @@ class Cache
             return;
         }
 
-        if (file_put_contents($cache_file, serialize($content)) === false) {
+        if (file_put_contents($cache_file, serialize($content), LOCK_EX) === false) {
             log_error_details('Cache write error', [
                 'Key' => $key,
                 'Cache File' => $cache_file,
@@ -58,19 +65,16 @@ class Cache
                     'Key' => $key,
                     'Cache File' => $cache_file,
                 ]);
+                $this->deleteFile($cache_file, $key);
                 return $default;
             }
 
-            if (time() <= $content['end_time']) {
+            $endTime = (int)$content['end_time'];
+            if ($endTime > 0 && time() <= $endTime) {
                 return $content['data'];
             }
 
-            if (!@unlink($cache_file)) {
-                log_error_details('Cache delete error', [
-                    'Key' => $key,
-                    'Cache File' => $cache_file,
-                ]);
-            }
+            $this->deleteFile($cache_file, $key);
         }
 
         return $default;
@@ -83,12 +87,53 @@ class Cache
     {
         $cache_file = CACHE . '/' . md5($key) . '.txt';
 
-        if (file_exists($cache_file) && !@unlink($cache_file)) {
-            log_error_details('Cache delete error', [
-                'Key' => $key,
-                'Cache File' => $cache_file,
-            ]);
+        if (file_exists($cache_file)) {
+            $this->deleteFile($cache_file, $key);
         }
     }
 
+    /**
+     * Полностью очищает файловый кэш и возвращает количество удалённых cache-файлов.
+     */
+    public function clear(): int
+    {
+        if (!is_dir(CACHE)) {
+            return 0;
+        }
+
+        $deleted = 0;
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(CACHE, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $path = $item->getPathname();
+            if ($item->isDir()) {
+                @rmdir($path);
+                continue;
+            }
+
+            // Keep repository sentinels and local access rules intact while clearing runtime cache payloads.
+            if (in_array($item->getFilename(), ['.gitkeep', '.htaccess'], true)) {
+                continue;
+            }
+
+            if (@unlink($path)) {
+                $deleted++;
+            }
+        }
+
+        return $deleted;
+    }
+
+    private function deleteFile(string $path, string $key = ''): void
+    {
+        if (!@unlink($path)) {
+            log_error_details('Cache delete error', [
+                'Key' => $key,
+                'Cache File' => $path,
+            ]);
+        }
+    }
 }

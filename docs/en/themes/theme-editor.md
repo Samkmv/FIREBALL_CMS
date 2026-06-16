@@ -5,9 +5,13 @@ restricted to the selected theme and cannot access FIREBALL CMS core files.
 
 ## Files and folders
 
-Open files from the tree or create items inside `templates`, `partials`,
-`assets/css`, `assets/js`, and `assets/images`. PHP files are allowed only in
-`templates` and `partials`.
+Open files from the tree. PHP, HTML, CSS, JavaScript, JSON, Markdown and TXT are
+editable as text. Existing images in `assets/images` can be previewed and
+replaced.
+
+Create new files only with `.php`, `.css`, `.js`, `.json`, `.md`, or `.txt`
+extensions. Create folders only inside `templates`, `partials`, and `assets`.
+PHP files are allowed only in `templates` and `partials`.
 
 Text files are limited to 1 MB and images to 5 MB. Images have a preview and can
 be replaced with another image using the same extension.

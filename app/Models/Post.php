@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Modules\BlockEditor\BlockRenderer;
 use App\Services\PostImageService;
+use App\Services\PostPublicCache;
 use App\Services\PostSeo;
 use FBL\Model;
 use FBL\Pagination;
@@ -20,6 +21,7 @@ class Post extends Model
     protected Category $categories;
     protected PostSeo $seo;
     protected PostImageService $images;
+    protected PostPublicCache $publicCache;
     protected static bool $schemaReady = false;
     protected static array $runtimeCache = [];
 
@@ -28,30 +30,23 @@ class Post extends Model
         $this->categories = new Category();
         $this->seo = new PostSeo();
         $this->images = new PostImageService();
+        $this->publicCache = new PostPublicCache();
     }
 
     public static function clearPublicCache(): void
     {
         self::$runtimeCache = [];
-        cache()->set('posts:public_version', (string)microtime(true), 31536000);
-
-        foreach ([
-            'posts:navigation_categories',
-            'posts:home_featured:8',
-            'posts:sidebar_categories',
-        ] as $key) {
-            cache()->remove($key);
-        }
+        (new PostPublicCache())->clear();
     }
 
     protected function publicCacheKey(string $name): string
     {
-        return 'posts:v' . $this->publicCacheVersion() . ':' . $name;
+        return $this->publicCache->key($name);
     }
 
     protected function publicCacheVersion(): string
     {
-        return (string)cache()->get('posts:public_version', '1');
+        return $this->publicCache->version();
     }
 
     protected function publicPostSelectColumns(): string

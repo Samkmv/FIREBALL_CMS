@@ -3,6 +3,7 @@
 namespace FBL;
 
 use App\Services\SafeUploadService;
+use App\Services\UploadSettings;
 
 /**
  * @deprecated Use SafeUploadService for new upload flows. Kept for compatibility.
@@ -56,7 +57,7 @@ class File
                 $this->tmpName,
                 $this->name,
                 $this->size,
-                200 * 1024 * 1024
+                UploadSettings::maxFileSizeBytes()
             );
         } catch (\RuntimeException $exception) {
             log_error_details('Unsafe upload rejected', [
