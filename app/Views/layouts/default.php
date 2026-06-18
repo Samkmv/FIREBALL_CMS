@@ -1,6 +1,9 @@
 <?php
 
-$postNavigationCategories = (new \App\Models\Post())->getNavigationCategories();
+$postNavigationCategories = array_values(array_filter(
+    (new \App\Models\Post())->getNavigationCategories(),
+    static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
+));
 $pageNavigationModel = new \App\Models\Page();
 $headerPageLinks = $pageNavigationModel->getMenuPages('header');
 $footerPageLinks = $pageNavigationModel->getMenuPages('footer');
@@ -108,12 +111,16 @@ $footerNavigationLinks = [
         'label' => return_translation('footer_nav_posts'),
     ],
     [
+        'href' => base_href('/support'),
+        'label' => return_translation('tpl_menu_nav_support'),
+    ],
+    [
         'href' => base_href('/contacts'),
         'label' => return_translation('tpl_menu_nav_contacts'),
     ],
 ];
 $footerNavigationLinks = array_merge($footerNavigationLinks, $footerPageLinks);
-$footerCategoryLinks = array_slice($postNavigationCategories, 0, 6);
+$footerCategoryLinks = $postNavigationCategories;
 $postCategoryUrl = static function (?string $slug = null): string {
     $url = base_href('/posts');
     if ($slug === null || $slug === '') {

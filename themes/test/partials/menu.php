@@ -1,6 +1,7 @@
 <nav class="theme-menu" aria-label="Main menu">
     <div class="theme-container">
         <a href="<?= site_url() ?>">Home</a>
+        <a href="<?= base_href('/support') ?>"><?= print_translation('tpl_menu_nav_support') ?></a>
         <?php foreach (get_menu('header') as $item): ?>
             <a href="<?= htmlSC($item['url']) ?>" <?= $item['active'] ? 'aria-current="page"' : '' ?>>
                 <?= htmlSC($item['title']) ?>

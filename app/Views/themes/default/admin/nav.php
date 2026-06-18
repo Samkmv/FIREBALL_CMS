@@ -21,10 +21,22 @@ $normalizeAdminPath = static function (string $path): string {
 };
 
 $currentPath = $normalizeAdminPath(current_path());
+$supportNewCount = 0;
+try {
+    $supportNewCount = (new \App\Models\ContactRequest())->countNew();
+} catch (\Throwable $e) {
+    $supportNewCount = 0;
+}
 $navItems = [
     ['href' => base_href('/admin'), 'label' => return_translation('admin_nav_dashboard'), 'icon' => 'ci-layout'],
     ['href' => base_href('/admin/analytics'), 'label' => return_translation('admin_nav_analytics'), 'icon' => 'ci-activity'],
-    ['href' => base_href('/admin/contact-requests'), 'label' => return_translation('admin_nav_contacts'), 'icon' => 'ci-mail'],
+    [
+        'href' => base_href('/admin/support'),
+        'label' => return_translation('admin_nav_support'),
+        'icon' => 'ci-life-buoy',
+        'badge' => $supportNewCount > 0 ? (string)$supportNewCount : '',
+        'badge_title' => return_translation('admin_support_new_count'),
+    ],
     ['href' => base_href('/admin/posts'), 'label' => return_translation('admin_nav_posts'), 'icon' => 'ci-file-text'],
     ['href' => base_href('/admin/pages'), 'label' => return_translation('admin_nav_pages'), 'icon' => 'ci-file'],
     ['href' => base_href('/admin/categories'), 'label' => return_translation('admin_nav_categories'), 'icon' => 'ci-folder'],
@@ -40,6 +52,10 @@ $navItems = [
 
 $isActive = static function (string $href) use ($currentPath, $normalizeAdminPath): bool {
     $routePath = $normalizeAdminPath((string)(parse_url($href, PHP_URL_PATH) ?: '/'));
+
+    if ($routePath === '/admin/support' && $currentPath === '/admin/contact-requests') {
+        return true;
+    }
 
     if ($routePath === '/admin') {
         return $currentPath === '/admin';
@@ -70,7 +86,7 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
                 <span class="fw-medium d-inline-flex align-items-center gap-2 min-w-0 admin-shell-nav-label">
                     <span class="text-truncate"><?= htmlSC($item['label']) ?></span>
                     <?php if (!empty($item['badge'])): ?>
-                        <span class="admin-shell-beta-badge" title="<?= htmlSC(return_translation('admin_nav_themes_beta_hint')) ?>"><?= htmlSC($item['badge']) ?></span>
+                        <span class="admin-shell-beta-badge" title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>"><?= htmlSC($item['badge']) ?></span>
                     <?php endif; ?>
                 </span>
             </a>

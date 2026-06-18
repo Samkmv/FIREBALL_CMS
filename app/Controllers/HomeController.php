@@ -7,6 +7,7 @@ use App\Models\ContactSubject;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\SiteSetting;
+use App\Models\Support;
 use FBL\Theme;
 use FBL\RateLimiter;
 
@@ -21,6 +22,7 @@ class HomeController extends BaseController
     protected Page $pages;
     protected Post $posts;
     protected SiteSetting $siteSettings;
+    protected Support $support;
 
     /**
      * Инициализирует модели, используемые на публичных страницах контроллера.
@@ -33,6 +35,7 @@ class HomeController extends BaseController
         $this->pages = new Page();
         $this->posts = new Post();
         $this->siteSettings = new SiteSetting();
+        $this->support = new Support();
     }
 
     /**
@@ -141,6 +144,58 @@ class HomeController extends BaseController
             'footer_scripts' => [
                 base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
             ],
+        ]);
+    }
+
+    public function support()
+    {
+        $search = trim((string)request()->get('q', ''));
+
+        if (request()->isPost()) {
+            $data = $this->normalizeContactData(request()->getData());
+            $errors = $this->validateContactData($data);
+            $rateKey = 'support|' . client_ip();
+            if (!RateLimiter::attempt($rateKey, 3, 600)) {
+                $errors['message'][] = return_translation('contacts_form_rate_limited');
+            }
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                session()->setFlash('error', return_translation('contacts_form_error'));
+                response()->redirect(base_href('/support#support-question-form'));
+            }
+
+            $this->contactRequests->create($data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('support_question_success'));
+            response()->redirect(base_href('/support#support-question-form'));
+        }
+
+        return view('home/support', [
+            'title' => return_translation('support_page_title'),
+            'search' => $search,
+            'faq_items' => $this->support->getPublishedFaq(10, $search),
+            'kb_categories' => $this->support->getPublishedKbCategoriesWithArticles(5, $search),
+            'contact_subjects' => $this->getContactSubjectOptions(),
+            'footer_scripts' => [
+                base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
+            ],
+        ]);
+    }
+
+    public function supportArticle()
+    {
+        $article = $this->support->findPublishedKbArticleBySlug((string)get_route_param('slug', ''));
+        if (!$article) {
+            abort();
+        }
+
+        return view('home/support_article', [
+            'title' => (string)$article['title'],
+            'article' => $article,
+            'related_articles' => $this->support->getRelatedPublishedKbArticles($article, 8),
         ]);
     }
 

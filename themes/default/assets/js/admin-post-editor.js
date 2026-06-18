@@ -32,8 +32,27 @@ function initPostEditor() {
     let config = {
         fileManagerUrl: '',
         defaultDirectory: 'posts',
-        fonts: [],
-        sizes: [],
+        fonts: [
+            { value: 'Inter', label: 'Inter' },
+            { value: 'Arial', label: 'Arial' },
+            { value: 'Roboto', label: 'Roboto' },
+            { value: 'Helvetica', label: 'Helvetica' },
+            { value: 'Georgia', label: 'Georgia' },
+            { value: 'Times New Roman', label: 'Times New Roman' },
+            { value: 'Courier New', label: 'Courier New' },
+            { value: 'monospace', label: 'Monospace' }
+        ],
+        sizes: [
+            { value: '12px', label: '12px' },
+            { value: '14px', label: '14px' },
+            { value: '16px', label: '16px' },
+            { value: '18px', label: '18px' },
+            { value: '20px', label: '20px' },
+            { value: '24px', label: '24px' },
+            { value: '28px', label: '28px' },
+            { value: '32px', label: '32px' },
+            { value: '40px', label: '40px' }
+        ],
         labels: {}
     };
 
@@ -114,6 +133,8 @@ function initPostEditor() {
         empty: 'Add the first block to start building the post.',
         quote: 'Quote',
         bulletList: 'Bullet list',
+        orderedList: 'Numbered list',
+        clearFormatting: 'Clear formatting',
         addBlock: 'Add block',
         blockSettings: 'Block settings',
         mediaSettings: 'Media settings',
@@ -215,6 +236,8 @@ function initPostEditor() {
         pointerDrag: null,
         picker: null,
         selection: null,
+        toolbarPointerControl: null,
+        toolbarTouchAt: 0,
         deleteModalInstance: null
     };
 
@@ -340,6 +363,7 @@ function initPostEditor() {
         closeStylePanels();
         refreshAllCodeEditors();
         normalizeRenderedEditors();
+        updateActiveTextToolbarState();
     }
 
     function sync() {
@@ -654,6 +678,10 @@ function initPostEditor() {
             }
 
             if (styleToggleButton) {
+                if (ui.toolbarPointerControl === styleToggleButton) {
+                    ui.toolbarPointerControl = null;
+                    return;
+                }
                 toggleStylePanel(styleToggleButton);
                 return;
             }
@@ -718,9 +746,13 @@ function initPostEditor() {
             }
 
             if (editorCommandButton) {
+                if (ui.toolbarPointerControl === editorCommandButton) {
+                    ui.toolbarPointerControl = null;
+                    return;
+                }
                 const blockElement = editorCommandButton.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
-                applyCommand(
+                applyTextCommand(
                     editor,
                     String(editorCommandButton.getAttribute('data-editor-command') || ''),
                     String(editorCommandButton.getAttribute('data-editor-value') || '')
@@ -733,27 +765,9 @@ function initPostEditor() {
             }
         });
 
-        app.addEventListener('mousedown', function (event) {
-            const commandButton = event.target.closest('button[data-editor-command], button[data-style-toggle]');
-            if (commandButton) {
-                event.preventDefault();
-            }
-        });
-
-        app.addEventListener('pointerdown', function (event) {
-            const toolbarControl = event.target.closest('[data-editor-command], [data-editor-font-size], [data-style-toggle]');
-            if (!toolbarControl) {
-                return;
-            }
-
-            const blockElement = toolbarControl.closest('[data-block-id]');
-            const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
-            saveSelection(editor);
-
-            if (toolbarControl.tagName === 'BUTTON') {
-                event.preventDefault();
-            }
-        });
+        app.addEventListener('pointerdown', handleTextToolbarPress);
+        app.addEventListener('touchstart', handleTextToolbarPress, { passive: false });
+        app.addEventListener('mousedown', handleTextToolbarPress);
 
         app.addEventListener('focusin', function (event) {
             if (event.target.closest('[data-style-wrap]')) {
@@ -763,6 +777,12 @@ function initPostEditor() {
             const blockElement = event.target.closest('[data-block-id]');
             if (blockElement) {
                 setActiveBlock(String(blockElement.dataset.blockId || ''));
+            }
+
+            const richEditor = event.target.closest('[data-block-rich]');
+            if (richEditor) {
+                saveSelection(richEditor);
+                updateTextToolbarState(richEditor, getTextToolbar(richEditor));
             }
         });
 
@@ -799,6 +819,8 @@ function initPostEditor() {
             }
 
             syncRichEditor(editor);
+            saveSelection(editor);
+            updateTextToolbarState(editor, getTextToolbar(editor));
         });
 
         app.addEventListener('input', function (event) {
@@ -810,7 +832,9 @@ function initPostEditor() {
             const colorField = event.target.closest('input[type="color"][data-editor-command]');
 
             if (richEditor) {
+                saveSelection(richEditor);
                 syncRichEditor(richEditor);
+                updateTextToolbarState(richEditor, getTextToolbar(richEditor));
                 return;
             }
 
@@ -865,7 +889,7 @@ function initPostEditor() {
             if (colorField) {
                 const blockElement = colorField.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
-                applyCommand(editor, String(colorField.getAttribute('data-editor-command') || ''), String(colorField.value || ''));
+                applyTextCommand(editor, String(colorField.getAttribute('data-editor-command') || ''), String(colorField.value || ''));
             }
         });
 
@@ -889,14 +913,16 @@ function initPostEditor() {
             if (commandSelect) {
                 const blockElement = commandSelect.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
-                updateBlockStyle(
-                    String(blockElement ? blockElement.dataset.blockId || '' : ''),
-                    String(commandSelect.getAttribute('data-editor-command') || ''),
-                    String(commandSelect.value || ''),
-                    editor
-                );
-                if (commandSelect.value !== '') {
-                    applyCommand(editor, String(commandSelect.getAttribute('data-editor-command') || ''), String(commandSelect.value || ''));
+                const command = String(commandSelect.getAttribute('data-editor-command') || '');
+                const value = command === 'fontName'
+                    ? getAllowedOptionValue(fonts, commandSelect.value)
+                    : String(commandSelect.value || '');
+                if (value !== '') {
+                    if (command === 'fontName') {
+                        applyInlineStyle(editor, 'fontFamily', value);
+                    } else {
+                        applyTextCommand(editor, command, value);
+                    }
                 }
                 return;
             }
@@ -904,12 +930,10 @@ function initPostEditor() {
             if (fontSizeSelect) {
                 const blockElement = fontSizeSelect.closest('[data-block-id]');
                 const editor = blockElement ? blockElement.querySelector('[data-block-rich]') : null;
-                updateBlockStyle(
-                    String(blockElement ? blockElement.dataset.blockId || '' : ''),
-                    'fontSize',
-                    String(fontSizeSelect.value || ''),
-                    editor
-                );
+                const fontSize = getAllowedOptionValue(sizes, fontSizeSelect.value);
+                if (fontSize !== '') {
+                    applyInlineStyle(editor, 'fontSize', fontSize);
+                }
                 return;
             }
 
@@ -973,6 +997,7 @@ function initPostEditor() {
             const richEditor = event.target.closest('[data-block-rich]');
             if (richEditor) {
                 saveSelection(richEditor);
+                updateTextToolbarState(richEditor, getTextToolbar(richEditor));
             }
         });
 
@@ -980,6 +1005,15 @@ function initPostEditor() {
             const richEditor = event.target.closest('[data-block-rich]');
             if (richEditor) {
                 saveSelection(richEditor);
+                updateTextToolbarState(richEditor, getTextToolbar(richEditor));
+            }
+        });
+
+        app.addEventListener('touchend', function (event) {
+            const richEditor = event.target.closest('[data-block-rich]');
+            if (richEditor) {
+                saveSelection(richEditor);
+                updateTextToolbarState(richEditor, getTextToolbar(richEditor));
             }
         });
 
@@ -1069,6 +1103,7 @@ function initPostEditor() {
             const richEditor = anchorElement.closest('[data-block-rich]');
             if (richEditor) {
                 saveSelection(richEditor);
+                updateTextToolbarState(richEditor, getTextToolbar(richEditor));
             }
         });
 
@@ -1611,7 +1646,7 @@ function initPostEditor() {
             return { language: 'html', code: '' };
         }
 
-        return { html: '', fontName: '', fontSize: '' };
+        return { html: '' };
     }
 
     function getAllowedBlockType(type) {
@@ -1651,6 +1686,8 @@ function initPostEditor() {
             'text-align',
             'font-weight',
             'font-style',
+            'font-family',
+            'font-size',
             'text-decoration',
             'text-decoration-line',
             'vertical-align'
@@ -1831,8 +1868,12 @@ function initPostEditor() {
     }
 
     function normalizeFontTags(scope) {
-        scope.querySelectorAll('font[size]').forEach(function (fontNode) {
+        scope.querySelectorAll('font').forEach(function (fontNode) {
             const span = document.createElement('span');
+            const fontFace = String(fontNode.getAttribute('face') || '').trim();
+            if (fontFace !== '') {
+                span.style.fontFamily = fontFace;
+            }
             span.innerHTML = fontNode.innerHTML;
             fontNode.replaceWith(span);
         });
@@ -1845,35 +1886,6 @@ function initPostEditor() {
         });
 
         return found ? String(found.value || '') : '';
-    }
-
-    function updateBlockStyle(blockId, command, value, editor) {
-        const block = findBlock(blockId);
-        if (!block || block.type !== 'text') {
-            return;
-        }
-
-        if (command === 'fontName') {
-            const fontName = getAllowedOptionValue(fonts, value);
-            block.data.fontName = fontName;
-            if (editor) {
-                editor.style.fontFamily = fontName;
-            }
-            sync();
-            return;
-        }
-
-        if (command === 'fontSize') {
-            const fontSize = getAllowedOptionValue(sizes, value);
-            block.data.fontSize = fontSize;
-            if (editor) {
-                cleanEditorDom(editor);
-                editor.style.fontSize = fontSize;
-                syncRichEditor(editor);
-                return;
-            }
-            sync();
-        }
     }
 
     function cleanEditorDom(editor) {
@@ -1905,8 +1917,6 @@ function initPostEditor() {
                 return;
             }
 
-            node.style.removeProperty('font-size');
-            node.style.removeProperty('font-family');
             node.style.removeProperty('line-height');
             node.style.removeProperty('letter-spacing');
             node.style.removeProperty('margin-top');
@@ -1964,18 +1974,259 @@ function initPostEditor() {
         }
     }
 
-    function applyCommand(editor, command, value) {
+    function handleTextToolbarPress(event) {
+        const toolbarControl = event.target.closest('[data-editor-command], [data-editor-font-size], [data-style-toggle]');
+        if (!toolbarControl || !app.contains(toolbarControl)) {
+            return;
+        }
+
+        if (event.type === 'touchstart') {
+            ui.toolbarTouchAt = Date.now();
+            if (window.PointerEvent) {
+                saveSelection(getToolbarEditor(toolbarControl));
+                return;
+            }
+        }
+
+        if (event.type === 'mousedown') {
+            if (window.PointerEvent || (ui.toolbarTouchAt && Date.now() - ui.toolbarTouchAt < 700)) {
+                saveSelection(getToolbarEditor(toolbarControl));
+                if (toolbarControl.matches('button[data-editor-command], button[data-style-toggle]')) {
+                    event.preventDefault();
+                }
+                return;
+            }
+        }
+
+        const editor = getToolbarEditor(toolbarControl);
+        saveSelection(editor);
+
+        if (toolbarControl.matches('button[data-style-toggle]')) {
+            event.preventDefault();
+            ui.toolbarPointerControl = toolbarControl;
+            toggleStylePanel(toolbarControl);
+            updateTextToolbarState(editor, getTextToolbar(editor));
+            return;
+        }
+
+        if (toolbarControl.matches('button[data-editor-command]')) {
+            event.preventDefault();
+            ui.toolbarPointerControl = toolbarControl;
+            applyTextCommand(
+                editor,
+                String(toolbarControl.getAttribute('data-editor-command') || ''),
+                String(toolbarControl.getAttribute('data-editor-value') || '')
+            );
+        }
+    }
+
+    function getToolbarEditor(control) {
+        const blockElement = control ? control.closest('[data-block-id]') : null;
+        return blockElement ? blockElement.querySelector('[data-block-rich]') : null;
+    }
+
+    function getTextToolbar(editor) {
+        const blockElement = editor ? editor.closest('[data-block-id]') : null;
+        return blockElement ? blockElement.querySelector('[data-block-toolbar]') : null;
+    }
+
+    function updateActiveTextToolbarState() {
+        const editor = ui.activeBlockId
+            ? Array.from(app.querySelectorAll('[data-block-rich]')).find(function (item) {
+                return String(item.getAttribute('data-block-id') || '') === ui.activeBlockId;
+            })
+            : null;
+
+        if (editor) {
+            updateTextToolbarState(editor, getTextToolbar(editor));
+        }
+    }
+
+    function updateTextToolbarState(editor, toolbar) {
+        if (!editor || !toolbar) {
+            return;
+        }
+
+        const selectionNode = getSelectionNodeInsideEditor(editor);
+        const styleElement = selectionNode || editor;
+        const computedStyle = window.getComputedStyle(styleElement.nodeType === Node.ELEMENT_NODE ? styleElement : styleElement.parentElement || editor);
+        const fontValue = matchToolbarFont(computedStyle.fontFamily);
+        const sizeValue = matchToolbarSize(computedStyle.fontSize);
+
+        toolbar.querySelectorAll('select[data-editor-command="fontName"]').forEach(function (select) {
+            select.value = fontValue;
+        });
+
+        toolbar.querySelectorAll('select[data-editor-font-size]').forEach(function (select) {
+            select.value = sizeValue;
+        });
+
+        const commandStates = {
+            bold: queryCommandState('bold'),
+            italic: queryCommandState('italic'),
+            underline: queryCommandState('underline'),
+            insertUnorderedList: queryCommandState('insertUnorderedList'),
+            insertOrderedList: queryCommandState('insertOrderedList'),
+            justifyLeft: isTextAligned(computedStyle.textAlign, 'left') || queryCommandState('justifyLeft'),
+            justifyCenter: isTextAligned(computedStyle.textAlign, 'center') || queryCommandState('justifyCenter'),
+            justifyRight: isTextAligned(computedStyle.textAlign, 'right') || queryCommandState('justifyRight'),
+            createLink: !!closestEditableAncestor(selectionNode, 'a'),
+            formatBlock: !!closestEditableAncestor(selectionNode, 'blockquote')
+        };
+
+        toolbar.querySelectorAll('button[data-editor-command]').forEach(function (button) {
+            const command = String(button.getAttribute('data-editor-command') || '');
+            const value = String(button.getAttribute('data-editor-value') || '');
+            const isActive = command === 'formatBlock'
+                ? value === 'blockquote' && commandStates.formatBlock
+                : !!commandStates[command];
+
+            button.classList.toggle('active', isActive);
+            button.classList.toggle('is-active', isActive);
+
+            if (command in commandStates || command === 'formatBlock') {
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            }
+        });
+    }
+
+    function getSelectionNodeInsideEditor(editor) {
+        const selection = typeof window.getSelection === 'function' ? window.getSelection() : null;
+        if (!selection || selection.rangeCount === 0) {
+            return null;
+        }
+
+        const node = selection.anchorNode;
+        if (!node) {
+            return null;
+        }
+
+        const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+        return element && (editor.contains(element) || element === editor) ? element : null;
+    }
+
+    function closestEditableAncestor(node, selector) {
+        if (!node) {
+            return null;
+        }
+
+        const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+        return element ? element.closest(selector) : null;
+    }
+
+    function queryCommandState(command) {
+        try {
+            return document.queryCommandState(command);
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function matchToolbarFont(fontFamily) {
+        const normalizedFamily = normalizeFontFamily(fontFamily);
+        const found = fonts.find(function (item) {
+            return normalizeFontFamily(item.value) === normalizedFamily
+                || normalizedFamily.indexOf(normalizeFontFamily(item.value).split(',')[0]) !== -1;
+        });
+
+        return found ? String(found.value || '') : '';
+    }
+
+    function matchToolbarSize(fontSize) {
+        const size = Math.round(parseFloat(fontSize || '0')) + 'px';
+        const found = sizes.find(function (item) {
+            return String(item.value || '') === size;
+        });
+
+        return found ? String(found.value || '') : '';
+    }
+
+    function normalizeFontFamily(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/["']/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function isTextAligned(current, expected) {
+        const value = String(current || '').toLowerCase();
+        if (expected === 'left') {
+            return value === 'left' || value === 'start';
+        }
+        if (expected === 'right') {
+            return value === 'right' || value === 'end';
+        }
+        return value === expected;
+    }
+
+    function applyInlineStyle(editor, styleName, value) {
+        if (!editor || !value || typeof window.getSelection !== 'function') {
+            return;
+        }
+
+        editor.focus({ preventScroll: true });
+        restoreSelection(editor);
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            return;
+        }
+
+        const range = selection.getRangeAt(0);
+        if (
+            (!editor.contains(range.startContainer) && range.startContainer !== editor)
+            || (!editor.contains(range.endContainer) && range.endContainer !== editor)
+        ) {
+            return;
+        }
+
+        const span = document.createElement('span');
+        span.style[styleName] = value;
+
+        if (range.collapsed) {
+            span.appendChild(document.createTextNode('\u200B'));
+            range.insertNode(span);
+
+            const caretRange = document.createRange();
+            caretRange.setStart(span.firstChild, 1);
+            caretRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(caretRange);
+        } else {
+            try {
+                range.surroundContents(span);
+            } catch (error) {
+                span.appendChild(range.extractContents());
+                range.insertNode(span);
+            }
+
+            const appliedRange = document.createRange();
+            appliedRange.selectNodeContents(span);
+            selection.removeAllRanges();
+            selection.addRange(appliedRange);
+        }
+
+        saveSelection(editor);
+        editor.focus({ preventScroll: true });
+        syncRichEditor(editor);
+        updateTextToolbarState(editor, getTextToolbar(editor));
+    }
+
+    function applyTextCommand(editor, command, value) {
         if (!editor) {
             return;
         }
 
-        editor.focus();
+        editor.focus({ preventScroll: true });
         restoreSelection(editor);
         document.execCommand('styleWithCSS', false, true);
 
         if (command === 'createLink') {
             const url = window.prompt(labels.linkPrompt, 'https://');
             if (!url) {
+                editor.focus({ preventScroll: true });
+                saveSelection(editor);
                 return;
             }
             document.execCommand('createLink', false, url);
@@ -1987,11 +2238,16 @@ function initPostEditor() {
         } else if (command === 'fontSize') {
             syncRichEditor(editor);
             return;
+        } else if (command === 'removeFormat') {
+            document.execCommand('removeFormat', false, null);
         } else {
             document.execCommand(command, false, value);
         }
 
+        saveSelection(editor);
+        editor.focus({ preventScroll: true });
         syncRichEditor(editor);
+        updateTextToolbarState(editor, getTextToolbar(editor));
     }
 
     function syncRichEditor(editor) {
@@ -2843,10 +3099,6 @@ function initPostEditor() {
     }
 
     function renderTextBlock(block) {
-        const fontName = getAllowedOptionValue(fonts, block.data.fontName || '');
-        const fontSize = getAllowedOptionValue(sizes, block.data.fontSize || '');
-        const richStyle = buildTextBlockStyle(fontName, fontSize);
-
         return '' +
             '<div class="fb-post-block__toolbar" data-block-toolbar>' +
                 '<div class="fb-post-block__toolbar-group">' +
@@ -2856,33 +3108,37 @@ function initPostEditor() {
                 '</div>' +
                 '<div class="fb-post-block__toolbar-group">' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="insertUnorderedList" title="' + escapeAttr(labels.bulletList) + '" aria-label="' + escapeAttr(labels.bulletList) + '"><i class="ci-list"></i></button>' +
+                    '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="insertOrderedList" title="' + escapeAttr(labels.orderedList) + '" aria-label="' + escapeAttr(labels.orderedList) + '">1.</button>' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="formatBlock" data-editor-value="blockquote" title="' + escapeAttr(labels.quote) + '" aria-label="' + escapeAttr(labels.quote) + '">&ldquo;</button>' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="createLink" title="' + escapeAttr(labels.link) + '" aria-label="' + escapeAttr(labels.link) + '"><i class="ci-link"></i></button>' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="unlink" title="' + escapeAttr(labels.unlink) + '" aria-label="' + escapeAttr(labels.unlink) + '">/</button>' +
+                    '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="removeFormat" title="' + escapeAttr(labels.clearFormatting) + '" aria-label="' + escapeAttr(labels.clearFormatting) + '">Tx</button>' +
                 '</div>' +
                 '<div class="fb-post-block__toolbar-group">' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="justifyLeft" title="' + escapeAttr(labels.alignLeft) + '" aria-label="' + escapeAttr(labels.alignLeft) + '"><i class="ci-align-left"></i></button>' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="justifyCenter" title="' + escapeAttr(labels.alignCenter) + '" aria-label="' + escapeAttr(labels.alignCenter) + '"><i class="ci-align-center"></i></button>' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-editor-command="justifyRight" title="' + escapeAttr(labels.alignRight) + '" aria-label="' + escapeAttr(labels.alignRight) + '"><i class="ci-align-right"></i></button>' +
                 '</div>' +
+                '<div class="fb-post-block__toolbar-group fb-post-block__toolbar-group--selects">' +
+                    '<label class="fb-post-block__toolbar-field">' +
+                        '<span>' + escapeHtml(labels.font) + '</span>' +
+                        '<select class="form-select form-select-sm" data-editor-command="fontName">' +
+                            '<option value="">' + escapeHtml(labels.font) + '</option>' +
+                            renderOptions(fonts, '') +
+                        '</select>' +
+                    '</label>' +
+                    '<label class="fb-post-block__toolbar-field">' +
+                        '<span>' + escapeHtml(labels.size) + '</span>' +
+                        '<select class="form-select form-select-sm" data-editor-font-size>' +
+                            '<option value="">' + escapeHtml(labels.size) + '</option>' +
+                            renderOptions(sizes, '') +
+                        '</select>' +
+                    '</label>' +
+                '</div>' +
                 '<div class="fb-post-block__style" data-style-wrap>' +
                     '<button class="btn btn-sm btn-outline-secondary" type="button" data-style-toggle>' + escapeHtml(labels.style) + '</button>' +
                     '<div class="fb-post-style-menu">' +
                         '<div class="fb-post-style-menu__title">' + escapeHtml(labels.moreStyles) + '</div>' +
-                        '<label class="fb-post-style-menu__field">' +
-                            '<span>' + escapeHtml(labels.font) + '</span>' +
-                            '<select class="form-select form-select-sm" data-editor-command="fontName">' +
-                                '<option value="">' + escapeHtml(labels.font) + '</option>' +
-                                renderOptions(fonts, fontName) +
-                            '</select>' +
-                        '</label>' +
-                        '<label class="fb-post-style-menu__field">' +
-                            '<span>' + escapeHtml(labels.size) + '</span>' +
-                            '<select class="form-select form-select-sm" data-editor-font-size>' +
-                                '<option value="">' + escapeHtml(labels.size) + '</option>' +
-                                renderOptions(sizes, fontSize) +
-                            '</select>' +
-                        '</label>' +
                         '<label class="fb-post-style-menu__field">' +
                             '<span>' + escapeHtml(labels.textColor) + '</span>' +
                             '<input class="form-control form-control-color" type="color" value="#111827" data-editor-command="foreColor">' +
@@ -2894,20 +3150,7 @@ function initPostEditor() {
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="fb-post-block__rich" contenteditable="true" data-block-rich data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.textPlaceholder) + '"' + (richStyle ? ' style="' + escapeAttr(richStyle) + '"' : '') + '>' + sanitizeHtml(block.data.html || '') + '</div>';
-    }
-
-    function buildTextBlockStyle(fontName, fontSize) {
-        const styles = [];
-        if (fontName) {
-            styles.push('font-family: ' + fontName);
-        }
-        if (fontSize) {
-            styles.push('font-size: ' + fontSize);
-            styles.push('line-height: 1.6');
-        }
-
-        return styles.join('; ');
+            '<div class="fb-post-block__rich" contenteditable="true" data-block-rich data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.textPlaceholder) + '">' + sanitizeHtml(block.data.html || '') + '</div>';
     }
 
     function renderMediaPreview(block) {
@@ -3449,15 +3692,7 @@ function initPostEditor() {
             return '';
         }
 
-        const fontName = getAllowedOptionValue(fonts, block.data.fontName || '');
-        const fontSize = getAllowedOptionValue(sizes, block.data.fontSize || '');
-        const style = buildTextBlockStyle(fontName, fontSize);
-
-        if (!style) {
-            return html;
-        }
-
-        return '<div data-fb-text-block="1" style="' + escapeAttr(style) + '">' + html + '</div>';
+        return html;
     }
 
     function serializeNewsletterBlock(block) {
@@ -3643,10 +3878,20 @@ function initPostEditor() {
         const wrapper = root && root.children.length === 1 ? root.children[0] : null;
 
         if (wrapper && wrapper.matches('[data-fb-text-block]')) {
+            const legacyFontName = getAllowedOptionValue(fonts, wrapper.style.fontFamily || '');
+            const legacyFontSize = getAllowedOptionValue(sizes, wrapper.style.fontSize || '');
+            const innerHtml = sanitizeHtml(wrapper.innerHTML);
+            const legacyStyles = [];
+            if (legacyFontName) {
+                legacyStyles.push('font-family: ' + legacyFontName);
+            }
+            if (legacyFontSize) {
+                legacyStyles.push('font-size: ' + legacyFontSize);
+            }
             return createImportedBlock('text', {
-                html: sanitizeHtml(wrapper.innerHTML),
-                fontName: getAllowedOptionValue(fonts, wrapper.style.fontFamily || ''),
-                fontSize: getAllowedOptionValue(sizes, wrapper.style.fontSize || '')
+                html: legacyStyles.length
+                    ? '<span style="' + escapeAttr(legacyStyles.join('; ')) + '">' + innerHtml + '</span>'
+                    : innerHtml
             });
         }
 

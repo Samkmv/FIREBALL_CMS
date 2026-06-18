@@ -8,6 +8,7 @@ use App\Models\ContactRequest;
 use App\Models\ContactSubject;
 use App\Models\Page;
 use App\Models\SiteSetting;
+use App\Models\Support;
 use App\Models\User;
 use App\Services\AnalyticsService;
 use App\Services\UpdateCenter;
@@ -29,6 +30,7 @@ class AdminController extends BaseController
     protected Page $pages;
     protected User $users;
     protected SiteSetting $siteSettings;
+    protected Support $support;
     protected UpdateCenter $updateCenter;
     protected AnalyticsService $analyticsService;
 
@@ -44,6 +46,7 @@ class AdminController extends BaseController
         $this->pages = new Page();
         $this->users = new User();
         $this->siteSettings = new SiteSetting();
+        $this->support = new Support();
         $this->updateCenter = new UpdateCenter($this->siteSettings);
         $this->analyticsService = new AnalyticsService();
     }
@@ -56,6 +59,7 @@ class AdminController extends BaseController
         $stats = $this->blog->getStats();
         $stats = array_merge($stats, $this->analytics->getStats());
         $stats['contact_requests'] = $this->contactRequests->countAll();
+        $stats['contact_requests_new'] = $this->contactRequests->countNew();
 
         return view('admin/dashboard', [
             'title' => return_translation('admin_dashboard_title'),
@@ -76,15 +80,20 @@ class AdminController extends BaseController
      */
     public function contactRequests()
     {
-        $requests = $this->contactRequests->getPaginated($this->getTableParams('created_at', 'desc'));
+        $params = $this->getTableParams('created_at', 'desc');
+        $params['status'] = request()->get('status', '');
+        $requests = $this->contactRequests->getPaginated($params);
         $this->contactRequests->markAllViewed();
 
         return view('admin/contact_requests', [
-            'title' => return_translation('admin_contacts_title'),
+            'title' => return_translation('admin_support_requests_title'),
             'requests' => $requests['items'],
             'pagination' => $requests['pagination'],
             'total' => $requests['total'],
             'search' => $requests['search'],
+            'status' => $requests['status'],
+            'statuses' => $this->contactRequests->statuses(),
+            'new_count' => $this->contactRequests->countNew(),
             'sort' => $requests['sort'],
             'direction' => $requests['direction'],
         ]);
@@ -101,7 +110,277 @@ class AdminController extends BaseController
             session()->setFlash('success', return_translation('admin_contact_deleted'));
         }
 
-        response()->redirect(base_href('/admin/contact-requests'));
+        response()->redirect(base_href('/admin/support/requests'));
+    }
+
+    public function contactRequestStatus()
+    {
+        $this->contactRequests->updateStatus((int)request()->post('id'), (string)request()->post('status'));
+        session()->setFlash('success', return_translation('admin_support_request_status_updated'));
+
+        response()->redirect(base_href('/admin/support/requests'));
+    }
+
+    public function contactRequestBulk()
+    {
+        $count = $this->contactRequests->bulkAction(
+            (array)request()->post('ids', []),
+            (string)request()->post('action', ''),
+            (string)request()->post('status', '')
+        );
+
+        if ($count > 0) {
+            session()->setFlash('success', return_translation('admin_support_bulk_done'));
+        }
+
+        response()->redirect(base_href('/admin/support/requests'));
+    }
+
+    public function supportFaq()
+    {
+        $params = $this->getTableParams('sort_order', 'asc');
+        $params['category_id'] = request()->get('category_id', 0);
+        $params['published'] = request()->get('published', '');
+        $faq = $this->support->getPaginatedFaq($params);
+
+        return view('admin/support_faq', [
+            'title' => return_translation('admin_support_faq_title'),
+            'items' => $faq['items'],
+            'categories' => $this->support->getFaqCategories(),
+            'pagination' => $faq['pagination'],
+            'total' => $faq['total'],
+            'search' => $faq['search'],
+            'category_id' => $faq['category_id'],
+            'published' => $faq['published'],
+            'sort' => $faq['sort'],
+            'direction' => $faq['direction'],
+        ]);
+    }
+
+    public function supportFaqForm()
+    {
+        $id = (int)get_route_param('id', 0);
+        $isEdit = $id > 0;
+        $item = $isEdit ? $this->support->findFaq($id) : [];
+        if ($isEdit && !$item) {
+            abort();
+        }
+
+        if (request()->isPost()) {
+            $data = $this->normalizeSupportFaqData(request()->getData());
+            $errors = $this->validateSupportRequired($data, ['question', 'answer']);
+
+            if ($errors) {
+                $this->redirectSupportForm($data, $errors, $isEdit ? "/admin/support/faq/edit/{$id}" : '/admin/support/faq/create');
+            }
+
+            $this->support->saveFaq($id, $data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation($isEdit ? 'admin_support_faq_updated' : 'admin_support_faq_created'));
+            response()->redirect(base_href('/admin/support/faq'));
+        }
+
+        return view('admin/support_faq_form', [
+            'title' => return_translation($isEdit ? 'admin_support_faq_edit_title' : 'admin_support_faq_create_title'),
+            'item' => $item ?: [],
+            'categories' => $this->support->getFaqCategories(),
+            'is_edit' => $isEdit,
+        ]);
+    }
+
+    public function supportFaqDelete()
+    {
+        if ($this->support->deleteFaq((int)request()->post('id'))) {
+            session()->setFlash('success', return_translation('admin_support_faq_deleted'));
+        }
+
+        response()->redirect(base_href('/admin/support/faq'));
+    }
+
+    public function supportFaqCategories()
+    {
+        return view('admin/support_faq_categories', [
+            'title' => return_translation('admin_support_faq_categories_title'),
+            'categories' => $this->support->getFaqCategories(),
+        ]);
+    }
+
+    public function supportFaqCategoryForm()
+    {
+        $id = (int)get_route_param('id', 0);
+        $isEdit = $id > 0;
+        $category = $isEdit ? $this->support->findFaqCategory($id) : [];
+        if ($isEdit && !$category) {
+            abort();
+        }
+
+        if (request()->isPost()) {
+            $data = $this->normalizeSupportCategoryData(request()->getData(), false);
+            $errors = $this->validateSupportRequired($data, ['name']);
+            if ($errors) {
+                $this->redirectSupportForm($data, $errors, $isEdit ? "/admin/support/faq/categories/edit/{$id}" : '/admin/support/faq/categories/create');
+            }
+
+            $this->support->saveFaqCategory($id, $data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation($isEdit ? 'admin_support_category_updated' : 'admin_support_category_created'));
+            response()->redirect(base_href('/admin/support/faq/categories'));
+        }
+
+        return view('admin/support_category_form', [
+            'title' => return_translation($isEdit ? 'admin_support_category_edit_title' : 'admin_support_category_create_title'),
+            'category' => $category ?: [],
+            'is_edit' => $isEdit,
+            'kind' => 'faq',
+        ]);
+    }
+
+    public function supportFaqCategoryDelete()
+    {
+        if ($this->support->deleteFaqCategory((int)request()->post('id'))) {
+            session()->setFlash('success', return_translation('admin_support_category_deleted'));
+        }
+
+        response()->redirect(base_href('/admin/support/faq/categories'));
+    }
+
+    public function supportKnowledgeBase()
+    {
+        $params = $this->getTableParams('created_at', 'desc');
+        $params['category_id'] = request()->get('category_id', 0);
+        $params['published'] = request()->get('published', '');
+        $articles = $this->support->getPaginatedKbArticles($params);
+
+        return view('admin/support_kb', [
+            'title' => return_translation('admin_support_kb_title'),
+            'articles' => $articles['items'],
+            'categories' => $this->support->getKbCategories(),
+            'pagination' => $articles['pagination'],
+            'total' => $articles['total'],
+            'search' => $articles['search'],
+            'category_id' => $articles['category_id'],
+            'published' => $articles['published'],
+            'sort' => $articles['sort'],
+            'direction' => $articles['direction'],
+        ]);
+    }
+
+    public function supportKbArticleForm()
+    {
+        $id = (int)get_route_param('id', 0);
+        $isEdit = $id > 0;
+        $article = $isEdit ? $this->support->findKbArticle($id) : [];
+        if ($isEdit && !$article) {
+            abort();
+        }
+
+        if (request()->isPost()) {
+            $data = $this->normalizeSupportKbArticleData(request()->getData());
+            $errors = $this->validateSupportRequired($data, ['title', 'content']);
+            if ($errors) {
+                $this->redirectSupportForm($data, $errors, $isEdit ? "/admin/support/knowledge-base/edit/{$id}" : '/admin/support/knowledge-base/create');
+            }
+
+            $this->support->saveKbArticle($id, $data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation($isEdit ? 'admin_support_kb_updated' : 'admin_support_kb_created'));
+            response()->redirect(base_href('/admin/support/knowledge-base'));
+        }
+
+        return view('admin/support_kb_form', [
+            'title' => return_translation($isEdit ? 'admin_support_kb_edit_title' : 'admin_support_kb_create_title'),
+            'article' => $article ?: [],
+            'categories' => $this->support->getKbCategories(),
+            'is_edit' => $isEdit,
+        ]);
+    }
+
+    public function supportKbArticleDelete()
+    {
+        if ($this->support->deleteKbArticle((int)request()->post('id'))) {
+            session()->setFlash('success', return_translation('admin_support_kb_deleted'));
+        }
+
+        response()->redirect(base_href('/admin/support/knowledge-base'));
+    }
+
+    public function supportKbCategories()
+    {
+        return view('admin/support_kb_categories', [
+            'title' => return_translation('admin_support_kb_categories_title'),
+            'categories' => $this->support->getKbCategories(),
+        ]);
+    }
+
+    public function supportKbCategoryForm()
+    {
+        $id = (int)get_route_param('id', 0);
+        $isEdit = $id > 0;
+        $category = $isEdit ? $this->support->findKbCategory($id) : [];
+        if ($isEdit && !$category) {
+            abort();
+        }
+
+        if (request()->isPost()) {
+            $data = $this->normalizeSupportCategoryData(request()->getData(), true);
+            $errors = $this->validateSupportRequired($data, ['name']);
+            if ($errors) {
+                $this->redirectSupportForm($data, $errors, $isEdit ? "/admin/support/knowledge-base/categories/edit/{$id}" : '/admin/support/knowledge-base/categories/create');
+            }
+
+            $this->support->saveKbCategory($id, $data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation($isEdit ? 'admin_support_category_updated' : 'admin_support_category_created'));
+            response()->redirect(base_href('/admin/support/knowledge-base/categories'));
+        }
+
+        return view('admin/support_category_form', [
+            'title' => return_translation($isEdit ? 'admin_support_category_edit_title' : 'admin_support_category_create_title'),
+            'category' => $category ?: [],
+            'is_edit' => $isEdit,
+            'kind' => 'kb',
+        ]);
+    }
+
+    public function supportKbCategoryDelete()
+    {
+        if ($this->support->deleteKbCategory((int)request()->post('id'))) {
+            session()->setFlash('success', return_translation('admin_support_category_deleted'));
+        }
+
+        response()->redirect(base_href('/admin/support/knowledge-base/categories'));
+    }
+
+    public function supportSettings()
+    {
+        $settings = $this->siteSettings->all();
+
+        if (request()->isPost()) {
+            $data = $this->normalizeSupportSettingsData(request()->getData());
+            $errors = [];
+            if ($data['support_notification_email'] !== '' && !filter_var($data['support_notification_email'], FILTER_VALIDATE_EMAIL)) {
+                $errors['support_notification_email'][] = return_translation('admin_support_validation_email');
+            }
+
+            if ($errors) {
+                $this->redirectSupportForm($data, $errors, '/admin/support/settings');
+            }
+
+            $this->siteSettings->setMany($data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_support_settings_saved'));
+            response()->redirect(base_href('/admin/support/settings'));
+        }
+
+        return view('admin/support_settings', [
+            'title' => return_translation('admin_support_settings_title'),
+            'settings' => $settings,
+        ]);
     }
 
     /**
@@ -329,6 +608,75 @@ class AdminController extends BaseController
             'sort' => request()->get('sort', $defaultSort),
             'direction' => request()->get('direction', $defaultDirection),
         ];
+    }
+
+    protected function normalizeSupportFaqData(array $data): array
+    {
+        return [
+            'question' => trim((string)($data['question'] ?? '')),
+            'answer' => trim((string)($data['answer'] ?? '')),
+            'category_id' => max(0, (int)($data['category_id'] ?? 0)),
+            'sort_order' => (int)($data['sort_order'] ?? 0),
+            'is_published' => !empty($data['is_published']) ? 1 : 0,
+        ];
+    }
+
+    protected function normalizeSupportKbArticleData(array $data): array
+    {
+        return [
+            'title' => trim((string)($data['title'] ?? '')),
+            'slug' => trim((string)($data['slug'] ?? '')),
+            'excerpt' => trim((string)($data['excerpt'] ?? '')),
+            'content' => trim((string)($data['content'] ?? '')),
+            'category_id' => max(0, (int)($data['category_id'] ?? 0)),
+            'is_published' => !empty($data['is_published']) ? 1 : 0,
+        ];
+    }
+
+    protected function normalizeSupportCategoryData(array $data, bool $withSlug): array
+    {
+        $normalized = [
+            'name' => trim((string)($data['name'] ?? '')),
+            'sort_order' => (int)($data['sort_order'] ?? 0),
+        ];
+
+        if ($withSlug) {
+            $normalized['slug'] = trim((string)($data['slug'] ?? ''));
+        }
+
+        return $normalized;
+    }
+
+    protected function normalizeSupportSettingsData(array $data): array
+    {
+        return [
+            'support_notification_email' => trim((string)($data['support_notification_email'] ?? '')),
+            'support_autoreply_enabled' => !empty($data['support_autoreply_enabled']) ? '1' : '0',
+            'support_autoreply_subject' => trim((string)($data['support_autoreply_subject'] ?? '')),
+            'support_autoreply_message' => trim((string)($data['support_autoreply_message'] ?? '')),
+            'support_spam_protection' => !empty($data['support_spam_protection']) ? '1' : '0',
+            'support_notify_new_requests' => !empty($data['support_notify_new_requests']) ? '1' : '0',
+            'support_notify_status_changes' => !empty($data['support_notify_status_changes']) ? '1' : '0',
+        ];
+    }
+
+    protected function validateSupportRequired(array $data, array $fields): array
+    {
+        $errors = [];
+        foreach ($fields as $field) {
+            if (trim((string)($data[$field] ?? '')) === '') {
+                $errors[$field][] = return_translation('admin_support_validation_required');
+            }
+        }
+
+        return $errors;
+    }
+
+    protected function redirectSupportForm(array $data, array $errors, string $path): void
+    {
+        session()->set('form_data', $data);
+        session()->set('form_errors', $errors);
+        response()->redirect(base_href($path));
     }
 
     /**
