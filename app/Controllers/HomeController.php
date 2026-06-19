@@ -168,14 +168,14 @@ class HomeController extends BaseController
                 session()->set('form_data', $data);
                 session()->set('form_errors', $errors);
                 session()->setFlash('error', return_translation('contacts_form_error'));
-                response()->redirect(base_href('/support#support-question-form'));
+                response()->redirect($this->supportQuestionFormRedirectUrl());
             }
 
             $this->contactRequests->create($data);
             session()->remove('form_data');
             session()->remove('form_errors');
             session()->setFlash('success', return_translation('support_question_success'));
-            response()->redirect(base_href('/support#support-question-form'));
+            response()->redirect($this->supportQuestionFormRedirectUrl());
         }
 
         return view('home/support', [
@@ -201,11 +201,61 @@ class HomeController extends BaseController
             abort();
         }
 
+        $this->support->recordKbArticleView((int)$article['id']);
+
         return view('home/support_article', [
             'title' => (string)$article['title'],
             'article' => $article,
             'related_articles' => $this->support->getRelatedPublishedKbArticles($article, 8),
+            'footer_scripts' => [
+                base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
+            ],
         ]);
+    }
+
+    public function supportArticleFeedback(): void
+    {
+        if ($this->siteSettings->get('support_public_enabled', '1') !== '1') {
+            response()->json(['status' => 'error'], 404);
+        }
+
+        $articleId = (int)request()->post('article_id', 0);
+        $vote = (string)request()->post('vote', '');
+        if ($articleId <= 0 || !in_array($vote, ['helpful', 'not_helpful'], true)) {
+            response()->json(['status' => 'error'], 422);
+        }
+
+        $article = $this->support->findPublishedKbArticleById($articleId);
+        if (!$article) {
+            response()->json(['status' => 'error'], 404);
+        }
+
+        $visitorKey = $this->supportFeedbackVisitorKey((string)request()->post('visitor_key', ''));
+        $result = $this->support->voteKbArticle($articleId, $visitorKey, $vote === 'helpful');
+
+        response()->json([
+            'status' => 'success',
+            'recorded' => (bool)$result['recorded'],
+            'already_voted' => (bool)$result['already_voted'],
+            'stats' => $result['stats'],
+        ]);
+    }
+
+    protected function supportQuestionFormRedirectUrl(): string
+    {
+        $path = (string)(parse_url(base_href('/support'), PHP_URL_PATH) ?: '/support');
+
+        return $path . '#support-question-form';
+    }
+
+    protected function supportFeedbackVisitorKey(string $visitorKey): string
+    {
+        $visitorKey = trim($visitorKey);
+        if ($visitorKey !== '' && preg_match('/^[a-zA-Z0-9._:-]{16,128}$/', $visitorKey)) {
+            return hash('sha256', 'support-feedback|' . $visitorKey);
+        }
+
+        return hash('sha256', 'support-feedback|' . client_ip() . '|' . (string)($_SERVER['HTTP_USER_AGENT'] ?? ''));
     }
 
     /**

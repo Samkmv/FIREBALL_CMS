@@ -52,9 +52,9 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                 <tr>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('title', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_title') ?><?= $sortIndicator('title') ?></a></th>
-                    <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('slug', (string)$sort, (string)$direction) ?>">Slug<?= $sortIndicator('slug') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('category', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_category') ?><?= $sortIndicator('category') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('is_published', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_publication_status') ?><?= $sortIndicator('is_published') ?></a></th>
+                    <th><?= print_translation('admin_support_kb_stats') ?></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('updated_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_updated_at') ?><?= $sortIndicator('updated_at') ?></a></th>
                     <th><?= print_translation('admin_posts_col_actions') ?></th>
                 </tr>
@@ -64,12 +64,31 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                     <tr><td colspan="7" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                 <?php else: ?>
                     <?php foreach ($articles as $article): ?>
+                        <?php
+                        $helpfulCount = (int)($article['helpful_count'] ?? 0);
+                        $notHelpfulCount = (int)($article['not_helpful_count'] ?? 0);
+                        $feedbackTotal = $helpfulCount + $notHelpfulCount;
+                        $helpfulPercent = $feedbackTotal > 0 ? (int)round((float)$article['helpful_percent']) : null;
+                        ?>
                         <tr>
                             <td class="text-nowrap">#<?= (int)$article['id'] ?></td>
-                            <td class="fw-medium text-break"><?= htmlSC($article['title']) ?></td>
-                            <td><?= htmlSC($article['slug']) ?></td>
+                            <td class="fw-medium text-break">
+                                <?= htmlSC($article['title']) ?>
+                                <span class="d-block small text-body-secondary fw-normal mt-1"><?= htmlSC($article['slug']) ?></span>
+                            </td>
                             <td><?= htmlSC((string)($article['category_name'] ?? '')) ?></td>
                             <td><span class="badge fs-xs rounded-pill <?= (int)$article['is_published'] === 1 ? 'text-success bg-success-subtle' : 'text-secondary bg-secondary-subtle' ?>"><?= print_translation((int)$article['is_published'] === 1 ? 'admin_support_published' : 'admin_support_unpublished') ?></span></td>
+                            <td class="text-nowrap">
+                                <div class="support-kb-stats">
+                                    <span title="<?= htmlSC(return_translation('admin_support_kb_views')) ?>"><i class="ci-eye"></i><?= (int)($article['views_count'] ?? 0) ?></span>
+                                    <span title="<?= htmlSC(return_translation('admin_support_kb_helpful')) ?>"><i class="ci-thumbs-up"></i><?= $helpfulCount ?></span>
+                                    <span title="<?= htmlSC(return_translation('admin_support_kb_not_helpful')) ?>"><i class="ci-thumbs-down"></i><?= $notHelpfulCount ?></span>
+                                    <span title="<?= htmlSC(return_translation('admin_support_kb_helpfulness')) ?>"><?= $helpfulPercent !== null ? $helpfulPercent . '%' : '&mdash;' ?></span>
+                                </div>
+                                <?php if ($helpfulPercent !== null && $helpfulPercent < 50): ?>
+                                    <span class="badge fs-xs rounded-pill text-danger bg-danger-subtle mt-2"><?= print_translation('admin_support_kb_low_helpfulness') ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)$article['updated_at']))) ?></td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">

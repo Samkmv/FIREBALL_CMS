@@ -46,9 +46,7 @@ $pageVisibilityLabel = static function (array $page): string {
                     <colgroup>
                         <col class="admin-pages-table__col-id">
                         <col class="admin-pages-table__col-title">
-                        <col class="admin-pages-table__col-menu">
-                        <col class="admin-pages-table__col-slug">
-                        <col class="admin-pages-table__col-order">
+                        <col class="admin-pages-table__col-details">
                         <col class="admin-pages-table__col-status">
                         <col class="admin-pages-table__col-updated">
                         <col class="admin-pages-table__col-actions">
@@ -57,9 +55,7 @@ $pageVisibilityLabel = static function (array $page): string {
                     <tr>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('id') ?>">#<?= $sortIndicator('id') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('title') ?>"><?= print_translation('admin_pages_col_title') ?><?= $sortIndicator('title') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('menu_title') ?>"><?= print_translation('admin_pages_col_menu_title') ?><?= $sortIndicator('menu_title') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('slug') ?>"><?= print_translation('admin_pages_col_slug') ?><?= $sortIndicator('slug') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('menu_order') ?>"><?= print_translation('admin_pages_col_order') ?><?= $sortIndicator('menu_order') ?></a></th>
+                        <th scope="col"><?= print_translation('admin_pages_col_details') ?></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('status') ?>"><?= print_translation('admin_posts_col_status') ?><?= $sortIndicator('status') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('updated_at') ?>"><?= print_translation('admin_pages_col_updated_at') ?><?= $sortIndicator('updated_at') ?></a></th>
                         <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
@@ -73,13 +69,17 @@ $pageVisibilityLabel = static function (array $page): string {
                             <td>
                                 <div class="fw-medium"><?= htmlSC($page['title']) ?></div>
                                 <div class="text-body-tertiary small"><?= htmlSC($visibilityLabel) ?></div>
+                                <div class="text-body-tertiary small">/<?= htmlSC($page['slug']) ?></div>
                                 <?php if ((int)($page['show_in_legal_information'] ?? 0) === 1): ?>
                                     <span class="badge fs-xs text-info bg-info-subtle rounded-pill mt-1"><?= print_translation('footer_heading_legal_information') ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td><?= htmlSC($page['menu_label']) ?></td>
-                            <td class="text-nowrap">/<?= htmlSC($page['slug']) ?></td>
-                            <td class="text-nowrap"><?= (int)$page['menu_order'] ?></td>
+                            <td>
+                                <div class="admin-table-meta">
+                                    <span title="<?= htmlSC(return_translation('admin_pages_col_menu_title')) ?>"><i class="ci-menu"></i><?= htmlSC($page['menu_label']) ?></span>
+                                    <span title="<?= htmlSC(return_translation('admin_pages_col_order')) ?>"><i class="ci-sort"></i><?= (int)$page['menu_order'] ?></span>
+                                </div>
+                            </td>
                             <td>
                                 <?php if ((int)$page['is_published'] === 1): ?>
                                     <span class="badge fs-xs text-success bg-success-subtle rounded-pill"><?= print_translation('admin_posts_status_published') ?></span>

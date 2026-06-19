@@ -38,10 +38,7 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
                     <colgroup>
                         <col class="admin-posts-table__col-id">
                         <col class="admin-posts-table__col-title">
-                        <col class="admin-posts-table__col-category">
-                        <col class="admin-posts-table__col-priority">
-                        <col class="admin-posts-table__col-author">
-                        <col class="admin-posts-table__col-views">
+                        <col class="admin-posts-table__col-details">
                         <col class="admin-posts-table__col-status">
                         <col class="admin-posts-table__col-date">
                         <col class="admin-posts-table__col-actions">
@@ -50,10 +47,7 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
                     <tr>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('id') ?>">#<?= $sortIndicator('id') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('title') ?>"><?= print_translation('admin_posts_col_title') ?><?= $sortIndicator('title') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('category') ?>"><?= print_translation('admin_posts_col_category') ?><?= $sortIndicator('category') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('priority') ?>"><?= print_translation('admin_posts_col_priority') ?><?= $sortIndicator('priority') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('author') ?>"><?= print_translation('admin_posts_col_author') ?><?= $sortIndicator('author') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('views') ?>"><?= print_translation('admin_posts_col_views') ?><?= $sortIndicator('views') ?></a></th>
+                        <th scope="col"><?= print_translation('admin_posts_col_details') ?></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('status') ?>"><?= print_translation('admin_posts_col_status') ?><?= $sortIndicator('status') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $sortUrl('published_at') ?>"><?= print_translation('admin_posts_col_date') ?><?= $sortIndicator('published_at') ?></a></th>
                         <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
@@ -72,13 +66,16 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
                                 <div class="fw-medium"><?= htmlSC($post['title']) ?></div>
                                 <div class="text-body-tertiary small"><?= htmlSC($post['slug']) ?></div>
                             </td>
-                            <td><?= htmlSC($categoryName) ?></td>
-                            <td class="text-nowrap"><?= (int)($post['priority'] ?? 0) ?></td>
                             <td>
-                                <div class="fw-medium"><?= htmlSC(get_user_role_label($authorRole)) ?></div>
-                                <div class="text-body-tertiary small"><?= htmlSC($authorName) ?></div>
+                                <div class="admin-table-meta">
+                                    <span title="<?= htmlSC(return_translation('admin_posts_col_category')) ?>"><i class="ci-map-pin"></i><?= htmlSC($categoryName) ?></span>
+                                    <span title="<?= htmlSC(return_translation('admin_posts_col_priority')) ?>"><i class="ci-activity"></i><?= (int)($post['priority'] ?? 0) ?></span>
+                                    <span title="<?= htmlSC(return_translation('admin_posts_col_views')) ?>"><i class="ci-eye"></i><?= (int)($post['views_count'] ?? 0) ?></span>
+                                </div>
+                                <div class="small text-body-secondary mt-2">
+                                    <?= htmlSC(get_user_role_label($authorRole)) ?>: <?= htmlSC($authorName) ?>
+                                </div>
                             </td>
-                            <td class="text-nowrap"><?= (int)($post['views_count'] ?? 0) ?></td>
                             <td>
                                 <?php if ((int)$post['is_published'] === 1): ?>
                                     <span class="badge fs-xs text-success bg-success-subtle rounded-pill"><?= print_translation('admin_posts_status_published') ?></span>

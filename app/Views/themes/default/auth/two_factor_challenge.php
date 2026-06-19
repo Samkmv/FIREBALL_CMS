@@ -2,12 +2,12 @@
 $formErrors = session()->get('form_errors') ?: [];
 $codeError = (string)($formErrors['code'][0] ?? '');
 ?>
-<section class="container py-5 my-2 my-md-4 my-lg-5">
+<section class="two-factor-challenge-section container py-4 py-md-5 my-0 my-md-4 my-lg-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6 col-xl-5">
-            <div class="border rounded-5 p-4 p-md-5">
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary fs-3" style="width: 3rem; height: 3rem;">
+            <div class="two-factor-challenge-card border rounded-5 p-4 p-md-5">
+                <div class="d-flex align-items-start align-items-sm-center gap-3 mb-3">
+                    <span class="two-factor-challenge-icon bg-body-tertiary fs-3" aria-hidden="true">
                         <i class="ci-shield"></i>
                     </span>
                     <div>

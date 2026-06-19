@@ -7,9 +7,9 @@ $supportCategories = array_values(array_filter(array_map(
     (array)($support_categories ?? [])
 )));
 ?>
-<main class="content-wrapper">
+<main class="content-wrapper support-page">
     <section class="container pt-3 pt-sm-4">
-        <div class="position-relative px-4 px-sm-5 px-xl-0 py-5">
+        <div class="support-hero position-relative px-4 px-sm-5 px-xl-0 py-5">
             <span class="position-absolute top-0 start-0 w-100 h-100 rounded-5 d-none-dark rtl-flip" style="background: linear-gradient(-90deg, #accbee 0%, #e7f0fd 100%)"></span>
             <span class="position-absolute top-0 start-0 w-100 h-100 rounded-5 d-none d-block-dark rtl-flip" style="background: linear-gradient(-90deg, #1b273a 0%, #1f2632 100%)"></span>
             <div class="position-relative z-1">
@@ -28,8 +28,8 @@ $supportCategories = array_values(array_filter(array_map(
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 g-sm-3 g-md-4">
                 <?php foreach ($kbCategories as $category): ?>
                     <div class="col">
-                        <div class="card h-100 bg-body-tertiary border-0 p-md-2">
-                            <div class="card-body">
+                        <div class="support-kb-card card h-100 bg-body-tertiary border-0 p-md-2">
+                            <div class="card-body support-kb-card__body">
                                 <h3 class="h5 mb-4">
                                     <?= htmlSC($category['name']) ?>
                                 </h3>
@@ -48,12 +48,12 @@ $supportCategories = array_values(array_filter(array_map(
         <?php endif; ?>
     </section>
 
-    <hr class="my-0 my-sm-2 my-md-3 my-lg-4">
+    <hr class="my-0 my-sm-2 my-md-3 my-lg-4" style="margin-top: 24px !important;">
 
-    <section class="container py-5 mb-1 mb-sm-2 mb-md-3 mb-lg-4 mb-xl-5">
+    <section class="support-faq-section container py-5 mb-1 mb-sm-2 mb-md-3 mb-lg-4 mb-xl-5">
         <div class="row pt-xl-2">
-            <div class="col-md-4 col-xl-3 mb-4 mb-md-0" style="margin-top: -120px">
-                <div class="sticky-md-top text-center text-md-start pe-md-4 pe-lg-5 pe-xl-0" style="padding-top: 120px;">
+            <div class="support-faq-aside col-md-4 col-xl-3 mb-4 mb-md-0">
+                <div class="support-faq-aside__inner sticky-md-top text-center text-md-start pe-md-4 pe-lg-5 pe-xl-0">
                     <h2><?= print_translation('support_faq_heading') ?></h2>
                     <p class="pb-2 pb-md-3"><?= print_translation('support_faq_subtitle') ?></p>
                     <a class="btn btn-lg btn-primary" href="#support-question-form"><?= print_translation('support_contact_button') ?></a>
@@ -83,7 +83,7 @@ $supportCategories = array_values(array_filter(array_map(
         </div>
     </section>
 
-    <section class="container pb-5 mb-2 mb-md-4" id="support-question-form">
+    <section class="support-question-section container pb-5 mb-2 mb-md-4" id="support-question-form">
         <div class="row row-cols-1 row-cols-lg-2 g-0 overflow-hidden rounded-5 bg-body-tertiary">
             <div class="col p-4 p-md-5">
                 <h2 class="h3 mb-3"><?= print_translation('support_question_heading') ?></h2>

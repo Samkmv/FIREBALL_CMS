@@ -71,6 +71,7 @@ $app->router->get('/search', [SearchController::class, 'index']);
 $app->router->get('/support', [HomeController::class, 'support']);
 $app->router->post('/support', [HomeController::class, 'support']);
 $app->router->get('/support/articles', [HomeController::class, 'support']);
+$app->router->post('/support/articles/feedback', [HomeController::class, 'supportArticleFeedback']);
 $app->router->get('/support/articles/(?P<slug>[a-z0-9-]+)/?', [HomeController::class, 'supportArticle']);
 $app->router->get('/contacts', [HomeController::class, 'contacts']);
 $app->router->post('/contacts', [HomeController::class, 'contacts']);
