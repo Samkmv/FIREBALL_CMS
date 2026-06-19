@@ -268,6 +268,75 @@
         return /\.m3u8(?:$|\?)/i.test(url || '');
     };
 
+    const isTruthyOption = function (value) {
+        return value === true || value === 'true' || value === '1' || value === 1;
+    };
+
+    const getElementPlyrOptions = function (element) {
+        return (element && element.fbPlyrOptions && typeof element.fbPlyrOptions === 'object')
+            ? element.fbPlyrOptions
+            : {};
+    };
+
+    const isLazyHlsStartEnabled = function (element) {
+        const options = getElementPlyrOptions(element);
+        const hlsOptions = options.hls || {};
+
+        return isTruthyOption(element && element.dataset ? element.dataset.hlsLazyStart : false)
+            || isTruthyOption(options.hlsLazyStart)
+            || isTruthyOption(hlsOptions.lazyStart);
+    };
+
+    const isPosterCacheBustEnabled = function (element) {
+        const options = getElementPlyrOptions(element);
+        const hlsOptions = options.hls || {};
+
+        return isTruthyOption(element && element.dataset ? element.dataset.posterCacheBust : false)
+            || isTruthyOption(options.posterCacheBust)
+            || isTruthyOption(hlsOptions.posterCacheBust);
+    };
+
+    const getNumericOption = function (value, fallback, min, max) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) {
+            return fallback;
+        }
+
+        return Math.max(min, Math.min(max, number));
+    };
+
+    const getHlsWaitOptions = function (element) {
+        const options = getElementPlyrOptions(element);
+        const hlsOptions = options.hls || {};
+
+        return {
+            timeoutMs: getNumericOption(
+                element && element.dataset && element.dataset.hlsWaitTimeout !== undefined
+                    ? element.dataset.hlsWaitTimeout
+                    : (hlsOptions.waitTimeout || options.hlsWaitTimeout),
+                30000,
+                1000,
+                120000
+            ),
+            intervalMs: getNumericOption(
+                element && element.dataset && element.dataset.hlsWaitInterval !== undefined
+                    ? element.dataset.hlsWaitInterval
+                    : (hlsOptions.waitInterval || options.hlsWaitInterval),
+                2500,
+                500,
+                10000
+            ),
+        };
+    };
+
+    const debugHls = function () {
+        if (!canViewVideoStatus || !window.console || typeof window.console.debug !== 'function') {
+            return;
+        }
+
+        window.console.debug.apply(window.console, arguments);
+    };
+
     const inferStreamIdFromHlsUrl = function (url) {
         const match = String(url || '').match(/\/stream-([^/]+)\/index\.m3u8(?:[?#].*)?$/i);
         return match ? match[1] : '';
@@ -422,28 +491,48 @@
         }
     };
 
+    const cacheBustPosterUrl = function (url) {
+        if (!url || /^(?:data|blob):/i.test(url)) {
+            return url;
+        }
+
+        try {
+            const parsedUrl = new URL(url, window.location.href);
+            parsedUrl.searchParams.set('v', String(Date.now()));
+            return parsedUrl.href;
+        } catch (error) {
+            const separator = String(url).includes('?') ? '&' : '?';
+            return String(url) + separator + 'v=' + Date.now();
+        }
+    };
+
     const normalizeHlsPoster = function (element, hlsSource) {
         if (!(element instanceof HTMLVideoElement)) {
             return;
         }
 
         const existingPoster = element.getAttribute('poster') || element.dataset.poster || '';
-        const poster = existingPoster || inferHlsPoster(hlsSource);
+        const poster = element.dataset.posterCacheBustBase || existingPoster || inferHlsPoster(hlsSource);
 
         if (!poster) {
             return;
         }
 
-        const currentPoster = element.getAttribute('poster') || element.dataset.poster || '';
-        if (currentPoster !== poster) {
-            element.setAttribute('poster', poster);
-            element.dataset.poster = poster;
+        if (isPosterCacheBustEnabled(element)) {
+            element.dataset.posterCacheBustBase = poster;
         }
 
-        if (element.plyr && element.dataset.hlsPlyrPosterSynced !== poster) {
+        const nextPoster = isPosterCacheBustEnabled(element) ? cacheBustPosterUrl(poster) : poster;
+        const currentPoster = element.getAttribute('poster') || element.dataset.poster || '';
+        if (currentPoster !== nextPoster) {
+            element.setAttribute('poster', nextPoster);
+            element.dataset.poster = nextPoster;
+        }
+
+        if (element.plyr && element.dataset.hlsPlyrPosterSynced !== nextPoster) {
             try {
-                element.plyr.poster = poster;
-                element.dataset.hlsPlyrPosterSynced = poster;
+                element.plyr.poster = nextPoster;
+                element.dataset.hlsPlyrPosterSynced = nextPoster;
             } catch (error) {
                 // Plyr may not be fully ready while HLS is initializing.
             }
@@ -829,9 +918,28 @@
         }, hlsStatusHideDelayMs);
     };
 
-    const sleep = function (ms) {
+    const sleep = function (ms, signal) {
         return new Promise(function (resolve) {
-            setTimeout(resolve, ms);
+            if (signal && signal.aborted) {
+                resolve(false);
+                return;
+            }
+
+            const timeoutId = setTimeout(function () {
+                if (signal) {
+                    signal.removeEventListener('abort', abort);
+                }
+                resolve(true);
+            }, ms);
+
+            const abort = function () {
+                clearTimeout(timeoutId);
+                resolve(false);
+            };
+
+            if (signal) {
+                signal.addEventListener('abort', abort, { once: true });
+            }
         });
     };
 
@@ -898,6 +1006,18 @@
         if (element.hlsPlayRetryTimer) {
             clearTimeout(element.hlsPlayRetryTimer);
             element.hlsPlayRetryTimer = null;
+        }
+    };
+
+    const cleanupHlsReconnectTimers = function (element) {
+        if (element.hlsReconnectTimer) {
+            clearTimeout(element.hlsReconnectTimer);
+            element.hlsReconnectTimer = null;
+        }
+
+        if (element.hlsAutoReconnectTimer) {
+            clearTimeout(element.hlsAutoReconnectTimer);
+            element.hlsAutoReconnectTimer = null;
         }
     };
 
@@ -1139,6 +1259,193 @@
         });
     };
 
+    const requestHlsManifest = function (url, method, options) {
+        return new Promise(function (resolve) {
+            const settings = Object.assign({
+                timeoutMs: 2500,
+                signal: null,
+            }, options || {});
+            let settled = false;
+            const xhr = new XMLHttpRequest();
+
+            const finish = function (result) {
+                if (settled) {
+                    return;
+                }
+
+                settled = true;
+                if (settings.signal) {
+                    settings.signal.removeEventListener('abort', abort);
+                }
+                resolve(Object.assign({
+                    method,
+                    ok: false,
+                    status: 0,
+                    errorType: '',
+                }, result || {}));
+            };
+
+            const abort = function () {
+                try {
+                    xhr.abort();
+                } catch (error) {
+                    // The request may already be settled.
+                }
+                finish({ errorType: 'aborted' });
+            };
+
+            if (settings.signal) {
+                if (settings.signal.aborted) {
+                    finish({ errorType: 'aborted' });
+                    return;
+                }
+                settings.signal.addEventListener('abort', abort, { once: true });
+            }
+
+            try {
+                xhr.open(method, url, true);
+                xhr.timeout = settings.timeoutMs;
+                xhr.setRequestHeader('Cache-Control', 'no-cache');
+                xhr.setRequestHeader('Pragma', 'no-cache');
+            } catch (error) {
+                finish({ errorType: 'request_error' });
+                return;
+            }
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState !== 4) {
+                    return;
+                }
+
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    finish({ ok: true, status: xhr.status, errorType: '' });
+                    return;
+                }
+
+                finish({
+                    ok: false,
+                    status: xhr.status || 0,
+                    errorType: xhr.status === 404 ? 'manifest_not_found' : 'http_error',
+                });
+            };
+            xhr.onerror = function () {
+                finish({ status: xhr.status || 0, errorType: 'network_error' });
+            };
+            xhr.ontimeout = function () {
+                finish({ status: xhr.status || 0, errorType: 'timeout' });
+            };
+            xhr.onabort = function () {
+                finish({ status: xhr.status || 0, errorType: 'aborted' });
+            };
+
+            try {
+                xhr.send();
+            } catch (error) {
+                finish({ status: 0, errorType: 'request_error' });
+            }
+        });
+    };
+
+    const shouldFallbackToGetAfterHead = function (result) {
+        return !result
+            || result.status === 0
+            || result.status === 403
+            || result.status === 404
+            || result.status === 405
+            || result.status === 500
+            || result.status === 501
+            || result.status === 502
+            || result.status === 503
+            || result.errorType === 'network_error'
+            || result.errorType === 'timeout'
+            || result.errorType === 'request_error';
+    };
+
+    const waitForHlsReady = async function (url, options) {
+        const settings = Object.assign({
+            timeoutMs: 30000,
+            intervalMs: 2500,
+            requestTimeoutMs: 2500,
+            signal: null,
+            onAttempt: null,
+        }, options || {});
+        const startedAt = Date.now();
+        let attempt = 0;
+        let lastResult = {
+            ok: false,
+            status: 0,
+            errorType: 'timeout',
+            method: 'HEAD',
+        };
+
+        while (!settings.signal || !settings.signal.aborted) {
+            const elapsedMs = Date.now() - startedAt;
+            if (elapsedMs >= settings.timeoutMs) {
+                break;
+            }
+
+            attempt += 1;
+            const remainingMs = Math.max(1, settings.timeoutMs - elapsedMs);
+            const requestTimeoutMs = Math.max(1, Math.min(settings.requestTimeoutMs, remainingMs));
+            let result = await requestHlsManifest(url, 'HEAD', {
+                timeoutMs: requestTimeoutMs,
+                signal: settings.signal,
+            });
+
+            const afterHeadMs = Date.now() - startedAt;
+            if (shouldFallbackToGetAfterHead(result)
+                && afterHeadMs < settings.timeoutMs
+                && (!settings.signal || !settings.signal.aborted)) {
+                result = await requestHlsManifest(url, 'GET', {
+                    timeoutMs: Math.max(1, Math.min(settings.requestTimeoutMs, settings.timeoutMs - afterHeadMs)),
+                    signal: settings.signal,
+                });
+            }
+
+            lastResult = result;
+            if (typeof settings.onAttempt === 'function') {
+                settings.onAttempt(result, attempt);
+            }
+            debugHls('HLS lazy readiness check', {
+                url,
+                attempt,
+                method: result.method,
+                status: result.status,
+                errorType: result.errorType,
+            });
+
+            if (result.ok) {
+                return {
+                    ready: true,
+                    status: result.status,
+                    errorType: '',
+                    attempts: attempt,
+                    timedOut: false,
+                };
+            }
+
+            const afterAttemptMs = Date.now() - startedAt;
+            if (afterAttemptMs >= settings.timeoutMs) {
+                break;
+            }
+
+            const waited = await sleep(Math.min(settings.intervalMs, settings.timeoutMs - afterAttemptMs), settings.signal);
+            if (!waited) {
+                break;
+            }
+        }
+
+        return {
+            ready: false,
+            status: lastResult.status || 0,
+            errorType: settings.signal && settings.signal.aborted ? 'aborted' : (lastResult.errorType || 'timeout'),
+            attempts: attempt,
+            timedOut: !(settings.signal && settings.signal.aborted),
+        };
+    };
+
+    window.waitForHlsReady = window.waitForHlsReady || waitForHlsReady;
+
     const waitForHlsSource = async function (element, url, options) {
         const settings = Object.assign({
             requirePlayIntent: true,
@@ -1183,6 +1490,100 @@
         return false;
     };
 
+    const cleanupHlsLazyWait = function (element) {
+        if (!element) {
+            return;
+        }
+
+        if (element.hlsLazyWaitController) {
+            try {
+                element.hlsLazyWaitController.abort();
+            } catch (error) {
+                // The readiness check may already be completed.
+            }
+        }
+
+        element.hlsLazyWaitController = null;
+        element.hlsLazyWaitPromise = null;
+        element.hlsWakePromise = null;
+    };
+
+    const waitForElementHlsReady = function (element, options) {
+        const settings = Object.assign({
+            emitStatus: true,
+            requirePlayIntent: true,
+        }, options || {});
+
+        if (!element.hlsSource) {
+            return Promise.resolve(false);
+        }
+
+        if (settings.requirePlayIntent && !element.hlsAutoplayRequested) {
+            return Promise.resolve(false);
+        }
+
+        if (element.hlsLazyWaitPromise) {
+            return element.hlsLazyWaitPromise;
+        }
+
+        const waitOptions = getHlsWaitOptions(element);
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        element.hlsLazyWaitController = controller;
+        element.hlsLazyWaitPromise = waitForHlsReady(element.hlsSource, {
+            timeoutMs: waitOptions.timeoutMs,
+            intervalMs: waitOptions.intervalMs,
+            signal: controller ? controller.signal : null,
+            onAttempt: function (result, attempt) {
+                const maxAttempts = Math.max(1, Math.ceil(waitOptions.timeoutMs / waitOptions.intervalMs));
+                updateVideoDebug(element, {
+                    httpStatus: result.status || 0,
+                    errorType: result.errorType,
+                    attempt: attempt + '/' + maxAttempts,
+                    checkedAt: new Date().toLocaleString(),
+                });
+
+                if (!settings.emitStatus) {
+                    return;
+                }
+
+                if (result.ok) {
+                    showHlsSuccess(element, t('stream_responded'));
+                    return;
+                }
+
+                showHlsWarning(element, t('stream_sleeping'));
+            },
+        }).then(function (result) {
+            if (result.ready) {
+                element.hlsSourcePrewarmed = true;
+                element.hlsSourcePrewarmedAt = Date.now();
+                if (settings.emitStatus) {
+                    showHlsSuccess(element, t('manifest_available'));
+                }
+                return true;
+            }
+
+            updateVideoDebug(element, {
+                httpStatus: result.status || 0,
+                errorType: result.errorType || 'source_unavailable',
+                checkedAt: new Date().toLocaleString(),
+            });
+
+            return false;
+        }).finally(function () {
+            if (element.hlsLazyWaitController === controller) {
+                element.hlsLazyWaitController = null;
+            }
+            element.hlsLazyWaitPromise = null;
+        });
+
+        if (settings.emitStatus) {
+            showHlsInfo(element, t('checking_attempt'));
+        }
+
+        return element.hlsLazyWaitPromise;
+    };
+
     const ensureHlsSourceAwake = function (element, options) {
         const settings = Object.assign({
             emitStatus: true,
@@ -1204,6 +1605,17 @@
         }
 
         if (element.hlsWakePromise) {
+            return element.hlsWakePromise;
+        }
+
+        if (isLazyHlsStartEnabled(element)) {
+            element.hlsWakePromise = waitForElementHlsReady(element, {
+                emitStatus: settings.emitStatus,
+                requirePlayIntent: settings.requirePlayIntent,
+            }).finally(function () {
+                element.hlsWakePromise = null;
+            });
+
             return element.hlsWakePromise;
         }
 
@@ -1257,6 +1669,8 @@
     };
 
     const destroyHlsInstance = function (element) {
+        cleanupHlsLazyWait(element);
+
         const hls = element.hlsInstance;
 
         if (hls) {
@@ -1286,6 +1700,7 @@
         }
 
         cleanupPlayRetryTimer(element);
+        cleanupHlsReconnectTimers(element);
         releasePrimedPlayback(element);
         resetMediaSource(element);
         element.hlsInstance = null;
@@ -1296,13 +1711,59 @@
     };
 
     const resetNativePlaybackState = function (element) {
+        cleanupHlsLazyWait(element);
         cleanupPlayRetryTimer(element);
         cleanupWarmupTimer(element);
+        cleanupHlsReconnectTimers(element);
         releasePrimedPlayback(element);
         element.hlsMediaReady = false;
         element.hlsPlaybackStarted = false;
         element.hlsMediaRecoverAttempts = 0;
         resetMediaSource(element);
+    };
+
+    const cleanupDetachedHlsElement = function (element) {
+        cleanupHlsLazyWait(element);
+        cleanupPlayRetryTimer(element);
+        cleanupWarmupTimer(element);
+        cleanupHlsReconnectTimers(element);
+
+        if (element.hlsHealthTimer) {
+            clearInterval(element.hlsHealthTimer);
+            element.hlsHealthTimer = null;
+        }
+
+        if (element.hlsInstance) {
+            destroyHlsInstance(element);
+            return;
+        }
+
+        if (element.hlsSource) {
+            resetMediaSource(element);
+        }
+    };
+
+    const bindHlsRemovalCleanup = function (element) {
+        if (element.dataset.hlsRemovalCleanupBound === 'true' || typeof MutationObserver !== 'function') {
+            return;
+        }
+
+        element.dataset.hlsRemovalCleanupBound = 'true';
+        const observer = new MutationObserver(function () {
+            if (document.documentElement.contains(element)) {
+                return;
+            }
+
+            observer.disconnect();
+            element.hlsRemovalObserver = null;
+            cleanupDetachedHlsElement(element);
+        });
+
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+        });
+        element.hlsRemovalObserver = observer;
     };
 
     const fallbackToHlsJsPlayback = async function (element, reason) {
@@ -2383,6 +2844,9 @@
     };
 
     const attachHls = function (element) {
+        cleanupHlsLazyWait(element);
+        cleanupHlsReconnectTimers(element);
+
         const hlsSource = getHlsSource(element);
         if (!hlsSource) {
             return Promise.resolve();
@@ -2409,6 +2873,7 @@
         syncFullVolume(element, !element.muted);
         bootstrapPlayIntent(element);
         bindNativePlaybackEvents(element);
+        bindHlsRemovalCleanup(element);
         startHlsHealthMonitor(element);
         clearHlsMessage(element);
         detachNativeHlsSource(element);
@@ -2584,6 +3049,7 @@
             options.fullscreen.fallback = true;
             options.fullscreen.iosNative = false;
             options.fullscreen.container = options.fullscreen.container || '.plyr';
+            element.fbPlyrOptions = options;
 
             const finalizePlyr = function () {
                 element.dataset.plyrInitialized = 'true';
