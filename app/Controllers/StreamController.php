@@ -4,10 +4,6 @@ namespace App\Controllers;
 
 final class StreamController extends BaseController
 {
-    private const DEFAULT_READY_TIMEOUT_SECONDS = 10;
-    private const DEFAULT_READY_INTERVAL_MS = 750;
-    private const DEFAULT_HTTP_TIMEOUT_SECONDS = 3;
-
     public function wake(): void
     {
         $rawStreamId = request()->post('stream_id', '');
@@ -23,7 +19,7 @@ final class StreamController extends BaseController
             ]);
         }
 
-        $config = $this->streamsConfig();
+        $config = stream_config();
         $rawHlsUrl = request()->post('hls_url', '');
         $hlsUrl = $this->normalizeClientHlsUrl(is_scalar($rawHlsUrl) ? trim((string)$rawHlsUrl) : '');
 
@@ -39,9 +35,9 @@ final class StreamController extends BaseController
 
         $ready = $this->waitForHlsReady(
             $hlsUrl,
-            $this->clampInt((int)($config['ready_timeout_seconds'] ?? self::DEFAULT_READY_TIMEOUT_SECONDS), 8, 12),
-            $this->clampInt((int)($config['ready_interval_ms'] ?? self::DEFAULT_READY_INTERVAL_MS), 500, 1000),
-            $this->clampInt((int)($config['http_timeout_seconds'] ?? self::DEFAULT_HTTP_TIMEOUT_SECONDS), 1, 5)
+            (int)$config['ready_timeout_seconds'],
+            (int)$config['ready_interval_ms'],
+            (int)$config['http_timeout_seconds']
         );
 
         response()->json([
@@ -51,18 +47,6 @@ final class StreamController extends BaseController
             'ready' => $ready['ready'],
             'message' => $ready['message'],
         ]);
-    }
-
-    private function streamsConfig(): array
-    {
-        $path = CONFIG . '/streams.php';
-        if (!is_file($path)) {
-            return [];
-        }
-
-        $config = require $path;
-
-        return is_array($config) ? $config : [];
     }
 
     private function waitForHlsReady(string $manifestUrl, int $timeoutSeconds, int $intervalMs, int $httpTimeoutSeconds): array
@@ -80,6 +64,10 @@ final class StreamController extends BaseController
             }
 
             $lastMessage = $check['message'];
+            if (!($check['retry'] ?? true)) {
+                break;
+            }
+
             if (microtime(true) < $deadline) {
                 usleep($intervalMs * 1000);
             }
@@ -93,10 +81,15 @@ final class StreamController extends BaseController
 
     private function checkHlsReady(string $manifestUrl, int $httpTimeoutSeconds): array
     {
-        $manifest = $this->httpRequest($manifestUrl, 'GET', $httpTimeoutSeconds);
+        $manifest = $this->httpRequest($manifestUrl, 'HEAD', $httpTimeoutSeconds);
+        if ($manifest['status'] !== 200 || $manifest['body'] === '') {
+            $manifest = $this->httpRequest($manifestUrl, 'GET', $httpTimeoutSeconds);
+        }
+
         if ($manifest['status'] !== 200) {
             return [
                 'ready' => false,
+                'retry' => in_array($manifest['status'], [0, 404], true),
                 'message' => 'HLS manifest is not available',
             ];
         }
@@ -105,6 +98,7 @@ final class StreamController extends BaseController
         if ($body === '' || !str_contains($body, '#EXTM3U')) {
             return [
                 'ready' => false,
+                'retry' => true,
                 'message' => 'HLS manifest is empty or invalid',
             ];
         }
@@ -112,6 +106,7 @@ final class StreamController extends BaseController
         if (!str_contains($body, '#EXTINF')) {
             return [
                 'ready' => false,
+                'retry' => true,
                 'message' => 'HLS manifest exists but segments are not ready',
             ];
         }
@@ -120,6 +115,7 @@ final class StreamController extends BaseController
         if ($segmentUrl === '') {
             return [
                 'ready' => false,
+                'retry' => true,
                 'message' => 'HLS manifest exists but segments are not ready',
             ];
         }
@@ -131,6 +127,7 @@ final class StreamController extends BaseController
 
         return [
             'ready' => in_array($segment['status'], [200, 206], true),
+            'retry' => in_array($segment['status'], [0, 404], true),
             'message' => in_array($segment['status'], [200, 206], true)
                 ? 'HLS is ready'
                 : 'HLS manifest exists but segments are not ready',
@@ -344,8 +341,4 @@ final class StreamController extends BaseController
         return hash_equals($streamId, (string)$match[1]);
     }
 
-    private function clampInt(int $value, int $min, int $max): int
-    {
-        return max($min, min($max, $value));
-    }
 }

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'ready_timeout_seconds' => 10,
-    'ready_interval_ms' => 750,
-    'http_timeout_seconds' => 3,
+    'ready_timeout_seconds' => 30,
+    'ready_interval_ms' => 1500,
+    'http_timeout_seconds' => 5,
 ];

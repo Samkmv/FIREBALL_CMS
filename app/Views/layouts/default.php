@@ -94,6 +94,12 @@ $hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="
     || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
 $canViewVideoStatus = can_view_video_diagnostics(isset($video_owner_id) ? (int)$video_owner_id : null);
+$streamConfig = stream_config();
+$frontendStreamConfig = [
+    'readyTimeoutMs' => (int)$streamConfig['ready_timeout_seconds'] * 1000,
+    'readyIntervalMs' => (int)$streamConfig['ready_interval_ms'],
+    'httpTimeoutMs' => (int)$streamConfig['http_timeout_seconds'] * 1000,
+];
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 $logoutAction = base_href('/logout');
 $siteFaviconUrl = site_favicon_url();
@@ -751,6 +757,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     const baseUrl = '<?= base_url(); ?>';
     window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
     window.canViewVideoDiagnostics = window.canViewVideoStatus;
+    window.hlsStreamConfig = <?= json_encode($frontendStreamConfig, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 </script>
 <script src="<?= base_url('/assets/default/js/jquery-3.7.1.min.js') ?>"></script>
 

@@ -612,6 +612,38 @@ function config_value(string $key, mixed $default = null): mixed
     return config_service()->get($key, $default);
 }
 
+function stream_config(): array
+{
+    static $config = null;
+
+    if ($config !== null) {
+        return $config;
+    }
+
+    $defaults = [
+        'ready_timeout_seconds' => 30,
+        'ready_interval_ms' => 1500,
+        'http_timeout_seconds' => 5,
+    ];
+    $path = CONFIG . '/streams.php';
+    $loaded = [];
+
+    if (is_file($path)) {
+        $value = require $path;
+        if (is_array($value)) {
+            $loaded = $value;
+        }
+    }
+
+    $merged = array_replace($defaults, $loaded);
+
+    return $config = [
+        'ready_timeout_seconds' => max(1, min(120, (int)($merged['ready_timeout_seconds'] ?? $defaults['ready_timeout_seconds']))),
+        'ready_interval_ms' => max(500, min(10000, (int)($merged['ready_interval_ms'] ?? $defaults['ready_interval_ms']))),
+        'http_timeout_seconds' => max(1, min(15, (int)($merged['http_timeout_seconds'] ?? $defaults['http_timeout_seconds']))),
+    ];
+}
+
 function site_social_network_options(): array
 {
     return [

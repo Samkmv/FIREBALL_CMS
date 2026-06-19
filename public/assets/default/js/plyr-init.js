@@ -305,16 +305,23 @@
         return Math.max(min, Math.min(max, number));
     };
 
+    const getFrontendHlsConfig = function () {
+        return (window.hlsStreamConfig && typeof window.hlsStreamConfig === 'object')
+            ? window.hlsStreamConfig
+            : {};
+    };
+
     const getHlsWaitOptions = function (element) {
         const options = getElementPlyrOptions(element);
         const hlsOptions = options.hls || {};
+        const config = getFrontendHlsConfig();
 
         return {
             timeoutMs: getNumericOption(
                 element && element.dataset && element.dataset.hlsWaitTimeout !== undefined
                     ? element.dataset.hlsWaitTimeout
                     : (hlsOptions.waitTimeout || options.hlsWaitTimeout),
-                30000,
+                config.readyTimeoutMs || 30000,
                 1000,
                 120000
             ),
@@ -322,9 +329,17 @@
                 element && element.dataset && element.dataset.hlsWaitInterval !== undefined
                     ? element.dataset.hlsWaitInterval
                     : (hlsOptions.waitInterval || options.hlsWaitInterval),
-                2500,
+                config.readyIntervalMs || 1500,
                 500,
                 10000
+            ),
+            requestTimeoutMs: getNumericOption(
+                element && element.dataset && element.dataset.hlsHttpTimeout !== undefined
+                    ? element.dataset.hlsHttpTimeout
+                    : (hlsOptions.httpTimeout || options.hlsHttpTimeout),
+                config.httpTimeoutMs || 5000,
+                1000,
+                15000
             ),
         };
     };
@@ -1361,6 +1376,13 @@
             || result.errorType === 'request_error';
     };
 
+    const isFatalHlsReadyStatus = function (status) {
+        return status === 403
+            || status === 500
+            || status === 502
+            || status === 503;
+    };
+
     const waitForHlsReady = async function (url, options) {
         const settings = Object.assign({
             timeoutMs: 30000,
@@ -1422,6 +1444,10 @@
                     attempts: attempt,
                     timedOut: false,
                 };
+            }
+
+            if (isFatalHlsReadyStatus(result.status)) {
+                break;
             }
 
             const afterAttemptMs = Date.now() - startedAt;
@@ -1532,6 +1558,7 @@
         element.hlsLazyWaitPromise = waitForHlsReady(element.hlsSource, {
             timeoutMs: waitOptions.timeoutMs,
             intervalMs: waitOptions.intervalMs,
+            requestTimeoutMs: waitOptions.requestTimeoutMs,
             signal: controller ? controller.signal : null,
             onAttempt: function (result, attempt) {
                 const maxAttempts = Math.max(1, Math.ceil(waitOptions.timeoutMs / waitOptions.intervalMs));
