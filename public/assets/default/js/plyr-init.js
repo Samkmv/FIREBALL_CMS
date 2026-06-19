@@ -277,14 +277,16 @@
         const messages = hlsLocale === 'ru' ? {
             pending: 'ожидание',
             skipped: 'не требуется',
-            success: 'OK HTTP {status}, success={success}, woke={woke}',
-            http_error: 'HTTP {status}, success={success}, woke={woke}',
+            success: 'OK HTTP {status}',
+            http_error: 'HTTP {status}',
+            timeout: 'timeout',
             network_error: 'ошибка сети',
         } : {
             pending: 'pending',
             skipped: 'not required',
-            success: 'OK HTTP {status}, success={success}, woke={woke}',
-            http_error: 'HTTP {status}, success={success}, woke={woke}',
+            success: 'OK HTTP {status}',
+            http_error: 'HTTP {status}',
+            timeout: 'timeout',
             network_error: 'network error',
         };
         let message = messages[key] || key;
@@ -304,54 +306,89 @@
                 updateVideoDebug(element, {
                     streamId: '',
                     backendWake: getBackendWakeDebugText('skipped'),
+                    backendReady: '',
+                    backendMessage: '',
                     attempt: '—',
                 });
             }
             return true;
         }
 
+        if (element.hlsBackendWakePromise) {
+            return element.hlsBackendWakePromise;
+        }
+
         updateVideoDebug(element, {
             streamId: streamId,
             backendWake: getBackendWakeDebugText('pending'),
+            backendReady: '',
+            backendMessage: '',
             attempt: '1/1',
         });
 
-        try {
-            const response = await fetch((typeof baseUrl === 'string' ? baseUrl : '') + '/api/streams/wake', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ stream_id: streamId })
-            });
-            let data = {};
+        element.hlsBackendWakePromise = (async function () {
+            let timeoutId = null;
+            let timedOut = false;
+            const controller = typeof AbortController === 'function' ? new AbortController() : null;
 
-            try {
-                data = await response.json();
-            } catch (error) {
-                data = {};
+            if (controller) {
+                timeoutId = setTimeout(function () {
+                    timedOut = true;
+                    controller.abort();
+                }, 5000);
             }
 
-            updateVideoDebug(element, {
-                streamId: data.stream_id || streamId,
-                backendWake: getBackendWakeDebugText(response.ok && data.success !== false ? 'success' : 'http_error', {
-                    status: response.status || 0,
-                    success: data.success === undefined ? 'unknown' : data.success,
-                    woke: data.woke === undefined ? 'unknown' : data.woke,
-                }),
-                attempt: '1/1',
-            });
-        } catch (error) {
-            updateVideoDebug(element, {
-                streamId: streamId,
-                backendWake: getBackendWakeDebugText('network_error'),
-                attempt: '1/1',
-            });
-            console.warn('Backend stream wake failed', error);
-        }
+            try {
+                const response = await fetch((typeof baseUrl === 'string' ? baseUrl : '') + '/api/streams/wake', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        stream_id: streamId,
+                        hls_url: element.hlsSource || ''
+                    }),
+                    signal: controller ? controller.signal : undefined,
+                });
+                let data = {};
 
-        return true;
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    data = {};
+                }
+
+                updateVideoDebug(element, {
+                    streamId: data.stream_id || streamId,
+                    backendWake: getBackendWakeDebugText(response.ok && data.success !== false ? 'success' : 'http_error', {
+                        status: response.status || 0,
+                    }),
+                    backendReady: data.ready === undefined ? '' : String(data.ready),
+                    backendMessage: data.message || '',
+                    attempt: '1/1',
+                });
+            } catch (error) {
+                const isTimeout = timedOut || (error && error.name === 'AbortError');
+                updateVideoDebug(element, {
+                    streamId: streamId,
+                    backendWake: getBackendWakeDebugText(isTimeout ? 'timeout' : 'network_error'),
+                    backendReady: '',
+                    backendMessage: isTimeout ? 'Backend wake timeout' : (error && error.message ? error.message : ''),
+                    attempt: '1/1',
+                });
+                console.warn(isTimeout ? 'Backend stream wake timed out' : 'Backend stream wake failed', error);
+            } finally {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                element.hlsBackendWakePromise = null;
+            }
+
+            return true;
+        })();
+
+        return element.hlsBackendWakePromise;
     };
 
     const isCrossOriginUrl = function (url) {
@@ -472,6 +509,8 @@
         source: 'Источник',
         streamId: 'ID потока',
         backendWake: 'Backend wake',
+        backendReady: 'Backend ready',
+        backendMessage: 'Backend message',
         poster: 'Постер',
         sourceType: 'Тип',
         playbackMode: 'Режим',
@@ -486,6 +525,8 @@
         source: 'Source',
         streamId: 'Stream ID',
         backendWake: 'Backend wake',
+        backendReady: 'Backend ready',
+        backendMessage: 'Backend message',
         poster: 'Poster',
         sourceType: 'Type',
         playbackMode: 'Mode',
@@ -522,6 +563,8 @@
             source: element.hlsSource || element.currentSrc || element.getAttribute('src') || '',
             streamId: inferStreamIdFromHlsUrl(element.hlsSource || element.currentSrc || element.getAttribute('src') || ''),
             backendWake: '',
+            backendReady: '',
+            backendMessage: '',
             poster: element.getAttribute('poster') || element.dataset.poster || '',
             sourceType: getSourceType(element.hlsSource || element.currentSrc || element.getAttribute('src') || ''),
             playbackMode: getPlaybackMode(element),
@@ -1860,7 +1903,7 @@
         let isReady = false;
 
         try {
-            await wakeBackendStream(element);
+            wakeBackendStream(element);
 
             if (shouldUseNativeHls(element)) {
                 isReady = await prepareNativeHlsPlayback(element);

@@ -21,43 +21,32 @@ echo view()->renderPartial('admin/shell_open', [
 ]);
 ?>
 
+    <?php
+    $overviewCards = [
+        ['label' => return_translation('admin_stat_posts'), 'value' => (int)($stats['posts'] ?? 0), 'icon' => 'ci-file-text'],
+        ['label' => return_translation('admin_stat_pages'), 'value' => (int)($stats['pages'] ?? 0), 'icon' => 'ci-file'],
+        ['label' => return_translation('admin_stat_contacts'), 'value' => (int)($stats['contact_requests'] ?? 0), 'icon' => 'ci-mail'],
+        ['label' => return_translation('admin_stat_new_contacts'), 'value' => (int)($stats['contact_requests_new'] ?? 0), 'icon' => 'ci-inbox'],
+        ['label' => return_translation('admin_stat_categories'), 'value' => (int)($stats['categories'] ?? 0), 'icon' => 'ci-folder'],
+        ['label' => return_translation('admin_stat_users'), 'value' => (int)($stats['users'] ?? 0), 'icon' => 'ci-user'],
+        ['label' => return_translation('admin_stat_visits'), 'value' => (int)($stats['site_visits'] ?? 0), 'icon' => 'ci-activity'],
+        ['label' => return_translation('admin_stat_support_faq'), 'value' => (int)($stats['support_faq'] ?? 0), 'icon' => 'ci-message-square'],
+        ['label' => return_translation('admin_stat_support_kb_articles'), 'value' => (int)($stats['support_kb_articles'] ?? 0), 'icon' => 'ci-book-open'],
+        ['label' => return_translation('admin_stat_support_kb_categories'), 'value' => (int)($stats['support_kb_categories'] ?? 0), 'icon' => 'ci-folder'],
+        ['label' => return_translation('admin_update_current_version'), 'value' => $installedVersionLabel, 'icon' => 'ci-refresh-cw'],
+    ];
+    ?>
     <div class="row g-3">
-        <div class="col-md-6 col-xl-3">
-            <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
-                <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2"><i class="ci-file-text"></i><?= print_translation('admin_stat_posts') ?></div>
-                <div class="display-6 mb-0"><?= (int)$stats['posts'] ?></div>
+        <?php foreach ($overviewCards as $card): ?>
+            <div class="col-md-6 col-xl-3">
+                <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
+                    <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2">
+                        <i class="<?= htmlSC($card['icon']) ?>"></i><?= htmlSC((string)$card['label']) ?>
+                    </div>
+                    <div class="display-6 mb-0"><?= htmlSC((string)$card['value']) ?></div>
+                </div>
             </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
-                <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2"><i class="ci-mail"></i><?= print_translation('admin_stat_contacts') ?></div>
-                <div class="display-6 mb-0"><?= (int)($stats['contact_requests'] ?? 0) ?></div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
-                <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2"><i class="ci-folder"></i><?= print_translation('admin_stat_categories') ?></div>
-                <div class="display-6 mb-0"><?= (int)$stats['categories'] ?></div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
-                <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2"><i class="ci-user"></i><?= print_translation('admin_stat_users') ?></div>
-                <div class="display-6 mb-0"><?= (int)$stats['users'] ?></div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
-                <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2"><i class="ci-activity"></i><?= print_translation('admin_stat_visits') ?></div>
-                <div class="display-6 mb-0"><?= (int)($stats['site_visits'] ?? 0) ?></div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
-                <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2"><i class="ci-refresh-cw"></i><?= print_translation('admin_update_current_version') ?></div>
-                <div class="display-6 mb-0"><?= htmlSC($installedVersionLabel) ?></div>
-            </div>
-        </div>
+        <?php endforeach; ?>
     </div>
 
     <section class="mt-4" data-admin-analytics data-admin-analytics-payload="<?= htmlSC($analyticsJson ?: '{}') ?>" data-admin-analytics-i18n="<?= htmlSC($analyticsI18nJson ?: '{}') ?>">

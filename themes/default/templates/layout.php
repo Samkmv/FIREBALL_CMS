@@ -107,15 +107,17 @@ $footerNavigationLinks = [
         'label' => return_translation('footer_nav_posts'),
     ],
     [
-        'href' => base_href('/support'),
-        'label' => return_translation('tpl_menu_nav_support'),
-    ],
-    [
         'href' => base_href('/contacts'),
         'label' => return_translation('tpl_menu_nav_contacts'),
     ],
 ];
 $footerNavigationLinks = array_merge($footerNavigationLinks, $footerPageLinks);
+if (site_setting('support_public_enabled', '1') === '1') {
+    $footerNavigationLinks[] = [
+        'href' => base_href('/support'),
+        'label' => return_translation('tpl_menu_nav_support'),
+    ];
+}
 $footerCategoryLinks = $postNavigationCategories;
 $postCategoryUrl = static function (?string $slug = null): string {
     $url = base_href('/posts');

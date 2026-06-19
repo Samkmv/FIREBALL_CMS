@@ -58,6 +58,8 @@ class AdminController extends BaseController
     {
         $stats = $this->blog->getStats();
         $stats = array_merge($stats, $this->analytics->getStats());
+        $stats = array_merge($stats, $this->support->getStats());
+        $stats['pages'] = (int)($this->pages->getPaginated(['per_page' => 1])['total'] ?? 0);
         $stats['contact_requests'] = $this->contactRequests->countAll();
         $stats['contact_requests_new'] = $this->contactRequests->countNew();
 
@@ -650,6 +652,7 @@ class AdminController extends BaseController
     protected function normalizeSupportSettingsData(array $data): array
     {
         return [
+            'support_public_enabled' => !empty($data['support_public_enabled']) ? '1' : '0',
             'support_notification_email' => trim((string)($data['support_notification_email'] ?? '')),
             'support_autoreply_enabled' => !empty($data['support_autoreply_enabled']) ? '1' : '0',
             'support_autoreply_subject' => trim((string)($data['support_autoreply_subject'] ?? '')),

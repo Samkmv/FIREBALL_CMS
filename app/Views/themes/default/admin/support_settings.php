@@ -15,6 +15,14 @@ $value = static function (string $key, string $default = '') use ($formData, $se
     <form class="border rounded-5 p-3 p-md-4" action="<?= base_href('/admin/support/settings') ?>" method="post">
         <?= get_csrf_field() ?>
         <div class="row g-4">
+            <div class="col-12">
+                <div class="form-check form-switch">
+                    <input type="hidden" name="support_public_enabled" value="0">
+                    <input id="support-public-enabled" class="form-check-input" type="checkbox" name="support_public_enabled" value="1" <?= $value('support_public_enabled', '1') === '1' ? 'checked' : '' ?>>
+                    <label class="form-check-label fw-semibold" for="support-public-enabled"><?= print_translation('admin_support_public_enabled') ?></label>
+                    <div class="form-text"><?= print_translation('admin_support_public_enabled_hint') ?></div>
+                </div>
+            </div>
             <div class="col-lg-6">
                 <label class="form-label" for="support-email"><?= print_translation('admin_support_notification_email') ?></label>
                 <input id="support-email" class="form-control <?= get_validation_class('support_notification_email') ?>" type="email" name="support_notification_email" value="<?= htmlSC($value('support_notification_email')) ?>">

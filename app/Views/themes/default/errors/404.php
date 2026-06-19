@@ -3,6 +3,10 @@ $siteFaviconUrl = site_favicon_url();
 $siteFaviconType = site_favicon_type();
 $pageTitle = $title ?? return_translation('error_404_title');
 $message = trim((string)($error ?? '')) !== '' ? (string)$error : return_translation('error_404_message');
+$homeUrl = base_href('/');
+$referrer = trim((string)($_SERVER['HTTP_REFERER'] ?? ''));
+$referrerScheme = strtolower((string)(parse_url($referrer, PHP_URL_SCHEME) ?? ''));
+$backUrl = in_array($referrerScheme, ['http', 'https'], true) ? $referrer : $homeUrl;
 ?>
 <!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true"><head>
     <meta charset="utf-8">
@@ -56,11 +60,30 @@ $message = trim((string)($error ?? '')) !== '' ? (string)$error : return_transla
             </div>
             <h1><?= print_translation('error_404_heading') ?></h1>
             <p class="pb-3"><?= htmlSC($message) ?></p>
-            <a class="btn btn-lg btn-primary" href="<?= base_href('/') ?>"><?= print_translation('error_home_button') ?></a>
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                <a class="btn btn-lg btn-outline-secondary" href="<?= htmlSC($backUrl) ?>" data-error-back-button><?= print_translation('error_back_button') ?></a>
+                <a class="btn btn-lg btn-primary" href="<?= htmlSC($homeUrl) ?>"><?= print_translation('error_home_button') ?></a>
+            </div>
         </section>
 
     </div>
 </main>
+
+<script>
+    (function () {
+        const button = document.querySelector('[data-error-back-button]');
+        if (!button) {
+            return;
+        }
+
+        button.addEventListener('click', function (event) {
+            if (window.history.length > 1) {
+                event.preventDefault();
+                window.history.back();
+            }
+        });
+    })();
+</script>
 
 </body>
 

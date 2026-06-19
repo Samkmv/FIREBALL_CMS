@@ -107,6 +107,17 @@ class Support
         )->get() ?: [];
     }
 
+    public function getStats(): array
+    {
+        $this->ensureTableExists();
+
+        return [
+            'support_faq' => (int)db()->query("SELECT COUNT(*) FROM {$this->faqTable}")->getColumn(),
+            'support_kb_articles' => (int)db()->query("SELECT COUNT(*) FROM {$this->kbArticlesTable}")->getColumn(),
+            'support_kb_categories' => (int)db()->query("SELECT COUNT(*) FROM {$this->kbCategoriesTable}")->getColumn(),
+        ];
+    }
+
     public function getPublishedFaq(int $limit = 10, string $search = ''): array
     {
         $this->ensureTableExists();

@@ -217,6 +217,9 @@ $(function(){
         let searchTimer = null;
 
         const tableRoots = () => Array.from(document.querySelectorAll('[data-ajax-table]'));
+        if (tableRoots().length === 0) {
+            return { load: () => Promise.resolve() };
+        }
         const setLoading = (isLoading) => {
             tableRoots().forEach((root) => {
                 root.classList.toggle('admin-table--loading', isLoading);
@@ -317,7 +320,6 @@ $(function(){
         const load = (url, options = {}) => {
             const roots = tableRoots();
             if (roots.length === 0) {
-                window.location.href = url.toString();
                 return Promise.resolve();
             }
             if (activeRequest) {
@@ -354,7 +356,7 @@ $(function(){
                         initBootstrapTooltips(root);
                     });
                     const scrollTarget = options.scrollTarget || jsonRoot || tableRoots()[0];
-                    if (options.scroll !== false && scrollTarget) {
+                    if (options.scroll === true && scrollTarget) {
                         scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                     if (options.pushState !== false) {

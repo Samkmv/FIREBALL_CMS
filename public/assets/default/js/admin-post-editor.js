@@ -320,7 +320,9 @@ function initPostEditor() {
         }
 
         const type = getAllowedBlockType(block.type);
-        const data = Object.assign(defaultBlockData(type), cloneData(block.data));
+        const data = type === 'video'
+            ? normalizeVideoData(block.data)
+            : Object.assign(defaultBlockData(type), cloneData(block.data));
         if ((type === 'text' || type === 'heading') && typeof data.html === 'string') {
             data.html = sanitizeHtml(data.html);
         }
@@ -517,7 +519,9 @@ function initPostEditor() {
             return;
         }
 
-        block.data = Object.assign({}, block.data, patch);
+        block.data = block.type === 'video'
+            ? normalizeVideoData(Object.assign({}, block.data, patch))
+            : Object.assign({}, block.data, patch);
         sync();
     }
 
@@ -1667,6 +1671,26 @@ function initPostEditor() {
 
     function cloneData(data) {
         return JSON.parse(JSON.stringify(data || {}));
+    }
+
+    function firstDataValue(data, keys) {
+        const source = data && typeof data === 'object' ? data : {};
+        for (let index = 0; index < keys.length; index += 1) {
+            const value = String(source[keys[index]] || '').trim();
+            if (value !== '') {
+                return value;
+            }
+        }
+
+        return '';
+    }
+
+    function normalizeVideoData(data) {
+        return {
+            src: firstDataValue(data, ['src', 'url', 'source', 'video', 'videoUrl', 'file', 'fileUrl', 'hlsSrc', 'hlsUrl']),
+            poster: firstDataValue(data, ['poster', 'posterUrl', 'image', 'thumbnail']),
+            caption: firstDataValue(data, ['caption', 'title', 'description'])
+        };
     }
 
     function escapeHtml(value) {
@@ -3158,13 +3182,18 @@ function initPostEditor() {
             return '<img src="' + escapeAttr(block.data.src) + '" alt="' + escapeAttr(block.data.alt || '') + '">';
         }
 
-        if (block.type === 'video' && block.data.src) {
-            const embedUrl = getVideoEmbedUrl(block.data.src);
+        if (block.type === 'video') {
+            const data = normalizeVideoData(block.data);
+            if (!data.src) {
+                return '<div class="fb-post-block__placeholder-text">' + escapeHtml(labels.sourceLink) + '</div>';
+            }
+
+            const embedUrl = getVideoEmbedUrl(data.src);
             if (embedUrl !== '') {
                 return '<iframe src="' + escapeAttr(embedUrl) + '" allowfullscreen loading="lazy"></iframe>';
             }
 
-            return '<video controls playsinline' + (block.data.poster ? ' poster="' + escapeAttr(block.data.poster) + '"' : '') + '><source src="' + escapeAttr(block.data.src) + '" type="' + escapeAttr(getVideoMimeType(block.data.src)) + '"></video>';
+            return '<video controls playsinline' + (data.poster ? ' poster="' + escapeAttr(data.poster) + '"' : '') + '><source src="' + escapeAttr(data.src) + '" type="' + escapeAttr(getVideoMimeType(data.src)) + '"></video>';
         }
 
         return '<div class="fb-post-block__placeholder-text">' + escapeHtml(labels.sourceLink) + '</div>';
@@ -3365,23 +3394,24 @@ function initPostEditor() {
     }
 
     function renderVideoSettings(block) {
+        const data = normalizeVideoData(block.data);
         return '' +
             '<div class="fb-post-settings__section" data-block-id="' + escapeAttr(block.id) + '">' +
                 '<div class="mb-3">' +
                     '<label class="form-label">' + escapeHtml(labels.sourceLink) + '</label>' +
                     '<div class="input-group">' +
-                        '<input class="form-control" type="text" value="' + escapeAttr(block.data.src || '') + '" data-block-field="src" data-block-id="' + escapeAttr(block.id) + '">' +
+                        '<input class="form-control" type="text" value="' + escapeAttr(data.src) + '" data-block-field="src" data-block-id="' + escapeAttr(block.id) + '">' +
                         '<button class="btn btn-outline-secondary" type="button" data-block-picker="src">' + escapeHtml(labels.chooseFile) + '</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="mb-3">' +
                     '<label class="form-label">' + escapeHtml(labels.videoPoster) + '</label>' +
                     '<div class="input-group">' +
-                        '<input class="form-control" type="text" value="' + escapeAttr(block.data.poster || '') + '" data-block-field="poster" data-block-id="' + escapeAttr(block.id) + '">' +
+                        '<input class="form-control" type="text" value="' + escapeAttr(data.poster) + '" data-block-field="poster" data-block-id="' + escapeAttr(block.id) + '">' +
                         '<button class="btn btn-outline-secondary" type="button" data-block-picker="poster">' + escapeHtml(labels.chooseFile) + '</button>' +
                     '</div>' +
                 '</div>' +
-                '<div><label class="form-label">' + escapeHtml(labels.videoCaption) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.caption || '') + '" data-block-field="caption" data-block-id="' + escapeAttr(block.id) + '"></div>' +
+                '<div><label class="form-label">' + escapeHtml(labels.videoCaption) + '</label><input class="form-control" type="text" value="' + escapeAttr(data.caption) + '" data-block-field="caption" data-block-id="' + escapeAttr(block.id) + '"></div>' +
             '</div>';
     }
 
@@ -3566,19 +3596,20 @@ function initPostEditor() {
             }
 
             if (block.type === 'video') {
-                const src = String(block.data.src || '').trim();
+                const data = normalizeVideoData(block.data);
+                const src = data.src;
                 if (!src) {
                     return '';
                 }
 
                 const embedUrl = getVideoEmbedUrl(src);
-                const caption = String(block.data.caption || '').trim();
+                const caption = data.caption;
                 if (embedUrl !== '') {
                     return '<div class="ratio ratio-16x9"><iframe src="' + escapeAttr(embedUrl) + '" title="' + escapeAttr(caption || labels.addVideo) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>' +
                         (caption ? '<p>' + escapeHtml(caption) + '</p>' : '');
                 }
 
-                const poster = String(block.data.poster || '').trim();
+                const poster = data.poster;
                 const mimeType = getVideoMimeType(src);
                 const isHls = mimeType === 'application/vnd.apple.mpegurl';
                 return '<div data-plyr-player-wrap="" data-plyr-lazy="true"><video controls playsinline webkit-playsinline preload="metadata" data-plyr-player=""' + (isHls ? ' data-hls-src="' + escapeAttr(src) + '"' : '') + (poster ? ' poster="' + escapeAttr(poster) + '"' : '') + '>' + (isHls ? '' : '<source src="' + escapeAttr(src) + '" type="' + escapeAttr(mimeType) + '">') + '</video></div>' +
@@ -3848,7 +3879,9 @@ function initPostEditor() {
             id: makeId(),
             type: type,
             hidden: false,
-            data: Object.assign(defaultBlockData(type), cloneData(data))
+            data: type === 'video'
+                ? normalizeVideoData(data)
+                : Object.assign(defaultBlockData(type), cloneData(data))
         };
     }
 
@@ -3928,7 +3961,10 @@ function initPostEditor() {
         } else {
             const video = node.matches('video') ? node : node.querySelector('video');
             const sourceNode = video ? video.querySelector('source') : null;
-            source = sourceNode ? String(sourceNode.getAttribute('src') || '') : (video ? String(video.getAttribute('src') || '') : '');
+            source = video
+                ? String(video.getAttribute('data-hls-src') || video.dataset.hlsSrc || '')
+                : '';
+            source = source || (sourceNode ? String(sourceNode.getAttribute('src') || '') : (video ? String(video.getAttribute('src') || '') : ''));
             poster = video ? String(video.getAttribute('poster') || '') : '';
         }
 

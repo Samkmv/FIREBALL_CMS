@@ -149,11 +149,16 @@ class HomeController extends BaseController
 
     public function support()
     {
+        if ($this->siteSettings->get('support_public_enabled', '1') !== '1') {
+            abort();
+        }
+
         $search = trim((string)request()->get('q', ''));
+        $supportSubjectOptions = $this->getSupportSubjectOptions();
 
         if (request()->isPost()) {
             $data = $this->normalizeContactData(request()->getData());
-            $errors = $this->validateContactData($data);
+            $errors = $this->validateContactData($data, $supportSubjectOptions, 'support_validation_category');
             $rateKey = 'support|' . client_ip();
             if (!RateLimiter::attempt($rateKey, 3, 600)) {
                 $errors['message'][] = return_translation('contacts_form_rate_limited');
@@ -178,7 +183,7 @@ class HomeController extends BaseController
             'search' => $search,
             'faq_items' => $this->support->getPublishedFaq(10, $search),
             'kb_categories' => $this->support->getPublishedKbCategoriesWithArticles(5, $search),
-            'contact_subjects' => $this->getContactSubjectOptions(),
+            'support_categories' => $supportSubjectOptions,
             'footer_scripts' => [
                 base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
             ],
@@ -187,6 +192,10 @@ class HomeController extends BaseController
 
     public function supportArticle()
     {
+        if ($this->siteSettings->get('support_public_enabled', '1') !== '1') {
+            abort();
+        }
+
         $article = $this->support->findPublishedKbArticleBySlug((string)get_route_param('slug', ''));
         if (!$article) {
             abort();
@@ -215,9 +224,10 @@ class HomeController extends BaseController
     /**
      * Проверяет обязательные поля и формат e-mail в форме контактов.
      */
-    protected function validateContactData(array $data): array
+    protected function validateContactData(array $data, ?array $allowedSubjects = null, string $subjectErrorKey = 'contacts_validation_subject'): array
     {
         $errors = [];
+        $allowedSubjects = $allowedSubjects ?? $this->getContactSubjectOptions();
 
         if ($data['name'] === '') {
             $errors['name'][] = return_translation('contacts_validation_name');
@@ -233,8 +243,8 @@ class HomeController extends BaseController
             $errors['email'][] = return_translation('contacts_validation_email_invalid');
         }
 
-        if ($data['subject'] === '' || !in_array($data['subject'], $this->getContactSubjectOptions(), true)) {
-            $errors['subject'][] = return_translation('contacts_validation_subject');
+        if ($data['subject'] === '' || !in_array($data['subject'], $allowedSubjects, true)) {
+            $errors['subject'][] = return_translation($subjectErrorKey);
         }
 
         if ($data['message'] === '') {
@@ -249,6 +259,14 @@ class HomeController extends BaseController
     protected function getContactSubjectOptions(): array
     {
         return $this->contactSubjects->getActiveNames();
+    }
+
+    protected function getSupportSubjectOptions(): array
+    {
+        return array_values(array_filter(array_map(
+            static fn(array $category): string => trim((string)($category['name'] ?? '')),
+            $this->support->getKbCategories()
+        )));
     }
 
 }

@@ -164,6 +164,7 @@ class SiteSetting
             'contacts_support_text' => '',
             'contacts_form_subjects' => '[]',
             'contact_subjects_migrated' => '0',
+            'support_public_enabled' => '1',
             'support_notification_email' => '',
             'support_autoreply_enabled' => '0',
             'support_autoreply_subject' => '',

@@ -30,19 +30,20 @@ try {
 $navItems = [
     ['href' => base_href('/admin'), 'label' => return_translation('admin_nav_dashboard'), 'icon' => 'ci-layout'],
     ['href' => base_href('/admin/analytics'), 'label' => return_translation('admin_nav_analytics'), 'icon' => 'ci-activity'],
-    [
-        'href' => base_href('/admin/support'),
-        'label' => return_translation('admin_nav_support'),
-        'icon' => 'ci-life-buoy',
-        'badge' => $supportNewCount > 0 ? (string)$supportNewCount : '',
-        'badge_title' => return_translation('admin_support_new_count'),
-    ],
     ['href' => base_href('/admin/posts'), 'label' => return_translation('admin_nav_posts'), 'icon' => 'ci-file-text'],
     ['href' => base_href('/admin/pages'), 'label' => return_translation('admin_nav_pages'), 'icon' => 'ci-file'],
     ['href' => base_href('/admin/categories'), 'label' => return_translation('admin_nav_categories'), 'icon' => 'ci-folder'],
     ['href' => base_href('/admin/users'), 'label' => return_translation('admin_nav_users'), 'icon' => 'ci-user'],
     ['href' => base_href('/admin/roles'), 'label' => return_translation('admin_nav_roles'), 'icon' => 'ci-shield'],
     ['href' => base_href('/admin/files'), 'label' => return_translation('admin_nav_files'), 'icon' => 'ci-folder-plus'],
+    [
+        'href' => base_href('/admin/support'),
+        'label' => return_translation('admin_nav_support'),
+        'icon' => 'ci-inbox',
+        'badge' => $supportNewCount > 0 ? (string)$supportNewCount : '',
+        'badge_class' => 'badge rounded-pill text-bg-warning',
+        'badge_title' => return_translation('admin_support_new_count'),
+    ],
     ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'badge' => 'Beta'],
     ['href' => base_href('/admin/updates'), 'label' => return_translation('admin_nav_updates'), 'icon' => 'ci-refresh-cw', 'creator_only' => true],
     ['href' => base_href('/admin/settings'), 'label' => return_translation('admin_nav_settings'), 'icon' => 'ci-settings'],
@@ -86,7 +87,7 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
                 <span class="fw-medium d-inline-flex align-items-center gap-2 min-w-0 admin-shell-nav-label">
                     <span class="text-truncate"><?= htmlSC($item['label']) ?></span>
                     <?php if (!empty($item['badge'])): ?>
-                        <span class="admin-shell-beta-badge" title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>"><?= htmlSC($item['badge']) ?></span>
+                        <span class="<?= htmlSC((string)($item['badge_class'] ?? 'admin-shell-beta-badge')) ?>" title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>"><?= htmlSC($item['badge']) ?></span>
                     <?php endif; ?>
                 </span>
             </a>

@@ -2,9 +2,9 @@
 $search = trim((string)($search ?? ''));
 $faqItems = (array)($faq_items ?? []);
 $kbCategories = (array)($kb_categories ?? []);
-$contactSubjects = array_values(array_filter(array_map(
-    static fn(mixed $subject): string => trim((string)$subject),
-    (array)($contact_subjects ?? [])
+$supportCategories = array_values(array_filter(array_map(
+    static fn(mixed $category): string => trim((string)$category),
+    (array)($support_categories ?? [])
 )));
 ?>
 <main class="content-wrapper">
@@ -93,28 +93,28 @@ $contactSubjects = array_values(array_filter(array_map(
                 <form class="needs-validation" action="<?= base_href('/support') ?>" method="post" novalidate data-contact-form>
                     <?= get_csrf_field() ?>
                     <div class="mb-3">
-                        <label class="form-label" for="support-name"><?= print_translation('contacts_form_name') ?> *</label>
+                        <label class="form-label" for="support-name"><?= print_translation('support_form_name') ?> *</label>
                         <input id="support-name" class="form-control rounded-pill <?= get_validation_class('name') ?>" type="text" name="name" value="<?= old('name') ?>" required>
                         <?= get_errors('name') ?>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="support-email"><?= print_translation('contacts_form_email') ?> *</label>
+                        <label class="form-label" for="support-email"><?= print_translation('support_form_email') ?> *</label>
                         <input id="support-email" class="form-control rounded-pill <?= get_validation_class('email') ?>" type="email" name="email" value="<?= old('email') ?>" required>
                         <?= get_errors('email') ?>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="support-subject"><?= print_translation('contacts_form_subject') ?> *</label>
+                        <label class="form-label" for="support-subject"><?= print_translation('support_form_subject') ?> *</label>
                         <?php $selectedSubject = old('subject'); ?>
                         <select id="support-subject" class="form-select rounded-pill <?= get_validation_class('subject') ?>" name="subject" required>
-                            <option value="" <?= $selectedSubject === '' ? 'selected' : '' ?>><?= print_translation('contacts_subject_placeholder') ?></option>
-                            <?php foreach ($contactSubjects as $subject): ?>
+                            <option value="" <?= $selectedSubject === '' ? 'selected' : '' ?>><?= print_translation('support_form_subject_placeholder') ?></option>
+                            <?php foreach ($supportCategories as $subject): ?>
                                 <option value="<?= htmlSC($subject) ?>" <?= $selectedSubject === $subject ? 'selected' : '' ?>><?= htmlSC($subject) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <?= get_errors('subject') ?>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" for="support-message"><?= print_translation('contacts_form_message') ?> *</label>
+                        <label class="form-label" for="support-message"><?= print_translation('support_form_message') ?> *</label>
                         <textarea id="support-message" class="form-control rounded-6 <?= get_validation_class('message') ?>" name="message" rows="5" required><?= old('message') ?></textarea>
                         <?= get_errors('message') ?>
                     </div>
