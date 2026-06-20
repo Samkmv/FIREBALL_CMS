@@ -762,7 +762,7 @@
     };
 
     const createCleanMediaElement = function (element) {
-        if (!(element instanceof HTMLMediaElement) || shouldUseNativeHls(element)) {
+        if (!(element instanceof HTMLVideoElement) || shouldUseNativeHls(element)) {
             return element;
         }
 
@@ -3030,7 +3030,7 @@
             document.addEventListener('MSFullscreenChange', syncFullscreenUiState);
         }
 
-        document.querySelectorAll('[data-plyr-player], .post-content video, [data-plyr-player-wrap] video').forEach(function (element) {
+        document.querySelectorAll('[data-plyr-player], .post-content video, .post-content audio, [data-plyr-player-wrap] video, [data-plyr-player-wrap] audio').forEach(function (element) {
             if (!element.hasAttribute('data-plyr-player')) {
                 element.setAttribute('data-plyr-player', '');
             }
@@ -3084,11 +3084,13 @@
                     element.plyr = new window.Plyr(element, options);
                 } catch (error) {
                     console.error('Plyr initialization failed', error);
-                    updateVideoDebug(element, {
-                        errorType: 'plyr_initialization_error',
-                        checkedAt: new Date().toLocaleString(),
-                    });
-                    ensureVideoDebugBlock(element);
+                    if (element instanceof HTMLVideoElement) {
+                        updateVideoDebug(element, {
+                            errorType: 'plyr_initialization_error',
+                            checkedAt: new Date().toLocaleString(),
+                        });
+                        ensureVideoDebugBlock(element);
+                    }
                     return;
                 }
                 syncFullVolume(element, !isPrimerPlaybackActive(element));
@@ -3105,8 +3107,10 @@
 
                 bindPlyrPlayButton(element);
                 initPlyrZoom(element);
-                bindFullscreenStateSync(element);
-                ensureVideoDebugBlock(element);
+                if (element instanceof HTMLVideoElement) {
+                    bindFullscreenStateSync(element);
+                    ensureVideoDebugBlock(element);
+                }
             };
 
             attachHls(element).finally(finalizePlyr);

@@ -2632,10 +2632,6 @@ body.is-site-fullscreen .plyr * {
         padding: .375rem .625rem;
     }
 
-    [data-admin-users-table] {
-        min-width: 840px;
-    }
-
     .admin-table-scroll > .table,
     .admin-table-scroll .simplebar-content > .table {
         min-width: 680px;
@@ -2796,6 +2792,101 @@ body.is-site-fullscreen .plyr * {
 
     [data-admin-users-table] td:last-child {
         min-width: 96px;
+    }
+
+    [data-admin-users-table-wrap] {
+        overflow: visible !important;
+    }
+
+    [data-admin-users-table] {
+        display: block;
+        min-width: 0 !important;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    [data-admin-users-table] thead {
+        display: none;
+    }
+
+    [data-admin-users-table] tbody {
+        display: grid;
+        gap: .875rem;
+    }
+
+    [data-admin-users-table] tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: .625rem .75rem;
+        padding: .95rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 1rem;
+        background: var(--bs-body-bg);
+    }
+
+    [data-admin-users-table] tbody tr:hover {
+        background: var(--bs-body-bg) !important;
+    }
+
+    [data-admin-users-table] tbody th,
+    [data-admin-users-table] tbody td {
+        --cz-table-bg: transparent;
+        --cz-table-bg-state: transparent;
+        --cz-table-accent-bg: transparent;
+        --cz-table-hover-bg: transparent;
+        display: block;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: left !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+
+    [data-admin-users-table] tbody th {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
+        color: var(--bs-secondary-color);
+        font-size: .8125rem;
+    }
+
+    [data-admin-users-table] tbody td:nth-child(2) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        font-weight: 600;
+    }
+
+    [data-admin-users-table] tbody td:nth-child(3),
+    [data-admin-users-table] tbody td:nth-child(4),
+    [data-admin-users-table] tbody td:nth-child(5),
+    [data-admin-users-table] tbody td:nth-child(6),
+    [data-admin-users-table] tbody td:nth-child(7) {
+        grid-column: 1 / -1;
+    }
+
+    [data-admin-users-table] tbody td:last-child {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+        align-self: start;
+        min-width: 0 !important;
+        text-align: right !important;
+    }
+
+    [data-admin-users-table] tbody td:last-child .d-flex,
+    [data-admin-users-table] tbody td:last-child form {
+        justify-content: flex-end;
+    }
+
+    [data-admin-users-table] .badge {
+        white-space: normal;
+        text-align: left;
     }
 }
 
@@ -3286,6 +3377,40 @@ body.is-site-fullscreen .plyr * {
     background: var(--cz-table-hover-bg);
 }
 
+[data-admin-shell] .admin-table-card .table {
+    width: 100%;
+    max-width: 100%;
+}
+
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) {
+    font-size: .9375rem;
+}
+
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) > :not(caption) > * > * {
+    padding: .75rem .625rem;
+    vertical-align: middle;
+}
+
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) th,
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) td {
+    min-width: 0;
+    max-width: 18rem;
+}
+
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) td {
+    overflow-wrap: anywhere;
+}
+
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) td.text-nowrap,
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) th.text-nowrap,
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) .text-nowrap {
+    white-space: normal !important;
+}
+
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) .btn-icon {
+    flex: 0 0 auto;
+}
+
 .admin-table--loading {
     pointer-events: none;
 }
@@ -3329,6 +3454,317 @@ body.is-site-fullscreen .plyr * {
 
 .admin-table-state strong {
     color: var(--cz-emphasis-color);
+}
+
+@media (max-width: 767.98px) {
+    [data-admin-shell] .admin-table-card {
+        border-radius: 1.25rem !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table-responsive {
+        overflow: visible !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) {
+        display: block;
+        min-width: 0 !important;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) colgroup,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) thead {
+        display: none;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody {
+        display: grid;
+        gap: .875rem;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: .625rem .75rem;
+        padding: .95rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 1rem;
+        background: var(--bs-body-bg);
+        box-shadow: none;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody tr:hover {
+        background: var(--bs-body-bg) !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td {
+        --cz-table-bg: transparent;
+        --cz-table-bg-state: transparent;
+        --cz-table-accent-bg: transparent;
+        --cz-table-hover-bg: transparent;
+        display: block;
+        width: auto;
+        min-width: 0 !important;
+        max-width: 100%;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: left !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th:first-child,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:first-child {
+        grid-column: 1;
+        grid-row: 1;
+        color: var(--bs-secondary-color);
+        font-size: .875rem;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(2) {
+        grid-column: 1 / -1;
+        font-weight: 600;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:last-child {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+        align-self: start;
+        text-align: right !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:last-child .d-flex,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:last-child form {
+        justify-content: flex-end;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td[colspan],
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th[colspan] {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        text-align: center !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) .badge {
+        white-space: normal;
+        text-align: left;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th:first-child,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:not(:last-child),
+    [data-admin-users-table] tbody th,
+    [data-admin-users-table] tbody td:nth-child(3),
+    [data-admin-users-table] tbody td:nth-child(4),
+    [data-admin-users-table] tbody td:nth-child(5),
+    [data-admin-users-table] tbody td:nth-child(6),
+    [data-admin-users-table] tbody td:nth-child(7),
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(3),
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(4),
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(5) {
+        position: relative;
+        padding-left: 1.875rem !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th:first-child::before,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:not(:last-child)::before,
+    [data-admin-users-table] tbody th::before,
+    [data-admin-users-table] tbody td:nth-child(3)::before,
+    [data-admin-users-table] tbody td:nth-child(4)::before,
+    [data-admin-users-table] tbody td:nth-child(5)::before,
+    [data-admin-users-table] tbody td:nth-child(6)::before,
+    [data-admin-users-table] tbody td:nth-child(7)::before,
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(3)::before,
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(4)::before,
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(5)::before {
+        position: absolute;
+        top: .075rem;
+        left: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.35rem;
+        height: 1.35rem;
+        border-radius: 50%;
+        background: var(--bs-tertiary-bg);
+        color: var(--bs-secondary-color);
+        content: var(--admin-table-mobile-icon, "\f131");
+        font-family: cartzilla-icons !important;
+        font-size: .78rem;
+        font-style: normal;
+        font-weight: 400 !important;
+        line-height: 1;
+        text-transform: none;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th:first-child,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:first-child,
+    [data-admin-users-table] tbody th {
+        --admin-table-mobile-icon: "\f19a";
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(2) {
+        --admin-table-mobile-icon: "\f180";
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(3) {
+        --admin-table-mobile-icon: "\f228";
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(4) {
+        --admin-table-mobile-icon: "\f1b6";
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(5) {
+        --admin-table-mobile-icon: "\f209";
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(6) {
+        --admin-table-mobile-icon: "\f132";
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(7) {
+        --admin-table-mobile-icon: "\f147";
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td[colspan],
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th[colspan] {
+        padding-left: 0 !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td[colspan]::before,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody th[colspan]::before {
+        display: none;
+    }
+
+    [data-admin-users-table] tbody td:nth-child(3) {
+        --admin-table-mobile-icon: "\f1a7";
+    }
+
+    [data-admin-users-table] tbody td:nth-child(4) {
+        --admin-table-mobile-icon: "\f1b6";
+    }
+
+    [data-admin-users-table] tbody td:nth-child(5) {
+        --admin-table-mobile-icon: "\f209";
+    }
+
+    [data-admin-users-table] tbody td:nth-child(6) {
+        --admin-table-mobile-icon: "\f101";
+    }
+
+    [data-admin-users-table] tbody td:nth-child(7) {
+        --admin-table-mobile-icon: "\f132";
+    }
+
+    [data-file-manager-shell] [data-file-manager-table-wrap] {
+        overflow: visible !important;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] {
+        display: block;
+        min-width: 0 !important;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] thead {
+        display: none;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody {
+        display: grid;
+        gap: .875rem;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody tr {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: .625rem .75rem;
+        padding: .95rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 1rem;
+        background: var(--bs-body-bg);
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody tr:hover {
+        background: var(--bs-body-bg) !important;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td,
+    [data-file-manager-shell] [data-file-manager-table] tbody th {
+        --cz-table-bg: transparent;
+        --cz-table-bg-state: transparent;
+        --cz-table-accent-bg: transparent;
+        --cz-table-hover-bg: transparent;
+        display: block;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: left !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:first-child {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
+        padding-top: .25rem !important;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(3),
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(4),
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(5) {
+        grid-column: 2 / -1;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:last-child {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: end;
+        align-self: start;
+        text-align: right !important;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:last-child .dropdown {
+        display: inline-block;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(3),
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(4),
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(5) {
+        padding-left: 1.875rem !important;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(3) {
+        --admin-table-mobile-icon: "\f228";
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(4) {
+        --admin-table-mobile-icon: "\f199";
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(5) {
+        --admin-table-mobile-icon: "\f132";
+    }
 }
 
 @keyframes admin-table-spinner {

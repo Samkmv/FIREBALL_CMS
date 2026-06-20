@@ -804,6 +804,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script src="<?= base_url('/assets/default/js/plyr-init.js?v=' . filemtime(WWW . '/assets/default/js/plyr-init.js')) ?>"></script>
 <?php if ($isAdmin): ?>
     <script src="<?= base_url('/assets/default/js/admin-delete-modal.js?v=' . filemtime(WWW . '/assets/default/js/admin-delete-modal.js')) ?>"></script>
+    <script src="<?= base_url('/assets/default/js/datatable.js?v=' . filemtime(WWW . '/assets/default/js/datatable.js')) ?>"></script>
 <?php endif; ?>
 <script src="<?= base_url('/assets/default/js/main.js?v=' . filemtime(WWW . '/assets/default/js/main.js')) ?>"></script>
 

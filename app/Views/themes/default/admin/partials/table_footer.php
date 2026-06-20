@@ -7,7 +7,7 @@ $infoClass = trim((string)($info_class ?? ''));
 $infoAttributes = (array)($info_attributes ?? []);
 $visibleAttributes = (array)($visible_attributes ?? []);
 $totalAttributes = (array)($total_attributes ?? []);
-$paginationAttributes = (array)($pagination_attributes ?? []);
+$paginationAttributes = array_merge(['data-datatable-pagination' => true], (array)($pagination_attributes ?? []));
 
 $renderAttributes = static function (array $attributes): string {
     $html = '';

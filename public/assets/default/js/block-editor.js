@@ -67,6 +67,7 @@ function initPostEditor() {
         addHeading: 'Heading',
         addImage: 'Image',
         addVideo: 'Video',
+        addAudio: 'Audio',
         addHtml: 'HTML',
         addSocial: 'Social buttons',
         addSlider: 'Slider',
@@ -76,6 +77,7 @@ function initPostEditor() {
         headingBlock: 'Heading block',
         imageBlock: 'Image block',
         videoBlock: 'Video block',
+        audioBlock: 'Audio block',
         htmlBlock: 'HTML block',
         socialBlock: 'Social buttons block',
         sliderBlock: 'Slider block',
@@ -96,6 +98,7 @@ function initPostEditor() {
         imageLink: 'Image link',
         videoPoster: 'Poster',
         videoCaption: 'Caption',
+        audioCaption: 'Caption',
         headingLevel: 'Level',
         codeLanguage: 'Language',
         htmlPlaceholder: 'Paste HTML markup. Scripts and unsafe event handlers will be removed.',
@@ -178,6 +181,7 @@ function initPostEditor() {
         heading: 'ci-hash',
         image: 'ci-image',
         video: 'ci-video',
+        audio: 'ci-music',
         html: 'ci-layout',
         social: 'ci-share-2',
         slider: 'ci-sliders',
@@ -345,7 +349,9 @@ function initPostEditor() {
         const type = getAllowedBlockType(block.type);
         const data = type === 'video'
             ? normalizeVideoData(block.data)
-            : Object.assign(defaultBlockData(type), cloneData(block.data));
+            : (type === 'audio'
+                ? normalizeAudioData(block.data)
+                : Object.assign(defaultBlockData(type), cloneData(block.data)));
         if ((type === 'text' || type === 'heading') && typeof data.html === 'string') {
             data.html = sanitizeHtml(data.html);
         }
@@ -1711,6 +1717,9 @@ function initPostEditor() {
         if (type === 'video') {
             return { src: '', poster: '', caption: '' };
         }
+        if (type === 'audio') {
+            return { src: '', caption: '' };
+        }
         if (type === 'html') {
             return { html: '' };
         }
@@ -1742,7 +1751,7 @@ function initPostEditor() {
     }
 
     function getAllowedBlockType(type) {
-        const allowedTypes = ['text', 'heading', 'image', 'video', 'html', 'social', 'slider', 'newsletter', 'code'];
+        const allowedTypes = ['text', 'heading', 'image', 'video', 'audio', 'html', 'social', 'slider', 'newsletter', 'code'];
         return allowedTypes.indexOf(String(type || '')) !== -1 ? String(type) : 'text';
     }
 
@@ -1777,6 +1786,13 @@ function initPostEditor() {
         return {
             src: firstDataValue(data, ['src', 'url', 'source', 'video', 'videoUrl', 'file', 'fileUrl', 'hlsSrc', 'hlsUrl']),
             poster: firstDataValue(data, ['poster', 'posterUrl', 'image', 'thumbnail']),
+            caption: firstDataValue(data, ['caption', 'title', 'description'])
+        };
+    }
+
+    function normalizeAudioData(data) {
+        return {
+            src: firstDataValue(data, ['src', 'url', 'source', 'audio', 'audioUrl', 'file', 'fileUrl']),
             caption: firstDataValue(data, ['caption', 'title', 'description'])
         };
     }
@@ -3060,6 +3076,7 @@ function initPostEditor() {
                     renderAddTypeButton('heading', position, labels.addHeading) +
                     renderAddTypeButton('image', position, labels.addImage) +
                     renderAddTypeButton('video', position, labels.addVideo) +
+                    renderAddTypeButton('audio', position, labels.addAudio) +
                     renderAddTypeButton('html', position, labels.addHtml) +
                     renderAddTypeButton('social', position, labels.addSocial) +
                     renderAddTypeButton('slider', position, labels.addSlider) +
@@ -3117,6 +3134,9 @@ function initPostEditor() {
         if (type === 'video') {
             return labels.videoBlock;
         }
+        if (type === 'audio') {
+            return labels.audioBlock;
+        }
         if (type === 'html') {
             return labels.htmlBlock;
         }
@@ -3148,6 +3168,8 @@ function initPostEditor() {
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(block.data.src).split('/').pop()) + '</span>';
         } else if (block.type === 'video' && block.data.src) {
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(block.data.src).split('/').pop()) + '</span>';
+        } else if (block.type === 'audio' && block.data.src) {
+            html += '<span class="fb-post-block__chip">' + escapeHtml(String(block.data.src).split('/').pop()) + '</span>';
         } else if (block.type === 'social') {
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(normalizeSocialItems(block.data.items).length)) + '</span>';
         } else if (block.type === 'slider') {
@@ -3170,7 +3192,7 @@ function initPostEditor() {
                 '<div class="fb-post-block__heading" contenteditable="true" data-block-heading data-block-id="' + escapeAttr(block.id) + '" data-placeholder="' + escapeAttr(labels.headingPlaceholder) + '">' + sanitizeHtml(block.data.html || '') + '</div>';
         }
 
-        if (block.type === 'image' || block.type === 'video') {
+        if (block.type === 'image' || block.type === 'video' || block.type === 'audio') {
             return '' +
                 '<div class="fb-post-block__media">' +
                     '<div class="fb-post-block__preview">' + renderMediaPreview(block) + '</div>' +
@@ -3290,6 +3312,15 @@ function initPostEditor() {
             }
 
             return '<video controls playsinline' + (data.poster ? ' poster="' + escapeAttr(data.poster) + '"' : '') + '><source src="' + escapeAttr(data.src) + '" type="' + escapeAttr(getVideoMimeType(data.src)) + '"></video>';
+        }
+
+        if (block.type === 'audio') {
+            const data = normalizeAudioData(block.data);
+            if (!data.src) {
+                return '<div class="fb-post-block__placeholder-text">' + escapeHtml(labels.sourceLink) + '</div>';
+            }
+
+            return '<audio controls preload="metadata"><source src="' + escapeAttr(data.src) + '" type="' + escapeAttr(getAudioMimeType(data.src)) + '"></audio>';
         }
 
         return '<div class="fb-post-block__placeholder-text">' + escapeHtml(labels.sourceLink) + '</div>';
@@ -3429,6 +3460,8 @@ function initPostEditor() {
             hint = data.caption || data.alt || fileNameFromPath(data.src || '');
         } else if (block.type === 'video') {
             hint = data.caption || fileNameFromPath(data.src || '');
+        } else if (block.type === 'audio') {
+            hint = data.caption || fileNameFromPath(data.src || '');
         } else if (block.type === 'newsletter') {
             hint = data.title || data.text || data.buttonText || '';
         } else if (block.type === 'html') {
@@ -3461,6 +3494,8 @@ function initPostEditor() {
             pieces.push(String(block.data.src).split('/').pop());
         } else if (block.type === 'newsletter') {
             pieces.push(block.data.title || block.data.buttonText || labels.newsletterBlock);
+        } else if (block.type === 'audio' && block.data.src) {
+            pieces.push(String(block.data.src).split('/').pop());
         } else if (block.type === 'code') {
             pieces.push(String(block.data.language || 'html'));
         }
@@ -3626,6 +3661,10 @@ function initPostEditor() {
             return renderVideoSettings(block);
         }
 
+        if (block.type === 'audio') {
+            return renderAudioSettings(block);
+        }
+
         if (block.type === 'social') {
             return renderSocialSettings(block);
         }
@@ -3701,6 +3740,21 @@ function initPostEditor() {
                     '</div>' +
                 '</div>' +
                 '<div><label class="form-label">' + escapeHtml(labels.videoCaption) + '</label><input class="form-control" type="text" value="' + escapeAttr(data.caption) + '" data-block-field="caption" data-block-id="' + escapeAttr(block.id) + '"></div>' +
+            '</div>';
+    }
+
+    function renderAudioSettings(block) {
+        const data = normalizeAudioData(block.data);
+        return '' +
+            '<div class="fb-post-settings__section" data-block-id="' + escapeAttr(block.id) + '">' +
+                '<div class="mb-3">' +
+                    '<label class="form-label">' + escapeHtml(labels.sourceLink) + '</label>' +
+                    '<div class="input-group">' +
+                        '<input class="form-control" type="text" value="' + escapeAttr(data.src) + '" data-block-field="src" data-block-id="' + escapeAttr(block.id) + '">' +
+                        '<button class="btn btn-outline-secondary" type="button" data-block-picker="src">' + escapeHtml(labels.chooseFile) + '</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div><label class="form-label">' + escapeHtml(labels.audioCaption) + '</label><input class="form-control" type="text" value="' + escapeAttr(data.caption) + '" data-block-field="caption" data-block-id="' + escapeAttr(block.id) + '"></div>' +
             '</div>';
     }
 
@@ -3850,6 +3904,26 @@ function initPostEditor() {
         return 'video/mp4';
     }
 
+    function getAudioMimeType(source) {
+        const url = String(source || '').toLowerCase();
+        if (/\.ogg(?:$|\?)/.test(url) || /\.oga(?:$|\?)/.test(url)) {
+            return 'audio/ogg';
+        }
+        if (/\.wav(?:$|\?)/.test(url)) {
+            return 'audio/wav';
+        }
+        if (/\.m4a(?:$|\?)/.test(url) || /\.aac(?:$|\?)/.test(url)) {
+            return 'audio/mp4';
+        }
+        if (/\.flac(?:$|\?)/.test(url)) {
+            return 'audio/flac';
+        }
+        if (/\.webm(?:$|\?)/.test(url)) {
+            return 'audio/webm';
+        }
+        return 'audio/mpeg';
+    }
+
     function serializeBlocksToHtml() {
         return state.blocks.map(function (block) {
             if (block.hidden === true) {
@@ -3902,6 +3976,18 @@ function initPostEditor() {
                 const mimeType = getVideoMimeType(src);
                 const isHls = mimeType === 'application/vnd.apple.mpegurl';
                 return '<div data-plyr-player-wrap="" data-plyr-lazy="true"><video controls playsinline webkit-playsinline preload="metadata" data-plyr-player=""' + (isHls ? ' data-hls-src="' + escapeAttr(src) + '"' : '') + (poster ? ' poster="' + escapeAttr(poster) + '"' : '') + '>' + (isHls ? '' : '<source src="' + escapeAttr(src) + '" type="' + escapeAttr(mimeType) + '">') + '</video></div>' +
+                    (caption ? '<p>' + escapeHtml(caption) + '</p>' : '');
+            }
+
+            if (block.type === 'audio') {
+                const data = normalizeAudioData(block.data);
+                const src = data.src;
+                if (!src) {
+                    return '';
+                }
+
+                const caption = data.caption;
+                return '<div data-plyr-player-wrap="" data-plyr-lazy="true"><audio controls preload="metadata" data-plyr-player=""><source src="' + escapeAttr(src) + '" type="' + escapeAttr(getAudioMimeType(src)) + '"></audio></div>' +
                     (caption ? '<p>' + escapeHtml(caption) + '</p>' : '');
             }
 
@@ -4134,6 +4220,12 @@ function initPostEditor() {
                 return;
             }
 
+            if (isAudioBlockCandidate(node)) {
+                flushTextBuffer();
+                blocks.push(parseAudioBlock(node));
+                return;
+            }
+
             if (tag === 'iframe' || node.querySelector('iframe')) {
                 flushTextBuffer();
                 blocks.push(parseHtmlBlock(node.outerHTML));
@@ -4170,7 +4262,9 @@ function initPostEditor() {
             hidden: false,
             data: type === 'video'
                 ? normalizeVideoData(data)
-                : Object.assign(defaultBlockData(type), cloneData(data))
+                : (type === 'audio'
+                    ? normalizeAudioData(data)
+                    : Object.assign(defaultBlockData(type), cloneData(data)))
         };
     }
 
@@ -4264,9 +4358,22 @@ function initPostEditor() {
         });
     }
 
+    function parseAudioBlock(node) {
+        const audio = node.matches('audio') ? node : node.querySelector('audio');
+        const sourceNode = audio ? audio.querySelector('source') : null;
+        const source = sourceNode
+            ? String(sourceNode.getAttribute('src') || '')
+            : (audio ? String(audio.getAttribute('src') || '') : '');
+
+        return createImportedBlock('audio', {
+            src: source,
+            caption: ''
+        });
+    }
+
     function isVideoBlockCandidate(node) {
         const tag = node.tagName ? node.tagName.toLowerCase() : '';
-        if (tag === 'video' || node.matches('[data-plyr-player-wrap]') || node.querySelector('video, [data-plyr-player-wrap]')) {
+        if (tag === 'video' || node.querySelector('video')) {
             return true;
         }
 
@@ -4276,6 +4383,11 @@ function initPostEditor() {
         }
 
         return getVideoEmbedUrl(String(iframe.getAttribute('src') || '')) !== '';
+    }
+
+    function isAudioBlockCandidate(node) {
+        const tag = node.tagName ? node.tagName.toLowerCase() : '';
+        return tag === 'audio' || node.querySelector('audio') !== null;
     }
 
     function parseCodeBlock(node) {

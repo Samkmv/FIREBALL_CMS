@@ -40,6 +40,7 @@ final class BlockRenderer
         return match ($type) {
             'heading' => $this->heading($data),
             'image' => $this->image($data),
+            'audio' => $this->audio($data),
             'newsletter' => $this->newsletter($data),
             'html' => (string)($data['html'] ?? ''),
             'code' => '<pre><code>' . htmlSC((string)($data['code'] ?? '')) . '</code></pre>',
@@ -130,6 +131,39 @@ final class BlockRenderer
         }
 
         return '<figure class="figure d-block">' . $image . '</figure>';
+    }
+
+    private function audio(array $data): string
+    {
+        $src = trim((string)($data['src'] ?? ''));
+        if ($src === '') {
+            return '';
+        }
+
+        $caption = trim((string)($data['caption'] ?? ''));
+        $audio = '<div data-plyr-player-wrap="" data-plyr-lazy="true"><audio controls preload="metadata" data-plyr-player="">' .
+            '<source src="' . htmlSC($src) . '" type="' . htmlSC($this->audioMimeType($src)) . '">' .
+            '</audio></div>';
+
+        if ($caption !== '') {
+            $audio .= '<p>' . htmlSC($caption) . '</p>';
+        }
+
+        return $audio;
+    }
+
+    private function audioMimeType(string $src): string
+    {
+        $path = strtolower((string)(parse_url($src, PHP_URL_PATH) ?: $src));
+
+        return match (pathinfo($path, PATHINFO_EXTENSION)) {
+            'ogg', 'oga' => 'audio/ogg',
+            'wav' => 'audio/wav',
+            'm4a', 'aac' => 'audio/mp4',
+            'flac' => 'audio/flac',
+            'webm' => 'audio/webm',
+            default => 'audio/mpeg',
+        };
     }
 
     private function newsletter(array $data): string

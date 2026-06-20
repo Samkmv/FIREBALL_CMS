@@ -806,7 +806,7 @@ function sanitize_content_html(string $html): string
     }
 
     if (!class_exists(\DOMDocument::class)) {
-        return strip_tags($html, '<p><br><div><span><strong><b><em><i><u><s><blockquote><pre><code><ul><ol><li><h1><h2><h3><h4><h5><h6><a><img><figure><figcaption><table><thead><tbody><tfoot><tr><th><td><hr>');
+        return strip_tags($html, '<p><br><div><span><strong><b><em><i><u><s><blockquote><pre><code><ul><ol><li><h1><h2><h3><h4><h5><h6><a><img><figure><figcaption><table><thead><tbody><tfoot><tr><th><td><hr><audio><video><source>');
     }
 
     $document = new \DOMDocument('1.0', 'UTF-8');

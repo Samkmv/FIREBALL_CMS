@@ -178,7 +178,7 @@ $recoveryCodes = is_array($two_factor_recovery_codes ?? null) ? $two_factor_reco
                 </div>
             </form>
 
-            <div class="border rounded-5 p-4 p-md-5 mb-4">
+            <div class="border rounded-5 p-4 p-md-5 mb-4" id="profile-two-factor" data-profile-scroll-section>
                 <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
                     <div>
                         <div class="d-flex align-items-center gap-2 mb-1">
@@ -208,7 +208,7 @@ $recoveryCodes = is_array($two_factor_recovery_codes ?? null) ? $two_factor_reco
 
                 <?php if ($twoFactorEnabled): ?>
                     <p class="text-body-secondary"><?= print_translation('auth_two_factor_enabled_hint') ?></p>
-                    <form action="<?= base_href('/profile') ?>" method="post" novalidate>
+                    <form action="<?= base_href('/profile') ?>" method="post" novalidate data-profile-scroll-target="#profile-two-factor">
                         <?= get_csrf_field() ?>
                         <input type="hidden" name="profile_action" value="two_factor_disable">
                         <div class="row g-3">
@@ -252,7 +252,7 @@ $recoveryCodes = is_array($two_factor_recovery_codes ?? null) ? $two_factor_reco
                         </li>
                         <li><?= print_translation('auth_two_factor_setup_step_confirm') ?></li>
                     </ol>
-                    <form action="<?= base_href('/profile') ?>" method="post" novalidate>
+                    <form action="<?= base_href('/profile') ?>" method="post" novalidate data-profile-scroll-target="#profile-two-factor">
                         <?= get_csrf_field() ?>
                         <input type="hidden" name="profile_action" value="two_factor_confirm">
                         <div class="mb-3">
@@ -266,7 +266,7 @@ $recoveryCodes = is_array($two_factor_recovery_codes ?? null) ? $two_factor_reco
                     </form>
                 <?php else: ?>
                     <p class="text-body-secondary"><?= print_translation('auth_two_factor_disabled_hint') ?></p>
-                    <form action="<?= base_href('/profile') ?>" method="post" novalidate>
+                    <form action="<?= base_href('/profile') ?>" method="post" novalidate data-profile-scroll-target="#profile-two-factor">
                         <?= get_csrf_field() ?>
                         <input type="hidden" name="profile_action" value="two_factor_prepare">
                         <div class="mb-3">

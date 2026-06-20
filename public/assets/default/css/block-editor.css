@@ -2237,6 +2237,17 @@
         background: #000;
     }
 
+    .fb-post-block__preview:has(audio) {
+        aspect-ratio: auto;
+        min-height: 4.25rem;
+        max-height: none;
+        padding: 1rem;
+    }
+
+    .fb-post-block__preview audio {
+        width: 100%;
+    }
+
     .fb-post-block__placeholder-text {
         padding: 1rem;
         color: #6b7577;

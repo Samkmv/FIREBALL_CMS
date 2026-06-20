@@ -108,6 +108,43 @@ $(function(){
 
     initAdminTableScrollbars(document);
 
+    const profileScrollStorageKey = 'fireball.profile.scrollTarget';
+    const scrollToProfileTarget = (selector, behavior = 'smooth') => {
+        if (!selector) {
+            return;
+        }
+        const target = document.querySelector(selector);
+        if (!target || typeof target.getBoundingClientRect !== 'function') {
+            return;
+        }
+        const viewportGap = window.matchMedia('(max-width: 767.98px)').matches ? 12 : 18;
+        const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - viewportGap);
+        window.scrollTo({ top, behavior });
+    };
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target.closest('[data-profile-scroll-target]');
+        const target = form?.getAttribute('data-profile-scroll-target');
+        if (!target) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(profileScrollStorageKey, target);
+        } catch (error) {
+            // Private browsing or disabled storage should not block form submission.
+        }
+    });
+
+    try {
+        const profileScrollTarget = window.sessionStorage.getItem(profileScrollStorageKey);
+        if (profileScrollTarget) {
+            window.sessionStorage.removeItem(profileScrollStorageKey);
+            window.requestAnimationFrame(() => scrollToProfileTarget(profileScrollTarget));
+        }
+    } catch (error) {
+        // Storage can be unavailable; profile page remains fully usable.
+    }
+
     const adminPostActionDropdowns = new WeakMap();
     const getAdminPostActionDropdown = (target) => {
         if (!target || !target.closest) {
@@ -212,6 +249,7 @@ $(function(){
         adminPostActionDropdowns.delete(dropdown);
     });
 
+    if (!window.FireballDataTable) {
     const adminAjaxTables = (() => {
         let activeRequest = null;
         let searchTimer = null;
@@ -430,6 +468,7 @@ $(function(){
 
         return { load };
     })();
+    }
 
     const makeSlug = (value) => String(value || '')
         .trim()
