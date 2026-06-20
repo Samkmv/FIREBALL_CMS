@@ -43,6 +43,9 @@ $codeError = (string)($formErrors['code'][0] ?? '');
                 <a class="btn btn-link text-body-secondary w-100 mt-2" href="<?= base_href('/login') ?>">
                     <?= print_translation('auth_two_factor_back_to_login') ?>
                 </a>
+                <a class="btn btn-link text-body-secondary w-100 mt-1" href="<?= base_href('/two-factor-recovery') ?>">
+                    <?= print_translation('auth_two_factor_recovery_link') ?>
+                </a>
             </div>
         </div>
     </div>

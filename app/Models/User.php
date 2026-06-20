@@ -20,6 +20,7 @@ class User
 
     protected string $usersTable = 'users';
     protected string $passwordResetsTable = 'password_resets';
+    protected string $twoFactorRecoveryTokensTable = 'two_factor_recovery_tokens';
     protected string $rolesTable = 'user_roles';
     protected array $roles = [self::ROLE_CREATOR, self::ROLE_ADMIN, self::ROLE_MODERATOR, self::ROLE_USER];
     protected static bool $schemaReady = false;
@@ -56,11 +57,13 @@ class User
 
         $this->ensureRolesTableExists();
         $this->ensurePasswordResetsTableExists();
+        $this->ensureTwoFactorRecoveryTokensTableExists();
         $this->ensureLoginColumnExists();
         $this->ensureRoleColumnExists();
         $this->ensureAvatarColumnExists();
         $this->ensureTwoFactorColumnsExist();
         $this->ensureLastSeenColumnExists();
+        $this->ensureSecurityColumnsExist();
         $this->ensureUserIndexes();
         $this->ensureCreatorUserExists();
         $this->syncRolesFromUsers();
@@ -199,6 +202,7 @@ class User
                     u.email,
                     u.avatar,
                     u.role,
+                    u.two_factor_enabled_at,
                     u.last_seen_at,
                     u.created_at,
                     r.name AS role_name,
@@ -342,6 +346,7 @@ class User
                     u.email,
                     u.avatar,
                     u.role,
+                    u.two_factor_enabled_at,
                     u.last_seen_at,
                     u.created_at,
                     r.name AS role_name,
@@ -510,6 +515,30 @@ class User
              WHERE id = ?",
             [$id]
         );
+        $this->deleteTwoFactorRecoveryTokensForUser($id);
+    }
+
+    public function invalidateSessions(int $id): void
+    {
+        $this->ensureUsersTableExists();
+        db()->query(
+            "UPDATE {$this->usersTable}
+             SET session_version = COALESCE(session_version, 1) + 1
+             WHERE id = ?",
+            [$id]
+        );
+    }
+
+    public function markTwoFactorResetNotice(int $id): void
+    {
+        $this->ensureUsersTableExists();
+        db()->query("UPDATE {$this->usersTable} SET two_factor_reset_notice = 1 WHERE id = ?", [$id]);
+    }
+
+    public function clearTwoFactorResetNotice(int $id): void
+    {
+        $this->ensureUsersTableExists();
+        db()->query("UPDATE {$this->usersTable} SET two_factor_reset_notice = 0 WHERE id = ?", [$id]);
     }
 
     public function verifyTwoFactorCode(array $user, string $code): bool
@@ -553,6 +582,116 @@ class User
         }
 
         return false;
+    }
+
+    public function createTwoFactorRecoveryToken(int $userId): ?string
+    {
+        $this->ensureUsersTableExists();
+        $user = $this->findById($userId);
+        if (!$user || !$this->hasTwoFactorEnabled($user)) {
+            return null;
+        }
+
+        $this->deleteTwoFactorRecoveryTokensForUser($userId);
+        $token = bin2hex(random_bytes(32));
+
+        db()->query(
+            "INSERT INTO {$this->twoFactorRecoveryTokensTable}
+             (user_id, token_hash, expires_at, used_at, ip_address, user_agent, created_at)
+             VALUES (:user_id, :token_hash, :expires_at, :used_at, :ip_address, :user_agent, :created_at)",
+            [
+                'user_id' => $userId,
+                'token_hash' => hash('sha256', $token),
+                'expires_at' => date('Y-m-d H:i:s', time() + 3600),
+                'used_at' => null,
+                'ip_address' => client_ip(),
+                'user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500),
+                'created_at' => date('Y-m-d H:i:s'),
+            ]
+        );
+
+        return $token;
+    }
+
+    public function findActiveTwoFactorRecoveryByToken(string $token): array|false
+    {
+        $this->ensureUsersTableExists();
+
+        return db()->query(
+            "SELECT tr.id, tr.user_id, tr.expires_at, tr.used_at, u.name, u.email, u.login
+             FROM {$this->twoFactorRecoveryTokensTable} tr
+             INNER JOIN {$this->usersTable} u ON u.id = tr.user_id
+             WHERE tr.token_hash = ?
+               AND tr.used_at IS NULL
+               AND tr.expires_at >= ?
+             LIMIT 1",
+            [hash('sha256', $token), date('Y-m-d H:i:s')]
+        )->getOne();
+    }
+
+    public function resetTwoFactorByRecoveryToken(string $token): array|false
+    {
+        $this->ensureUsersTableExists();
+        $database = db();
+        $database->beginTransaction();
+
+        try {
+            $now = date('Y-m-d H:i:s');
+            $recovery = $database->query(
+                "SELECT tr.id, tr.user_id, u.email, u.name, u.login
+                 FROM {$this->twoFactorRecoveryTokensTable} tr
+                 INNER JOIN {$this->usersTable} u ON u.id = tr.user_id
+                 WHERE tr.token_hash = ?
+                   AND tr.used_at IS NULL
+                   AND tr.expires_at >= ?
+                 LIMIT 1
+                 FOR UPDATE",
+                [hash('sha256', $token), $now]
+            )->getOne();
+
+            if (!$recovery) {
+                $database->rollBack();
+                return false;
+            }
+
+            $database->query(
+                "UPDATE {$this->twoFactorRecoveryTokensTable}
+                 SET used_at = ?
+                 WHERE id = ? AND used_at IS NULL",
+                [$now, (int)$recovery['id']]
+            );
+
+            if ($database->rowCount() !== 1) {
+                $database->rollBack();
+                return false;
+            }
+
+            $database->query(
+                "UPDATE {$this->usersTable}
+                 SET two_factor_secret = NULL,
+                     two_factor_recovery_codes = NULL,
+                     two_factor_enabled_at = NULL,
+                     two_factor_reset_notice = 1,
+                     session_version = COALESCE(session_version, 1) + 1
+                 WHERE id = ?",
+                [(int)$recovery['user_id']]
+            );
+            $database->query(
+                "UPDATE {$this->twoFactorRecoveryTokensTable}
+                 SET used_at = COALESCE(used_at, ?)
+                 WHERE user_id = ?",
+                [$now, (int)$recovery['user_id']]
+            );
+            $database->commit();
+
+            return $recovery;
+        } catch (\Throwable $exception) {
+            try {
+                $database->rollBack();
+            } catch (\Throwable) {
+            }
+            throw $exception;
+        }
     }
 
     /**
@@ -910,14 +1049,16 @@ class User
 
         db()->query(
             "INSERT INTO {$this->passwordResetsTable}
-             (user_id, email, token_hash, expires_at, used_at, created_at)
-             VALUES (:user_id, :email, :token_hash, :expires_at, :used_at, :created_at)",
+             (user_id, email, token_hash, expires_at, used_at, ip_address, user_agent, created_at)
+             VALUES (:user_id, :email, :token_hash, :expires_at, :used_at, :ip_address, :user_agent, :created_at)",
             [
                 'user_id' => (int)$user['id'],
                 'email' => mb_strtolower(trim((string)$user['email'])),
                 'token_hash' => $tokenHash,
                 'expires_at' => date('Y-m-d H:i:s', time() + 3600),
                 'used_at' => null,
+                'ip_address' => client_ip(),
+                'user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500),
                 'created_at' => date('Y-m-d H:i:s'),
             ]
         );
@@ -986,14 +1127,16 @@ class User
             }
 
             $database->query(
-                "UPDATE {$this->usersTable} SET password = ? WHERE id = ?",
+                "UPDATE {$this->usersTable}
+                 SET password = ?,
+                     session_version = COALESCE(session_version, 1) + 1
+                 WHERE id = ?",
                 [password_hash($password, PASSWORD_DEFAULT), (int)$reset['user_id']]
             );
             $database->query(
-                "UPDATE {$this->passwordResetsTable}
-                 SET used_at = COALESCE(used_at, ?)
+                "DELETE FROM {$this->passwordResetsTable}
                  WHERE user_id = ?",
-                [$now, (int)$reset['user_id']]
+                [(int)$reset['user_id']]
             );
             $database->commit();
 
@@ -1423,6 +1566,8 @@ class User
                 token_hash VARCHAR(64) NOT NULL,
                 expires_at DATETIME NOT NULL,
                 used_at DATETIME NULL,
+                ip_address VARCHAR(45) NULL,
+                user_agent VARCHAR(500) NULL,
                 created_at DATETIME NOT NULL,
                 PRIMARY KEY (id),
                 UNIQUE KEY token_hash (token_hash),
@@ -1435,6 +1580,49 @@ class User
         $usedAtExists = (bool)db()->query("SHOW COLUMNS FROM {$this->passwordResetsTable} LIKE 'used_at'")->getColumn();
         if (!$usedAtExists) {
             db()->query("ALTER TABLE {$this->passwordResetsTable} ADD COLUMN used_at DATETIME NULL AFTER expires_at");
+        }
+
+        $ipExists = (bool)db()->query("SHOW COLUMNS FROM {$this->passwordResetsTable} LIKE 'ip_address'")->getColumn();
+        if (!$ipExists) {
+            db()->query("ALTER TABLE {$this->passwordResetsTable} ADD COLUMN ip_address VARCHAR(45) NULL AFTER used_at");
+        }
+
+        $userAgentExists = (bool)db()->query("SHOW COLUMNS FROM {$this->passwordResetsTable} LIKE 'user_agent'")->getColumn();
+        if (!$userAgentExists) {
+            db()->query("ALTER TABLE {$this->passwordResetsTable} ADD COLUMN user_agent VARCHAR(500) NULL AFTER ip_address");
+        }
+    }
+
+    protected function ensureTwoFactorRecoveryTokensTableExists(): void
+    {
+        db()->query(
+            "CREATE TABLE IF NOT EXISTS {$this->twoFactorRecoveryTokensTable} (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_id INT(10) UNSIGNED NOT NULL,
+                token_hash VARCHAR(64) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                used_at DATETIME NULL,
+                ip_address VARCHAR(45) NULL,
+                user_agent VARCHAR(500) NULL,
+                created_at DATETIME NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE KEY token_hash (token_hash),
+                KEY user_id (user_id),
+                KEY expires_at (expires_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    }
+
+    protected function ensureSecurityColumnsExist(): void
+    {
+        $sessionVersionExists = (bool)db()->query("SHOW COLUMNS FROM {$this->usersTable} LIKE 'session_version'")->getColumn();
+        if (!$sessionVersionExists) {
+            db()->query("ALTER TABLE {$this->usersTable} ADD COLUMN session_version INT UNSIGNED NOT NULL DEFAULT 1 AFTER last_seen_at");
+        }
+
+        $noticeExists = (bool)db()->query("SHOW COLUMNS FROM {$this->usersTable} LIKE 'two_factor_reset_notice'")->getColumn();
+        if (!$noticeExists) {
+            db()->query("ALTER TABLE {$this->usersTable} ADD COLUMN two_factor_reset_notice TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER session_version");
         }
     }
 
@@ -1847,6 +2035,11 @@ class User
     protected function deletePasswordResetTokensForUser(int $userId): void
     {
         db()->query("DELETE FROM {$this->passwordResetsTable} WHERE user_id = ?", [$userId]);
+    }
+
+    protected function deleteTwoFactorRecoveryTokensForUser(int $userId): void
+    {
+        db()->query("DELETE FROM {$this->twoFactorRecoveryTokensTable} WHERE user_id = ?", [$userId]);
     }
 
     /**

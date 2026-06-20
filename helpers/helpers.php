@@ -742,49 +742,7 @@ function return_translation($key): string
 
 function send_mail(array $to, string $subject, string $tpl, array $data = [], array $attachments = []): bool
 {
-    try {
-        if (!class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
-            throw new \RuntimeException('PHPMailer is unavailable.');
-        }
-
-        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-        $mailSettings = config_service()->mail();
-
-        //Server settings
-        $mail->SMTPDebug = $mailSettings['debug'];
-        $mail->isSMTP();
-        $mail->Host       = $mailSettings['host'];
-        $mail->SMTPAuth   = $mailSettings['auth'];
-        $mail->Username   = $mailSettings['username'];
-        $mail->Password   = $mailSettings['password'];
-        $mail->SMTPSecure = $mailSettings['secure'];
-        $mail->Port       = $mailSettings['port'];
-
-        $mail->setFrom($mailSettings['from_email'], $mailSettings['from_name']);
-        foreach ($to as $email) {
-            $mail->addAddress($email);
-        }
-
-        if ($attachments) {
-            foreach ($attachments as $attachment) {
-                $mail->addAttachment($attachment);
-            }
-        }
-
-        $mail->isHTML($mailSettings['is_html']);
-        $mail->CharSet = $mailSettings['charset'];
-        $mail->Subject = $subject;
-        $mail->Body    = view($tpl, $data, false);
-
-        return $mail->send();
-    } catch (\Throwable $e) {
-        log_error_details('Mail send error', [
-            'Subject' => $subject,
-            'Recipients' => $to,
-            'Template' => $tpl,
-        ], $e);
-        return false;
-    }
+    return (new \App\Services\MailService())->sendTemplate($to, $subject, $tpl, $data, $attachments);
 }
 
 function get_image($path): string

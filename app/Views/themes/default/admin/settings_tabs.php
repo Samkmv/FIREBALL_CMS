@@ -19,6 +19,12 @@ $settingsTabs = [
         'label' => return_translation('admin_settings_tab_privacy'),
         'icon' => 'ci-shield',
     ],
+    [
+        'key' => 'mail',
+        'href' => base_href('/admin/settings/mail'),
+        'label' => return_translation('admin_settings_tab_mail'),
+        'icon' => 'ci-mail',
+    ],
 ];
 ?>
 

@@ -19,6 +19,12 @@ class Auth
             }
             response()->redirect(base_href('/login'));
         }
+
+        \FBL\Auth::setUser();
+
+        if (!check_auth()) {
+            response()->redirect(base_href('/login'));
+        }
     }
 
 }

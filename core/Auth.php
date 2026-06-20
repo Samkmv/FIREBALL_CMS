@@ -76,6 +76,7 @@ class Auth
             'email' => $user['email'],
             'avatar' => $user['avatar'] ?? null,
             'role' => $user['role'] ?? 'user',
+            'session_version' => (int)($user['session_version'] ?? 1),
         ];
         session()->set('user', $sessionUser);
         self::syncAdminSession($sessionUser);
@@ -167,6 +168,12 @@ class Auth
             return;
         }
 
+        if ((int)($userData['session_version'] ?? 1) !== (int)($user['session_version'] ?? 1)) {
+            self::logout();
+            session()->setFlash('error', \FBL\Language::get('auth_session_invalidated'));
+            return;
+        }
+
         $sessionUser = [
             'id' => $user['id'],
             'name' => $user['name'],
@@ -174,6 +181,7 @@ class Auth
             'email' => $user['email'],
             'avatar' => $user['avatar'] ?? null,
             'role' => $user['role'] ?? 'user',
+            'session_version' => (int)($user['session_version'] ?? 1),
         ];
         session()->set('user', $sessionUser);
 

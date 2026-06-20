@@ -1,0 +1,32 @@
+<section class="two-factor-challenge-section container py-4 py-md-5 my-0 my-md-4 my-lg-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6 col-xl-5">
+            <div class="two-factor-challenge-card border rounded-5 p-4 p-md-5">
+                <div class="d-flex align-items-start align-items-sm-center gap-3 mb-3">
+                    <span class="two-factor-challenge-icon bg-body-tertiary fs-3" aria-hidden="true">
+                        <i class="ci-mail"></i>
+                    </span>
+                    <div>
+                        <h1 class="h3 mb-1"><?= print_translation('auth_two_factor_recovery_heading') ?></h1>
+                        <p class="text-body-secondary mb-0"><?= print_translation('auth_two_factor_recovery_subtitle') ?></p>
+                    </div>
+                </div>
+
+                <?php if (!empty($two_factor_recovery_available)): ?>
+                    <form action="<?= base_href('/two-factor-recovery') ?>" method="post" novalidate>
+                        <?= get_csrf_field() ?>
+                        <button type="submit" class="btn btn-dark w-100 rounded-pill">
+                            <?= print_translation('auth_two_factor_recovery_submit') ?>
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <div class="alert alert-warning mb-0"><?= print_translation('auth_mail_not_configured') ?></div>
+                <?php endif; ?>
+
+                <a class="btn btn-link text-body-secondary w-100 mt-2" href="<?= base_href('/two-factor-challenge') ?>">
+                    <?= print_translation('auth_two_factor_recovery_back') ?>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>

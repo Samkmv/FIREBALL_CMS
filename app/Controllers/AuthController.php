@@ -2,7 +2,10 @@
 
 namespace App\Controllers;
 
+use App\Models\SecurityLog;
+use App\Models\SiteSetting;
 use App\Models\User;
+use App\Services\MailService;
 use App\Services\TwoFactorService;
 use FBL\Auth;
 use FBL\File;
@@ -20,6 +23,8 @@ class AuthController extends BaseController
     protected const TWO_FACTOR_SETUP_SECONDS = 600;
 
     protected User $users;
+    protected SiteSetting $settings;
+    protected SecurityLog $securityLogs;
 
     /**
      * Инициализирует модель пользователей для всех сценариев авторизации.
@@ -28,6 +33,8 @@ class AuthController extends BaseController
     {
         parent::__construct();
         $this->users = new User();
+        $this->settings = new SiteSetting();
+        $this->securityLogs = new SecurityLog();
     }
 
     /**
@@ -38,6 +45,7 @@ class AuthController extends BaseController
         if (request()->isGet()) {
             return view('auth/login', [
                 'title' => return_translation('auth_login_title'),
+                'password_recovery_available' => $this->isSettingEnabled('allow_email_password_reset') && (new MailService())->isEnabled(),
             ]);
         }
 
@@ -70,6 +78,7 @@ class AuthController extends BaseController
             'password' => (string)($data['password'] ?? ''),
         ]);
         if (!$user) {
+            $this->securityLogs->record('login', 'failed', null, null, $data['login']);
             $this->setFormState([
                 'login' => $data['login'],
             ], [
@@ -90,8 +99,10 @@ class AuthController extends BaseController
         }
 
         Auth::loginUser($user);
+        $this->securityLogs->record('login', 'success', (int)$user['id'], (int)$user['id']);
         $this->clearLoginThrottle($data['login']);
         $this->clearFormState();
+        $this->flashTwoFactorResetNotice((int)$user['id']);
         session()->setFlash('success', return_translation('auth_login_success'));
         response()->redirect(base_href('/profile'));
     }
@@ -131,6 +142,7 @@ class AuthController extends BaseController
         $verified = $this->users->verifyTwoFactorCode($user, $code)
             || $this->users->consumeRecoveryCode((int)$user['id'], $code);
         if (!$verified) {
+            $this->securityLogs->record('login_2fa', 'failed', (int)$user['id'], (int)$user['id']);
             $this->setFormState([], [
                 'code' => [return_translation('auth_two_factor_invalid_code')],
             ]);
@@ -143,8 +155,100 @@ class AuthController extends BaseController
         session()->remove('auth.two_factor_pending');
         $this->clearFormState();
         Auth::loginUser($user);
+        $this->securityLogs->record('login_2fa', 'success', (int)$user['id'], (int)$user['id']);
+        $this->flashTwoFactorResetNotice((int)$user['id']);
         session()->setFlash('success', return_translation('auth_login_success'));
         response()->redirect(base_href('/profile'));
+    }
+
+    public function twoFactorRecovery()
+    {
+        $pending = session()->get('auth.two_factor_pending');
+        if (!is_array($pending) || (int)($pending['expires_at'] ?? 0) < time()) {
+            session()->remove('auth.two_factor_pending');
+            session()->setFlash('error', return_translation('auth_two_factor_challenge_expired'));
+            response()->redirect(base_href('/login'));
+        }
+
+        $user = $this->users->findById((int)($pending['user_id'] ?? 0));
+        if (!$user || !$this->users->hasTwoFactorEnabled($user)) {
+            session()->remove('auth.two_factor_pending');
+            response()->redirect(base_href('/login'));
+        }
+
+        if (request()->isGet()) {
+            return view('auth/two_factor_recovery', [
+                'title' => return_translation('auth_two_factor_recovery_title'),
+                'two_factor_recovery_available' => $this->isSettingEnabled('allow_2fa_email_recovery') && (new MailService())->isEnabled(),
+            ]);
+        }
+
+        $this->assertValidCsrfToken('/two-factor-recovery');
+
+        $mailService = new MailService();
+        if (!$this->isSettingEnabled('allow_2fa_email_recovery') || !$mailService->isEnabled()) {
+            $this->securityLogs->record('two_factor_email_recovery_request', 'failed', (int)$user['id'], (int)$user['id'], 'mail_not_configured');
+            session()->setFlash('error', return_translation('auth_mail_not_configured'));
+            response()->redirect(base_href('/two-factor-recovery'));
+        }
+
+        if (!RateLimiter::attempt($this->twoFactorRecoveryThrottleKey((int)$user['id']), 3, 3600)) {
+            session()->setFlash('success', return_translation('auth_two_factor_recovery_request_success'));
+            response()->redirect(base_href('/two-factor-recovery'));
+        }
+
+        $token = $this->users->createTwoFactorRecoveryToken((int)$user['id']);
+        if ($token === null) {
+            session()->setFlash('error', return_translation('auth_two_factor_recovery_unavailable'));
+            response()->redirect(base_href('/login'));
+        }
+
+        $mailSent = $mailService->sendTemplate(
+            [(string)$user['email']],
+            return_translation('auth_two_factor_recovery_email_subject'),
+            'auth/two_factor_recovery_email',
+            [
+                'reset_url' => base_href('/two-factor-recovery/reset?token=' . urlencode($token)),
+                'expires_in_minutes' => 60,
+            ]
+        );
+
+        if (!$mailSent) {
+            $this->securityLogs->record('two_factor_email_recovery_request', 'failed', (int)$user['id'], (int)$user['id'], 'mail_failed');
+            session()->setFlash('error', return_translation('auth_two_factor_recovery_request_error'));
+            response()->redirect(base_href('/two-factor-recovery'));
+        }
+
+        $this->securityLogs->record('two_factor_email_recovery_request', 'success', (int)$user['id'], (int)$user['id']);
+        session()->setFlash('success', return_translation('auth_two_factor_recovery_request_success'));
+        response()->redirect(base_href('/two-factor-recovery'));
+    }
+
+    public function resetTwoFactorRecovery()
+    {
+        $token = trim((string)request()->get('token', ''));
+        $recovery = $token !== '' ? $this->users->findActiveTwoFactorRecoveryByToken($token) : false;
+        if (!$recovery) {
+            session()->setFlash('error', return_translation('auth_two_factor_recovery_invalid_token'));
+            response()->redirect(base_href('/login'));
+        }
+
+        $resetUser = $this->users->resetTwoFactorByRecoveryToken($token);
+        if (!$resetUser) {
+            session()->setFlash('error', return_translation('auth_two_factor_recovery_invalid_token'));
+            response()->redirect(base_href('/login'));
+        }
+
+        session()->remove('auth.two_factor_pending');
+        $this->securityLogs->record('two_factor_email_recovery_complete', 'success', (int)$resetUser['user_id'], (int)$resetUser['user_id']);
+        $this->sendSecurityNotification(
+            [(string)$resetUser['email']],
+            return_translation('auth_two_factor_recovery_notice_subject'),
+            'auth/two_factor_recovery_notice_email',
+            []
+        );
+        session()->setFlash('success', return_translation('auth_two_factor_recovery_complete'));
+        response()->redirect(base_href('/login'));
     }
 
     /**
@@ -172,9 +276,17 @@ class AuthController extends BaseController
             response()->redirect(base_href('/login'));
         }
 
+        $mailService = new MailService();
+        if (!$this->isSettingEnabled('allow_email_password_reset') || !$mailService->isEnabled()) {
+            $this->securityLogs->record('password_reset_request', 'failed', null, null, 'mail_not_configured');
+            $this->clearFormState();
+            session()->setFlash('error', return_translation('auth_mail_not_configured'));
+            response()->redirect(base_href('/login'));
+        }
+
         $token = $this->users->createPasswordResetToken($data['reset_email']);
         if ($token !== null) {
-            $mailSent = send_mail(
+            $mailSent = $mailService->sendTemplate(
                 [$data['reset_email']],
                 return_translation('auth_reset_email_subject'),
                 'auth/password_reset_email',
@@ -185,12 +297,14 @@ class AuthController extends BaseController
             );
 
             if (!$mailSent) {
+                $this->securityLogs->record('password_reset_request', 'failed', null, null, 'mail_failed');
                 $this->setFormState($data, []);
                 session()->setFlash('error', return_translation('auth_reset_request_error'));
                 response()->redirect(base_href('/login'));
             }
         }
 
+        $this->securityLogs->record('password_reset_request', 'success', null, null);
         $this->clearFormState();
         session()->setFlash('success', return_translation('auth_reset_request_success'));
         response()->redirect(base_href('/login'));
@@ -245,6 +359,7 @@ class AuthController extends BaseController
             response()->redirect(base_href('/login'));
         }
 
+        $this->securityLogs->record('password_reset_complete', 'success', null, (int)$resetRequest['user_id']);
         $this->clearFormState();
         session()->setFlash('success', return_translation('auth_reset_success'));
         response()->redirect(base_href('/login'));
@@ -372,6 +487,8 @@ class AuthController extends BaseController
                 $this->users->enableTwoFactor((int)$user['id'], (string)$setup['secret'], $recoveryCodes);
                 session()->remove('auth.two_factor_setup');
                 session()->set('auth.two_factor_recovery_codes', $recoveryCodes);
+                $this->securityLogs->record('two_factor_enabled', 'success', (int)$user['id'], (int)$user['id']);
+                $this->securityLogs->record('two_factor_recovery_codes_created', 'success', (int)$user['id'], (int)$user['id']);
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_two_factor_enabled'));
                 response()->redirect(base_href('/profile'));
@@ -395,6 +512,7 @@ class AuthController extends BaseController
                 }
 
                 $this->users->disableTwoFactor((int)$user['id']);
+                $this->securityLogs->record('two_factor_disabled', 'success', (int)$user['id'], (int)$user['id']);
                 session()->remove('auth.two_factor_setup');
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_two_factor_disabled'));
@@ -546,6 +664,38 @@ class AuthController extends BaseController
         $ip = client_ip();
 
         return 'auth.password-reset|' . $ip;
+    }
+
+    protected function twoFactorRecoveryThrottleKey(int $userId): string
+    {
+        return 'auth.two-factor-recovery.' . $userId . '|' . client_ip();
+    }
+
+    protected function isSettingEnabled(string $key): bool
+    {
+        return $this->settings->get($key, '1') === '1';
+    }
+
+    protected function sendSecurityNotification(array $recipients, string $subject, string $template, array $data): void
+    {
+        try {
+            $mailService = new MailService();
+            if ($mailService->isEnabled()) {
+                $mailService->sendTemplate($recipients, $subject, $template, $data);
+            }
+        } catch (\Throwable) {
+        }
+    }
+
+    protected function flashTwoFactorResetNotice(int $userId): void
+    {
+        $user = $this->users->findById($userId);
+        if (!$user || empty($user['two_factor_reset_notice'])) {
+            return;
+        }
+
+        $this->users->clearTwoFactorResetNotice($userId);
+        session()->setFlash('warning', return_translation('auth_two_factor_admin_reset_notice'));
     }
 
     /**

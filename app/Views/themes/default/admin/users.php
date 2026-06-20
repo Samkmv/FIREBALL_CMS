@@ -14,6 +14,10 @@ $onlineSortUrl = current_url_with_query([
     'page' => 1,
 ]);
 $canManageUsers = check_creator();
+$currentAdmin = get_user();
+$currentAdminRole = (string)($currentAdmin['role'] ?? 'user');
+$allowAdminResetTwoFactor = !empty($allow_admin_reset_user_2fa);
+$twoFactorResetModals = [];
 ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_users_heading'),
@@ -57,6 +61,15 @@ $canManageUsers = check_creator();
                         $isOnline = !empty($item['is_online']);
                         $isProtectedCreator = $roleSlug === 'creator';
                         $isLastAdmin = in_array($roleSlug, ['creator', 'admin'], true) && (int)($item['other_admins_count'] ?? 0) === 0;
+                        $hasTwoFactor = !empty($item['two_factor_enabled_at']);
+                        $canResetTwoFactor = $hasTwoFactor
+                            && $allowAdminResetTwoFactor
+                            && !$isCurrentUser
+                            && !$isProtectedCreator
+                            && (
+                                $currentAdminRole === 'creator'
+                                || ($currentAdminRole === 'admin' && !in_array($roleSlug, ['creator', 'admin'], true))
+                            );
                         $roleBadgeClass = match ($roleSlug) {
                             'creator' => 'text-success bg-success-subtle',
                             'admin' => 'text-warning bg-warning-subtle',
@@ -130,6 +143,52 @@ $canManageUsers = check_creator();
                                             data-bs-toggle="tooltip"
                                         ><i class="ci-lock"></i></button>
                                     <?php endif; ?>
+                                    <?php if ($canResetTwoFactor): ?>
+                                        <?php $modalId = 'reset-2fa-' . (int)$item['id']; ?>
+                                        <button
+                                            class="btn btn-sm btn-outline-warning btn-icon rounded-circle"
+                                            type="button"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#<?= htmlSC($modalId) ?>"
+                                            aria-label="<?= htmlSC(return_translation('admin_2fa_reset_button')) ?>"
+                                            title="<?= htmlSC(return_translation('admin_2fa_reset_button')) ?>"
+                                        ><i class="ci-shield-off"></i></button>
+                                        <?php ob_start(); ?>
+                                        <div class="modal fade" id="<?= htmlSC($modalId) ?>" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content rounded-5">
+                                                    <form action="<?= base_href('/admin/users/reset-2fa') ?>" method="post">
+                                                        <?= get_csrf_field() ?>
+                                                        <input type="hidden" name="id" value="<?= (int)$item['id'] ?>">
+                                                        <div class="modal-header border-0 pb-0">
+                                                            <h2 class="modal-title h5"><?= print_translation('admin_2fa_reset_modal_title') ?></h2>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= htmlSC(return_translation('admin_btn_cancel')) ?>"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <p class="text-body-secondary mb-3"><?= htmlSC(str_replace(':name', (string)$item['name'], return_translation('admin_2fa_reset_modal_warning'))) ?></p>
+                                                            <div class="mb-3">
+                                                                <label class="form-label"><?= print_translation('admin_2fa_reset_admin_password') ?></label>
+                                                                <input class="form-control" type="password" name="admin_password" autocomplete="current-password" required>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label"><?= print_translation('admin_2fa_reset_admin_code') ?></label>
+                                                                <input class="form-control" type="text" name="admin_2fa_code" autocomplete="one-time-code">
+                                                            </div>
+                                                            <div>
+                                                                <label class="form-label"><?= print_translation('admin_2fa_reset_reason') ?></label>
+                                                                <textarea class="form-control" name="reason" rows="3" required></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer border-0 pt-0">
+                                                            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_cancel') ?></button>
+                                                            <button type="submit" class="btn btn-warning rounded-pill"><?= print_translation('admin_2fa_reset_confirm') ?></button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php $twoFactorResetModals[] = ob_get_clean(); ?>
+                                    <?php endif; ?>
                                     <?php if ($canManageUsers && !$isCurrentUser && !$isLastAdmin && !$isProtectedCreator): ?>
                                         <form
                                             action="<?= base_href('/admin/users/delete') ?>"
@@ -164,6 +223,7 @@ $canManageUsers = check_creator();
                     </tbody>
                 </table>
             </div>
+            <?= implode('', $twoFactorResetModals) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [
                 'visible' => count($users),

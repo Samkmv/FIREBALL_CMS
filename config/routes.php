@@ -50,6 +50,9 @@ $app->router->get('/login', [AuthController::class, 'login'])->middleware(['gues
 $app->router->post('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->get('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware(['guest']);
 $app->router->post('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware(['guest']);
+$app->router->get('/two-factor-recovery', [AuthController::class, 'twoFactorRecovery'])->middleware(['guest']);
+$app->router->post('/two-factor-recovery', [AuthController::class, 'twoFactorRecovery'])->middleware(['guest']);
+$app->router->get('/two-factor-recovery/reset', [AuthController::class, 'resetTwoFactorRecovery'])->middleware(['guest']);
 $app->router->post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['guest']);
 $app->router->get('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['guest']);
 $app->router->post('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['guest']);
@@ -154,6 +157,7 @@ $app->router->get('/admin/users/create', [AdminController::class, 'userForm'])->
 $app->router->post('/admin/users/create', [AdminController::class, 'userForm'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin', 'creator']);
+$app->router->post('/admin/users/reset-2fa', [AdminController::class, 'resetUserTwoFactor'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/users/delete', [AdminController::class, 'userDelete'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/roles', [AdminController::class, 'roles'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/roles/create', [AdminController::class, 'roleForm'])->middleware(['auth', 'admin', 'creator']);
@@ -172,6 +176,10 @@ $app->router->post('/admin/settings/contact-subjects/toggle', [AdminController::
 $app->router->post('/admin/settings/contact-subjects/delete', [AdminController::class, 'contactSubjectDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/privacy', [AdminController::class, 'privacySettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/privacy', [AdminController::class, 'privacySettings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/mail', [AdminController::class, 'mailSettings'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/mail', [AdminController::class, 'mailSettings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/mail/logs', [AdminController::class, 'mailLogs'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/security/logs', [AdminController::class, 'securityLogs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/system/database-maintenance', [AdminMaintenanceController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/system/database-maintenance/run', [AdminMaintenanceController::class, 'run'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/system/database-maintenance/logs/clear', [AdminMaintenanceController::class, 'clearLogs'])->middleware(['auth', 'admin']);

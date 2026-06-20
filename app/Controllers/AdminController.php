@@ -6,11 +6,14 @@ use App\Models\Admin;
 use App\Models\Analytics;
 use App\Models\ContactRequest;
 use App\Models\ContactSubject;
+use App\Models\MailLog;
 use App\Models\Page;
+use App\Models\SecurityLog;
 use App\Models\SiteSetting;
 use App\Models\Support;
 use App\Models\User;
 use App\Services\AnalyticsService;
+use App\Services\MailService;
 use App\Services\UpdateCenter;
 use FBL\Auth;
 use FBL\File;
@@ -27,7 +30,9 @@ class AdminController extends BaseController
     protected Analytics $analytics;
     protected ContactRequest $contactRequests;
     protected ContactSubject $contactSubjects;
+    protected MailLog $mailLogs;
     protected Page $pages;
+    protected SecurityLog $securityLogs;
     protected User $users;
     protected SiteSetting $siteSettings;
     protected Support $support;
@@ -43,7 +48,9 @@ class AdminController extends BaseController
         $this->analytics = new Analytics();
         $this->contactRequests = new ContactRequest();
         $this->contactSubjects = new ContactSubject();
+        $this->mailLogs = new MailLog();
         $this->pages = new Page();
+        $this->securityLogs = new SecurityLog();
         $this->users = new User();
         $this->siteSettings = new SiteSetting();
         $this->support = new Support();
@@ -385,6 +392,86 @@ class AdminController extends BaseController
         ]);
     }
 
+    public function mailSettings()
+    {
+        $settings = $this->siteSettings->all();
+        $mailService = new MailService($this->siteSettings, $this->mailLogs);
+
+        if (request()->isPost()) {
+            $action = trim((string)request()->post('mail_action', 'save'));
+
+            if ($action === 'test') {
+                $email = mb_strtolower(trim((string)request()->post('test_email', '')));
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    session()->setFlash('error', return_translation('admin_mail_test_email_invalid'));
+                    response()->redirect(base_href('/admin/settings/mail'));
+                }
+
+                if (!$mailService->isEnabled()) {
+                    session()->setFlash('error', return_translation('admin_mail_not_configured'));
+                    response()->redirect(base_href('/admin/settings/mail'));
+                }
+
+                $sent = $mailService->sendTest($email);
+                session()->setFlash(
+                    $sent ? 'success' : 'error',
+                    return_translation($sent ? 'admin_mail_test_sent' : 'admin_mail_test_failed')
+                );
+                response()->redirect(base_href('/admin/settings/mail'));
+            }
+
+            $data = $this->normalizeMailSettingsData(request()->getData(), $settings);
+            $errors = $this->validateMailSettingsData($data);
+            if ($errors) {
+                session()->set('form_data', array_diff_key($data, ['mail_password' => true]));
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/settings/mail'));
+            }
+
+            $this->siteSettings->setMany($data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_mail_settings_saved'));
+            response()->redirect(base_href('/admin/settings/mail'));
+        }
+
+        return view('admin/mail_settings', [
+            'title' => return_translation('admin_mail_settings_title'),
+            'settings' => $settings,
+            'mail_configured' => $mailService->isEnabled(),
+        ]);
+    }
+
+    public function mailLogs()
+    {
+        $logs = $this->mailLogs->getPaginated($this->getTableParams('created_at', 'desc'));
+
+        return view('admin/mail_logs', [
+            'title' => return_translation('admin_mail_logs_title'),
+            'logs' => $logs['items'],
+            'pagination' => $logs['pagination'],
+            'total' => $logs['total'],
+            'search' => $logs['search'],
+            'sort' => $logs['sort'],
+            'direction' => $logs['direction'],
+        ]);
+    }
+
+    public function securityLogs()
+    {
+        $logs = $this->securityLogs->getPaginated($this->getTableParams('created_at', 'desc'));
+
+        return view('admin/security_logs', [
+            'title' => return_translation('admin_security_logs_title'),
+            'logs' => $logs['items'],
+            'pagination' => $logs['pagination'],
+            'total' => $logs['total'],
+            'search' => $logs['search'],
+            'sort' => $logs['sort'],
+            'direction' => $logs['direction'],
+        ]);
+    }
+
     /**
      * Показывает список категорий блога в административной панели.
      */
@@ -484,6 +571,7 @@ class AdminController extends BaseController
             'search' => $users['search'],
             'sort' => $users['sort'],
             'direction' => $users['direction'],
+            'allow_admin_reset_user_2fa' => $this->siteSettingEnabled('allow_admin_reset_user_2fa'),
         ]);
     }
 
@@ -581,6 +669,72 @@ class AdminController extends BaseController
         response()->redirect(base_href('/admin/users'));
     }
 
+    public function resetUserTwoFactor()
+    {
+        $targetUserId = (int)request()->post('id');
+        $reason = trim((string)request()->post('reason', ''));
+        $adminPassword = (string)request()->post('admin_password', '');
+        $adminCode = trim((string)request()->post('admin_2fa_code', ''));
+        $redirect = base_href('/admin/users');
+
+        $targetUser = $this->users->findById($targetUserId);
+        $actorUser = $this->users->findById((int)(get_user()['id'] ?? 0));
+        if (!$targetUser || !$actorUser) {
+            session()->setFlash('error', return_translation('admin_users_not_found'));
+            response()->redirect($redirect);
+        }
+
+        if (!$this->siteSettingEnabled('allow_admin_reset_user_2fa') || !$this->canResetUserTwoFactor($actorUser, $targetUser)) {
+            $this->securityLogs->record('admin_reset_2fa', 'denied', (int)$actorUser['id'], (int)$targetUser['id'], 'permission_denied');
+            session()->setFlash('error', return_translation('admin_2fa_reset_denied'));
+            response()->redirect($redirect);
+        }
+
+        if (!$this->users->hasTwoFactorEnabled($targetUser)) {
+            session()->setFlash('error', return_translation('admin_2fa_reset_not_enabled'));
+            response()->redirect($redirect);
+        }
+
+        if ($reason === '') {
+            session()->setFlash('error', return_translation('admin_2fa_reset_reason_required'));
+            response()->redirect($redirect);
+        }
+
+        if ($this->siteSettingEnabled('require_admin_password_for_2fa_reset') && !password_verify($adminPassword, (string)$actorUser['password'])) {
+            $this->securityLogs->record('admin_reset_2fa', 'failed', (int)$actorUser['id'], (int)$targetUser['id'], 'password_failed');
+            session()->setFlash('error', return_translation('admin_2fa_reset_password_invalid'));
+            response()->redirect($redirect);
+        }
+
+        if ($this->siteSettingEnabled('require_admin_2fa_for_2fa_reset') && $this->users->hasTwoFactorEnabled($actorUser)) {
+            if (!$this->users->verifyTwoFactorCode($actorUser, $adminCode)) {
+                $this->securityLogs->record('admin_reset_2fa', 'failed', (int)$actorUser['id'], (int)$targetUser['id'], '2fa_failed');
+                session()->setFlash('error', return_translation('admin_2fa_reset_code_invalid'));
+                response()->redirect($redirect);
+            }
+        }
+
+        $this->users->disableTwoFactor((int)$targetUser['id']);
+        $this->users->invalidateSessions((int)$targetUser['id']);
+        $this->users->markTwoFactorResetNotice((int)$targetUser['id']);
+        $this->securityLogs->record('admin_reset_2fa', 'success', (int)$actorUser['id'], (int)$targetUser['id'], $reason);
+
+        if ($this->siteSettingEnabled('notify_user_after_admin_2fa_reset')) {
+            $mailService = new MailService();
+            if ($mailService->isEnabled()) {
+                $mailService->sendTemplate(
+                    [(string)$targetUser['email']],
+                    return_translation('auth_two_factor_admin_reset_notice_email_subject'),
+                    'auth/admin_two_factor_reset_notice_email',
+                    []
+                );
+            }
+        }
+
+        session()->setFlash('success', return_translation('admin_2fa_reset_success'));
+        response()->redirect($redirect);
+    }
+
     /**
      * Показывает список ролей пользователей.
      */
@@ -610,6 +764,36 @@ class AdminController extends BaseController
             'sort' => request()->get('sort', $defaultSort),
             'direction' => request()->get('direction', $defaultDirection),
         ];
+    }
+
+    protected function siteSettingEnabled(string $key): bool
+    {
+        return $this->siteSettings->get($key, '1') === '1';
+    }
+
+    protected function canResetUserTwoFactor(array $actorUser, array $targetUser): bool
+    {
+        $actorId = (int)($actorUser['id'] ?? 0);
+        $targetId = (int)($targetUser['id'] ?? 0);
+        if ($actorId <= 0 || $targetId <= 0 || $actorId === $targetId) {
+            return false;
+        }
+
+        $actorRole = (string)($actorUser['role'] ?? User::ROLE_USER);
+        $targetRole = (string)($targetUser['role'] ?? User::ROLE_USER);
+        if ($targetRole === User::ROLE_CREATOR) {
+            return false;
+        }
+
+        if ($actorRole === User::ROLE_CREATOR) {
+            return in_array($targetRole, [User::ROLE_ADMIN, User::ROLE_MODERATOR, User::ROLE_USER], true);
+        }
+
+        if ($actorRole === User::ROLE_ADMIN) {
+            return in_array($targetRole, [User::ROLE_MODERATOR, User::ROLE_USER], true);
+        }
+
+        return false;
     }
 
     protected function normalizeSupportFaqData(array $data): array
@@ -1880,6 +2064,63 @@ class AdminController extends BaseController
     protected function isValidGithubBranch(string $value): bool
     {
         return preg_match('~^(?!-)[A-Za-z0-9._/-]+$~', $value) === 1;
+    }
+
+    protected function normalizeMailSettingsData(array $data, array $currentSettings): array
+    {
+        $password = trim((string)($data['mail_password'] ?? ''));
+        $settings = [
+            'mail_enabled' => !empty($data['mail_enabled']) ? '1' : '0',
+            'mail_host' => trim((string)($data['mail_host'] ?? '')),
+            'mail_port' => (string)max(0, (int)($data['mail_port'] ?? 0)),
+            'mail_encryption' => in_array((string)($data['mail_encryption'] ?? 'none'), ['none', 'ssl', 'tls'], true)
+                ? (string)$data['mail_encryption']
+                : 'none',
+            'mail_username' => trim((string)($data['mail_username'] ?? '')),
+            'mail_from_email' => mb_strtolower(trim((string)($data['mail_from_email'] ?? ''))),
+            'mail_from_name' => trim((string)($data['mail_from_name'] ?? '')),
+            'mail_reply_to_email' => mb_strtolower(trim((string)($data['mail_reply_to_email'] ?? ''))),
+            'allow_email_password_reset' => !empty($data['allow_email_password_reset']) ? '1' : '0',
+            'allow_2fa_email_recovery' => !empty($data['allow_2fa_email_recovery']) ? '1' : '0',
+            'allow_admin_reset_user_2fa' => !empty($data['allow_admin_reset_user_2fa']) ? '1' : '0',
+            'require_admin_password_for_2fa_reset' => !empty($data['require_admin_password_for_2fa_reset']) ? '1' : '0',
+            'require_admin_2fa_for_2fa_reset' => !empty($data['require_admin_2fa_for_2fa_reset']) ? '1' : '0',
+            'notify_user_after_admin_2fa_reset' => !empty($data['notify_user_after_admin_2fa_reset']) ? '1' : '0',
+        ];
+
+        $settings['mail_password'] = $password !== ''
+            ? $password
+            : (string)($currentSettings['mail_password'] ?? '');
+
+        return $settings;
+    }
+
+    protected function validateMailSettingsData(array $data): array
+    {
+        $errors = [];
+        if (($data['mail_enabled'] ?? '0') !== '1') {
+            return $errors;
+        }
+
+        if (trim((string)($data['mail_host'] ?? '')) === '') {
+            $errors['mail_host'][] = return_translation('admin_mail_validation_host');
+        }
+
+        $port = (int)($data['mail_port'] ?? 0);
+        if ($port < 1 || $port > 65535) {
+            $errors['mail_port'][] = return_translation('admin_mail_validation_port');
+        }
+
+        if (!filter_var((string)($data['mail_from_email'] ?? ''), FILTER_VALIDATE_EMAIL)) {
+            $errors['mail_from_email'][] = return_translation('admin_mail_validation_from_email');
+        }
+
+        $replyTo = trim((string)($data['mail_reply_to_email'] ?? ''));
+        if ($replyTo !== '' && !filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
+            $errors['mail_reply_to_email'][] = return_translation('admin_mail_validation_reply_to');
+        }
+
+        return $errors;
     }
 
 }
