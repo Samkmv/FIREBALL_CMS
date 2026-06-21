@@ -184,7 +184,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
     <!-- Font icons -->
     <link rel="preload" href="<?= base_url('/assets/default/icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
+    <link rel="preload" href="<?= base_url('/assets/default/vendor/fontawesome/webfonts/fa-solid-900.woff2') ?>" as="font" type="font/woff2" crossorigin="">
     <link rel="stylesheet" href="<?= base_url('/assets/default/icons/cartzilla-icons.min.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/fontawesome/css/fontawesome-tables.css?v=' . filemtime(WWW . '/assets/default/vendor/fontawesome/css/fontawesome-tables.css')) ?>">
 
     <!-- Vendor styles -->
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/choices.js/choices.min.css') ?>">

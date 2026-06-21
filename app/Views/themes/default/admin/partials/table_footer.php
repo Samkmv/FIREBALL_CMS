@@ -23,6 +23,10 @@ $renderAttributes = static function (array $attributes): string {
 
     return $html;
 };
+
+if ($total === 0) {
+    return;
+}
 ?>
 
 <div class="admin-table-footer">
