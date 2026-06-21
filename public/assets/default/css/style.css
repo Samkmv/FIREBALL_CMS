@@ -4053,6 +4053,84 @@ body.is-site-fullscreen .plyr * {
     [data-file-manager-shell] [data-file-manager-table] tbody td:nth-child(5) {
         --admin-table-mobile-icon: "\f15c";
     }
+
+    .admin-posts-table tbody,
+    .admin-pages-table tbody,
+    [data-admin-users-table] tbody,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody,
+    [data-file-manager-shell] [data-file-manager-table] tbody {
+        gap: 0 !important;
+    }
+
+    .admin-posts-table tbody tr,
+    .admin-pages-table tbody tr,
+    [data-admin-users-table] tbody tr,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody tr,
+    [data-file-manager-shell] [data-file-manager-table] tbody tr {
+        padding: 1rem 0 !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--bs-border-color) !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    .admin-posts-table tbody tr:last-child,
+    .admin-pages-table tbody tr:last-child,
+    [data-admin-users-table] tbody tr:last-child,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody tr:last-child,
+    [data-file-manager-shell] [data-file-manager-table] tbody tr:last-child {
+        border-bottom: 0 !important;
+    }
+
+    .admin-posts-table tbody tr::before,
+    .admin-pages-table tbody tr::before,
+    [data-admin-users-table] tbody tr::before,
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody tr::before,
+    [data-file-manager-shell] [data-file-manager-table] tbody tr::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest tbody td:nth-child(6),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full tbody td:nth-child(6),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:first-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:first-child {
+        grid-column: 1 / -1 !important;
+        grid-row: auto !important;
+        justify-self: start !important;
+        align-self: start !important;
+        width: 100% !important;
+        padding-left: 0 !important;
+        text-align: left !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:last-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:last-child {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        justify-self: end !important;
+        width: auto !important;
+        text-align: right !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest tbody td:nth-child(6)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full tbody td:nth-child(6)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:first-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:first-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:last-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:last-child::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:first-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:first-child {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        min-width: 0 !important;
+    }
 }
 
 @keyframes admin-table-spinner {
