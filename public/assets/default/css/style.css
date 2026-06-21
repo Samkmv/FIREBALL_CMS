@@ -3429,6 +3429,10 @@ body.is-site-fullscreen .plyr * {
     flex: 0 0 auto;
 }
 
+[data-admin-shell] .admin-table-card .admin-analytics-table td.text-break {
+    text-align: left !important;
+}
+
 .admin-table--loading {
     pointer-events: none;
 }
