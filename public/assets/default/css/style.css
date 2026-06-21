@@ -3810,6 +3810,112 @@ body.is-site-fullscreen .plyr * {
         hyphens: none;
     }
 
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table tbody {
+        gap: 0;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table tbody tr {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 1rem 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        overflow: visible;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table tbody tr::before {
+        display: none;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table tbody tr:not(:last-child) {
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody tr,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody tr {
+        grid-template-columns: minmax(0, 1fr) max-content;
+        column-gap: .875rem;
+        align-items: start;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:first-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:first-child {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        padding-left: 0 !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        font-weight: 600;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:last-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:last-child {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        justify-self: end !important;
+        align-self: start !important;
+        padding-left: 0 !important;
+        min-width: 2.25rem !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+        font-weight: 600;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:first-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages tbody td:last-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:first-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full tbody td:last-child::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest tbody td:nth-child(1),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest tbody td:nth-child(6),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full tbody td:nth-child(1),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full tbody td:nth-child(6) {
+        padding-left: 0 !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest tbody td:nth-child(1)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest tbody td:nth-child(6)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full tbody td:nth-child(1)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full tbody td:nth-child(6)::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest tbody td:nth-child(6),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full tbody td:nth-child(6) {
+        grid-column: 1 / -1 !important;
+        grid-row: auto !important;
+        justify-self: stretch !important;
+        text-align: left !important;
+        font-weight: 600;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:first-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:first-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:last-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:last-child,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(1),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(6),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(1),
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(6) {
+        padding-left: 0 !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:first-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:first-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:last-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--pages-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:last-child::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(1)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--latest:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(6)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(1)::before,
+    [data-admin-shell] .admin-table-card .table.admin-analytics-table--visits-full:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) tbody td:nth-child(6)::before {
+        display: none !important;
+        content: none !important;
+    }
+
     [data-admin-users-table] tbody td:nth-child(3) {
         --admin-table-mobile-icon: "\f0e0";
     }
