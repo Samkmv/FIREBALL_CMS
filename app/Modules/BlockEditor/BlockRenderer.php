@@ -141,7 +141,8 @@ final class BlockRenderer
         }
 
         $caption = trim((string)($data['caption'] ?? ''));
-        $audio = '<div data-plyr-player-wrap="" data-plyr-lazy="true"><audio controls preload="metadata" data-plyr-player="">' .
+        $audioOptions = htmlSC('{"controls":["play","progress","current-time","duration","mute","volume"]}');
+        $audio = '<div data-plyr-player-wrap="" data-plyr-media="audio" data-plyr-lazy="true"><audio controls preload="metadata" data-plyr-player="" data-plyr-options="' . $audioOptions . '">' .
             '<source src="' . htmlSC($src) . '" type="' . htmlSC($this->audioMimeType($src)) . '">' .
             '</audio></div>';
 

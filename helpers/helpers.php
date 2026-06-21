@@ -405,9 +405,11 @@ function uri_without_lang(): string
 function get_alerts(): void
 {
     if (!empty($_SESSION['flash'])) {
+        echo '<div class="app-toast-stack" data-app-toast-container aria-live="polite" aria-atomic="true">';
         foreach ($_SESSION['flash'] as $key => $value) {
             echo view()->renderPartial("incs/alert_{$key}", ["flash_{$key}" => session()->getFlash($key)]);
         }
+        echo '</div>';
     }
 }
 

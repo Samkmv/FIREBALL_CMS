@@ -2509,6 +2509,12 @@
 
             let options = {};
             const rawOptions = element.getAttribute('data-plyr-options');
+            const playerWrap = element.closest('[data-plyr-player-wrap]');
+            const isAudioPlayer = element instanceof HTMLAudioElement;
+
+            if (playerWrap && isAudioPlayer) {
+                playerWrap.dataset.plyrMedia = 'audio';
+            }
 
             if (rawOptions) {
                 try {
@@ -2531,6 +2537,10 @@
                     container: '.plyr',
                 },
             }, options);
+
+            if (isAudioPlayer && !Array.isArray(options.controls)) {
+                options.controls = ['play', 'progress', 'current-time', 'duration', 'mute', 'volume'];
+            }
 
             options.fullscreen = Object.assign({
                 enabled: true,

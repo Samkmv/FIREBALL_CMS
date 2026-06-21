@@ -734,14 +734,22 @@ $(function(){
             if (window.bootstrap && window.bootstrap.Toast) {
                 const toast = window.bootstrap.Toast.getOrCreateInstance(alert[0], { autohide: true, delay: 0 });
                 alert.one('hidden.bs.toast', function () {
-                    alert.closest('.container').remove();
+                    const container = alert.closest('[data-app-toast-container]');
+                    alert.remove();
+                    if (container.length && !container.find('.toast').length) {
+                        container.remove();
+                    }
                 });
                 toast.hide();
                 return;
             }
 
             alert.fadeOut(200, function () {
-                alert.closest('.container').remove();
+                const container = alert.closest('[data-app-toast-container]');
+                alert.remove();
+                if (container.length && !container.find('.toast').length) {
+                    container.remove();
+                }
             });
         }, delay);
     });
@@ -1231,7 +1239,7 @@ $(function(){
         }
 
         container = document.createElement('div');
-        container.className = 'app-toast-stack position-fixed bottom-0 end-0 p-3';
+        container.className = 'app-toast-stack';
         container.setAttribute('data-app-toast-container', '');
         container.setAttribute('aria-live', 'polite');
         container.setAttribute('aria-atomic', 'true');
