@@ -67,26 +67,25 @@ $canManageRoles = check_creator();
                                     <span class="badge fs-xs text-dark bg-light rounded-pill"><?= print_translation('admin_roles_type_custom') ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-2">
+                            <td class="text-nowrap text-end">
+                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+                                        <i class="ci-more-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
                                     <?php if ($canManageRoles && !$isProtectedCreatorRole): ?>
                                         <a
-                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
+                                            class="dropdown-item d-flex align-items-center gap-2"
                                             href="<?= base_href('/admin/roles/edit/' . (int)$role['id']) ?>"
-                                            aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                            data-bs-toggle="tooltip"
                                         >
-                                            <i class="ci-edit"></i>
+                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
                                         </a>
                                     <?php else: ?>
                                         <button
-                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle disabled"
+                                            class="dropdown-item d-flex align-items-center gap-2 disabled"
                                             type="button"
-                                            aria-label="<?= htmlSC(return_translation('admin_roles_creator_protected')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_roles_creator_protected')) ?>"
-                                            data-bs-toggle="tooltip"
-                                        ><i class="ci-lock"></i></button>
+                                            aria-disabled="true"
+                                        ><i class="ci-lock"></i><span><?= htmlSC(return_translation('admin_roles_creator_protected')) ?></span></button>
                                     <?php endif; ?>
                                     <?php if ($canManageRoles && !$isSystemRole && !$hasAssignedUsers && !$isProtectedCreatorRole): ?>
                                         <form
@@ -99,22 +98,18 @@ $canManageRoles = check_creator();
                                             <?= get_csrf_field() ?>
                                             <input type="hidden" name="id" value="<?= (int)$role['id'] ?>">
                                             <button
-                                                class="btn btn-sm btn-outline-danger btn-icon rounded-circle"
+                                                class="dropdown-item d-flex align-items-center gap-2 text-danger"
                                                 type="submit"
-                                                aria-label="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                                title="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                                data-bs-toggle="tooltip"
-                                            ><i class="ci-trash"></i></button>
+                                            ><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
                                         </form>
                                     <?php else: ?>
                                         <button
-                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle disabled"
+                                            class="dropdown-item d-flex align-items-center gap-2 disabled"
                                             type="button"
-                                            aria-label="<?= htmlSC($deleteBlockedMessage) ?>"
-                                            title="<?= htmlSC($deleteBlockedMessage) ?>"
-                                            data-bs-toggle="tooltip"
-                                        ><i class="ci-lock"></i></button>
+                                            aria-disabled="true"
+                                        ><i class="ci-lock"></i><span><?= htmlSC($deleteBlockedMessage) ?></span></button>
                                     <?php endif; ?>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

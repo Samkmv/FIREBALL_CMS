@@ -122,37 +122,34 @@ $twoFactorResetModals = [];
                             <td class="text-nowrap">
                                 <span><?= date('d.m.Y H:i', strtotime($item['created_at'])) ?></span>
                             </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-2">
+                            <td class="text-nowrap text-end">
+                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+                                        <i class="ci-more-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
                                     <?php if ($canManageUsers && !$isProtectedCreator): ?>
                                         <a
-                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
+                                            class="dropdown-item d-flex align-items-center gap-2"
                                             href="<?= base_href('/admin/users/edit/' . (int)$item['id']) ?>"
-                                            aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                            data-bs-toggle="tooltip"
                                         >
-                                            <i class="ci-edit"></i>
+                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
                                         </a>
                                     <?php else: ?>
                                         <button
-                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle disabled"
+                                            class="dropdown-item d-flex align-items-center gap-2 disabled"
                                             type="button"
-                                            aria-label="<?= htmlSC(return_translation('admin_users_creator_protected')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_users_creator_protected')) ?>"
-                                            data-bs-toggle="tooltip"
-                                        ><i class="ci-lock"></i></button>
+                                            aria-disabled="true"
+                                        ><i class="ci-lock"></i><span><?= htmlSC(return_translation('admin_users_creator_protected')) ?></span></button>
                                     <?php endif; ?>
                                     <?php if ($canResetTwoFactor): ?>
                                         <?php $modalId = 'reset-2fa-' . (int)$item['id']; ?>
                                         <button
-                                            class="btn btn-sm btn-outline-warning btn-icon rounded-circle"
+                                            class="dropdown-item d-flex align-items-center gap-2"
                                             type="button"
                                             data-bs-toggle="modal"
                                             data-bs-target="#<?= htmlSC($modalId) ?>"
-                                            aria-label="<?= htmlSC(return_translation('admin_2fa_reset_button')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_2fa_reset_button')) ?>"
-                                        ><i class="ci-shield-off"></i></button>
+                                        ><i class="ci-shield-off"></i><span><?= print_translation('admin_2fa_reset_button') ?></span></button>
                                         <?php ob_start(); ?>
                                         <div class="modal fade" id="<?= htmlSC($modalId) ?>" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-dialog-centered">
@@ -200,22 +197,18 @@ $twoFactorResetModals = [];
                                             <?= get_csrf_field() ?>
                                             <input type="hidden" name="id" value="<?= (int)$item['id'] ?>">
                                             <button
-                                                class="btn btn-sm btn-outline-danger btn-icon rounded-circle"
+                                                class="dropdown-item d-flex align-items-center gap-2 text-danger"
                                                 type="submit"
-                                                aria-label="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                                title="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                                data-bs-toggle="tooltip"
-                                            ><i class="ci-trash"></i></button>
+                                            ><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
                                         </form>
                                     <?php else: ?>
                                         <button
-                                            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle disabled"
+                                            class="dropdown-item d-flex align-items-center gap-2 disabled"
                                             type="button"
-                                            aria-label="<?= htmlSC($deleteBlockedMessage) ?>"
-                                            title="<?= htmlSC($deleteBlockedMessage) ?>"
-                                            data-bs-toggle="tooltip"
-                                        ><i class="ci-lock"></i></button>
+                                            aria-disabled="true"
+                                        ><i class="ci-lock"></i><span><?= htmlSC($deleteBlockedMessage) ?></span></button>
                                     <?php endif; ?>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

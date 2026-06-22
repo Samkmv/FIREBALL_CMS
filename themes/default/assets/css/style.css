@@ -3413,3 +3413,161 @@ body.is-site-fullscreen .plyr * {
         transform: none;
     }
 }
+
+/* Unified mobile admin table scroll pattern */
+@media (max-width: 767.98px) {
+    [data-admin-shell] .admin-table-card {
+        overflow: hidden;
+        border-radius: 1.25rem !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table-responsive,
+    [data-admin-shell] .admin-table-card .admin-table-scroll,
+    [data-file-manager-shell] [data-file-manager-table-wrap] {
+        max-width: 100%;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+    }
+
+    [data-admin-shell] .admin-table-scroll[data-simplebar] .simplebar-content-wrapper {
+        overflow: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    [data-admin-shell] .admin-table-card .table,
+    [data-file-manager-shell] [data-file-manager-table],
+    [data-admin-users-table] {
+        display: table !important;
+        width: 100% !important;
+        min-width: 720px !important;
+        table-layout: auto;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    [data-admin-shell] .admin-posts-table,
+    [data-admin-shell] .admin-pages-table {
+        min-width: 840px !important;
+    }
+
+    [data-admin-users-table] {
+        min-width: 920px !important;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] {
+        min-width: 860px !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table colgroup {
+        display: table-column-group !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table thead,
+    [data-file-manager-shell] [data-file-manager-table] thead {
+        display: table-header-group !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table tbody,
+    [data-file-manager-shell] [data-file-manager-table] tbody {
+        display: table-row-group !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table tr,
+    [data-file-manager-shell] [data-file-manager-table] tr {
+        display: table-row !important;
+        width: auto;
+        min-width: 0;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table th,
+    [data-admin-shell] .admin-table-card .table td,
+    [data-file-manager-shell] [data-file-manager-table] th,
+    [data-file-manager-shell] [data-file-manager-table] td {
+        display: table-cell !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none;
+        padding: .75rem .7rem !important;
+        border-bottom: 1px solid var(--bs-border-color) !important;
+        background: var(--bs-body-bg) !important;
+        box-shadow: none !important;
+        vertical-align: middle;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        hyphens: auto;
+    }
+
+    [data-admin-shell] .admin-table-card .table thead th,
+    [data-file-manager-shell] [data-file-manager-table] thead th {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        background: var(--bs-body-bg) !important;
+        white-space: nowrap !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table th:first-child,
+    [data-admin-shell] .admin-table-card .table td:first-child,
+    [data-file-manager-shell] [data-file-manager-table] th:first-child,
+    [data-file-manager-shell] [data-file-manager-table] td:first-child {
+        padding-left: 1rem !important;
+        white-space: nowrap !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table th:last-child,
+    [data-admin-shell] .admin-table-card .table td:last-child,
+    [data-file-manager-shell] [data-file-manager-table] th:last-child,
+    [data-file-manager-shell] [data-file-manager-table] td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 3;
+        min-width: 4.25rem !important;
+        padding-right: 1rem !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+        background: var(--bs-body-bg) !important;
+        box-shadow: -12px 0 18px rgba(15, 23, 42, .06);
+    }
+
+    [data-admin-shell] .admin-table-card .table thead th:last-child,
+    [data-file-manager-shell] [data-file-manager-table] thead th:last-child {
+        z-index: 5;
+    }
+
+    [data-admin-shell] .admin-table-card .table th::before,
+    [data-admin-shell] .admin-table-card .table td::before,
+    [data-file-manager-shell] [data-file-manager-table] th::before,
+    [data-file-manager-shell] [data-file-manager-table] td::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-meta {
+        display: inline-flex;
+        flex-wrap: wrap;
+        width: auto;
+        gap: .35rem;
+    }
+
+    [data-admin-shell] .admin-table-meta span {
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    [data-admin-shell] .admin-post-actions-dropdown > [data-bs-toggle="dropdown"],
+    [data-file-manager-shell] [data-file-manager-actions-menu] > [data-bs-toggle="dropdown"] {
+        width: 2.35rem;
+        height: 2.35rem;
+        min-width: 2.35rem;
+        padding: 0;
+    }
+}

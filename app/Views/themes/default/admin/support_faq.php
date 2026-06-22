@@ -69,14 +69,21 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                             <td><?= htmlSC((string)($item['category_name'] ?? '')) ?></td>
                             <td><?= (int)$item['sort_order'] ?></td>
                             <td><span class="badge fs-xs rounded-pill <?= (int)$item['is_published'] === 1 ? 'text-success bg-success-subtle' : 'text-secondary bg-secondary-subtle' ?>"><?= print_translation((int)$item['is_published'] === 1 ? 'admin_support_published' : 'admin_support_unpublished') ?></span></td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="<?= base_href('/admin/support/faq/edit/' . (int)$item['id']) ?>" title="<?= htmlSC(return_translation('admin_btn_edit')) ?>" data-bs-toggle="tooltip"><i class="ci-edit"></i></a>
-                                    <form action="<?= base_href('/admin/support/faq/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_faq')) ?>" data-delete-item="<?= htmlSC($item['question']) ?>">
-                                        <?= get_csrf_field() ?>
-                                        <input type="hidden" name="id" value="<?= (int)$item['id'] ?>">
-                                        <button class="btn btn-sm btn-outline-danger btn-icon rounded-circle" type="submit" title="<?= htmlSC(return_translation('admin_btn_delete')) ?>" data-bs-toggle="tooltip"><i class="ci-trash"></i></button>
-                                    </form>
+                            <td class="text-nowrap text-end">
+                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+                                        <i class="ci-more-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/support/faq/edit/' . (int)$item['id']) ?>">
+                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+                                        </a>
+                                        <form action="<?= base_href('/admin/support/faq/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_faq')) ?>" data-delete-item="<?= htmlSC($item['question']) ?>">
+                                            <?= get_csrf_field() ?>
+                                            <input type="hidden" name="id" value="<?= (int)$item['id'] ?>">
+                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+                                        </form>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

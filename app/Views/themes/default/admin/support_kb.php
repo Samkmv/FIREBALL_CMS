@@ -90,14 +90,21 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                                 <?php endif; ?>
                             </td>
                             <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)$article['updated_at']))) ?></td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="<?= base_href('/admin/support/knowledge-base/edit/' . (int)$article['id']) ?>"><i class="ci-edit"></i></a>
-                                    <form action="<?= base_href('/admin/support/knowledge-base/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_article')) ?>" data-delete-item="<?= htmlSC($article['title']) ?>">
-                                        <?= get_csrf_field() ?>
-                                        <input type="hidden" name="id" value="<?= (int)$article['id'] ?>">
-                                        <button class="btn btn-sm btn-outline-danger btn-icon rounded-circle" type="submit"><i class="ci-trash"></i></button>
-                                    </form>
+                            <td class="text-nowrap text-end">
+                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+                                        <i class="ci-more-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/support/knowledge-base/edit/' . (int)$article['id']) ?>">
+                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+                                        </a>
+                                        <form action="<?= base_href('/admin/support/knowledge-base/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_article')) ?>" data-delete-item="<?= htmlSC($article['title']) ?>">
+                                            <?= get_csrf_field() ?>
+                                            <input type="hidden" name="id" value="<?= (int)$article['id'] ?>">
+                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+                                        </form>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

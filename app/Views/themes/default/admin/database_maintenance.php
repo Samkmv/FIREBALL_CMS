@@ -154,7 +154,7 @@ $actionDescription = static fn(string $action): string => return_translation('ad
         <?php if (empty($logs)): ?>
             <div class="admin-table-state"><?= print_translation('admin_maintenance_logs_empty') ?></div>
         <?php else: ?>
-            <div class="table-responsive">
+            <div class="table-responsive overflow-auto admin-table-scroll">
                 <table class="table align-middle">
                     <thead>
                     <tr>

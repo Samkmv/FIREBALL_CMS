@@ -4,17 +4,17 @@
     'actions' => '<a class="btn btn-outline-secondary rounded-pill" href="' . htmlSC(base_href('/admin/settings/mail')) . '">' . htmlSC(return_translation('admin_mail_settings_title')) . '</a>',
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4 admin-table-card">
-        <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
+        <form method="get" class="row g-2 align-items-end mb-3" data-admin-table-form>
             <div class="col-md-5">
                 <label class="form-label" for="mail-log-search"><?= print_translation('admin_table_search_placeholder') ?></label>
-                <input id="mail-log-search" class="form-control" type="search" name="search" value="<?= htmlSC((string)($search ?? '')) ?>">
+                <input id="mail-log-search" class="form-control" type="search" name="search" value="<?= htmlSC((string)($search ?? '')) ?>" data-admin-table-search>
             </div>
             <div class="col-md-auto">
                 <button class="btn btn-outline-secondary rounded-pill" type="submit"><?= print_translation('admin_btn_apply') ?></button>
             </div>
         </form>
-        <div class="table-responsive">
+        <div class="table-responsive overflow-auto admin-table-scroll">
             <table class="table align-middle mb-0">
                 <thead><tr>
                     <th><?= print_translation('admin_mail_log_recipient') ?></th>

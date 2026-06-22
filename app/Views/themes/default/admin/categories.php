@@ -48,34 +48,27 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             <td><?= htmlSC($category['name_en'] ?? $category['name']) ?></td>
                             <td><?= htmlSC($category['slug']) ?></td>
                             <td class="text-nowrap"><?= (int)$category['posts_count'] ?></td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <a
-                                        class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
-                                        href="<?= base_href('/admin/categories/edit/' . (int)$category['id']) ?>"
-                                        aria-label="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        title="<?= htmlSC(return_translation('admin_btn_edit')) ?>"
-                                        data-bs-toggle="tooltip"
-                                    >
-                                        <i class="ci-edit"></i>
-                                    </a>
-                                    <form
-                                        action="<?= base_href('/admin/categories/delete') ?>"
-                                        method="post"
-                                        data-admin-delete-form
-                                        data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_category')) ?>"
-                                        data-delete-item="<?= htmlSC((string)($category['name_ru'] ?? $category['name'] ?? '')) ?>"
-                                    >
-                                        <?= get_csrf_field() ?>
-                                        <input type="hidden" name="id" value="<?= (int)$category['id'] ?>">
-                                        <button
-                                            class="btn btn-sm btn-outline-danger btn-icon rounded-circle"
-                                            type="submit"
-                                            aria-label="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                            title="<?= htmlSC(return_translation('admin_btn_delete')) ?>"
-                                            data-bs-toggle="tooltip"
-                                        ><i class="ci-trash"></i></button>
-                                    </form>
+                            <td class="text-nowrap text-end">
+                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+                                        <i class="ci-more-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/categories/edit/' . (int)$category['id']) ?>">
+                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+                                        </a>
+                                        <form
+                                            action="<?= base_href('/admin/categories/delete') ?>"
+                                            method="post"
+                                            data-admin-delete-form
+                                            data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_category')) ?>"
+                                            data-delete-item="<?= htmlSC((string)($category['name_ru'] ?? $category['name'] ?? '')) ?>"
+                                        >
+                                            <?= get_csrf_field() ?>
+                                            <input type="hidden" name="id" value="<?= (int)$category['id'] ?>">
+                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+                                        </form>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

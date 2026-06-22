@@ -113,7 +113,7 @@ echo view()->renderPartial('admin/shell_open', [
             <div class="col-lg-6">
                 <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_geo_title') ?></h3>
-                    <div class="table-responsive">
+                    <div class="table-responsive overflow-auto admin-table-scroll">
                         <table class="table align-middle mb-0">
                             <thead>
                             <tr><th><?= print_translation('admin_analytics_col_country') ?></th><th class="text-end"><?= print_translation('admin_analytics_col_visits') ?></th></tr>
