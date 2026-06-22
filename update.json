@@ -1,5 +1,5 @@
 {
-  "version": "1.6.6",
+  "version": "1.6.6-beta.3",
   "minVersion": "1.0.0",
   "type": "patch",
   "migrations": true,
