@@ -156,6 +156,11 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     </button>
                                 </li>
                                 <li>
+                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="download">
+                                        <i class="ci-download"></i><?= print_translation('admin_files_download') ?>
+                                    </button>
+                                </li>
+                                <li>
                                     <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="rename">
                                         <i class="ci-edit"></i><?= print_translation('admin_files_rename') ?>
                                     </button>
@@ -261,6 +266,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                 <?php
                                 $isDirectory = ($item['type'] ?? '') === 'directory';
                                 $openUrl = $isDirectory ? $buildManagerUrl($item['relative_path']) : (string)($item['url'] ?? '');
+                                $downloadUrl = $isDirectory ? '' : (string)($item['url'] ?? '');
                                 $previewable = !$isDirectory && !empty($item['is_image']);
                                 ?>
                                 <tr
@@ -268,6 +274,8 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     data-path="<?= htmlSC((string)($item['relative_path'] ?? '')) ?>"
                                     data-type="<?= htmlSC((string)($item['type'] ?? 'file')) ?>"
                                     data-open-url="<?= htmlSC($openUrl) ?>"
+                                    data-download-url="<?= htmlSC($downloadUrl) ?>"
+                                    data-download-name="<?= htmlSC((string)($item['name'] ?? '')) ?>"
                                     data-public-path="<?= htmlSC((string)($item['public_path'] ?? '')) ?>"
                                     data-name="<?= htmlSC((string)($item['name'] ?? '')) ?>"
                                     data-base-name="<?= htmlSC((string)pathinfo((string)($item['name'] ?? ''), PATHINFO_FILENAME)) ?>"
@@ -345,6 +353,13 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                                         <i class="<?= $isDirectory ? 'ci-folder' : 'ci-eye' ?>"></i><?= $isDirectory ? print_translation('admin_btn_open') : print_translation('admin_btn_view') ?>
                                                     </button>
                                                 </li>
+                                                <?php if (!$isDirectory && $downloadUrl !== ''): ?>
+                                                    <li>
+                                                        <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="download">
+                                                            <i class="ci-download"></i><?= print_translation('admin_files_download') ?>
+                                                        </button>
+                                                    </li>
+                                                <?php endif; ?>
                                                 <li>
                                                     <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_rename']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="rename" <?= empty($item['can_rename']) ? 'aria-disabled="true"' : '' ?>>
                                                         <i class="ci-edit"></i><?= print_translation('admin_files_rename') ?>

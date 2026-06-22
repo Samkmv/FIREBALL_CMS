@@ -491,6 +491,8 @@
         data-fm-selection-required="<?= htmlSC(return_translation('admin_files_selection_required')) ?>"
         data-fm-rename-single="<?= htmlSC(return_translation('admin_files_rename_single_required')) ?>"
         data-fm-open-single="<?= htmlSC(return_translation('admin_files_open_single_required')) ?>"
+        data-fm-download-single="<?= htmlSC(return_translation('admin_files_download_single_required')) ?>"
+        data-fm-download-unavailable="<?= htmlSC(return_translation('admin_files_download_unavailable')) ?>"
         data-fm-delete-confirm="<?= htmlSC(return_translation('admin_files_delete_selected_confirm')) ?>"
         data-fm-delete-protected="<?= htmlSC(return_translation('admin_files_folder_delete_protected')) ?>"
         data-fm-rename-protected="<?= htmlSC(return_translation('admin_files_folder_rename_protected')) ?>"

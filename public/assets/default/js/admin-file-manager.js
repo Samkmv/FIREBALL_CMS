@@ -479,6 +479,25 @@ $(function () {
         return $('[data-file-manager-select]:checked').closest('[data-file-manager-row]');
     }
 
+    function downloadRow(row) {
+        const type = String(row.data('type') || '');
+        const url = String(row.data('downloadUrl') || row.data('openUrl') || '');
+
+        if (type === 'directory' || !url) {
+            return false;
+        }
+
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = String(row.data('downloadName') || row.data('name') || '');
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+
+        return true;
+    }
+
     function refreshSelectionState() {
         const rows = $('[data-file-manager-row]');
         const checked = $('[data-file-manager-select]:checked');
@@ -503,6 +522,8 @@ $(function () {
             selectionRequired: String(page.data('fmSelectionRequired') || 'Select at least one item.'),
             renameSingle: String(page.data('fmRenameSingle') || 'Select one item to rename.'),
             openSingle: String(page.data('fmOpenSingle') || 'Select one item to open.'),
+            downloadSingle: String(page.data('fmDownloadSingle') || 'Select one file to download.'),
+            downloadUnavailable: String(page.data('fmDownloadUnavailable') || 'This file cannot be downloaded.'),
             deleteConfirm: String(page.data('fmDeleteConfirm') || 'Delete selected items (:count)?'),
             deleteProtected: String(page.data('fmDeleteProtected') || 'This system folder cannot be deleted through the file manager.'),
             copyTitle: String(page.data('fmCopyTitle') || 'Copy to folder'),
@@ -961,6 +982,19 @@ $(function () {
             return;
         }
 
+        if (action === 'download') {
+            if (rows.length !== 1 || String(rows.first().data('type') || '') === 'directory') {
+                renderFeedback('error', messages.downloadSingle);
+                return;
+            }
+
+            if (!downloadRow(rows.first())) {
+                renderFeedback('error', messages.downloadUnavailable);
+            }
+
+            return;
+        }
+
         if (action === 'open') {
             if (rows.length !== 1) {
                 renderFeedback('error', messages.openSingle);
@@ -1062,6 +1096,14 @@ $(function () {
             }
 
             openTransferModal(action, row);
+            return;
+        }
+
+        if (action === 'download') {
+            if (!downloadRow(row)) {
+                renderFeedback('error', messages.downloadUnavailable);
+            }
+
             return;
         }
 
