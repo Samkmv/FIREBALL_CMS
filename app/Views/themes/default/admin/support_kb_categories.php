@@ -13,14 +13,14 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
         <?php ob_start(); ?>
-            <thead><tr><th>#</th><th><?= print_translation('admin_support_category') ?></th><th>Slug</th><th><?= print_translation('admin_support_sort_order') ?></th><th><?= print_translation('admin_posts_col_actions') ?></th></tr></thead>
+            <thead><tr><th>ID</th><th><?= print_translation('admin_support_category') ?></th><th>Slug</th><th><?= print_translation('admin_support_sort_order') ?></th><th><?= print_translation('admin_posts_col_actions') ?></th></tr></thead>
             <tbody>
                 <?php if (empty($categories)): ?>
                     <tr><td colspan="5" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                 <?php else: ?>
                     <?php foreach ($categories as $category): ?>
                         <tr>
-                            <td>#<?= (int)$category['id'] ?></td>
+                            <td class="fw-semibold"><?= (int)$category['id'] ?></td>
                             <td class="fw-medium"><?= htmlSC($category['name']) ?></td>
                             <td><?= htmlSC($category['slug']) ?></td>
                             <td><?= (int)$category['sort_order'] ?></td>

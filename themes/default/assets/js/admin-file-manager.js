@@ -304,6 +304,9 @@ $(function () {
         getBrowser().html(html);
         refreshSelectionState();
         initTooltips();
+        if (window.FireballAdminTables?.prepareResponsiveTables) {
+            window.FireballAdminTables.prepareResponsiveTables(getBrowser()[0] || document);
+        }
     }
 
     function updateBrowserUrl(url, replace) {

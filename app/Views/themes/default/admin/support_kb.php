@@ -49,7 +49,7 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
         <?php ob_start(); ?>
             <thead class="position-sticky top-0">
                 <tr>
-                    <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
+                    <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">ID<?= $sortIndicator('id') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('title', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_title') ?><?= $sortIndicator('title') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('category', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_category') ?><?= $sortIndicator('category') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('is_published', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_publication_status') ?><?= $sortIndicator('is_published') ?></a></th>
@@ -70,7 +70,7 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                         $helpfulPercent = $feedbackTotal > 0 ? (int)round((float)$article['helpful_percent']) : null;
                         ?>
                         <tr>
-                            <td class="text-nowrap">#<?= (int)$article['id'] ?></td>
+                            <td class="text-nowrap fw-semibold"><?= (int)$article['id'] ?></td>
                             <td class="fw-medium text-break">
                                 <?= htmlSC($article['title']) ?>
                                 <span class="d-block small text-body-secondary fw-normal mt-1"><?= htmlSC($article['slug']) ?></span>

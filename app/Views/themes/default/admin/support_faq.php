@@ -49,7 +49,7 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
         <?php ob_start(); ?>
             <thead class="position-sticky top-0">
                 <tr>
-                    <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
+                    <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">ID<?= $sortIndicator('id') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('question', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_question') ?><?= $sortIndicator('question') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('category', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_category') ?><?= $sortIndicator('category') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('sort_order', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_sort_order') ?><?= $sortIndicator('sort_order') ?></a></th>
@@ -63,7 +63,7 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                 <?php else: ?>
                     <?php foreach ($items as $item): ?>
                         <tr>
-                            <td class="text-nowrap">#<?= (int)$item['id'] ?></td>
+                            <td class="text-nowrap fw-semibold"><?= (int)$item['id'] ?></td>
                             <td class="fw-medium text-break"><?= htmlSC($item['question']) ?></td>
                             <td><?= htmlSC((string)($item['category_name'] ?? '')) ?></td>
                             <td><?= (int)$item['sort_order'] ?></td>

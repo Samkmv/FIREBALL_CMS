@@ -1572,7 +1572,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     position: fixed;
     right: max(2rem, calc(env(safe-area-inset-right) + 1.5rem)) !important;
     bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1.5rem)) !important;
-    z-index: 1085;
+    z-index: 13050;
     display: grid;
     gap: 0.75rem;
     width: min(calc(100vw - 2rem), 380px);
@@ -1763,7 +1763,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 @media (max-width: 575.98px) {
     .app-toast-stack {
         right: 1.5rem !important;
-        bottom: calc(1.5rem + env(safe-area-inset-bottom)) !important;
+        bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
         left: 1.5rem !important;
         width: auto;
     }
@@ -2002,6 +2002,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 .admin-post-actions-dropdown .dropdown-menu,
 .admin-post-actions-dropdown__menu--floating {
     min-width: 12rem;
+    max-width: min(22rem, calc(100vw - 1.5rem));
     z-index: 1085;
 }
 
@@ -2013,10 +2014,12 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 .admin-post-actions-dropdown__menu--floating .dropdown-item {
     --cz-dropdown-item-padding-x: 1rem;
     --cz-dropdown-item-padding-y: .55rem;
+    white-space: normal;
 }
 
 .admin-post-actions-dropdown .dropdown-item i,
 .admin-post-actions-dropdown__menu--floating .dropdown-item i {
+    flex: 0 0 auto;
     width: 1rem;
     text-align: center;
 }
@@ -2416,6 +2419,20 @@ body.is-site-fullscreen .plyr * {
 
 [data-admin-table] .table tbody tr:hover {
     background: var(--cz-table-hover-bg);
+}
+
+[data-admin-table] [data-admin-table-form] {
+    width: 100%;
+    max-width: none !important;
+}
+
+[data-admin-table] [data-admin-table-form].position-relative {
+    max-width: 32rem !important;
+}
+
+[data-admin-table] [data-admin-table-form] .table-search,
+[data-admin-table] [data-admin-table-form] input[type="search"] {
+    width: 100%;
 }
 
 .admin-table-component__row--clickable {
@@ -3661,6 +3678,18 @@ body.is-site-fullscreen .plyr * {
 
 /* Mobile admin table cards */
 @media (max-width: 767.98px) {
+    [data-admin-table] [data-admin-table-form],
+    [data-admin-table] [data-admin-table-form].position-relative {
+        max-width: none !important;
+    }
+
+    [data-admin-table] [data-admin-table-form] > [class*="col-"],
+    [data-admin-table] [data-admin-table-form] .form-control,
+    [data-admin-table] [data-admin-table-form] .form-select,
+    [data-admin-table] [data-admin-table-form] .btn {
+        width: 100%;
+    }
+
     [data-admin-shell] [data-admin-table].admin-table-card {
         padding: .75rem !important;
         border-radius: 1rem !important;
@@ -3758,6 +3787,26 @@ body.is-site-fullscreen .plyr * {
         content: none !important;
     }
 
+    [data-admin-shell] .admin-table-card .admin-table-component__table td[colspan],
+    [data-admin-shell] .admin-table-card .admin-table-component__table th[colspan],
+    [data-file-manager-shell] [data-file-manager-table] td[colspan],
+    [data-file-manager-shell] [data-file-manager-table] th[colspan] {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        min-height: 8rem !important;
+        padding: 2rem 1rem !important;
+        text-align: center !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table td[colspan]::before,
+    [data-admin-shell] .admin-table-card .admin-table-component__table th[colspan]::before,
+    [data-file-manager-shell] [data-file-manager-table] td[colspan]::before,
+    [data-file-manager-shell] [data-file-manager-table] th[colspan]::before {
+        display: none !important;
+        content: none !important;
+    }
+
     [data-admin-shell] .admin-table-card .admin-table-component__table [data-admin-table-actions],
     [data-file-manager-shell] [data-file-manager-table] [data-admin-table-actions] {
         display: flex !important;
@@ -3797,6 +3846,25 @@ body.is-site-fullscreen .plyr * {
         width: max-content;
         max-width: 100%;
         white-space: nowrap !important;
+    }
+
+    [data-admin-shell] .admin-table-card [data-admin-users-table] th,
+    [data-admin-shell] .admin-table-card [data-admin-users-table] td {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .25rem;
+    }
+
+    [data-admin-shell] .admin-table-card [data-admin-users-table] th::before,
+    [data-admin-shell] .admin-table-card [data-admin-users-table] td::before {
+        display: block;
+    }
+
+    [data-admin-shell] .admin-table-card [data-admin-users-table] [data-admin-table-primary] {
+        display: block !important;
+    }
+
+    [data-admin-shell] .admin-table-card [data-admin-users-table] [data-admin-table-actions] {
+        justify-content: flex-end;
     }
 
     [data-admin-shell] .admin-table-meta {
