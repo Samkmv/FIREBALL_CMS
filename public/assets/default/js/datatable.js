@@ -59,26 +59,31 @@
         });
     };
 
-    const initAdminTableScrollbars = (container) => {
-        if (!window.SimpleBar || !container) {
-            return;
-        }
+    const prepareAdminResponsiveTables = (container = document) => {
+        const root = container && typeof container.querySelectorAll === 'function' ? container : document;
+        root.querySelectorAll('.admin-table-component__table').forEach((table) => {
+            const headers = Array.from(table.querySelectorAll('thead th')).map((header) => {
+                return header.textContent.replace(/\s+/g, ' ').trim();
+            });
 
-        const scrollables = container.matches?.('.admin-table-scroll')
-            ? [container, ...container.querySelectorAll('.admin-table-scroll')]
-            : Array.from(container.querySelectorAll('.admin-table-scroll'));
-
-        scrollables.forEach((element) => {
-            const instance = window.SimpleBar.instances?.get(element);
-            if (instance) {
-                instance.recalculate();
-                return;
-            }
-
-            element.setAttribute('data-simplebar', '');
-            new window.SimpleBar(element, { autoHide: true });
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                const cells = Array.from(row.children).filter((cell) => cell.matches('th, td'));
+                const singleSpanCell = cells.length === 1 && cells[0].hasAttribute('colspan');
+                cells.forEach((cell, index) => {
+                    const label = cell.getAttribute('data-admin-table-label') || headers[index] || '';
+                    if (label !== '') {
+                        cell.setAttribute('data-admin-table-label', label);
+                    }
+                    cell.toggleAttribute('data-admin-table-primary', !singleSpanCell && index === 1);
+                    cell.toggleAttribute('data-admin-table-actions', !singleSpanCell && index === cells.length - 1);
+                });
+            });
         });
     };
+
+    window.FireballAdminTables = Object.assign({}, window.FireballAdminTables || {}, {
+        prepareResponsiveTables: prepareAdminResponsiveTables
+    });
 
     const createAjaxController = () => {
         let activeRequest = null;
@@ -227,8 +232,8 @@
                     }
                     tableRoots().forEach((root) => {
                         root.querySelector('[data-admin-table-error]')?.remove();
-                        initAdminTableScrollbars(root);
                         initBootstrapTooltips(root);
+                        prepareAdminResponsiveTables(root);
                     });
                     const scrollTarget = options.scrollTarget || jsonRoot || tableRoots()[0];
                     if (options.scroll === true && scrollTarget) {
@@ -324,11 +329,14 @@
         window.requestAnimationFrame(() => scrollToTable(null, 'auto'));
     }
 
+    prepareAdminResponsiveTables(document);
+
     const ajaxController = createAjaxController();
 
     window.FireballDataTable = {
         load: ajaxController.load,
         refresh: ajaxController.load,
-        scrollToTable
+        scrollToTable,
+        prepareResponsiveTables: prepareAdminResponsiveTables
     };
 })();

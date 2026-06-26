@@ -85,28 +85,38 @@ $(function(){
         });
     };
 
-    const initAdminTableScrollbars = (container) => {
-        if (!window.SimpleBar || !container) {
+    const prepareAdminResponsiveTables = (container = document) => {
+        const externalPrepare = window.FireballAdminTables?.prepareResponsiveTables;
+        if (externalPrepare && externalPrepare !== prepareAdminResponsiveTables) {
+            externalPrepare(container);
             return;
         }
 
-        const scrollables = container.matches?.('.admin-table-scroll')
-            ? [container, ...container.querySelectorAll('.admin-table-scroll')]
-            : Array.from(container.querySelectorAll('.admin-table-scroll'));
+        const root = container && typeof container.querySelectorAll === 'function' ? container : document;
+        root.querySelectorAll('.admin-table-component__table').forEach((table) => {
+            const headers = Array.from(table.querySelectorAll('thead th')).map((header) => {
+                return header.textContent.replace(/\s+/g, ' ').trim();
+            });
 
-        scrollables.forEach((element) => {
-            const instance = window.SimpleBar.instances?.get(element);
-            if (instance) {
-                instance.recalculate();
-                return;
-            }
-
-            element.setAttribute('data-simplebar', '');
-            new window.SimpleBar(element, { autoHide: true });
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                const cells = Array.from(row.children).filter((cell) => cell.matches('th, td'));
+                const singleSpanCell = cells.length === 1 && cells[0].hasAttribute('colspan');
+                cells.forEach((cell, index) => {
+                    const label = cell.getAttribute('data-admin-table-label') || headers[index] || '';
+                    if (label !== '') {
+                        cell.setAttribute('data-admin-table-label', label);
+                    }
+                    cell.toggleAttribute('data-admin-table-primary', !singleSpanCell && index === 1);
+                    cell.toggleAttribute('data-admin-table-actions', !singleSpanCell && index === cells.length - 1);
+                });
+            });
         });
     };
 
-    initAdminTableScrollbars(document);
+    window.FireballAdminTables = Object.assign({}, window.FireballAdminTables || {}, {
+        prepareResponsiveTables: window.FireballAdminTables?.prepareResponsiveTables || prepareAdminResponsiveTables
+    });
+    prepareAdminResponsiveTables(document);
 
     const adminPostActionDropdowns = new WeakMap();
     const getAdminPostActionDropdown = (target) => {
@@ -318,8 +328,8 @@ $(function(){
                 })
                 .then((data) => {
                     pane.innerHTML = data.html || '';
-                    initAdminTableScrollbars(pane);
                     initBootstrapTooltips(pane);
+                    prepareAdminResponsiveTables(pane);
                     updateTabCounts(data.counts);
                     if (pushState) {
                         window.history.pushState({ adminTableUrl: url.toString() }, '', url.toString());
@@ -460,8 +470,8 @@ $(function(){
                 })
                 .then((html) => {
                     replaceLiveTableHtml(html);
-                    initAdminTableScrollbars(root);
                     initBootstrapTooltips(root);
+                    prepareAdminResponsiveTables(root);
                     if (pushState) {
                         window.history.pushState({ adminLiveTableUrl: url.toString() }, '', url.toString());
                     }

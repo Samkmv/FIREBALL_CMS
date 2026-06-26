@@ -82,9 +82,8 @@ $statusClasses = [
         <?php if (empty($requests)): ?>
             <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll" data-admin-live-table-wrap>
-                <table class="table align-middle mb-0">
-                    <thead class="position-sticky top-0">
+            <?php ob_start(); ?>
+                <thead class="position-sticky top-0">
                     <tr>
                         <th scope="col" style="width: 40px;"></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
@@ -96,8 +95,8 @@ $statusClasses = [
                         <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('created_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_date') ?><?= $sortIndicator('created_at') ?></a></th>
                         <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
                     </tr>
-                    </thead>
-                    <tbody class="table-list">
+                </thead>
+                <tbody class="table-list">
                     <?php foreach ($requests as $request): ?>
                         <?php $requestStatus = (string)($request['status'] ?? ((int)$request['is_viewed'] === 1 ? 'in_work' : 'new')); ?>
                         <tr data-admin-live-table-row>
@@ -163,9 +162,12 @@ $statusClasses = [
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            <?php $adminTableContent = ob_get_clean(); ?>
+            <?= view()->renderPartial('admin/partials/table', [
+                'content' => $adminTableContent,
+                'wrapper_attributes' => ['data-admin-live-table-wrap' => true],
+            ]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [
                 'visible' => count($requests),

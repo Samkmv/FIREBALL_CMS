@@ -15,9 +15,8 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
     <?= view()->renderPartial('admin/settings_tabs', ['active' => 'contact_subjects']) ?>
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="contact-subjects">
-        <div class="table-responsive overflow-auto admin-table-scroll">
-            <table class="table align-middle mb-0">
-                <thead class="position-sticky top-0">
+        <?php ob_start(); ?>
+            <thead class="position-sticky top-0">
                 <tr>
                     <th scope="col"><?= print_translation('admin_contact_subject_col_id') ?></th>
                     <th scope="col"><?= print_translation('admin_contact_subject_col_name') ?></th>
@@ -26,8 +25,8 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                     <th scope="col"><?= print_translation('admin_contact_subject_col_created_at') ?></th>
                     <th scope="col" class="text-end"><?= print_translation('admin_contact_subject_col_actions') ?></th>
                 </tr>
-                </thead>
-                <tbody>
+            </thead>
+            <tbody>
                 <?php if (empty($subjects)): ?>
                     <tr>
                         <td colspan="6" class="text-center text-body-secondary py-5">
@@ -98,9 +97,9 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        <?php $adminTableContent = ob_get_clean(); ?>
+        <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
     </div>
 
 <?= view()->renderPartial('admin/shell_close') ?>

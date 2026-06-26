@@ -46,9 +46,8 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
             </div>
         </form>
 
-        <div class="table-responsive overflow-auto admin-table-scroll">
-            <table class="table align-middle mb-0">
-                <thead class="position-sticky top-0">
+        <?php ob_start(); ?>
+            <thead class="position-sticky top-0">
                 <tr>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('title', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_title') ?><?= $sortIndicator('title') ?></a></th>
@@ -58,8 +57,8 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                     <th><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('updated_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_support_updated_at') ?><?= $sortIndicator('updated_at') ?></a></th>
                     <th><?= print_translation('admin_posts_col_actions') ?></th>
                 </tr>
-                </thead>
-                <tbody>
+            </thead>
+            <tbody>
                 <?php if (empty($articles)): ?>
                     <tr><td colspan="7" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                 <?php else: ?>
@@ -110,9 +109,9 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        <?php $adminTableContent = ob_get_clean(); ?>
+        <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
         <?= view()->renderPartial('admin/partials/table_footer', [
             'visible' => count($articles),
             'total' => (int)$total,

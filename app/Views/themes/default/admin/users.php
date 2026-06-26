@@ -39,21 +39,20 @@ $twoFactorResetModals = [];
         <?php if (empty($users)): ?>
             <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll admin-users-table-wrap" data-admin-users-table-wrap data-admin-live-table-wrap>
-                <table class="table align-middle mb-0 admin-users-table" data-admin-users-table>
-                    <thead class="position-sticky top-0">
-                    <tr>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_name') ?><?= $sortIndicator('name') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('login', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_login') ?><?= $sortIndicator('login') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('email', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_email') ?><?= $sortIndicator('email') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('role', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_role') ?><?= $sortIndicator('role') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $onlineSortUrl ?>"><?= print_translation('admin_users_col_online') ?><?= $sortIndicator('online') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('created_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_created_at') ?><?= $sortIndicator('created_at') ?></a></th>
-                        <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
-                    </tr>
-                    </thead>
-                    <tbody class="table-list">
+            <?php ob_start(); ?>
+                <thead class="position-sticky top-0">
+                <tr>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_name') ?><?= $sortIndicator('name') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('login', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_login') ?><?= $sortIndicator('login') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('email', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_email') ?><?= $sortIndicator('email') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('role', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_role') ?><?= $sortIndicator('role') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= $onlineSortUrl ?>"><?= print_translation('admin_users_col_online') ?><?= $sortIndicator('online') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('created_at', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_users_col_created_at') ?><?= $sortIndicator('created_at') ?></a></th>
+                    <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
+                </tr>
+                </thead>
+                <tbody class="table-list">
                     <?php foreach ($users as $item): ?>
                         <?php
                         $isCurrentUser = (int)$item['id'] === (int)(get_user()['id'] ?? 0);
@@ -213,9 +212,17 @@ $twoFactorResetModals = [];
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            <?php $adminTableContent = ob_get_clean(); ?>
+            <?= view()->renderPartial('admin/partials/table', [
+                'content' => $adminTableContent,
+                'table_class' => 'admin-users-table',
+                'table_attributes' => ['data-admin-users-table' => true],
+                'wrapper_attributes' => [
+                    'data-admin-users-table-wrap' => true,
+                    'data-admin-live-table-wrap' => true,
+                ],
+            ]) ?>
             <?= implode('', $twoFactorResetModals) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [

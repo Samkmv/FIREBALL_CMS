@@ -28,19 +28,18 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
         <?php if (empty($categories)): ?>
             <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll" data-admin-live-table-wrap>
-                <table class="table align-middle mb-0">
-                    <thead class="position-sticky top-0">
-                    <tr>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name_ru', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_categories_col_name_ru') ?><?= $sortIndicator('name_ru') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name_en', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_categories_col_name_en') ?><?= $sortIndicator('name_en') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('slug', (string)$sort, (string)$direction) ?>">Slug<?= $sortIndicator('slug') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('posts_count', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_categories_col_posts') ?><?= $sortIndicator('posts_count') ?></a></th>
-                        <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
-                    </tr>
-                    </thead>
-                    <tbody class="table-list">
+            <?php ob_start(); ?>
+                <thead class="position-sticky top-0">
+                <tr>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name_ru', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_categories_col_name_ru') ?><?= $sortIndicator('name_ru') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name_en', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_categories_col_name_en') ?><?= $sortIndicator('name_en') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('slug', (string)$sort, (string)$direction) ?>">Slug<?= $sortIndicator('slug') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('posts_count', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_categories_col_posts') ?><?= $sortIndicator('posts_count') ?></a></th>
+                    <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
+                </tr>
+                </thead>
+                <tbody class="table-list">
                     <?php foreach ($categories as $category): ?>
                         <tr data-admin-live-table-row>
                             <th class="text-nowrap" scope="row"><?= (int)$category['id'] ?></th>
@@ -73,9 +72,12 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            <?php $adminTableContent = ob_get_clean(); ?>
+            <?= view()->renderPartial('admin/partials/table', [
+                'content' => $adminTableContent,
+                'wrapper_attributes' => ['data-admin-live-table-wrap' => true],
+            ]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [
                 'visible' => count($categories),

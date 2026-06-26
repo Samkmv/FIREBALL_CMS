@@ -31,19 +31,18 @@ $canManageRoles = check_creator();
         <?php if (empty($roles)): ?>
             <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll" data-admin-live-table-wrap>
-                <table class="table align-middle mb-0">
-                    <thead class="position-sticky top-0">
-                    <tr>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_roles_col_name') ?><?= $sortIndicator('name') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('slug', (string)$sort, (string)$direction) ?>">Slug<?= $sortIndicator('slug') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('users_count', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_roles_col_users') ?><?= $sortIndicator('users_count') ?></a></th>
-                        <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('type', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_roles_col_type') ?><?= $sortIndicator('type') ?></a></th>
-                        <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
-                    </tr>
-                    </thead>
-                    <tbody class="table-list">
+            <?php ob_start(); ?>
+                <thead class="position-sticky top-0">
+                <tr>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_roles_col_name') ?><?= $sortIndicator('name') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('slug', (string)$sort, (string)$direction) ?>">Slug<?= $sortIndicator('slug') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('users_count', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_roles_col_users') ?><?= $sortIndicator('users_count') ?></a></th>
+                    <th scope="col"><a class="btn fs-base fw-semibold text-dark-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('type', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_roles_col_type') ?><?= $sortIndicator('type') ?></a></th>
+                    <th scope="col"><?= print_translation('admin_posts_col_actions') ?></th>
+                </tr>
+                </thead>
+                <tbody class="table-list">
                     <?php foreach ($roles as $role): ?>
                         <?php
                         $isSystemRole = (int)($role['is_system'] ?? 0) === 1;
@@ -114,9 +113,12 @@ $canManageRoles = check_creator();
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            <?php $adminTableContent = ob_get_clean(); ?>
+            <?= view()->renderPartial('admin/partials/table', [
+                'content' => $adminTableContent,
+                'wrapper_attributes' => ['data-admin-live-table-wrap' => true],
+            ]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [
                 'visible' => count($roles),

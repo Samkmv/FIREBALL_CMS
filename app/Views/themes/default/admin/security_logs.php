@@ -13,9 +13,8 @@
                 <button class="btn btn-outline-secondary rounded-pill" type="submit"><?= print_translation('admin_btn_apply') ?></button>
             </div>
         </form>
-        <div class="table-responsive overflow-auto admin-table-scroll">
-            <table class="table align-middle mb-0">
-                <thead><tr>
+        <?php ob_start(); ?>
+            <thead><tr>
                     <th><?= print_translation('admin_security_log_event') ?></th>
                     <th><?= print_translation('admin_security_log_actor') ?></th>
                     <th><?= print_translation('admin_security_log_target') ?></th>
@@ -24,7 +23,7 @@
                     <th>IP</th>
                     <th><?= print_translation('admin_security_log_created_at') ?></th>
                 </tr></thead>
-                <tbody>
+            <tbody>
                 <?php if (empty($logs)): ?>
                     <tr><td colspan="7" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                 <?php endif; ?>
@@ -39,9 +38,9 @@
                         <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime($log['created_at']))) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        <?php $adminTableContent = ob_get_clean(); ?>
+        <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
         <?= view()->renderPartial('admin/partials/table_footer', [
             'visible' => count($logs),
             'total' => (int)$total,

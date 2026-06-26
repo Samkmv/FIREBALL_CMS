@@ -172,15 +172,14 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         <div class="col-12">
             <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-pages">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h2>
-                <div class="table-responsive overflow-auto admin-table-scroll">
-                    <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--pages-full">
-                        <thead class="position-sticky top-0">
+                <?php ob_start(); ?>
+                    <thead class="position-sticky top-0">
                         <tr>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $pagesSortUrl('page') ?>"><?= print_translation('admin_analytics_col_page') ?><?= $sortIndicator((string)($pages['sort'] ?? 'views'), (string)($pages['direction'] ?? 'desc'), 'page') ?></a></th>
                             <th scope="col" class="text-end"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $pagesSortUrl('views') ?>"><?= print_translation('admin_analytics_col_views') ?><?= $sortIndicator((string)($pages['sort'] ?? 'views'), (string)($pages['direction'] ?? 'desc'), 'views') ?></a></th>
                         </tr>
-                        </thead>
-                        <tbody>
+                    </thead>
+                    <tbody>
                         <?php foreach (($pages['items'] ?? []) as $row): ?>
                             <tr>
                                 <td class="text-break"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
@@ -190,9 +189,12 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                         <?php if (empty($pages['items'])): ?>
                             <tr><td colspan="2" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                         <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+                    </tbody>
+                <?php $adminTableContent = ob_get_clean(); ?>
+                <?= view()->renderPartial('admin/partials/table', [
+                    'content' => $adminTableContent,
+                    'table_class' => 'admin-analytics-table admin-analytics-table--pages-full',
+                ]) ?>
                 <?= view()->renderPartial('admin/partials/table_footer', [
                     'visible' => count((array)($pages['items'] ?? [])),
                     'total' => (int)($pages['total'] ?? 0),
@@ -205,9 +207,8 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         <div class="col-12">
             <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-visits">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h2>
-                <div class="table-responsive overflow-auto admin-table-scroll">
-                    <table class="table align-middle mb-0 admin-analytics-table admin-analytics-table--visits-full">
-                        <thead class="position-sticky top-0">
+                <?php ob_start(); ?>
+                    <thead class="position-sticky top-0">
                         <tr>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('created_at') ?>"><?= print_translation('admin_analytics_col_time') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'created_at') ?></a></th>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('country') ?>"><?= print_translation('admin_analytics_col_country') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'country') ?></a></th>
@@ -216,8 +217,8 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('source') ?>"><?= print_translation('admin_analytics_col_source') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'source') ?></a></th>
                             <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('page') ?>"><?= print_translation('admin_analytics_col_page') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'page') ?></a></th>
                         </tr>
-                        </thead>
-                        <tbody>
+                    </thead>
+                    <tbody>
                         <?php foreach (($visits['items'] ?? []) as $row): ?>
                             <tr>
                                 <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)($row['created_at'] ?? 'now')))) ?></td>
@@ -231,9 +232,12 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                         <?php if (empty($visits['items'])): ?>
                             <tr><td colspan="6" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                         <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+                    </tbody>
+                <?php $adminTableContent = ob_get_clean(); ?>
+                <?= view()->renderPartial('admin/partials/table', [
+                    'content' => $adminTableContent,
+                    'table_class' => 'admin-analytics-table admin-analytics-table--visits-full',
+                ]) ?>
                 <?= view()->renderPartial('admin/partials/table_footer', [
                     'visible' => count((array)($visits['items'] ?? [])),
                     'total' => (int)($visits['total'] ?? 0),

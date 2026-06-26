@@ -451,7 +451,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     margin-top: .65rem;
     border: 1px solid var(--cz-border-color);
     border-radius: .65rem;
-    background: var(--cz-body-bg);
+    background: var(--cz-body-bg, var(--bs-body-bg, #fff));
     color: var(--cz-body-color);
     font-size: .8125rem;
 }
@@ -1129,7 +1129,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 .chat-sidebar-offcanvas .offcanvas-body {
     display: flex;
     overflow: hidden;
-    background: var(--cz-body-bg);
+    background: var(--cz-body-bg, var(--bs-body-bg, #fff));
 }
 
 .chat-sidebar-offcanvas .chat-sidebar {
@@ -1769,38 +1769,6 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     }
 }
 
-.admin-table-scroll {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.admin-table-scroll[data-simplebar] {
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-}
-
-.admin-table-scroll[data-simplebar] .simplebar-content-wrapper {
-    -webkit-overflow-scrolling: touch;
-}
-
-.admin-table-scroll[data-simplebar] .simplebar-wrapper,
-.admin-table-scroll[data-simplebar] .simplebar-mask,
-.admin-table-scroll[data-simplebar] .simplebar-offset,
-.admin-table-scroll[data-simplebar] .simplebar-content-wrapper {
-    max-width: 100%;
-}
-
-.admin-table-scroll thead th {
-    background-color: var(--cz-body-bg);
-    z-index: 1;
-}
-
-.admin-table-scroll > .table,
-.admin-table-scroll .simplebar-content > .table {
-    min-width: 720px;
-}
-
 [data-admin-analytics] {
     --chart-line: #2563eb;
     --chart-grid: rgba(108, 114, 127, .22);
@@ -2404,14 +2372,59 @@ body.is-site-fullscreen .plyr * {
     min-width: 110px;
 }
 
+.admin-table-component__scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-table-component__table {
+    min-width: 720px;
+}
+
+[data-admin-table] {
+    position: relative;
+    min-width: 0;
+}
+
+[data-admin-table] .table {
+    --cz-table-hover-bg: color-mix(in srgb, var(--cz-emphasis-color) 4%, transparent);
+}
+
+[data-admin-table] .table > :not(caption) > * > * {
+    padding-top: .9rem;
+    padding-bottom: .9rem;
+    border-bottom-color: color-mix(in srgb, var(--cz-border-color) 72%, transparent);
+}
+
+[data-admin-table] .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--cz-body-bg, var(--bs-body-bg, #fff));
+    color: var(--cz-emphasis-color);
+    font-size: .875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+[data-admin-table] .table tbody tr {
+    transition: background-color .16s ease;
+}
+
+[data-admin-table] .table tbody tr:hover {
+    background: var(--cz-table-hover-bg);
+}
+
+.admin-table-component__row--clickable {
+    cursor: pointer;
+}
+
 @media (max-width: 767.98px) {
     [data-admin-users-table] {
         min-width: 840px;
-    }
-
-    .admin-table-scroll > .table,
-    .admin-table-scroll .simplebar-content > .table {
-        min-width: 680px;
     }
 
     [data-admin-users-table] th,
@@ -3414,26 +3427,25 @@ body.is-site-fullscreen .plyr * {
     }
 }
 
-/* Unified mobile admin table scroll pattern */
+/* Basic responsive admin tables */
 @media (max-width: 767.98px) {
     [data-admin-shell] .admin-table-card {
         overflow: hidden;
-        border-radius: 1.25rem !important;
+    }
+
+    [data-admin-shell] [data-admin-table].admin-table-card {
+        padding-left: .875rem !important;
+        padding-right: .875rem !important;
     }
 
     [data-admin-shell] .admin-table-card .table-responsive,
-    [data-admin-shell] .admin-table-card .admin-table-scroll,
+    [data-admin-shell] .admin-table-component__scroll,
     [data-file-manager-shell] [data-file-manager-table-wrap] {
         max-width: 100%;
         overflow-x: auto !important;
-        overflow-y: auto !important;
+        overflow-y: hidden !important;
         -webkit-overflow-scrolling: touch;
         scrollbar-gutter: stable;
-    }
-
-    [data-admin-shell] .admin-table-scroll[data-simplebar] .simplebar-content-wrapper {
-        overflow: auto !important;
-        -webkit-overflow-scrolling: touch;
     }
 
     [data-admin-shell] .admin-table-card .table,
@@ -3441,19 +3453,19 @@ body.is-site-fullscreen .plyr * {
     [data-admin-users-table] {
         display: table !important;
         width: 100% !important;
-        min-width: 720px !important;
+        min-width: 760px !important;
         table-layout: auto;
-        border-collapse: separate;
+        border-collapse: collapse;
         border-spacing: 0;
     }
 
     [data-admin-shell] .admin-posts-table,
     [data-admin-shell] .admin-pages-table {
-        min-width: 840px !important;
+        min-width: 1120px !important;
     }
 
     [data-admin-users-table] {
-        min-width: 920px !important;
+        min-width: 1020px !important;
     }
 
     [data-file-manager-shell] [data-file-manager-table] {
@@ -3493,25 +3505,26 @@ body.is-site-fullscreen .plyr * {
     [data-file-manager-shell] [data-file-manager-table] td {
         display: table-cell !important;
         width: auto !important;
-        min-width: 0 !important;
+        min-width: 6rem !important;
         max-width: none;
-        padding: .75rem .7rem !important;
+        padding: .85rem 1rem !important;
         border-bottom: 1px solid var(--bs-border-color) !important;
-        background: var(--bs-body-bg) !important;
+        background: transparent !important;
         box-shadow: none !important;
+        position: static !important;
         vertical-align: middle;
         white-space: normal !important;
-        overflow-wrap: anywhere;
+        overflow-wrap: normal;
         word-break: normal;
-        hyphens: auto;
+        hyphens: none;
     }
 
     [data-admin-shell] .admin-table-card .table thead th,
     [data-file-manager-shell] [data-file-manager-table] thead th {
-        position: sticky;
+        position: sticky !important;
         top: 0;
-        z-index: 4;
-        background: var(--bs-body-bg) !important;
+        z-index: 2;
+        background: var(--cz-body-bg, var(--bs-body-bg, #fff)) !important;
         white-space: nowrap !important;
     }
 
@@ -3520,6 +3533,7 @@ body.is-site-fullscreen .plyr * {
     [data-file-manager-shell] [data-file-manager-table] th:first-child,
     [data-file-manager-shell] [data-file-manager-table] td:first-child {
         padding-left: 1rem !important;
+        min-width: 3.5rem !important;
         white-space: nowrap !important;
     }
 
@@ -3527,20 +3541,20 @@ body.is-site-fullscreen .plyr * {
     [data-admin-shell] .admin-table-card .table td:last-child,
     [data-file-manager-shell] [data-file-manager-table] th:last-child,
     [data-file-manager-shell] [data-file-manager-table] td:last-child {
-        position: sticky;
-        right: 0;
-        z-index: 3;
+        position: static !important;
+        right: auto;
+        z-index: auto;
         min-width: 4.25rem !important;
         padding-right: 1rem !important;
         text-align: right !important;
         white-space: nowrap !important;
-        background: var(--bs-body-bg) !important;
-        box-shadow: -12px 0 18px rgba(15, 23, 42, .06);
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     [data-admin-shell] .admin-table-card .table thead th:last-child,
     [data-file-manager-shell] [data-file-manager-table] thead th:last-child {
-        z-index: 5;
+        z-index: auto;
     }
 
     [data-admin-shell] .admin-table-card .table th::before,
@@ -3549,6 +3563,79 @@ body.is-site-fullscreen .plyr * {
     [data-file-manager-shell] [data-file-manager-table] td::before {
         display: none !important;
         content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table .text-nowrap,
+    [data-file-manager-shell] [data-file-manager-table] .text-nowrap {
+        white-space: nowrap !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table .text-break,
+    [data-file-manager-shell] [data-file-manager-table] .text-break,
+    [data-admin-shell] .admin-table-card .table .small,
+    [data-file-manager-shell] [data-file-manager-table] .small {
+        overflow-wrap: anywhere;
+        word-break: normal;
+    }
+
+    [data-admin-shell] .admin-table-card .table .badge {
+        white-space: nowrap;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) th:nth-child(2),
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) td:nth-child(2) {
+        min-width: 12rem !important;
+    }
+
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) th:nth-child(3),
+    [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) td:nth-child(3) {
+        min-width: 11rem !important;
+    }
+
+    [data-admin-shell] .admin-posts-table th:nth-child(2),
+    [data-admin-shell] .admin-posts-table td:nth-child(2),
+    [data-admin-shell] .admin-pages-table th:nth-child(2),
+    [data-admin-shell] .admin-pages-table td:nth-child(2) {
+        min-width: 17rem !important;
+    }
+
+    [data-admin-shell] .admin-posts-table th:nth-child(3),
+    [data-admin-shell] .admin-posts-table td:nth-child(3),
+    [data-admin-shell] .admin-pages-table th:nth-child(3),
+    [data-admin-shell] .admin-pages-table td:nth-child(3) {
+        min-width: 15rem !important;
+    }
+
+    [data-admin-shell] .admin-posts-table th:nth-child(5),
+    [data-admin-shell] .admin-posts-table td:nth-child(5),
+    [data-admin-shell] .admin-pages-table th:nth-child(5),
+    [data-admin-shell] .admin-pages-table td:nth-child(5) {
+        min-width: 10rem !important;
+    }
+
+    [data-admin-users-table] th:nth-child(2),
+    [data-admin-users-table] td:nth-child(2) {
+        min-width: 14rem !important;
+    }
+
+    [data-admin-users-table] th:nth-child(3),
+    [data-admin-users-table] td:nth-child(3) {
+        min-width: 9.5rem !important;
+    }
+
+    [data-admin-users-table] th:nth-child(4),
+    [data-admin-users-table] td:nth-child(4) {
+        min-width: 16rem !important;
+    }
+
+    [data-admin-users-table] th:nth-child(5),
+    [data-admin-users-table] td:nth-child(5) {
+        min-width: 11rem !important;
+    }
+
+    [data-file-manager-shell] [data-file-manager-table] th:nth-child(2),
+    [data-file-manager-shell] [data-file-manager-table] td:nth-child(2) {
+        min-width: 18rem !important;
     }
 
     [data-admin-shell] .admin-table-meta {
@@ -3569,5 +3656,151 @@ body.is-site-fullscreen .plyr * {
         height: 2.35rem;
         min-width: 2.35rem;
         padding: 0;
+    }
+}
+
+/* Mobile admin table cards */
+@media (max-width: 767.98px) {
+    [data-admin-shell] [data-admin-table].admin-table-card {
+        padding: .75rem !important;
+        border-radius: 1rem !important;
+        overflow: visible;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__scroll,
+    [data-file-manager-shell] [data-file-manager-table-wrap] {
+        overflow: visible !important;
+        scrollbar-gutter: auto;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table,
+    [data-file-manager-shell] [data-file-manager-table],
+    [data-admin-users-table] {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        border-collapse: separate;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table colgroup,
+    [data-admin-shell] .admin-table-card .admin-table-component__table thead,
+    [data-file-manager-shell] [data-file-manager-table] colgroup,
+    [data-file-manager-shell] [data-file-manager-table] thead {
+        display: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table tbody,
+    [data-file-manager-shell] [data-file-manager-table] tbody {
+        display: grid !important;
+        gap: .75rem;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table tr,
+    [data-file-manager-shell] [data-file-manager-table] tr {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        border: 1px solid var(--bs-border-color) !important;
+        border-radius: .875rem !important;
+        background: var(--cz-body-bg, var(--bs-body-bg, #fff)) !important;
+        box-shadow: 0 .5rem 1.5rem rgba(var(--bs-body-color-rgb), .06) !important;
+        overflow: hidden !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table th,
+    [data-admin-shell] .admin-table-card .admin-table-component__table td,
+    [data-file-manager-shell] [data-file-manager-table] th,
+    [data-file-manager-shell] [data-file-manager-table] td {
+        display: grid !important;
+        grid-template-columns: minmax(6.25rem, 42%) minmax(0, 1fr);
+        align-items: start;
+        gap: .75rem;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding: .45rem .85rem !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        position: static !important;
+        text-align: left !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        hyphens: none;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table th::before,
+    [data-admin-shell] .admin-table-card .admin-table-component__table td::before,
+    [data-file-manager-shell] [data-file-manager-table] th::before,
+    [data-file-manager-shell] [data-file-manager-table] td::before {
+        content: attr(data-admin-table-label);
+        color: var(--cz-secondary-color, var(--bs-secondary-color));
+        font-size: .75rem;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table [data-admin-table-primary],
+    [data-file-manager-shell] [data-file-manager-table] [data-admin-table-primary] {
+        display: block !important;
+        padding: .85rem .85rem .6rem !important;
+        font-size: .95rem;
+        font-weight: 600;
+        border-bottom: 1px solid var(--bs-border-color) !important;
+        overflow-wrap: anywhere;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table [data-admin-table-primary]::before,
+    [data-file-manager-shell] [data-file-manager-table] [data-admin-table-primary]::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table [data-admin-table-actions],
+    [data-file-manager-shell] [data-file-manager-table] [data-admin-table-actions] {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        padding: .65rem .85rem !important;
+        border-top: 1px solid var(--bs-border-color) !important;
+        background: var(--cz-tertiary-bg, var(--bs-tertiary-bg, rgba(var(--bs-body-color-rgb), .03))) !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table [data-admin-table-actions]::before,
+    [data-file-manager-shell] [data-file-manager-table] [data-admin-table-actions]::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table [data-admin-table-actions] .dropdown,
+    [data-file-manager-shell] [data-file-manager-table] [data-admin-table-actions] .dropdown {
+        margin-left: auto;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table .text-nowrap,
+    [data-file-manager-shell] [data-file-manager-table] .text-nowrap {
+        white-space: normal !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table .text-truncate,
+    [data-file-manager-shell] [data-file-manager-table] .text-truncate {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__table .badge,
+    [data-file-manager-shell] [data-file-manager-table] .badge {
+        width: max-content;
+        max-width: 100%;
+        white-space: nowrap !important;
+    }
+
+    [data-admin-shell] .admin-table-meta {
+        display: flex;
+        gap: .35rem;
     }
 }

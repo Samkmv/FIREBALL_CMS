@@ -12,10 +12,9 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
     <?= view()->renderPartial('admin/support_tabs', ['active' => 'kb']) ?>
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
-        <div class="table-responsive overflow-auto admin-table-scroll">
-            <table class="table align-middle mb-0">
-                <thead><tr><th>#</th><th><?= print_translation('admin_support_category') ?></th><th>Slug</th><th><?= print_translation('admin_support_sort_order') ?></th><th><?= print_translation('admin_posts_col_actions') ?></th></tr></thead>
-                <tbody>
+        <?php ob_start(); ?>
+            <thead><tr><th>#</th><th><?= print_translation('admin_support_category') ?></th><th>Slug</th><th><?= print_translation('admin_support_sort_order') ?></th><th><?= print_translation('admin_posts_col_actions') ?></th></tr></thead>
+            <tbody>
                 <?php if (empty($categories)): ?>
                     <tr><td colspan="5" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                 <?php else: ?>
@@ -45,8 +44,8 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        <?php $adminTableContent = ob_get_clean(); ?>
+        <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
     </div>
 <?= view()->renderPartial('admin/shell_close') ?>

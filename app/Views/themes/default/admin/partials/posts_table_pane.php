@@ -33,9 +33,8 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
         <?php if (empty($items)): ?>
             <div class="admin-table-state" data-admin-posts-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll">
-                <table class="table align-middle mb-0 admin-posts-table">
-                    <colgroup>
+            <?php ob_start(); ?>
+                <colgroup>
                         <col class="admin-posts-table__col-id">
                         <col class="admin-posts-table__col-title">
                         <col class="admin-posts-table__col-details">
@@ -119,8 +118,11 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
-                </table>
-            </div>
+            <?php $adminTableContent = ob_get_clean(); ?>
+            <?= view()->renderPartial('admin/partials/table', [
+                'content' => $adminTableContent,
+                'table_class' => 'admin-posts-table',
+            ]) ?>
         <?php endif; ?>
     </div>
     <?= view()->renderPartial('admin/partials/table_footer', [

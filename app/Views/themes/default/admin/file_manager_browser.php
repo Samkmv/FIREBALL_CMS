@@ -231,9 +231,8 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <input type="hidden" name="page" value="<?= $currentPage ?>">
                     <input type="hidden" name="action_name" value="" data-file-manager-action-name>
 
-                    <div class="table-responsive admin-table-scroll" data-file-manager-table-wrap>
-                        <table class="table align-middle mb-0" data-file-manager-table>
-                            <thead class="position-sticky top-0">
+                    <?php ob_start(); ?>
+                        <thead class="position-sticky top-0">
                             <tr>
                                 <th scope="col" style="width: 48px;">
                                     <input class="form-check-input" type="checkbox" data-file-manager-toggle-all>
@@ -387,8 +386,12 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
-                        </table>
-                    </div>
+                    <?php $adminTableContent = ob_get_clean(); ?>
+                    <?= view()->renderPartial('admin/partials/table', [
+                        'content' => $adminTableContent,
+                        'table_attributes' => ['data-file-manager-table' => true],
+                        'wrapper_attributes' => ['data-file-manager-table-wrap' => true],
+                    ]) ?>
                 </form>
 
                 <?= view()->renderPartial('admin/partials/table_footer', [

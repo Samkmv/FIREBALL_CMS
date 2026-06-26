@@ -154,9 +154,8 @@ $actionDescription = static fn(string $action): string => return_translation('ad
         <?php if (empty($logs)): ?>
             <div class="admin-table-state"><?= print_translation('admin_maintenance_logs_empty') ?></div>
         <?php else: ?>
-            <div class="table-responsive overflow-auto admin-table-scroll">
-                <table class="table align-middle">
-                    <thead>
+            <?php ob_start(); ?>
+                <thead>
                     <tr>
                         <th><?= print_translation('admin_maintenance_log_date') ?></th>
                         <th><?= print_translation('admin_maintenance_log_user') ?></th>
@@ -165,8 +164,8 @@ $actionDescription = static fn(string $action): string => return_translation('ad
                         <th><?= print_translation('admin_maintenance_log_backup') ?></th>
                         <th><?= print_translation('admin_maintenance_log_error') ?></th>
                     </tr>
-                    </thead>
-                    <tbody>
+                </thead>
+                <tbody>
                     <?php foreach ($logs as $log): ?>
                         <tr>
                             <td class="text-nowrap"><?= htmlSC((string)($log['created_at'] ?? '')) ?></td>
@@ -185,9 +184,9 @@ $actionDescription = static fn(string $action): string => return_translation('ad
                             <td class="small text-danger"><?= htmlSC((string)($log['error'] ?? '')) ?></td>
                         </tr>
                     <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            <?php $adminTableContent = ob_get_clean(); ?>
+            <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [
                 'visible' => count($logs),
