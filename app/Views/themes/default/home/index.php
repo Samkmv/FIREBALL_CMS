@@ -123,7 +123,7 @@
 
             <div class="col-md-8 col-lg-9">
                 <div class="ps-md-4 ps-lg-5">
-                    <div class="swiper swiper-initialized swiper-horizontal swiper-backface-hidden" data-swiper="{
+                    <div class="swiper" data-swiper="{
                 &quot;slidesPerView&quot;: &quot;auto&quot;,
                 &quot;spaceBetween&quot;: 24,
                 &quot;loop&quot;: false,
@@ -134,11 +134,11 @@
                   &quot;nextEl&quot;: &quot;#next-values&quot;
                 }
               }">
-                        <div class="swiper-wrapper" id="swiper-wrapper-26c106b45e289b75b" aria-live="polite" style="transition-duration: 0ms; transform: translate3d(-660px, 0px, 0px); transition-delay: 0ms;">
+                        <div class="swiper-wrapper" id="swiper-wrapper-26c106b45e289b75b">
 
                             <!-- Item -->
 
-                            <div class="swiper-slide w-auto h-auto" style="margin-right: 24px;" role="group" aria-label="1 / 6" data-swiper-slide-index="0">
+                            <div class="swiper-slide w-auto h-auto">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -148,7 +148,7 @@
                                         <p class="mb-0">The most important value of the Company is people (employees, partners, clients). Behind any success there is, first and foremost, a specific person. It is he who creates the product, technology, and innovation.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto swiper-slide-prev" style="margin-right: 24px;" role="group" aria-label="2 / 6" data-swiper-slide-index="1">
+                            </div><div class="swiper-slide w-auto h-auto">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -158,7 +158,7 @@
                                         <p class="mb-0">Care, attention, desire and ability to be helpful (to a colleague in his department, other departments, clients, customers and all other people who surround us).</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto swiper-slide-active" style="margin-right: 24px;" role="group" aria-label="3 / 6" data-swiper-slide-index="2">
+                            </div><div class="swiper-slide w-auto h-auto">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -168,7 +168,7 @@
                                         <p class="mb-0">Responsibility is our key quality. We don't shift it to external circumstances or other people. If we see something that could be improved, we don't just criticize, but offer our own options.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto swiper-slide-next" style="margin-right: 24px;" role="group" aria-label="4 / 6" data-swiper-slide-index="3">
+                            </div><div class="swiper-slide w-auto h-auto">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -178,7 +178,7 @@
                                         <p class="mb-0">We foster a culture of continuous improvement and innovation. Embracing change and staying ahead of the curve are essential for our success. We encourage creative thinking, experimentation, and the pursuit of new ideas.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto" style="margin-right: 24px;" role="group" aria-label="5 / 6" data-swiper-slide-index="4">
+                            </div><div class="swiper-slide w-auto h-auto">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -188,7 +188,7 @@
                                         <p class="mb-0">Cartzilla people are young, ambitious and energetic individuals. With identified leadership qualities, with a desire to be the best at what they do.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto" style="margin-right: 24px;" role="group" aria-label="6 / 6" data-swiper-slide-index="5">
+                            </div><div class="swiper-slide w-auto h-auto">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -199,7 +199,7 @@
                                     </div>
                                 </div>
                             </div></div>
-                        <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span></div>
+                    </div>
                 </div>
             </div>
         </div>

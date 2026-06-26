@@ -2542,6 +2542,7 @@ body.is-site-fullscreen .plyr * {
         radial-gradient(circle at 88% 24%, rgba(20, 184, 166, .12), transparent 30rem),
         var(--home-bg);
     overflow: hidden;
+    text-rendering: optimizeLegibility;
 }
 
 [data-bs-theme="dark"] .home-page {
@@ -2643,10 +2644,10 @@ body.is-site-fullscreen .plyr * {
     object-fit: cover;
     object-position: 50% 50%;
     opacity: 0;
-    transform: translateZ(0);
+    transform: translate3d(0, 0, 0) scale(1.001);
     backface-visibility: hidden;
-    will-change: opacity;
-    transition: opacity .6s ease;
+    transition: opacity .45s ease;
+    contain: paint;
 }
 
 .home-hero--video-ready .home-hero__video {
@@ -2711,7 +2712,7 @@ body.is-site-fullscreen .plyr * {
 .home-hero .btn {
     width: auto;
     box-shadow: 0 1.2rem 2.6rem rgba(0, 0, 0, .18);
-    transition: transform .22s ease, box-shadow .22s ease, background .22s ease, border-color .22s ease, color .22s ease;
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease, color .18s ease;
 }
 
 .home-hero .btn:hover {
@@ -2796,6 +2797,7 @@ body.is-site-fullscreen .plyr * {
     font-size: clamp(2.4rem, 4.5vw, 4.25rem);
     line-height: .9;
     letter-spacing: -.065em;
+    font-variant-numeric: tabular-nums;
 }
 
 .home-stat span:last-child {
@@ -2919,6 +2921,7 @@ body.is-site-fullscreen .plyr * {
     cursor: grab;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    contain: layout paint;
 }
 
 .home-slider::-webkit-scrollbar {
@@ -2928,6 +2931,7 @@ body.is-site-fullscreen .plyr * {
 .home-slider--dragging {
     cursor: grabbing;
     scroll-snap-type: none;
+    user-select: none;
 }
 
 .home-camera-card {
@@ -2937,7 +2941,9 @@ body.is-site-fullscreen .plyr * {
     border-radius: 1.75rem;
     background: var(--home-surface-strong);
     box-shadow: 0 .85rem 2.4rem rgba(15, 23, 42, .07);
-    transition: transform .28s ease, box-shadow .28s ease;
+    transform: translateZ(0);
+    transition: transform .22s ease, box-shadow .22s ease;
+    contain: layout paint;
 }
 
 .home-camera-card:hover {
@@ -2965,7 +2971,8 @@ body.is-site-fullscreen .plyr * {
     height: 100%;
     object-fit: cover;
     transform: scale(1.02);
-    transition: transform .35s ease;
+    transition: transform .28s ease;
+    backface-visibility: hidden;
 }
 
 .home-camera-card:hover .home-camera-card__media img {
@@ -3071,7 +3078,9 @@ body.is-site-fullscreen .plyr * {
     background: #111827;
     box-shadow: 0 1.7rem 4.5rem rgba(15, 23, 42, .16);
     isolation: isolate;
-    transition: transform .3s ease, box-shadow .3s ease;
+    transform: translateZ(0);
+    transition: transform .24s ease, box-shadow .24s ease;
+    contain: paint;
 }
 
 .home-object-card--large {
@@ -3092,7 +3101,8 @@ body.is-site-fullscreen .plyr * {
     height: 100%;
     object-fit: cover;
     transform: scale(1.03);
-    transition: transform .45s ease;
+    transition: transform .32s ease;
+    backface-visibility: hidden;
 }
 
 .home-object-card:hover img {
@@ -3154,7 +3164,9 @@ body.is-site-fullscreen .plyr * {
     background: var(--home-surface);
     box-shadow: 0 1.4rem 4rem rgba(15, 23, 42, .08);
     backdrop-filter: blur(18px);
-    transition: transform .28s ease, background .28s ease;
+    transform: translateZ(0);
+    transition: transform .22s ease, background-color .22s ease;
+    contain: layout paint;
 }
 
 .home-benefit-card:hover {
@@ -3313,14 +3325,19 @@ body.is-site-fullscreen .plyr * {
 }
 
 .home-reveal {
+    --home-reveal-delay: 0ms;
     opacity: 0;
-    transform: translateY(28px);
-    transition: opacity .72s ease, transform .72s ease;
+    transform: translate3d(0, 26px, 0) scale(.985);
+    transition:
+        opacity .62s ease var(--home-reveal-delay),
+        transform .62s cubic-bezier(.2, .72, .18, 1) var(--home-reveal-delay);
+    will-change: opacity, transform;
 }
 
 .home-reveal--visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0) scale(1);
+    will-change: auto;
 }
 
 @keyframes home-pulse {
@@ -3425,6 +3442,40 @@ body.is-site-fullscreen .plyr * {
     .home-geo-card,
     .home-cta {
         border-radius: 1.75rem;
+    }
+
+    .home-hero__video {
+        transition-duration: .28s;
+    }
+
+    .home-hero .btn,
+    .home-slider-btn,
+    .home-featured-nav-btn,
+    .home-camera-card,
+    .home-camera-card__media img,
+    .home-object-card,
+    .home-object-card img,
+    .home-benefit-card,
+    .home-city-link {
+        transition-duration: .16s;
+    }
+
+    .home-hero .btn:hover,
+    .home-slider-btn:hover,
+    .home-camera-card:hover,
+    .home-object-card:hover,
+    .home-benefit-card:hover {
+        transform: none;
+    }
+
+    .home-camera-card:hover .home-camera-card__media img,
+    .home-object-card:hover img {
+        transform: scale(1.02);
+    }
+
+    .home-reveal {
+        transform: translate3d(0, 16px, 0) scale(.992);
+        transition-duration: .46s;
     }
 }
 

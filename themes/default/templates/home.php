@@ -296,6 +296,8 @@ $featuredCount = count($popularCameras);
     }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const saveData = Boolean(navigator.connection && navigator.connection.saveData);
     const hero = root.querySelector('.home-hero');
     const heroVideo = root.querySelector('[data-home-hero-video]');
     const heroStream = heroVideo ? (heroVideo.dataset.homeHeroSrc || '') : '';
@@ -462,7 +464,7 @@ $featuredCount = count($popularCameras);
         }, heroRecoveryDelay);
     };
     const initializeHeroVideo = () => {
-        if (!heroVideo || !heroStream || heroInitialized || reduceMotion) {
+        if (!heroVideo || !heroStream || heroInitialized || reduceMotion || saveData) {
             return;
         }
         heroInitialized = true;
@@ -519,7 +521,26 @@ $featuredCount = count($popularCameras);
             })
             .catch(() => {});
     };
-    initializeHeroVideo();
+    const scheduleHeroInit = () => {
+        if (coarsePointer && 'IntersectionObserver' in window && hero) {
+            const heroObserver = new IntersectionObserver((entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    heroObserver.disconnect();
+                    initializeHeroVideo();
+                }
+            }, { threshold: 0.25 });
+            heroObserver.observe(hero);
+            return;
+        }
+
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(initializeHeroVideo, { timeout: 1200 });
+            return;
+        }
+
+        window.setTimeout(initializeHeroVideo, 250);
+    };
+    scheduleHeroInit();
     if (heroVideo && !reduceMotion) {
         heroVideo.addEventListener('playing', () => {
             if (heroRecoveryTimer) {
@@ -592,18 +613,30 @@ $featuredCount = count($popularCameras);
     }
 
     const revealItems = root.querySelectorAll('.home-reveal');
+    const showRevealItem = (item) => {
+        window.requestAnimationFrame(() => {
+            item.classList.add('home-reveal--visible');
+        });
+    };
+
     if (reduceMotion || !('IntersectionObserver' in window)) {
-        revealItems.forEach((item) => item.classList.add('home-reveal--visible'));
+        revealItems.forEach((item) => {
+            item.style.setProperty('--home-reveal-delay', '0ms');
+            item.classList.add('home-reveal--visible');
+        });
     } else {
         const revealObserver = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
-                    entry.target.classList.add('home-reveal--visible');
+                    showRevealItem(entry.target);
                     revealObserver.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.12 });
-        revealItems.forEach((item) => revealObserver.observe(item));
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+        revealItems.forEach((item, index) => {
+            item.style.setProperty('--home-reveal-delay', `${Math.min((index % 4) * 55, 165)}ms`);
+            revealObserver.observe(item);
+        });
     }
 
     const counters = root.querySelectorAll('[data-home-counter]');
@@ -665,6 +698,9 @@ $featuredCount = count($popularCameras);
     let startX = 0;
     let startScroll = 0;
     slider.addEventListener('pointerdown', (event) => {
+        if (event.pointerType && event.pointerType !== 'mouse') {
+            return;
+        }
         isDragging = true;
         startX = event.clientX;
         startScroll = slider.scrollLeft;
@@ -675,6 +711,7 @@ $featuredCount = count($popularCameras);
         if (!isDragging) {
             return;
         }
+        event.preventDefault();
         slider.scrollLeft = startScroll - (event.clientX - startX);
     });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach((eventName) => {
