@@ -37,7 +37,21 @@ class NotificationCenter
 
         $chatItems = $this->chatMessages->getUnreadNotificationItemsForUser($userId, $limit);
         $contactItems = $isAdmin ? $this->contactRequests->getUnreadNotificationItems($limit) : [];
-        $items = array_merge($chatItems, $contactItems);
+        $pluginItems = [];
+        try {
+            $pluginItems = apply_filters('notification_feed_items', [], $userId, $isAdmin, $limit);
+            if (!is_array($pluginItems)) {
+                $pluginItems = [];
+            }
+        } catch (\Throwable $exception) {
+            log_error_details('Notification feed plugin filter failed', [
+                'user_id' => $userId,
+                'is_admin' => $isAdmin ? '1' : '0',
+            ], $exception);
+            $pluginItems = [];
+        }
+
+        $items = array_merge($chatItems, $contactItems, $pluginItems);
         if ($updateItem !== null) {
             $items[] = $updateItem;
         }
@@ -54,10 +68,11 @@ class NotificationCenter
         });
 
         return [
-            'total_unread_count' => $chatUnreadCount + $contactUnreadCount + $updateUnreadCount,
+            'total_unread_count' => $chatUnreadCount + $contactUnreadCount + $updateUnreadCount + count($pluginItems),
             'chat_unread_count' => $chatUnreadCount,
             'contact_unread_count' => $contactUnreadCount,
             'update_unread_count' => $updateUnreadCount,
+            'plugin_unread_count' => count($pluginItems),
             'items' => array_slice($items, 0, $limit),
         ];
     }

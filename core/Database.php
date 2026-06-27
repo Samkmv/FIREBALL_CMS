@@ -184,4 +184,9 @@ class Database
         return $this->connection->rollBack();
     }
 
+    public function inTransaction(): bool
+    {
+        return $this->connection->inTransaction();
+    }
+
 }

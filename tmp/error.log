@@ -1,0 +1,1133 @@
+[2026-06-27 16:34:48] Missing plugin database record removed
+Request URI: /admin/plugins
+Request Method: GET
+Remote IP: ::1
+Plugin: hello-world
+========================================================================
+[2026-06-27 16:40:32] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:40:32] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:40:43] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:40:43] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:40:46] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:40:46] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:40:54] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:40:54] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:41:02] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:41:02] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:41:11] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:41:11] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:41:26] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:41:26] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:41:38] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:41:38] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:41:51] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:41:51] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:04] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:04] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:05] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:05] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:10] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:10] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:11] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:11] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:19] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:19] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:19] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:19] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:28] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:28] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:29] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:29] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:35] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:35] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:39] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:39] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:43] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:43] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:51] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:51] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:42:59] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:42:59] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================
+[2026-06-27 16:43:07] Database query error
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+SQL: SELECT r.id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+                 FROM toy_rental_rides r
+                 INNER JOIN toy_rental_cars c ON c.id = r.car_id
+                 WHERE r.status = 'overdue'
+                 ORDER BY r.planned_end_at ASC, r.id ASC
+                 LIMIT ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-06-27 16:43:07] Toy rental notification feed failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''8'' at line 6
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(480): FBL\Database->query('SELECT r.id, r....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental::notificationFeedItems(Array, 1, true, 8)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('notification_fe...', Array, 1, true, 8)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(42): apply_filters('notification_fe...', Array, 1, true, 8)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(30): App\Models\NotificationCenter->getFeedForUser(1, true)
+#6 [internal function]: App\Controllers\NotificationController->feed()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#10 {main}
+user_id: 1
+========================================================================

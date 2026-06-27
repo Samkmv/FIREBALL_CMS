@@ -304,3 +304,41 @@ CREATE TABLE IF NOT EXISTS cms_update_logs (
     KEY result (result),
     KEY created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS plugins (
+    id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    slug VARCHAR(120) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    description TEXT NULL,
+    author VARCHAR(255) NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'inactive',
+    installed_at DATETIME NULL,
+    activated_at DATETIME NULL,
+    deactivated_at DATETIME NULL,
+    updated_at DATETIME NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY slug (slug),
+    KEY status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS plugin_migrations (
+    id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    plugin_slug VARCHAR(120) NOT NULL,
+    migration VARCHAR(255) NOT NULL,
+    executed_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY plugin_migration (plugin_slug, migration),
+    KEY plugin_slug (plugin_slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS plugin_settings (
+    id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    plugin_slug VARCHAR(120) NOT NULL,
+    setting_key VARCHAR(190) NOT NULL,
+    setting_value LONGTEXT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY plugin_setting (plugin_slug, setting_key),
+    KEY plugin_slug (plugin_slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

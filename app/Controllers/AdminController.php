@@ -1314,6 +1314,13 @@ class AdminController extends BaseController
         exit;
     }
 
+    public function docs()
+    {
+        return view('admin/docs_index', [
+            'title' => 'Документация',
+        ]);
+    }
+
     /**
      * Shows developer documentation for FIREBALL CMS themes.
      */
@@ -1345,6 +1352,51 @@ class AdminController extends BaseController
             'previous_article' => $previousArticle,
             'next_article' => $nextArticle,
             'resolved_language' => $resolved['language'],
+            'route_base' => '/admin/docs/themes',
+            'docs_path_label' => 'themes',
+            'shell_title' => return_translation('admin_docs_themes_heading'),
+            'shell_subtitle' => return_translation('admin_docs_themes_subtitle'),
+            'back_url' => base_href('/admin/docs'),
+            'back_label' => 'Все разделы',
+            'nav_label' => 'Theme documentation',
+        ]);
+    }
+
+    public function pluginDocs()
+    {
+        $articles = $this->pluginDocsArticles();
+        $article = trim((string)get_route_param('article', 'introduction'));
+        if (!isset($articles[$article])) {
+            $article = 'introduction';
+        }
+
+        $query = trim((string)request()->get('q', ''));
+        $language = app()->get('lang')['code'] ?? 'ru';
+        $resolved = $this->resolveDocsArticle($language, 'plugins', $article);
+        $content = is_file($resolved['path']) ? (string)file_get_contents($resolved['path']) : '';
+        $articleKeys = array_keys($articles);
+        $currentIndex = array_search($article, $articleKeys, true);
+        $previousArticle = $currentIndex > 0 ? $articleKeys[$currentIndex - 1] : null;
+        $nextArticle = $currentIndex < count($articleKeys) - 1 ? $articleKeys[$currentIndex + 1] : null;
+
+        return view('admin/docs_themes', [
+            'title' => 'Документация плагинов',
+            'articles' => $articles,
+            'article' => $article,
+            'article_title' => $articles[$article],
+            'content_html' => Markdown::render($content),
+            'query' => $query,
+            'search_results' => $this->searchDocs($language, 'plugins', $query, $articles),
+            'previous_article' => $previousArticle,
+            'next_article' => $nextArticle,
+            'resolved_language' => $resolved['language'],
+            'route_base' => '/admin/docs/plugins',
+            'docs_path_label' => 'plugins',
+            'shell_title' => 'Документация плагинов',
+            'shell_subtitle' => 'Разработка, подключение и жизненный цикл плагинов FIREBALL CMS.',
+            'back_url' => base_href('/admin/docs'),
+            'back_label' => 'Все разделы',
+            'nav_label' => 'Plugin documentation',
         ]);
     }
 
@@ -1924,9 +1976,23 @@ class AdminController extends BaseController
         ];
     }
 
+    protected function pluginDocsArticles(): array
+    {
+        return [
+            'introduction' => 'Плагины',
+            'toy-car-rental' => 'Toy Car Rental',
+        ];
+    }
+
     protected function resolveThemeDocsArticle(string $language, string $article): array
     {
+        return $this->resolveDocsArticle($language, 'themes', $article);
+    }
+
+    protected function resolveDocsArticle(string $language, string $section, string $article): array
+    {
         $article = preg_replace('/[^a-z0-9_-]/', '', $article) ?: 'introduction';
+        $section = preg_replace('/[^a-z0-9_-]/', '', $section) ?: 'themes';
         $candidates = array_values(array_unique([
             strtolower($language),
             'en',
@@ -1934,21 +2000,26 @@ class AdminController extends BaseController
         ]));
 
         foreach ($candidates as $candidate) {
-            $path = ROOT . '/docs/' . $candidate . '/themes/' . $article . '.md';
+            $path = ROOT . '/docs/' . $candidate . '/' . $section . '/' . $article . '.md';
             $real = realpath($path);
-            $base = realpath(ROOT . '/docs/' . $candidate . '/themes');
+            $base = realpath(ROOT . '/docs/' . $candidate . '/' . $section);
             if ($real !== false && $base !== false && str_starts_with($real, rtrim($base, '/') . '/') && is_file($real)) {
                 return ['path' => $real, 'language' => $candidate];
             }
         }
 
         return [
-            'path' => ROOT . '/docs/ru/themes/' . $article . '.md',
+            'path' => ROOT . '/docs/ru/' . $section . '/' . $article . '.md',
             'language' => 'ru',
         ];
     }
 
     protected function searchThemeDocs(string $language, string $query, array $articles): array
+    {
+        return $this->searchDocs($language, 'themes', $query, $articles);
+    }
+
+    protected function searchDocs(string $language, string $section, string $query, array $articles): array
     {
         if (mb_strlen($query) < 2) {
             return [];
@@ -1957,7 +2028,7 @@ class AdminController extends BaseController
         $results = [];
         $needle = mb_strtolower($query);
         foreach ($articles as $slug => $title) {
-            $resolved = $this->resolveThemeDocsArticle($language, $slug);
+            $resolved = $this->resolveDocsArticle($language, $section, $slug);
             if (!is_file($resolved['path'])) {
                 continue;
             }

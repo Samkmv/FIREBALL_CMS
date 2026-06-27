@@ -30,7 +30,9 @@ class NotificationController extends BaseController
         $feed = $this->notifications->getFeedForUser((int)$currentUser['id'], check_admin());
 
         $items = array_map(function (array $item): array {
-            if (($item['type'] ?? '') === 'update') {
+            $type = (string)($item['type'] ?? '');
+
+            if ($type === 'update') {
                 return [
                     'type' => 'update',
                     'source_label' => return_translation('notification_source_update'),
@@ -41,7 +43,7 @@ class NotificationController extends BaseController
                 ];
             }
 
-            if (($item['type'] ?? '') === 'contact_request') {
+            if ($type === 'contact_request') {
                 return [
                     'type' => 'contact_request',
                     'source_label' => return_translation('notification_source_request'),
@@ -49,6 +51,19 @@ class NotificationController extends BaseController
                     'text' => str_replace(':name', (string)($item['name'] ?? ''), return_translation('notification_request_from')),
                     'url' => base_href('/admin/contact-requests'),
                     'created_at' => (string)($item['created_at'] ?? ''),
+                ];
+            }
+
+            if ($type !== '' && $type !== 'chat') {
+                return [
+                    'type' => $type,
+                    'source_label' => (string)($item['source_label'] ?? return_translation('tpl_notifications')),
+                    'title' => (string)($item['title'] ?? return_translation('tpl_notifications')),
+                    'text' => (string)($item['text'] ?? ''),
+                    'url' => (string)($item['url'] ?? '#'),
+                    'created_at' => (string)($item['created_at'] ?? ''),
+                    'time' => (string)($item['time'] ?? ($item['created_at'] ?? '')),
+                    'sort_id' => (int)($item['sort_id'] ?? 0),
                 ];
             }
 
@@ -72,6 +87,7 @@ class NotificationController extends BaseController
             'total_unread_count' => (int)$feed['total_unread_count'],
             'chat_unread_count' => (int)$feed['chat_unread_count'],
             'contact_unread_count' => (int)$feed['contact_unread_count'],
+            'plugin_unread_count' => (int)($feed['plugin_unread_count'] ?? 0),
             'items' => $items,
         ]);
     }

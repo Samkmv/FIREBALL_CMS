@@ -1,0 +1,154 @@
+<?php
+$currency = (string)($settings['currency'] ?? '₽');
+$durations = [5, 10, 15, 30];
+?>
+<?= view()->renderPartial('admin/shell_open', [
+    'title' => 'Прокат машинок',
+    'subtitle' => 'Панель оператора: старт, таймеры, просрочка и завершение поездок.',
+]) ?>
+
+    <?php require __DIR__ . '/tabs.php'; ?>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="border rounded-5 p-4">
+                <div class="text-body-secondary small mb-1">Поездок сегодня</div>
+                <div class="toy-rental-stat-value fw-bold"><?= (int)$stats['rides_total'] ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded-5 p-4">
+                <div class="text-body-secondary small mb-1">Активных</div>
+                <div class="toy-rental-stat-value fw-bold"><?= (int)$stats['active'] + (int)$stats['overdue'] ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded-5 p-4">
+                <div class="text-body-secondary small mb-1">Выручка</div>
+                <div class="toy-rental-stat-value fw-bold"><?= number_format((float)$stats['revenue_total'], 0, '.', ' ') ?> <?= htmlSC($currency) ?></div>
+            </div>
+        </div>
+    </div>
+
+    <?php if (empty($cars)): ?>
+        <div class="border rounded-5 p-4 p-md-5 text-center">
+            <i class="ci-settings fs-1 text-body-tertiary d-block mb-3"></i>
+            <h2 class="h5 mb-2">Машинки ещё не добавлены</h2>
+            <p class="text-body-secondary mb-3">Добавьте первую машинку, чтобы начать прокат.</p>
+            <a class="btn btn-dark rounded-pill" href="<?= base_href('/admin/toy-rental/cars/create') ?>">Добавить машинку</a>
+        </div>
+    <?php else: ?>
+        <div class="row g-4">
+            <?php foreach ($cars as $car): ?>
+                <?php
+                $ride = $car['active_ride'] ?? null;
+                $isOverdue = $ride && (string)$ride['status'] === 'overdue';
+                $isRented = $ride !== null || (string)$car['status'] === 'rented';
+                $cardClass = $isOverdue ? 'is-overdue' : ($isRented ? 'is-rented' : '');
+                $statusClass = $isOverdue ? 'text-bg-danger' : ($isRented ? 'text-bg-warning' : ((string)$car['status'] === 'available' ? 'text-bg-success' : 'text-bg-secondary'));
+                $label = trim((string)$car['name'] . ' #' . (string)$car['number']);
+                ?>
+                <div class="col-md-6 col-xl-4">
+                    <article class="card h-100 rounded-5 toy-rental-car-card <?= htmlSC($cardClass) ?>" data-toy-rental-card data-ride-id="<?= (int)($ride['id'] ?? 0) ?>" data-car-label="<?= htmlSC($label) ?>">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                                <div>
+                                    <h2 class="h5 mb-1"><?= htmlSC((string)$car['name']) ?></h2>
+                                    <div class="text-body-secondary small">№ <?= htmlSC((string)$car['number']) ?></div>
+                                </div>
+                                <span class="badge rounded-pill <?= htmlSC($statusClass) ?>" data-toy-rental-status>
+                                    <?= htmlSC($isOverdue ? 'Просрочена' : FireballPluginToyCarRental::statusLabel((string)$car['status'])) ?>
+                                </span>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-3 small text-body-secondary mb-3">
+                                <?php if ((string)$car['color'] !== ''): ?>
+                                    <span class="d-inline-flex align-items-center gap-2"><span class="toy-rental-color-dot" style="color: <?= htmlSC((string)$car['color']) ?>"></span><?= htmlSC((string)$car['color']) ?></span>
+                                <?php endif; ?>
+                                <span><?= number_format((float)$car['price_per_ride'], 0, '.', ' ') ?> <?= htmlSC($currency) ?> / поездка</span>
+                                <span><?= number_format((float)$car['price_per_minute'], 2, '.', ' ') ?> <?= htmlSC($currency) ?> / мин</span>
+                            </div>
+
+                            <?php if ($ride): ?>
+                                <div class="border rounded-4 p-3 mb-3">
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <span class="text-body-secondary small">Осталось</span>
+                                        <span class="h4 mb-0 toy-rental-timer" data-toy-rental-timer data-end="<?= htmlSC(date('c', strtotime((string)$ride['planned_end_at']))) ?>">--:--</span>
+                                    </div>
+                                    <div class="small text-body-secondary mt-2">
+                                        Старт: <?= htmlSC(date('H:i', strtotime((string)$ride['started_at']))) ?>,
+                                        план: <?= htmlSC(date('H:i', strtotime((string)$ride['planned_end_at']))) ?>
+                                    </div>
+                                    <?php if ((string)$ride['customer_name'] !== '' || (string)$ride['customer_phone'] !== ''): ?>
+                                        <div class="small mt-2"><?= htmlSC(trim((string)$ride['customer_name'] . ' ' . (string)$ride['customer_phone'])) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <form action="<?= base_href('/admin/toy-rental/rides/complete') ?>" method="post">
+                                    <?= get_csrf_field() ?>
+                                    <input type="hidden" name="id" value="<?= (int)$ride['id'] ?>">
+                                    <input type="hidden" name="payment_amount" value="<?= htmlSC((string)$ride['payment_amount']) ?>">
+                                    <input type="hidden" name="payment_method" value="<?= htmlSC((string)$ride['payment_method']) ?>">
+                                    <input type="hidden" name="payment_status" value="<?= htmlSC((string)$ride['payment_status']) ?>">
+                                    <button class="btn btn-dark rounded-pill w-100" type="submit">Завершить поездку</button>
+                                </form>
+                            <?php elseif ((string)$car['status'] === 'available'): ?>
+                                <details>
+                                    <summary class="btn btn-outline-dark rounded-pill w-100">Начать поездку</summary>
+                                    <form class="mt-3 d-grid gap-3" action="<?= base_href('/admin/toy-rental/rides/start') ?>" method="post">
+                                        <?= get_csrf_field() ?>
+                                        <input type="hidden" name="car_id" value="<?= (int)$car['id'] ?>">
+                                        <div class="row g-2">
+                                            <div class="col-sm-6">
+                                                <input class="form-control" type="text" name="customer_name" placeholder="Имя клиента">
+                                            </div>
+                                            <div class="col-sm-6">
+                                                <input class="form-control" type="text" name="customer_phone" placeholder="Телефон">
+                                            </div>
+                                        </div>
+                                        <select class="form-select" name="duration_minutes">
+                                            <?php foreach ($durations as $duration): ?>
+                                                <option value="<?= $duration ?>" <?= (int)$settings['default_duration'] === $duration ? 'selected' : '' ?>><?= $duration ?> минут</option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div class="row g-2">
+                                            <div class="col-sm-5">
+                                                <input class="form-control" type="number" name="payment_amount" min="0" step="0.01" value="<?= htmlSC((string)($car['price_per_ride'] ?: $settings['default_price'])) ?>" placeholder="Сумма">
+                                            </div>
+                                            <div class="col-sm-4">
+                                                <select class="form-select" name="payment_method">
+                                                    <option value="cash">Наличные</option>
+                                                    <option value="card">Карта</option>
+                                                    <option value="transfer">Перевод</option>
+                                                    <option value="other">Другое</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-sm-3">
+                                                <select class="form-select" name="payment_status">
+                                                    <option value="paid">Оплачено</option>
+                                                    <option value="unpaid">Не оплачено</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-dark rounded-pill" type="submit">Старт</button>
+                                    </form>
+                                </details>
+                            <?php else: ?>
+                                <button class="btn btn-outline-secondary rounded-pill w-100" type="button" disabled>Недоступна</button>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <script>
+        window.toyRentalSettings = <?= json_encode([
+            'soundEnabled' => (bool)$settings['sound_enabled'],
+            'toastEnabled' => (bool)$settings['toast_enabled'],
+            'autoRefreshSeconds' => (int)$settings['auto_refresh_seconds'],
+            'dashboardUrl' => base_href('/admin/toy-rental'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    </script>
+
+<?= view()->renderPartial('admin/shell_close') ?>

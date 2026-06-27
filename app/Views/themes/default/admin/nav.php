@@ -45,12 +45,15 @@ $navItems = [
         'badge_title' => return_translation('admin_support_new_count'),
     ],
     ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'badge' => 'Beta'],
+    ['href' => base_href('/admin/plugins'), 'label' => 'Плагины', 'icon' => 'ci-box'],
     ['href' => base_href('/admin/updates'), 'label' => return_translation('admin_nav_updates'), 'icon' => 'ci-refresh-cw', 'creator_only' => true],
     ['href' => base_href('/admin/settings'), 'label' => return_translation('admin_nav_settings'), 'icon' => 'ci-settings'],
     ['href' => base_href('/admin/security/logs'), 'label' => return_translation('admin_nav_security_logs'), 'icon' => 'ci-shield'],
     ['href' => base_href('/admin/system/database-maintenance'), 'label' => return_translation('admin_nav_database_maintenance'), 'icon' => 'ci-database', 'creator_only' => true],
-    ['href' => base_href('/admin/docs/themes'), 'label' => return_translation('admin_nav_docs'), 'icon' => 'ci-book-open'],
+    ['href' => base_href('/admin/docs'), 'label' => return_translation('admin_nav_docs'), 'icon' => 'ci-book-open'],
 ];
+
+$navItems = apply_filters('admin_menu', $navItems);
 
 $isActive = static function (string $href) use ($currentPath, $normalizeAdminPath): bool {
     $routePath = $normalizeAdminPath((string)(parse_url($href, PHP_URL_PATH) ?: '/'));
@@ -77,16 +80,24 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
     <div class="list-group list-group-flush gap-1">
         <?php foreach ($navItems as $item): ?>
             <?php if (!empty($item['creator_only']) && !check_creator()) { continue; } ?>
-            <?php $active = $isActive($item['href']); ?>
+            <?php
+            $itemHref = (string)($item['href'] ?? $item['url'] ?? '#');
+            $itemLabel = (string)($item['label'] ?? $item['title'] ?? '');
+            $icon = (string)($item['icon'] ?? 'ci-box');
+            if (!str_starts_with($icon, 'ci-')) {
+                $icon = 'ci-' . $icon;
+            }
+            ?>
+            <?php $active = $isActive($itemHref); ?>
             <a
                 class="list-group-item list-group-item-action d-flex align-items-center gap-3 rounded-4 px-3 py-2 border-0 <?= $active ? 'active shadow-sm' : 'bg-transparent' ?>"
-                href="<?= $item['href'] ?>"
+                href="<?= htmlSC($itemHref) ?>"
             >
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0 admin-shell-nav-icon">
-                    <i class="<?= htmlSC($item['icon']) ?>"></i>
+                    <i class="<?= htmlSC($icon) ?>"></i>
                 </span>
                 <span class="fw-medium d-inline-flex align-items-center gap-2 min-w-0 admin-shell-nav-label">
-                    <span class="text-truncate"><?= htmlSC($item['label']) ?></span>
+                    <span class="text-truncate"><?= htmlSC($itemLabel) ?></span>
                     <?php if (!empty($item['badge'])): ?>
                         <span class="<?= htmlSC((string)($item['badge_class'] ?? 'admin-shell-beta-badge')) ?>" title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>"><?= htmlSC($item['badge']) ?></span>
                     <?php endif; ?>

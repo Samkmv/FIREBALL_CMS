@@ -1,0 +1,10 @@
+{
+  "name": "Toy Car Rental",
+  "slug": "toy-car-rental",
+  "version": "1.0.0",
+  "description": "Модуль проката детских машинок с таймером, оплатой и статистикой.",
+  "author": "FIREBALL CMS",
+  "requires": {
+    "cms": ">=1.7.0"
+  }
+}

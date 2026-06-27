@@ -20,6 +20,7 @@ use App\Controllers\AnalyticsController;
 use App\Controllers\NotificationController;
 use App\Controllers\FileManagerController;
 use App\Controllers\ThemeEditorController;
+use App\Controllers\PluginController;
 use App\Controllers\Api\V1\MenuController;
 use App\Modules\BlockEditor\BlockEditorController;
 
@@ -204,6 +205,10 @@ $app->router->post('/admin/theme-editor/replace-image', [ThemeEditorController::
 $app->router->post('/admin/theme-editor/restore', [ThemeEditorController::class, 'restore'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/theme-editor/copy', [ThemeEditorController::class, 'copyTheme'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/themes/delete', [AdminController::class, 'themeDelete'])->middleware(['auth', 'admin', 'creator']);
+$app->router->get('/admin/plugins', [PluginController::class, 'index'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/plugins/install', [PluginController::class, 'install'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/plugins/activate', [PluginController::class, 'activate'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/plugins/deactivate', [PluginController::class, 'deactivate'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/settings/update-center/check', [AdminController::class, 'checkForUpdates'])->middleware(['auth', 'admin', 'creator']);
@@ -216,12 +221,20 @@ $app->router->post('/admin/files/rename', [FileManagerController::class, 'rename
 $app->router->post('/admin/files/action', [FileManagerController::class, 'bulkAction'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/delete', [FileManagerController::class, 'delete'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/folder/delete', [FileManagerController::class, 'deleteDirectory'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/docs', [AdminController::class, 'docs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/docs/themes', [AdminController::class, 'themeDocs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/docs/themes/(?P<article>[a-z0-9_-]+)/?', [AdminController::class, 'themeDocs'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/docs/plugins', [AdminController::class, 'pluginDocs'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/docs/plugins/(?P<article>[a-z0-9_-]+)/?', [AdminController::class, 'pluginDocs'])->middleware(['auth', 'admin']);
 
 // Store pages ---------- //
 $app->router->post('/add-to-cart', [CartController::class, 'addToCart']);
 $app->router->post('/remove-from-cart', [CartController::class, 'removeFromCart']);
+
+// Active plugin routes are registered before the home and generic CMS page routes.
+if ($app->isInstalled()) {
+    plugin_manager()->bootActivePlugins($app->router);
+}
 
 // Home must be checked before the generic page slug so localized roots like /en/ do not become slug "en".
 $app->router->get('/', [HomeController::class, 'index']);

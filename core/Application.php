@@ -3,6 +3,9 @@
 namespace FBL;
 
 use App\Services\ConfigService;
+use FBL\Plugins\EventManager;
+use FBL\Plugins\HookManager;
+use FBL\Plugins\PluginManager;
 /**
  * Основной объект приложения, который инициализирует базовые сервисы и запускает обработку запроса.
  */
@@ -18,6 +21,9 @@ class Application
     public ?Database $db = null;
     public View $view;
     public ?ThemeManager $theme = null;
+    public ?PluginManager $plugins = null;
+    public HookManager $hooks;
+    public EventManager $events;
     public static Application $app;
     protected array $container = [];
     protected ?array $installationStatus = null;
@@ -35,6 +41,8 @@ class Application
         $this->view = new View(LAYOUT);
         $this->session = new Session();
         $this->cache = new Cache();
+        $this->hooks = new HookManager();
+        $this->events = new EventManager();
         $this->generateCSRFToken();
         if ($this->isInstalled()) {
             $this->bootInstalledServices();
@@ -216,6 +224,9 @@ class Application
         }
         if ($this->theme === null) {
             $this->theme = new ThemeManager();
+        }
+        if ($this->plugins === null) {
+            $this->plugins = new PluginManager();
         }
 
         $this->set('config', new ConfigService());

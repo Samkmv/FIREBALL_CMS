@@ -815,6 +815,10 @@ $(function(){
                 sourceClass = 'text-bg-warning';
             } else if (type === 'update') {
                 sourceClass = 'text-bg-success';
+            } else if (type === 'toy_rental') {
+                sourceClass = 'text-bg-danger';
+            } else if (type && type !== 'chat') {
+                sourceClass = 'text-bg-info';
             }
 
             const avatar = item.avatar
@@ -843,36 +847,74 @@ $(function(){
         notificationList.html(html);
     };
 
-    const notifyChatItems = (items) => {
-        if (!Array.isArray(items) || typeof toastr.chat !== 'function') {
+    const getNotificationKey = (item) => {
+        const type = String(item.type || 'notification');
+        const sortId = Number(item.sort_id || 0);
+        const senderId = Number(item.sender_id || 0);
+        const createdAt = String(item.created_at || '');
+        const url = String(item.url || '');
+
+        return `${type}:${senderId}:${sortId}:${createdAt}:${url}`;
+    };
+
+    const notifyNotificationItems = (items) => {
+        if (!Array.isArray(items)) {
             notificationsReady = true;
             return;
         }
 
         items.forEach((item) => {
-            if (String(item.type || '') !== 'chat') {
-                return;
-            }
-
-            const key = `chat:${Number(item.sender_id || 0)}:${Number(item.sort_id || 0)}`;
+            const type = String(item.type || '');
+            const key = getNotificationKey(item);
             if (!notificationsReady) {
                 seenNotificationKeys.add(key);
                 return;
             }
 
-            if (seenNotificationKeys.has(key) || isSameChatOpen(item.sender_id)) {
+            if (seenNotificationKeys.has(key)) {
                 seenNotificationKeys.add(key);
                 return;
             }
 
             seenNotificationKeys.add(key);
-            toastr.chat({
-                title: item.title || notificationCenter.data('chat-source-label') || '',
-                message: item.text || '',
-                avatar: item.avatar || '',
-                time: item.time || item.created_at || '',
-                href: item.url || '#',
-            });
+
+            if (type === 'chat') {
+                if (isSameChatOpen(item.sender_id) || !window.toastr || typeof window.toastr.chat !== 'function') {
+                    return;
+                }
+
+                window.toastr.chat({
+                    title: item.title || notificationCenter.data('chat-source-label') || '',
+                    message: item.text || '',
+                    avatar: item.avatar || '',
+                    time: item.time || item.created_at || '',
+                    href: item.url || '#',
+                });
+                return;
+            }
+
+            if (!window.toastr) {
+                return;
+            }
+
+            const title = item.title || item.source_label || '';
+            const message = item.text || '';
+            if (type === 'toy_rental') {
+                if (typeof window.toastr.rental === 'function') {
+                    window.toastr.rental({
+                        title,
+                        message,
+                        href: item.url || '#',
+                        time: item.time || item.created_at || '',
+                    });
+                } else if (typeof window.toastr.error === 'function') {
+                    window.toastr.error(message, title);
+                }
+            } else if (type === 'contact_request' && typeof window.toastr.warning === 'function') {
+                window.toastr.warning(message, title);
+            } else if (typeof window.toastr.info === 'function') {
+                window.toastr.info(message, title);
+            }
         });
 
         notificationsReady = true;
@@ -898,7 +940,7 @@ $(function(){
         updateUnreadBadges(response.chat_unread_count || 0);
         updateNotificationBadges(response.total_unread_count || 0);
         renderNotificationItems(response.items || []);
-        notifyChatItems(response.items || []);
+        notifyNotificationItems(response.items || []);
     };
 
     const sameOriginUrl = (url) => {
@@ -1374,6 +1416,66 @@ $(function(){
         }, Number(config.timeOut) || 5000);
     };
 
+    const showRentalToast = (payload = {}) => {
+        const container = getContainer();
+        const toast = document.createElement('div');
+        const targetHref = String(payload.href || '#');
+
+        toast.className = 'toast app-toast--rental border-danger fade bg-white text-body shadow-sm';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('data-bs-theme', 'light');
+
+        toast.innerHTML = `
+            <div class="toast-header bg-white text-body">
+                <i class="ci-clock text-danger fs-base me-2"></i>
+                <span class="fw-semibold text-truncate">${escapeHtml(payload.title || 'Прокат машинок')}</span>
+                <span class="small text-body-tertiary ms-2">${escapeHtml(payload.time || '')}</span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body me-2 bg-white text-body">
+                ${escapeHtml(payload.message || '')}
+            </div>
+        `;
+
+        toast.addEventListener('click', function (event) {
+            if ($(event.target).closest('.btn-close').length || targetHref === '' || targetHref === '#') {
+                return;
+            }
+
+            window.location.href = targetHref;
+        });
+
+        if (config.newestOnTop && container.firstChild) {
+            container.insertBefore(toast, container.firstChild);
+        } else {
+            container.appendChild(toast);
+        }
+
+        if (bootstrapApi && bootstrapApi.Toast) {
+            const instance = bootstrapApi.Toast.getOrCreateInstance(toast, {
+                autohide: true,
+                delay: Number(config.timeOut) || 5000,
+            });
+
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            }, { once: true });
+
+            instance.show();
+            return;
+        }
+
+        $(toast).addClass('show');
+        setTimeout(function () {
+            $(toast).removeClass('show');
+            setTimeout(function () {
+                toast.remove();
+            }, 200);
+        }, Number(config.timeOut) || 5000);
+    };
+
     window.toastr = {
         options: config,
         success: (message, title) => showToast('success', message, title),
@@ -1381,6 +1483,7 @@ $(function(){
         info: (message, title) => showToast('info', message, title),
         warning: (message, title) => showToast('warning', message, title),
         chat: (payload) => showChatToast(payload),
+        rental: (payload) => showRentalToast(payload),
         remove: () => {
             document.querySelectorAll('[data-app-toast-container] .toast').forEach((toast) => toast.remove());
         },

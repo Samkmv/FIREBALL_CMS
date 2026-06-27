@@ -40,6 +40,10 @@ if (!defined('STORAGE')) {
     define('STORAGE', ROOT . '/storage');
 }
 
+if (!defined('PLUGINS')) {
+    define('PLUGINS', ROOT . '/plugins');
+}
+
 if (!defined('INSTALLED_LOCK')) {
     define('INSTALLED_LOCK', STORAGE . '/installed.lock');
 }

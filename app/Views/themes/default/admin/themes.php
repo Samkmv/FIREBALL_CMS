@@ -1,7 +1,8 @@
 <?php
 $activeSlug = (string)($active_theme['slug'] ?? 'default');
 $canManageThemes = check_creator();
-$actions = $canManageThemes
+$actions = '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/docs/themes') . '"><i class="ci-book-open"></i>' . htmlSC(return_translation('admin_nav_docs')) . '</a>';
+$actions .= $canManageThemes
     ? '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/theme-editor/' . rawurlencode($activeSlug)) . '"><i class="ci-code"></i>' . htmlSC(return_translation('admin_nav_theme_editor')) . '</a>'
         . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/import') . '"><i class="ci-upload"></i>' . htmlSC(return_translation('admin_themes_import')) . '</a>'
         . '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/themes/create') . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_themes_create')) . '</a>'

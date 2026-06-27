@@ -81,6 +81,60 @@ function cache(): \FBL\Cache
     return app()->cache;
 }
 
+function plugin_manager(): \FBL\Plugins\PluginManager
+{
+    if (app()->plugins === null) {
+        app()->plugins = new \FBL\Plugins\PluginManager();
+    }
+
+    return app()->plugins;
+}
+
+function add_action(string $hook, callable $callback, int $priority = 10): void
+{
+    app()->hooks->addAction($hook, $callback, $priority);
+}
+
+function do_action(string $hook, mixed ...$args): void
+{
+    app()->hooks->doAction($hook, ...$args);
+}
+
+function add_filter(string $hook, callable $callback, int $priority = 10): void
+{
+    app()->hooks->addFilter($hook, $callback, $priority);
+}
+
+function apply_filters(string $hook, mixed $value, mixed ...$args): mixed
+{
+    return app()->hooks->applyFilters($hook, $value, ...$args);
+}
+
+function fireball_event(string $eventName, mixed $payload = null): void
+{
+    app()->events->fire($eventName, $payload);
+}
+
+function fireball_listen(string $eventName, callable $callback): void
+{
+    app()->events->listen($eventName, $callback);
+}
+
+function plugin_setting(string $pluginSlug, string $key, mixed $default = null): mixed
+{
+    return plugin_manager()->setting($pluginSlug, $key, $default);
+}
+
+function plugin_setting_set(string $pluginSlug, string $key, mixed $value): void
+{
+    plugin_manager()->setSetting($pluginSlug, $key, $value);
+}
+
+function plugin_view(string $pluginSlug, string $view, array $data = [], bool $layout = true): string
+{
+    return plugin_manager()->renderView($pluginSlug, $view, $data, $layout);
+}
+
 function get_route_params(): array
 {
     return app()->router->route_params;

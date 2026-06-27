@@ -1818,6 +1818,20 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     border-top: 1px solid rgba(13, 110, 253, 0.12);
 }
 
+.app-toast-stack .toast.app-toast--rental {
+    border-color: #dc3545 !important;
+    cursor: pointer;
+}
+
+.app-toast-stack .toast.app-toast--rental .toast-header {
+    background-color: rgba(220, 53, 69, 0.08) !important;
+    color: #b02a37 !important;
+}
+
+.app-toast-stack .toast.app-toast--rental .toast-body {
+    border-top: 1px solid rgba(220, 53, 69, 0.12);
+}
+
 .app-toast-stack .toast.app-toast--warning {
     border-color: #ffc107 !important;
 }
@@ -1887,6 +1901,15 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 
 [data-bs-theme="dark"] .app-toast-stack .toast.app-toast--chat .toast-body {
     border-top-color: rgba(13, 110, 253, 0.24);
+}
+
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--rental .toast-header {
+    background-color: rgba(220, 53, 69, 0.18) !important;
+    color: #fca5a5 !important;
+}
+
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--rental .toast-body {
+    border-top-color: rgba(220, 53, 69, 0.24);
 }
 
 [data-bs-theme="dark"] .app-toast-stack .toast.app-toast--warning .toast-header {
@@ -1989,6 +2012,38 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.admin-pagination-mobile {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+}
+
+.admin-pagination-mobile__control {
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+.admin-pagination-mobile__control.disabled {
+    color: var(--bs-secondary-color);
+    pointer-events: none;
+    opacity: .45;
+}
+
+.admin-pagination-mobile__status {
+    min-width: 0;
+    color: var(--bs-body-color);
+    font-size: .875rem;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .admin-analytics-card {
@@ -2319,6 +2374,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 }
 
 .admin-post-actions-dropdown .dropdown-menu,
+[data-admin-table] .dropdown .dropdown-menu,
 .admin-post-actions-dropdown__menu--floating {
     min-width: 12rem;
     max-width: min(22rem, calc(100vw - 1.5rem));
@@ -2330,6 +2386,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 }
 
 .admin-post-actions-dropdown .dropdown-item,
+[data-admin-table] .dropdown .dropdown-item,
 .admin-post-actions-dropdown__menu--floating .dropdown-item {
     --cz-dropdown-item-padding-x: 1rem;
     --cz-dropdown-item-padding-y: .55rem;
@@ -2337,6 +2394,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 }
 
 .admin-post-actions-dropdown .dropdown-item i,
+[data-admin-table] .dropdown .dropdown-item i,
 .admin-post-actions-dropdown__menu--floating .dropdown-item i {
     flex: 0 0 auto;
     width: 1rem;
@@ -3266,6 +3324,20 @@ body.is-site-fullscreen .plyr * {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+}
+
+.admin-table-component__scroll[data-admin-simplebar] {
+    overflow: hidden;
+}
+
+.admin-table-component__scroll[data-admin-simplebar] .simplebar-content {
+    min-width: max-content;
+}
+
+.admin-table-component__scroll[data-admin-simplebar] .simplebar-content::before,
+.admin-table-component__scroll[data-admin-simplebar] .simplebar-content::after {
+    display: none;
+    content: none;
 }
 
 .admin-table-component__table {
@@ -4375,6 +4447,14 @@ body.is-site-fullscreen .plyr * {
         scrollbar-gutter: auto;
     }
 
+    [data-admin-shell] .admin-table-card .admin-table-component__scroll[data-admin-simplebar] {
+        overflow: hidden !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-table-component__scroll[data-admin-simplebar] .simplebar-content {
+        min-width: 0;
+    }
+
     [data-admin-shell] .admin-table-card .admin-table-component__table,
     [data-file-manager-shell] [data-file-manager-table],
     [data-admin-users-table] {
@@ -4543,6 +4623,21 @@ body.is-site-fullscreen .plyr * {
     [data-admin-shell] .admin-table-meta {
         display: flex;
         gap: .35rem;
+    }
+
+    .admin-pagination-wrap,
+    [data-fm-pagination] {
+        overflow: visible !important;
+        padding-bottom: 0 !important;
+    }
+
+    .admin-table-footer {
+        align-items: stretch;
+        gap: .75rem;
+    }
+
+    .admin-table-info {
+        text-align: center;
     }
 }
 

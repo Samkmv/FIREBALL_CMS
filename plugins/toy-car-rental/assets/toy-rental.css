@@ -1,0 +1,53 @@
+.toy-rental-tabs {
+    gap: .5rem;
+}
+
+.toy-rental-car-card {
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.toy-rental-car-card.is-rented {
+    border-color: rgba(var(--cz-warning-rgb, 255, 193, 7), .45) !important;
+}
+
+.toy-rental-car-card.is-overdue {
+    border-color: rgba(var(--cz-danger-rgb, 220, 53, 69), .65) !important;
+    box-shadow: 0 1rem 2rem rgba(220, 53, 69, .12);
+}
+
+.toy-rental-car-card.is-overdue.toy-rental-alert-pulse {
+    animation: toy-rental-pulse 1.2s ease-in-out infinite;
+}
+
+.toy-rental-timer {
+    font-variant-numeric: tabular-nums;
+}
+
+.toy-rental-color-dot {
+    width: .85rem;
+    height: .85rem;
+    border-radius: 50%;
+    border: 1px solid var(--cz-border-color, rgba(0,0,0,.16));
+    background: currentColor;
+}
+
+.toy-rental-stat-value {
+    font-size: clamp(1.5rem, 3vw, 2.35rem);
+    line-height: 1;
+}
+
+@keyframes toy-rental-pulse {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .toy-rental-tabs .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
