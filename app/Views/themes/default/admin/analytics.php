@@ -182,8 +182,8 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     <tbody>
                         <?php foreach (($pages['items'] ?? []) as $row): ?>
                             <tr>
-                                <td class="text-break"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
-                                <td class="text-end"><?= (int)($row['views'] ?? $row['total'] ?? 0) ?></td>
+                                <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
+                                <td class="text-end admin-analytics-page-views"><?= (int)($row['views'] ?? $row['total'] ?? 0) ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($pages['items'])): ?>
@@ -226,7 +226,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                                 <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
                                 <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
                                 <td><?= htmlSC((string)($row['source'] ?? '')) ?></td>
-                                <td class="text-break"><?= htmlSC((string)($row['current_page'] ?? '/')) ?></td>
+                                <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['current_page'] ?? '/')) ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($visits['items'])): ?>

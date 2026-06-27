@@ -1884,10 +1884,14 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 
 @media (max-width: 575.98px) {
     .app-toast-stack {
-        right: 1.5rem !important;
-        bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
-        left: 1.5rem !important;
+        right: 1rem !important;
+        bottom: max(0.85rem, calc(env(safe-area-inset-bottom) + 0.85rem)) !important;
+        left: 1rem !important;
         width: auto;
+    }
+
+    body:has(.admin-shell-mobile-toggle) .app-toast-stack {
+        bottom: calc(4.75rem + env(safe-area-inset-bottom)) !important;
     }
 }
 
@@ -4448,5 +4452,131 @@ body.is-site-fullscreen .plyr * {
     [data-admin-shell] .admin-table-meta {
         display: flex;
         gap: .35rem;
+    }
+}
+
+/* Analytics tables: keep textual data left-aligned and mobile rows readable. */
+[data-admin-shell] .admin-table-card .admin-analytics-table,
+[data-admin-shell] .admin-table-card .admin-analytics-table th,
+[data-admin-shell] .admin-table-card .admin-analytics-table td {
+    text-align: left;
+}
+
+[data-admin-shell] .admin-table-card .admin-analytics-table .text-end,
+[data-admin-shell] .admin-table-card .admin-analytics-table .admin-analytics-page-views {
+    text-align: right;
+}
+
+[data-admin-shell] .admin-table-card .admin-analytics-page-path {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-align: left !important;
+}
+
+[data-admin-shell] .admin-table-card .admin-analytics-page-views {
+    width: 1%;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+[data-admin-shell] .admin-table-card .admin-analytics-table--pages tbody tr,
+[data-admin-shell] .admin-table-card .admin-analytics-table--pages-full tbody tr {
+    align-items: center;
+}
+
+@media (max-width: 767.98px) {
+    [data-admin-shell] .admin-table-card:has(.admin-analytics-table) .admin-table-component__scroll {
+        overflow-x: visible;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table thead {
+        display: none !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table tbody {
+        display: grid !important;
+        gap: .75rem !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table tbody tr {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: .7rem !important;
+        padding: 1rem !important;
+        border: 1px solid var(--bs-border-color) !important;
+        border-radius: 1rem !important;
+        background: var(--bs-body-bg) !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table tbody td,
+    [data-admin-shell] .admin-table-card .admin-analytics-table tbody th {
+        display: grid !important;
+        grid-column: 1 / -1 !important;
+        gap: .2rem !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        text-align: left !important;
+        justify-self: stretch !important;
+        align-self: start !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table tbody td::before,
+    [data-admin-shell] .admin-table-card .admin-analytics-table tbody th::before {
+        position: static !important;
+        display: block !important;
+        width: auto !important;
+        height: auto !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        color: var(--bs-secondary-color) !important;
+        content: attr(data-admin-table-label) !important;
+        font-family: inherit !important;
+        font-size: .75rem !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        text-align: left !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages tbody tr,
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages-full tbody tr {
+        grid-template-columns: minmax(0, 1fr) max-content !important;
+        align-items: start !important;
+        column-gap: .875rem !important;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages .admin-analytics-page-path,
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages-full .admin-analytics-page-path {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        font-weight: 600;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages .admin-analytics-page-views,
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages-full .admin-analytics-page-views {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        width: auto !important;
+        justify-self: end !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+        font-weight: 700;
+    }
+
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages .admin-analytics-page-path::before,
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages .admin-analytics-page-views::before,
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages-full .admin-analytics-page-path::before,
+    [data-admin-shell] .admin-table-card .admin-analytics-table--pages-full .admin-analytics-page-views::before {
+        display: none !important;
+        content: none !important;
     }
 }

@@ -1762,10 +1762,14 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 
 @media (max-width: 575.98px) {
     .app-toast-stack {
-        right: 1.5rem !important;
-        bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
-        left: 1.5rem !important;
+        right: 1rem !important;
+        bottom: max(0.85rem, calc(env(safe-area-inset-bottom) + 0.85rem)) !important;
+        left: 1rem !important;
         width: auto;
+    }
+
+    body:has(.admin-shell-mobile-toggle) .app-toast-stack {
+        bottom: calc(4.75rem + env(safe-area-inset-bottom)) !important;
     }
 }
 

@@ -3,15 +3,23 @@
     'subtitle' => return_translation('admin_security_logs_subtitle'),
 ]) ?>
 
-    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
-        <form method="get" class="row g-2 align-items-end mb-3" data-admin-table-form>
-            <div class="col-md-5">
-                <label class="form-label" for="security-log-search"><?= print_translation('admin_table_search_placeholder') ?></label>
-                <input id="security-log-search" class="form-control" type="search" name="search" value="<?= htmlSC((string)($search ?? '')) ?>" data-admin-table-search>
-            </div>
-            <div class="col-md-auto">
-                <button class="btn btn-outline-secondary rounded-pill" type="submit"><?= print_translation('admin_btn_apply') ?></button>
-            </div>
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="security-logs">
+        <form method="get" class="position-relative mb-3" style="max-width: 280px" data-admin-table-form>
+            <input type="hidden" name="sort" value="<?= htmlSC((string)($sort ?? '')) ?>">
+            <input type="hidden" name="direction" value="<?= htmlSC((string)($direction ?? '')) ?>">
+            <input type="hidden" name="page" value="1">
+            <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
+            <input
+                id="security-log-search"
+                class="table-search form-control form-icon-start"
+                type="search"
+                name="search"
+                value="<?= htmlSC((string)($search ?? '')) ?>"
+                placeholder="<?= print_translation('admin_table_search_placeholder') ?>"
+                aria-label="<?= htmlSC(return_translation('admin_table_search_placeholder')) ?>"
+                autocomplete="off"
+                data-admin-table-search
+            >
         </form>
         <?php ob_start(); ?>
             <thead><tr>

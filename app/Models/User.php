@@ -769,8 +769,36 @@ class User
             return 'last_admin';
         }
 
-        $this->removeStoredAvatar((string)($user['avatar'] ?? ''));
-        db()->query("DELETE FROM {$this->usersTable} WHERE id = ?", [$id]);
+        $database = db();
+        $avatarPath = (string)($user['avatar'] ?? '');
+        $chatAttachmentPaths = [];
+
+        $database->beginTransaction();
+
+        try {
+            $database->query(
+                "UPDATE {$this->usersTable}
+                 SET session_version = COALESCE(session_version, 1) + 1
+                 WHERE id = ?",
+                [$id]
+            );
+
+            $chatAttachmentPaths = $this->collectUserChatAttachmentPaths($id);
+            $this->deleteUserRelatedData($id);
+
+            $database->query("DELETE FROM {$this->usersTable} WHERE id = ?", [$id]);
+            $database->commit();
+        } catch (\Throwable $exception) {
+            try {
+                $database->rollBack();
+            } catch (\Throwable) {
+            }
+            throw $exception;
+        }
+
+        $this->removeStoredAvatar($avatarPath);
+        $this->removeStoredFiles($chatAttachmentPaths);
+        Post::clearPublicCache();
 
         return null;
     }
@@ -2040,6 +2068,122 @@ class User
     protected function deleteTwoFactorRecoveryTokensForUser(int $userId): void
     {
         db()->query("DELETE FROM {$this->twoFactorRecoveryTokensTable} WHERE user_id = ?", [$userId]);
+    }
+
+    /**
+     * Удаляет или отвязывает данные, связанные с пользователем только через его ID.
+     */
+    protected function deleteUserRelatedData(int $userId): void
+    {
+        $this->deletePasswordResetTokensForUser($userId);
+        $this->deleteTwoFactorRecoveryTokensForUser($userId);
+
+        if ($this->tableExists('chat_audit_logs')) {
+            if ($this->tableExists('chat_messages')) {
+                db()->query(
+                    "DELETE FROM chat_audit_logs
+                     WHERE actor_user_id = ?
+                        OR conversation_first_user_id = ?
+                        OR conversation_second_user_id = ?
+                        OR message_id IN (
+                            SELECT id
+                            FROM chat_messages
+                            WHERE sender_id = ? OR receiver_id = ? OR deleted_by = ?
+                        )",
+                    [$userId, $userId, $userId, $userId, $userId, $userId]
+                );
+            } else {
+                db()->query(
+                    "DELETE FROM chat_audit_logs
+                     WHERE actor_user_id = ?
+                        OR conversation_first_user_id = ?
+                        OR conversation_second_user_id = ?",
+                    [$userId, $userId, $userId]
+                );
+            }
+        }
+
+        if ($this->tableExists('chat_messages')) {
+            db()->query(
+                "DELETE FROM chat_messages
+                 WHERE sender_id = ? OR receiver_id = ? OR deleted_by = ?",
+                [$userId, $userId, $userId]
+            );
+        }
+
+        if ($this->tableExists('security_logs')) {
+            db()->query(
+                "DELETE FROM security_logs
+                 WHERE actor_user_id = ? OR target_user_id = ?",
+                [$userId, $userId]
+            );
+        }
+
+        if ($this->tableExists('posts') && $this->columnExists('posts', 'author_id')) {
+            db()->query("UPDATE posts SET author_id = NULL WHERE author_id = ?", [$userId]);
+        }
+
+        if ($this->tableExists('contact_subjects') && $this->columnExists('contact_subjects', 'responsible_user_id')) {
+            db()->query("UPDATE contact_subjects SET responsible_user_id = NULL WHERE responsible_user_id = ?", [$userId]);
+        }
+
+        if ($this->tableExists('database_maintenance_logs') && $this->columnExists('database_maintenance_logs', 'user_id')) {
+            db()->query("UPDATE database_maintenance_logs SET user_id = NULL WHERE user_id = ?", [$userId]);
+        }
+
+        if ($this->tableExists('cms_update_logs') && $this->columnExists('cms_update_logs', 'user_id')) {
+            db()->query("UPDATE cms_update_logs SET user_id = NULL WHERE user_id = ?", [$userId]);
+        }
+    }
+
+    protected function collectUserChatAttachmentPaths(int $userId): array
+    {
+        if (!$this->tableExists('chat_messages') || !$this->columnExists('chat_messages', 'attachment_path')) {
+            return [];
+        }
+
+        $rows = db()->query(
+            "SELECT attachment_path
+             FROM chat_messages
+             WHERE (sender_id = ? OR receiver_id = ? OR deleted_by = ?)
+               AND attachment_path IS NOT NULL
+               AND attachment_path != ''",
+            [$userId, $userId, $userId]
+        )->get() ?: [];
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn(array $row): string => (string)($row['attachment_path'] ?? ''),
+            $rows
+        ))));
+    }
+
+    protected function tableExists(string $table): bool
+    {
+        $this->assertDatabaseIdentifier($table);
+
+        return (bool)db()->query('SHOW TABLES LIKE ?', [$table])->getColumn();
+    }
+
+    protected function columnExists(string $table, string $column): bool
+    {
+        $this->assertDatabaseIdentifier($table);
+        $this->assertDatabaseIdentifier($column);
+
+        return (bool)db()->query("SHOW COLUMNS FROM {$table} LIKE ?", [$column])->getColumn();
+    }
+
+    protected function assertDatabaseIdentifier(string $identifier): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $identifier)) {
+            throw new \InvalidArgumentException('Invalid database identifier.');
+        }
+    }
+
+    protected function removeStoredFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
+            $this->removeStoredAvatar((string)$path);
+        }
     }
 
     /**

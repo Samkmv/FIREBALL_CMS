@@ -155,8 +155,8 @@ echo view()->renderPartial('admin/shell_open', [
                         <tbody>
                             <?php foreach (($analytics['pages'] ?? []) as $row): ?>
                                 <tr>
-                                    <td class="text-break"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
-                                    <td class="text-end"><?= (int)($row['total'] ?? 0) ?></td>
+                                    <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
+                                    <td class="text-end admin-analytics-page-views"><?= (int)($row['total'] ?? 0) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($analytics['pages'])): ?>
@@ -192,7 +192,7 @@ echo view()->renderPartial('admin/shell_open', [
                                     <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
                                     <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
                                     <td><?= htmlSC((string)($row['source'] ?? '')) ?></td>
-                                    <td class="text-break"><?= htmlSC((string)($row['current_page'] ?? '/')) ?></td>
+                                    <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['current_page'] ?? '/')) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($analytics['latest'])): ?>

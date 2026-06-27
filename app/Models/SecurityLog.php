@@ -75,21 +75,22 @@ class SecurityLog
         $orderBy = $sortMap[$sort] ?? 'sl.created_at';
         $where = '';
         $params = [];
+        $joins = 'LEFT JOIN users actor ON actor.id = sl.actor_user_id
+             LEFT JOIN users target ON target.id = sl.target_user_id';
 
         if ($search !== '') {
-            $where = 'WHERE sl.event LIKE ? OR sl.result LIKE ? OR sl.reason LIKE ? OR sl.ip_address LIKE ?';
+            $where = 'WHERE sl.event LIKE ? OR sl.result LIKE ? OR sl.reason LIKE ? OR sl.ip_address LIKE ? OR actor.login LIKE ? OR target.login LIKE ?';
             $like = '%' . $search . '%';
-            $params = [$like, $like, $like, $like];
+            $params = [$like, $like, $like, $like, $like, $like];
         }
 
-        $total = (int)db()->query("SELECT COUNT(*) FROM {$this->table} sl {$where}", $params)->getColumn();
+        $total = (int)db()->query("SELECT COUNT(*) FROM {$this->table} sl {$joins} {$where}", $params)->getColumn();
         $pagination = new Pagination($total, $perPage);
         $offset = $pagination->getOffset();
         $items = db()->query(
             "SELECT sl.*, actor.login AS actor_login, target.login AS target_login
              FROM {$this->table} sl
-             LEFT JOIN users actor ON actor.id = sl.actor_user_id
-             LEFT JOIN users target ON target.id = sl.target_user_id
+             {$joins}
              {$where}
              ORDER BY {$orderBy} {$direction}, sl.id DESC
              LIMIT {$offset}, {$perPage}",

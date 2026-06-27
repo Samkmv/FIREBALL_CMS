@@ -1,9 +1,9 @@
-<nav class="admin-pagination-nav" aria-label="Pagination">
+<nav class="admin-pagination-nav" aria-label="<?= htmlSC(return_translation('pagination_label')) ?>">
     <ul class="pagination">
 
         <?php if (!empty($first_page)): ?>
             <li class="page-item">
-                <a class="page-link" href="<?= htmlSC($first_page); ?>" aria-label="First page">
+                <a class="page-link" href="<?= htmlSC($first_page); ?>" aria-label="<?= htmlSC(return_translation('pagination_first')) ?>">
                     <span aria-hidden="true">&laquo;</span>
                 </a>
             </li>
@@ -11,7 +11,7 @@
 
         <?php if (!empty($back)): ?>
             <li class="page-item">
-                <a class="page-link" href="<?= htmlSC($back); ?>" aria-label="Previous page">
+                <a class="page-link" href="<?= htmlSC($back); ?>" aria-label="<?= htmlSC(return_translation('pagination_previous')) ?>">
                     <span aria-hidden="true">&lt;</span>
                 </a>
             </li>
@@ -27,7 +27,7 @@
             <?php endforeach; ?>
         <?php endif; ?>
 
-        <li class="page-item active"><a class="page-link"><?= $current_page; ?></a></li>
+        <li class="page-item active"><a class="page-link" aria-current="page"><?= $current_page; ?></a></li>
 
         <?php if (!empty($pages_right)): ?>
             <?php foreach ($pages_right as $page_right): ?>
@@ -41,7 +41,7 @@
 
         <?php if (!empty($forward)): ?>
             <li class="page-item">
-                <a class="page-link" href="<?= htmlSC($forward); ?>" aria-label="Next page">
+                <a class="page-link" href="<?= htmlSC($forward); ?>" aria-label="<?= htmlSC(return_translation('pagination_next')) ?>">
                     <span aria-hidden="true">&gt;</span>
                 </a>
             </li>
@@ -49,7 +49,7 @@
 
         <?php if (!empty($last_page)): ?>
             <li class="page-item">
-                <a class="page-link" href="<?= htmlSC($last_page); ?>" aria-label="Last page">
+                <a class="page-link" href="<?= htmlSC($last_page); ?>" aria-label="<?= htmlSC(return_translation('pagination_last')) ?>">
                     <span aria-hidden="true">&raquo;</span>
                 </a>
             </li>
