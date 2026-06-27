@@ -1402,12 +1402,26 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 
     .chat-app-shell {
         --chat-shell-height: calc(100dvh - 9.75rem);
+        --chat-mobile-messages-height: 22rem;
+        --chat-mobile-messages-height: clamp(18rem, calc(100svh - 22.5rem), 34rem);
+    }
+
+    .chat-app-shell > .row {
+        height: auto;
+        max-height: none;
     }
 
     .chat-thread {
         border-radius: 1.5rem;
         min-height: var(--chat-shell-height);
-        height: var(--chat-shell-height);
+        height: auto;
+        max-height: none;
+    }
+
+    .chat-thread__body {
+        flex: 0 0 var(--chat-mobile-messages-height);
+        height: var(--chat-mobile-messages-height);
+        min-height: var(--chat-mobile-messages-height);
     }
 
     .chat-thread__head {
@@ -1420,6 +1434,8 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     }
 
     .chat-messages-surface {
+        height: 100%;
+        min-height: 0;
         padding: .9rem !important;
     }
 
@@ -1817,7 +1833,9 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     --admin-shell-panel-border: color-mix(in srgb, var(--cz-border-color) 78%, transparent);
 }
 
-[data-admin-shell-sidebar] .position-sticky {
+[data-admin-shell-sidebar],
+[data-admin-shell-sidebar] .position-sticky,
+[data-admin-sidebar-panel] {
     min-width: 0;
 }
 
@@ -1853,6 +1871,7 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 }
 
 .admin-shell-nav .list-group-item {
+    min-width: 0;
     transition: background-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
 
@@ -1870,6 +1889,17 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 .admin-shell-nav .list-group-item.active .admin-shell-nav-icon {
     background: rgba(255, 255, 255, 0.14);
     color: currentColor;
+}
+
+.admin-shell-nav-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.admin-shell-nav-label .text-truncate {
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .admin-posts-tabs {

@@ -322,8 +322,19 @@ class ThemeEditorService
         $directory = $this->backupDirectory($slug, $relativePath);
         $backup = realpath($directory . '/' . $backupId . '.bak');
         $metadata = realpath($directory . '/' . $backupId . '.json');
-        if ($backup === false || $metadata === false || !$this->isInside($backup, $directory)) {
+        if ($backup === false || $metadata === false
+            || !$this->isInside($backup, $directory)
+            || !$this->isInside($metadata, $directory)
+        ) {
             throw new RuntimeException('Backup was not found.');
+        }
+
+        $metadataPayload = json_decode((string)file_get_contents($metadata), true);
+        if (!is_array($metadataPayload)
+            || (string)($metadataPayload['theme'] ?? '') !== $slug
+            || (string)($metadataPayload['path'] ?? '') !== $relativePath
+        ) {
+            throw new RuntimeException('Backup metadata does not match the selected theme file.');
         }
 
         $content = (string)file_get_contents($backup);
@@ -333,6 +344,14 @@ class ThemeEditorService
         $this->backupFile($slug, $relativePath, $path);
         $this->atomicWrite($path, $content);
         $this->log('restore', $slug, $relativePath, ['backup' => $backupId]);
+    }
+
+    public function recordError(string $action, string $slug, string $path, \Throwable $exception): void
+    {
+        $this->log($action, $slug, $path, [
+            'error' => $exception->getMessage(),
+            'type' => $exception::class,
+        ]);
     }
 
     public function copyTheme(string $sourceSlug, string $newSlug, string $newName = ''): array

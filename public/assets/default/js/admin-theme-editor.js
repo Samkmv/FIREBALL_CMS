@@ -7,15 +7,38 @@
     }
 
     var textarea = editor.querySelector('[data-theme-editor-code]');
-    var initialValue = textarea ? textarea.value : '';
+
+    function createTextareaAdapter(element) {
+        if (!element) {
+            return null;
+        }
+
+        return {
+            getValue: function () {
+                return element.value;
+            },
+            setValue: function (value) {
+                element.value = value;
+            },
+            focus: function () {
+                element.focus();
+            },
+            onChange: function (callback) {
+                element.addEventListener('input', callback);
+            }
+        };
+    }
+
+    var codeAdapter = createTextareaAdapter(textarea);
+    var initialValue = codeAdapter ? codeAdapter.getValue() : '';
     var dirty = false;
 
     function updateDirtyState() {
-        dirty = Boolean(textarea && textarea.value !== initialValue);
+        dirty = Boolean(codeAdapter && codeAdapter.getValue() !== initialValue);
     }
 
-    if (textarea) {
-        textarea.addEventListener('input', updateDirtyState);
+    if (codeAdapter) {
+        codeAdapter.onChange(updateDirtyState);
     }
 
     var saveForm = document.getElementById('themeEditorSaveForm');
@@ -26,11 +49,11 @@
     }
 
     var resetButton = editor.querySelector('[data-theme-editor-reset]');
-    if (resetButton && textarea) {
+    if (resetButton && codeAdapter) {
         resetButton.addEventListener('click', function () {
-            textarea.value = initialValue;
+            codeAdapter.setValue(initialValue);
             updateDirtyState();
-            textarea.focus();
+            codeAdapter.focus();
         });
     }
 

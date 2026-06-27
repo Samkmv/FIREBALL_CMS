@@ -83,6 +83,7 @@ class ThemeEditorController extends BaseController
             );
             $this->redirect($slug, $path, 'success', return_translation('admin_theme_editor_file_created'));
         } catch (\Throwable $exception) {
+            $this->editor->recordError('create_file_error', $slug, trim((string)request()->post('directory', '')), $exception);
             $this->redirect($slug, null, 'error', $exception->getMessage());
         }
     }
@@ -98,6 +99,7 @@ class ThemeEditorController extends BaseController
             );
             $this->redirect($slug, null, 'success', return_translation('admin_theme_editor_folder_created'));
         } catch (\Throwable $exception) {
+            $this->editor->recordError('create_directory_error', $slug, trim((string)request()->post('directory', '')), $exception);
             $this->redirect($slug, null, 'error', $exception->getMessage());
         }
     }
@@ -110,6 +112,7 @@ class ThemeEditorController extends BaseController
             $renamed = $this->editor->rename($slug, $path, trim((string)request()->post('name', '')));
             $this->redirect($slug, $renamed, 'success', return_translation('admin_theme_editor_renamed'));
         } catch (\Throwable $exception) {
+            $this->editor->recordError('rename_error', $slug, $path, $exception);
             $this->redirect($slug, $path, 'error', $exception->getMessage());
         }
     }
@@ -122,6 +125,7 @@ class ThemeEditorController extends BaseController
             $this->editor->delete($slug, $path);
             $this->redirect($slug, null, 'success', return_translation('admin_theme_editor_deleted'));
         } catch (\Throwable $exception) {
+            $this->editor->recordError('delete_error', $slug, $path, $exception);
             $this->redirect($slug, $path, 'error', $exception->getMessage());
         }
     }
@@ -134,6 +138,7 @@ class ThemeEditorController extends BaseController
             $this->editor->replaceImage($slug, $path, request()->files['image'] ?? []);
             $this->redirect($slug, $path, 'success', return_translation('admin_theme_editor_image_replaced'));
         } catch (\Throwable $exception) {
+            $this->editor->recordError('replace_image_error', $slug, $path, $exception);
             $this->redirect($slug, $path, 'error', $exception->getMessage());
         }
     }
@@ -146,6 +151,7 @@ class ThemeEditorController extends BaseController
             $this->editor->restore($slug, $path, trim((string)request()->post('backup_id', '')));
             $this->redirect($slug, $path, 'success', return_translation('admin_theme_editor_restored'));
         } catch (\Throwable $exception) {
+            $this->editor->recordError('restore_error', $slug, $path, $exception);
             $this->redirect($slug, $path, 'error', $exception->getMessage());
         }
     }
@@ -161,6 +167,7 @@ class ThemeEditorController extends BaseController
             );
             $this->redirect((string)$copy['slug'], 'theme.json', 'success', return_translation('admin_theme_editor_copied'));
         } catch (\Throwable $exception) {
+            $this->editor->recordError('copy_theme_error', $slug, '', $exception);
             $this->redirect($slug, null, 'error', $exception->getMessage());
         }
     }

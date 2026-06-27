@@ -1,25 +1,55 @@
 # Theme-Editor
 
-Der Editor ist unter **Design → Theme-Editor** erreichbar. Er arbeitet
-ausschliesslich innerhalb des ausgewaehlten Themes und hat keinen Zugriff auf
-Dateien des CMS-Kerns.
+Status: **Beta**. Der Theme-Editor ist das integrierte Werkzeug zum sicheren
+Bearbeiten von Theme-Dateien. Er ist in der Administration unter
+**Design -> Theme-Editor** verfuegbar.
 
-PHP, HTML, CSS, JavaScript, JSON, Markdown und TXT koennen als Text bearbeitet
-werden. Vorhandene Bilder in `assets/images` koennen angesehen und ersetzt
-werden.
+Der Editor aendert die Theme API nicht. Er arbeitet nur im ausgewaehlten Theme
+und kann nicht auf den CMS-Kern, andere Themes oder externe Pfade zugreifen.
 
-Neue Dateien duerfen nur `.php`, `.css`, `.js`, `.json`, `.md` oder `.txt`
-verwenden. Ordner koennen nur in `templates`, `partials` und `assets` erstellt
-werden. PHP ist nur in `templates` und `partials` erlaubt. Textdateien sind auf
-1 MB, Bilder auf 5 MB begrenzt.
+## Funktionen
 
-Vor dem Speichern wird PHP syntaktisch geprueft. JSON muss gueltig sein und
+- Dateien aus dem Theme-Baum oeffnen;
+- Dateien und Ordner in erlaubten Verzeichnissen erstellen;
+- Elemente umbenennen und loeschen;
+- Textdateien speichern;
+- Bilder aus `assets/images` ansehen und ersetzen;
+- Sicherungshistorie ansehen;
+- jede gespeicherte Version wiederherstellen;
+- Warnung beim Bearbeiten des System-Themes `default`;
+- Kopie des System-Themes erstellen.
+
+## Arbeitsflaeche
+
+Die Beta nutzt ein normales `<textarea class="theme-editor-code">`.
+Die JavaScript-Logik laeuft ueber einen Editor-Adapter, sodass Monaco Editor
+oder CodeMirror spaeter ohne Neuschreiben von Oeffnen, Speichern, Validierung
+oder Wiederherstellung integriert werden koennen.
+
+## Dateien, Validierung und Backups
+
+Bearbeitbare Textformate: PHP, HTML, CSS, JavaScript, JSON, Markdown, TXT und
+SVG. Neue Dateien duerfen nur `.php`, `.css`, `.js`, `.json`, `.md` oder `.txt`
+verwenden. PHP ist nur in `templates` und `partials` erlaubt.
+
+Vor dem Speichern wird PHP mit `php -l` geprueft. JSON muss gueltig sein.
 `theme.json` benoetigt `name`, `slug`, `version`, `author`, `description` und
-`preview`.
+`preview`; der Slug muss zum Theme-Verzeichnis passen.
 
-Vor Speichern, Loeschen und Wiederherstellen wird eine Sicherung unter
-`storage/theme-backups` angelegt. Pro Datei bleiben die letzten 20 Versionen.
+Vor jedem Speichern, Loeschen und Wiederherstellen wird eine Sicherung in
+`storage/theme-backups` angelegt. Pro Datei bleiben bis zu 20 Versionen mit
+Datum, Benutzer, Pfad und Groesse erhalten.
 
-`realpath()` begrenzt alle Operationen auf das Theme. Absolute Pfade,
-Traversal, versteckte Dateien, symbolische Links und verbotene Dateitypen
-werden abgelehnt. Aktionen stehen in `storage/logs/theme-editor.log`.
+## Sicherheit
+
+Alle Pfade werden im aktuellen Theme sandboxed. `realpath()` verhindert Zugriff
+auf externe Orte. `../`, absolute Pfade, versteckte Segmente, symbolische Links,
+andere Themes, CMS-Kerndateien und gefaehrliche Dateitypen sind verboten.
+Wiederherstellungen pruefen die Backup-Metadaten gegen Theme und Datei.
+
+Aktionen und Fehler werden in `storage/logs/theme-editor.log` protokolliert.
+
+## Beta-Grenzen
+
+Der Editor ist noch keine vollstaendige IDE. Autovervollstaendigung, visuelle
+Diffs und Child Themes folgen in spaeteren Phasen.

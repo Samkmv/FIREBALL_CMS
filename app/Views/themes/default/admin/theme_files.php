@@ -16,6 +16,7 @@ $collectDirectories = static function (array $nodes) use (&$collectDirectories, 
     }
 };
 $collectDirectories($tree ?? []);
+$displayedCurrentPath = '/themes/' . $slug . ($selectedPath !== '' ? '/' . $selectedPath : '');
 
 $fileIcon = static function (array $node): string {
     if (!empty($node['is_image'])) {
@@ -42,7 +43,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                     <details open>
                         <summary class="theme-editor-tree-directory <?= (string)$node['path'] === $selectedPath ? 'active' : '' ?>">
                             <i class="ci-folder flex-shrink-0"></i>
-                            <a class="<?= (string)$node['path'] === $selectedPath ? 'active' : '' ?>" href="<?= htmlSC($directoryHref) ?>" data-theme-editor-file-link onclick="event.stopPropagation()">
+                            <a class="<?= (string)$node['path'] === $selectedPath ? 'active' : '' ?>" href="<?= htmlSC($directoryHref) ?>" data-theme-editor-file-link onclick="event.stopPropagation()" <?= (string)$node['path'] === $selectedPath ? 'aria-current="true"' : '' ?>>
                                 <?= htmlSC((string)$node['name']) ?>
                             </a>
                         </summary>
@@ -55,7 +56,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 $href = $editorBase . rawurlencode($slug) . '?' . http_build_query(['file' => $path]);
                 ?>
                 <li>
-                    <a class="theme-editor-tree-file <?= $path === $selectedPath ? 'active' : '' ?>" href="<?= htmlSC($href) ?>" data-theme-editor-file-link>
+                    <a class="theme-editor-tree-file <?= $path === $selectedPath ? 'active' : '' ?>" href="<?= htmlSC($href) ?>" data-theme-editor-file-link <?= $path === $selectedPath ? 'aria-current="true"' : '' ?>>
                         <i class="<?= htmlSC($fileIcon($node)) ?> flex-shrink-0"></i>
                         <span><?= htmlSC((string)$node['name']) ?></span>
                     </a>
@@ -104,28 +105,28 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                         <i class="ci-save me-1"></i><?= print_translation('admin_theme_editor_save') ?>
                     </button>
                     <button class="btn btn-outline-secondary rounded-pill" type="button" data-theme-editor-reset>
-                        <?= print_translation('admin_theme_editor_discard') ?>
+                        <i class="ci-rotate-ccw me-1"></i><?= print_translation('admin_theme_editor_discard') ?>
                     </button>
                 <?php endif; ?>
 
                 <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#themeCreateFileModal">
-                    <?= print_translation('admin_theme_editor_create_file') ?>
+                    <i class="ci-file-plus me-1"></i><?= print_translation('admin_theme_editor_create_file') ?>
                 </button>
                 <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#themeCreateFolderModal">
-                    <?= print_translation('admin_theme_editor_create_folder') ?>
+                    <i class="ci-folder-plus me-1"></i><?= print_translation('admin_theme_editor_create_folder') ?>
                 </button>
 
                 <?php if ($selected && empty($selected['protected'])): ?>
                     <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#themeRenameModal">
-                        <?= print_translation('admin_theme_editor_rename') ?>
+                        <i class="ci-edit me-1"></i><?= print_translation('admin_theme_editor_rename') ?>
                     </button>
                     <button class="btn btn-outline-danger rounded-pill" type="submit" form="themeDeleteForm">
-                        <?= print_translation('admin_theme_editor_delete') ?>
+                        <i class="ci-trash me-1"></i><?= print_translation('admin_theme_editor_delete') ?>
                     </button>
                 <?php endif; ?>
                 <?php if ($selected && ($selected['type'] ?? '') === 'file'): ?>
                     <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="offcanvas" data-bs-target="#themeHistory">
-                        <?= print_translation('admin_theme_editor_backups') ?>
+                        <i class="ci-clock me-1"></i><?= print_translation('admin_theme_editor_backups') ?>
                     </button>
                 <?php endif; ?>
             </div>
@@ -134,7 +135,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
         <div class="row g-3 theme-editor-layout">
             <div class="col-xl-3 theme-editor-sidebar-col">
                 <div class="theme-editor-tree border rounded-4 p-3">
-                    <div class="theme-editor-current-path fw-semibold mb-3">/themes/<?= htmlSC($slug) ?></div>
+                    <div class="theme-editor-current-path fw-semibold mb-3"><?= htmlSC($displayedCurrentPath) ?></div>
                     <?= $renderTree($tree ?? []) ?>
                 </div>
             </div>
