@@ -1410,7 +1410,7 @@ class AdminController extends BaseController
             session()->setFlash('error', $exception->getMessage());
         }
 
-        response()->redirect(base_href('/admin/updates#update-center'));
+        response()->redirect(base_href('/admin/updates'));
     }
 
     /**
@@ -1434,7 +1434,7 @@ class AdminController extends BaseController
             session()->setFlash('error', $exception->getMessage());
         }
 
-        response()->redirect(base_href('/admin/updates#update-center'));
+        response()->redirect(base_href('/admin/updates'));
     }
 
     /**
@@ -1451,7 +1451,7 @@ class AdminController extends BaseController
             session()->setFlash('error', $exception->getMessage());
         }
 
-        response()->redirect(base_href('/admin/updates#update-center'));
+        response()->redirect(base_href('/admin/updates'));
     }
 
     private function requireCreatorForUpdates(): void

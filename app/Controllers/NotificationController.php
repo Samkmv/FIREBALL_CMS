@@ -36,7 +36,7 @@ class NotificationController extends BaseController
                     'source_label' => return_translation('notification_source_update'),
                     'title' => (string)($item['title'] ?? return_translation('notification_update_fallback_title')),
                     'text' => (string)($item['text'] ?? return_translation('notification_update_available_generic')),
-                    'url' => (string)($item['url'] ?? base_href('/admin/updates#update-center')),
+                    'url' => (string)($item['url'] ?? base_href('/admin/updates')),
                     'created_at' => (string)($item['created_at'] ?? ''),
                 ];
             }

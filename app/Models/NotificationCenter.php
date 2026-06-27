@@ -84,7 +84,7 @@ class NotificationCenter
             'type' => 'update',
             'title' => $title,
             'text' => $text,
-            'url' => base_href('/admin/updates#update-center'),
+            'url' => base_href('/admin/updates'),
             'created_at' => (string)($payload['checked_at'] ?? date('Y-m-d H:i:s')),
             'sort_id' => PHP_INT_MAX,
         ];
