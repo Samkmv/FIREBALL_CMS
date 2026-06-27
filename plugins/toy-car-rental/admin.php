@@ -40,7 +40,7 @@ $router->get('/admin/toy-rental', static function (): string {
 $router->post('/admin/toy-rental/rides/start', static function () use ($toyRentalRedirect): void {
     try {
         FireballPluginToyCarRental::startRide(request()->getData());
-        session()->setFlash('success', 'Поездка начата.');
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_ride_started'));
     } catch (Throwable $exception) {
         log_error_details('Toy rental start ride failed', [], $exception);
         session()->setFlash('error', $exception->getMessage());
@@ -52,7 +52,7 @@ $router->post('/admin/toy-rental/rides/start', static function () use ($toyRenta
 $router->post('/admin/toy-rental/rides/complete', static function () use ($toyRentalRedirect): void {
     try {
         FireballPluginToyCarRental::completeRide((int)request()->post('id'), request()->getData());
-        session()->setFlash('success', 'Поездка завершена.');
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_ride_completed'));
     } catch (Throwable $exception) {
         log_error_details('Toy rental complete ride failed', ['Ride' => request()->post('id')], $exception);
         session()->setFlash('error', $exception->getMessage());
@@ -78,7 +78,7 @@ $router->get('/admin/toy-rental/cars/create', static function (): string {
 $router->post('/admin/toy-rental/cars/create', static function () use ($toyRentalRedirect): void {
     try {
         FireballPluginToyCarRental::saveCar(request()->getData());
-        session()->setFlash('success', 'Машинка добавлена.');
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_car_created'));
         $toyRentalRedirect('/admin/toy-rental/cars');
     } catch (Throwable $exception) {
         log_error_details('Toy rental car create failed', [], $exception);
@@ -103,7 +103,7 @@ $router->post('/admin/toy-rental/cars/edit/(?P<id>\d+)/?', static function () us
     $id = (int)get_route_param('id');
     try {
         FireballPluginToyCarRental::saveCar(request()->getData(), $id);
-        session()->setFlash('success', 'Машинка сохранена.');
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_car_saved'));
         $toyRentalRedirect('/admin/toy-rental/cars');
     } catch (Throwable $exception) {
         log_error_details('Toy rental car update failed', ['Car' => $id], $exception);
@@ -115,7 +115,7 @@ $router->post('/admin/toy-rental/cars/edit/(?P<id>\d+)/?', static function () us
 $router->post('/admin/toy-rental/cars/hide', static function () use ($toyRentalRedirect): void {
     try {
         FireballPluginToyCarRental::hideCar((int)request()->post('id'));
-        session()->setFlash('success', 'Машинка скрыта.');
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_car_hidden'));
     } catch (Throwable $exception) {
         log_error_details('Toy rental car hide failed', ['Car' => request()->post('id')], $exception);
         session()->setFlash('error', $exception->getMessage());
@@ -137,6 +137,8 @@ $router->get('/admin/toy-rental/rides', static function (): string {
         'date_from' => (string)request()->get('date_from', ''),
         'date_to' => (string)request()->get('date_to', ''),
         'car_id' => (int)request()->get('car_id', 0),
+        'billing_type' => (string)request()->get('billing_type', ''),
+        'ride_status' => (string)request()->get('ride_status', ''),
         'payment_method' => (string)request()->get('payment_method', ''),
         'payment_status' => (string)request()->get('payment_status', ''),
     ];
@@ -165,7 +167,7 @@ $router->get('/admin/toy-rental/settings', static function (): string {
 $router->post('/admin/toy-rental/settings', static function () use ($toyRentalRedirect): void {
     try {
         FireballPluginToyCarRental::saveSettings(request()->getData());
-        session()->setFlash('success', 'Настройки проката сохранены.');
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_settings_saved'));
     } catch (Throwable $exception) {
         log_error_details('Toy rental settings failed', [], $exception);
         session()->setFlash('error', $exception->getMessage());

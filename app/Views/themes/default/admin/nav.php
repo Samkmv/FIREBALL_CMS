@@ -45,7 +45,7 @@ $navItems = [
         'badge_title' => return_translation('admin_support_new_count'),
     ],
     ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'badge' => 'Beta'],
-    ['href' => base_href('/admin/plugins'), 'label' => 'Плагины', 'icon' => 'ci-box'],
+    ['href' => base_href('/admin/plugins'), 'label' => return_translation('admin_nav_plugins'), 'icon' => 'ci-box', 'nav_key' => 'plugins'],
     ['href' => base_href('/admin/updates'), 'label' => return_translation('admin_nav_updates'), 'icon' => 'ci-refresh-cw', 'creator_only' => true],
     ['href' => base_href('/admin/settings'), 'label' => return_translation('admin_nav_settings'), 'icon' => 'ci-settings'],
     ['href' => base_href('/admin/security/logs'), 'label' => return_translation('admin_nav_security_logs'), 'icon' => 'ci-shield'],
@@ -54,6 +54,34 @@ $navItems = [
 ];
 
 $navItems = apply_filters('admin_menu', $navItems);
+
+$pluginMenuItems = [];
+$baseMenuItems = [];
+foreach ($navItems as $item) {
+    if (!empty($item['plugin_menu'])) {
+        $pluginMenuItems[] = $item;
+        continue;
+    }
+    $baseMenuItems[] = $item;
+}
+if ($pluginMenuItems) {
+    $orderedItems = [];
+    $insertedPlugins = false;
+    foreach ($baseMenuItems as $item) {
+        $orderedItems[] = $item;
+        $itemPath = $normalizeAdminPath((string)($item['href'] ?? $item['url'] ?? ''));
+        if (!$insertedPlugins && (($item['nav_key'] ?? '') === 'plugins' || $itemPath === '/admin/plugins')) {
+            foreach ($pluginMenuItems as $pluginItem) {
+                $orderedItems[] = $pluginItem;
+            }
+            $insertedPlugins = true;
+        }
+    }
+    if (!$insertedPlugins) {
+        $orderedItems = array_merge($orderedItems, $pluginMenuItems);
+    }
+    $navItems = $orderedItems;
+}
 
 $isActive = static function (string $href) use ($currentPath, $normalizeAdminPath): bool {
     $routePath = $normalizeAdminPath((string)(parse_url($href, PHP_URL_PATH) ?: '/'));

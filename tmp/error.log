@@ -1131,3 +1131,665 @@ Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOState
 #10 {main}
 user_id: 1
 ========================================================================
+[2026-06-27 20:44:35] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:36] Toy rental schema check failed
+Request URI: /admin/toy-rental/cars
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:36] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.js
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:37] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.css
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:37] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:45] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:46] Toy rental schema check failed
+Request URI: /admin/toy-rental/cars/edit/1
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:47] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.js
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:47] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.css
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:47] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:55] Toy rental schema check failed
+Request URI: /admin/toy-rental/cars/edit/1
+Request Method: POST
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:55] Toy rental schema check failed
+Request URI: /admin/toy-rental/cars
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:55] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.css
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:55] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.js
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:44:56] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:01] Toy rental schema check failed
+Request URI: /admin/toy-rental/cars/edit/2
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:01] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.css
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:01] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.js
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:01] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:06] Toy rental schema check failed
+Request URI: /admin/toy-rental/cars/edit/2
+Request Method: POST
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:06] Toy rental schema check failed
+Request URI: /admin/toy-rental/cars
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:07] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.css
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:07] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.js
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:07] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:15] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:23] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:25] Toy rental schema check failed
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:25] Database query error
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'r.billing_type' in 'order clause'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(251): FBL\Database->query('SELECT r.*, c.n...')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(263): FireballPluginToyCarRental::activeRides()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(154): FireballPluginToyCarRental::activeRidesByCar()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/admin.php(33): FireballPluginToyCarRental::carsForOperator()
+#5 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Object(Closure))
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#9 {main}
+SQL: SELECT r.*, c.name AS car_name, c.number AS car_number, c.color AS car_color
+             FROM toy_rental_rides r
+             INNER JOIN toy_rental_cars c ON c.id = r.car_id
+             WHERE r.status IN ('active', 'overdue')
+             ORDER BY CASE WHEN r.billing_type = 'fixed' THEN r.planned_end_at ELSE r.started_at END ASC
+Param Count: 0
+Param Keys: []
+========================================================================
+[2026-06-27 20:45:25] Unhandled application exception
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'r.billing_type' in 'order clause'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(251): FBL\Database->query('SELECT r.*, c.n...')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(263): FireballPluginToyCarRental::activeRides()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(154): FireballPluginToyCarRental::activeRidesByCar()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/admin.php(33): FireballPluginToyCarRental::carsForOperator()
+#5 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Object(Closure))
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#9 {main}
+========================================================================
+[2026-06-27 20:45:25] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.js
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:25] Toy rental schema check failed
+Request URI: /admin/toy-rental/assets/toy-rental.css
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:26] Toy rental schema check failed
+Request URI: /
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:27] Toy rental schema check failed
+Request URI: /api/analytics/track
+Request Method: POST
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:27] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:31] Toy rental schema check failed
+Request URI: /admin
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:33] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:36] Toy rental schema check failed
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:36] Database query error
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'r.billing_type' in 'order clause'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(251): FBL\Database->query('SELECT r.*, c.n...')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(263): FireballPluginToyCarRental::activeRides()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(154): FireballPluginToyCarRental::activeRidesByCar()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/admin.php(33): FireballPluginToyCarRental::carsForOperator()
+#5 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Object(Closure))
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#9 {main}
+SQL: SELECT r.*, c.name AS car_name, c.number AS car_number, c.color AS car_color
+             FROM toy_rental_rides r
+             INNER JOIN toy_rental_cars c ON c.id = r.car_id
+             WHERE r.status IN ('active', 'overdue')
+             ORDER BY CASE WHEN r.billing_type = 'fixed' THEN r.planned_end_at ELSE r.started_at END ASC
+Param Count: 0
+Param Keys: []
+========================================================================
+[2026-06-27 20:45:36] Unhandled application exception
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'r.billing_type' in 'order clause'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(251): FBL\Database->query('SELECT r.*, c.n...')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(263): FireballPluginToyCarRental::activeRides()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(154): FireballPluginToyCarRental::activeRidesByCar()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/admin.php(33): FireballPluginToyCarRental::carsForOperator()
+#5 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Object(Closure))
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#9 {main}
+========================================================================
+[2026-06-27 20:45:44] Toy rental schema check failed
+Request URI: /notifications/feed
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::ensureRideSchema()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 38
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(41): FireballPluginToyCarRental->boot()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/config/routes.php(236): FBL\Plugins\PluginManager->bootActivePlugins(Object(FBL\Router))
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(81): require_once('/Applications/M...')
+#3 {main}
+========================================================================
+[2026-06-27 20:45:58] Unhandled application exception
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined array key "toast_enabled"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/views/admin-dashboard.php
+Line: 148
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/views/admin-dashboard.php(148): Whoops\Run->handleError(2, 'Undefined array...', '/Applications/M...', 148)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(220): require('/Applications/M...')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(135): FBL\Plugins\PluginManager->renderView('toy-car-rental', 'admin-dashboard', Array, true)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/admin.php(31): plugin_view('toy-car-rental', 'admin-dashboard', Array)
+#4 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Object(Closure))
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#8 {main}
+========================================================================
+[2026-06-27 20:46:05] Unhandled application exception
+Request URI: /admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined array key "toast_enabled"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/views/admin-dashboard.php
+Line: 148
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/views/admin-dashboard.php(148): Whoops\Run->handleError(2, 'Undefined array...', '/Applications/M...', 148)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/PluginManager.php(220): require('/Applications/M...')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(135): FBL\Plugins\PluginManager->renderView('toy-car-rental', 'admin-dashboard', Array, true)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/admin.php(31): plugin_view('toy-car-rental', 'admin-dashboard', Array)
+#4 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Object(Closure))
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#8 {main}
+========================================================================
+[2026-06-27 21:13:29] Unhandled application exception
+Request URI: /en/admin/toy-rental
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::t()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 108
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php(134): FireballPluginToyCarRental::tabs('dashboard')
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/admin.php(31): FireballPluginToyCarRental::viewData('dashboard', Array)
+#2 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Object(Closure))
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#6 {main}
+========================================================================
+[2026-06-27 21:13:41] Unhandled application exception
+Request URI: /admin
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::t()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 45
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental->{closure}(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('admin_menu', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/nav.php(56): apply_filters('admin_menu', Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(66): require('/Applications/M...')
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/sidebar.php(34): FBL\View->renderPartial('admin/nav')
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(66): require('/Applications/M...')
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/shell_open.php(16): FBL\View->renderPartial('admin/sidebar')
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(66): require('/Applications/M...')
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/dashboard.php(17): FBL\View->renderPartial('admin/shell_ope...', Array)
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(32): require('/Applications/M...')
+#10 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(167): FBL\View->render('admin/dashboard', Array, '')
+#11 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(73): view('admin/dashboard', Array)
+#12 [internal function]: App\Controllers\AdminController->dashboard()
+#13 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#14 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#15 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#16 {main}
+========================================================================
+[2026-06-27 21:13:52] Unhandled application exception
+Request URI: /admin
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Call to undefined method FireballPluginToyCarRental::t()
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/toy-car-rental/Plugin.php
+Line: 45
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30): FireballPluginToyCarRental->{closure}(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(110): FBL\Plugins\HookManager->applyFilters('admin_menu', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/nav.php(56): apply_filters('admin_menu', Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(66): require('/Applications/M...')
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/sidebar.php(34): FBL\View->renderPartial('admin/nav')
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(66): require('/Applications/M...')
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/shell_open.php(16): FBL\View->renderPartial('admin/sidebar')
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(66): require('/Applications/M...')
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/admin/dashboard.php(17): FBL\View->renderPartial('admin/shell_ope...', Array)
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(32): require('/Applications/M...')
+#10 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(167): FBL\View->render('admin/dashboard', Array, '')
+#11 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(73): view('admin/dashboard', Array)
+#12 [internal function]: App\Controllers\AdminController->dashboard()
+#13 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(101): call_user_func(Array)
+#14 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#15 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#16 {main}
+========================================================================

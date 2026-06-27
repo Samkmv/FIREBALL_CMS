@@ -1,22 +1,22 @@
 <?php
 $statusLabels = [
-    'active' => ['Активен', 'text-success bg-success-subtle'],
-    'inactive' => ['Неактивен', 'text-secondary bg-secondary-subtle'],
-    'not_installed' => ['Не установлен', 'text-body bg-body-tertiary'],
+    'active' => [return_translation('admin_plugins_status_active'), 'text-success bg-success-subtle'],
+    'inactive' => [return_translation('admin_plugins_status_inactive'), 'text-secondary bg-secondary-subtle'],
+    'not_installed' => [return_translation('admin_plugins_status_not_installed'), 'text-body bg-body-tertiary'],
 ];
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
-    'title' => 'Плагины',
-    'subtitle' => 'Расширения FIREBALL CMS без изменения ядра.',
-    'actions' => '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/docs/plugins') . '"><i class="ci-book-open"></i>Документация</a>',
+    'title' => return_translation('admin_plugins_title'),
+    'subtitle' => return_translation('admin_plugins_subtitle'),
+    'actions' => '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/docs/plugins') . '"><i class="ci-book-open"></i>' . htmlSC(return_translation('admin_plugins_docs')) . '</a>',
 ]) ?>
 
     <?php if (empty($plugins)): ?>
         <div class="border rounded-5 p-4 p-md-5 text-center">
             <i class="ci-box fs-1 text-body-tertiary d-block mb-3"></i>
-            <h2 class="h5 mb-2">Плагины не найдены</h2>
-            <p class="text-body-secondary mb-0">Добавьте папку плагина в <code>/plugins</code>, чтобы он появился в списке.</p>
+            <h2 class="h5 mb-2"><?= print_translation('admin_plugins_empty_title') ?></h2>
+            <p class="text-body-secondary mb-0"><?= print_translation('admin_plugins_empty_text_before') ?> <code>/plugins</code><?= print_translation('admin_plugins_empty_text_after') ?></p>
         </div>
     <?php else: ?>
         <div class="row g-4">
@@ -42,9 +42,9 @@ $statusLabels = [
                             <p class="text-body-secondary mb-3"><?= htmlSC((string)$plugin['description']) ?></p>
 
                             <dl class="row small gy-2 mb-0">
-                                <dt class="col-5 text-body-secondary fw-normal">Версия</dt>
+                                <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugins_version') ?></dt>
                                 <dd class="col-7 mb-0 text-end"><?= htmlSC((string)$plugin['version']) ?></dd>
-                                <dt class="col-5 text-body-secondary fw-normal">Автор</dt>
+                                <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugins_author') ?></dt>
                                 <dd class="col-7 mb-0 text-end"><?= htmlSC((string)$plugin['author']) ?></dd>
                             </dl>
 
@@ -61,7 +61,7 @@ $statusLabels = [
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
                                         <button class="btn btn-dark rounded-pill w-100" type="submit" <?= $isValid ? '' : 'disabled' ?>>
-                                            Установить
+                                            <?= print_translation('admin_plugins_install') ?>
                                         </button>
                                     </form>
                                 <?php elseif (!$isActive): ?>
@@ -69,15 +69,15 @@ $statusLabels = [
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
                                         <button class="btn btn-dark rounded-pill w-100" type="submit" <?= $isValid ? '' : 'disabled' ?>>
-                                            Активировать
+                                            <?= print_translation('admin_plugins_activate') ?>
                                         </button>
                                     </form>
                                 <?php else: ?>
-                                    <form action="<?= base_href('/admin/plugins/deactivate') ?>" method="post" data-admin-delete-form data-delete-message="Деактивировать этот плагин?" data-delete-item="<?= htmlSC((string)$plugin['name']) ?>">
+                                    <form action="<?= base_href('/admin/plugins/deactivate') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_plugins_deactivate_confirm')) ?>" data-delete-item="<?= htmlSC((string)$plugin['name']) ?>">
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
                                         <button class="btn btn-outline-secondary rounded-pill w-100" type="submit">
-                                            Деактивировать
+                                            <?= print_translation('admin_plugins_deactivate') ?>
                                         </button>
                                     </form>
                                 <?php endif; ?>

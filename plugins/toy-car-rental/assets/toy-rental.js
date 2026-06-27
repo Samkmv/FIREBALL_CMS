@@ -1,9 +1,4 @@
 (function () {
-    const timers = Array.from(document.querySelectorAll('[data-toy-rental-timer]'));
-    if (timers.length === 0) {
-        return;
-    }
-
     const settings = window.toyRentalSettings || {};
     const notified = new Set();
 
@@ -44,56 +39,153 @@
         }
     };
 
-    const notify = (card, label) => {
-        const rideId = card?.dataset?.rideId || label;
-        if (notified.has(rideId)) {
-            return;
-        }
-        notified.add(rideId);
-
-        if (settings.toastEnabled !== false && window.toastr) {
-            if (typeof window.toastr.rental === 'function') {
-                window.toastr.rental({
-                    title: 'Время поездки закончилось',
-                    message: label,
-                    href: settings.dashboardUrl || '/admin/toy-rental',
-                });
-            } else if (typeof window.toastr.error === 'function') {
-                window.toastr.error(label, 'Время поездки закончилось');
-            }
+    const markFixedOverdue = (card) => {
+        const rideId = card?.dataset?.rideId || '';
+        if (rideId !== '' && !notified.has(rideId)) {
+            notified.add(rideId);
+            playSound();
         }
 
-        playSound();
+        card?.classList.add('is-overdue', 'toy-rental-alert-pulse');
+        const badge = card?.querySelector('[data-toy-rental-status]');
+        if (badge) {
+            badge.textContent = 'Просрочена';
+            badge.className = 'badge rounded-pill text-bg-danger';
+        }
     };
 
-    const tick = () => {
+    const modalRideState = (modal, now = Date.now()) => {
+        const start = Date.parse(modal.dataset.start || '');
+        if (!Number.isFinite(start)) {
+            return null;
+        }
+
+        const price = Number.parseFloat(modal.dataset.pricePerMinute || '0') || 0;
+        const elapsedSeconds = Math.max(0, Math.floor((now - start) / 1000));
+        const elapsedMinutes = Math.max(1, Math.ceil(elapsedSeconds / 60));
+
+        return {
+            elapsedMinutes,
+            amount: elapsedMinutes * price,
+        };
+    };
+
+    const updateCompletionModals = (forceFinalAmount = false) => {
         const now = Date.now();
-        timers.forEach((timer) => {
+        document.querySelectorAll('[data-toy-rental-complete-modal]').forEach((modal) => {
+            const state = modalRideState(modal, now);
+            if (!state) {
+                return;
+            }
+
+            const currency = modal.dataset.currency || settings.currency || '';
+            const formattedAmount = state.amount.toFixed(2);
+            const durationField = modal.querySelector('[data-toy-rental-modal-duration]');
+            const calculatedField = modal.querySelector('[data-toy-rental-modal-calculated]');
+            const finalAmountField = modal.querySelector('[data-toy-rental-final-amount]');
+
+            if (durationField) {
+                durationField.value = `${state.elapsedMinutes} мин`;
+            }
+            if (calculatedField) {
+                calculatedField.value = `${formattedAmount}${currency ? ` ${currency}` : ''}`;
+            }
+            if (finalAmountField && (forceFinalAmount || finalAmountField.dataset.userEdited !== 'true')) {
+                finalAmountField.value = formattedAmount;
+            }
+        });
+    };
+
+    const tickTimers = () => {
+        const now = Date.now();
+        document.querySelectorAll('[data-toy-rental-timer]').forEach((timer) => {
+            const billingType = timer.dataset.billingType || 'fixed';
+            const card = timer.closest('[data-toy-rental-card]');
+
+            if (billingType === 'metered') {
+                const start = Date.parse(timer.dataset.start || '');
+                if (!Number.isFinite(start)) {
+                    return;
+                }
+
+                const elapsedSeconds = Math.max(0, Math.floor((now - start) / 1000));
+                timer.textContent = format(elapsedSeconds);
+
+                const price = Number.parseFloat(timer.dataset.pricePerMinute || '0') || 0;
+                const costTarget = card?.querySelector('[data-toy-rental-live-cost]');
+                if (costTarget) {
+                    const elapsedMinutes = Math.max(1, Math.ceil(elapsedSeconds / 60));
+                    costTarget.textContent = (elapsedMinutes * price).toFixed(2);
+                }
+
+                const estimate = Number.parseInt(timer.dataset.estimatedMinutes || '0', 10);
+                if (estimate > 0 && elapsedSeconds > estimate * 60) {
+                    card?.classList.add('is-metered-warning');
+                    card?.querySelector('[data-toy-rental-estimate-warning]')?.classList.remove('d-none');
+                }
+                return;
+            }
+
             const end = Date.parse(timer.dataset.end || '');
             if (!Number.isFinite(end)) {
                 return;
             }
 
             const seconds = Math.ceil((end - now) / 1000);
-            const card = timer.closest('[data-toy-rental-card]');
-            const label = card?.dataset?.carLabel || 'машинка';
             timer.textContent = format(seconds);
 
             if (seconds < 0) {
                 timer.classList.add('text-danger');
-                card?.classList.add('is-overdue', 'toy-rental-alert-pulse');
-                const badge = card?.querySelector('[data-toy-rental-status]');
-                if (badge) {
-                    badge.textContent = 'Просрочена';
-                    badge.className = 'badge rounded-pill text-bg-danger';
-                }
-                notify(card, label);
+                markFixedOverdue(card);
             }
         });
+
+        updateCompletionModals(false);
     };
 
-    tick();
-    window.setInterval(tick, 1000);
+    document.querySelectorAll('[data-toy-rental-start-form]').forEach((form) => {
+        const type = form.querySelector('[data-toy-rental-billing-type]');
+        const fixedFields = form.querySelector('[data-toy-rental-fixed-fields]');
+        const meteredFields = form.querySelector('[data-toy-rental-metered-fields]');
+
+        const sync = () => {
+            const isMetered = type?.value === 'metered';
+            fixedFields?.classList.toggle('d-none', isMetered);
+            meteredFields?.classList.toggle('d-none', !isMetered);
+            fixedFields?.querySelectorAll('input, select, textarea').forEach((field) => {
+                field.disabled = isMetered;
+            });
+            meteredFields?.querySelectorAll('input, select, textarea').forEach((field) => {
+                field.disabled = !isMetered;
+            });
+        };
+
+        type?.addEventListener('change', sync);
+        sync();
+    });
+
+    document.querySelectorAll('[data-toy-rental-complete-modal]').forEach((modal) => {
+        const finalAmountField = modal.querySelector('[data-toy-rental-final-amount]');
+
+        finalAmountField?.addEventListener('input', () => {
+            finalAmountField.dataset.userEdited = 'true';
+        });
+
+        modal.addEventListener('show.bs.modal', () => {
+            if (finalAmountField) {
+                finalAmountField.dataset.userEdited = 'false';
+            }
+            updateCompletionModals(true);
+        });
+    });
+
+    if (document.querySelector('[data-toy-rental-timer]')) {
+        tickTimers();
+        window.setInterval(tickTimers, 1000);
+    } else if (document.querySelector('[data-toy-rental-complete-modal]')) {
+        updateCompletionModals(false);
+        window.setInterval(() => updateCompletionModals(false), 1000);
+    }
 
     if (settings.autoRefreshSeconds > 0) {
         window.setTimeout(() => window.location.reload(), settings.autoRefreshSeconds * 1000);

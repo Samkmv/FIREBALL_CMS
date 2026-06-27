@@ -6,7 +6,7 @@
 
     <?php require __DIR__ . '/tabs.php'; ?>
 
-    <div class="table-responsive border rounded-5">
+    <div class="table-responsive border rounded-5" data-admin-simplebar data-simplebar-auto-hide="false">
         <table class="table align-middle mb-0">
             <thead>
                 <tr>
@@ -36,8 +36,8 @@
                             <div class="small text-body-secondary"><?= number_format((float)$car['price_per_minute'], 2, '.', ' ') ?> / мин</div>
                         </td>
                         <td class="text-end">
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" aria-label="Действия">
+                            <div class="dropdown admin-post-actions-dropdown" data-admin-post-actions-dropdown>
+                                <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-label="Действия">
                                     <i class="ci-more-vertical"></i>
                                 </button>
                                 <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">

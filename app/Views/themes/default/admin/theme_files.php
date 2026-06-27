@@ -90,7 +90,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
             </div>
         <?php endif; ?>
 
-        <div class="theme-editor-toolbar border rounded-4 p-3 mb-3">
+        <div class="theme-editor-toolbar border rounded-4 p-3 mb-3 overflow-x-auto pb-4" data-simplebar data-simplebar-auto-hide="false">
             <div class="d-flex align-items-center gap-2 theme-editor-toolbar-actions">
                 <select class="form-select theme-editor-theme-select" aria-label="<?= htmlSC(return_translation('admin_theme_editor_select_theme')) ?>" data-theme-editor-theme-select>
                     <?php foreach ($themes as $item): ?>

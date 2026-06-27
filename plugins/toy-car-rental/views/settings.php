@@ -1,6 +1,6 @@
 <?= view()->renderPartial('admin/shell_open', [
     'title' => 'Настройки проката',
-    'subtitle' => 'Значения по умолчанию, уведомления и автообновление.',
+    'subtitle' => 'Значения по умолчанию, звуковой сигнал и автообновление.',
 ]) ?>
 
     <?php require __DIR__ . '/tabs.php'; ?>
@@ -13,8 +13,12 @@
                 <input class="form-control" type="number" name="default_duration" min="1" step="1" value="<?= (int)$settings['default_duration'] ?>">
             </div>
             <div class="col-md-4">
-                <label class="form-label">Цена по умолчанию</label>
+                <label class="form-label">Цена фиксированной поездки</label>
                 <input class="form-control" type="number" name="default_price" min="0" step="0.01" value="<?= htmlSC((string)$settings['default_price']) ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Цена минуты по умолчанию</label>
+                <input class="form-control" type="number" name="default_minute_price" min="0" step="0.01" value="<?= htmlSC((string)$settings['default_minute_price']) ?>">
             </div>
             <div class="col-md-4">
                 <label class="form-label">Валюта</label>
@@ -29,12 +33,6 @@
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" name="sound_enabled" value="1" id="toySound" <?= !empty($settings['sound_enabled']) ? 'checked' : '' ?>>
                     <label class="form-check-label" for="toySound">Звуковое уведомление</label>
-                </div>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="toast_enabled" value="1" id="toyToast" <?= !empty($settings['toast_enabled']) ? 'checked' : '' ?>>
-                    <label class="form-check-label" for="toyToast">Toast-уведомления</label>
                 </div>
             </div>
         </div>

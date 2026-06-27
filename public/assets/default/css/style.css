@@ -1978,28 +1978,24 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: visible;
     padding-bottom: .25rem;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
 }
 
 .admin-pagination-nav {
-    width: max-content;
+    width: 100%;
     min-width: 100%;
 }
 
 .admin-pagination-wrap .pagination {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: .375rem;
-    width: max-content;
+    width: 100%;
     min-width: 100%;
     margin: 0;
     padding: 0;
-    white-space: nowrap;
 }
 
 .admin-pagination-wrap .page-item,
@@ -2014,36 +2010,8 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     justify-content: center;
 }
 
-.admin-pagination-mobile {
-    width: 100%;
-    min-width: 0;
-    margin: 0;
-}
-
-.admin-pagination-mobile__control {
-    flex: 0 0 2.5rem;
-    width: 2.5rem;
-    min-width: 2.5rem;
-    height: 2.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-}
-
-.admin-pagination-mobile__control.disabled {
-    color: var(--bs-secondary-color);
+.admin-pagination-ellipsis .page-link {
     pointer-events: none;
-    opacity: .45;
-}
-
-.admin-pagination-mobile__status {
-    min-width: 0;
-    color: var(--bs-body-color);
-    font-size: .875rem;
-    font-weight: 600;
-    text-align: center;
-    white-space: nowrap;
 }
 
 .admin-analytics-card {
@@ -2931,6 +2899,7 @@ body.is-site-fullscreen .plyr * {
 
 .theme-editor-toolbar {
     background: color-mix(in srgb, var(--bs-body-bg) 92%, var(--bs-primary) 8%);
+    max-width: 100%;
 }
 
 .theme-editor {
@@ -2945,9 +2914,6 @@ body.is-site-fullscreen .plyr * {
 
 .theme-editor-toolbar-actions {
     flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    padding-bottom: .15rem;
 }
 
 .theme-editor-toolbar-actions .btn {
@@ -3062,14 +3028,14 @@ body.is-site-fullscreen .plyr * {
 
 @media (max-width: 1199.98px) {
     .theme-editor-toolbar-actions {
-        flex-wrap: wrap;
-        overflow-x: visible;
+        flex-wrap: nowrap;
+        overflow: visible;
     }
 
     .theme-editor-theme-select {
-        width: 100%;
-        min-width: 100%;
-        flex-basis: 100%;
+        width: 16rem;
+        min-width: 16rem;
+        flex-basis: 16rem;
     }
 
     .theme-editor-tree {

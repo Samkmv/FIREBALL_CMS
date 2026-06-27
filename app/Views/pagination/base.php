@@ -1,14 +1,6 @@
 <nav class="admin-pagination-nav" aria-label="<?= htmlSC(return_translation('pagination_label')) ?>">
     <ul class="pagination">
 
-        <?php if (!empty($first_page)): ?>
-            <li class="page-item">
-                <a class="page-link" href="<?= htmlSC($first_page); ?>" aria-label="<?= htmlSC(return_translation('pagination_first')) ?>">
-                    <span aria-hidden="true">&laquo;</span>
-                </a>
-            </li>
-        <?php endif; ?>
-
         <?php if (!empty($back)): ?>
             <li class="page-item">
                 <a class="page-link" href="<?= htmlSC($back); ?>" aria-label="<?= htmlSC(return_translation('pagination_previous')) ?>">
@@ -17,25 +9,23 @@
             </li>
         <?php endif; ?>
 
-        <?php if (!empty($pages_left)): ?>
-            <?php foreach ($pages_left as $page_left): ?>
-                <li class="page-item">
-                    <a class="page-link" href="<?= htmlSC($page_left['link']); ?>">
-                        <?= $page_left['number']; ?>
-                    </a>
-                </li>
-            <?php endforeach; ?>
-        <?php endif; ?>
-
-        <li class="page-item active"><a class="page-link" aria-current="page"><?= $current_page; ?></a></li>
-
-        <?php if (!empty($pages_right)): ?>
-            <?php foreach ($pages_right as $page_right): ?>
-                <li class="page-item">
-                    <a class="page-link" href="<?= htmlSC($page_right['link']); ?>">
-                        <?= $page_right['number']; ?>
-                    </a>
-                </li>
+        <?php if (!empty($pages)): ?>
+            <?php foreach ($pages as $page): ?>
+                <?php if (!empty($page['ellipsis'])): ?>
+                    <li class="page-item disabled admin-pagination-ellipsis" aria-hidden="true">
+                        <span class="page-link">&hellip;</span>
+                    </li>
+                <?php elseif (!empty($page['active'])): ?>
+                    <li class="page-item active">
+                        <a class="page-link" aria-current="page"><?= (int)$page['number']; ?></a>
+                    </li>
+                <?php else: ?>
+                    <li class="page-item">
+                        <a class="page-link" href="<?= htmlSC($page['link']); ?>">
+                            <?= (int)$page['number']; ?>
+                        </a>
+                    </li>
+                <?php endif; ?>
             <?php endforeach; ?>
         <?php endif; ?>
 
@@ -43,14 +33,6 @@
             <li class="page-item">
                 <a class="page-link" href="<?= htmlSC($forward); ?>" aria-label="<?= htmlSC(return_translation('pagination_next')) ?>">
                     <span aria-hidden="true">&gt;</span>
-                </a>
-            </li>
-        <?php endif; ?>
-
-        <?php if (!empty($last_page)): ?>
-            <li class="page-item">
-                <a class="page-link" href="<?= htmlSC($last_page); ?>" aria-label="<?= htmlSC(return_translation('pagination_last')) ?>">
-                    <span aria-hidden="true">&raquo;</span>
                 </a>
             </li>
         <?php endif; ?>

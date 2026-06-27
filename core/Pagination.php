@@ -103,6 +103,7 @@ class Pagination implements \ArrayAccess, \JsonSerializable
         $pages_left = [];
         $pages_right = [];
         $current_page = $this->currentPage;
+        $pages = $this->getPageItems();
 
         if ($this->currentPage > 1) {
             $back = $this->getLink($this->currentPage - 1);
@@ -138,7 +139,73 @@ class Pagination implements \ArrayAccess, \JsonSerializable
             }
         }
 
-        return view()->renderPartial($this->tpl, compact('back', 'forward', 'first_page', 'last_page', 'pages_left', 'pages_right', 'current_page'));
+        return view()->renderPartial($this->tpl, compact('back', 'forward', 'first_page', 'last_page', 'pages_left', 'pages_right', 'current_page', 'pages'));
+    }
+
+    /**
+     * Возвращает компактный набор страниц с многоточиями для общего шаблона пагинации.
+     */
+    protected function getPageItems(): array
+    {
+        if ($this->countPages <= $this->maxPages) {
+            $items = [];
+            for ($page = 1; $page <= $this->countPages; $page++) {
+                $items[] = $this->pageItem($page);
+            }
+
+            return $items;
+        }
+
+        $neighbors = $this->maxPages <= 7 ? 1 : max(1, min(2, $this->midSize));
+        $pageNumbers = [1, $this->countPages, $this->currentPage];
+
+        for ($page = $this->currentPage - $neighbors; $page <= $this->currentPage + $neighbors; $page++) {
+            if ($page > 1 && $page < $this->countPages) {
+                $pageNumbers[] = $page;
+            }
+        }
+
+        if ($this->currentPage <= 3) {
+            $pageNumbers[] = 2;
+            $pageNumbers[] = 3;
+        }
+
+        if ($this->currentPage >= $this->countPages - 2) {
+            $pageNumbers[] = $this->countPages - 2;
+            $pageNumbers[] = $this->countPages - 1;
+        }
+
+        $pageNumbers = array_values(array_unique(array_filter(
+            $pageNumbers,
+            fn(int $page): bool => $page >= 1 && $page <= $this->countPages
+        )));
+        sort($pageNumbers);
+
+        $items = [];
+        $previous = null;
+        foreach ($pageNumbers as $page) {
+            if ($previous !== null && $page - $previous > 1) {
+                if ($page - $previous === 2) {
+                    $items[] = $this->pageItem($previous + 1);
+                } else {
+                    $items[] = ['ellipsis' => true];
+                }
+            }
+
+            $items[] = $this->pageItem($page);
+            $previous = $page;
+        }
+
+        return $items;
+    }
+
+    protected function pageItem(int $page): array
+    {
+        return [
+            'number' => $page,
+            'link' => $this->getLink($page),
+            'active' => $page === $this->currentPage,
+        ];
     }
 
     /**

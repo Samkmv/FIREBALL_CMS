@@ -9,7 +9,7 @@ final class PluginController extends BaseController
     public function index(): string
     {
         return view('admin/plugins', [
-            'title' => 'Плагины',
+            'title' => \FBL\Language::get('admin_plugins_title'),
             'plugins' => plugin_manager()->all(),
         ]);
     }
@@ -19,10 +19,10 @@ final class PluginController extends BaseController
         $slug = (string)request()->post('slug', '');
         try {
             plugin_manager()->install($slug);
-            session()->setFlash('success', 'Плагин установлен.');
+            session()->setFlash('success', \FBL\Language::get('admin_plugins_installed'));
         } catch (Throwable $exception) {
             log_error_details('Plugin admin install failed', ['Plugin' => $slug], $exception);
-            session()->setFlash('error', 'Не удалось установить плагин: ' . $exception->getMessage());
+            session()->setFlash('error', str_replace(':error', $exception->getMessage(), \FBL\Language::get('admin_plugins_install_failed')));
         }
 
         response()->redirect(base_href('/admin/plugins'));
@@ -33,10 +33,10 @@ final class PluginController extends BaseController
         $slug = (string)request()->post('slug', '');
         try {
             plugin_manager()->activate($slug);
-            session()->setFlash('success', 'Плагин активирован.');
+            session()->setFlash('success', \FBL\Language::get('admin_plugins_activated'));
         } catch (Throwable $exception) {
             log_error_details('Plugin admin activation failed', ['Plugin' => $slug], $exception);
-            session()->setFlash('error', 'Не удалось активировать плагин: ' . $exception->getMessage());
+            session()->setFlash('error', str_replace(':error', $exception->getMessage(), \FBL\Language::get('admin_plugins_activate_failed')));
         }
 
         response()->redirect(base_href('/admin/plugins'));
@@ -47,10 +47,10 @@ final class PluginController extends BaseController
         $slug = (string)request()->post('slug', '');
         try {
             plugin_manager()->deactivate($slug);
-            session()->setFlash('success', 'Плагин деактивирован.');
+            session()->setFlash('success', \FBL\Language::get('admin_plugins_deactivated'));
         } catch (Throwable $exception) {
             log_error_details('Plugin admin deactivation failed', ['Plugin' => $slug], $exception);
-            session()->setFlash('error', 'Не удалось деактивировать плагин: ' . $exception->getMessage());
+            session()->setFlash('error', str_replace(':error', $exception->getMessage(), \FBL\Language::get('admin_plugins_deactivate_failed')));
         }
 
         response()->redirect(base_href('/admin/plugins'));

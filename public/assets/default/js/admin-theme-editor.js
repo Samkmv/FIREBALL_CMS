@@ -7,6 +7,23 @@
     }
 
     var textarea = editor.querySelector('[data-theme-editor-code]');
+    var toolbar = editor.querySelector('.theme-editor-toolbar[data-simplebar]');
+
+    function refreshToolbarScroll() {
+        if (!toolbar || typeof window.SimpleBar === 'undefined') {
+            return;
+        }
+
+        try {
+            var instance = window.SimpleBar.instances && window.SimpleBar.instances.get(toolbar);
+            if (!instance) {
+                instance = new window.SimpleBar(toolbar, { autoHide: false });
+            }
+            instance.recalculate();
+        } catch (error) {
+            // Native overflow remains available if SimpleBar cannot refresh.
+        }
+    }
 
     function createTextareaAdapter(element) {
         if (!element) {
@@ -94,4 +111,8 @@
         event.preventDefault();
         event.returnValue = editor.dataset.unsavedMessage || '';
     });
+
+    window.requestAnimationFrame(refreshToolbarScroll);
+    window.setTimeout(refreshToolbarScroll, 150);
+    window.addEventListener('resize', refreshToolbarScroll, { passive: true });
 }());
