@@ -1,19 +1,19 @@
 <!-- Page content -->
-<main class="content-wrapper">
+<main class="content-wrapper home-page">
     <?php $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']); ?>
 
 
     <section class="container pt-5">
         <div class="row pt-2 pt-sm-3 pt-md-4 pt-lg-5">
-            <div class="col-md-5 col-lg-6 pb-1 pb-sm-2 pb-md-0 mb-4 mb-md-0">
+            <div class="col-md-5 col-lg-6 pb-1 pb-sm-2 pb-md-0 mb-4 mb-md-0 home-reveal" style="--home-reveal-delay: 80ms;">
                 <div class="ratio ratio-1x1">
                     <img src="https://i.pinimg.com/originals/61/e9/75/61e9750492779f437d343b81f50a5692.jpg" style="object-fit: cover;" class="rounded-5" alt="Image">
                 </div>
             </div>
             <div class="col-md-7 col-lg-6 pt-md-3 pt-xl-4 pt-xxl-5">
                 <div class="ps-md-3 ps-lg-4 ps-xl-5 ms-xxl-4">
-                    <h3 class="h1 pb-1 pb-sm-2 pb-lg-3">ВИДЕОТРАНСЛЯЦИЯ ВАШЕГО ДВОРА ДЛЯ ВСЕХ ЖИТЕЛЕЙ МКД</h3>
-                    <ul>
+                    <h3 class="h1 pb-1 pb-sm-2 pb-lg-3 home-reveal" style="--home-reveal-delay: 160ms;">ВИДЕОТРАНСЛЯЦИЯ ВАШЕГО ДВОРА ДЛЯ ВСЕХ ЖИТЕЛЕЙ МКД</h3>
+                    <ul class="home-reveal" style="--home-reveal-delay: 240ms;">
                         <li>Удобное использование без скачивания приложений и паролей</li>
                         <li>Наблюдение в реальном времени с любого устройства</li>
                         <li>Легко делиться трансляцией с камер с близкими людьми</li>
@@ -21,7 +21,7 @@
                     </ul>
 
                     <!-- Accordion -->
-                    <div class="accordion accordion-alt-icon" id="principles">
+                    <div class="accordion accordion-alt-icon home-reveal" id="principles" style="--home-reveal-delay: 320ms;">
 
                         <!-- Item (expanded) -->
                         <div class="accordion-item">
@@ -101,7 +101,7 @@
         </div>
     </section>
 
-    <section class="container-start pt-5">
+    <section class="container-start pt-5 home-reveal" style="--home-reveal-delay: 80ms;">
         <div class="row align-items-center g-0 pt-2 pt-sm-3 pt-md-4 pt-lg-5">
             <div class="col-md-4 col-lg-3 pb-1 pb-md-0 pe-3 ps-md-0 mb-4 mb-md-0">
                 <div class="d-flex flex-md-column align-items-end align-items-md-start">
@@ -138,7 +138,7 @@
 
                             <!-- Item -->
 
-                            <div class="swiper-slide w-auto h-auto">
+                            <div class="swiper-slide w-auto h-auto home-reveal" style="--home-reveal-delay: 120ms;">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -148,7 +148,7 @@
                                         <p class="mb-0">The most important value of the Company is people (employees, partners, clients). Behind any success there is, first and foremost, a specific person. It is he who creates the product, technology, and innovation.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto">
+                            </div><div class="swiper-slide w-auto h-auto home-reveal" style="--home-reveal-delay: 160ms;">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -158,7 +158,7 @@
                                         <p class="mb-0">Care, attention, desire and ability to be helpful (to a colleague in his department, other departments, clients, customers and all other people who surround us).</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto">
+                            </div><div class="swiper-slide w-auto h-auto home-reveal" style="--home-reveal-delay: 200ms;">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -168,7 +168,7 @@
                                         <p class="mb-0">Responsibility is our key quality. We don't shift it to external circumstances or other people. If we see something that could be improved, we don't just criticize, but offer our own options.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto">
+                            </div><div class="swiper-slide w-auto h-auto home-reveal" style="--home-reveal-delay: 240ms;">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -178,7 +178,7 @@
                                         <p class="mb-0">We foster a culture of continuous improvement and innovation. Embracing change and staying ahead of the curve are essential for our success. We encourage creative thinking, experimentation, and the pursuit of new ideas.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto">
+                            </div><div class="swiper-slide w-auto h-auto home-reveal" style="--home-reveal-delay: 280ms;">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -188,7 +188,7 @@
                                         <p class="mb-0">Cartzilla people are young, ambitious and energetic individuals. With identified leadership qualities, with a desire to be the best at what they do.</p>
                                     </div>
                                 </div>
-                            </div><div class="swiper-slide w-auto h-auto">
+                            </div><div class="swiper-slide w-auto h-auto home-reveal" style="--home-reveal-delay: 320ms;">
                                 <div class="card h-100 rounded-4 px-3" style="max-width: 306px">
                                     <div class="card-body py-5 px-3">
                                         <div class="h4 h5 d-flex align-items-center">
@@ -205,7 +205,7 @@
         </div>
     </section>
 
-    <section class="container py-5 mt-md-2 mt-lg-4">
+    <section class="container py-5 mt-md-2 mt-lg-4 home-reveal" style="--home-reveal-delay: 80ms;">
         <div class="row row-cols-3 row-cols-md-3 g-4">
             <div class="col text-center">
                 <div class="display-4 text-dark-emphasis mb-2">365</div>
@@ -223,7 +223,7 @@
     </section>
 
     <?php if (!empty($featured_posts)): ?>
-        <section class="container py-5 mt-1 my-sm-2 my-md-3 my-lg-4 my-xl-5">
+        <section class="container py-5 mt-1 my-sm-2 my-md-3 my-lg-4 my-xl-5 home-reveal">
             <div class="row py-2 py-xxl-3">
                 <div class="col-lg-3 pb-2 mb-4">
                     <h2 class="text-center text-lg-start mb-lg-5"><?= print_translation('home_index_featured_posts') ?></h2>
@@ -263,7 +263,7 @@
                         <div class="swiper-wrapper pb-3 mb-2 mb-sm-3 mb-md-4">
                             <?php foreach ($featured_posts as $post): ?>
                                 <!-- Article -->
-                                <article class="swiper-slide">
+                                <article class="swiper-slide home-reveal">
                                     <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
                                         <img src="<?= htmlSC($post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 767px) 72vw, 306px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)($post['image_width'] ?: 416) ?>" height="<?= (int)($post['image_height'] ?: 305) ?>" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async">
                                     </a>

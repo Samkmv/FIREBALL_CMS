@@ -4071,6 +4071,52 @@ body.is-site-fullscreen .plyr * {
     hyphens: auto;
 }
 
+.home-reveal {
+    --home-reveal-delay: 0ms;
+    --home-reveal-y: 40px;
+    opacity: 1;
+    transform: none;
+}
+
+.home-reveal-ready .home-reveal {
+    opacity: 0;
+    transform: translate3d(0, var(--home-reveal-y), 0);
+    will-change: opacity, transform;
+}
+
+.home-reveal-ready .home-reveal.home-reveal--visible {
+    animation: home-fade-in-up .82s cubic-bezier(.16, 1, .3, 1) both;
+    animation-delay: var(--home-reveal-delay);
+    will-change: auto;
+}
+
+@keyframes home-fade-in-up {
+    from {
+        opacity: 0;
+        transform: translate3d(0, var(--home-reveal-y), 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .home-reveal-ready .home-reveal {
+        --home-reveal-y: 28px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-reveal,
+    .home-reveal-ready .home-reveal {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
 /* Basic responsive admin tables */
 @media (max-width: 767.98px) {
     [data-admin-shell] .admin-table-card {
