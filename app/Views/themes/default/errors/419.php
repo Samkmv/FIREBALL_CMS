@@ -1,6 +1,4 @@
 <?php
-$siteFaviconUrl = site_favicon_url();
-$siteFaviconType = site_favicon_type();
 $pageTitle = $title ?? return_translation('error_419_title');
 $message = trim((string)($error ?? '')) !== '' ? (string)$error : return_translation('error_419_message');
 ?>
@@ -17,11 +15,7 @@ $message = trim((string)($error ?? '')) !== '' ? (string)$error : return_transla
     <meta name="author" content="Createx Studio">
 
     <!-- Webmanifest + Favicon / App icons -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="manifest" href="<?= base_url('/assets/default/manifest.json') ?>">
-    <link rel="icon" type="<?= htmlSC($siteFaviconType) ?>" href="<?= htmlSC($siteFaviconUrl) ?>">
-    <link rel="shortcut icon" href="<?= htmlSC($siteFaviconUrl) ?>">
-    <link rel="apple-touch-icon" href="<?= htmlSC($siteFaviconUrl) ?>">
+    <?= pwa_head_tags() ?>
 
     <!-- Theme switcher (color modes) -->
     <script src="<?= base_url('/assets/default/js/theme-switcher.js') ?>"></script>

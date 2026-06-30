@@ -102,8 +102,7 @@ $frontendStreamConfig = [
 ];
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 $logoutAction = base_href('/logout');
-$siteFaviconUrl = site_favicon_url();
-$siteFaviconType = site_favicon_type();
+$pwaHeadData = pwa_head_data();
 $footerDescription = $siteDescription !== ''
     ? $siteDescription
     : return_translation('footer_description_fallback');
@@ -173,11 +172,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php endif; ?>
 
     <!-- Webmanifest + Favicon / App icons -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="manifest" href="<?= base_url('/assets/default/manifest.json') ?>">
-    <link rel="icon" type="<?= htmlSC($siteFaviconType) ?>" href="<?= htmlSC($siteFaviconUrl) ?>">
-    <link rel="shortcut icon" href="<?= htmlSC($siteFaviconUrl) ?>">
-    <link rel="apple-touch-icon" href="<?= htmlSC($siteFaviconUrl) ?>">
+    <?= pwa_head_tags() ?>
 
     <!-- Theme switcher (color modes) -->
     <script src="<?= base_url('/assets/default/js/theme-switcher.js') ?>"></script>
@@ -231,6 +226,14 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-admin-table-error-title="<?= htmlSC(return_translation('admin_table_error_title')) ?>"
     data-admin-table-error-text="<?= htmlSC(return_translation('admin_table_error_text')) ?>"
     data-admin-table-retry-label="<?= htmlSC(return_translation('admin_table_retry')) ?>"
+    data-pwa-enabled="<?= !empty($pwaHeadData['enabled']) ? '1' : '0' ?>"
+    data-pwa-push-enabled="<?= !empty($pwaHeadData['push_enabled']) ? '1' : '0' ?>"
+    data-pwa-vapid-public-key="<?= htmlSC((string)($pwaHeadData['vapid_public_key'] ?? '')) ?>"
+    data-pwa-service-worker-url="<?= htmlSC((string)($pwaHeadData['service_worker_url'] ?? base_url('/service-worker.js'))) ?>"
+    data-pwa-subscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions')) ?>"
+    data-pwa-unsubscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions/delete')) ?>"
+    data-pwa-badge-clear-url="<?= htmlSC(base_url('/api/pwa/badge/clear')) ?>"
+    data-pwa-safari-hint="<?= htmlSC(return_translation('pwa_safari_install_hint')) ?>"
 >
 
 <nav class="offcanvas offcanvas-start" id="navbarNav" tabindex="-1" aria-labelledby="navbarNavLabel">
@@ -802,6 +805,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script src="<?= base_url('/assets/default/js/password-field.js?v=' . filemtime(WWW . '/assets/default/js/password-field.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/select-init.js?v=' . filemtime(WWW . '/assets/default/js/select-init.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/plyr-init.js?v=' . filemtime(WWW . '/assets/default/js/plyr-init.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/pwa.js?v=' . filemtime(WWW . '/assets/default/js/pwa.js')) ?>"></script>
 <?php if ($isAdmin): ?>
     <script src="<?= base_url('/assets/default/js/admin-delete-modal.js?v=' . filemtime(WWW . '/assets/default/js/admin-delete-modal.js')) ?>"></script>
     <script src="<?= base_url('/assets/default/js/datatable.js?v=' . filemtime(WWW . '/assets/default/js/datatable.js')) ?>"></script>

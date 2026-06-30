@@ -24,7 +24,7 @@ $actions .= $canManageThemes
             $sitePreviewUrl = base_href('/admin/themes/preview/' . $theme['slug']);
             ?>
             <div class="col-md-6 col-xl-4">
-                <article class="card h-100 rounded-5 border <?= $isActive ? 'border-primary shadow-sm' : '' ?> overflow-hidden">
+                <article class="card h-100 rounded-5 border <?= $isActive ? 'border-success shadow-sm admin-theme-card--active' : '' ?> overflow-hidden">
                     <a class="ratio bg-body-tertiary text-decoration-none" style="--cz-aspect-ratio: 56%;" href="<?= htmlSC($sitePreviewUrl) ?>" target="_blank" rel="noopener noreferrer">
                         <img src="<?= htmlSC($previewUrl) ?>" alt="<?= htmlSC((string)$theme['name']) ?>" class="w-100 h-100 object-fit-cover" onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
                         <span class="d-none h-100 w-100 align-items-center justify-content-center text-body-secondary">

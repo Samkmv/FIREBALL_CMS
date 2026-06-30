@@ -120,6 +120,11 @@ function fireball_listen(string $eventName, callable $callback): void
     app()->events->listen($eventName, $callback);
 }
 
+function admin_menu_register(array $item): void
+{
+    \FBL\Menu::register($item);
+}
+
 function plugin_setting(string $pluginSlug, string $key, mixed $default = null): mixed
 {
     return plugin_manager()->setting($pluginSlug, $key, $default);
@@ -852,6 +857,65 @@ function site_favicon_type(): string
         'gif' => 'image/gif',
         default => 'image/png',
     };
+}
+
+function pwa_service(): \App\Services\PwaService
+{
+    static $service = null;
+
+    if (!$service instanceof \App\Services\PwaService) {
+        $service = new \App\Services\PwaService();
+    }
+
+    return $service;
+}
+
+function pwa_head_data(): array
+{
+    try {
+        return pwa_service()->headData();
+    } catch (\Throwable $exception) {
+        log_error_details('PWA head data error', [], $exception);
+
+        return [
+            'enabled' => false,
+            'push_enabled' => false,
+            'app_name' => SITE_NAME,
+            'manifest_url' => base_url('/manifest.webmanifest'),
+            'service_worker_url' => base_url('/service-worker.js'),
+            'theme_color' => '#181d25',
+            'background_color' => '#ffffff',
+            'favicon_url' => base_url('/assets/img/fbl_logo.png'),
+            'favicon_type' => 'image/png',
+            'apple_touch_icon_url' => base_url('/assets/img/fbl_logo.png'),
+            'startup_image_url' => base_url('/assets/img/fbl_logo.png'),
+            'vapid_public_key' => '',
+        ];
+    }
+}
+
+function pwa_head_tags(): string
+{
+    $pwa = pwa_head_data();
+    $lines = [
+        '<meta name="theme-color" content="' . htmlSC($pwa['theme_color'] ?? '#181d25') . '">',
+        '<meta name="apple-mobile-web-app-capable" content="yes">',
+        '<meta name="apple-mobile-web-app-title" content="' . htmlSC($pwa['app_name'] ?? SITE_NAME) . '">',
+        '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
+        '<meta name="format-detection" content="telephone=no">',
+        '<link rel="icon" type="' . htmlSC($pwa['favicon_type'] ?? 'image/png') . '" href="' . htmlSC($pwa['favicon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
+        '<link rel="shortcut icon" href="' . htmlSC($pwa['favicon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
+        '<link rel="apple-touch-icon" href="' . htmlSC($pwa['apple_touch_icon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
+    ];
+
+    if (!empty($pwa['startup_image_url'])) {
+        $lines[] = '<link rel="apple-touch-startup-image" href="' . htmlSC($pwa['startup_image_url']) . '">';
+    }
+    if (!empty($pwa['enabled'])) {
+        array_unshift($lines, '<link rel="manifest" href="' . htmlSC($pwa['manifest_url'] ?? base_url('/manifest.webmanifest')) . '">');
+    }
+
+    return implode("\n    ", $lines);
 }
 
 function sanitize_content_html(string $html): string

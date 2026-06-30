@@ -42,10 +42,12 @@ final class FireballPluginToyCarRental implements PluginInterface
 
         add_filter('admin_menu', function (array $menu): array {
             $menu[] = [
+                'group' => 'applications',
                 'label' => self::t('toy_rental_menu'),
                 'href' => base_href('/admin/toy-rental'),
                 'icon' => 'ci-ticket',
                 'plugin_menu' => true,
+                'order' => 10,
             ];
 
             return $menu;

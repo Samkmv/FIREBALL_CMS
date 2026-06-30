@@ -21,6 +21,7 @@ use App\Controllers\NotificationController;
 use App\Controllers\FileManagerController;
 use App\Controllers\ThemeEditorController;
 use App\Controllers\PluginController;
+use App\Controllers\PwaController;
 use App\Controllers\Api\V1\MenuController;
 use App\Modules\BlockEditor\BlockEditorController;
 
@@ -47,6 +48,16 @@ $app->router->post('/install', [InstallController::class, 'submit']);
 $app->router->get('/api/v1/menu/(?P<type>[a-z_]+)', [MenuController::class, 'index']);
 $app->router->post('/api/analytics/track', [AnalyticsController::class, 'track'])->withoutCSRFToken();
 $app->router->post('/api/streams/wake', [StreamController::class, 'wake'])->withoutCSRFToken();
+$app->router->get('/manifest.webmanifest', [PwaController::class, 'manifest']);
+$app->router->get('/service-worker.js', [PwaController::class, 'serviceWorker']);
+$app->router->get('/sw.js', [PwaController::class, 'serviceWorker']);
+$app->router->get('/offline', [PwaController::class, 'offline']);
+$app->router->get('/api/pwa/support', [PwaController::class, 'support']);
+$app->router->post('/api/pwa/subscriptions', [PwaController::class, 'subscribe']);
+$app->router->put('/api/pwa/subscriptions', [PwaController::class, 'updateSubscription']);
+$app->router->delete('/api/pwa/subscriptions', [PwaController::class, 'unsubscribe']);
+$app->router->post('/api/pwa/subscriptions/delete', [PwaController::class, 'unsubscribe']);
+$app->router->post('/api/pwa/badge/clear', [PwaController::class, 'clearBadge']);
 $app->router->get('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->post('/login', [AuthController::class, 'login'])->middleware(['guest']);
 $app->router->get('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->middleware(['guest']);
@@ -168,6 +179,10 @@ $app->router->post('/admin/roles/edit/(?P<id>\d+)/?', [AdminController::class, '
 $app->router->post('/admin/roles/delete', [AdminController::class, 'roleDelete'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/pwa', [AdminController::class, 'pwaSettings'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/pwa', [AdminController::class, 'pwaSettings'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/pwa/vapid', [AdminController::class, 'generatePwaVapid'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/pwa/test-push', [AdminController::class, 'testPwaPush'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/contact-subjects', [AdminController::class, 'contactSubjects'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/contact-subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/contact-subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
@@ -226,6 +241,8 @@ $app->router->get('/admin/docs/themes', [AdminController::class, 'themeDocs'])->
 $app->router->get('/admin/docs/themes/(?P<article>[a-z0-9_-]+)/?', [AdminController::class, 'themeDocs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/docs/plugins', [AdminController::class, 'pluginDocs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/docs/plugins/(?P<article>[a-z0-9_-]+)/?', [AdminController::class, 'pluginDocs'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/docs/pwa', [AdminController::class, 'pwaDocs'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/docs/pwa/(?P<article>[a-z0-9_-]+)/?', [AdminController::class, 'pwaDocs'])->middleware(['auth', 'admin']);
 
 // Store pages ---------- //
 $app->router->post('/add-to-cart', [CartController::class, 'addToCart']);

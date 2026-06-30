@@ -26,6 +26,17 @@
                 </div>
             </a>
         </div>
+        <div class="col-md-6">
+            <a class="card h-100 rounded-5 text-decoration-none border hover-shadow" href="<?= base_href('/admin/docs/pwa') ?>">
+                <div class="card-body p-4 p-md-5">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-info-subtle text-info mb-4" style="width: 3rem; height: 3rem;">
+                        <i class="ci-smartphone fs-4"></i>
+                    </span>
+                    <h2 class="h4 text-body mb-2">PWA</h2>
+                    <p class="text-body-secondary mb-0">Manifest, установка приложения, iOS/Android, Service Worker, Web Push и NotificationService.</p>
+                </div>
+            </a>
+        </div>
     </div>
 
 <?= view()->renderPartial('admin/shell_close') ?>

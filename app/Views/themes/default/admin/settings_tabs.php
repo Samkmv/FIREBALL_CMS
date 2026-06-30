@@ -25,6 +25,12 @@ $settingsTabs = [
         'label' => return_translation('admin_settings_tab_mail'),
         'icon' => 'ci-mail',
     ],
+    [
+        'key' => 'pwa',
+        'href' => base_href('/admin/settings/pwa'),
+        'label' => return_translation('admin_settings_tab_pwa'),
+        'icon' => 'ci-smartphone',
+    ],
 ];
 ?>
 

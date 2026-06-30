@@ -28,6 +28,19 @@
     font-variant-numeric: tabular-nums;
 }
 
+.toy-rental-status-badge {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    padding: .35rem .65rem;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
 .toy-rental-color-dot {
     width: .85rem;
     height: .85rem;
@@ -47,6 +60,19 @@
 
 .toy-rental-start-details > summary::-webkit-details-marker {
     display: none;
+}
+
+.toy-rental-field-hint {
+    max-width: 100%;
+    margin-top: -.35rem;
+    padding: .15rem .15rem 0;
+    color: var(--cz-secondary-color);
+    line-height: 1.35;
+}
+
+.toy-rental-field-hint i {
+    font-size: .9rem;
+    line-height: 1;
 }
 
 @keyframes toy-rental-pulse {

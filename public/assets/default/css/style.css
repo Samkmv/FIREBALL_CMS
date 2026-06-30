@@ -1921,6 +1921,28 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     border-top-color: rgba(255, 193, 7, 0.24);
 }
 
+.pwa-ios-install-banner {
+    position: fixed;
+    right: max(1rem, calc(env(safe-area-inset-right) + 1rem));
+    bottom: max(1rem, calc(env(safe-area-inset-bottom) + 1rem));
+    left: max(1rem, calc(env(safe-area-inset-left) + 1rem));
+    z-index: 12040;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: .8rem 2.75rem .8rem .95rem;
+    border-radius: 1rem;
+}
+
+[data-bs-theme="dark"] .pwa-ios-install-banner {
+    color: var(--cz-info-text-emphasis);
+    background-color: var(--cz-info-bg-subtle);
+    border-color: var(--cz-info-border-subtle);
+}
+
 @media (max-width: 575.98px) {
     .app-toast-stack {
         right: 1rem !important;
@@ -2159,9 +2181,39 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     color: var(--cz-emphasis-color) !important;
 }
 
+.admin-theme-card--active {
+    background: color-mix(in srgb, var(--cz-success) 4%, var(--cz-body-bg));
+}
+
 .admin-shell-nav .list-group-item {
     min-width: 0;
     transition: background-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.admin-shell-nav-groups {
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-shell-nav-group {
+    min-width: 0;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--cz-border-color) 62%, transparent);
+}
+
+.admin-shell-nav-group:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.admin-shell-nav-group-title {
+    padding: 0 .75rem .45rem;
+    color: var(--cz-tertiary-color);
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: .06em;
+    text-transform: uppercase;
 }
 
 .admin-shell-nav .list-group-item:hover {
@@ -2661,6 +2713,19 @@ body.is-site-fullscreen .plyr * {
 
     .admin-shell-offcanvas .admin-shell-nav .d-flex.align-items-center.justify-content-between {
         margin-bottom: .5rem !important;
+    }
+
+    .admin-shell-offcanvas .admin-shell-nav-groups {
+        gap: .75rem;
+    }
+
+    .admin-shell-offcanvas .admin-shell-nav-group {
+        padding-top: .75rem;
+    }
+
+    .admin-shell-offcanvas .admin-shell-nav-group-title {
+        padding: 0 .65rem .35rem;
+        font-size: .64rem;
     }
 
     .admin-shell-offcanvas .admin-shell-nav .list-group-item {

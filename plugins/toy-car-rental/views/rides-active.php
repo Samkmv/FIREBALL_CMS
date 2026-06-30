@@ -2,6 +2,15 @@
 $currency = (string)($settings['currency'] ?? '₽');
 $paymentMethods = ['cash' => 'Наличные', 'card' => 'Карта', 'transfer' => 'Перевод', 'other' => 'Другое'];
 $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплачено', 'refunded' => 'Возврат'];
+$toyHint = static function (string $key): void {
+    $text = FireballPluginToyCarRental::t($key);
+    ?>
+    <div class="toy-rental-field-hint form-text d-flex align-items-start gap-2">
+        <i class="ci-info text-info flex-shrink-0 mt-1" data-bs-toggle="tooltip" data-bs-title="<?= htmlSC($text) ?>" aria-label="<?= htmlSC($text) ?>"></i>
+        <span><?= htmlSC($text) ?></span>
+    </div>
+    <?php
+};
 ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => 'Активные поездки',
@@ -25,12 +34,12 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
             <div class="col-md-6 col-xl-4">
                 <article class="card h-100 rounded-5 toy-rental-car-card <?= $isOverdue ? 'is-overdue' : 'is-rented' ?>" data-toy-rental-card data-ride-id="<?= (int)$ride['id'] ?>" data-car-label="<?= htmlSC((string)$ride['car_name']) ?>">
                     <div class="card-body p-4">
-                        <div class="d-flex justify-content-between gap-3 mb-3">
+                        <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
                             <div>
                                 <h2 class="h5 mb-1"><?= htmlSC((string)$ride['car_name']) ?></h2>
                                 <div class="small text-body-secondary">№ <?= htmlSC((string)$ride['car_number']) ?></div>
                             </div>
-                            <span class="badge rounded-pill <?= $isOverdue ? 'text-bg-danger' : 'text-bg-warning' ?>" data-toy-rental-status><?= $isOverdue ? 'Просрочена' : 'Активна' ?></span>
+                            <span class="badge rounded-pill toy-rental-status-badge <?= $isOverdue ? 'text-bg-danger' : 'text-bg-warning' ?>" data-toy-rental-status><?= $isOverdue ? 'Просрочена' : 'Активна' ?></span>
                         </div>
                         <div class="border rounded-4 p-3 mb-3">
                             <div class="d-flex justify-content-between align-items-center gap-3">
@@ -88,18 +97,22 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                             <div class="col-sm-6">
                                 <label class="form-label">Фактическое время</label>
                                 <input class="form-control" type="text" value="<?= $duration ?> мин" readonly data-toy-rental-modal-duration>
+                                <?php $toyHint('toy_rental_hint_complete_duration'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Цена минуты</label>
                                 <input class="form-control" type="text" value="<?= number_format((float)$ride['price_per_minute'], 2, '.', ' ') ?> <?= htmlSC($currency) ?>" readonly>
+                                <?php $toyHint('toy_rental_hint_complete_minute_price'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Расчёт</label>
                                 <input class="form-control" type="text" value="<?= number_format($calculated, 2, '.', ' ') ?> <?= htmlSC($currency) ?>" readonly data-toy-rental-modal-calculated>
+                                <?php $toyHint('toy_rental_hint_complete_calculated'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Итоговая сумма</label>
                                 <input class="form-control" type="number" name="final_amount" min="0" step="0.01" value="<?= htmlSC((string)$calculated) ?>" data-toy-rental-final-amount>
+                                <?php $toyHint('toy_rental_hint_complete_final_amount'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Способ оплаты</label>
@@ -108,6 +121,7 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                         <option value="<?= $key ?>" <?= (string)$ride['payment_method'] === $key ? 'selected' : '' ?>><?= htmlSC($methodLabel) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php $toyHint('toy_rental_hint_complete_payment_method'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Статус оплаты</label>
@@ -116,6 +130,7 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                         <option value="<?= $key ?>" <?= (string)$ride['payment_status'] === $key ? 'selected' : '' ?>><?= htmlSC($statusLabel) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php $toyHint('toy_rental_hint_complete_payment_status'); ?>
                             </div>
                         </div>
                     </div>

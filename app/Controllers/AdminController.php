@@ -14,6 +14,8 @@ use App\Models\Support;
 use App\Models\User;
 use App\Services\AnalyticsService;
 use App\Services\MailService;
+use App\Services\NotificationService;
+use App\Services\PwaService;
 use App\Services\UpdateCenter;
 use FBL\Auth;
 use FBL\File;
@@ -957,6 +959,11 @@ class AdminController extends BaseController
             }
 
             $this->siteSettings->setMany($data);
+            try {
+                (new PwaService($this->siteSettings))->syncIcons();
+            } catch (\Throwable $exception) {
+                log_error_details('PWA icon sync failed', ['site_favicon' => $data['site_favicon']], $exception);
+            }
             session()->remove('form_data');
             session()->remove('form_errors');
             session()->setFlash('success', return_translation('admin_settings_saved'));
@@ -972,6 +979,82 @@ class AdminController extends BaseController
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
             ],
         ]);
+    }
+
+    public function pwaSettings()
+    {
+        $pwa = new PwaService($this->siteSettings);
+
+        if (request()->isPost()) {
+            $data = $this->normalizePwaSettingsData(request()->getData());
+            $errors = $this->validatePwaSettingsData($data);
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/settings/pwa'));
+            }
+
+            $this->siteSettings->setMany($data);
+            try {
+                $pwa->syncIcons();
+            } catch (\Throwable $exception) {
+                log_error_details('PWA icon sync failed', $data, $exception);
+            }
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_pwa_saved'));
+            response()->redirect(base_href('/admin/settings/pwa'));
+        }
+
+        return view('admin/pwa_settings', [
+            'title' => return_translation('admin_pwa_title'),
+            'settings' => $this->siteSettings->all(),
+            'status' => $pwa->status(),
+            'devices' => $pwa->devices(),
+            'notifications' => $pwa->recentNotifications(),
+            'footer_scripts' => [
+                base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
+            ],
+        ]);
+    }
+
+    public function generatePwaVapid()
+    {
+        try {
+            (new PwaService($this->siteSettings))->generateVapidKeys();
+            session()->setFlash('success', return_translation('admin_pwa_vapid_generated'));
+        } catch (\Throwable $exception) {
+            log_error_details('PWA VAPID generation failed', [], $exception);
+            session()->setFlash('error', return_translation('admin_pwa_vapid_error'));
+        }
+
+        response()->redirect(base_href('/admin/settings/pwa'));
+    }
+
+    public function testPwaPush()
+    {
+        try {
+            $result = NotificationService::broadcast([
+                'title' => return_translation('pwa_test_push_title'),
+                'body' => return_translation('pwa_test_push_body'),
+                'url' => base_href('/'),
+                'tag' => 'fireball-test-push',
+            ]);
+            session()->setFlash(
+                $result['sent'] > 0 ? 'success' : 'warning',
+                str_replace(
+                    [':sent', ':failed', ':total'],
+                    [(string)$result['sent'], (string)$result['failed'], (string)$result['total']],
+                    return_translation('admin_pwa_test_push_result')
+                )
+            );
+        } catch (\Throwable $exception) {
+            log_error_details('PWA test push failed', [], $exception);
+            session()->setFlash('error', return_translation('admin_pwa_test_push_error'));
+        }
+
+        response()->redirect(base_href('/admin/settings/pwa'));
     }
 
     /**
@@ -1400,6 +1483,44 @@ class AdminController extends BaseController
         ]);
     }
 
+    public function pwaDocs()
+    {
+        $articles = $this->pwaDocsArticles();
+        $article = trim((string)get_route_param('article', 'introduction'));
+        if (!isset($articles[$article])) {
+            $article = 'introduction';
+        }
+
+        $query = trim((string)request()->get('q', ''));
+        $language = app()->get('lang')['code'] ?? 'ru';
+        $resolved = $this->resolveDocsArticle($language, 'pwa', $article);
+        $content = is_file($resolved['path']) ? (string)file_get_contents($resolved['path']) : '';
+        $articleKeys = array_keys($articles);
+        $currentIndex = array_search($article, $articleKeys, true);
+        $previousArticle = $currentIndex > 0 ? $articleKeys[$currentIndex - 1] : null;
+        $nextArticle = $currentIndex < count($articleKeys) - 1 ? $articleKeys[$currentIndex + 1] : null;
+
+        return view('admin/docs_themes', [
+            'title' => 'Документация PWA',
+            'articles' => $articles,
+            'article' => $article,
+            'article_title' => $articles[$article],
+            'content_html' => Markdown::render($content),
+            'query' => $query,
+            'search_results' => $this->searchDocs($language, 'pwa', $query, $articles),
+            'previous_article' => $previousArticle,
+            'next_article' => $nextArticle,
+            'resolved_language' => $resolved['language'],
+            'route_base' => '/admin/docs/pwa',
+            'docs_path_label' => 'pwa',
+            'shell_title' => 'Документация PWA',
+            'shell_subtitle' => 'Установка приложения, manifest, Service Worker, Push и NotificationService.',
+            'back_url' => base_href('/admin/docs'),
+            'back_label' => 'Все разделы',
+            'nav_label' => 'PWA documentation',
+        ]);
+    }
+
     /**
      * Activates a valid theme by slug.
      */
@@ -1666,6 +1787,44 @@ class AdminController extends BaseController
             'cookie_expiration_days' => (string)(int)($data['cookie_expiration_days'] ?? 365),
             'cookie_consent_categories' => '["necessary"]',
         ];
+    }
+
+    protected function normalizePwaSettingsData(array $data): array
+    {
+        $orientation = (string)($data['pwa_orientation'] ?? 'any');
+
+        return [
+            'pwa_enabled' => !empty($data['pwa_enabled']) ? '1' : '0',
+            'pwa_push_enabled' => !empty($data['pwa_push_enabled']) ? '1' : '0',
+            'pwa_app_name' => mb_substr(trim((string)($data['pwa_app_name'] ?? '')), 0, 80),
+            'pwa_short_name' => mb_substr(trim((string)($data['pwa_short_name'] ?? '')), 0, 32),
+            'pwa_description' => mb_substr(trim((string)($data['pwa_description'] ?? '')), 0, 240),
+            'pwa_theme_color' => trim((string)($data['pwa_theme_color'] ?? '#181d25')),
+            'pwa_background_color' => trim((string)($data['pwa_background_color'] ?? '#ffffff')),
+            'pwa_orientation' => in_array($orientation, ['any', 'portrait', 'portrait-primary', 'landscape', 'landscape-primary'], true) ? $orientation : 'any',
+            'pwa_logo' => trim((string)($data['pwa_logo'] ?? '')),
+            'pwa_startup_image' => trim((string)($data['pwa_startup_image'] ?? '')),
+            'pwa_cache_version' => (string)time(),
+        ];
+    }
+
+    protected function validatePwaSettingsData(array $data): array
+    {
+        $errors = [];
+
+        foreach (['pwa_theme_color', 'pwa_background_color'] as $field) {
+            if (!preg_match('/^#[0-9a-f]{6}$/i', (string)($data[$field] ?? ''))) {
+                $errors[$field][] = return_translation('admin_pwa_color_error');
+            }
+        }
+
+        foreach (['pwa_logo', 'pwa_startup_image'] as $field) {
+            if (($data[$field] ?? '') !== '' && !$this->isValidSeoImage((string)$data[$field])) {
+                $errors[$field][] = return_translation('admin_validation_seo_image_invalid');
+            }
+        }
+
+        return $errors;
     }
 
     protected function validatePrivacySettingsData(array $data): array
@@ -1981,6 +2140,13 @@ class AdminController extends BaseController
         return [
             'introduction' => 'Плагины',
             'toy-car-rental' => 'Toy Car Rental',
+        ];
+    }
+
+    protected function pwaDocsArticles(): array
+    {
+        return [
+            'introduction' => 'PWA',
         ];
     }
 

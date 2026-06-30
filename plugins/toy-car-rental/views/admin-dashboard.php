@@ -3,6 +3,15 @@ $currency = (string)($settings['currency'] ?? '₽');
 $durations = [5, 10, 15, 30];
 $paymentMethods = ['cash' => 'Наличные', 'card' => 'Карта', 'transfer' => 'Перевод', 'other' => 'Другое'];
 $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплачено', 'refunded' => 'Возврат'];
+$toyHint = static function (string $key): void {
+    $text = FireballPluginToyCarRental::t($key);
+    ?>
+    <div class="toy-rental-field-hint form-text d-flex align-items-start gap-2">
+        <i class="ci-info text-info flex-shrink-0 mt-1" data-bs-toggle="tooltip" data-bs-title="<?= htmlSC($text) ?>" aria-label="<?= htmlSC($text) ?>"></i>
+        <span><?= htmlSC($text) ?></span>
+    </div>
+    <?php
+};
 ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => 'Прокат машинок',
@@ -62,7 +71,7 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                     <h2 class="h5 mb-1"><?= htmlSC((string)$car['name']) ?></h2>
                                     <div class="text-body-secondary small">№ <?= htmlSC((string)$car['number']) ?></div>
                                 </div>
-                                <span class="badge rounded-pill <?= htmlSC($statusClass) ?>" data-toy-rental-status>
+                                <span class="badge rounded-pill toy-rental-status-badge <?= htmlSC($statusClass) ?>" data-toy-rental-status>
                                     <?= htmlSC($isOverdue ? 'Просрочена' : FireballPluginToyCarRental::statusLabel((string)$car['status'])) ?>
                                 </span>
                             </div>
@@ -134,16 +143,19 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                                 <input class="form-control" type="text" name="customer_phone" placeholder="Телефон">
                                             </div>
                                         </div>
+                                        <?php $toyHint('toy_rental_hint_customer'); ?>
                                         <select class="form-select" name="billing_type" data-toy-rental-billing-type>
                                             <option value="fixed">Фиксированная поездка</option>
                                             <option value="metered">Поминутная, оплата после катания</option>
                                         </select>
+                                        <?php $toyHint('toy_rental_hint_billing_type'); ?>
                                         <div class="d-grid gap-3" data-toy-rental-fixed-fields>
                                             <select class="form-select" name="duration_minutes">
                                                 <?php foreach ($durations as $duration): ?>
                                                     <option value="<?= $duration ?>" <?= (int)$settings['default_duration'] === $duration ? 'selected' : '' ?>><?= $duration ?> минут</option>
                                                 <?php endforeach; ?>
                                             </select>
+                                            <?php $toyHint('toy_rental_hint_fixed_duration'); ?>
                                             <div class="row g-2">
                                                 <div class="col-sm-5">
                                                     <input class="form-control" type="number" name="payment_amount" min="0" step="0.01" value="<?= htmlSC((string)$fixedPrice) ?>" placeholder="Сумма">
@@ -162,6 +174,7 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                                     </select>
                                                 </div>
                                             </div>
+                                            <?php $toyHint('toy_rental_hint_fixed_payment'); ?>
                                         </div>
                                         <div class="d-grid gap-3 d-none" data-toy-rental-metered-fields>
                                             <div class="row g-2">
@@ -172,9 +185,11 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                                     <input class="form-control" type="number" name="estimated_minutes" min="1" step="1" value="<?= (int)$settings['default_duration'] ?>" placeholder="Ориентир, мин">
                                                 </div>
                                             </div>
+                                            <?php $toyHint('toy_rental_hint_metered_price'); ?>
                                             <select class="form-select" name="payment_status" disabled>
                                                 <option value="unpaid">Оплата после завершения</option>
                                             </select>
+                                            <?php $toyHint('toy_rental_hint_metered_payment'); ?>
                                         </div>
                                         <button class="btn btn-dark rounded-pill" type="submit">Старт</button>
                                     </form>
@@ -211,18 +226,22 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                             <div class="col-sm-6">
                                 <label class="form-label">Фактическое время</label>
                                 <input class="form-control" type="text" value="<?= $duration ?> мин" readonly data-toy-rental-modal-duration>
+                                <?php $toyHint('toy_rental_hint_complete_duration'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Цена минуты</label>
                                 <input class="form-control" type="text" value="<?= number_format((float)$ride['price_per_minute'], 2, '.', ' ') ?> <?= htmlSC($currency) ?>" readonly>
+                                <?php $toyHint('toy_rental_hint_complete_minute_price'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Расчёт</label>
                                 <input class="form-control" type="text" value="<?= number_format($calculated, 2, '.', ' ') ?> <?= htmlSC($currency) ?>" readonly data-toy-rental-modal-calculated>
+                                <?php $toyHint('toy_rental_hint_complete_calculated'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Итоговая сумма</label>
                                 <input class="form-control" type="number" name="final_amount" min="0" step="0.01" value="<?= htmlSC((string)$calculated) ?>" data-toy-rental-final-amount>
+                                <?php $toyHint('toy_rental_hint_complete_final_amount'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Способ оплаты</label>
@@ -231,6 +250,7 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                         <option value="<?= $key ?>" <?= (string)$ride['payment_method'] === $key ? 'selected' : '' ?>><?= htmlSC($methodLabel) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php $toyHint('toy_rental_hint_complete_payment_method'); ?>
                             </div>
                             <div class="col-sm-6">
                                 <label class="form-label">Статус оплаты</label>
@@ -239,6 +259,7 @@ $paymentStatuses = ['unpaid' => 'Не оплачено', 'paid' => 'Оплаче
                                         <option value="<?= $key ?>" <?= (string)$ride['payment_status'] === $key ? 'selected' : '' ?>><?= htmlSC($statusLabel) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php $toyHint('toy_rental_hint_complete_payment_status'); ?>
                             </div>
                         </div>
                     </div>
