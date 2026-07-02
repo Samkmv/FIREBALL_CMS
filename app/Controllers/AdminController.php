@@ -2139,6 +2139,7 @@ class AdminController extends BaseController
     {
         return [
             'introduction' => 'Плагины',
+            'languages' => 'Языковые файлы плагинов',
             'toy-car-rental' => 'Toy Car Rental',
         ];
     }

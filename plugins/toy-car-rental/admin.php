@@ -29,7 +29,7 @@ $router->get('/admin/toy-rental', static function (): string {
     $settings = FireballPluginToyCarRental::settings();
 
     return plugin_view('toy-car-rental', 'admin-dashboard', FireballPluginToyCarRental::viewData('dashboard', [
-        'title' => 'Прокат машинок',
+        'title' => FireballPluginToyCarRental::t('toy_rental_dashboard_title'),
         'cars' => FireballPluginToyCarRental::carsForOperator(),
         'active_rides' => FireballPluginToyCarRental::activeRides(),
         'stats' => FireballPluginToyCarRental::todayStats(),
@@ -63,14 +63,14 @@ $router->post('/admin/toy-rental/rides/complete', static function () use ($toyRe
 
 $router->get('/admin/toy-rental/cars', static function (): string {
     return plugin_view('toy-car-rental', 'cars-list', FireballPluginToyCarRental::viewData('cars', [
-        'title' => 'Машинки',
+        'title' => FireballPluginToyCarRental::t('toy_rental_cars_title'),
         'cars' => FireballPluginToyCarRental::cars(true),
     ]));
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/toy-rental/cars/create', static function (): string {
     return plugin_view('toy-car-rental', 'car-form', FireballPluginToyCarRental::viewData('cars', [
-        'title' => 'Новая машинка',
+        'title' => FireballPluginToyCarRental::t('toy_rental_car_create_title'),
         'car' => null,
     ]));
 })->middleware(['auth', 'admin']);
@@ -94,7 +94,7 @@ $router->get('/admin/toy-rental/cars/edit/(?P<id>\d+)/?', static function (): st
     }
 
     return plugin_view('toy-car-rental', 'car-form', FireballPluginToyCarRental::viewData('cars', [
-        'title' => 'Редактирование машинки',
+        'title' => FireballPluginToyCarRental::t('toy_rental_car_edit_title'),
         'car' => $car,
     ]));
 })->middleware(['auth', 'admin']);
@@ -126,7 +126,7 @@ $router->post('/admin/toy-rental/cars/hide', static function () use ($toyRentalR
 
 $router->get('/admin/toy-rental/active', static function (): string {
     return plugin_view('toy-car-rental', 'rides-active', FireballPluginToyCarRental::viewData('active', [
-        'title' => 'Активные поездки',
+        'title' => FireballPluginToyCarRental::t('toy_rental_active_title'),
         'rides' => FireballPluginToyCarRental::activeRides(),
     ]));
 })->middleware(['auth', 'admin']);
@@ -144,7 +144,7 @@ $router->get('/admin/toy-rental/rides', static function (): string {
     ];
 
     return plugin_view('toy-car-rental', 'rides-history', FireballPluginToyCarRental::viewData('history', [
-        'title' => 'История поездок',
+        'title' => FireballPluginToyCarRental::t('toy_rental_history_title'),
         'rides' => FireballPluginToyCarRental::history($filters),
         'cars' => FireballPluginToyCarRental::cars(true),
         'filters' => $filters,
@@ -153,14 +153,14 @@ $router->get('/admin/toy-rental/rides', static function (): string {
 
 $router->get('/admin/toy-rental/stats', static function (): string {
     return plugin_view('toy-car-rental', 'stats', FireballPluginToyCarRental::viewData('stats', [
-        'title' => 'Статистика проката',
+        'title' => FireballPluginToyCarRental::t('toy_rental_stats_title'),
         'stats' => FireballPluginToyCarRental::todayStats(),
     ]));
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/toy-rental/settings', static function (): string {
     return plugin_view('toy-car-rental', 'settings', FireballPluginToyCarRental::viewData('settings', [
-        'title' => 'Настройки проката',
+        'title' => FireballPluginToyCarRental::t('toy_rental_settings_title'),
     ]));
 })->middleware(['auth', 'admin']);
 

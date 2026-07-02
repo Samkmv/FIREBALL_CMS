@@ -120,9 +120,9 @@ $rideStatuses = [
                     $duration = (int)($ride['duration_minutes'] ?? 0);
                     $pricePerMinute = (float)($ride['price_per_minute'] ?? 0);
                     $calculated = (string)($ride['billing_type'] ?? 'fixed') === 'metered'
-                        ? $duration * $pricePerMinute
+                        ? (float)($ride['final_amount'] ?? ($duration * $pricePerMinute))
                         : (float)($ride['final_amount'] ?? $ride['payment_amount']);
-                    $paidAmount = (float)($ride['final_amount'] ?? $ride['payment_amount']);
+                    $paidAmount = (float)($ride['payment_amount'] ?? 0);
                     ?>
                     <tr>
                         <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)$ride['started_at']))) ?></td>

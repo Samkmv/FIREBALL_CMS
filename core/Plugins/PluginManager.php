@@ -3,6 +3,7 @@
 namespace FBL\Plugins;
 
 use App\Services\SqlFileRunner;
+use FBL\Language;
 use FBL\Router;
 use Throwable;
 
@@ -37,6 +38,7 @@ final class PluginManager
 
             try {
                 $metadata = $this->readMetadata($path);
+                $this->registerPluginLanguage($metadata);
                 $plugin = $this->loadPluginInstance($metadata);
                 $plugin->boot();
                 $this->includePluginRoutes($metadata, $router);
@@ -365,6 +367,16 @@ final class PluginManager
         }
 
         return $plugin;
+    }
+
+    private function registerPluginLanguage(array $metadata): void
+    {
+        $langDir = (string)($metadata['path'] ?? '') . '/lang';
+        if (!is_dir($langDir)) {
+            return;
+        }
+
+        Language::registerPluginLanguage((string)$metadata['slug'], $langDir);
     }
 
     private function includePluginRoutes(array $metadata, Router $router): void

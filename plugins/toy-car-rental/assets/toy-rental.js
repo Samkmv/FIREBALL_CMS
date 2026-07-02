@@ -1,5 +1,6 @@
 (function () {
     const settings = window.toyRentalSettings || {};
+    const labels = settings.labels || {};
     const notified = new Set();
 
     const format = (seconds) => {
@@ -49,7 +50,7 @@
         card?.classList.add('is-overdue', 'toy-rental-alert-pulse');
         const badge = card?.querySelector('[data-toy-rental-status]');
         if (badge) {
-            badge.textContent = 'Просрочена';
+            badge.textContent = labels.overdue || 'Overdue';
             badge.className = 'badge rounded-pill text-bg-danger';
         }
     };
@@ -85,7 +86,7 @@
             const finalAmountField = modal.querySelector('[data-toy-rental-final-amount]');
 
             if (durationField) {
-                durationField.value = `${state.elapsedMinutes} мин`;
+                durationField.value = `${state.elapsedMinutes} ${labels.minutes || 'min'}`;
             }
             if (calculatedField) {
                 calculatedField.value = `${formattedAmount}${currency ? ` ${currency}` : ''}`;
@@ -143,26 +144,44 @@
         updateCompletionModals(false);
     };
 
-    document.querySelectorAll('[data-toy-rental-start-form]').forEach((form) => {
+    const syncStartForm = (form) => {
         const type = form.querySelector('[data-toy-rental-billing-type]');
         const fixedFields = form.querySelector('[data-toy-rental-fixed-fields]');
         const meteredFields = form.querySelector('[data-toy-rental-metered-fields]');
 
-        const sync = () => {
-            const isMetered = type?.value === 'metered';
-            fixedFields?.classList.toggle('d-none', isMetered);
-            meteredFields?.classList.toggle('d-none', !isMetered);
-            fixedFields?.querySelectorAll('input, select, textarea').forEach((field) => {
-                field.disabled = isMetered;
-            });
-            meteredFields?.querySelectorAll('input, select, textarea').forEach((field) => {
-                field.disabled = !isMetered;
-            });
-        };
+        if (!type || !fixedFields || !meteredFields) {
+            return;
+        }
 
-        type?.addEventListener('change', sync);
-        sync();
+        const isMetered = type.value === 'metered';
+        form.dataset.billingMode = isMetered ? 'metered' : 'fixed';
+        fixedFields.classList.toggle('d-none', isMetered);
+        meteredFields.classList.toggle('d-none', !isMetered);
+        fixedFields.querySelectorAll('input, select, textarea').forEach((field) => {
+            field.disabled = isMetered;
+        });
+        meteredFields.querySelectorAll('input, select, textarea').forEach((field) => {
+            field.disabled = !isMetered;
+        });
+    };
+
+    const initStartForms = () => {
+        document.querySelectorAll('[data-toy-rental-start-form]').forEach(syncStartForm);
+    };
+
+    document.addEventListener('change', (event) => {
+        const type = event.target?.closest?.('[data-toy-rental-billing-type]');
+        if (!type) {
+            return;
+        }
+
+        const form = type.closest('[data-toy-rental-start-form]');
+        if (form) {
+            syncStartForm(form);
+        }
     });
+
+    initStartForms();
 
     document.querySelectorAll('[data-toy-rental-complete-modal]').forEach((modal) => {
         const finalAmountField = modal.querySelector('[data-toy-rental-final-amount]');

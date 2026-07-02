@@ -14,6 +14,7 @@ plugins/
     migrations/
     views/
     assets/
+    lang/
 ```
 
 ## plugin.json
@@ -118,6 +119,17 @@ $duration = plugin_setting('toy-car-rental', 'default_duration', 10);
 ```
 
 Настройки хранятся в `plugin_settings`.
+
+## Языковые файлы
+
+Переводы плагина хранятся внутри самого плагина:
+
+```text
+plugins/toy-car-rental/lang/ru.php
+plugins/toy-car-rental/lang/en.php
+```
+
+Активные плагины подключают свои языковые файлы автоматически. Не добавляйте строки плагина в `app/Languages/*.php`.
 
 ## Безопасность
 

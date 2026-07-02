@@ -1,7 +1,7 @@
 <?php $currency = (string)($settings['currency'] ?? '₽'); ?>
 <?= view()->renderPartial('admin/shell_open', [
-    'title' => 'Статистика проката',
-    'subtitle' => 'Показатели за сегодня.',
+    'title' => FireballPluginToyCarRental::t('toy_rental_stats_title'),
+    'subtitle' => FireballPluginToyCarRental::t('toy_rental_stats_subtitle'),
 ]) ?>
 
     <?php require __DIR__ . '/tabs.php'; ?>
@@ -9,19 +9,19 @@
     <div class="row g-4">
         <?php
         $cards = [
-            ['Поездок сегодня', (int)$stats['rides_total'], 'ci-activity'],
-            ['Фиксированные', (int)$stats['fixed'], 'ci-clock'],
-            ['Поминутные', (int)$stats['metered'], 'ci-activity'],
-            ['Активные', (int)$stats['active'], 'ci-clock'],
-            ['Завершённые', (int)$stats['completed'], 'ci-check'],
-            ['Просроченные', (int)$stats['overdue'], 'ci-alert-triangle'],
-            ['Оплаченные', (int)$stats['paid'], 'ci-check'],
-            ['Неоплаченные', (int)$stats['unpaid'], 'ci-x'],
-            ['Выручка', number_format((float)$stats['revenue_total'], 0, '.', ' ') . ' ' . $currency, 'ci-wallet'],
-            ['Наличными', number_format((float)$stats['revenue_cash'], 0, '.', ' ') . ' ' . $currency, 'ci-banknote'],
-            ['Картой', number_format((float)$stats['revenue_card'], 0, '.', ' ') . ' ' . $currency, 'ci-credit-card'],
-            ['Средняя длительность', (int)$stats['avg_duration'] . ' мин', 'ci-calendar'],
-            ['Популярная машинка', (string)$stats['popular_car'], 'ci-star'],
+            [FireballPluginToyCarRental::t('toy_rental_stat_rides_today'), (int)$stats['rides_total'], 'ci-activity'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_fixed'), (int)$stats['fixed'], 'ci-clock'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_metered'), (int)$stats['metered'], 'ci-activity'],
+            [FireballPluginToyCarRental::t('toy_rental_stat_active'), (int)$stats['active'], 'ci-clock'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_completed'), (int)$stats['completed'], 'ci-check'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_overdue'), (int)$stats['overdue'], 'ci-alert-triangle'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_paid'), (int)$stats['paid'], 'ci-check'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_unpaid'), (int)$stats['unpaid'], 'ci-x'],
+            [FireballPluginToyCarRental::t('toy_rental_stat_revenue'), number_format((float)$stats['revenue_total'], 0, '.', ' ') . ' ' . $currency, 'ci-wallet'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_cash'), number_format((float)$stats['revenue_cash'], 0, '.', ' ') . ' ' . $currency, 'ci-banknote'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_card'), number_format((float)$stats['revenue_card'], 0, '.', ' ') . ' ' . $currency, 'ci-credit-card'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_avg_duration'), (int)$stats['avg_duration'] . ' ' . FireballPluginToyCarRental::t('toy_rental_min_short'), 'ci-calendar'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_popular_car'), (string)$stats['popular_car'], 'ci-star'],
         ];
         ?>
         <?php foreach ($cards as $card): ?>

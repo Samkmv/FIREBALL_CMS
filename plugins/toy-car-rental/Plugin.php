@@ -132,12 +132,15 @@ final class FireballPluginToyCarRental implements PluginInterface
     public static function viewData(string $active, array $data = []): array
     {
         $assetBase = base_href('/admin/toy-rental/assets/');
+        $assetPath = __DIR__ . '/assets';
+        $cssVersion = is_file($assetPath . '/toy-rental.css') ? (string)filemtime($assetPath . '/toy-rental.css') : (string)time();
+        $jsVersion = is_file($assetPath . '/toy-rental.js') ? (string)filemtime($assetPath . '/toy-rental.js') : (string)time();
 
         return array_merge([
             'tabs' => self::tabs($active),
             'settings' => self::settings(),
-            'styles' => [$assetBase . 'toy-rental.css'],
-            'footer_scripts' => [$assetBase . 'toy-rental.js'],
+            'styles' => [$assetBase . 'toy-rental.css?v=' . $cssVersion],
+            'footer_scripts' => [$assetBase . 'toy-rental.js?v=' . $jsVersion],
         ], $data);
     }
 
@@ -288,9 +291,9 @@ final class FireballPluginToyCarRental implements PluginInterface
         $estimatedMinutes = isset($data['estimated_minutes']) && (string)$data['estimated_minutes'] !== ''
             ? max(1, min(1440, (int)$data['estimated_minutes']))
             : null;
-        $pricePerMinute = self::money($data['price_per_minute'] ?? $car['price_per_minute'] ?? $settings['default_minute_price']);
+        $pricePerMinute = self::money($data['price_per_minute'] ?? $settings['default_minute_price'] ?? $car['price_per_minute'] ?? 0);
         if ($pricePerMinute <= 0) {
-            $pricePerMinute = self::money($car['price_per_minute'] ?? $settings['default_minute_price']);
+            $pricePerMinute = self::money($settings['default_minute_price'] ?? $car['price_per_minute'] ?? 0);
         }
 
         if ($billingType === 'metered') {
@@ -306,7 +309,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         } else {
             $estimatedMinutes = $duration;
             $plannedEndAt = date('Y-m-d H:i:s', $now + $duration * 60);
-            $amount = self::money($data['payment_amount'] ?? $car['price_per_ride'] ?? $settings['default_price']);
+            $amount = self::money($data['payment_amount'] ?? $settings['default_price'] ?? $car['price_per_ride'] ?? 0);
             $finalAmount = $amount;
             $paymentMethod = self::paymentMethod((string)($data['payment_method'] ?? 'cash'));
             $paymentStatus = self::paymentStatus((string)($data['payment_status'] ?? 'paid'));
@@ -381,7 +384,7 @@ final class FireballPluginToyCarRental implements PluginInterface
                 "UPDATE toy_rental_rides
                  SET ended_at = ?, duration_minutes = ?, payment_amount = ?, final_amount = ?, payment_method = ?, payment_status = ?, status = 'completed', updated_at = ?
                  WHERE id = ?",
-                [date('Y-m-d H:i:s', $endedAt), $duration, $amount, $amount, $method, $paymentStatus, date('Y-m-d H:i:s', $endedAt), $rideId]
+                [date('Y-m-d H:i:s', $endedAt), $duration, $amount, $calculatedAmount, $method, $paymentStatus, date('Y-m-d H:i:s', $endedAt), $rideId]
             );
             db()->query(
                 "UPDATE toy_rental_cars SET status = 'available', updated_at = ? WHERE id = ?",
@@ -504,7 +507,7 @@ final class FireballPluginToyCarRental implements PluginInterface
                 $stats[$paymentStatus]++;
             }
             if ((string)$row['payment_status'] === 'paid') {
-                $amount = self::money($row['final_amount'] ?? $row['payment_amount']);
+                $amount = self::money($row['payment_amount'] ?? 0);
                 $stats['revenue_total'] += $amount;
                 if ((string)$row['payment_method'] === 'cash') {
                     $stats['revenue_cash'] += $amount;
@@ -576,9 +579,12 @@ final class FireballPluginToyCarRental implements PluginInterface
 
             $items[] = [
                 'type' => 'toy_rental',
-                'source_label' => 'Прокат',
-                'title' => 'Время поездки закончилось',
-                'text' => trim($carLabel . ': просрочка ' . $minutesOverdue . ' мин.'),
+                'source_label' => self::t('toy_rental_notification_source'),
+                'title' => self::t('toy_rental_notification_overdue_title'),
+                'text' => self::t('toy_rental_notification_overdue_text', [
+                    'car' => $carLabel,
+                    'minutes' => $minutesOverdue,
+                ]),
                 'url' => base_href('/admin/toy-rental'),
                 'created_at' => (string)($row['planned_end_at'] ?? date('Y-m-d H:i:s')),
                 'time' => date('H:i', $plannedAt),
@@ -685,6 +691,10 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     private static function billingType(string $type): string
     {
+        if ($type === 'per_minute') {
+            return 'metered';
+        }
+
         return in_array($type, ['fixed', 'metered'], true) ? $type : 'fixed';
     }
 
