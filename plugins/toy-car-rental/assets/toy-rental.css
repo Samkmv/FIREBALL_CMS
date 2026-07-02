@@ -29,15 +29,17 @@
 }
 
 .toy-rental-status-badge {
-    align-self: flex-start;
-    display: inline-flex;
+    align-self: flex-start !important;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    width: auto;
-    min-width: 0;
-    min-height: 0;
-    padding: .35rem .65rem;
-    line-height: 1.1;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    padding: .35rem .65rem !important;
+    line-height: 1.1 !important;
     white-space: nowrap;
 }
 

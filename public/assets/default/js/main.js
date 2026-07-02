@@ -1180,7 +1180,6 @@ $(function(){
                 'needCSRFToken': getCsrfToken(),
             },
             beforeSend: function () {
-                // btn.prop('disabled', true);
                 $('.btn-remove').prop('disabled', true);
                 btnText.addClass('d-none');
                 loader.removeClass('d-none');
@@ -1190,11 +1189,9 @@ $(function(){
                 $('.product-id-' + productId).find(addToCart).removeClass('btn-secondary').addClass('btn-dark').text('В корзину');
                 $('#shoppingCart .offcanvas-body').html(result.mini_cart);
                 $('#countCart').text(result.cart_qty);
-                console.log(result);
             },
             error: function (request) {
                 toastr.error(request.responseText);
-                console.log(request);
             },
             complete: function () {
                 $('.btn-remove').prop('disabled', false);
@@ -1220,7 +1217,6 @@ $(function(){
                 'needCSRFToken': getCsrfToken(),
             },
             beforeSend: function () {
-                // btn.prop('disabled', true);
                 addToCart.prop('disabled', true);
                 btnText.addClass('d-none');
                 loader.removeClass('d-none');
@@ -1230,15 +1226,12 @@ $(function(){
                 $('.product-id-' + productId).find(addToCart).removeClass('btn-dark').addClass('btn-secondary').text('В корзине');
                 $('#shoppingCart .offcanvas-body').html(result.mini_cart);
                 $('#countCart').text(result.cart_qty);
-                console.log(result);
             },
             error: function (request) {
                 toastr.error(request.responseText);
-                console.log(request);
             },
             complete: function () {
                 setTimeout(function () {
-                    // btn.prop('disabled', false);
                     addToCart.prop('disabled', false);
                     btnText.removeClass('d-none');
                     loader.addClass('d-none');

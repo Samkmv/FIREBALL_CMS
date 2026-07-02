@@ -10,6 +10,9 @@ $updaterBranch = $formData['updater_github_branch'] ?? ($settings['updater_githu
 $updaterToken = $formData['updater_github_token'] ?? '';
 $updaterChannel = $formData['update_channel'] ?? ($settings['update_channel'] ?? ($updateConfig['channel'] ?? 'stable'));
 $updaterChannel = $updaterChannel === 'dev' ? 'dev' : 'stable';
+$updaterChannelLabel = $updaterChannel === 'dev'
+    ? return_translation('admin_update_channel_dev')
+    : return_translation('admin_update_channel_stable');
 $isGitRepo = !empty($updateLocal['is_git_repo']);
 $updateSourceLabel = $updaterChannel === 'dev'
     ? return_translation('admin_update_source_main_branch')
@@ -96,8 +99,8 @@ if (is_array($lastCheck)) {
                 <div class="col-md-3">
                     <label class="form-label" for="update-channel"><?= print_translation('admin_update_channel_label') ?></label>
                     <select class="form-select <?= get_validation_class('update_channel') ?>" id="update-channel" name="update_channel">
-                        <option value="stable" <?= $updaterChannel === 'stable' ? 'selected' : '' ?>>Stable</option>
-                        <option value="dev" <?= $updaterChannel === 'dev' ? 'selected' : '' ?>>Dev</option>
+                        <option value="stable" <?= $updaterChannel === 'stable' ? 'selected' : '' ?>><?= print_translation('admin_update_channel_stable') ?></option>
+                        <option value="dev" <?= $updaterChannel === 'dev' ? 'selected' : '' ?>><?= print_translation('admin_update_channel_dev') ?></option>
                     </select>
                     <?= get_errors('update_channel') ?>
                 </div>
@@ -121,9 +124,11 @@ if (is_array($lastCheck)) {
                                 : ''),
                     ]) ?>
                 </div>
-                <div class="col-12 d-flex gap-2">
-                    <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
-                    <div class="form-text align-self-center mb-0"><?= print_translation('admin_settings_update_save_hint') ?></div>
+                <div class="col-12 d-grid d-sm-flex align-items-sm-center gap-3">
+                    <button class="btn btn-dark rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4" type="submit">
+                        <i class="ci-save"></i><?= print_translation('admin_btn_save') ?>
+                    </button>
+                    <div class="form-text mb-0"><?= print_translation('admin_settings_update_save_hint') ?></div>
                 </div>
             </div>
         </form>
@@ -135,7 +140,7 @@ if (is_array($lastCheck)) {
                 <h2 class="h4 mb-1"><?= print_translation('admin_update_center_heading') ?></h2>
                 <p class="text-body-secondary mb-0"><?= print_translation('admin_update_center_subtitle') ?></p>
                 <div class="d-flex flex-wrap gap-3 mt-2 fs-sm">
-                    <span><span class="text-body-secondary"><?= print_translation('admin_update_channel_label') ?>:</span> <?= htmlSC($updaterChannel === 'dev' ? 'Dev' : 'Stable') ?></span>
+                    <span><span class="text-body-secondary"><?= print_translation('admin_update_channel_label') ?>:</span> <?= htmlSC($updaterChannelLabel) ?></span>
                     <span><span class="text-body-secondary"><?= print_translation('admin_update_source_label') ?>:</span> <?= htmlSC($updateSourceLabel) ?></span>
                 </div>
             </div>

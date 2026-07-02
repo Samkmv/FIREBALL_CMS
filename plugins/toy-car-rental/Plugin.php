@@ -639,11 +639,47 @@ final class FireballPluginToyCarRental implements PluginInterface
     public static function t(string $key, array $replace = []): string
     {
         $value = \FBL\Language::get($key);
+        if ($value === $key) {
+            $translations = self::translations();
+            $value = (string)($translations[$key] ?? $key);
+        }
+
         foreach ($replace as $name => $replacement) {
             $value = str_replace(':' . $name, (string)$replacement, $value);
         }
 
         return $value;
+    }
+
+    protected static function translations(): array
+    {
+        static $cache = [];
+
+        $lang = app()->get('lang');
+        $code = is_array($lang) ? (string)($lang['code'] ?? '') : '';
+        $cacheKey = $code !== '' ? $code : 'fallback';
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
+        $candidates = array_values(array_unique(array_filter([$code, 'ru', 'en'])));
+        foreach ($candidates as $candidate) {
+            $file = __DIR__ . '/lang/' . basename($candidate) . '.php';
+            if (!is_file($file)) {
+                continue;
+            }
+
+            try {
+                $data = require $file;
+                if (is_array($data)) {
+                    return $cache[$cacheKey] = $data;
+                }
+            } catch (Throwable $exception) {
+                log_error_details('Toy rental language file failed', ['file' => $file], $exception);
+            }
+        }
+
+        return $cache[$cacheKey] = [];
     }
 
     public static function cssColorStyle(string $color): string
