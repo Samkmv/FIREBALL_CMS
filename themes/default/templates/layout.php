@@ -92,8 +92,7 @@ $hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="
 $canViewVideoStatus = can_view_video_diagnostics(isset($video_owner_id) ? (int)$video_owner_id : null);
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 $logoutAction = base_href('/logout');
-$siteFaviconUrl = site_favicon_url();
-$siteFaviconType = site_favicon_type();
+$pwaHeadData = pwa_head_data();
 $footerDescription = $siteDescription !== ''
     ? $siteDescription
     : return_translation('footer_description_fallback');
@@ -164,11 +163,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php endif; ?>
 
     <!-- Webmanifest + Favicon / App icons -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="manifest" href="<?= theme_asset('manifest.json') ?>">
-    <link rel="icon" type="<?= htmlSC($siteFaviconType) ?>" href="<?= htmlSC($siteFaviconUrl) ?>">
-    <link rel="shortcut icon" href="<?= htmlSC($siteFaviconUrl) ?>">
-    <link rel="apple-touch-icon" href="<?= htmlSC($siteFaviconUrl) ?>">
+    <?= pwa_head_tags() ?>
 
     <!-- Theme switcher (color modes) -->
     <script src="<?= theme_asset('js/theme-switcher.js') ?>"></script>
@@ -219,6 +214,14 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-toast-warning-title="<?= htmlSC(return_translation('toast_warning_title')) ?>"
     data-code-copy-label="<?= htmlSC(return_translation('code_copy_button')) ?>"
     data-code-copied-label="<?= htmlSC(return_translation('code_copied_button')) ?>"
+    data-pwa-enabled="<?= !empty($pwaHeadData['enabled']) ? '1' : '0' ?>"
+    data-pwa-push-enabled="<?= !empty($pwaHeadData['push_enabled']) ? '1' : '0' ?>"
+    data-pwa-vapid-public-key="<?= htmlSC((string)($pwaHeadData['vapid_public_key'] ?? '')) ?>"
+    data-pwa-service-worker-url="<?= htmlSC((string)($pwaHeadData['service_worker_url'] ?? base_url('/service-worker.js'))) ?>"
+    data-pwa-subscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions')) ?>"
+    data-pwa-unsubscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions/delete')) ?>"
+    data-pwa-badge-clear-url="<?= htmlSC(base_url('/api/pwa/badge/clear')) ?>"
+    data-pwa-safari-hint="<?= htmlSC(return_translation('pwa_safari_install_hint')) ?>"
 >
 
 <?= $this->partial('menu', get_defined_vars()) ?>
@@ -325,6 +328,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php if ($isAdmin): ?>
     <script src="<?= theme_asset('js/admin-delete-modal.js') . '?v=' . filemtime(theme()->assetPath('js/admin-delete-modal.js')) ?>"></script>
 <?php endif; ?>
+<script src="<?= base_url('/assets/default/js/pwa.js?v=' . filemtime(WWW . '/assets/default/js/pwa.js')) ?>"></script>
 <script src="<?= theme_asset('js/main.js') . '?v=' . filemtime(theme()->assetPath('js/main.js')) ?>"></script>
 
 

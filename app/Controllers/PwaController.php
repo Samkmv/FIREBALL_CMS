@@ -17,7 +17,7 @@ class PwaController extends BaseController
     public function manifest(): void
     {
         header('Content-Type: application/manifest+json; charset=utf-8');
-        header('Cache-Control: public, max-age=3600, must-revalidate');
+        header('Cache-Control: no-cache, must-revalidate');
         exit(json_encode($this->pwa->manifest(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     }
 

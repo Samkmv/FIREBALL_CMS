@@ -99,7 +99,10 @@
     }
 
     try {
-      const registration = await navigator.serviceWorker.register(body.dataset.pwaServiceWorkerUrl || '/service-worker.js', { scope: '/' });
+      const registration = await navigator.serviceWorker.register(body.dataset.pwaServiceWorkerUrl || '/service-worker.js', {
+        scope: '/',
+        updateViaCache: 'none'
+      });
       window.FireballPwa.registration = registration;
       if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       return registration;

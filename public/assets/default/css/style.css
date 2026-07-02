@@ -2146,47 +2146,25 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     --admin-shell-panel-border: color-mix(in srgb, var(--cz-border-color) 78%, transparent);
 }
 
-body.pwa-standalone {
-    --admin-header-height: 56px;
-}
+@media (max-width: 991.98px) {
+    body.pwa-standalone > header.navbar-sticky {
+        padding-top: calc(.25rem + var(--pwa-safe-top)) !important;
+    }
 
-body.pwa-standalone .admin-navbar,
-body.pwa-standalone .admin-topbar,
-body.pwa-standalone .mobile-admin-header {
-    min-height: calc(var(--admin-header-height, 56px) + var(--pwa-safe-top));
-    padding-top: var(--pwa-safe-top);
-}
+    body.pwa-standalone #navbarNav,
+    body.pwa-standalone .admin-shell-offcanvas {
+        padding-top: var(--pwa-safe-top);
+    }
 
-body.pwa-standalone [data-admin-shell] {
-    padding-top: calc(1.5rem + var(--pwa-safe-top)) !important;
-}
-
-@media (min-width: 992px) {
-    body.pwa-standalone [data-admin-shell] {
-        padding-top: calc(3rem + var(--pwa-safe-top)) !important;
+    body.pwa-standalone #navbarNav,
+    body.pwa-standalone .admin-shell-offcanvas,
+    body.pwa-standalone .admin-shell-offcanvas .offcanvas-body {
+        max-height: calc(100dvh - var(--pwa-safe-top));
     }
 }
 
 body.pwa-standalone [data-admin-shell-sidebar] {
     top: calc(7rem + var(--pwa-safe-top)) !important;
-}
-
-body.pwa-standalone .admin-shell-offcanvas {
-    padding-top: var(--pwa-safe-top);
-}
-
-body.pwa-standalone .admin-shell-offcanvas,
-body.pwa-standalone .admin-shell-offcanvas .offcanvas-body {
-    max-height: calc(100dvh - var(--pwa-safe-top));
-}
-
-body.pwa-standalone .admin-sidebar {
-    padding-top: var(--pwa-safe-top);
-}
-
-body.pwa-standalone .admin-main,
-body.pwa-standalone .admin-content {
-    padding-top: calc(var(--admin-header-height, 56px) + var(--pwa-safe-top));
 }
 
 [data-admin-shell-sidebar],

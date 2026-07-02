@@ -28,22 +28,14 @@ class PwaService
 
     public function manifest(): array
     {
-        $siteTitle = trim($this->settings->get('pwa_app_name', ''));
-        if ($siteTitle === '') {
-            $siteTitle = trim($this->settings->get('site_title', SITE_NAME));
-        }
-
-        $shortName = trim($this->settings->get('pwa_short_name', ''));
-        $description = trim($this->settings->get('pwa_description', ''));
-        if ($description === '') {
-            $description = trim($this->settings->get('site_description', ''));
-        }
+        $siteTitle = $this->appName();
+        $shortName = $this->shortName($siteTitle);
 
         return [
-            'name' => $siteTitle !== '' ? $siteTitle : SITE_NAME,
-            'short_name' => $shortName !== '' ? $shortName : mb_substr($siteTitle !== '' ? $siteTitle : SITE_NAME, 0, 24),
-            'description' => $description,
-            'start_url' => base_url('/?source=pwa'),
+            'name' => $siteTitle,
+            'short_name' => $shortName,
+            'description' => $this->appDescription(),
+            'start_url' => base_url('/'),
             'scope' => base_url('/'),
             'display' => 'standalone',
             'orientation' => $this->oneOf('pwa_orientation', ['any', 'portrait', 'portrait-primary', 'landscape', 'landscape-primary'], 'any'),
@@ -57,15 +49,13 @@ class PwaService
     public function headData(): array
     {
         $icons = $this->icons();
-        $name = trim($this->settings->get('pwa_app_name', ''));
-        if ($name === '') {
-            $name = $this->settings->get('site_title', SITE_NAME);
-        }
+        $name = $this->appName();
 
         return [
             'enabled' => $this->isEnabled(),
             'push_enabled' => $this->isPushEnabled(),
             'app_name' => $name,
+            'short_name' => $this->shortName($name),
             'manifest_url' => base_url('/manifest.webmanifest?v=' . rawurlencode($this->cacheVersion())),
             'service_worker_url' => base_url('/service-worker.js?v=' . rawurlencode($this->cacheVersion())),
             'theme_color' => $this->color('pwa_theme_color', '#181d25'),
@@ -188,7 +178,7 @@ class PwaService
             'cacheName' => 'fireball-pwa-' . $this->cacheVersion(),
             'offlineUrl' => base_url('/offline'),
             'homeUrl' => base_url('/'),
-            'defaultTitle' => $this->settings->get('site_title', SITE_NAME),
+            'defaultTitle' => $this->appName(),
             'defaultBody' => return_translation('pwa_push_default_body'),
             'icon' => $icons['sizes'][192] ?? $icons['apple']['src'] ?? base_url('/assets/img/fbl_logo.png'),
             'badge' => $icons['sizes'][72] ?? $icons['favicon']['src'] ?? base_url('/assets/img/fbl_logo.png'),
@@ -753,7 +743,7 @@ self.addEventListener("sync", () => {});
 
     protected function resolveIconSource(): array
     {
-        foreach (['site_favicon' => 'favicon', 'pwa_logo' => 'logo'] as $setting => $kind) {
+        foreach (['site_favicon' => 'favicon', 'pwa_app_icon' => 'app_icon', 'pwa_logo' => 'logo'] as $setting => $kind) {
             $value = trim($this->settings->get($setting, ''));
             $path = $this->localPath($value);
             if ($path !== null && is_file($path)) {
@@ -770,6 +760,44 @@ self.addEventListener("sync", () => {});
             'path' => WWW . '/assets/img/fbl_logo.png',
             'type' => 'raster',
         ];
+    }
+
+    protected function appName(): string
+    {
+        $siteTitle = trim($this->settings->get('site_title', ''));
+        $pwaName = trim($this->settings->get('pwa_app_name', ''));
+
+        if ($pwaName !== '' && !($pwaName === SITE_NAME && $siteTitle !== '' && $siteTitle !== SITE_NAME)) {
+            return $pwaName;
+        }
+
+        if ($siteTitle !== '') {
+            return $siteTitle;
+        }
+
+        $host = trim((string)(parse_url(base_url('/'), PHP_URL_HOST) ?: ''));
+
+        return $host !== '' ? $host : 'Fireball site';
+    }
+
+    protected function shortName(string $appName): string
+    {
+        $shortName = trim($this->settings->get('pwa_short_name', ''));
+        if ($shortName !== '' && !($shortName === SITE_NAME && $appName !== SITE_NAME)) {
+            return $shortName;
+        }
+
+        return mb_substr($appName, 0, 24);
+    }
+
+    protected function appDescription(): string
+    {
+        $description = trim($this->settings->get('pwa_description', ''));
+        if ($description !== '') {
+            return $description;
+        }
+
+        return trim($this->settings->get('site_description', ''));
     }
 
     protected function startupImageUrl(): string
@@ -927,7 +955,36 @@ self.addEventListener("sync", () => {});
 
     protected function cacheVersion(): string
     {
-        return $this->settings->get('pwa_cache_version', '') ?: (string)time();
+        $source = $this->resolveIconSource();
+        $startup = $this->localPath($this->settings->get('pwa_startup_image', ''));
+        $settings = [];
+
+        foreach ([
+            'site_title',
+            'site_description',
+            'site_favicon',
+            'pwa_enabled',
+            'pwa_push_enabled',
+            'pwa_app_name',
+            'pwa_short_name',
+            'pwa_description',
+            'pwa_theme_color',
+            'pwa_background_color',
+            'pwa_orientation',
+            'pwa_app_icon',
+            'pwa_logo',
+            'pwa_startup_image',
+            'pwa_cache_version',
+            'default_locale',
+        ] as $key) {
+            $settings[$key] = $this->settings->get($key, '');
+        }
+
+        $settings['icon_source_path'] = (string)($source['path'] ?? '');
+        $settings['icon_source_mtime'] = is_file((string)($source['path'] ?? '')) ? (string)filemtime((string)$source['path']) : '';
+        $settings['startup_mtime'] = $startup !== null && is_file($startup) ? (string)filemtime($startup) : '';
+
+        return substr(hash('sha256', json_encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)), 0, 16);
     }
 
     protected function color(string $key, string $default): string

@@ -876,11 +876,13 @@ function pwa_head_data(): array
         return pwa_service()->headData();
     } catch (\Throwable $exception) {
         log_error_details('PWA head data error', [], $exception);
+        $fallbackName = site_setting('site_title', SITE_NAME);
 
         return [
             'enabled' => false,
             'push_enabled' => false,
-            'app_name' => SITE_NAME,
+            'app_name' => $fallbackName,
+            'short_name' => mb_substr($fallbackName, 0, 24),
             'manifest_url' => base_url('/manifest.webmanifest'),
             'service_worker_url' => base_url('/service-worker.js'),
             'theme_color' => '#181d25',
@@ -899,6 +901,7 @@ function pwa_head_tags(): string
     $pwa = pwa_head_data();
     $lines = [
         '<meta name="theme-color" content="' . htmlSC($pwa['theme_color'] ?? '#181d25') . '">',
+        '<meta name="application-name" content="' . htmlSC($pwa['app_name'] ?? SITE_NAME) . '">',
         '<meta name="apple-mobile-web-app-capable" content="yes">',
         '<meta name="apple-mobile-web-app-title" content="' . htmlSC($pwa['app_name'] ?? SITE_NAME) . '">',
         '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
