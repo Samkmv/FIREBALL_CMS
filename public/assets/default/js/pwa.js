@@ -16,8 +16,10 @@
     const standalone = isStandalone();
     body.classList.toggle('pwa', standalone);
     body.classList.toggle('standalone', standalone);
+    body.classList.toggle('pwa-standalone', standalone);
     document.documentElement.classList.toggle('pwa', standalone);
     document.documentElement.classList.toggle('standalone', standalone);
+    document.documentElement.classList.toggle('pwa-standalone', standalone);
   };
 
   const postJson = (url, payload, method = 'POST') => fetch(url, {
