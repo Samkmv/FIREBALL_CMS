@@ -41,7 +41,7 @@ $adminShellMainColClass = (string)($main_col_class ?? 'col-lg-8 col-xl-9');
             </div>
             <button
                 type="button"
-                class="fixed-bottom z-sticky w-100 btn btn-lg btn-dark border-0 rounded-0 pb-4 d-lg-none admin-shell-mobile-toggle"
+                class="fixed-bottom z-sticky w-100 btn btn-lg btn-dark border-0 border-top border-light border-opacity-10 rounded-0 pb-4 d-lg-none admin-shell-mobile-toggle"
                 data-bs-toggle="offcanvas"
                 data-bs-target="#adminSidebar"
                 aria-controls="adminSidebar"

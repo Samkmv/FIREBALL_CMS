@@ -2098,24 +2098,14 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
 }
 
 .admin-shell-mobile-toggle {
-    z-index: 1088 !important;
+    z-index: 1020 !important;
     padding-top: .95rem;
-    border: 0 !important;
     box-shadow: none !important;
     outline: 0 !important;
     -webkit-tap-highlight-color: transparent;
     transform: translateZ(0);
     backface-visibility: hidden;
     background-clip: padding-box;
-}
-
-body:has(.admin-shell-offcanvas.show) .admin-shell-mobile-toggle,
-body:has(.admin-shell-offcanvas.showing) .admin-shell-mobile-toggle,
-body:has(.offcanvas.show) .admin-shell-mobile-toggle,
-body:has(.offcanvas.showing) .admin-shell-mobile-toggle,
-body.has-open-offcanvas .admin-shell-mobile-toggle {
-    opacity: 0;
-    pointer-events: none;
 }
 
 .admin-shell-mobile-toggle::before,
@@ -2127,7 +2117,6 @@ body.has-open-offcanvas .admin-shell-mobile-toggle {
 .admin-shell-mobile-toggle:focus,
 .admin-shell-mobile-toggle:focus-visible,
 .admin-shell-mobile-toggle:active {
-    border: 0 !important;
     box-shadow: none !important;
     outline: 0 !important;
 }

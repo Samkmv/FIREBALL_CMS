@@ -11,6 +11,11 @@ use RuntimeException;
 class UpdateCenter
 {
     protected const AUTO_CHECK_INTERVAL_SECONDS = 21600;
+    protected const PRE_UPDATE_BACKUP_RETENTION = 2;
+    protected const PRE_UPDATE_BACKUP_PATTERNS = [
+        'db-backup-*.sql',
+        'files-backup-*.zip',
+    ];
 
     protected SiteSetting $siteSettings;
     protected array $engineRelease;
@@ -1894,6 +1899,7 @@ class UpdateCenter
     protected function createPreUpdateBackups(): void
     {
         try {
+            $this->prunePreUpdateBackups();
             $databaseBackup = (new DatabaseMaintenanceService())->createBackup();
             if ($databaseBackup === '') {
                 throw new RuntimeException('Database backup failed. Update aborted.');
@@ -1933,8 +1939,8 @@ class UpdateCenter
             }
 
             $closeAttempted = true;
-            if (!$zip->close() || !is_file($path) || filesize($path) === 0) {
-                throw new RuntimeException('File backup archive was not written.');
+            if (!@$zip->close() || !is_file($path) || filesize($path) === 0) {
+                throw new RuntimeException('File backup archive was not written. Check disk quota and free space.');
             }
         } catch (\Throwable $exception) {
             if (!$closeAttempted) {
@@ -1949,6 +1955,32 @@ class UpdateCenter
         }
 
         return $path;
+    }
+
+    protected function prunePreUpdateBackups(): void
+    {
+        $backupDir = STORAGE . '/backups';
+        if (!is_dir($backupDir)) {
+            return;
+        }
+
+        foreach (self::PRE_UPDATE_BACKUP_PATTERNS as $pattern) {
+            $files = glob($backupDir . '/' . $pattern) ?: [];
+            if (count($files) <= self::PRE_UPDATE_BACKUP_RETENTION) {
+                continue;
+            }
+
+            usort(
+                $files,
+                static fn(string $a, string $b): int => ((int)@filemtime($b)) <=> ((int)@filemtime($a))
+            );
+
+            foreach (array_slice($files, self::PRE_UPDATE_BACKUP_RETENTION) as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+        }
     }
 
     protected function addPathToZip(\ZipArchive $zip, string $absolute, string $relative, array $excluded = []): void
