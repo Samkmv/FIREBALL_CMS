@@ -399,6 +399,34 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
     }
 
+    public static function markRidePaid(int $rideId, array $data = []): void
+    {
+        self::ensureRideSchema();
+
+        $ride = db()->query(
+            "SELECT * FROM toy_rental_rides WHERE id = ? AND status = 'completed' AND payment_status = 'unpaid' LIMIT 1",
+            [$rideId]
+        )->getOne();
+        if (!$ride) {
+            throw new RuntimeException(self::t('toy_rental_error_ride_payment_not_found'));
+        }
+
+        $method = self::paymentMethod((string)($data['payment_method'] ?? $ride['payment_method']));
+        $amount = array_key_exists('payment_amount', $data)
+            ? self::money($data['payment_amount'])
+            : self::money($ride['payment_amount'] ?? 0);
+        if ($amount <= 0) {
+            $amount = self::money($ride['final_amount'] ?? 0);
+        }
+
+        db()->query(
+            "UPDATE toy_rental_rides
+             SET payment_amount = ?, payment_method = ?, payment_status = 'paid', updated_at = ?
+             WHERE id = ?",
+            [$amount, $method, date('Y-m-d H:i:s'), $rideId]
+        );
+    }
+
     public static function history(array $filters = []): array
     {
         self::ensureRideSchema();

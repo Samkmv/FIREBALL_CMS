@@ -12,6 +12,30 @@
         return `${sign}${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
     };
 
+    const readTimestamp = (element, msKey, fallbackKey) => {
+        const timestamp = Number.parseInt(element?.dataset?.[msKey] || '', 10);
+        if (Number.isFinite(timestamp) && timestamp > 0) {
+            return timestamp;
+        }
+
+        const parsed = Date.parse(element?.dataset?.[fallbackKey] || '');
+        return Number.isFinite(parsed) ? parsed : NaN;
+    };
+
+    const serverNow = (element) => {
+        const timestamp = Number.parseInt(element?.dataset?.serverNowMs || '', 10);
+        if (!Number.isFinite(timestamp) || timestamp <= 0) {
+            return Date.now();
+        }
+
+        if (!element.dataset.clientMountedMs) {
+            element.dataset.clientMountedMs = String(Date.now());
+        }
+
+        const mountedAt = Number.parseInt(element.dataset.clientMountedMs || '', 10);
+        return timestamp + (Date.now() - (Number.isFinite(mountedAt) ? mountedAt : Date.now()));
+    };
+
     const playSound = () => {
         if (settings.soundEnabled === false) {
             return;
@@ -55,8 +79,8 @@
         }
     };
 
-    const modalRideState = (modal, now = Date.now()) => {
-        const start = Date.parse(modal.dataset.start || '');
+    const modalRideState = (modal, now = serverNow(modal)) => {
+        const start = readTimestamp(modal, 'startMs', 'start');
         if (!Number.isFinite(start)) {
             return null;
         }
@@ -72,9 +96,8 @@
     };
 
     const updateCompletionModals = (forceFinalAmount = false) => {
-        const now = Date.now();
         document.querySelectorAll('[data-toy-rental-complete-modal]').forEach((modal) => {
-            const state = modalRideState(modal, now);
+            const state = modalRideState(modal);
             if (!state) {
                 return;
             }
@@ -98,13 +121,13 @@
     };
 
     const tickTimers = () => {
-        const now = Date.now();
         document.querySelectorAll('[data-toy-rental-timer]').forEach((timer) => {
+            const now = serverNow(timer);
             const billingType = timer.dataset.billingType || 'fixed';
             const card = timer.closest('[data-toy-rental-card]');
 
             if (billingType === 'metered') {
-                const start = Date.parse(timer.dataset.start || '');
+                const start = readTimestamp(timer, 'startMs', 'start');
                 if (!Number.isFinite(start)) {
                     return;
                 }
@@ -127,7 +150,7 @@
                 return;
             }
 
-            const end = Date.parse(timer.dataset.end || '');
+            const end = readTimestamp(timer, 'endMs', 'end');
             if (!Number.isFinite(end)) {
                 return;
             }

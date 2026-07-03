@@ -25,6 +25,7 @@ $rideStatuses = [
     'overdue' => FireballPluginToyCarRental::t('toy_rental_filter_overdue'),
     'cancelled' => FireballPluginToyCarRental::t('toy_rental_filter_cancelled'),
 ];
+$returnTo = current_url_with_query();
 ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => FireballPluginToyCarRental::t('toy_rental_history_title'),
@@ -109,11 +110,12 @@ $rideStatuses = [
                     <th scope="col"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_payment_method')) ?></th>
                     <th scope="col"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_payment_status')) ?></th>
                     <th scope="col"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_status')) ?></th>
+                    <th scope="col"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_actions')) ?></th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($rides)): ?>
-                    <tr><td colspan="11" class="text-center text-body-secondary py-5"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_history_empty')) ?></td></tr>
+                    <tr><td colspan="12" class="text-center text-body-secondary py-5"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_history_empty')) ?></td></tr>
                 <?php endif; ?>
                 <?php foreach ($rides as $ride): ?>
                     <?php
@@ -123,6 +125,8 @@ $rideStatuses = [
                         ? (float)($ride['final_amount'] ?? ($duration * $pricePerMinute))
                         : (float)($ride['final_amount'] ?? $ride['payment_amount']);
                     $paidAmount = (float)($ride['payment_amount'] ?? 0);
+                    $isUnpaid = (string)($ride['payment_status'] ?? '') === 'unpaid';
+                    $canMarkPaid = $isUnpaid && (string)($ride['status'] ?? '') === 'completed';
                     ?>
                     <tr>
                         <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)$ride['started_at']))) ?></td>
@@ -140,8 +144,36 @@ $rideStatuses = [
                         <td class="text-nowrap"><?= number_format($calculated, 2, '.', ' ') ?> <?= htmlSC($currency) ?></td>
                         <td class="text-nowrap"><?= number_format($paidAmount, 2, '.', ' ') ?> <?= htmlSC($currency) ?></td>
                         <td><?= htmlSC(FireballPluginToyCarRental::paymentMethodLabel((string)$ride['payment_method'])) ?></td>
-                        <td><?= htmlSC(FireballPluginToyCarRental::paymentStatusLabel((string)$ride['payment_status'])) ?></td>
+                        <td>
+                            <div class="<?= $isUnpaid ? 'text-warning fw-semibold' : '' ?>">
+                                <?= htmlSC(FireballPluginToyCarRental::paymentStatusLabel((string)$ride['payment_status'])) ?>
+                            </div>
+                            <?php if ($isUnpaid): ?>
+                                <div class="small text-body-secondary"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_unpaid_warning_history')) ?></div>
+                            <?php endif; ?>
+                        </td>
                         <td><span class="badge rounded-pill text-bg-light border"><?= htmlSC(FireballPluginToyCarRental::statusLabel((string)$ride['status'])) ?></span></td>
+                        <td class="text-nowrap">
+                            <?php if ($canMarkPaid): ?>
+                                <form class="d-flex align-items-center gap-2" action="<?= base_href('/admin/toy-rental/rides/pay') ?>" method="post">
+                                    <?= get_csrf_field() ?>
+                                    <input type="hidden" name="id" value="<?= (int)$ride['id'] ?>">
+                                    <input type="hidden" name="payment_amount" value="<?= htmlSC((string)($paidAmount > 0 ? $paidAmount : $calculated)) ?>">
+                                    <input type="hidden" name="return_to" value="<?= htmlSC($returnTo) ?>">
+                                    <select class="form-select form-select-sm w-auto" name="payment_method" aria-label="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_payment_method')) ?>">
+                                        <?php foreach ($paymentMethods as $key => $label): ?>
+                                            <?php if ($key === '') { continue; } ?>
+                                            <option value="<?= htmlSC((string)$key) ?>" <?= (string)$ride['payment_method'] === (string)$key ? 'selected' : '' ?>><?= htmlSC($label) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button class="btn btn-sm btn-dark rounded-pill" type="submit">
+                                        <?= htmlSC(FireballPluginToyCarRental::t('toy_rental_mark_paid')) ?>
+                                    </button>
+                                </form>
+                            <?php else: ?>
+                                <span class="text-body-tertiary">—</span>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

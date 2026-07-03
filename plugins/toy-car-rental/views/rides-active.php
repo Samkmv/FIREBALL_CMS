@@ -58,7 +58,10 @@ $toyHint = static function (string $key): void {
                                       data-toy-rental-timer
                                       data-billing-type="<?= htmlSC((string)($ride['billing_type'] ?? 'fixed')) ?>"
                                       data-start="<?= htmlSC(date('c', $started)) ?>"
+                                      data-start-ms="<?= $started * 1000 ?>"
                                       data-end="<?= htmlSC(date('c', strtotime((string)$ride['planned_end_at']))) ?>"
+                                      data-end-ms="<?= (strtotime((string)$ride['planned_end_at']) ?: time()) * 1000 ?>"
+                                      data-server-now-ms="<?= time() * 1000 ?>"
                                       data-price-per-minute="<?= htmlSC((string)$ride['price_per_minute']) ?>"
                                       data-estimated-minutes="<?= (int)($ride['estimated_minutes'] ?? 0) ?>">--:--</span>
                             </div>
@@ -67,6 +70,12 @@ $toyHint = static function (string $key): void {
                                 <div class="small mt-2">
                                     <?= $t('toy_rental_timer_estimated_amount') ?>: <span data-toy-rental-live-cost><?= number_format($calculated, 2, '.', ' ') ?></span> <?= htmlSC($currency) ?>
                                     <span class="badge rounded-pill text-bg-warning ms-2 d-none" data-toy-rental-estimate-warning><?= $t('toy_rental_timer_estimate_exceeded') ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ((string)($ride['payment_status'] ?? '') === 'unpaid'): ?>
+                                <div class="alert alert-warning border-0 rounded-4 small mt-3 mb-0">
+                                    <i class="ci-alert-triangle me-1"></i>
+                                    <?= $isMetered ? $t('toy_rental_unpaid_warning_metered') : $t('toy_rental_unpaid_warning_fixed') ?>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -92,7 +101,7 @@ $toyHint = static function (string $key): void {
         $duration = max(1, (int)ceil((time() - $started) / 60));
         $calculated = $duration * (float)$ride['price_per_minute'];
         ?>
-        <div class="modal fade" id="toyCompleteRide<?= (int)$ride['id'] ?>" tabindex="-1" aria-labelledby="toyCompleteRideLabel<?= (int)$ride['id'] ?>" aria-hidden="true" data-toy-rental-complete-modal data-start="<?= htmlSC(date('c', $started)) ?>" data-price-per-minute="<?= htmlSC((string)$ride['price_per_minute']) ?>" data-currency="<?= htmlSC($currency) ?>">
+        <div class="modal fade" id="toyCompleteRide<?= (int)$ride['id'] ?>" tabindex="-1" aria-labelledby="toyCompleteRideLabel<?= (int)$ride['id'] ?>" aria-hidden="true" data-toy-rental-complete-modal data-start="<?= htmlSC(date('c', $started)) ?>" data-start-ms="<?= $started * 1000 ?>" data-server-now-ms="<?= time() * 1000 ?>" data-price-per-minute="<?= htmlSC((string)$ride['price_per_minute']) ?>" data-currency="<?= htmlSC($currency) ?>">
             <div class="modal-dialog modal-dialog-centered">
                 <form class="modal-content rounded-5" action="<?= base_href('/admin/toy-rental/rides/complete') ?>" method="post">
                     <?= get_csrf_field() ?>

@@ -1899,7 +1899,7 @@ class UpdateCenter
     protected function createPreUpdateBackups(): void
     {
         try {
-            $this->prunePreUpdateBackups();
+            $this->prunePreUpdateBackups(max(0, self::PRE_UPDATE_BACKUP_RETENTION - 1));
             $databaseBackup = (new DatabaseMaintenanceService())->createBackup();
             if ($databaseBackup === '') {
                 throw new RuntimeException('Database backup failed. Update aborted.');
@@ -1908,6 +1908,7 @@ class UpdateCenter
             if ($fileBackup === '') {
                 throw new RuntimeException('File backup failed. Update aborted.');
             }
+            $this->prunePreUpdateBackups(self::PRE_UPDATE_BACKUP_RETENTION);
         } catch (\Throwable $exception) {
             log_error_details('Pre-update backup failed', [], $exception);
             throw $exception;
@@ -1957,16 +1958,17 @@ class UpdateCenter
         return $path;
     }
 
-    protected function prunePreUpdateBackups(): void
+    protected function prunePreUpdateBackups(int $keep = self::PRE_UPDATE_BACKUP_RETENTION): void
     {
         $backupDir = STORAGE . '/backups';
         if (!is_dir($backupDir)) {
             return;
         }
 
+        $keep = max(0, $keep);
         foreach (self::PRE_UPDATE_BACKUP_PATTERNS as $pattern) {
             $files = glob($backupDir . '/' . $pattern) ?: [];
-            if (count($files) <= self::PRE_UPDATE_BACKUP_RETENTION) {
+            if (count($files) <= $keep) {
                 continue;
             }
 
@@ -1975,7 +1977,7 @@ class UpdateCenter
                 static fn(string $a, string $b): int => ((int)@filemtime($b)) <=> ((int)@filemtime($a))
             );
 
-            foreach (array_slice($files, self::PRE_UPDATE_BACKUP_RETENTION) as $file) {
+            foreach (array_slice($files, $keep) as $file) {
                 if (is_file($file)) {
                     @unlink($file);
                 }

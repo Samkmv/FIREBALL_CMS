@@ -6,6 +6,17 @@ $toyRentalRedirect = static function (string $path = '/admin/toy-rental'): void 
     response()->redirect(base_href($path));
 };
 
+$toyRentalHistoryRedirect = static function () use ($toyRentalRedirect): void {
+    $returnTo = trim((string)request()->post('return_to', ''));
+    $path = (string)(parse_url($returnTo, PHP_URL_PATH) ?: '');
+    $expectedPath = (string)(parse_url(base_href('/admin/toy-rental/rides'), PHP_URL_PATH) ?: '/admin/toy-rental/rides');
+    if ($returnTo !== '' && str_starts_with($path, $expectedPath)) {
+        response()->redirect($returnTo);
+    }
+
+    $toyRentalRedirect('/admin/toy-rental/rides');
+};
+
 $router->get('/admin/toy-rental/assets/(?P<file>[a-z0-9._-]+)', static function (): never {
     $file = (string)get_route_param('file');
     if (!in_array($file, ['toy-rental.css', 'toy-rental.js'], true)) {
@@ -59,6 +70,18 @@ $router->post('/admin/toy-rental/rides/complete', static function () use ($toyRe
     }
 
     $toyRentalRedirect('/admin/toy-rental');
+})->middleware(['auth', 'admin']);
+
+$router->post('/admin/toy-rental/rides/pay', static function () use ($toyRentalHistoryRedirect): void {
+    try {
+        FireballPluginToyCarRental::markRidePaid((int)request()->post('id'), request()->getData());
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_ride_paid'));
+    } catch (Throwable $exception) {
+        log_error_details('Toy rental mark ride paid failed', ['Ride' => request()->post('id')], $exception);
+        session()->setFlash('error', $exception->getMessage());
+    }
+
+    $toyRentalHistoryRedirect();
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/toy-rental/cars', static function (): string {
