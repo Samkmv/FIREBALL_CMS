@@ -9,6 +9,8 @@ $content = (string)($content ?? '');
 $caption = (string)($caption ?? '');
 $tableAttributes = is_array($table_attributes ?? null) ? $table_attributes : [];
 $wrapperAttributes = is_array($wrapper_attributes ?? null) ? $wrapper_attributes : [];
+$mobileCards = is_array($mobile_cards ?? null) ? $mobile_cards : null;
+$mobileAttributes = is_array($mobile_attributes ?? null) ? $mobile_attributes : [];
 $clickableRows = !empty($clickable_rows);
 
 $renderAttributes = static function (array $attributes): string {
@@ -47,6 +49,75 @@ $renderCell = static function (array $cell, string $tag = 'td') use ($renderAttr
 
     return '<' . $cellTag . $renderAttributes($attributes) . '>' . $html . '</' . $cellTag . '>';
 };
+
+$cellHtml = static function (array $cell): string {
+    return array_key_exists('html', $cell)
+        ? (string)$cell['html']
+        : htmlSC((string)($cell['value'] ?? ''));
+};
+
+$columnLabel = static function (array $column): string {
+    return trim(strip_tags(array_key_exists('html', $column) ? (string)$column['html'] : (string)($column['label'] ?? '')));
+};
+
+if ($mobileCards === null && $content === '' && !empty($rows)) {
+    $mobileCards = [];
+
+    foreach ($rows as $row) {
+        $cells = array_values((array)($row['cells'] ?? []));
+        if (empty($cells)) {
+            continue;
+        }
+
+        $actionIndex = null;
+        $statusIndex = null;
+        foreach ($cells as $index => $cell) {
+            $label = $columnLabel((array)($columns[$index] ?? []));
+            $html = $cellHtml((array)$cell);
+            $normalizedLabel = mb_strtolower($label);
+
+            if ($actionIndex === null && (str_contains($normalizedLabel, 'action') || str_contains($normalizedLabel, 'действ') || str_contains($html, 'dropdown'))) {
+                $actionIndex = $index;
+                continue;
+            }
+
+            if ($statusIndex === null && (str_contains($normalizedLabel, 'status') || str_contains($normalizedLabel, 'статус') || str_contains($html, 'badge'))) {
+                $statusIndex = $index;
+            }
+        }
+
+        $card = [
+            'id' => isset($cells[0]) ? ['html' => $cellHtml((array)$cells[0])] : null,
+            'title' => isset($cells[1]) ? ['html' => $cellHtml((array)$cells[1])] : null,
+            'actions' => $actionIndex !== null ? $cellHtml((array)$cells[$actionIndex]) : null,
+            'status' => $statusIndex !== null ? [['html' => $cellHtml((array)$cells[$statusIndex])]] : null,
+            'extra_fields' => [],
+        ];
+
+        foreach ($cells as $index => $cell) {
+            if ($index === 0 || $index === 1 || $index === $actionIndex || $index === $statusIndex) {
+                continue;
+            }
+
+            $label = $columnLabel((array)($columns[$index] ?? []));
+            if ($label === '') {
+                continue;
+            }
+
+            $card['extra_fields'][] = [
+                'label' => $label,
+                'html' => $cellHtml((array)$cell),
+            ];
+        }
+
+        $mobileCards[] = $card;
+    }
+}
+
+$hasMobileCards = is_array($mobileCards) && !empty($mobileCards);
+if ($hasMobileCards) {
+    $wrapperClass = trim($wrapperClass . ' d-none d-md-block');
+}
 ?>
 <div class="<?= htmlSC($wrapperClass) ?>"<?= $renderAttributes($wrapperAttributes) ?>>
     <table class="<?= htmlSC($tableClass) ?>"<?= $renderAttributes($tableAttributes) ?>>
@@ -103,3 +174,9 @@ $renderCell = static function (array $cell, string $tag = 'td') use ($renderAttr
         <?php endif; ?>
     </table>
 </div>
+<?php if ($hasMobileCards): ?>
+    <?= view()->renderPartial('admin/partials/responsive_table_cards', [
+        'cards' => $mobileCards,
+        'attributes' => $mobileAttributes,
+    ]) ?>
+<?php endif; ?>

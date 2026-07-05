@@ -1973,6 +1973,13 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     width: 100%;
     max-width: 100%;
     min-width: 0;
+}
+
+.admin-table-card {
+    overflow: visible;
+}
+
+[data-file-manager-shell] {
     overflow: hidden;
 }
 
@@ -3507,6 +3514,44 @@ body.is-site-fullscreen .plyr * {
 
 .admin-table-state strong {
     color: var(--cz-emphasis-color);
+}
+
+.admin-mobile-table-cards {
+    display: grid;
+    gap: .875rem;
+    width: 100%;
+    overflow: visible;
+}
+
+.admin-mobile-table-card {
+    overflow: visible;
+    border-color: color-mix(in srgb, var(--cz-border-color) 78%, transparent);
+}
+
+.admin-mobile-table-card .list-group,
+.admin-mobile-table-card .list-group-item {
+    overflow: visible;
+}
+
+.admin-mobile-table-card .list-group-item {
+    border-color: color-mix(in srgb, var(--cz-border-color) 72%, transparent);
+}
+
+.admin-mobile-table-card__title {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.admin-mobile-table-card__image {
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 2.5rem;
+}
+
+.admin-mobile-table-card__actions .dropdown-menu,
+.admin-mobile-table-card .dropdown-menu {
+    z-index: 12020;
 }
 
 @media (max-width: 767.98px) {

@@ -6,6 +6,34 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
 
     return strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓';
 };
+$renderActions = static function (array $category): string {
+    ob_start();
+    ?>
+    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+        <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+            <i class="ci-more-vertical"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/categories/edit/' . (int)$category['id']) ?>">
+                <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+            </a>
+            <form
+                action="<?= base_href('/admin/categories/delete') ?>"
+                method="post"
+                data-admin-delete-form
+                data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_category')) ?>"
+                data-delete-item="<?= htmlSC((string)($category['name_ru'] ?? $category['name'] ?? '')) ?>"
+            >
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$category['id'] ?>">
+                <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+            </form>
+        </div>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
 ?>
 <?php ob_start(); ?>
 <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/categories/create') ?>"><i class="ci-plus"></i><?= print_translation('admin_categories_create') ?></a>
@@ -28,6 +56,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
         <?php if (empty($categories)): ?>
             <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
+            <?php $mobileCards = []; ?>
             <?php ob_start(); ?>
                 <thead class="position-sticky top-0">
                 <tr>
@@ -41,34 +70,33 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
                 </thead>
                 <tbody class="table-list">
                     <?php foreach ($categories as $category): ?>
+                        <?php
+                        $categoryTitle = (string)($category['name_ru'] ?? $category['name']);
+                        $categoryNameEn = (string)($category['name_en'] ?? $category['name']);
+                        $actionsHtml = $renderActions($category);
+                        $mobileCards[] = [
+                            'id' => (int)$category['id'],
+                            'title' => $categoryTitle,
+                            'slug' => (string)$category['slug'],
+                            'views' => (int)$category['posts_count'],
+                            'views_label' => return_translation('admin_categories_col_posts'),
+                            'actions' => $actionsHtml,
+                            'extra_fields' => [
+                                [
+                                    'label' => return_translation('admin_categories_col_name_en'),
+                                    'value' => $categoryNameEn,
+                                ],
+                            ],
+                        ];
+                        ?>
                         <tr data-admin-live-table-row>
                             <th class="text-nowrap" scope="row"><?= (int)$category['id'] ?></th>
-                            <td><?= htmlSC($category['name_ru'] ?? $category['name']) ?></td>
-                            <td><?= htmlSC($category['name_en'] ?? $category['name']) ?></td>
+                            <td><?= htmlSC($categoryTitle) ?></td>
+                            <td><?= htmlSC($categoryNameEn) ?></td>
                             <td><?= htmlSC($category['slug']) ?></td>
                             <td class="text-nowrap"><?= (int)$category['posts_count'] ?></td>
                             <td class="text-nowrap text-end">
-                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
-                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
-                                        <i class="ci-more-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/categories/edit/' . (int)$category['id']) ?>">
-                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
-                                        </a>
-                                        <form
-                                            action="<?= base_href('/admin/categories/delete') ?>"
-                                            method="post"
-                                            data-admin-delete-form
-                                            data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_category')) ?>"
-                                            data-delete-item="<?= htmlSC((string)($category['name_ru'] ?? $category['name'] ?? '')) ?>"
-                                        >
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$category['id'] ?>">
-                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
-                                        </form>
-                                    </div>
-                                </div>
+                                <?= $actionsHtml ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -77,6 +105,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
             <?= view()->renderPartial('admin/partials/table', [
                 'content' => $adminTableContent,
                 'wrapper_attributes' => ['data-admin-live-table-wrap' => true],
+                'mobile_cards' => $mobileCards,
             ]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [

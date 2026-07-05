@@ -7,6 +7,65 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
     return strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓';
 };
 $canManageRoles = check_creator();
+$renderActions = static function (array $role) use ($canManageRoles): string {
+    $isSystemRole = (int)($role['is_system'] ?? 0) === 1;
+    $isProtectedCreatorRole = ($role['slug'] ?? '') === 'creator';
+    $hasAssignedUsers = (int)($role['users_count'] ?? 0) > 0;
+    $deleteBlockedMessage = $isProtectedCreatorRole
+        ? return_translation('admin_roles_creator_protected')
+        : ($isSystemRole
+        ? return_translation('admin_roles_delete_system_blocked')
+        : return_translation('admin_roles_delete_assigned_blocked'));
+
+    ob_start();
+    ?>
+    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+        <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+            <i class="ci-more-vertical"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+        <?php if ($canManageRoles && !$isProtectedCreatorRole): ?>
+            <a
+                class="dropdown-item d-flex align-items-center gap-2"
+                href="<?= base_href('/admin/roles/edit/' . (int)$role['id']) ?>"
+            >
+                <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+            </a>
+        <?php else: ?>
+            <button
+                class="dropdown-item d-flex align-items-center gap-2 disabled"
+                type="button"
+                aria-disabled="true"
+            ><i class="ci-lock"></i><span><?= htmlSC(return_translation('admin_roles_creator_protected')) ?></span></button>
+        <?php endif; ?>
+        <?php if ($canManageRoles && !$isSystemRole && !$hasAssignedUsers && !$isProtectedCreatorRole): ?>
+            <form
+                action="<?= base_href('/admin/roles/delete') ?>"
+                method="post"
+                data-admin-delete-form
+                data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_role')) ?>"
+                data-delete-item="<?= htmlSC(get_user_role_label($role['slug'])) ?>"
+            >
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$role['id'] ?>">
+                <button
+                    class="dropdown-item d-flex align-items-center gap-2 text-danger"
+                    type="submit"
+                ><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+            </form>
+        <?php else: ?>
+            <button
+                class="dropdown-item d-flex align-items-center gap-2 disabled"
+                type="button"
+                aria-disabled="true"
+            ><i class="ci-lock"></i><span><?= htmlSC($deleteBlockedMessage) ?></span></button>
+        <?php endif; ?>
+        </div>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
 ?>
 <?php ob_start(); ?>
 <?php if ($canManageRoles): ?>
@@ -31,6 +90,7 @@ $canManageRoles = check_creator();
         <?php if (empty($roles)): ?>
             <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
+            <?php $mobileCards = []; ?>
             <?php ob_start(); ?>
                 <thead class="position-sticky top-0">
                 <tr>
@@ -46,13 +106,20 @@ $canManageRoles = check_creator();
                     <?php foreach ($roles as $role): ?>
                         <?php
                         $isSystemRole = (int)($role['is_system'] ?? 0) === 1;
-                        $isProtectedCreatorRole = ($role['slug'] ?? '') === 'creator';
-                        $hasAssignedUsers = (int)($role['users_count'] ?? 0) > 0;
-                        $deleteBlockedMessage = $isProtectedCreatorRole
-                            ? return_translation('admin_roles_creator_protected')
-                            : ($isSystemRole
-                            ? return_translation('admin_roles_delete_system_blocked')
-                            : return_translation('admin_roles_delete_assigned_blocked'));
+                        $typeBadge = $isSystemRole
+                            ? ['label' => return_translation('admin_roles_type_system'), 'class' => 'text-secondary bg-secondary-subtle']
+                            : ['label' => return_translation('admin_roles_type_custom'), 'class' => 'text-dark bg-light'];
+                        $actionsHtml = $renderActions($role);
+                        $mobileCards[] = [
+                            'id' => (int)$role['id'],
+                            'title' => get_user_role_label($role['slug']),
+                            'slug' => (string)$role['slug'],
+                            'views' => (int)$role['users_count'],
+                            'views_label' => return_translation('admin_roles_col_users'),
+                            'status' => [$typeBadge],
+                            'status_label' => return_translation('admin_roles_col_type'),
+                            'actions' => $actionsHtml,
+                        ];
                         ?>
                         <tr data-admin-live-table-row>
                             <th class="text-nowrap" scope="row"><?= (int)$role['id'] ?></th>
@@ -60,56 +127,10 @@ $canManageRoles = check_creator();
                             <td><?= htmlSC($role['slug']) ?></td>
                             <td class="text-nowrap"><?= (int)$role['users_count'] ?></td>
                             <td>
-                                <?php if ($isSystemRole): ?>
-                                    <span class="badge fs-xs text-secondary bg-secondary-subtle rounded-pill"><?= print_translation('admin_roles_type_system') ?></span>
-                                <?php else: ?>
-                                    <span class="badge fs-xs text-dark bg-light rounded-pill"><?= print_translation('admin_roles_type_custom') ?></span>
-                                <?php endif; ?>
+                                <span class="badge fs-xs <?= htmlSC($typeBadge['class']) ?> rounded-pill"><?= htmlSC($typeBadge['label']) ?></span>
                             </td>
                             <td class="text-nowrap text-end">
-                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
-                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
-                                        <i class="ci-more-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                    <?php if ($canManageRoles && !$isProtectedCreatorRole): ?>
-                                        <a
-                                            class="dropdown-item d-flex align-items-center gap-2"
-                                            href="<?= base_href('/admin/roles/edit/' . (int)$role['id']) ?>"
-                                        >
-                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
-                                        </a>
-                                    <?php else: ?>
-                                        <button
-                                            class="dropdown-item d-flex align-items-center gap-2 disabled"
-                                            type="button"
-                                            aria-disabled="true"
-                                        ><i class="ci-lock"></i><span><?= htmlSC(return_translation('admin_roles_creator_protected')) ?></span></button>
-                                    <?php endif; ?>
-                                    <?php if ($canManageRoles && !$isSystemRole && !$hasAssignedUsers && !$isProtectedCreatorRole): ?>
-                                        <form
-                                            action="<?= base_href('/admin/roles/delete') ?>"
-                                            method="post"
-                                            data-admin-delete-form
-                                            data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_role')) ?>"
-                                            data-delete-item="<?= htmlSC(get_user_role_label($role['slug'])) ?>"
-                                        >
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$role['id'] ?>">
-                                            <button
-                                                class="dropdown-item d-flex align-items-center gap-2 text-danger"
-                                                type="submit"
-                                            ><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
-                                        </form>
-                                    <?php else: ?>
-                                        <button
-                                            class="dropdown-item d-flex align-items-center gap-2 disabled"
-                                            type="button"
-                                            aria-disabled="true"
-                                        ><i class="ci-lock"></i><span><?= htmlSC($deleteBlockedMessage) ?></span></button>
-                                    <?php endif; ?>
-                                    </div>
-                                </div>
+                                <?= $actionsHtml ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -118,6 +139,7 @@ $canManageRoles = check_creator();
             <?= view()->renderPartial('admin/partials/table', [
                 'content' => $adminTableContent,
                 'wrapper_attributes' => ['data-admin-live-table-wrap' => true],
+                'mobile_cards' => $mobileCards,
             ]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [

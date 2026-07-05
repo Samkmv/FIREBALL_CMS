@@ -250,6 +250,24 @@ plugins/example-plugin/
 
 Плагины не должны изменять файлы ядра CMS. Все интеграции выполняются через PluginManager, хуки, события, маршруты и настройки.
 
+## Единый шаблон мобильных таблиц
+
+Административные таблицы используют общий partial `admin/partials/table`. На desktop он выводит обычную Bootstrap/Cartzilla table, а на мобильной ширине может заменить ее едиными карточками Cartzilla через `admin/partials/responsive_table_cards`.
+
+Новые таблицы CMS и плагинов должны передавать данные в общий partial:
+
+```php
+<?= view()->renderPartial('admin/partials/table', [
+    'columns' => $columns,
+    'rows' => $rows,
+    'mobile_cards' => $mobileCards,
+]) ?>
+```
+
+Карточка принимает поля `id`, `title`, `slug`, `category`, `author`, `order`, `views`, `status`, `published_at`, `actions`, `image` и `extra_fields`. Пустые поля автоматически скрываются. Dropdown-действия передаются через `actions` и должны использовать Bootstrap/Cartzilla Dropdown.
+
+Подробная инструкция: `docs/mobile-table-cards.md`.
+
 ## Локализация
 
 Системные языковые файлы находятся в `app/Languages/`.

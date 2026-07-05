@@ -27,6 +27,51 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
         'q' => null,
     ]);
 };
+$renderStatusBadges = static function (array $badges): string {
+    $html = '';
+
+    foreach ($badges as $badge) {
+        $class = trim('badge fs-xs rounded-pill ' . (string)($badge['class'] ?? 'text-secondary bg-secondary-subtle'));
+        $html .= '<span class="' . htmlSC($class) . '">' . htmlSC((string)($badge['label'] ?? '')) . '</span>';
+    }
+
+    return $html;
+};
+$renderActions = static function (array $post): string {
+    ob_start();
+    ?>
+    <div class="dropdown admin-post-actions-dropdown" data-admin-post-actions-dropdown>
+        <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+            <i class="ci-more-vertical"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= (int)$post['is_published'] === 1 ? base_href('/posts/' . $post['slug']) : base_href('/admin/posts/preview/' . (int)$post['id']) ?>" target="_blank" rel="noopener noreferrer">
+                <i class="ci-external-link"></i><span><?= print_translation('admin_btn_view') ?></span>
+            </a>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/posts/edit/' . (int)$post['id']) ?>">
+                <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+            </a>
+            <form action="<?= base_href('/admin/posts/toggle-published') ?>" method="post">
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$post['id'] ?>">
+                <?php if ((int)$post['is_published'] === 1): ?>
+                    <button class="dropdown-item d-flex align-items-center gap-2" type="submit"><i class="ci-eye-off"></i><span><?= print_translation('admin_btn_unpublish') ?></span></button>
+                <?php else: ?>
+                    <button class="dropdown-item d-flex align-items-center gap-2" type="submit"><i class="ci-check"></i><span><?= print_translation('admin_btn_publish') ?></span></button>
+                <?php endif; ?>
+            </form>
+            <form action="<?= base_href('/admin/posts/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_post')) ?>" data-delete-item="<?= htmlSC($post['title']) ?>">
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$post['id'] ?>">
+                <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+            </form>
+        </div>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
+$mobileCards = [];
 ?>
 <div data-admin-posts-pane-content="<?= htmlSC($tableKey) ?>">
     <div data-admin-posts-table-shell="<?= htmlSC($tableKey) ?>">
@@ -58,6 +103,25 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
                         $authorRole = trim((string)($post['author_role'] ?? 'admin')) ?: 'user';
                         $authorName = trim((string)($post['author_name'] ?? 'Fireball'));
                         $categoryName = (string)($post['category_name'] ?? $post['category'] ?? '-');
+                        $statusBadges = (int)$post['is_published'] === 1
+                            ? [['label' => return_translation('admin_posts_status_published'), 'class' => 'text-success bg-success-subtle']]
+                            : [['label' => return_translation('admin_posts_status_draft'), 'class' => 'text-secondary bg-secondary-subtle']];
+                        if ((int)($post['show_on_home'] ?? 0) === 1) {
+                            $statusBadges[] = ['label' => return_translation('admin_posts_status_home'), 'class' => 'text-info bg-info-subtle'];
+                        }
+                        $actionsHtml = $renderActions($post);
+                        $mobileCards[] = [
+                            'id' => (int)$post['id'],
+                            'title' => (string)$post['title'],
+                            'slug' => (string)$post['slug'],
+                            'category' => $categoryName,
+                            'author' => get_user_role_label($authorRole) . ': ' . $authorName,
+                            'order' => (int)($post['priority'] ?? 0),
+                            'views' => (int)($post['views_count'] ?? 0),
+                            'status' => $statusBadges,
+                            'published_at' => date('d.m.Y H:i', strtotime($post['published_at'])),
+                            'actions' => $actionsHtml,
+                        ];
                         ?>
                         <tr data-admin-post-row>
                             <th class="text-nowrap" scope="row"><?= (int)$post['id'] ?></th>
@@ -76,44 +140,11 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
                                 </div>
                             </td>
                             <td>
-                                <?php if ((int)$post['is_published'] === 1): ?>
-                                    <span class="badge fs-xs text-success bg-success-subtle rounded-pill"><?= print_translation('admin_posts_status_published') ?></span>
-                                <?php else: ?>
-                                    <span class="badge fs-xs text-secondary bg-secondary-subtle rounded-pill"><?= print_translation('admin_posts_status_draft') ?></span>
-                                <?php endif; ?>
-                                <?php if ((int)($post['show_on_home'] ?? 0) === 1): ?>
-                                    <span class="badge fs-xs text-info bg-info-subtle rounded-pill"><?= print_translation('admin_posts_status_home') ?></span>
-                                <?php endif; ?>
+                                <?= $renderStatusBadges($statusBadges) ?>
                             </td>
                             <td class="text-nowrap"><?= date('d.m.Y H:i', strtotime($post['published_at'])) ?></td>
                             <td class="text-nowrap">
-                                <div class="dropdown admin-post-actions-dropdown" data-admin-post-actions-dropdown>
-                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(print_translation('admin_posts_col_actions')) ?>">
-                                        <i class="ci-more-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= (int)$post['is_published'] === 1 ? base_href('/posts/' . $post['slug']) : base_href('/admin/posts/preview/' . (int)$post['id']) ?>" target="_blank" rel="noopener noreferrer">
-                                            <i class="ci-external-link"></i><span><?= print_translation('admin_btn_view') ?></span>
-                                        </a>
-                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/posts/edit/' . (int)$post['id']) ?>">
-                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
-                                        </a>
-                                        <form action="<?= base_href('/admin/posts/toggle-published') ?>" method="post">
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$post['id'] ?>">
-                                            <?php if ((int)$post['is_published'] === 1): ?>
-                                                <button class="dropdown-item d-flex align-items-center gap-2" type="submit"><i class="ci-eye-off"></i><span><?= print_translation('admin_btn_unpublish') ?></span></button>
-                                            <?php else: ?>
-                                                <button class="dropdown-item d-flex align-items-center gap-2" type="submit"><i class="ci-check"></i><span><?= print_translation('admin_btn_publish') ?></span></button>
-                                            <?php endif; ?>
-                                        </form>
-                                        <form action="<?= base_href('/admin/posts/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_post')) ?>" data-delete-item="<?= htmlSC($post['title']) ?>">
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$post['id'] ?>">
-                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
-                                        </form>
-                                    </div>
-                                </div>
+                                <?= $actionsHtml ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -122,6 +153,7 @@ $sortUrl = static function (string $column) use ($sort, $direction, $status): st
             <?= view()->renderPartial('admin/partials/table', [
                 'content' => $adminTableContent,
                 'table_class' => 'admin-posts-table',
+                'mobile_cards' => $mobileCards,
             ]) ?>
         <?php endif; ?>
     </div>
