@@ -881,6 +881,7 @@ return [
     'admin_files_empty' => '此文件夹中还没有文件或子文件夹。',
     'admin_files_type_directory' => '文件夹',
     'admin_files_type_file' => '文件',
+    'admin_files_type_archive' => '归档',
     'admin_files_select' => '选择',
     'admin_files_selected_count' => '已选择',
     'admin_files_delete_selected' => '删除所选项',

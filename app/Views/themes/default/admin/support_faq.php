@@ -2,6 +2,28 @@
 $sortIndicator = static function (string $column) use ($sort, $direction): string {
     return (($sort ?? '') === $column) ? (strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓') : '';
 };
+$renderActions = static function (array $item): string {
+    ob_start();
+    ?>
+    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+        <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+            <i class="ci-more-vertical"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/support/faq/edit/' . (int)$item['id']) ?>">
+                <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+            </a>
+            <form action="<?= base_href('/admin/support/faq/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_faq')) ?>" data-delete-item="<?= htmlSC($item['question']) ?>">
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$item['id'] ?>">
+                <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+            </form>
+        </div>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
 $actions = '<div class="d-flex flex-wrap gap-2">'
     . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/support/faq/categories')) . '"><i class="ci-folder"></i>' . htmlSC(return_translation('admin_support_categories')) . '</a>'
     . '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/support/faq/create')) . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_support_faq_create')) . '</a>'
@@ -46,6 +68,7 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
             </div>
         </form>
 
+        <?php $mobileCards = []; ?>
         <?php ob_start(); ?>
             <thead class="position-sticky top-0">
                 <tr>
@@ -62,35 +85,44 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                     <tr><td colspan="6" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                 <?php else: ?>
                     <?php foreach ($items as $item): ?>
+                        <?php
+                        $isPublished = (int)$item['is_published'] === 1;
+                        $statusLabel = return_translation($isPublished ? 'admin_support_published' : 'admin_support_unpublished');
+                        $statusClass = $isPublished ? 'text-success bg-success-subtle' : 'text-secondary bg-secondary-subtle';
+                        $actionsHtml = $renderActions($item);
+                        $mobileCards[] = [
+                            'id' => (int)$item['id'],
+                            'title' => (string)$item['question'],
+                            'category' => (string)($item['category_name'] ?? ''),
+                            'category_label' => return_translation('admin_support_category'),
+                            'order' => (int)$item['sort_order'],
+                            'order_label' => return_translation('admin_support_sort_order'),
+                            'status' => [[
+                                'label' => $statusLabel,
+                                'class' => $statusClass,
+                            ]],
+                            'status_label' => return_translation('admin_support_publication_status'),
+                            'actions' => $actionsHtml,
+                        ];
+                        ?>
                         <tr>
                             <td class="text-nowrap fw-semibold"><?= (int)$item['id'] ?></td>
                             <td class="fw-medium text-break"><?= htmlSC($item['question']) ?></td>
                             <td><?= htmlSC((string)($item['category_name'] ?? '')) ?></td>
                             <td><?= (int)$item['sort_order'] ?></td>
-                            <td><span class="badge fs-xs rounded-pill <?= (int)$item['is_published'] === 1 ? 'text-success bg-success-subtle' : 'text-secondary bg-secondary-subtle' ?>"><?= print_translation((int)$item['is_published'] === 1 ? 'admin_support_published' : 'admin_support_unpublished') ?></span></td>
+                            <td><span class="badge fs-xs rounded-pill <?= htmlSC($statusClass) ?>"><?= htmlSC($statusLabel) ?></span></td>
                             <td class="text-nowrap text-end">
-                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
-                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
-                                        <i class="ci-more-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/support/faq/edit/' . (int)$item['id']) ?>">
-                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
-                                        </a>
-                                        <form action="<?= base_href('/admin/support/faq/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_faq')) ?>" data-delete-item="<?= htmlSC($item['question']) ?>">
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$item['id'] ?>">
-                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
-                                        </form>
-                                    </div>
-                                </div>
+                                <?= $actionsHtml ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </tbody>
         <?php $adminTableContent = ob_get_clean(); ?>
-        <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
+        <?= view()->renderPartial('admin/partials/table', [
+            'content' => $adminTableContent,
+            'mobile_cards' => $mobileCards,
+        ]) ?>
         <?= view()->renderPartial('admin/partials/table_footer', [
             'visible' => count($items),
             'total' => (int)$total,

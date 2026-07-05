@@ -3,6 +3,7 @@ $cards = is_array($cards ?? null) ? $cards : [];
 $componentClass = trim('admin-mobile-table-cards d-md-none ' . (string)($class ?? ''));
 $attributes = is_array($attributes ?? null) ? $attributes : [];
 $actionsLabel = (string)($actions_label ?? return_translation('admin_posts_col_actions'));
+$emptyText = (string)($empty_text ?? return_translation('admin_table_empty'));
 
 $renderAttributes = static function (array $attributes): string {
     $html = '';
@@ -179,7 +180,14 @@ $renderField = static function (string $label, $value, string $class = '') use (
 $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes);
 ?>
 <div class="<?= htmlSC($componentClass) ?>"<?= $renderAttributes($attributes) ?>>
-    <?php foreach ($cards as $card): ?>
+    <?php if (empty($cards)): ?>
+        <div class="card admin-mobile-table-card shadow-sm">
+            <div class="card-body p-4 text-center text-body-secondary">
+                <?= htmlSC($emptyText) ?>
+            </div>
+        </div>
+    <?php else: ?>
+        <?php foreach ($cards as $card): ?>
         <?php
         $card = is_array($card) ? $card : [];
         $cardAttributes = is_array($card['attributes'] ?? null) ? $card['attributes'] : [];
@@ -187,6 +195,10 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
         $actionsHtml = $renderActions($card['actions'] ?? null);
         $image = $card['image'] ?? null;
         $imageSrc = is_array($image) ? trim((string)($image['src'] ?? '')) : trim((string)$image);
+        $icon = $card['icon'] ?? null;
+        $iconClass = is_array($icon) ? trim((string)($icon['class'] ?? '')) : trim((string)$icon);
+        $iconWrapClass = trim('rounded-circle border d-flex align-items-center justify-content-center admin-mobile-table-card__image ' . (is_array($icon) ? (string)($icon['wrapper_class'] ?? 'bg-body-tertiary') : 'bg-body-tertiary'));
+        $iconTextClass = trim($iconClass . ' fs-5 ' . (is_array($icon) ? (string)($icon['text_class'] ?? 'text-body-secondary') : 'text-body-secondary'));
         $titleFallback = $card['title'] ?? '';
         if (is_array($titleFallback)) {
             $titleFallback = strip_tags((string)($titleFallback['html'] ?? $titleFallback['value'] ?? $titleFallback['label'] ?? ''));
@@ -194,6 +206,7 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
         $imageAlt = is_array($image) ? (string)($image['alt'] ?? $titleFallback) : (string)$titleFallback;
         $titleHtml = $renderValue($card['title'] ?? '');
         $idHtml = $renderValue($card['id'] ?? '');
+        $selectionHtml = $renderValue($card['selection'] ?? null);
         $statusHtml = $renderBadges($card['status'] ?? null);
         ?>
         <article<?= $renderAttributes($cardAttributes) ?>>
@@ -201,10 +214,17 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
                 <div class="d-flex align-items-start gap-3">
                     <?php if ($imageSrc !== ''): ?>
                         <img src="<?= htmlSC($imageSrc) ?>" alt="<?= htmlSC($imageAlt) ?>" class="rounded-circle border object-fit-cover admin-mobile-table-card__image">
+                    <?php elseif ($iconClass !== ''): ?>
+                        <span class="<?= htmlSC($iconWrapClass) ?>" aria-hidden="true">
+                            <i class="<?= htmlSC($iconTextClass) ?>"></i>
+                        </span>
                     <?php endif; ?>
                     <div class="min-w-0 flex-grow-1">
                         <div class="d-flex align-items-start justify-content-between gap-2">
                             <div class="min-w-0 d-flex align-items-baseline gap-2 flex-wrap">
+                                <?php if ($selectionHtml !== ''): ?>
+                                    <span class="flex-shrink-0"><?= $selectionHtml ?></span>
+                                <?php endif; ?>
                                 <?php if ($idHtml !== ''): ?>
                                     <span class="small text-body-secondary text-nowrap">ID: <span class="fw-semibold text-body"><?= $idHtml ?></span></span>
                                 <?php endif; ?>
@@ -230,7 +250,10 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
                     if (!is_array($field)) {
                         continue;
                     }
-                    $renderField((string)($field['label'] ?? ''), $field['html'] ?? $field['value'] ?? null);
+                    $fieldValue = array_key_exists('html', $field)
+                        ? ['html' => (string)$field['html']]
+                        : ($field['value'] ?? null);
+                    $renderField((string)($field['label'] ?? ''), $fieldValue);
                     ?>
                 <?php endforeach; ?>
 
@@ -277,5 +300,6 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
                 <?php endif; ?>
             </ul>
         </article>
-    <?php endforeach; ?>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>

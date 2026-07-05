@@ -18,6 +18,56 @@ $statusClasses = [
     'closed' => 'text-secondary bg-secondary-subtle',
     'spam' => 'text-danger bg-danger-subtle',
 ];
+$renderActions = static function (array $request, string $requestStatus) use ($statuses, $statusLabels): string {
+    ob_start();
+    ?>
+    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+        <button
+            class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
+            type="button"
+            data-bs-toggle="dropdown"
+            data-bs-display="static"
+            data-bs-boundary="viewport"
+            aria-expanded="false"
+            aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>"
+        >
+            <i class="ci-more-vertical"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <h6 class="dropdown-header"><?= print_translation('admin_support_bulk_change_status') ?></h6>
+            <?php foreach ((array)$statuses as $statusKey): ?>
+                <form action="<?= base_href('/admin/support/requests/status') ?>" method="post">
+                    <?= get_csrf_field() ?>
+                    <input type="hidden" name="id" value="<?= (int)$request['id'] ?>">
+                    <input type="hidden" name="status" value="<?= htmlSC($statusKey) ?>">
+                    <button class="dropdown-item d-flex align-items-center justify-content-between gap-3 <?= $requestStatus === $statusKey ? 'active' : '' ?>" type="submit">
+                        <span><?= htmlSC($statusLabels[$statusKey] ?? $statusKey) ?></span>
+                        <?php if ($requestStatus === $statusKey): ?>
+                            <i class="ci-check"></i>
+                        <?php endif; ?>
+                    </button>
+                </form>
+            <?php endforeach; ?>
+            <div class="dropdown-divider"></div>
+            <form
+                action="<?= base_href('/admin/support/requests/delete') ?>"
+                method="post"
+                data-admin-delete-form
+                data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_contact')) ?>"
+                data-delete-item="<?= htmlSC($request['name'] . ' <' . $request['email'] . '>') ?>"
+            >
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$request['id'] ?>">
+                <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit">
+                    <i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span>
+                </button>
+            </form>
+        </div>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
 ?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_support_requests_heading'),
@@ -82,6 +132,7 @@ $statusClasses = [
         <?php if (empty($requests)): ?>
             <div class="admin-table-state" data-admin-live-table-empty><?= print_translation('admin_table_empty') ?></div>
         <?php else: ?>
+            <?php $mobileCards = []; ?>
             <?php ob_start(); ?>
                 <thead class="position-sticky top-0">
                     <tr>
@@ -98,7 +149,36 @@ $statusClasses = [
                 </thead>
                 <tbody class="table-list">
                     <?php foreach ($requests as $request): ?>
-                        <?php $requestStatus = (string)($request['status'] ?? ((int)$request['is_viewed'] === 1 ? 'in_work' : 'new')); ?>
+                        <?php
+                        $requestStatus = (string)($request['status'] ?? ((int)$request['is_viewed'] === 1 ? 'in_work' : 'new'));
+                        $statusBadgeClass = $statusClasses[$requestStatus] ?? 'text-secondary bg-secondary-subtle';
+                        $statusLabel = $statusLabels[$requestStatus] ?? $requestStatus;
+                        $actionsHtml = $renderActions($request, $requestStatus);
+                        $mobileCards[] = [
+                            'selection' => [
+                                'html' => '<input class="form-check-input" type="checkbox" name="ids[]" value="' . (int)$request['id'] . '" form="support-request-bulk-form">',
+                            ],
+                            'id' => (int)$request['id'],
+                            'title' => (string)$request['name'],
+                            'slug' => (string)$request['email'],
+                            'slug_label' => return_translation('admin_contacts_col_email'),
+                            'category' => (string)$request['subject'],
+                            'category_label' => return_translation('admin_contacts_col_subject'),
+                            'status' => [[
+                                'label' => $statusLabel,
+                                'class' => $statusBadgeClass,
+                            ]],
+                            'published_at' => date('d.m.Y H:i', strtotime($request['created_at'])),
+                            'published_at_label' => return_translation('admin_contacts_col_date'),
+                            'actions' => $actionsHtml,
+                            'extra_fields' => [
+                                [
+                                    'label' => return_translation('admin_contacts_col_message'),
+                                    'html' => nl2br(htmlSC($request['message'])),
+                                ],
+                            ],
+                        ];
+                        ?>
                         <tr data-admin-live-table-row>
                             <td>
                                 <input class="form-check-input" type="checkbox" name="ids[]" value="<?= (int)$request['id'] ?>" form="support-request-bulk-form">
@@ -111,54 +191,13 @@ $statusClasses = [
                                 <div class="small lh-base"><?= nl2br(htmlSC($request['message'])) ?></div>
                             </td>
                             <td>
-                                <span class="badge fs-xs <?= htmlSC($statusClasses[$requestStatus] ?? 'text-secondary bg-secondary-subtle') ?> rounded-pill">
-                                    <?= htmlSC($statusLabels[$requestStatus] ?? $requestStatus) ?>
+                                <span class="badge fs-xs <?= htmlSC($statusBadgeClass) ?> rounded-pill">
+                                    <?= htmlSC($statusLabel) ?>
                                 </span>
                             </td>
                             <td class="text-nowrap"><?= date('d.m.Y H:i', strtotime($request['created_at'])) ?></td>
                             <td class="text-nowrap">
-                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
-                                    <button
-                                        class="btn btn-sm btn-outline-secondary btn-icon rounded-circle"
-                                        type="button"
-                                        data-bs-toggle="dropdown"
-                                        data-bs-display="static"
-                                        aria-expanded="false"
-                                        aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>"
-                                    >
-                                        <i class="ci-more-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                        <h6 class="dropdown-header"><?= print_translation('admin_support_bulk_change_status') ?></h6>
-                                        <?php foreach ((array)$statuses as $statusKey): ?>
-                                            <form action="<?= base_href('/admin/support/requests/status') ?>" method="post">
-                                                <?= get_csrf_field() ?>
-                                                <input type="hidden" name="id" value="<?= (int)$request['id'] ?>">
-                                                <input type="hidden" name="status" value="<?= htmlSC($statusKey) ?>">
-                                                <button class="dropdown-item d-flex align-items-center justify-content-between gap-3 <?= $requestStatus === $statusKey ? 'active' : '' ?>" type="submit">
-                                                    <span><?= htmlSC($statusLabels[$statusKey] ?? $statusKey) ?></span>
-                                                    <?php if ($requestStatus === $statusKey): ?>
-                                                        <i class="ci-check"></i>
-                                                    <?php endif; ?>
-                                                </button>
-                                            </form>
-                                        <?php endforeach; ?>
-                                        <div class="dropdown-divider"></div>
-                                        <form
-                                            action="<?= base_href('/admin/support/requests/delete') ?>"
-                                            method="post"
-                                            data-admin-delete-form
-                                            data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_contact')) ?>"
-                                            data-delete-item="<?= htmlSC($request['name'] . ' <' . $request['email'] . '>') ?>"
-                                        >
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$request['id'] ?>">
-                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit">
-                                                <i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
+                                <?= $actionsHtml ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -167,6 +206,7 @@ $statusClasses = [
             <?= view()->renderPartial('admin/partials/table', [
                 'content' => $adminTableContent,
                 'wrapper_attributes' => ['data-admin-live-table-wrap' => true],
+                'mobile_cards' => $mobileCards,
             ]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [

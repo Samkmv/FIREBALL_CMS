@@ -60,6 +60,75 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
     $nextDirection = ($sort === $column && strtolower($direction) === 'asc') ? 'desc' : 'asc';
     return $buildManagerUrl(null, ['sort' => $column, 'direction' => $nextDirection]);
 };
+$archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'xz'];
+
+$renderFileActions = static function (array $item, bool $isDirectory, string $downloadUrl, bool $pickerMode, string $pickerField): string {
+    ob_start();
+    ?>
+    <?php if ($pickerMode && $pickerField !== '' && !$isDirectory): ?>
+        <button
+            class="btn btn-sm btn-dark rounded-pill d-inline-flex align-items-center gap-2 me-2"
+            type="button"
+            data-file-select
+            data-file-select-field="<?= htmlSC($pickerField) ?>"
+            data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>"
+        >
+            <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
+        </button>
+    <?php endif; ?>
+    <div class="dropdown dropstart d-inline-block" data-file-manager-actions-menu>
+        <button
+            class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
+            type="button"
+            data-bs-toggle="dropdown"
+            data-bs-display="static"
+            data-bs-boundary="viewport"
+            aria-expanded="false"
+            aria-label="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
+            title="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
+        >
+            <i class="ci-more-vertical"></i>
+        </button>
+        <ul class="dropdown-menu shadow-sm border-0 rounded-4">
+            <li>
+                <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="open">
+                    <i class="<?= $isDirectory ? 'ci-folder' : 'ci-eye' ?>"></i><?= $isDirectory ? print_translation('admin_btn_open') : print_translation('admin_btn_view') ?>
+                </button>
+            </li>
+            <?php if (!$isDirectory && $downloadUrl !== ''): ?>
+                <li>
+                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="download">
+                        <i class="ci-download"></i><?= print_translation('admin_files_download') ?>
+                    </button>
+                </li>
+            <?php endif; ?>
+            <li>
+                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_rename']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="rename" <?= empty($item['can_rename']) ? 'aria-disabled="true"' : '' ?>>
+                    <i class="ci-edit"></i><?= print_translation('admin_files_rename') ?>
+                </button>
+            </li>
+            <li>
+                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="copy" <?= empty($item['can_transfer']) ? 'aria-disabled="true"' : '' ?>>
+                    <i class="ci-copy"></i><?= print_translation('admin_files_copy') ?>
+                </button>
+            </li>
+            <li>
+                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="move" <?= empty($item['can_transfer']) ? 'aria-disabled="true"' : '' ?>>
+                    <i class="ci-move"></i><?= print_translation('admin_files_move') ?>
+                </button>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2<?= empty($item['can_delete']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="delete" <?= empty($item['can_delete']) ? 'aria-disabled="true"' : '' ?>>
+                    <i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?>
+                </button>
+            </li>
+        </ul>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
 ?>
 
 <div data-file-manager-workspace>
@@ -231,6 +300,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                     <input type="hidden" name="page" value="<?= $currentPage ?>">
                     <input type="hidden" name="action_name" value="" data-file-manager-action-name>
 
+                    <?php $mobileCards = []; ?>
                     <?php ob_start(); ?>
                         <thead class="position-sticky top-0">
                             <tr>
@@ -267,6 +337,70 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                 $openUrl = $isDirectory ? $buildManagerUrl($item['relative_path']) : (string)($item['url'] ?? '');
                                 $downloadUrl = $isDirectory ? '' : (string)($item['url'] ?? '');
                                 $previewable = !$isDirectory && !empty($item['is_image']);
+                                $relativePath = (string)($item['relative_path'] ?? '');
+                                $itemName = (string)($item['name'] ?? '');
+                                $itemType = (string)($item['type'] ?? 'file');
+                                $itemExtension = strtolower((string)($item['extension'] ?? ''));
+                                $isArchive = !$isDirectory && in_array($itemExtension, $archiveExtensions, true);
+                                $fileIconClass = $isDirectory ? 'ci-folder' : ($isArchive ? 'ci-archive' : 'ci-file');
+                                $fileIconTextClass = $isDirectory ? 'text-warning' : ($isArchive ? 'text-info' : 'text-body-secondary');
+                                $fileIconWrapClass = $isDirectory ? 'bg-warning-subtle border-warning-subtle' : ($isArchive ? 'bg-info-subtle border-info-subtle' : 'bg-body-tertiary');
+                                $fileTypeLabel = $isDirectory
+                                    ? return_translation('admin_files_type_directory')
+                                    : ($isArchive ? return_translation('admin_files_type_archive') : return_translation('admin_files_type_file'));
+                                $fileTypeBadgeClass = $isDirectory ? 'text-warning bg-warning-subtle' : ($isArchive ? 'text-info bg-info-subtle' : 'text-body-emphasis bg-body-tertiary');
+                                $actionsHtml = $renderFileActions($item, $isDirectory, $downloadUrl, $pickerMode, $pickerField);
+                                $selectionHtml = '<input class="form-check-input" type="checkbox" name="selected_paths[]" value="' . htmlSC($relativePath) . '" data-file-manager-select>'
+                                    . '<input type="hidden" name="selected_types[]" value="' . htmlSC($itemType) . '" data-file-manager-select-type disabled>';
+                                $rowAttributes = [
+                                    'data-file-manager-row' => true,
+                                    'data-path' => $relativePath,
+                                    'data-type' => $itemType,
+                                    'data-open-url' => $openUrl,
+                                    'data-download-url' => $downloadUrl,
+                                    'data-download-name' => $itemName,
+                                    'data-public-path' => (string)($item['public_path'] ?? ''),
+                                    'data-name' => $itemName,
+                                    'data-base-name' => (string)pathinfo($itemName, PATHINFO_FILENAME),
+                                    'data-extension' => (string)($item['extension'] ?? ''),
+                                    'data-preview-url' => (string)($item['url'] ?? ''),
+                                    'data-can-preview' => $previewable ? '1' : '0',
+                                    'data-can-delete' => !empty($item['can_delete']) ? '1' : '0',
+                                    'data-can-rename' => !empty($item['can_rename']) ? '1' : '0',
+                                    'data-can-transfer' => !empty($item['can_transfer']) ? '1' : '0',
+                                    'draggable' => !empty($item['can_transfer']) ? 'true' : null,
+                                    'data-fm-drop-dir' => $isDirectory ? $relativePath : null,
+                                ];
+                                $mobileCards[] = [
+                                    'attributes' => $rowAttributes,
+                                    'selection' => ['html' => $selectionHtml],
+                                    'title' => $itemName,
+                                    'image' => $previewable ? [
+                                        'src' => (string)$item['url'],
+                                        'alt' => $itemName,
+                                    ] : null,
+                                    'icon' => $previewable ? null : [
+                                        'class' => $fileIconClass,
+                                        'wrapper_class' => $fileIconWrapClass,
+                                        'text_class' => $fileIconTextClass,
+                                    ],
+                                    'views' => $isDirectory ? null : (string)($item['size'] ?? ''),
+                                    'views_label' => return_translation('admin_files_size'),
+                                    'status' => [[
+                                        'label' => $fileTypeLabel,
+                                        'class' => $fileTypeBadgeClass,
+                                    ]],
+                                    'status_label' => return_translation('admin_files_col_type'),
+                                    'published_at' => (string)($item['modified_at'] ?? ''),
+                                    'published_at_label' => return_translation('admin_files_modified'),
+                                    'actions' => $actionsHtml,
+                                    'extra_fields' => [
+                                        [
+                                            'label' => return_translation('admin_files_col_name'),
+                                            'value' => $isDirectory ? '/' . $relativePath : (string)($item['public_path'] ?? ''),
+                                        ],
+                                    ],
+                                ];
                                 ?>
                                 <tr
                                     data-file-manager-row
@@ -298,8 +432,8 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                                     <img src="<?= htmlSC((string)$item['url']) ?>" alt="<?= htmlSC((string)$item['name']) ?>" class="rounded-4 border object-fit-cover" style="width: 56px; height: 56px;">
                                                 </button>
                                             <?php else: ?>
-                                                <div class="rounded-4 border bg-body-tertiary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 56px; height: 56px;">
-                                                    <i class="<?= $isDirectory ? 'ci-folder' : 'ci-file' ?> fs-3 text-body-secondary"></i>
+                                                <div class="rounded-4 border <?= htmlSC($fileIconWrapClass) ?> d-flex align-items-center justify-content-center flex-shrink-0" style="width: 56px; height: 56px;">
+                                                    <i class="<?= htmlSC($fileIconClass . ' fs-3 ' . $fileIconTextClass) ?>"></i>
                                                 </div>
                                             <?php endif; ?>
 
@@ -324,64 +458,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                                     <td class="text-nowrap text-body-secondary small"><?= $isDirectory ? '—' : htmlSC((string)($item['size'] ?? '')) ?></td>
                                     <td class="text-nowrap text-body-secondary small"><?= htmlSC((string)($item['modified_at'] ?? '')) ?></td>
                                     <td class="text-end text-nowrap">
-                                        <?php if ($pickerMode && $pickerField !== '' && !$isDirectory): ?>
-                                            <button
-                                                class="btn btn-sm btn-dark rounded-pill d-inline-flex align-items-center gap-2 me-2"
-                                                type="button"
-                                                data-file-select
-                                                data-file-select-field="<?= htmlSC($pickerField) ?>"
-                                                data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>"
-                                            >
-                                                <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
-                                            </button>
-                                        <?php endif; ?>
-                                        <div class="dropdown dropstart d-inline-block" data-file-manager-actions-menu>
-                                            <button
-                                                class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
-                                                type="button"
-                                                data-bs-toggle="dropdown"
-                                                aria-expanded="false"
-                                                aria-label="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
-                                                title="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
-                                            >
-                                                <i class="ci-more-vertical"></i>
-                                            </button>
-                                            <ul class="dropdown-menu shadow-sm border-0 rounded-4">
-                                                <li>
-                                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="open">
-                                                        <i class="<?= $isDirectory ? 'ci-folder' : 'ci-eye' ?>"></i><?= $isDirectory ? print_translation('admin_btn_open') : print_translation('admin_btn_view') ?>
-                                                    </button>
-                                                </li>
-                                                <?php if (!$isDirectory && $downloadUrl !== ''): ?>
-                                                    <li>
-                                                        <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="download">
-                                                            <i class="ci-download"></i><?= print_translation('admin_files_download') ?>
-                                                        </button>
-                                                    </li>
-                                                <?php endif; ?>
-                                                <li>
-                                                    <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_rename']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="rename" <?= empty($item['can_rename']) ? 'aria-disabled="true"' : '' ?>>
-                                                        <i class="ci-edit"></i><?= print_translation('admin_files_rename') ?>
-                                                    </button>
-                                                </li>
-                                                <li>
-                                                    <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="copy" <?= empty($item['can_transfer']) ? 'aria-disabled="true"' : '' ?>>
-                                                        <i class="ci-copy"></i><?= print_translation('admin_files_copy') ?>
-                                                    </button>
-                                                </li>
-                                                <li>
-                                                    <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="move" <?= empty($item['can_transfer']) ? 'aria-disabled="true"' : '' ?>>
-                                                        <i class="ci-move"></i><?= print_translation('admin_files_move') ?>
-                                                    </button>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2<?= empty($item['can_delete']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="delete" <?= empty($item['can_delete']) ? 'aria-disabled="true"' : '' ?>>
-                                                        <i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?>
-                                                    </button>
-                                                </li>
-                                            </ul>
-                                        </div>
+                                        <?= $actionsHtml ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -391,6 +468,7 @@ $buildSortUrl = static function (string $column) use ($sort, $direction, $buildM
                         'content' => $adminTableContent,
                         'table_attributes' => ['data-file-manager-table' => true],
                         'wrapper_attributes' => ['data-file-manager-table-wrap' => true],
+                        'mobile_cards' => $mobileCards,
                     ]) ?>
                 </form>
 

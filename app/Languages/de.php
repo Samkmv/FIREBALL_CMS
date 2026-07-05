@@ -881,6 +881,7 @@ return [
     'admin_files_empty' => 'Dieser Ordner enthaelt noch keine Dateien oder Unterordner.',
     'admin_files_type_directory' => 'Ordner',
     'admin_files_type_file' => 'Datei',
+    'admin_files_type_archive' => 'Archiv',
     'admin_files_select' => 'Auswaehlen',
     'admin_files_selected_count' => 'Ausgewaehlt',
     'admin_files_delete_selected' => 'Auswahl loeschen',

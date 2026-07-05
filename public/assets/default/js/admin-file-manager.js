@@ -479,7 +479,7 @@ $(function () {
     }
 
     function selectedRows() {
-        return $('[data-file-manager-select]:checked').closest('[data-file-manager-row]');
+        return $('[data-file-manager-row]:visible [data-file-manager-select]:checked').closest('[data-file-manager-row]');
     }
 
     function downloadRow(row) {
@@ -503,21 +503,24 @@ $(function () {
 
     function refreshSelectionState() {
         const rows = $('[data-file-manager-row]');
-        const checked = $('[data-file-manager-select]:checked');
+        const visibleRows = $('[data-file-manager-row]:visible');
+        const checked = $('[data-file-manager-row]:visible [data-file-manager-select]:checked');
         const actionToggle = $('[data-file-manager-action-toggle]');
         const countTarget = $('[data-file-manager-selection-count]');
         const toggleAll = $('[data-file-manager-toggle-all]');
 
         rows.each(function () {
             const row = $(this);
+            const isVisible = row.is(':visible');
             const isChecked = row.find('[data-file-manager-select]').is(':checked');
             row.toggleClass('is-selected', isChecked);
-            row.find('[data-file-manager-select-type]').prop('disabled', !isChecked);
+            row.find('[data-file-manager-select]').prop('disabled', !isVisible);
+            row.find('[data-file-manager-select-type]').prop('disabled', !isVisible || !isChecked);
         });
 
         countTarget.text(String(checked.length));
         actionToggle.prop('disabled', checked.length === 0);
-        toggleAll.prop('checked', rows.length > 0 && checked.length === rows.length);
+        toggleAll.prop('checked', visibleRows.length > 0 && checked.length === visibleRows.length);
     }
 
     function currentMessages() {
@@ -842,7 +845,7 @@ $(function () {
 
     page.on('change', '[data-file-manager-toggle-all]', function () {
         const checked = $(this).is(':checked');
-        $('[data-file-manager-select]').prop('checked', checked);
+        $('[data-file-manager-row]:visible [data-file-manager-select]').prop('checked', checked);
         refreshSelectionState();
     });
 
@@ -1142,6 +1145,7 @@ $(function () {
 
     $(window).on('resize scroll', function () {
         closeFloatingRowMenus();
+        refreshSelectionState();
     });
 
     $(document).on('click', '[data-file-select]', function () {

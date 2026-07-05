@@ -890,6 +890,7 @@ return [
     'admin_files_empty' => 'В этой папке пока нет файлов и подпапок.',
     'admin_files_type_directory' => 'Папка',
     'admin_files_type_file' => 'Файл',
+    'admin_files_type_archive' => 'Архив',
     'admin_files_select' => 'Выбрать',
     'admin_files_selected_count' => 'Выбрано',
     'admin_files_delete_selected' => 'Удалить выбранное',

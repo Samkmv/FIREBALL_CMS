@@ -30,8 +30,20 @@ $action = $is_edit ? base_href('/admin/support/knowledge-base/edit/' . (int)$art
                 <textarea id="kb-excerpt" class="form-control" name="excerpt" rows="3"><?= htmlSC($value('excerpt')) ?></textarea>
             </div>
             <div class="col-12">
-                <label class="form-label" for="kb-content"><?= print_translation('admin_support_content') ?> *</label>
-                <textarea id="kb-content" class="form-control <?= get_validation_class('content') ?>" name="content" rows="12" required><?= htmlSC($value('content')) ?></textarea>
+                <div class="mb-3">
+                    <h2 class="h5 mb-1"><?= print_translation('admin_support_content') ?> *</h2>
+                    <p class="text-body-secondary mb-0"><?= print_translation('admin_post_builder_hint') ?></p>
+                </div>
+                <?= \App\Modules\BlockEditor\BlockEditor::render([
+                    'entity_type' => 'post',
+                    'entity_id' => (int)($article['id'] ?? 0),
+                    'field_name' => 'content',
+                    'field_id' => 'kb-content',
+                    'content' => $value('content'),
+                    'validation_class' => get_validation_class('content'),
+                    'editor_id' => 'supportKbBlockEditor',
+                    'default_directory' => 'support',
+                ]) ?>
                 <?= get_errors('content') ?>
             </div>
             <div class="col-md-6">

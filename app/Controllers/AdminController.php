@@ -12,6 +12,8 @@ use App\Models\SecurityLog;
 use App\Models\SiteSetting;
 use App\Models\Support;
 use App\Models\User;
+use App\Modules\BlockEditor\BlockEditor;
+use App\Modules\BlockEditor\BlockEditorService;
 use App\Services\AnalyticsService;
 use App\Services\MailService;
 use App\Services\NotificationService;
@@ -289,7 +291,13 @@ class AdminController extends BaseController
 
         if (request()->isPost()) {
             $data = $this->normalizeSupportKbArticleData(request()->getData());
-            $errors = $this->validateSupportRequired($data, ['title', 'content']);
+            $errors = $this->validateSupportRequired($data, ['title']);
+            if (!$this->hasSupportKbArticleContent((string)($data['content'] ?? ''))) {
+                $errors['content'][] = return_translation('admin_support_validation_required');
+            }
+            if (!(new BlockEditorService())->validateContentJson((string)($data['content'] ?? ''))) {
+                $errors['content'][] = return_translation('admin_validation_content_invalid');
+            }
             if ($errors) {
                 $this->redirectSupportForm($data, $errors, $isEdit ? "/admin/support/knowledge-base/edit/{$id}" : '/admin/support/knowledge-base/create');
             }
@@ -306,6 +314,8 @@ class AdminController extends BaseController
             'article' => $article ?: [],
             'categories' => $this->support->getKbCategories(),
             'is_edit' => $isEdit,
+            'styles' => BlockEditor::styles(),
+            'footer_scripts' => BlockEditor::scripts(),
         ]);
     }
 
@@ -819,6 +829,115 @@ class AdminController extends BaseController
             'category_id' => max(0, (int)($data['category_id'] ?? 0)),
             'is_published' => !empty($data['is_published']) ? 1 : 0,
         ];
+    }
+
+    protected function hasSupportKbArticleContent(string $content): bool
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return false;
+        }
+
+        if ($content[0] !== '{') {
+            return $this->supportMarkupHasContent($content);
+        }
+
+        $decoded = json_decode($content, true);
+        if (!is_array($decoded) || !isset($decoded['blocks']) || !is_array($decoded['blocks'])) {
+            return true;
+        }
+
+        foreach ($decoded['blocks'] as $block) {
+            if (!is_array($block) || !empty($block['hidden'])) {
+                continue;
+            }
+
+            $data = is_array($block['data'] ?? null) ? $block['data'] : [];
+            $type = (string)($block['type'] ?? '');
+
+            if (in_array($type, ['text', 'heading', 'html'], true)) {
+                if ($this->supportMarkupHasContent((string)($data['html'] ?? ''))) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($type === 'code') {
+                if (trim((string)($data['code'] ?? '')) !== '') {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (in_array($type, ['image', 'video', 'audio'], true)) {
+                if (trim((string)($data['src'] ?? '')) !== '') {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($type === 'slider') {
+                foreach ((array)($data['items'] ?? []) as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+
+                    if (
+                        trim((string)($item['image'] ?? '')) !== ''
+                        || trim((string)($item['title'] ?? '')) !== ''
+                        || trim((string)($item['text'] ?? '')) !== ''
+                    ) {
+                        return true;
+                    }
+                }
+                continue;
+            }
+
+            if ($type === 'social') {
+                foreach ((array)($data['items'] ?? []) as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+
+                    if (trim((string)($item['url'] ?? '')) !== '' || trim((string)($item['label'] ?? '')) !== '') {
+                        return true;
+                    }
+                }
+                continue;
+            }
+
+            if ($this->supportBlockValueHasContent($data)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function supportMarkupHasContent(string $html): bool
+    {
+        $html = trim($html);
+
+        return trim(strip_tags($html)) !== ''
+            || preg_match('/<(img|video|audio|iframe|table|ul|ol|pre|blockquote|figure)\b/i', $html) === 1;
+    }
+
+    protected function supportBlockValueHasContent(mixed $value): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                if ($this->supportBlockValueHasContent($item)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return trim(strip_tags((string)$value)) !== '';
     }
 
     protected function normalizeSupportCategoryData(array $data, bool $withSlug): array

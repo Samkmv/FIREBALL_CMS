@@ -2,6 +2,28 @@
 $sortIndicator = static function (string $column) use ($sort, $direction): string {
     return (($sort ?? '') === $column) ? (strtolower((string)$direction) === 'asc' ? ' ↑' : ' ↓') : '';
 };
+$renderActions = static function (array $article): string {
+    ob_start();
+    ?>
+    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+        <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
+            <i class="ci-more-vertical"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/support/knowledge-base/edit/' . (int)$article['id']) ?>">
+                <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
+            </a>
+            <form action="<?= base_href('/admin/support/knowledge-base/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_article')) ?>" data-delete-item="<?= htmlSC($article['title']) ?>">
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$article['id'] ?>">
+                <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
+            </form>
+        </div>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
 $actions = '<div class="d-flex flex-wrap gap-2">'
     . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/support/knowledge-base/categories')) . '"><i class="ci-folder"></i>' . htmlSC(return_translation('admin_support_categories')) . '</a>'
     . '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/support/knowledge-base/create')) . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_support_kb_create')) . '</a>'
@@ -46,6 +68,7 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
             </div>
         </form>
 
+        <?php $mobileCards = []; ?>
         <?php ob_start(); ?>
             <thead class="position-sticky top-0">
                 <tr>
@@ -68,6 +91,46 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                         $notHelpfulCount = (int)($article['not_helpful_count'] ?? 0);
                         $feedbackTotal = $helpfulCount + $notHelpfulCount;
                         $helpfulPercent = $feedbackTotal > 0 ? (int)round((float)$article['helpful_percent']) : null;
+                        $isPublished = (int)$article['is_published'] === 1;
+                        $statusBadges = [[
+                            'label' => return_translation($isPublished ? 'admin_support_published' : 'admin_support_unpublished'),
+                            'class' => $isPublished ? 'text-success bg-success-subtle' : 'text-secondary bg-secondary-subtle',
+                        ]];
+                        if ($helpfulPercent !== null && $helpfulPercent < 50) {
+                            $statusBadges[] = [
+                                'label' => return_translation('admin_support_kb_low_helpfulness'),
+                                'class' => 'text-danger bg-danger-subtle',
+                            ];
+                        }
+                        $actionsHtml = $renderActions($article);
+                        $mobileCards[] = [
+                            'id' => (int)$article['id'],
+                            'title' => (string)$article['title'],
+                            'slug' => (string)$article['slug'],
+                            'category' => (string)($article['category_name'] ?? ''),
+                            'category_label' => return_translation('admin_support_category'),
+                            'views' => (int)($article['views_count'] ?? 0),
+                            'views_label' => return_translation('admin_support_kb_views'),
+                            'status' => $statusBadges,
+                            'status_label' => return_translation('admin_support_publication_status'),
+                            'published_at' => date('d.m.Y H:i', strtotime((string)$article['updated_at'])),
+                            'published_at_label' => return_translation('admin_support_updated_at'),
+                            'actions' => $actionsHtml,
+                            'extra_fields' => [
+                                [
+                                    'label' => return_translation('admin_support_kb_helpful'),
+                                    'value' => $helpfulCount,
+                                ],
+                                [
+                                    'label' => return_translation('admin_support_kb_not_helpful'),
+                                    'value' => $notHelpfulCount,
+                                ],
+                                [
+                                    'label' => return_translation('admin_support_kb_helpfulness'),
+                                    'value' => $helpfulPercent !== null ? $helpfulPercent . '%' : '-',
+                                ],
+                            ],
+                        ];
                         ?>
                         <tr>
                             <td class="text-nowrap fw-semibold"><?= (int)$article['id'] ?></td>
@@ -76,7 +139,7 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                                 <span class="d-block small text-body-secondary fw-normal mt-1"><?= htmlSC($article['slug']) ?></span>
                             </td>
                             <td><?= htmlSC((string)($article['category_name'] ?? '')) ?></td>
-                            <td><span class="badge fs-xs rounded-pill <?= (int)$article['is_published'] === 1 ? 'text-success bg-success-subtle' : 'text-secondary bg-secondary-subtle' ?>"><?= print_translation((int)$article['is_published'] === 1 ? 'admin_support_published' : 'admin_support_unpublished') ?></span></td>
+                            <td><span class="badge fs-xs rounded-pill <?= htmlSC($statusBadges[0]['class']) ?>"><?= htmlSC($statusBadges[0]['label']) ?></span></td>
                             <td class="text-nowrap">
                                 <div class="support-kb-stats">
                                     <span title="<?= htmlSC(return_translation('admin_support_kb_views')) ?>"><i class="ci-eye"></i><?= (int)($article['views_count'] ?? 0) ?></span>
@@ -90,28 +153,17 @@ $actions = '<div class="d-flex flex-wrap gap-2">'
                             </td>
                             <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)$article['updated_at']))) ?></td>
                             <td class="text-nowrap text-end">
-                                <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
-                                    <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="<?= htmlSC(return_translation('admin_posts_col_actions')) ?>">
-                                        <i class="ci-more-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                        <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/support/knowledge-base/edit/' . (int)$article['id']) ?>">
-                                            <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
-                                        </a>
-                                        <form action="<?= base_href('/admin/support/knowledge-base/delete') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_support_confirm_delete_article')) ?>" data-delete-item="<?= htmlSC($article['title']) ?>">
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$article['id'] ?>">
-                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-trash"></i><span><?= print_translation('admin_btn_delete') ?></span></button>
-                                        </form>
-                                    </div>
-                                </div>
+                                <?= $actionsHtml ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </tbody>
         <?php $adminTableContent = ob_get_clean(); ?>
-        <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
+        <?= view()->renderPartial('admin/partials/table', [
+            'content' => $adminTableContent,
+            'mobile_cards' => $mobileCards,
+        ]) ?>
         <?= view()->renderPartial('admin/partials/table_footer', [
             'visible' => count($articles),
             'total' => (int)$total,

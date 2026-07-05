@@ -264,7 +264,7 @@ plugins/example-plugin/
 ]) ?>
 ```
 
-Карточка принимает поля `id`, `title`, `slug`, `category`, `author`, `order`, `views`, `status`, `published_at`, `actions`, `image` и `extra_fields`. Пустые поля автоматически скрываются. Dropdown-действия передаются через `actions` и должны использовать Bootstrap/Cartzilla Dropdown.
+Карточка принимает поля `id`, `title`, `slug`, `category`, `author`, `order`, `views`, `status`, `published_at`, `actions`, `image`, `icon`, `selection` и `extra_fields`. Пустые поля автоматически скрываются. Dropdown-действия передаются через `actions` и должны использовать Bootstrap/Cartzilla Dropdown.
 
 Подробная инструкция: `docs/mobile-table-cards.md`.
 

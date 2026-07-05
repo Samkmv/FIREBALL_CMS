@@ -890,6 +890,7 @@ return [
     'admin_files_empty' => 'This folder has no files or subfolders yet.',
     'admin_files_type_directory' => 'Folder',
     'admin_files_type_file' => 'File',
+    'admin_files_type_archive' => 'Archive',
     'admin_files_select' => 'Select',
     'admin_files_selected_count' => 'Selected',
     'admin_files_delete_selected' => 'Delete selected',

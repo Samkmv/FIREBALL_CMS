@@ -69,8 +69,8 @@ $supportContactUrl = base_href('/support#support-question-form');
                 <?php if (!empty($article['excerpt'])): ?>
                     <p><?= htmlSC($article['excerpt']) ?></p>
                 <?php endif; ?>
-                <div class="fs-lg lh-lg">
-                    <?= nl2br(htmlSC((string)($article['content'] ?? ''))) ?>
+                <div class="post-content fs-lg lh-lg">
+                    <?= $article['content'] ?? '' ?>
                 </div>
 
                 <div

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Modules\BlockEditor\BlockRenderer;
 use FBL\Pagination;
 
 /**
@@ -271,7 +272,7 @@ class Support
             [$slug]
         )->getOne();
 
-        return is_array($row) ? $row : null;
+        return is_array($row) ? $this->prepareKbArticleForPublic($row) : null;
     }
 
     public function findPublishedKbArticleById(int $id): ?array
@@ -290,7 +291,22 @@ class Support
             [$id]
         )->getOne();
 
-        return is_array($row) ? $row : null;
+        return is_array($row) ? $this->prepareKbArticleForPublic($row) : null;
+    }
+
+    protected function prepareKbArticleForPublic(array $article): array
+    {
+        $content = trim((string)($article['content'] ?? ''));
+
+        if ($content !== '') {
+            $article['content'] = (new BlockRenderer())->renderPublicContent($content);
+        }
+
+        if ($content !== '' && $article['content'] !== '' && $article['content'] === strip_tags((string)$article['content'])) {
+            $article['content'] = '<p>' . nl2br(htmlSC((string)$article['content'])) . '</p>';
+        }
+
+        return $article;
     }
 
     public function recordKbArticleView(int $articleId): void

@@ -113,12 +113,20 @@ echo view()->renderPartial('admin/shell_open', [
             <div class="col-lg-6">
                 <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_geo_title') ?></h3>
+                    <?php $countriesMobileCards = []; ?>
                     <?php ob_start(); ?>
                         <thead>
                             <tr><th><?= print_translation('admin_analytics_col_country') ?></th><th class="text-end"><?= print_translation('admin_analytics_col_visits') ?></th></tr>
                         </thead>
                         <tbody>
                             <?php foreach (($analytics['countries'] ?? []) as $row): ?>
+                                <?php
+                                $countriesMobileCards[] = [
+                                    'title' => (string)($row['label'] ?? $unknownCountryLabel),
+                                    'views' => (int)($row['total'] ?? 0),
+                                    'views_label' => return_translation('admin_analytics_col_visits'),
+                                ];
+                                ?>
                                 <tr>
                                     <td><?= htmlSC((string)($row['label'] ?? $unknownCountryLabel)) ?></td>
                                     <td class="text-end"><?= (int)($row['total'] ?? 0) ?></td>
@@ -129,7 +137,10 @@ echo view()->renderPartial('admin/shell_open', [
                             <?php endif; ?>
                         </tbody>
                     <?php $adminTableContent = ob_get_clean(); ?>
-                    <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
+                    <?= view()->renderPartial('admin/partials/table', [
+                        'content' => $adminTableContent,
+                        'mobile_cards' => $countriesMobileCards,
+                    ]) ?>
                     <div class="small text-body-tertiary mt-3">
                         <a class="text-body-tertiary" href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>
                     </div>
@@ -148,12 +159,20 @@ echo view()->renderPartial('admin/shell_open', [
             <div class="col-xl-6">
                 <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h3>
+                    <?php $pagesMobileCards = []; ?>
                     <?php ob_start(); ?>
                         <thead>
                             <tr><th><?= print_translation('admin_analytics_col_page') ?></th><th class="text-end"><?= print_translation('admin_analytics_col_views') ?></th></tr>
                         </thead>
                         <tbody>
                             <?php foreach (($analytics['pages'] ?? []) as $row): ?>
+                                <?php
+                                $pagesMobileCards[] = [
+                                    'title' => (string)($row['label'] ?? '/'),
+                                    'views' => (int)($row['total'] ?? 0),
+                                    'views_label' => return_translation('admin_analytics_col_views'),
+                                ];
+                                ?>
                                 <tr>
                                     <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
                                     <td class="text-end admin-analytics-page-views"><?= (int)($row['total'] ?? 0) ?></td>
@@ -167,12 +186,14 @@ echo view()->renderPartial('admin/shell_open', [
                     <?= view()->renderPartial('admin/partials/table', [
                         'content' => $adminTableContent,
                         'table_class' => 'admin-analytics-table admin-analytics-table--pages',
+                        'mobile_cards' => $pagesMobileCards,
                     ]) ?>
                 </div>
             </div>
             <div class="col-xl-6">
                 <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
                     <h3 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h3>
+                    <?php $latestMobileCards = []; ?>
                     <?php ob_start(); ?>
                         <thead>
                             <tr>
@@ -186,8 +207,32 @@ echo view()->renderPartial('admin/shell_open', [
                         </thead>
                         <tbody>
                             <?php foreach (($analytics['latest'] ?? []) as $row): ?>
+                                <?php
+                                $visitTime = date('d.m H:i', strtotime((string)($row['created_at'] ?? 'now')));
+                                $latestMobileCards[] = [
+                                    'title' => (string)($row['current_page'] ?? '/'),
+                                    'category' => (string)($row['country'] ?? $unknownCountryLabel),
+                                    'category_label' => return_translation('admin_analytics_col_country'),
+                                    'published_at' => $visitTime,
+                                    'published_at_label' => return_translation('admin_analytics_col_time'),
+                                    'extra_fields' => [
+                                        [
+                                            'label' => return_translation('admin_analytics_col_device'),
+                                            'value' => trim((string)($row['device_type'] ?? '') . ' / ' . (string)($row['os'] ?? ''), ' /'),
+                                        ],
+                                        [
+                                            'label' => return_translation('admin_analytics_col_browser'),
+                                            'value' => (string)($row['browser'] ?? ''),
+                                        ],
+                                        [
+                                            'label' => return_translation('admin_analytics_col_source'),
+                                            'value' => (string)($row['source'] ?? ''),
+                                        ],
+                                    ],
+                                ];
+                                ?>
                                 <tr>
-                                    <td class="text-nowrap"><?= htmlSC(date('d.m H:i', strtotime((string)($row['created_at'] ?? 'now')))) ?></td>
+                                    <td class="text-nowrap"><?= htmlSC($visitTime) ?></td>
                                     <td><?= htmlSC((string)($row['country'] ?? $unknownCountryLabel)) ?></td>
                                     <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
                                     <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
@@ -203,6 +248,7 @@ echo view()->renderPartial('admin/shell_open', [
                     <?= view()->renderPartial('admin/partials/table', [
                         'content' => $adminTableContent,
                         'table_class' => 'admin-analytics-table admin-analytics-table--latest',
+                        'mobile_cards' => $latestMobileCards,
                     ]) ?>
                 </div>
             </div>

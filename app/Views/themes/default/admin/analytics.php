@@ -172,6 +172,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         <div class="col-12">
             <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-pages">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h2>
+                <?php $pagesMobileCards = []; ?>
                 <?php ob_start(); ?>
                     <thead class="position-sticky top-0">
                         <tr>
@@ -181,6 +182,13 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     </thead>
                     <tbody>
                         <?php foreach (($pages['items'] ?? []) as $row): ?>
+                            <?php
+                            $pagesMobileCards[] = [
+                                'title' => (string)($row['label'] ?? '/'),
+                                'views' => (int)($row['views'] ?? $row['total'] ?? 0),
+                                'views_label' => return_translation('admin_analytics_col_views'),
+                            ];
+                            ?>
                             <tr>
                                 <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
                                 <td class="text-end admin-analytics-page-views"><?= (int)($row['views'] ?? $row['total'] ?? 0) ?></td>
@@ -194,6 +202,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                 <?= view()->renderPartial('admin/partials/table', [
                     'content' => $adminTableContent,
                     'table_class' => 'admin-analytics-table admin-analytics-table--pages-full',
+                    'mobile_cards' => $pagesMobileCards,
                 ]) ?>
                 <?= view()->renderPartial('admin/partials/table_footer', [
                     'visible' => count((array)($pages['items'] ?? [])),
@@ -207,6 +216,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         <div class="col-12">
             <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-visits">
                 <h2 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h2>
+                <?php $visitsMobileCards = []; ?>
                 <?php ob_start(); ?>
                     <thead class="position-sticky top-0">
                         <tr>
@@ -220,8 +230,32 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     </thead>
                     <tbody>
                         <?php foreach (($visits['items'] ?? []) as $row): ?>
+                            <?php
+                            $visitTime = date('d.m.Y H:i', strtotime((string)($row['created_at'] ?? 'now')));
+                            $visitsMobileCards[] = [
+                                'title' => (string)($row['current_page'] ?? '/'),
+                                'category' => (string)($row['country'] ?? $unknownCountryLabel),
+                                'category_label' => return_translation('admin_analytics_col_country'),
+                                'published_at' => $visitTime,
+                                'published_at_label' => return_translation('admin_analytics_col_time'),
+                                'extra_fields' => [
+                                    [
+                                        'label' => return_translation('admin_analytics_col_device'),
+                                        'value' => trim((string)($row['device_type'] ?? '') . ' / ' . (string)($row['os'] ?? ''), ' /'),
+                                    ],
+                                    [
+                                        'label' => return_translation('admin_analytics_col_browser'),
+                                        'value' => (string)($row['browser'] ?? ''),
+                                    ],
+                                    [
+                                        'label' => return_translation('admin_analytics_col_source'),
+                                        'value' => (string)($row['source'] ?? ''),
+                                    ],
+                                ],
+                            ];
+                            ?>
                             <tr>
-                                <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)($row['created_at'] ?? 'now')))) ?></td>
+                                <td class="text-nowrap"><?= htmlSC($visitTime) ?></td>
                                 <td><?= htmlSC((string)($row['country'] ?? $unknownCountryLabel)) ?></td>
                                 <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
                                 <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
@@ -237,6 +271,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                 <?= view()->renderPartial('admin/partials/table', [
                     'content' => $adminTableContent,
                     'table_class' => 'admin-analytics-table admin-analytics-table--visits-full',
+                    'mobile_cards' => $visitsMobileCards,
                 ]) ?>
                 <?= view()->renderPartial('admin/partials/table_footer', [
                     'visible' => count((array)($visits['items'] ?? [])),

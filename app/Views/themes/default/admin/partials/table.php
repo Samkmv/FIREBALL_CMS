@@ -9,7 +9,9 @@ $content = (string)($content ?? '');
 $caption = (string)($caption ?? '');
 $tableAttributes = is_array($table_attributes ?? null) ? $table_attributes : [];
 $wrapperAttributes = is_array($wrapper_attributes ?? null) ? $wrapper_attributes : [];
-$mobileCards = is_array($mobile_cards ?? null) ? $mobile_cards : null;
+$mobileCardsProvided = isset($mobile_cards) && is_array($mobile_cards);
+$mobileCards = $mobileCardsProvided ? $mobile_cards : null;
+$mobileCardsAutoBuilt = false;
 $mobileAttributes = is_array($mobile_attributes ?? null) ? $mobile_attributes : [];
 $clickableRows = !empty($clickable_rows);
 
@@ -60,7 +62,8 @@ $columnLabel = static function (array $column): string {
     return trim(strip_tags(array_key_exists('html', $column) ? (string)$column['html'] : (string)($column['label'] ?? '')));
 };
 
-if ($mobileCards === null && $content === '' && !empty($rows)) {
+if ($mobileCards === null && $content === '') {
+    $mobileCardsAutoBuilt = true;
     $mobileCards = [];
 
     foreach ($rows as $row) {
@@ -114,8 +117,8 @@ if ($mobileCards === null && $content === '' && !empty($rows)) {
     }
 }
 
-$hasMobileCards = is_array($mobileCards) && !empty($mobileCards);
-if ($hasMobileCards) {
+$shouldRenderMobileCards = is_array($mobileCards) && ($mobileCardsProvided || $mobileCardsAutoBuilt || !empty($mobileCards));
+if ($shouldRenderMobileCards) {
     $wrapperClass = trim($wrapperClass . ' d-none d-md-block');
 }
 ?>
@@ -174,9 +177,10 @@ if ($hasMobileCards) {
         <?php endif; ?>
     </table>
 </div>
-<?php if ($hasMobileCards): ?>
+<?php if ($shouldRenderMobileCards): ?>
     <?= view()->renderPartial('admin/partials/responsive_table_cards', [
         'cards' => $mobileCards,
         'attributes' => $mobileAttributes,
+        'empty_text' => $emptyText,
     ]) ?>
 <?php endif; ?>
