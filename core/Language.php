@@ -19,27 +19,43 @@ class Language
      */
     public static function load($route)
     {
-        $code = app()->get('lang')['code'];
+        $lang = app()->get('lang');
+        $code = is_array($lang) ? Localization::normalizeLocale((string)($lang['code'] ?? '')) : '';
+        $code = $code !== '' ? $code : Localization::currentLocale();
 
-        $lang_layout = APP . "/Languages/$code.php";
-        $lang_view = '';
         $layoutData = [];
         $viewData = [];
+        $langFolder = '';
+        $langFile = '';
 
         if (is_array($route)) {
             $controller_segments = explode('\\', $route[0]);
             $controller_name = array_pop($controller_segments);
-            $lang_folder = strtolower(str_replace('Controller', '', $controller_name));
-            $lang_file = $route[1];
-            $lang_view = APP . "/Languages/$code/$lang_folder/$lang_file.php";
+            $langFolder = strtolower(str_replace('Controller', '', $controller_name));
+            $langFile = (string)$route[1];
         }
 
-        if (file_exists($lang_layout)) {
-            $layoutData = require $lang_layout;
-        }
+        $loadedFiles = [];
+        foreach (array_reverse(Localization::localeCandidates($code)) as $candidate) {
+            $langLayout = APP . "/Languages/$candidate.php";
+            if (file_exists($langLayout)) {
+                $data = require $langLayout;
+                if (is_array($data)) {
+                    $layoutData = array_merge($layoutData, $data);
+                    $loadedFiles[] = $langLayout;
+                }
+            }
 
-        if ($lang_view && file_exists($lang_view)) {
-            $viewData = require $lang_view;
+            if ($langFolder !== '' && $langFile !== '') {
+                $langView = APP . "/Languages/$candidate/$langFolder/$langFile.php";
+                if (file_exists($langView)) {
+                    $data = require $langView;
+                    if (is_array($data)) {
+                        $viewData = array_merge($viewData, $data);
+                        $loadedFiles[] = $langView;
+                    }
+                }
+            }
         }
 
         self::$lang_layout = is_array($layoutData) ? $layoutData : [];
@@ -47,6 +63,11 @@ class Language
         self::$lang_data = array_merge(self::$lang_layout, self::$lang_view);
         self::loadRegisteredPluginLanguages();
         self::mergePluginTranslations();
+        Localization::debug('translation_load', [
+            'locale' => $code,
+            'files' => $loadedFiles,
+            'keys' => count(self::$lang_data),
+        ]);
     }
 
     public static function registerPluginLanguage(string $slug, string $langDir, array $fallbacks = ['ru', 'en']): void
@@ -70,7 +91,14 @@ class Language
      */
     public static function get($key)
     {
-        return self::$lang_data[$key] ?? $key;
+        $found = array_key_exists($key, self::$lang_data);
+        Localization::debug('translation_choice', [
+            'key' => (string)$key,
+            'locale' => Localization::currentLocale(),
+            'source' => $found ? 'loaded' : 'fallback_key',
+        ]);
+
+        return $found ? self::$lang_data[$key] : $key;
     }
 
     protected static function loadRegisteredPluginLanguages(): void
@@ -93,26 +121,26 @@ class Language
             return;
         }
 
+        $translations = [];
         foreach ($files as $file) {
             try {
                 $data = require $file;
                 if (is_array($data)) {
-                    self::$pluginLangData[$slug] = $data;
-                    return;
+                    $translations = array_merge($translations, $data);
                 }
             } catch (\Throwable $exception) {
                 error_log('Plugin language file error [' . $slug . ']: ' . $exception->getMessage());
             }
         }
 
-        self::$pluginLangData[$slug] = [];
+        self::$pluginLangData[$slug] = $translations;
     }
 
     protected static function resolvePluginLanguageFiles(string $langDir, array $fallbacks): array
     {
         $lang = app()->get('lang');
         $code = is_array($lang) ? (string)($lang['code'] ?? '') : '';
-        $candidates = array_values(array_unique(array_filter(array_merge([$code], $fallbacks))));
+        $candidates = array_reverse(Localization::localeCandidates($code, $fallbacks));
         $files = [];
 
         foreach ($candidates as $candidate) {

@@ -352,7 +352,7 @@ class AdminPostController extends BaseController
             if ($category) {
                 return [
                     'id' => (int)$category['id'],
-                    'name' => (string)($category['name'] ?: ($category['name_ru'] ?? $category['name_en'] ?? '')),
+                    'name' => localized_value($category, 'name', 'name'),
                 ];
             }
         }
@@ -361,7 +361,7 @@ class AdminPostController extends BaseController
         if (!empty($categories[0])) {
             return [
                 'id' => (int)$categories[0]['id'],
-                'name' => (string)($categories[0]['name'] ?: ($categories[0]['name_ru'] ?? $categories[0]['name_en'] ?? '')),
+                'name' => localized_value($categories[0], 'name', 'name'),
             ];
         }
 

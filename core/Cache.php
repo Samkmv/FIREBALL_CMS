@@ -20,6 +20,11 @@ class Cache
             $seconds = self::DEFAULT_TTL;
         }
 
+        Localization::debug('cache_set', [
+            'cache_key' => (string)$key,
+            'ttl' => $seconds,
+        ]);
+
         $content['data'] = $data;
         $content['end_time'] = time() + $seconds;
 
@@ -52,6 +57,7 @@ class Cache
         if (file_exists($cache_file)) {
             $rawContent = file_get_contents($cache_file);
             if ($rawContent === false) {
+                Localization::debug('cache_read_error', ['cache_key' => (string)$key]);
                 log_error_details('Cache read error', [
                     'Key' => $key,
                     'Cache File' => $cache_file,
@@ -61,6 +67,7 @@ class Cache
 
             $content = @unserialize($rawContent, ['allowed_classes' => false]);
             if (!is_array($content) || !array_key_exists('end_time', $content)) {
+                Localization::debug('cache_payload_error', ['cache_key' => (string)$key]);
                 log_error_details('Cache payload error', [
                     'Key' => $key,
                     'Cache File' => $cache_file,
@@ -71,12 +78,15 @@ class Cache
 
             $endTime = (int)$content['end_time'];
             if ($endTime > 0 && time() <= $endTime) {
+                Localization::debug('cache_get_hit', ['cache_key' => (string)$key]);
                 return $content['data'];
             }
 
+            Localization::debug('cache_get_expired', ['cache_key' => (string)$key]);
             $this->deleteFile($cache_file, $key);
         }
 
+        Localization::debug('cache_get_miss', ['cache_key' => (string)$key]);
         return $default;
     }
 
@@ -85,6 +95,7 @@ class Cache
      */
     public function remove($key): void
     {
+        Localization::debug('cache_remove', ['cache_key' => (string)$key]);
         $cache_file = CACHE . '/' . md5($key) . '.txt';
 
         if (file_exists($cache_file)) {

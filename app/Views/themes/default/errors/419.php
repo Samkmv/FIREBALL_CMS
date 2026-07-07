@@ -2,7 +2,7 @@
 $pageTitle = $title ?? return_translation('error_419_title');
 $message = trim((string)($error ?? '')) !== '' ? (string)$error : return_translation('error_419_message');
 ?>
-<!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true"><head>
+<!DOCTYPE html><html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="light" data-pwa="true"><head>
     <meta charset="utf-8">
 
     <!-- Viewport -->

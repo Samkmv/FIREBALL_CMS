@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use FBL\Localization;
+
 /**
  * Работает с категориями блога из таблицы post_categories.
  */
@@ -42,25 +44,20 @@ class Category
 
     public function nameSql(string $alias = ''): string
     {
-        $prefix = $alias !== '' ? "{$alias}." : '';
-        $column = match (app()->get('lang')['code'] ?? 'ru') {
-            'en', 'de', 'zh-cn' => 'name_en',
-            default => 'name_ru',
-        };
-
-        return "COALESCE(NULLIF({$prefix}{$column}, ''), {$prefix}name)";
+        return Localization::localizedSql('name', 'name', $alias, $this->translationColumns());
     }
 
     public function getNavigationCategories(string $postsTable): array
     {
         $categoryNameSql = $this->nameSql('c');
+        $groupBySql = $this->categoryGroupBySql('c');
         $categories = db()->query(
-            "SELECT c.id, {$categoryNameSql} AS name, c.name_ru, c.name_en, c.slug, COUNT(p.id) AS total
+            "SELECT c.id, {$categoryNameSql} AS name, c.slug, COUNT(p.id) AS total
              FROM {$this->table} c
              LEFT JOIN {$postsTable} p ON p.category_id = c.id AND p.is_published = 1
-             GROUP BY c.id, c.name, c.name_ru, c.name_en, c.slug
+             GROUP BY {$groupBySql}
              HAVING total > 0
-             ORDER BY c.name ASC"
+             ORDER BY name ASC"
         )->get() ?: [];
 
         return array_map(fn(array $category): array => $this->normalizeListItem($category), $categories);
@@ -69,13 +66,14 @@ class Category
     public function getSidebarCategories(string $postsTable): array
     {
         $categoryNameSql = $this->nameSql('c');
+        $groupBySql = $this->categoryGroupBySql('c');
         $categories = db()->query(
-            "SELECT c.id, {$categoryNameSql} AS name, c.name_ru, c.name_en, c.slug, COUNT(p.id) AS total
+            "SELECT c.id, {$categoryNameSql} AS name, c.slug, COUNT(p.id) AS total
              FROM {$this->table} c
              LEFT JOIN {$postsTable} p ON p.category_id = c.id AND p.is_published = 1
-             GROUP BY c.id, c.name, c.name_ru, c.name_en, c.slug
+             GROUP BY {$groupBySql}
              HAVING total > 0
-             ORDER BY total DESC, c.name ASC"
+             ORDER BY total DESC, name ASC"
         )->get() ?: [];
 
         if (!empty($categories)) {
@@ -215,6 +213,39 @@ class Category
             'label' => (string)$category['name'],
             'total' => (int)$category['total'],
         ];
+    }
+
+    protected function translationColumns(): array
+    {
+        static $columns = null;
+        if ($columns !== null) {
+            return $columns;
+        }
+
+        $columns = ['name_ru', 'name_en'];
+        try {
+            $rows = db()->query("SHOW COLUMNS FROM {$this->table}")->get() ?: [];
+            foreach ($rows as $row) {
+                $field = (string)($row['Field'] ?? '');
+                if (preg_match('/^name_[a-z0-9_]+$/', $field)) {
+                    $columns[] = $field;
+                }
+            }
+        } catch (\Throwable) {
+        }
+
+        return $columns = array_values(array_unique($columns));
+    }
+
+    protected function categoryGroupBySql(string $alias = ''): string
+    {
+        $prefix = $alias !== '' ? "{$alias}." : '';
+        $columns = array_merge(['id', 'name', 'slug'], $this->translationColumns());
+
+        return implode(', ', array_map(
+            static fn(string $column): string => $prefix . $column,
+            array_values(array_unique($columns))
+        ));
     }
 
     protected function ensureTranslationColumns(): void

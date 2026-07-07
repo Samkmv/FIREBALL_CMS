@@ -2,6 +2,8 @@
 
 namespace FBL;
 
+use FBL\Localization;
+
 /**
  * Регистрирует маршруты приложения, подбирает подходящий маршрут и запускает его обработчик.
  */
@@ -142,13 +144,14 @@ class Router
                 }
 
                 $lang = trim(get_route_param('lang'), '/');
-                $base_lang = array_value_search(LANGS, 'base', 1);
-                if ( ($lang && !array_key_exists($lang, LANGS)) || $lang == $base_lang) {
+                $siteLocale = Localization::siteLocale();
+                if (($lang && !array_key_exists($lang, LANGS)) || ($lang !== '' && $lang === $siteLocale)) {
                     abort();
                 }
 
-                $lang = $lang ?: $base_lang;
-                app()->set('lang', LANGS[$lang]);
+                $localeContext = Localization::resolve($lang !== '' ? $lang : null, $this->request->getPath());
+                $lang = $localeContext['current_locale'];
+                app()->set('lang', LANGS[$lang] ?? LANGS[Localization::fallbackLocale()] ?? reset(LANGS));
 
                 Language::load($route['callback']);
 

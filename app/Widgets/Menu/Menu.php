@@ -35,12 +35,16 @@ class Menu
     {
         foreach (self::DEFAULT_CACHE_KEYS as $key) {
             cache()->remove($key);
+            foreach (array_keys(LANGS) as $locale) {
+                cache()->remove('widget_menu:' . $locale . ':' . $key);
+            }
         }
     }
 
     protected function run()
     {
-        $menu_html = cache()->get($this->cacheKey);
+        $cacheKey = $this->localizedCacheKey();
+        $menu_html = cache()->get($cacheKey);
         if ($menu_html) {
             echo $menu_html;
             return;
@@ -69,8 +73,13 @@ class Menu
         if ($this->container) {
             $menu_html .= "</{$this->container}>";
         }
-        cache()->set($this->cacheKey, $menu_html, $this->cacheTime);
+        cache()->set($this->localizedCacheKey(), $menu_html, $this->cacheTime);
         echo $menu_html;
+    }
+
+    protected function localizedCacheKey(): string
+    {
+        return \FBL\Localization::localeCacheKey('widget_menu', $this->cacheKey);
     }
 
     protected function getOptions($options)

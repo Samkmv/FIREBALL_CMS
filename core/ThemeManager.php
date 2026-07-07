@@ -614,7 +614,7 @@ class ThemeManager
 
     public function currentLocale(): string
     {
-        return (string)(app()->get('lang')['code'] ?? DEFAULT_LOCALE);
+        return Localization::currentLocale();
     }
 
     public function availableLocales(): array
@@ -632,20 +632,7 @@ class ThemeManager
 
     public function switchLocaleUrl(string $locale): string
     {
-        if (!array_key_exists($locale, LANGS)) {
-            return $this->siteUrl();
-        }
-
-        $segments = explode('/', trim(request()->getPath(), '/'));
-        if ($segments !== [] && array_key_exists((string)$segments[0], LANGS)) {
-            array_shift($segments);
-        }
-        $path = trim(implode('/', $segments), '/');
-        $query = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '');
-        $prefix = !empty(LANGS[$locale]['base']) ? '' : '/' . $locale;
-        $url = rtrim(app_base_url(), '/') . $prefix . ($path !== '' ? '/' . $path : '/');
-
-        return $url . ($query !== '' ? '?' . $query : '');
+        return locale_switch_url($locale);
     }
 
     public function getMenu(string $location = 'header'): array

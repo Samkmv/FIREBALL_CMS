@@ -683,14 +683,14 @@ final class FireballPluginToyCarRental implements PluginInterface
     {
         static $cache = [];
 
-        $lang = app()->get('lang');
-        $code = is_array($lang) ? (string)($lang['code'] ?? '') : '';
+        $code = \FBL\Localization::currentLocale();
         $cacheKey = $code !== '' ? $code : 'fallback';
         if (array_key_exists($cacheKey, $cache)) {
             return $cache[$cacheKey];
         }
 
-        $candidates = array_values(array_unique(array_filter([$code, 'ru', 'en'])));
+        $translations = [];
+        $candidates = array_reverse(\FBL\Localization::localeCandidates($code, ['ru', 'en']));
         foreach ($candidates as $candidate) {
             $file = __DIR__ . '/lang/' . basename($candidate) . '.php';
             if (!is_file($file)) {
@@ -700,14 +700,14 @@ final class FireballPluginToyCarRental implements PluginInterface
             try {
                 $data = require $file;
                 if (is_array($data)) {
-                    return $cache[$cacheKey] = $data;
+                    $translations = array_merge($translations, $data);
                 }
             } catch (Throwable $exception) {
                 log_error_details('Toy rental language file failed', ['file' => $file], $exception);
             }
         }
 
-        return $cache[$cacheKey] = [];
+        return $cache[$cacheKey] = $translations;
     }
 
     public static function cssColorStyle(string $color): string

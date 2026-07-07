@@ -46,7 +46,7 @@ class Page extends Model
 
     protected function publicCacheKey(string $name): string
     {
-        return 'pages:v' . $this->publicCacheVersion() . ':' . $name;
+        return \FBL\Localization::localeCacheKey('pages', 'v' . $this->publicCacheVersion() . ':' . $name);
     }
 
     protected function publicCacheVersion(): string
@@ -513,7 +513,7 @@ class Page extends Model
             'legal_information' => 'show_in_legal_information',
         ];
         $location = array_key_exists($location, $locations) ? $location : 'header';
-        $languageCode = (string)(app()->get('lang')['code'] ?? DEFAULT_LOCALE);
+        $languageCode = \FBL\Localization::currentLocale();
         $cacheKey = $this->publicCacheKey('menu:' . $location . ':' . $languageCode);
         if (array_key_exists($cacheKey, self::$runtimeCache)) {
             return self::$runtimeCache[$cacheKey];

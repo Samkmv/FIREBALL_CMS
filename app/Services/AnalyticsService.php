@@ -91,7 +91,8 @@ final class AnalyticsService
 
     public function dashboardData(): array
     {
-        $cached = cache()->get('analytics:dashboard');
+        $cacheKey = locale_cache_key('analytics', 'dashboard');
+        $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
             return $cached;
         }
@@ -125,7 +126,7 @@ final class AnalyticsService
             'latest' => $this->normalizeVisitRows($this->repository->latest(20)),
         ];
 
-        cache()->set('analytics:dashboard', $data, $this->cacheTtl);
+        cache()->set($cacheKey, $data, $this->cacheTtl);
 
         return $data;
     }
@@ -185,7 +186,7 @@ final class AnalyticsService
     public function resetAll(): void
     {
         $this->repository->resetAll();
-        cache()->remove('analytics:dashboard');
+        $this->clearDashboardCache();
         session()->remove('analytics.landing_page');
         session()->remove('analytics.last_visit_at');
     }
@@ -193,6 +194,9 @@ final class AnalyticsService
     public function clearDashboardCache(): void
     {
         cache()->remove('analytics:dashboard');
+        foreach (array_keys(LANGS) as $locale) {
+            cache()->remove('analytics:' . $locale . ':dashboard');
+        }
     }
 
     public function refreshGeoData(int $limit = 1000): int
@@ -1128,7 +1132,7 @@ final class AnalyticsService
 
     private function analyticsLocale(): string
     {
-        $code = (string)(app()->get('lang')['code'] ?? 'ru');
+        $code = \FBL\Localization::currentLocale();
 
         return match ($code) {
             'en' => 'en_US',

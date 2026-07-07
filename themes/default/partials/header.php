@@ -134,17 +134,13 @@
                     $request_uri = '/';
                 }
                 $headerLanguageSwitchHref = static function (string $key, array $language) use ($request_uri): string {
-                    if ((int)($language['base'] ?? 0) === 1) {
-                        return base_url($request_uri);
-                    }
-
-                    return base_url('/' . $key . ($request_uri === '/' ? '/' : $request_uri));
+                    return locale_switch_url($key, $request_uri);
                 };
                 ?>
 
                 <?php foreach (LANGS as $key => $val): ?>
 
-                    <?php if (app()->get('lang')['code'] == $key) continue; ?>
+                    <?php if (current_locale() == $key) continue; ?>
 
                     <li>
                         <a class="dropdown-item" href="<?= htmlSC($headerLanguageSwitchHref((string)$key, $val)); ?>"><?= htmlSC($val['title']); ?></a>

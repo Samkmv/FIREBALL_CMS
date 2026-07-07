@@ -8,6 +8,7 @@ use App\Models\ContactRequest;
 use App\Models\ContactSubject;
 use App\Models\MailLog;
 use App\Models\Page;
+use App\Models\Post;
 use App\Models\SecurityLog;
 use App\Models\SiteSetting;
 use App\Models\Support;
@@ -19,6 +20,7 @@ use App\Services\MailService;
 use App\Services\NotificationService;
 use App\Services\PwaService;
 use App\Services\UpdateCenter;
+use App\Widgets\Menu\Menu;
 use FBL\Auth;
 use FBL\File;
 use FBL\Markdown;
@@ -1068,6 +1070,7 @@ class AdminController extends BaseController
     public function settings()
     {
         if (request()->isPost()) {
+            $previousDefaultLocale = \FBL\Localization::siteLocale();
             $data = $this->normalizeSettingsData(request()->getData());
             $errors = $this->validateSettingsData($data);
 
@@ -1078,6 +1081,11 @@ class AdminController extends BaseController
             }
 
             $this->siteSettings->setMany($data);
+            if ($previousDefaultLocale !== $data['default_locale']) {
+                Page::clearPublicCache();
+                Post::clearPublicCache();
+                Menu::clearCache();
+            }
             try {
                 (new PwaService($this->siteSettings))->syncIcons();
             } catch (\Throwable $exception) {
@@ -1535,7 +1543,7 @@ class AdminController extends BaseController
         }
 
         $query = trim((string)request()->get('q', ''));
-        $language = app()->get('lang')['code'] ?? 'ru';
+        $language = current_locale();
         $resolved = $this->resolveThemeDocsArticle($language, $article);
         $content = is_file($resolved['path']) ? (string)file_get_contents($resolved['path']) : '';
         $articleKeys = array_keys($articles);
@@ -1573,7 +1581,7 @@ class AdminController extends BaseController
         }
 
         $query = trim((string)request()->get('q', ''));
-        $language = app()->get('lang')['code'] ?? 'ru';
+        $language = current_locale();
         $resolved = $this->resolveDocsArticle($language, 'plugins', $article);
         $content = is_file($resolved['path']) ? (string)file_get_contents($resolved['path']) : '';
         $articleKeys = array_keys($articles);
@@ -1611,7 +1619,7 @@ class AdminController extends BaseController
         }
 
         $query = trim((string)request()->get('q', ''));
-        $language = app()->get('lang')['code'] ?? 'ru';
+        $language = current_locale();
         $resolved = $this->resolveDocsArticle($language, 'pwa', $article);
         $content = is_file($resolved['path']) ? (string)file_get_contents($resolved['path']) : '';
         $articleKeys = array_keys($articles);
@@ -1850,6 +1858,7 @@ class AdminController extends BaseController
             'site_title' => trim((string)($data['site_title'] ?? '')),
             'site_description' => trim((string)($data['site_description'] ?? '')),
             'site_favicon' => trim((string)($data['site_favicon'] ?? '')),
+            'default_locale' => \FBL\Localization::normalizeLocale((string)($data['default_locale'] ?? '')) ?: \FBL\Localization::siteLocale(),
             'admin_session_lifetime_hours' => trim((string)($data['admin_session_lifetime_hours'] ?? '12')),
             'social_links' => $this->normalizeSocialLinksSetting($data),
             'social_telegram' => trim((string)($data['social_telegram'] ?? '')),
@@ -1990,6 +1999,9 @@ class AdminController extends BaseController
         }
         if ($data['site_favicon'] !== '' && !$this->isValidSeoImage($data['site_favicon'])) {
             $errors['site_favicon'][] = return_translation('admin_validation_seo_image_invalid');
+        }
+        if (!array_key_exists((string)($data['default_locale'] ?? ''), LANGS)) {
+            $errors['default_locale'][] = return_translation('admin_validation_default_locale_invalid');
         }
         if (
             !ctype_digit((string)$data['admin_session_lifetime_hours'])

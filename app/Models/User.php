@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\TwoFactorService;
 use FBL\File;
+use FBL\Localization;
 use FBL\Pagination;
 
 /**
@@ -43,6 +44,8 @@ class User
                 password VARCHAR(255) NOT NULL,
                 avatar VARCHAR(255) NULL,
                 role VARCHAR(50) NOT NULL DEFAULT 'user',
+                locale VARCHAR(12) NULL,
+                admin_locale VARCHAR(12) NULL,
                 two_factor_secret TEXT NULL,
                 two_factor_recovery_codes TEXT NULL,
                 two_factor_enabled_at DATETIME NULL,
@@ -60,6 +63,7 @@ class User
         $this->ensureTwoFactorRecoveryTokensTableExists();
         $this->ensureLoginColumnExists();
         $this->ensureRoleColumnExists();
+        $this->ensureLocaleColumnsExist();
         $this->ensureAvatarColumnExists();
         $this->ensureTwoFactorColumnsExist();
         $this->ensureLastSeenColumnExists();
@@ -202,6 +206,8 @@ class User
                     u.email,
                     u.avatar,
                     u.role,
+                    u.locale,
+                    u.admin_locale,
                     u.two_factor_enabled_at,
                     u.last_seen_at,
                     u.created_at,
@@ -232,14 +238,16 @@ class User
         $role = $this->resolveRoleForNewUser();
 
         db()->query(
-            "INSERT INTO {$this->usersTable} (name, login, email, password, role, created_at)
-             VALUES (:name, :login, :email, :password, :role, :created_at)",
+            "INSERT INTO {$this->usersTable} (name, login, email, password, role, locale, admin_locale, created_at)
+             VALUES (:name, :login, :email, :password, :role, :locale, :admin_locale, :created_at)",
             [
                 'name' => trim($data['name']),
                 'login' => $this->ensureUniqueLogin($this->normalizeLogin((string)($data['login'] ?? '')), null),
                 'email' => mb_strtolower(trim($data['email'])),
                 'password' => password_hash($data['password'], PASSWORD_DEFAULT),
                 'role' => $role,
+                'locale' => Localization::currentLocale(),
+                'admin_locale' => Localization::siteLocale(),
                 'created_at' => date('Y-m-d H:i:s'),
             ]
         );
@@ -259,8 +267,8 @@ class User
         }
 
         db()->query(
-            "INSERT INTO {$this->usersTable} (name, login, email, password, avatar, role, created_at)
-             VALUES (:name, :login, :email, :password, :avatar, :role, :created_at)",
+            "INSERT INTO {$this->usersTable} (name, login, email, password, avatar, role, locale, admin_locale, created_at)
+             VALUES (:name, :login, :email, :password, :avatar, :role, :locale, :admin_locale, :created_at)",
             [
                 'name' => trim((string)$data['name']),
                 'login' => $this->ensureUniqueLogin($this->normalizeLogin((string)($data['login'] ?? '')), null),
@@ -268,6 +276,8 @@ class User
                 'password' => password_hash((string)$data['password'], PASSWORD_DEFAULT),
                 'avatar' => trim((string)($data['avatar'] ?? '')) ?: null,
                 'role' => $role,
+                'locale' => Localization::normalizeLocale((string)($data['locale'] ?? '')) ?: Localization::siteLocale(),
+                'admin_locale' => Localization::normalizeLocale((string)($data['admin_locale'] ?? '')) ?: Localization::siteLocale(),
                 'created_at' => date('Y-m-d H:i:s'),
             ]
         );
@@ -283,7 +293,7 @@ class User
         $this->ensureUsersTableExists();
 
         return db()->query(
-            "SELECT u.id, u.name, u.login, u.email, u.avatar, u.role, u.created_at, r.name AS role_name
+            "SELECT u.id, u.name, u.login, u.email, u.avatar, u.role, u.locale, u.admin_locale, u.created_at, r.name AS role_name
              FROM {$this->usersTable} u
              LEFT JOIN {$this->rolesTable} r ON r.slug = u.role
              ORDER BY u.id DESC"
@@ -346,6 +356,8 @@ class User
                     u.email,
                     u.avatar,
                     u.role,
+                    u.locale,
+                    u.admin_locale,
                     u.two_factor_enabled_at,
                     u.last_seen_at,
                     u.created_at,
@@ -403,6 +415,18 @@ class User
             'role' => trim((string)$data['role']) ?: 'user',
         ];
 
+        $localeSql = '';
+        $locale = Localization::normalizeLocale((string)($data['locale'] ?? ''));
+        if ($locale !== '') {
+            $localeSql .= ', locale = :locale';
+            $params['locale'] = $locale;
+        }
+        $adminLocale = Localization::normalizeLocale((string)($data['admin_locale'] ?? ''));
+        if ($adminLocale !== '') {
+            $localeSql .= ', admin_locale = :admin_locale';
+            $params['admin_locale'] = $adminLocale;
+        }
+
         $passwordSql = '';
         if (!empty($data['password'])) {
             $passwordSql = ', password = :password';
@@ -416,6 +440,7 @@ class User
                  email = :email,
                  avatar = :avatar,
                  role = :role
+                 {$localeSql}
                  {$passwordSql}
              WHERE id = :id",
             $params
@@ -453,6 +478,13 @@ class User
             'email' => mb_strtolower(trim((string)$data['email'])),
         ];
 
+        $localeSql = '';
+        $locale = Localization::normalizeLocale((string)($data['locale'] ?? ''));
+        if ($locale !== '') {
+            $localeSql = ', locale = :locale';
+            $params['locale'] = $locale;
+        }
+
         $passwordSql = '';
         if (!empty($data['password'])) {
             $passwordSql = ', password = :password';
@@ -464,6 +496,7 @@ class User
              SET name = :name,
                  login = :login,
                  email = :email
+                 {$localeSql}
                  {$passwordSql}
              WHERE id = :id",
             $params
@@ -1669,6 +1702,21 @@ class User
 
         if (!$this->hasAdmin()) {
             db()->query("UPDATE {$this->usersTable} SET role = 'creator' ORDER BY id ASC LIMIT 1");
+        }
+    }
+
+    protected function ensureLocaleColumnsExist(): void
+    {
+        $columns = [
+            'locale' => "ALTER TABLE {$this->usersTable} ADD COLUMN locale VARCHAR(12) NULL AFTER role",
+            'admin_locale' => "ALTER TABLE {$this->usersTable} ADD COLUMN admin_locale VARCHAR(12) NULL AFTER locale",
+        ];
+
+        foreach ($columns as $column => $sql) {
+            $exists = (bool)db()->query("SHOW COLUMNS FROM {$this->usersTable} LIKE ?", [$column])->getColumn();
+            if (!$exists) {
+                db()->query($sql);
+            }
         }
     }
 

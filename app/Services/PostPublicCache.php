@@ -9,7 +9,7 @@ final class PostPublicCache
 
     public function key(string $name): string
     {
-        return 'posts:v' . $this->version() . ':' . $name;
+        return \FBL\Localization::localeCacheKey('posts', 'v' . $this->version() . ':' . $name);
     }
 
     public function version(): string

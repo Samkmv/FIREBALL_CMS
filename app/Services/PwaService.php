@@ -41,7 +41,7 @@ class PwaService
             'orientation' => $this->oneOf('pwa_orientation', ['any', 'portrait', 'portrait-primary', 'landscape', 'landscape-primary'], 'any'),
             'theme_color' => $this->color('pwa_theme_color', '#181d25'),
             'background_color' => $this->color('pwa_background_color', '#ffffff'),
-            'lang' => app()->get('lang')['code'] ?? $this->settings->get('default_locale', DEFAULT_LOCALE),
+            'lang' => \FBL\Localization::currentLocale(),
             'icons' => $this->manifestIcons(),
         ];
     }

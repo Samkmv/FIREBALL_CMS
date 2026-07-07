@@ -8,7 +8,7 @@
 
 ```php
 <!doctype html>
-<html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>">
+<html lang="<?= htmlSC(current_locale()) ?>">
 <head>
     <meta charset="utf-8">
     <title><?= htmlSC($title ?? site_setting('site_title', SITE_NAME)) ?></title>

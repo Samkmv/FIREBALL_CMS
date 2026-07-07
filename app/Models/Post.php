@@ -65,6 +65,11 @@ class Post extends Model
                 c.seo_image AS category_seo_image";
     }
 
+    protected function localizedCategoryNameSql(): string
+    {
+        return 'COALESCE(' . $this->categories->nameSql('c') . ', p.category)';
+    }
+
     /**
      * Возвращает опубликованные посты с пагинацией и фильтром по категории.
      */
@@ -73,7 +78,7 @@ class Post extends Model
         $category = $this->normalizeCategoryFilter($category);
         $perPage = max(1, (int)$perPage);
         $page = max(1, (int)request()->get('page', 1));
-        $language = (string)(app()->get('lang')['code'] ?? DEFAULT_LOCALE);
+        $language = \FBL\Localization::currentLocale();
         $categoryHash = md5(($category ?? 'all') . '|' . $language);
         $cacheKey = $this->publicCacheKey("paginated:{$categoryHash}:{$perPage}:{$page}");
         $cached = cache()->get($cacheKey);
@@ -205,7 +210,7 @@ class Post extends Model
      */
     public function getSidebarData(?string $excludeSlug = null): array
     {
-        $cacheKey = 'sidebar:' . ($excludeSlug ?: 'all');
+        $cacheKey = \FBL\Localization::localeCacheKey('posts', 'sidebar:' . ($excludeSlug ?: 'all'));
         if (array_key_exists($cacheKey, self::$runtimeCache)) {
             return self::$runtimeCache[$cacheKey];
         }
@@ -349,6 +354,7 @@ class Post extends Model
 
         $like = '%' . $query . '%';
         $limit = (int)$limit;
+        $categoryNameSql = $this->localizedCategoryNameSql();
         $posts = db()->query(
             "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
@@ -356,15 +362,13 @@ class Post extends Model
              WHERE p.is_published = 1
                AND (
                    p.title LIKE ?
-                   OR c.name LIKE ?
-                   OR c.name_ru LIKE ?
-                   OR c.name_en LIKE ?
+                   OR {$categoryNameSql} LIKE ?
                    OR p.excerpt LIKE ?
                    OR p.content LIKE ?
                )
              ORDER BY p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit}",
-            [$like, $like, $like, $like, $like, $like]
+            [$like, $like, $like, $like]
         )->get() ?: [];
 
         return $this->normalizePosts($posts);
@@ -391,6 +395,7 @@ class Post extends Model
         $offset = $pagination->getOffset();
         $limit = (int)$perPage;
         $like = '%' . $query . '%';
+        $categoryNameSql = $this->localizedCategoryNameSql();
         $posts = db()->query(
             "SELECT {$this->publicPostSelectColumns()}
              FROM {$this->table} p
@@ -398,15 +403,13 @@ class Post extends Model
              WHERE p.is_published = 1
                AND (
                    p.title LIKE ?
-                   OR c.name LIKE ?
-                   OR c.name_ru LIKE ?
-                   OR c.name_en LIKE ?
+                   OR {$categoryNameSql} LIKE ?
                    OR p.excerpt LIKE ?
                    OR p.content LIKE ?
                )
              ORDER BY p.priority DESC, p.published_at DESC, p.id DESC
              LIMIT {$limit} OFFSET {$offset}",
-            [$like, $like, $like, $like, $like, $like]
+            [$like, $like, $like, $like]
         )->get() ?: [];
 
         return [
@@ -589,6 +592,7 @@ class Post extends Model
     protected function countSearchPublished(string $query): int
     {
         $like = '%' . trim($query) . '%';
+        $categoryNameSql = $this->localizedCategoryNameSql();
 
         return (int)db()->query(
             "SELECT COUNT(*)
@@ -597,13 +601,11 @@ class Post extends Model
              WHERE p.is_published = 1
                AND (
                    p.title LIKE ?
-                   OR c.name LIKE ?
-                   OR c.name_ru LIKE ?
-                   OR c.name_en LIKE ?
+                   OR {$categoryNameSql} LIKE ?
                    OR p.excerpt LIKE ?
                    OR p.content LIKE ?
                )",
-            [$like, $like, $like, $like, $like, $like]
+            [$like, $like, $like, $like]
         )->getColumn();
     }
 

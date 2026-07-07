@@ -6,7 +6,7 @@ $referrer = trim((string)($_SERVER['HTTP_REFERER'] ?? ''));
 $referrerScheme = strtolower((string)(parse_url($referrer, PHP_URL_SCHEME) ?? ''));
 $backUrl = in_array($referrerScheme, ['http', 'https'], true) ? $referrer : $homeUrl;
 ?>
-<!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true"><head>
+<!DOCTYPE html><html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="light" data-pwa="true"><head>
     <meta charset="utf-8">
 
     <!-- Viewport -->

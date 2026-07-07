@@ -217,7 +217,7 @@ function current_user(): ?array
 
 function current_locale(): string
 {
-    return theme()->currentLocale();
+    return \FBL\Localization::currentLocale();
 }
 
 function available_locales(): array
@@ -253,19 +253,15 @@ function render_partial(string $name, array $data = []): string
 function abort($error = '', $code = 404)
 {
     if (!is_array(app()->get('lang'))) {
-        $baseLang = array_value_search(LANGS, 'base', 1);
-        $lang = $baseLang;
-
+        $routeLocale = null;
         if (MULTILANGS) {
             $path = method_exists(request(), 'getPath') ? request()->getPath() : '';
             $firstSegment = strtok(trim((string)$path, '/'), '/');
-
-            if (is_string($firstSegment) && array_key_exists($firstSegment, LANGS)) {
-                $lang = $firstSegment;
-            }
+            $routeLocale = is_string($firstSegment) && array_key_exists($firstSegment, LANGS) ? $firstSegment : null;
         }
 
-        app()->set('lang', LANGS[$lang] ?? LANGS[$baseLang] ?? reset(LANGS));
+        $locale = \FBL\Localization::resolve($routeLocale, method_exists(request(), 'getPath') ? request()->getPath() : '')['current_locale'];
+        app()->set('lang', LANGS[$locale] ?? LANGS[\FBL\Localization::fallbackLocale()] ?? reset(LANGS));
         \FBL\Language::load(null);
     }
 
@@ -294,9 +290,11 @@ function base_url($path = ''): string
 function base_href($path = ''): string
 {
     $baseUrl = app_base_url();
+    $locale = \FBL\Localization::currentLocale();
+    $siteLocale = \FBL\Localization::siteLocale();
 
-    if (app()->get('lang')['base'] != 1) {
-        return $baseUrl . '/' . app()->get('lang')['code'] . $path;
+    if ($locale !== $siteLocale) {
+        return $baseUrl . '/' . $locale . $path;
     }
 
     return $baseUrl . $path;
@@ -449,7 +447,7 @@ function admin_table_sort_url(string $column, string $currentSort = '', string $
 
 function uri_without_lang(): string
 {
-    $request_uri = request()->uri;
+    $request_uri = trim(request()->getPath(), '/');
     $request_uri = explode('/', $request_uri, 2);
 
     if (array_key_exists($request_uri[0], LANGS)) {
@@ -459,6 +457,51 @@ function uri_without_lang(): string
     $request_uri = implode('/', $request_uri);
 
     return $request_uri ? '/' . $request_uri : '';
+}
+
+function site_default_locale(): string
+{
+    return \FBL\Localization::siteLocale();
+}
+
+function fallback_locale(): string
+{
+    return \FBL\Localization::fallbackLocale();
+}
+
+function locale_candidates(?string $locale = null): array
+{
+    return \FBL\Localization::localeCandidates($locale);
+}
+
+function localized_value(array $row, string $baseKey, string $originalKey): string
+{
+    return \FBL\Localization::localizedValue($row, $baseKey, $originalKey);
+}
+
+function locale_cache_key(string $prefix, string $name, ?string $locale = null): string
+{
+    return \FBL\Localization::localeCacheKey($prefix, $name, $locale);
+}
+
+function locale_switch_url(string $locale, ?string $path = null): string
+{
+    $locale = \FBL\Localization::normalizeLocale($locale) ?: \FBL\Localization::siteLocale();
+    $path = $path !== null ? '/' . ltrim($path, '/') : (uri_without_lang() ?: '/');
+    $path = $path === '//' ? '/' : $path;
+
+    $query = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY) ?? '');
+    parse_str($query, $params);
+    unset($params['locale'], $params['_locale']);
+
+    if ($locale === \FBL\Localization::siteLocale()) {
+        $params['locale'] = $locale;
+        $url = base_url($path === '/' ? '/' : $path);
+    } else {
+        $url = base_url('/' . $locale . ($path === '/' ? '/' : $path));
+    }
+
+    return $url . ($params !== [] ? '?' . http_build_query($params) : '');
 }
 
 function get_alerts(): void

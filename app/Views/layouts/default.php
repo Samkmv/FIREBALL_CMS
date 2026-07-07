@@ -55,11 +55,7 @@ if ($languageSwitchPath === '' || ($canonicalUrl !== '' && in_array(rtrim($canon
     $languageSwitchPath = '/';
 }
 $languageSwitchHref = static function (string $key, array $language) use ($languageSwitchPath): string {
-    if ((int)($language['base'] ?? 0) === 1) {
-        return base_url($languageSwitchPath);
-    }
-
-    return base_url('/' . $key . ($languageSwitchPath === '/' ? '/' : $languageSwitchPath));
+    return locale_switch_url($key, $languageSwitchPath);
 };
 $normalizeSeoImage = static function (string $value): string {
     $value = trim($value);
@@ -78,7 +74,7 @@ $normalizeSeoImage = static function (string $value): string {
     return get_image(ltrim($value, '/'));
 };
 $metaImage = $normalizeSeoImage($pageSeoImage !== '' ? $pageSeoImage : $seoOgImage);
-$currentLangCode = app()->get('lang')['code'] ?? 'ru';
+$currentLangCode = current_locale();
 $ogLocale = match ($currentLangCode) {
     'en' => 'en_US',
     'de' => 'de_DE',
@@ -137,7 +133,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     return $url . '?category=' . rawurlencode($slug);
 };
 ?>
-<!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true" data-video-status="<?= $canViewVideoStatus ? '1' : '0' ?>"><head>
+<!DOCTYPE html><html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="light" data-pwa="true" data-video-status="<?= $canViewVideoStatus ? '1' : '0' ?>"><head>
     <meta charset="utf-8">
 
     <?= get_csrf_meta() ?>
@@ -460,7 +456,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
                 <?php foreach (LANGS as $key => $val): ?>
 
-                    <?php if (app()->get('lang')['code'] == $key) continue; ?>
+                    <?php if (current_locale() == $key) continue; ?>
 
                     <li>
                         <a class="dropdown-item" href="<?= htmlSC($languageSwitchHref((string)$key, $val)); ?>"><?= htmlSC($val['title']); ?></a>

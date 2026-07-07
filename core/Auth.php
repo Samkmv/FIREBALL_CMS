@@ -76,6 +76,8 @@ class Auth
             'email' => $user['email'],
             'avatar' => $user['avatar'] ?? null,
             'role' => $user['role'] ?? 'user',
+            'locale' => Localization::normalizeLocale((string)($user['locale'] ?? '')),
+            'admin_locale' => Localization::normalizeLocale((string)($user['admin_locale'] ?? '')),
             'session_version' => (int)($user['session_version'] ?? 1),
         ];
         session()->set('user', $sessionUser);
@@ -103,7 +105,16 @@ class Auth
      */
     public static function logout(): void
     {
+        $publicLocale = session()->get(Localization::PUBLIC_SESSION_KEY);
+        $adminLocale = session()->get(Localization::ADMIN_SESSION_KEY);
+
         session()->clear();
+        if ($publicLocale) {
+            session()->set(Localization::PUBLIC_SESSION_KEY, $publicLocale);
+        }
+        if ($adminLocale) {
+            session()->set(Localization::ADMIN_SESSION_KEY, $adminLocale);
+        }
         session()->regenerateId();
         app()->regenerateCSRFToken();
     }
@@ -181,6 +192,8 @@ class Auth
             'email' => $user['email'],
             'avatar' => $user['avatar'] ?? null,
             'role' => $user['role'] ?? 'user',
+            'locale' => Localization::normalizeLocale((string)($user['locale'] ?? '')),
+            'admin_locale' => Localization::normalizeLocale((string)($user['admin_locale'] ?? '')),
             'session_version' => (int)($user['session_version'] ?? 1),
         ];
         session()->set('user', $sessionUser);

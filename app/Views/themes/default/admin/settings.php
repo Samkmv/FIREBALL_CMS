@@ -3,6 +3,7 @@ $formData = session()->get('form_data') ?: [];
 $siteTitle = $formData['site_title'] ?? ($settings['site_title'] ?? SITE_NAME);
 $siteDescription = $formData['site_description'] ?? ($settings['site_description'] ?? '');
 $siteFavicon = $formData['site_favicon'] ?? ($settings['site_favicon'] ?? '');
+$defaultLocale = \FBL\Localization::normalizeLocale((string)($formData['default_locale'] ?? ($settings['default_locale'] ?? DEFAULT_LOCALE))) ?: \FBL\Localization::siteLocale();
 $adminSessionLifetimeHours = $formData['admin_session_lifetime_hours'] ?? ($settings['admin_session_lifetime_hours'] ?? '12');
 $socialNetworkOptions = site_social_network_options();
 $storedSocialLinks = $formData['social_links'] ?? ($settings['social_links'] ?? '');
@@ -70,6 +71,18 @@ $publishedPages = (array)($published_pages ?? []);
                 <label class="form-label"><?= print_translation('admin_settings_site_title') ?></label>
                 <input class="form-control <?= get_validation_class('site_title') ?>" type="text" name="site_title" value="<?= htmlSC($siteTitle) ?>" required>
                 <?= get_errors('site_title') ?>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label"><?= print_translation('admin_settings_default_locale') ?></label>
+                <select class="form-select <?= get_validation_class('default_locale') ?>" name="default_locale" required>
+                    <?php foreach (LANGS as $localeCode => $locale): ?>
+                        <option value="<?= htmlSC((string)$localeCode) ?>" <?= $defaultLocale === (string)$localeCode ? 'selected' : '' ?>>
+                            <?= htmlSC((string)($locale['title'] ?? $localeCode)) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text"><?= print_translation('admin_settings_default_locale_hint') ?></div>
+                <?= get_errors('default_locale') ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label"><?= print_translation('admin_settings_admin_session_lifetime_hours') ?></label>

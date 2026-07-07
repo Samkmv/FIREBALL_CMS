@@ -147,9 +147,10 @@ class Admin
     public function getPosts(): array
     {
         $this->ensureSchema();
+        $categoryNameSql = $this->localizedCategoryNameSql();
 
         return db()->query(
-            "SELECT {$this->postListSelectColumns('c.name')}
+            "SELECT {$this->postListSelectColumns($categoryNameSql)}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              ORDER BY p.priority DESC, p.published_at DESC, p.id DESC"
@@ -167,6 +168,7 @@ class Admin
         $search = trim((string)($options['search'] ?? ''));
         $sort = (string)($options['sort'] ?? 'published_at');
         $direction = strtolower((string)($options['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $categoryNameSql = $this->localizedCategoryNameSql();
 
         $sortMap = [
             'id' => 'p.id',
@@ -184,7 +186,7 @@ class Admin
         $params = [];
 
         if ($search !== '') {
-            $where = "WHERE p.title LIKE ? OR p.slug LIKE ? OR COALESCE(c.name, p.category) LIKE ? OR p.author_name LIKE ?";
+            $where = "WHERE p.title LIKE ? OR p.slug LIKE ? OR {$categoryNameSql} LIKE ? OR p.author_name LIKE ?";
             $searchLike = '%' . $search . '%';
             $params = [$searchLike, $searchLike, $searchLike, $searchLike];
         }
@@ -201,7 +203,7 @@ class Admin
         $offset = $pagination->getOffset();
 
         $items = db()->query(
-            "SELECT {$this->postListSelectColumns('c.name')}
+            "SELECT {$this->postListSelectColumns($categoryNameSql)}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
@@ -233,6 +235,7 @@ class Admin
         $search = trim((string)($options['search'] ?? ''));
         $sort = (string)($options['sort'] ?? 'published_at');
         $direction = strtolower((string)($options['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $categoryNameSql = $this->localizedCategoryNameSql();
 
         $sortMap = [
             'id' => 'p.id',
@@ -250,9 +253,9 @@ class Admin
         $params = [(int)$status === 1 ? 1 : 0];
 
         if ($search !== '') {
-            $whereParts[] = "(p.title LIKE ? OR p.slug LIKE ? OR p.excerpt LIKE ? OR COALESCE(c.name, p.category) LIKE ? OR c.name_ru LIKE ? OR c.name_en LIKE ? OR p.author_name LIKE ? OR p.author_role LIKE ?)";
+            $whereParts[] = "(p.title LIKE ? OR p.slug LIKE ? OR p.excerpt LIKE ? OR {$categoryNameSql} LIKE ? OR p.author_name LIKE ? OR p.author_role LIKE ?)";
             $searchLike = '%' . $search . '%';
-            array_push($params, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike);
+            array_push($params, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike, $searchLike);
         }
 
         $where = 'WHERE ' . implode(' AND ', $whereParts);
@@ -269,7 +272,7 @@ class Admin
         $offset = $pagination->getOffset();
 
         $items = db()->query(
-            "SELECT {$this->postListSelectColumns('COALESCE(c.name, c.name_ru, c.name_en, p.category)')}
+            "SELECT {$this->postListSelectColumns($categoryNameSql)}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              {$where}
@@ -295,9 +298,10 @@ class Admin
     public function findPostById(int $id): array|false
     {
         $this->ensureSchema();
+        $categoryNameSql = $this->localizedCategoryNameSql();
 
         return db()->query(
-            "SELECT {$this->postFormSelectColumns('c.name')}
+            "SELECT {$this->postFormSelectColumns($categoryNameSql)}
              FROM {$this->postsTable} p
              LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id
              WHERE p.id = ?
@@ -313,6 +317,11 @@ class Admin
                 p.author_id, p.author_name, p.author_role, p.views_count,
                 p.published_at, p.is_published,
                 {$categorySql} AS category_name";
+    }
+
+    protected function localizedCategoryNameSql(): string
+    {
+        return 'COALESCE(' . (new Category())->nameSql('c') . ', p.category)';
     }
 
     protected function postFormSelectColumns(string $categorySql): string

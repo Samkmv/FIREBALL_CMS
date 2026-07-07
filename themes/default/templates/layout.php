@@ -74,7 +74,7 @@ $normalizeSeoImage = static function (string $value): string {
     return get_image(ltrim($value, '/'));
 };
 $metaImage = $normalizeSeoImage($pageSeoImage !== '' ? $pageSeoImage : $seoOgImage);
-$currentLangCode = app()->get('lang')['code'] ?? 'ru';
+$currentLangCode = current_locale();
 $ogLocale = match ($currentLangCode) {
     'en' => 'en_US',
     'de' => 'de_DE',
@@ -128,7 +128,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 };
 
 ?>
-<!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true" data-video-status="<?= $canViewVideoStatus ? '1' : '0' ?>"><head>
+<!DOCTYPE html><html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="light" data-pwa="true" data-video-status="<?= $canViewVideoStatus ? '1' : '0' ?>"><head>
     <meta charset="utf-8">
 
     <?= get_csrf_meta() ?>
