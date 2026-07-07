@@ -1481,6 +1481,17 @@ $(function(){
 })();
 
 (() => {
+    const isNativeShareDevice = () => {
+        const userAgent = String(navigator.userAgent || navigator.vendor || '').toLowerCase();
+        const isIos = /iphone|ipad|ipod/.test(userAgent)
+            || (navigator.platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1);
+        const isAndroid = /android/.test(userAgent);
+        const hasTouch = Number(navigator.maxTouchPoints || 0) > 0
+            || (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches);
+
+        return hasTouch && (isIos || isAndroid);
+    };
+
     const copyText = async (text) => {
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(text);
@@ -1505,11 +1516,13 @@ $(function(){
         }
 
         const title = button.dataset.shareTitle || document.title;
-        const url = button.dataset.shareUrl || window.location.href;
+        const text = button.dataset.shareText || '';
+        const url = new URL(button.dataset.shareUrl || window.location.href, window.location.href).href;
+        const sharePayload = text !== '' ? {title, text, url} : {title, url};
 
-        if (navigator.share) {
+        if (isNativeShareDevice() && navigator.share && (!navigator.canShare || navigator.canShare(sharePayload))) {
             try {
-                await navigator.share({title, url});
+                await navigator.share(sharePayload);
                 return;
             } catch (error) {
                 if (error && error.name === 'AbortError') {

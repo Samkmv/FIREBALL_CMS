@@ -16,7 +16,10 @@
     const hlsStartTimeEpsilon = 0.08;
     const hlsStatusHideDelayMs = 1400;
     const hlsPosterRefreshIntervalMs = 5000;
-    const canViewVideoStatus = window.canViewVideoDiagnostics === true || window.canViewVideoStatus === true;
+    const canViewVideoStatus = document.documentElement.getAttribute('data-video-status') === '1';
+    window.canViewVideoStatus = canViewVideoStatus;
+    window.canViewVideoDiagnostics = canViewVideoStatus;
+    document.documentElement.classList.toggle('can-view-video-status', canViewVideoStatus);
     let hlsScriptPromise = null;
     const hlsLocale = ((document.documentElement.getAttribute('lang') || 'en').toLowerCase().startsWith('ru')) ? 'ru' : 'en';
     const hlsMessages = {
@@ -800,21 +803,113 @@
         return cleanElement;
     };
 
+    const canRenderHlsStatusMessage = function (type) {
+        return type === 'error' || canViewVideoStatus;
+    };
+
+    const isHlsDiagnosticText = function (message) {
+        return /Загрузка видео|Подключение|Повторное подключение|Loading video|Connecting|Reconnecting/i.test(String(message || ''));
+    };
+
+    const isHlsDiagnosticMessage = function (messageNode) {
+        if (!(messageNode instanceof Element)) {
+            return false;
+        }
+
+        return messageNode.classList.contains('fb-plyr-hls-message--info')
+            || messageNode.classList.contains('fb-plyr-hls-message--success')
+            || messageNode.classList.contains('fb-plyr-hls-message--warning')
+            || isHlsDiagnosticText(messageNode.textContent || '');
+    };
+
+    const clearHlsDiagnosticMessageNode = function (messageNode) {
+        if (!(messageNode instanceof Element) || !isHlsDiagnosticMessage(messageNode)) {
+            return;
+        }
+
+        const playerRoot = messageNode.closest('.plyr');
+        const playerWrap = messageNode.closest('[data-plyr-player-wrap]');
+
+        [playerRoot, playerWrap].forEach(function (node) {
+            if (!node) {
+                return;
+            }
+
+            node.classList.remove('has-hls-status');
+            delete node.dataset.plyrHlsStatus;
+        });
+
+        messageNode.className = 'fb-plyr-hls-message';
+        messageNode.onclick = null;
+        messageNode.onkeydown = null;
+        messageNode.removeAttribute('tabindex');
+        if (messageNode.parentNode) {
+            messageNode.parentNode.removeChild(messageNode);
+            return;
+        }
+
+        messageNode.hidden = true;
+        messageNode.textContent = '';
+    };
+
+    const clearHlsDiagnosticMessages = function (element) {
+        if (canViewVideoStatus) {
+            return;
+        }
+
+        const playerRoot = element instanceof Element ? element.closest('.plyr') : null;
+        const playerWrap = element instanceof Element ? element.closest('[data-plyr-player-wrap]') : null;
+        const root = playerWrap || playerRoot || document;
+
+        root.querySelectorAll('[data-plyr-hls-message], .fb-plyr-hls-message').forEach(clearHlsDiagnosticMessageNode);
+    };
+
+    if (!canViewVideoStatus && typeof MutationObserver === 'function') {
+        const clearAllHlsDiagnosticMessages = function () {
+            document
+                .querySelectorAll('[data-plyr-hls-message], .fb-plyr-hls-message')
+                .forEach(clearHlsDiagnosticMessageNode);
+        };
+
+        clearAllHlsDiagnosticMessages();
+
+        const hlsDiagnosticObserver = new MutationObserver(clearAllHlsDiagnosticMessages);
+        hlsDiagnosticObserver.observe(document.documentElement, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ['class', 'hidden'],
+            characterData: true,
+        });
+    }
+
     const renderHlsMessage = function (element, message, type) {
         const playerRoot = element.closest('.plyr');
         const playerWrap = element.closest('[data-plyr-player-wrap]');
         const container = playerRoot || playerWrap || element.parentElement;
+        const statusType = type || 'info';
+        if (!canViewVideoStatus && isHlsDiagnosticText(message)) {
+            clearHlsDiagnosticMessages(element);
+            return;
+        }
+
+        if (!canRenderHlsStatusMessage(statusType)) {
+            clearHlsDiagnosticMessages(element);
+            return;
+        }
+
         if (!container) {
             console.error(message);
             return;
         }
+
+        let messageNode = (playerWrap || container).querySelector('[data-plyr-hls-message]');
 
         if (element.hlsStatusClearTimer) {
             clearTimeout(element.hlsStatusClearTimer);
             element.hlsStatusClearTimer = null;
         }
 
-        let messageNode = (playerWrap || container).querySelector('[data-plyr-hls-message]');
         if (!messageNode) {
             messageNode = document.createElement('div');
             messageNode.dataset.plyrHlsMessage = 'true';
@@ -832,7 +927,6 @@
         messageNode.onkeydown = null;
         messageNode.removeAttribute('tabindex');
 
-        const statusType = type || 'info';
         container.classList.add('has-hls-status');
         container.dataset.plyrHlsStatus = statusType;
         messageNode.className = 'fb-plyr-hls-message fb-plyr-hls-message--' + statusType;
@@ -846,14 +940,29 @@
     };
 
     const showHlsInfo = function (element, message) {
+        if (!canRenderHlsStatusMessage('info')) {
+            clearHlsDiagnosticMessages(element);
+            return;
+        }
+
         renderHlsMessage(element, message, 'info');
     };
 
     const showHlsSuccess = function (element, message) {
+        if (!canRenderHlsStatusMessage('success')) {
+            clearHlsDiagnosticMessages(element);
+            return;
+        }
+
         renderHlsMessage(element, message, 'success');
     };
 
     const showHlsWarning = function (element, message) {
+        if (!canRenderHlsStatusMessage('warning')) {
+            clearHlsDiagnosticMessages(element);
+            return;
+        }
+
         renderHlsMessage(element, message, 'warning');
     };
 
@@ -918,6 +1027,11 @@
             messageNode.onclick = null;
             messageNode.onkeydown = null;
             messageNode.removeAttribute('tabindex');
+            if (messageNode.parentNode && !canViewVideoStatus && isHlsDiagnosticMessage(messageNode)) {
+                messageNode.parentNode.removeChild(messageNode);
+                return;
+            }
+
             messageNode.hidden = true;
             messageNode.textContent = '';
         }
@@ -3036,6 +3150,7 @@
             }
 
             element = createCleanMediaElement(element);
+            clearHlsDiagnosticMessages(element);
 
             if (element.dataset.plyrInitialized === 'true') {
                 return;

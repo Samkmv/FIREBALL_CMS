@@ -1144,6 +1144,7 @@ return [
     'admin_support_nav_requests' => 'Requests',
     'admin_support_nav_faq' => 'FAQ',
     'admin_support_nav_kb' => 'Knowledge base',
+    'admin_support_nav_subjects' => 'Request subjects',
     'admin_support_nav_settings' => 'Settings',
     'admin_support_new_count' => 'New requests',
     'admin_support_requests_title' => 'Support: requests',

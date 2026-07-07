@@ -132,6 +132,13 @@ $app->router->post('/admin/support/knowledge-base/categories/create', [AdminCont
 $app->router->get('/admin/support/knowledge-base/categories/edit/(?P<id>\d+)/?', [AdminController::class, 'supportKbCategoryForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/support/knowledge-base/categories/edit/(?P<id>\d+)/?', [AdminController::class, 'supportKbCategoryForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/support/knowledge-base/categories/delete', [AdminController::class, 'supportKbCategoryDelete'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/support/subjects', [AdminController::class, 'contactSubjects'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/support/subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/support/subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/support/subjects/edit/(?P<id>\d+)/?', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/support/subjects/edit/(?P<id>\d+)/?', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/support/subjects/toggle', [AdminController::class, 'contactSubjectToggle'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/support/subjects/delete', [AdminController::class, 'contactSubjectDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/support/settings', [AdminController::class, 'supportSettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/support/settings', [AdminController::class, 'supportSettings'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/posts', [AdminPostController::class, 'posts'])->middleware(['auth', 'admin']);

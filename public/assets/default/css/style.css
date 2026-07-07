@@ -528,6 +528,19 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     pointer-events: none;
 }
 
+html[data-video-status="0"] .fb-plyr-hls-message--info,
+html[data-video-status="0"] .fb-plyr-hls-message--success,
+html[data-video-status="0"] .fb-plyr-hls-message--warning,
+html[data-video-status="0"] .fb-plyr-hls-message:not(.fb-plyr-hls-message--error),
+html:not([data-video-status="1"]) .fb-plyr-hls-message--info,
+html:not([data-video-status="1"]) .fb-plyr-hls-message--success,
+html:not([data-video-status="1"]) .fb-plyr-hls-message--warning,
+html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message--error) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
 .fb-plyr-hls-message::before {
     content: "";
     flex: 0 0 auto;
@@ -3351,6 +3364,7 @@ body.is-site-fullscreen .plyr * {
     }
 }
 [data-ajax-table] {
+    position: relative;
     scroll-margin-top: 90px;
 }
 
@@ -3389,6 +3403,39 @@ body.is-site-fullscreen .plyr * {
     min-width: 720px;
 }
 
+.admin-maintenance-action-card {
+    min-width: 0;
+}
+
+.admin-maintenance-action-card__content {
+    flex: 1 1 auto;
+}
+
+.admin-maintenance-action-card__button {
+    width: 100%;
+}
+
+@media (min-width: 576px) {
+    .admin-maintenance-action-card__button {
+        width: auto;
+        max-width: 12rem;
+    }
+}
+
+.admin-security-log-table.admin-table-component__table,
+.admin-maintenance-log-table.admin-table-component__table {
+    min-width: 0;
+    table-layout: fixed;
+}
+
+.admin-security-log-table.admin-table-component__table th,
+.admin-security-log-table.admin-table-component__table td,
+.admin-maintenance-log-table.admin-table-component__table th,
+.admin-maintenance-log-table.admin-table-component__table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 [data-admin-table] .table > :not(caption) > * > * {
     padding-top: .9rem;
     padding-bottom: .9rem;
@@ -3404,6 +3451,12 @@ body.is-site-fullscreen .plyr * {
     font-size: .875rem;
     font-weight: 600;
     white-space: nowrap;
+}
+
+[data-admin-table] .admin-security-log-table.admin-table-component__table thead th,
+[data-admin-table] .admin-maintenance-log-table.admin-table-component__table thead th {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 [data-admin-table] .table tbody tr {
@@ -3477,7 +3530,7 @@ body.is-site-fullscreen .plyr * {
 
 .admin-table--loading::before {
     position: absolute;
-    z-index: 1080;
+    z-index: 20;
     inset: 0;
     content: "";
     border-radius: inherit;
@@ -3487,7 +3540,7 @@ body.is-site-fullscreen .plyr * {
 
 .admin-table--loading::after {
     position: absolute;
-    z-index: 1081;
+    z-index: 21;
     top: 50%;
     left: 50%;
     width: 2rem;

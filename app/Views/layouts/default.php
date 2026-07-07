@@ -137,7 +137,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     return $url . '?category=' . rawurlencode($slug);
 };
 ?>
-<!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true"><head>
+<!DOCTYPE html><html lang="<?= htmlSC(app()->get('lang')['code'] ?? 'en') ?>" data-bs-theme="light" data-pwa="true" data-video-status="<?= $canViewVideoStatus ? '1' : '0' ?>"><head>
     <meta charset="utf-8">
 
     <?= get_csrf_meta() ?>
@@ -202,6 +202,18 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Customs styles -->
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/css/style.css?v=' . filemtime(WWW . '/assets/default/css/style.css')) ?>">
+    <?php if (!$canViewVideoStatus): ?>
+        <style id="fb-video-status-privacy">
+            .fb-plyr-hls-message--info,
+            .fb-plyr-hls-message--success,
+            .fb-plyr-hls-message--warning,
+            .fb-plyr-hls-message:not(.fb-plyr-hls-message--error) {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+        </style>
+    <?php endif; ?>
 
     <!-- Header scripts -->
     <?php if (!empty($header_scripts)): ?>
@@ -760,7 +772,70 @@ $postCategoryUrl = static function (?string $slug = null): string {
     const baseUrl = '<?= base_url(); ?>';
     window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
     window.canViewVideoDiagnostics = window.canViewVideoStatus;
+    document.documentElement.dataset.videoStatus = window.canViewVideoStatus ? '1' : '0';
     window.hlsStreamConfig = <?= json_encode($frontendStreamConfig, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    if (!window.canViewVideoStatus) {
+        (function () {
+            const diagnosticTextPattern = /Загрузка видео|Подключение|Повторное подключение|Loading video|Connecting|Reconnecting/i;
+            const isDiagnosticMessage = function (node) {
+                if (!(node instanceof Element)) {
+                    return false;
+                }
+
+                return node.classList.contains('fb-plyr-hls-message--info')
+                    || node.classList.contains('fb-plyr-hls-message--success')
+                    || node.classList.contains('fb-plyr-hls-message--warning')
+                    || diagnosticTextPattern.test(node.textContent || '');
+            };
+            const clearDiagnosticMessage = function (node) {
+                if (!(node instanceof Element) || !isDiagnosticMessage(node)) {
+                    return;
+                }
+
+                const playerRoot = node.closest('.plyr');
+                const playerWrap = node.closest('[data-plyr-player-wrap]');
+
+                [playerRoot, playerWrap].forEach(function (container) {
+                    if (!container) {
+                        return;
+                    }
+
+                    container.classList.remove('has-hls-status');
+                    delete container.dataset.plyrHlsStatus;
+                });
+
+                node.className = 'fb-plyr-hls-message';
+                node.onclick = null;
+                node.onkeydown = null;
+                node.removeAttribute('tabindex');
+                if (node.parentNode) {
+                    node.parentNode.removeChild(node);
+                    return;
+                }
+
+                node.hidden = true;
+                node.textContent = '';
+            };
+            const clearVideoDiagnostics = function () {
+                document
+                    .querySelectorAll('[data-plyr-hls-message], .fb-plyr-hls-message')
+                    .forEach(clearDiagnosticMessage);
+            };
+
+            window.fbClearVideoDiagnostics = clearVideoDiagnostics;
+            clearVideoDiagnostics();
+
+            if (typeof MutationObserver === 'function') {
+                new MutationObserver(clearVideoDiagnostics).observe(document.documentElement, {
+                    subtree: true,
+                    childList: true,
+                    attributes: true,
+                    attributeFilter: ['class', 'hidden'],
+                    characterData: true
+                });
+            }
+        })();
+    }
 </script>
 <script src="<?= base_url('/assets/default/js/jquery-3.7.1.min.js') ?>"></script>
 

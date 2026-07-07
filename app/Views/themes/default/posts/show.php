@@ -64,6 +64,7 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                     type="button"
                     data-share-button
                     data-share-title="<?= htmlSC($post['title']) ?>"
+                    data-share-text="<?= htmlSC((string)($post['excerpt'] ?? '')) ?>"
                     data-share-url="<?= htmlSC($shareUrl) ?>"
                     data-share-copied="<?= htmlSC(return_translation('posts_show_share_copied')) ?>"
                 >

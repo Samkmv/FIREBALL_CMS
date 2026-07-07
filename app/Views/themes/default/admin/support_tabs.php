@@ -4,6 +4,7 @@ $tabs = [
     'requests' => [base_href('/admin/support/requests'), return_translation('admin_support_nav_requests')],
     'faq' => [base_href('/admin/support/faq'), return_translation('admin_support_nav_faq')],
     'kb' => [base_href('/admin/support/knowledge-base'), return_translation('admin_support_nav_kb')],
+    'subjects' => [base_href('/admin/support/subjects'), return_translation('admin_support_nav_subjects')],
     'settings' => [base_href('/admin/support/settings'), return_translation('admin_support_nav_settings')],
 ];
 ?>

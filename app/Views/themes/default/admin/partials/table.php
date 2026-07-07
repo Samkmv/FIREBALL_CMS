@@ -13,6 +13,13 @@ $mobileCardsProvided = isset($mobile_cards) && is_array($mobile_cards);
 $mobileCards = $mobileCardsProvided ? $mobile_cards : null;
 $mobileCardsAutoBuilt = false;
 $mobileAttributes = is_array($mobile_attributes ?? null) ? $mobile_attributes : [];
+$mobileBreakpoint = (string)($mobile_breakpoint ?? 'md');
+$allowedMobileBreakpoints = ['sm', 'md', 'lg', 'xl', 'xxl'];
+if (!in_array($mobileBreakpoint, $allowedMobileBreakpoints, true)) {
+    $mobileBreakpoint = 'md';
+}
+$mobileTableHideClass = 'd-none d-' . $mobileBreakpoint . '-block';
+$mobileCardsDisplayClass = 'd-' . $mobileBreakpoint . '-none';
 $clickableRows = !empty($clickable_rows);
 
 $renderAttributes = static function (array $attributes): string {
@@ -119,7 +126,7 @@ if ($mobileCards === null && $content === '') {
 
 $shouldRenderMobileCards = is_array($mobileCards) && ($mobileCardsProvided || $mobileCardsAutoBuilt || !empty($mobileCards));
 if ($shouldRenderMobileCards) {
-    $wrapperClass = trim($wrapperClass . ' d-none d-md-block');
+    $wrapperClass = trim($wrapperClass . ' ' . $mobileTableHideClass);
 }
 ?>
 <div class="<?= htmlSC($wrapperClass) ?>"<?= $renderAttributes($wrapperAttributes) ?>>
@@ -181,6 +188,7 @@ if ($shouldRenderMobileCards) {
     <?= view()->renderPartial('admin/partials/responsive_table_cards', [
         'cards' => $mobileCards,
         'attributes' => $mobileAttributes,
+        'display_class' => $mobileCardsDisplayClass,
         'empty_text' => $emptyText,
     ]) ?>
 <?php endif; ?>

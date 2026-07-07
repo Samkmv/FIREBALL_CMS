@@ -1,6 +1,6 @@
 <?php
 $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
-    . htmlSC(base_href('/admin/settings/contact-subjects/create'))
+    . htmlSC(base_href('/admin/support/subjects/create'))
     . '"><i class="ci-plus"></i>'
     . htmlSC(return_translation('admin_contact_subject_create'))
     . '</a>';
@@ -22,11 +22,11 @@ $renderActions = static function (array $subject, bool $isActive): string {
         <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
             <a
                 class="dropdown-item d-flex align-items-center gap-2"
-                href="<?= base_href('/admin/settings/contact-subjects/edit/' . (int)$subject['id']) ?>"
+                href="<?= base_href('/admin/support/subjects/edit/' . (int)$subject['id']) ?>"
             >
                 <i class="ci-edit"></i><span><?= print_translation('admin_btn_edit') ?></span>
             </a>
-            <form action="<?= base_href('/admin/settings/contact-subjects/toggle') ?>" method="post">
+            <form action="<?= base_href('/admin/support/subjects/toggle') ?>" method="post">
                 <?= get_csrf_field() ?>
                 <input type="hidden" name="id" value="<?= (int)$subject['id'] ?>">
                 <input type="hidden" name="is_active" value="<?= $isActive ? '0' : '1' ?>">
@@ -38,7 +38,7 @@ $renderActions = static function (array $subject, bool $isActive): string {
                 </button>
             </form>
             <form
-                action="<?= base_href('/admin/settings/contact-subjects/delete') ?>"
+                action="<?= base_href('/admin/support/subjects/delete') ?>"
                 method="post"
                 data-admin-delete-form
                 data-delete-message="<?= htmlSC(return_translation('admin_confirm_delete_contact_subject')) ?>"
@@ -64,7 +64,7 @@ $renderActions = static function (array $subject, bool $isActive): string {
     'actions' => $actions,
 ]) ?>
 
-    <?= view()->renderPartial('admin/settings_tabs', ['active' => 'contact_subjects']) ?>
+    <?= view()->renderPartial('admin/support_tabs', ['active' => 'subjects']) ?>
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="contact-subjects">
         <?php $mobileCards = []; ?>

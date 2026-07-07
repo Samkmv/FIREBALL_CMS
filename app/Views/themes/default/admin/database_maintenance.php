@@ -41,14 +41,14 @@ $actionDescription = static fn(string $action): string => return_translation('ad
 
                 <div class="d-grid gap-3">
                     <?php foreach ($safeActions as $action): ?>
-                        <form class="border rounded-4 p-3 d-flex align-items-start justify-content-between gap-3" action="<?= base_href('/admin/system/database-maintenance/run') ?>" method="post">
+                        <form class="border rounded-4 p-3 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-start justify-content-between gap-3 admin-maintenance-action-card" action="<?= base_href('/admin/system/database-maintenance/run') ?>" method="post">
                             <?= get_csrf_field() ?>
                             <input type="hidden" name="action" value="<?= htmlSC($action) ?>">
-                            <div>
+                            <div class="min-w-0 admin-maintenance-action-card__content">
                                 <div class="fw-semibold"><?= htmlSC($actionLabel($action)) ?></div>
-                                <div class="small text-body-secondary"><?= htmlSC($actionDescription($action)) ?></div>
+                                <div class="small text-body-secondary text-break"><?= htmlSC($actionDescription($action)) ?></div>
                             </div>
-                            <button class="btn btn-outline-secondary rounded-pill flex-shrink-0" type="submit">
+                            <button class="btn btn-outline-secondary rounded-pill flex-shrink-0 admin-maintenance-action-card__button" type="submit">
                                 <?= print_translation('admin_maintenance_run') ?>
                             </button>
                         </form>
@@ -70,12 +70,12 @@ $actionDescription = static fn(string $action): string => return_translation('ad
                 <div class="d-grid gap-3">
                     <?php foreach ($dangerousActions as $action): ?>
                         <?php $modalId = 'maintenanceDangerModal' . preg_replace('/[^a-zA-Z0-9]/', '', $action); ?>
-                        <div class="border rounded-4 p-3 d-flex align-items-start justify-content-between gap-3">
-                            <div>
+                        <div class="border rounded-4 p-3 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-start justify-content-between gap-3 admin-maintenance-action-card">
+                            <div class="min-w-0 admin-maintenance-action-card__content">
                                 <div class="fw-semibold"><?= htmlSC($actionLabel($action)) ?></div>
-                                <div class="small text-body-secondary"><?= htmlSC($actionDescription($action)) ?></div>
+                                <div class="small text-body-secondary text-break"><?= htmlSC($actionDescription($action)) ?></div>
                             </div>
-                            <button class="btn btn-outline-danger rounded-pill flex-shrink-0" type="button" data-bs-toggle="modal" data-bs-target="#<?= htmlSC($modalId) ?>">
+                            <button class="btn btn-outline-danger rounded-pill flex-shrink-0 admin-maintenance-action-card__button" type="button" data-bs-toggle="modal" data-bs-target="#<?= htmlSC($modalId) ?>">
                                 <?= print_translation('admin_maintenance_open_confirm') ?>
                             </button>
                         </div>
@@ -154,9 +154,11 @@ $actionDescription = static fn(string $action): string => return_translation('ad
         <?php if (empty($logs)): ?>
             <div class="admin-table-state"><?= print_translation('admin_maintenance_logs_empty') ?></div>
         <?php else: ?>
+            <?php $mobileCards = []; ?>
             <?php ob_start(); ?>
                 <thead>
                     <tr>
+                        <th>ID</th>
                         <th><?= print_translation('admin_maintenance_log_date') ?></th>
                         <th><?= print_translation('admin_maintenance_log_user') ?></th>
                         <th><?= print_translation('admin_maintenance_log_action') ?></th>
@@ -167,26 +169,64 @@ $actionDescription = static fn(string $action): string => return_translation('ad
                 </thead>
                 <tbody>
                     <?php foreach ($logs as $log): ?>
+                        <?php
+                        $isSuccess = (string)($log['result'] ?? '') === 'success';
+                        $resultLabel = $isSuccess
+                            ? return_translation('admin_maintenance_result_success')
+                            : return_translation('admin_maintenance_result_error');
+                        $resultClass = $isSuccess ? 'text-success bg-success-subtle' : 'text-danger bg-danger-subtle';
+                        $backupName = basename((string)($log['backup_path'] ?? ''));
+                        $mobileCards[] = [
+                            'id' => (int)($log['id'] ?? 0),
+                            'title' => $actionLabel((string)($log['action'] ?? '')),
+                            'slug' => (string)($log['user_name'] ?? ''),
+                            'slug_label' => return_translation('admin_maintenance_log_user'),
+                            'category' => (string)($log['ip_address'] ?? ''),
+                            'category_label' => 'IP',
+                            'status' => [[
+                                'label' => $resultLabel,
+                                'class' => $resultClass,
+                            ]],
+                            'status_label' => return_translation('admin_maintenance_log_result'),
+                            'published_at' => (string)($log['created_at'] ?? ''),
+                            'published_at_label' => return_translation('admin_maintenance_log_date'),
+                            'extra_fields' => [
+                                [
+                                    'label' => return_translation('admin_maintenance_log_backup'),
+                                    'value' => $backupName,
+                                ],
+                                [
+                                    'label' => return_translation('admin_maintenance_log_error'),
+                                    'value' => (string)($log['error'] ?? ''),
+                                ],
+                            ],
+                        ];
+                        ?>
                         <tr>
+                            <td class="text-body-secondary">#<?= (int)($log['id'] ?? 0) ?></td>
                             <td class="text-nowrap"><?= htmlSC((string)($log['created_at'] ?? '')) ?></td>
-                            <td>
+                            <td class="text-break">
                                 <div class="fw-medium"><?= htmlSC((string)($log['user_name'] ?? '')) ?></div>
-                                <div class="small text-body-secondary"><?= htmlSC((string)($log['ip_address'] ?? '')) ?></div>
+                                <div class="small text-body-secondary text-break"><?= htmlSC((string)($log['ip_address'] ?? '')) ?></div>
                             </td>
-                            <td><?= htmlSC($actionLabel((string)($log['action'] ?? ''))) ?></td>
+                            <td class="text-break"><?= htmlSC($actionLabel((string)($log['action'] ?? ''))) ?></td>
                             <td>
-                                <?php $isSuccess = (string)($log['result'] ?? '') === 'success'; ?>
-                                <span class="badge rounded-pill <?= $isSuccess ? 'text-bg-success' : 'text-bg-danger' ?>">
-                                    <?= $isSuccess ? print_translation('admin_maintenance_result_success') : print_translation('admin_maintenance_result_error') ?>
+                                <span class="badge fs-xs rounded-pill <?= htmlSC($resultClass) ?>">
+                                    <?= htmlSC($resultLabel) ?>
                                 </span>
                             </td>
-                            <td class="small"><?= htmlSC(basename((string)($log['backup_path'] ?? ''))) ?></td>
-                            <td class="small text-danger"><?= htmlSC((string)($log['error'] ?? '')) ?></td>
+                            <td class="small text-break"><?= htmlSC($backupName) ?></td>
+                            <td class="small text-danger text-break"><?= htmlSC((string)($log['error'] ?? '')) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             <?php $adminTableContent = ob_get_clean(); ?>
-            <?= view()->renderPartial('admin/partials/table', ['content' => $adminTableContent]) ?>
+            <?= view()->renderPartial('admin/partials/table', [
+                'content' => $adminTableContent,
+                'table_class' => 'admin-maintenance-log-table',
+                'mobile_cards' => $mobileCards,
+                'mobile_breakpoint' => 'xl',
+            ]) ?>
 
             <?= view()->renderPartial('admin/partials/table_footer', [
                 'visible' => count($logs),

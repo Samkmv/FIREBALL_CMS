@@ -6,8 +6,8 @@ $isActive = array_key_exists('is_active', $formData)
     : (int)($subject['is_active'] ?? 1) === 1;
 $sortOrder = $formData['sort_order'] ?? ($subject['sort_order'] ?? 0);
 $action = $is_edit
-    ? base_href('/admin/settings/contact-subjects/edit/' . (int)$subject['id'])
-    : base_href('/admin/settings/contact-subjects/create');
+    ? base_href('/admin/support/subjects/edit/' . (int)$subject['id'])
+    : base_href('/admin/support/subjects/create');
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -18,7 +18,7 @@ $action = $is_edit
     'actions' => '',
 ]) ?>
 
-    <?= view()->renderPartial('admin/settings_tabs', ['active' => 'contact_subjects']) ?>
+    <?= view()->renderPartial('admin/support_tabs', ['active' => 'subjects']) ?>
 
     <form class="border rounded-5 p-3 p-md-4" action="<?= htmlSC($action) ?>" method="post">
         <?= get_csrf_field() ?>
@@ -72,7 +72,7 @@ $action = $is_edit
                 <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                     <i class="ci-save"></i><?= print_translation('admin_btn_save') ?>
                 </button>
-                <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/settings/contact-subjects') ?>">
+                <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/support/subjects') ?>">
                     <?= print_translation('admin_btn_cancel') ?>
                 </a>
             </div>

@@ -1,6 +1,7 @@
 <?php
 $cards = is_array($cards ?? null) ? $cards : [];
-$componentClass = trim('admin-mobile-table-cards d-md-none ' . (string)($class ?? ''));
+$displayClass = trim((string)($display_class ?? 'd-md-none'));
+$componentClass = trim('admin-mobile-table-cards ' . $displayClass . ' ' . (string)($class ?? ''));
 $attributes = is_array($attributes ?? null) ? $attributes : [];
 $actionsLabel = (string)($actions_label ?? return_translation('admin_posts_col_actions'));
 $emptyText = (string)($empty_text ?? return_translation('admin_table_empty'));

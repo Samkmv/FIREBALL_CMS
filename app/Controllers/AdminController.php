@@ -1228,7 +1228,7 @@ class AdminController extends BaseController
         $subject = $id > 0 ? $this->contactSubjects->find($id) : null;
         if ($id > 0 && $subject === null) {
             session()->setFlash('error', return_translation('admin_contact_subject_not_found'));
-            response()->redirect(base_href('/admin/settings/contact-subjects'));
+            response()->redirect(base_href('/admin/support/subjects'));
         }
 
         if (request()->isPost()) {
@@ -1259,8 +1259,8 @@ class AdminController extends BaseController
                 session()->set('form_data', $data);
                 session()->set('form_errors', $errors);
                 response()->redirect($id > 0
-                    ? base_href('/admin/settings/contact-subjects/edit/' . $id)
-                    : base_href('/admin/settings/contact-subjects/create'));
+                    ? base_href('/admin/support/subjects/edit/' . $id)
+                    : base_href('/admin/support/subjects/create'));
             }
 
             $data['sort_order'] = (int)$data['sort_order'];
@@ -1275,7 +1275,7 @@ class AdminController extends BaseController
             session()->remove('form_data');
             session()->remove('form_errors');
             session()->setFlash('success', $message);
-            response()->redirect(base_href('/admin/settings/contact-subjects'));
+            response()->redirect(base_href('/admin/support/subjects'));
         }
 
         return view('admin/contact_subject_form', [
@@ -1303,7 +1303,7 @@ class AdminController extends BaseController
             );
         }
 
-        response()->redirect(base_href('/admin/settings/contact-subjects'));
+        response()->redirect(base_href('/admin/support/subjects'));
     }
 
     public function contactSubjectDelete()
@@ -1316,7 +1316,7 @@ class AdminController extends BaseController
             session()->setFlash('success', return_translation('admin_contact_subject_deleted'));
         }
 
-        response()->redirect(base_href('/admin/settings/contact-subjects'));
+        response()->redirect(base_href('/admin/support/subjects'));
     }
 
     /**

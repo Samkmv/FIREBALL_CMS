@@ -1152,6 +1152,7 @@ return [
     'admin_support_nav_requests' => 'Заявки',
     'admin_support_nav_faq' => 'FAQ',
     'admin_support_nav_kb' => 'База знаний',
+    'admin_support_nav_subjects' => 'Темы обращений',
     'admin_support_nav_settings' => 'Настройки',
     'admin_support_new_count' => 'Новые заявки',
     'admin_support_requests_title' => 'Поддержка: заявки',

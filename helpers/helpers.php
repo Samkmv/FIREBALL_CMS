@@ -588,17 +588,14 @@ function can_view_chat_audit(): bool
 
 function can_view_video_diagnostics(?int $ownerId = null): bool
 {
-    if (!check_auth()) {
+    if (!check_auth() || $ownerId === null || $ownerId <= 0) {
         return false;
     }
 
     $user = get_user();
     $userId = (int)($user['id'] ?? 0);
 
-    return check_admin()
-        || ($ownerId !== null && $ownerId > 0 && $userId === $ownerId)
-        || !empty($user['can_view_video_diagnostics'])
-        || in_array((string)($user['role'] ?? ''), ['video-diagnostics', 'video_diagnostics'], true);
+    return $userId > 0 && $userId === $ownerId;
 }
 
 function get_user()

@@ -427,6 +427,19 @@ html.is-desktop-safari .post-content [data-plyr-player-wrap] .plyr video {
     pointer-events: none;
 }
 
+html[data-video-status="0"] .fb-plyr-hls-message--info,
+html[data-video-status="0"] .fb-plyr-hls-message--success,
+html[data-video-status="0"] .fb-plyr-hls-message--warning,
+html[data-video-status="0"] .fb-plyr-hls-message:not(.fb-plyr-hls-message--error),
+html:not([data-video-status="1"]) .fb-plyr-hls-message--info,
+html:not([data-video-status="1"]) .fb-plyr-hls-message--success,
+html:not([data-video-status="1"]) .fb-plyr-hls-message--warning,
+html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message--error) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
 .fb-plyr-hls-message::before {
     content: "";
     flex: 0 0 auto;
