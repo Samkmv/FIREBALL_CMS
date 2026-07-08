@@ -1710,7 +1710,7 @@ class AdminController extends BaseController
             session()->setFlash('error', $exception->getMessage());
         }
 
-        response()->redirect(base_href('/admin/updates'));
+        response()->redirect(base_href('/admin/updates?scroll=update-center'));
     }
 
     /**

@@ -5,6 +5,7 @@ $updateConfig = $updateCenter['config'] ?? [];
 $updateLocal = $updateCenter['local'] ?? [];
 $lastCheck = $updateCenter['last_check'] ?? null;
 $updateBlockers = $updateCenter['update_blockers'] ?? [];
+$shouldScrollToUpdateCenter = (string)request()->get('scroll', '') === 'update-center';
 $updaterRepository = $formData['updater_github_repository'] ?? ($settings['updater_github_repository'] ?? ($updateConfig['repository'] ?? ''));
 $updaterBranch = $formData['updater_github_branch'] ?? ($settings['updater_github_branch'] ?? ($updateConfig['branch'] ?? 'main'));
 $updaterToken = $formData['updater_github_token'] ?? '';
@@ -360,4 +361,41 @@ if (is_array($lastCheck)) {
             <?php endif; ?>
         </div>
     </div>
+    <?php if ($shouldScrollToUpdateCenter): ?>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var target = document.getElementById('update-center');
+                if (!target) {
+                    return;
+                }
+
+                var scrollToTarget = function () {
+                    var offset = window.innerWidth < 992 ? 24 : 16;
+                    var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({
+                        top: Math.max(0, top),
+                        behavior: 'smooth'
+                    });
+
+                    if (window.history && typeof window.history.replaceState === 'function') {
+                        try {
+                            var url = new URL(window.location.href);
+                            url.searchParams.delete('scroll');
+                            window.history.replaceState({}, document.title, url.toString());
+                        } catch (error) {
+                            // URL cleanup is optional; scrolling should still work in older browsers.
+                        }
+                    }
+                };
+
+                if (typeof window.requestAnimationFrame === 'function') {
+                    window.requestAnimationFrame(function () {
+                        window.setTimeout(scrollToTarget, 50);
+                    });
+                } else {
+                    window.setTimeout(scrollToTarget, 50);
+                }
+            });
+        </script>
+    <?php endif; ?>
 <?= view()->renderPartial('admin/shell_close') ?>
