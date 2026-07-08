@@ -629,16 +629,9 @@ function can_view_chat_audit(): bool
     return has_role_level('creator');
 }
 
-function can_view_video_diagnostics(?int $ownerId = null): bool
+function can_view_video_diagnostics(): bool
 {
-    if (!check_auth() || $ownerId === null || $ownerId <= 0) {
-        return false;
-    }
-
-    $user = get_user();
-    $userId = (int)($user['id'] ?? 0);
-
-    return $userId > 0 && $userId === $ownerId;
+    return check_creator();
 }
 
 function get_user()

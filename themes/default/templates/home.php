@@ -15,6 +15,29 @@
 $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
 $heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
 $heroHlsScript = theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js'));
+$canViewHomeVideoStatus = check_creator();
+$homeVideoDebugTitle = str_starts_with(current_locale(), 'ru') ? 'Техническая информация' : 'Technical information';
+$homeVideoDebugLabels = str_starts_with(current_locale(), 'ru') ? [
+    'source' => 'Источник',
+    'playbackMode' => 'Режим',
+    'hlsState' => 'HLS',
+    'readyState' => 'Ready state',
+    'networkState' => 'Network state',
+    'errorType' => 'Ошибка',
+    'checkedAt' => 'Последняя проверка',
+    'browser' => 'Браузер',
+    'userAgent' => 'User-Agent',
+] : [
+    'source' => 'Source',
+    'playbackMode' => 'Mode',
+    'hlsState' => 'HLS',
+    'readyState' => 'Ready state',
+    'networkState' => 'Network state',
+    'errorType' => 'Error',
+    'checkedAt' => 'Last check',
+    'browser' => 'Browser',
+    'userAgent' => 'User-Agent',
+];
 $homeCityCategories = array_values(array_filter(
     (new \App\Models\Post())->getNavigationCategories(),
     static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
@@ -76,9 +99,13 @@ $featuredCount = count($popularCameras);
                 muted
                 autoplay
                 playsinline
-                preload="none"
+                preload="auto"
+                crossorigin="anonymous"
             ></video>
         </div>
+        <?php if ($canViewHomeVideoStatus): ?>
+            <div class="home-hero__status" data-home-hero-status hidden aria-live="polite" role="status"></div>
+        <?php endif; ?>
         <div class="home-hero__overlay" aria-hidden="true"></div>
         <div class="container home-hero__inner">
             <div class="home-hero__content home-reveal">
@@ -90,6 +117,17 @@ $featuredCount = count($popularCameras);
                     <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts') ?>"><?= print_translation('home_index_hero_watch_cameras') ?></a>
                     <a class="btn btn-outline-secondary rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>
                 </div>
+                <?php if ($canViewHomeVideoStatus): ?>
+                    <details class="fb-video-debug home-hero__debug" data-home-hero-debug>
+                        <summary><?= htmlSC($homeVideoDebugTitle) ?></summary>
+                        <div class="fb-video-debug__content">
+                            <?php foreach ($homeVideoDebugLabels as $key => $label): ?>
+                                <div class="fb-video-debug__label"><?= htmlSC($label) ?>:</div>
+                                <div class="fb-video-debug__value" data-home-hero-debug-value="<?= htmlSC($key) ?>">—</div>
+                            <?php endforeach; ?>
+                        </div>
+                    </details>
+                <?php endif; ?>
             </div>
         </div>
     </section>
@@ -302,6 +340,99 @@ $featuredCount = count($popularCameras);
     const heroVideo = root.querySelector('[data-home-hero-video]');
     const heroStream = heroVideo ? (heroVideo.dataset.homeHeroSrc || '') : '';
     const heroHlsScript = <?= json_encode($heroHlsScript, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    const canViewHomeVideoStatus = <?= $canViewHomeVideoStatus ? 'true' : 'false' ?>;
+    const heroStatus = root.querySelector('[data-home-hero-status]');
+    const heroDebug = root.querySelector('[data-home-hero-debug]');
+    const userAgent = window.navigator.userAgent || '';
+    const isYandexBrowser = /YaBrowser|YaApp_Android/i.test(userAgent);
+    const isChromiumBrowser = /Chrome|Chromium|CriOS|Edg|OPR|YaBrowser/i.test(userAgent) && !/Firefox|FxiOS/i.test(userAgent);
+    const homeVideoLocale = ((document.documentElement.getAttribute('lang') || 'en').toLowerCase().startsWith('ru')) ? 'ru' : 'en';
+    const homeVideoMessages = {
+        ru: {
+            loading: 'Загрузка видео...',
+            connecting: 'Подключение...',
+            reconnecting: 'Повторное подключение...',
+            ready: 'Видео загружено',
+            paused: 'Поток остановлен, выполняется восстановление...',
+            unavailable: 'Источник временно недоступен',
+        },
+        en: {
+            loading: 'Loading video...',
+            connecting: 'Connecting...',
+            reconnecting: 'Reconnecting...',
+            ready: 'Video loaded',
+            paused: 'Stream paused, recovering...',
+            unavailable: 'Source is temporarily unavailable',
+        }
+    };
+    const homeVideoText = (key) => {
+        const messages = homeVideoMessages[homeVideoLocale] || homeVideoMessages.en;
+        return messages[key] || homeVideoMessages.en[key] || key;
+    };
+    const mediaStateName = (value, map) => Object.prototype.hasOwnProperty.call(map, value) ? map[value] : String(value);
+    const getHeroReadyState = () => {
+        if (!heroVideo) {
+            return '—';
+        }
+        return mediaStateName(heroVideo.readyState, {
+            0: 'HAVE_NOTHING',
+            1: 'HAVE_METADATA',
+            2: 'HAVE_CURRENT_DATA',
+            3: 'HAVE_FUTURE_DATA',
+            4: 'HAVE_ENOUGH_DATA',
+        });
+    };
+    const getHeroNetworkState = () => {
+        if (!heroVideo) {
+            return '—';
+        }
+        return mediaStateName(heroVideo.networkState, {
+            0: 'NETWORK_EMPTY',
+            1: 'NETWORK_IDLE',
+            2: 'NETWORK_LOADING',
+            3: 'NETWORK_NO_SOURCE',
+        });
+    };
+    const setHeroStatus = (message, type = 'info') => {
+        if (!canViewHomeVideoStatus || !heroStatus) {
+            return;
+        }
+        heroStatus.hidden = false;
+        heroStatus.className = 'home-hero__status home-hero__status--' + type;
+        heroStatus.textContent = message;
+    };
+    const clearHeroStatus = (delay = 0) => {
+        if (!canViewHomeVideoStatus || !heroStatus) {
+            return;
+        }
+        window.setTimeout(() => {
+            heroStatus.hidden = true;
+            heroStatus.textContent = '';
+            heroStatus.className = 'home-hero__status';
+        }, delay);
+    };
+    const updateHeroDebug = (values = {}) => {
+        if (!canViewHomeVideoStatus || !heroDebug) {
+            return;
+        }
+        const defaults = {
+            source: heroStream,
+            playbackMode: heroVideo && (heroVideo.canPlayType('application/vnd.apple.mpegurl') || heroVideo.canPlayType('application/x-mpegURL')) ? 'native_hls' : 'hls.js',
+            hlsState: heroHls && typeof heroHls.streamController !== 'undefined' ? String(heroHls.streamController.state || 'attached') : (heroHls ? 'attached' : 'not_created'),
+            readyState: getHeroReadyState(),
+            networkState: getHeroNetworkState(),
+            errorType: heroVideo && heroVideo.error ? 'media_error_' + heroVideo.error.code : '',
+            checkedAt: new Date().toLocaleString(),
+            browser: isYandexBrowser ? 'Yandex Browser' : (isChromiumBrowser ? 'Chromium' : 'Browser'),
+            userAgent: userAgent,
+        };
+        Object.entries(Object.assign(defaults, values)).forEach(([key, value]) => {
+            const target = heroDebug.querySelector('[data-home-hero-debug-value="' + key + '"]');
+            if (target) {
+                target.textContent = value === undefined || value === '' ? '—' : String(value);
+            }
+        });
+    };
     let heroHlsPromise = null;
     const loadHeroHls = () => new Promise((resolve, reject) => {
         if (typeof window.Hls === 'function') {
@@ -326,6 +457,8 @@ $featuredCount = count($popularCameras);
             script.src = heroHlsScript;
             script.async = true;
             script.dataset.homeHeroHls = 'true';
+            setHeroStatus(homeVideoText('connecting'));
+            updateHeroDebug({ hlsState: 'loading_hls_script' });
             script.onload = () => typeof window.Hls === 'function'
                 ? loadResolve(window.Hls)
                 : loadReject(new Error('HLS is unavailable'));
@@ -346,8 +479,10 @@ $featuredCount = count($popularCameras);
     let heroLastCurrentTime = 0;
     let heroStalledChecks = 0;
     let heroMediaRecoveries = 0;
-    const maxHeroPlayAttempts = 2;
-    const heroRecoveryDelay = 3000;
+    const maxHeroPlayAttempts = isChromiumBrowser ? 8 : 4;
+    const heroRecoveryDelay = isChromiumBrowser ? 1200 : 2500;
+    const heroHealthInterval = isChromiumBrowser ? 2000 : 3000;
+    const heroStalledThreshold = isChromiumBrowser ? 2 : 3;
     const markHeroVideoReady = () => {
         if (!hero || heroPlaybackStarted) {
             return;
@@ -355,6 +490,9 @@ $featuredCount = count($popularCameras);
         heroPlaybackStarted = true;
         hero.classList.add('home-hero--video-ready');
         hero.classList.remove('home-hero--video-paused');
+        setHeroStatus(homeVideoText('ready'), 'success');
+        clearHeroStatus(1600);
+        updateHeroDebug({ errorType: '', hlsState: heroHls ? 'playing' : 'native_playing' });
     };
     const revealHeroVideo = () => {
         if (typeof heroVideo.requestVideoFrameCallback === 'function') {
@@ -387,6 +525,11 @@ $featuredCount = count($popularCameras);
         if (!heroPlaybackStarted) {
             heroPlayAttempts += 1;
         }
+        setHeroStatus(heroPlayAttempts > 1 ? homeVideoText('reconnecting') : homeVideoText('loading'));
+        updateHeroDebug({
+            hlsState: heroHls ? 'play_attempt_' + heroPlayAttempts : 'native_play_attempt_' + heroPlayAttempts,
+            errorType: '',
+        });
         heroVideo.muted = true;
         heroVideo.defaultMuted = true;
         heroVideo.autoplay = true;
@@ -401,17 +544,23 @@ $featuredCount = count($popularCameras);
             if (hero) {
                 hero.classList.add('home-hero--video-paused');
             }
+            setHeroStatus(homeVideoText('paused'), 'warning');
+            updateHeroDebug({ errorType: 'play_exception' });
             bindHeroGestureFallback();
+            scheduleHeroRecovery(false);
             return;
         }
 
         if (heroPlayPromise && typeof heroPlayPromise.then === 'function') {
             heroPlayPromise
-                .catch(() => {
+                .catch((error) => {
                     if (hero) {
                         hero.classList.add('home-hero--video-paused');
                     }
+                    setHeroStatus(homeVideoText('paused'), 'warning');
+                    updateHeroDebug({ errorType: error && error.name ? error.name : 'play_rejected' });
                     bindHeroGestureFallback();
+                    scheduleHeroRecovery(false);
                 })
                 .finally(() => {
                     heroPlayPromise = null;
@@ -425,6 +574,12 @@ $featuredCount = count($popularCameras);
             return;
         }
 
+        setHeroStatus(homeVideoText('reconnecting'), 'warning');
+        updateHeroDebug({
+            hlsState: recreateHls ? 'scheduled_recreate' : 'scheduled_recover',
+            errorType: heroVideo.error ? 'media_error_' + heroVideo.error.code : '',
+        });
+
         heroRecoveryTimer = window.setTimeout(() => {
             heroRecoveryTimer = null;
 
@@ -433,7 +588,10 @@ $featuredCount = count($popularCameras);
             }
 
             if (recreateHls && heroHls) {
-                heroHls.destroy();
+                try {
+                    heroHls.destroy();
+                } catch (error) {
+                }
                 heroHls = null;
                 heroInitialized = false;
                 heroVideo.removeAttribute('src');
@@ -444,9 +602,13 @@ $featuredCount = count($popularCameras);
 
             if (heroHls) {
                 try {
+                    updateHeroDebug({ hlsState: 'start_load' });
                     heroHls.startLoad(-1);
                 } catch (error) {
-                    heroHls.destroy();
+                    try {
+                        heroHls.destroy();
+                    } catch (destroyError) {
+                    }
                     heroHls = null;
                     heroInitialized = false;
                     initializeHeroVideo();
@@ -465,13 +627,21 @@ $featuredCount = count($popularCameras);
     };
     const initializeHeroVideo = () => {
         if (!heroVideo || !heroStream || heroInitialized || reduceMotion || saveData) {
+            if (heroVideo && heroStream) {
+                updateHeroDebug({
+                    hlsState: reduceMotion ? 'reduced_motion_skip' : (saveData ? 'save_data_skip' : 'not_initialized'),
+                });
+            }
             return;
         }
         heroInitialized = true;
+        setHeroStatus(homeVideoText('connecting'));
+        updateHeroDebug({ hlsState: 'initializing' });
         heroVideo.addEventListener('playing', revealHeroVideo, { once: true });
 
         if (heroVideo.canPlayType('application/vnd.apple.mpegurl') || heroVideo.canPlayType('application/x-mpegURL')) {
             heroVideo.src = heroStream;
+            updateHeroDebug({ playbackMode: 'native_hls', hlsState: 'native_source_set' });
             playHeroVideo();
             return;
         }
@@ -479,26 +649,81 @@ $featuredCount = count($popularCameras);
         loadHeroHls()
             .then((Hls) => {
                 if (!Hls.isSupported()) {
+                    heroInitialized = false;
+                    setHeroStatus(homeVideoText('unavailable'), 'error');
+                    updateHeroDebug({
+                        hlsState: 'unsupported',
+                        errorType: 'hls_not_supported',
+                    });
                     return;
                 }
                 heroHls = new Hls({
+                    enableWorker: true,
                     lowLatencyMode: false,
-                    liveSyncDurationCount: 3,
-                    liveMaxLatencyDurationCount: 8,
+                    liveDurationInfinity: true,
+                    liveSyncDurationCount: isChromiumBrowser ? 5 : 3,
+                    liveMaxLatencyDurationCount: isChromiumBrowser ? 15 : 8,
                     maxLiveSyncPlaybackRate: 1,
-                    backBufferLength: 30,
-                    manifestLoadingMaxRetry: 15,
+                    maxBufferLength: isChromiumBrowser ? 45 : 30,
+                    maxMaxBufferLength: isChromiumBrowser ? 90 : 60,
+                    backBufferLength: 60,
+                    capLevelToPlayerSize: true,
+                    maxBufferHole: .5,
+                    nudgeOffset: .1,
+                    nudgeMaxRetry: 5,
+                    startFragPrefetch: true,
+                    manifestLoadingTimeOut: 10000,
+                    manifestLoadingMaxRetry: 8,
                     manifestLoadingRetryDelay: 1000,
-                    manifestLoadingMaxRetryTimeout: 3000,
-                    levelLoadingMaxRetry: 10,
-                    fragLoadingMaxRetry: 10,
+                    manifestLoadingMaxRetryTimeout: 8000,
+                    levelLoadingTimeOut: 10000,
+                    levelLoadingMaxRetry: 8,
+                    levelLoadingRetryDelay: 1000,
+                    levelLoadingMaxRetryTimeout: 8000,
+                    fragLoadingTimeOut: 20000,
+                    fragLoadingMaxRetry: 8,
+                    fragLoadingRetryDelay: 1000,
+                    fragLoadingMaxRetryTimeout: 10000,
                 });
                 heroHls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    setHeroStatus(homeVideoText('loading'));
+                    updateHeroDebug({ hlsState: 'media_attached' });
                     heroHls.loadSource(heroStream);
                 });
-                heroHls.on(Hls.Events.MANIFEST_PARSED, playHeroVideo);
+                heroHls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    setHeroStatus(homeVideoText('loading'));
+                    updateHeroDebug({ hlsState: 'manifest_parsed' });
+                    playHeroVideo();
+                });
+                heroHls.on(Hls.Events.LEVEL_LOADED, () => {
+                    updateHeroDebug({ hlsState: 'level_loaded', errorType: '' });
+                    if (heroVideo.paused && !document.hidden) {
+                        playHeroVideo();
+                    }
+                });
+                if (Hls.Events.FRAG_BUFFERED) {
+                    heroHls.on(Hls.Events.FRAG_BUFFERED, () => {
+                        updateHeroDebug({ hlsState: 'fragment_buffered', errorType: '' });
+                        if (heroVideo.paused && !document.hidden) {
+                            playHeroVideo();
+                        }
+                    });
+                }
                 heroHls.on(Hls.Events.ERROR, (event, data) => {
-                    if (!data || !data.fatal) {
+                    if (!data) {
+                        return;
+                    }
+
+                    updateHeroDebug({
+                        hlsState: data.fatal ? 'fatal_error' : 'non_fatal_error',
+                        errorType: data.details || data.type || 'hls_error',
+                    });
+
+                    if (!data.fatal) {
+                        const details = String(data.details || '');
+                        if (/buffer|stalled|nudge|fragLoad|levelLoad|manifestLoad/i.test(details)) {
+                            scheduleHeroRecovery(false);
+                        }
                         return;
                     }
 
@@ -519,7 +744,14 @@ $featuredCount = count($popularCameras);
                 });
                 heroHls.attachMedia(heroVideo);
             })
-            .catch(() => {});
+            .catch((error) => {
+                heroInitialized = false;
+                setHeroStatus(homeVideoText('unavailable'), 'error');
+                updateHeroDebug({
+                    hlsState: 'init_failed',
+                    errorType: error && error.message ? error.message : 'hls_init_failed',
+                });
+            });
     };
     const scheduleHeroInit = () => {
         if (coarsePointer && 'IntersectionObserver' in window && hero) {
@@ -553,14 +785,28 @@ $featuredCount = count($popularCameras);
             if (hero) {
                 hero.classList.remove('home-hero--video-paused');
             }
+            updateHeroDebug({ hlsState: heroHls ? 'playing' : 'native_playing', errorType: '' });
         });
         ['stalled', 'waiting', 'ended', 'error'].forEach((eventName) => {
             heroVideo.addEventListener(eventName, () => {
+                setHeroStatus(eventName === 'error' ? homeVideoText('unavailable') : homeVideoText('reconnecting'), eventName === 'error' ? 'error' : 'warning');
+                updateHeroDebug({
+                    hlsState: eventName,
+                    errorType: eventName === 'error' && heroVideo.error ? 'media_error_' + heroVideo.error.code : eventName,
+                });
+                if (heroHls) {
+                    try {
+                        heroHls.startLoad(-1);
+                    } catch (error) {
+                    }
+                }
                 scheduleHeroRecovery(eventName === 'error');
             });
         });
         heroVideo.addEventListener('pause', () => {
             if (!document.hidden && !heroVideo.ended) {
+                setHeroStatus(homeVideoText('paused'), 'warning');
+                updateHeroDebug({ hlsState: 'pause' });
                 scheduleHeroRecovery(false);
             }
         });
@@ -571,34 +817,47 @@ $featuredCount = count($popularCameras);
             }
 
             if (heroVideo.paused || heroVideo.ended) {
+                updateHeroDebug({ hlsState: heroVideo.ended ? 'ended' : 'paused' });
                 scheduleHeroRecovery(false);
                 return;
             }
 
             if (Math.abs(heroVideo.currentTime - heroLastCurrentTime) < 0.05) {
                 heroStalledChecks += 1;
-                if (heroStalledChecks >= 2) {
+                if (heroStalledChecks >= heroStalledThreshold) {
                     heroStalledChecks = 0;
+                    updateHeroDebug({ hlsState: 'current_time_stalled' });
                     scheduleHeroRecovery(false);
                 }
             } else {
                 heroStalledChecks = 0;
                 heroLastCurrentTime = heroVideo.currentTime;
+                updateHeroDebug({ hlsState: 'playing' });
             }
-        }, 4000);
+        }, heroHealthInterval);
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 if (heroHls) {
-                    heroHls.startLoad(-1);
+                    try {
+                        heroHls.startLoad(-1);
+                    } catch (error) {
+                        scheduleHeroRecovery(true);
+                    }
                 }
+                updateHeroDebug({ hlsState: 'visibility_resume' });
                 playHeroVideo();
             }
         });
         window.addEventListener('pageshow', (event) => {
             if (heroHls) {
-                heroHls.startLoad(-1);
+                try {
+                    heroHls.startLoad(-1);
+                } catch (error) {
+                    scheduleHeroRecovery(true);
+                }
             }
+            updateHeroDebug({ hlsState: event.persisted ? 'pageshow_bfcache' : 'pageshow' });
             playHeroVideo();
         });
         window.addEventListener('pagehide', () => {
@@ -607,7 +866,10 @@ $featuredCount = count($popularCameras);
                 heroRecoveryTimer = null;
             }
             if (heroHls) {
-                heroHls.stopLoad();
+                try {
+                    heroHls.stopLoad();
+                } catch (error) {
+                }
             }
         }, { once: true });
     }

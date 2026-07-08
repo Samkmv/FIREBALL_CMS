@@ -89,7 +89,7 @@ $isAdmin = check_admin();
 $hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="#adminSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
-$canViewVideoStatus = can_view_video_diagnostics(isset($video_owner_id) ? (int)$video_owner_id : null);
+$canViewVideoStatus = can_view_video_diagnostics();
 $streamConfig = stream_config();
 $frontendStreamConfig = [
     'readyTimeoutMs' => (int)$streamConfig['ready_timeout_seconds'] * 1000,

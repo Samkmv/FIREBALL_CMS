@@ -2616,6 +2616,7 @@
 
             element = createCleanMediaElement(element);
             clearHlsDiagnosticMessages(element);
+            ensureVideoDebugBlock(element);
 
             if (element.dataset.plyrInitialized === 'true') {
                 return;
