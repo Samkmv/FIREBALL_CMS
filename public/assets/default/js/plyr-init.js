@@ -247,6 +247,18 @@
         return isSafariBrowser() && !isIosLikeBrowser();
     };
 
+    const shouldPreferNativeHlsOnApple = function (element) {
+        if (!(element instanceof HTMLVideoElement)) {
+            return false;
+        }
+
+        if (isSafariBrowser()) {
+            return true;
+        }
+
+        return isIosLikeBrowser() && canPlayHlsNatively(element);
+    };
+
     if (isDesktopSafariBrowser()) {
         document.documentElement.classList.add('is-desktop-safari');
     }
@@ -256,7 +268,7 @@
             return false;
         }
 
-        if (isSafariBrowser()) {
+        if (shouldPreferNativeHlsOnApple(element)) {
             return true;
         }
 
@@ -955,6 +967,7 @@
         }
 
         renderHlsMessage(element, message, 'success');
+        scheduleHlsMessageClear(element);
     };
 
     const showHlsWarning = function (element, message) {
@@ -1908,7 +1921,7 @@
     };
 
     const fallbackToHlsJsPlayback = async function (element, reason) {
-        if (isSafariBrowser()) {
+        if (!(element instanceof HTMLVideoElement) || shouldPreferNativeHlsOnApple(element)) {
             return false;
         }
 
@@ -1919,6 +1932,10 @@
         element.dataset.hlsForceJsPlayback = 'true';
         element.hlsJsFallbackReason = reason || '';
         showHlsWarning(element, t('native_fallback'));
+        updateVideoDebug(element, {
+            errorType: reason || 'native_fallback',
+            checkedAt: new Date().toLocaleString(),
+        });
         resetNativePlaybackState(element);
 
         const isReady = await prepareHlsPlayback(element);
@@ -2106,6 +2123,19 @@
         }, hlsReconnectDelayMs);
     };
 
+    const fallbackNativeHlsOrRestart = function (element, reason) {
+        if (!shouldUseNativeHls(element)) {
+            restartHlsPlayback(element, reason);
+            return;
+        }
+
+        fallbackToHlsJsPlayback(element, reason).then(function (switched) {
+            if (!switched) {
+                restartHlsPlayback(element, reason);
+            }
+        });
+    };
+
     const startHlsHealthMonitor = function (element) {
         if (element.hlsHealthTimer) {
             return;
@@ -2136,7 +2166,7 @@
             }
 
             if ((Date.now() - element.hlsStuckSince) >= hlsStuckResetAfterMs) {
-                restartHlsPlayback(element, describeMediaState(element));
+                fallbackNativeHlsOrRestart(element, describeMediaState(element));
             }
         }, hlsHealthCheckIntervalMs);
     };
@@ -2199,7 +2229,7 @@
             }
 
             if (element.hlsEverPlayed) {
-                restartHlsPlayback(element, 'native_network_or_media_error');
+                fallbackNativeHlsOrRestart(element, 'native_network_or_media_error');
                 return;
             }
 
@@ -2242,7 +2272,12 @@
                 return;
             }
 
-            restartHlsPlayback(element, describeMediaState(element));
+            if (isMediaPlaybackActive(element)) {
+                markPlaybackStarted(element);
+                return;
+            }
+
+            fallbackNativeHlsOrRestart(element, describeMediaState(element));
         });
     };
 
