@@ -15,29 +15,6 @@
 $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
 $heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
 $heroHlsScript = theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js'));
-$canViewHomeVideoStatus = check_creator();
-$homeVideoDebugTitle = str_starts_with(current_locale(), 'ru') ? 'Техническая информация' : 'Technical information';
-$homeVideoDebugLabels = str_starts_with(current_locale(), 'ru') ? [
-    'source' => 'Источник',
-    'playbackMode' => 'Режим',
-    'hlsState' => 'HLS',
-    'readyState' => 'Ready state',
-    'networkState' => 'Network state',
-    'errorType' => 'Ошибка',
-    'checkedAt' => 'Последняя проверка',
-    'browser' => 'Браузер',
-    'userAgent' => 'User-Agent',
-] : [
-    'source' => 'Source',
-    'playbackMode' => 'Mode',
-    'hlsState' => 'HLS',
-    'readyState' => 'Ready state',
-    'networkState' => 'Network state',
-    'errorType' => 'Error',
-    'checkedAt' => 'Last check',
-    'browser' => 'Browser',
-    'userAgent' => 'User-Agent',
-];
 $homeCityCategories = array_values(array_filter(
     (new \App\Models\Post())->getNavigationCategories(),
     static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
@@ -103,9 +80,6 @@ $featuredCount = count($popularCameras);
                 crossorigin="anonymous"
             ></video>
         </div>
-        <?php if ($canViewHomeVideoStatus): ?>
-            <div class="home-hero__status" data-home-hero-status hidden aria-live="polite" role="status"></div>
-        <?php endif; ?>
         <div class="home-hero__overlay" aria-hidden="true"></div>
         <div class="container home-hero__inner">
             <div class="home-hero__content home-reveal">
@@ -117,17 +91,6 @@ $featuredCount = count($popularCameras);
                     <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts') ?>"><?= print_translation('home_index_hero_watch_cameras') ?></a>
                     <a class="btn btn-outline-secondary rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>
                 </div>
-                <?php if ($canViewHomeVideoStatus): ?>
-                    <details class="fb-video-debug home-hero__debug" data-home-hero-debug>
-                        <summary><?= htmlSC($homeVideoDebugTitle) ?></summary>
-                        <div class="fb-video-debug__content">
-                            <?php foreach ($homeVideoDebugLabels as $key => $label): ?>
-                                <div class="fb-video-debug__label"><?= htmlSC($label) ?>:</div>
-                                <div class="fb-video-debug__value" data-home-hero-debug-value="<?= htmlSC($key) ?>">—</div>
-                            <?php endforeach; ?>
-                        </div>
-                    </details>
-                <?php endif; ?>
             </div>
         </div>
     </section>
@@ -340,9 +303,6 @@ $featuredCount = count($popularCameras);
     const heroVideo = root.querySelector('[data-home-hero-video]');
     const heroStream = heroVideo ? (heroVideo.dataset.homeHeroSrc || '') : '';
     const heroHlsScript = <?= json_encode($heroHlsScript, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-    const canViewHomeVideoStatus = <?= $canViewHomeVideoStatus ? 'true' : 'false' ?>;
-    const heroStatus = root.querySelector('[data-home-hero-status]');
-    const heroDebug = root.querySelector('[data-home-hero-debug]');
     const userAgent = window.navigator.userAgent || '';
     const isYandexBrowser = /YaBrowser|YaApp_Android/i.test(userAgent);
     const isChromiumBrowser = /Chrome|Chromium|CriOS|Edg|OPR|YaBrowser/i.test(userAgent) && !/Firefox|FxiOS/i.test(userAgent);
@@ -369,70 +329,9 @@ $featuredCount = count($popularCameras);
         const messages = homeVideoMessages[homeVideoLocale] || homeVideoMessages.en;
         return messages[key] || homeVideoMessages.en[key] || key;
     };
-    const mediaStateName = (value, map) => Object.prototype.hasOwnProperty.call(map, value) ? map[value] : String(value);
-    const getHeroReadyState = () => {
-        if (!heroVideo) {
-            return '—';
-        }
-        return mediaStateName(heroVideo.readyState, {
-            0: 'HAVE_NOTHING',
-            1: 'HAVE_METADATA',
-            2: 'HAVE_CURRENT_DATA',
-            3: 'HAVE_FUTURE_DATA',
-            4: 'HAVE_ENOUGH_DATA',
-        });
-    };
-    const getHeroNetworkState = () => {
-        if (!heroVideo) {
-            return '—';
-        }
-        return mediaStateName(heroVideo.networkState, {
-            0: 'NETWORK_EMPTY',
-            1: 'NETWORK_IDLE',
-            2: 'NETWORK_LOADING',
-            3: 'NETWORK_NO_SOURCE',
-        });
-    };
-    const setHeroStatus = (message, type = 'info') => {
-        if (!canViewHomeVideoStatus || !heroStatus) {
-            return;
-        }
-        heroStatus.hidden = false;
-        heroStatus.className = 'home-hero__status home-hero__status--' + type;
-        heroStatus.textContent = message;
-    };
-    const clearHeroStatus = (delay = 0) => {
-        if (!canViewHomeVideoStatus || !heroStatus) {
-            return;
-        }
-        window.setTimeout(() => {
-            heroStatus.hidden = true;
-            heroStatus.textContent = '';
-            heroStatus.className = 'home-hero__status';
-        }, delay);
-    };
-    const updateHeroDebug = (values = {}) => {
-        if (!canViewHomeVideoStatus || !heroDebug) {
-            return;
-        }
-        const defaults = {
-            source: heroStream,
-            playbackMode: heroVideo && (heroVideo.canPlayType('application/vnd.apple.mpegurl') || heroVideo.canPlayType('application/x-mpegURL')) ? 'native_hls' : 'hls.js',
-            hlsState: heroHls && typeof heroHls.streamController !== 'undefined' ? String(heroHls.streamController.state || 'attached') : (heroHls ? 'attached' : 'not_created'),
-            readyState: getHeroReadyState(),
-            networkState: getHeroNetworkState(),
-            errorType: heroVideo && heroVideo.error ? 'media_error_' + heroVideo.error.code : '',
-            checkedAt: new Date().toLocaleString(),
-            browser: isYandexBrowser ? 'Yandex Browser' : (isChromiumBrowser ? 'Chromium' : 'Browser'),
-            userAgent: userAgent,
-        };
-        Object.entries(Object.assign(defaults, values)).forEach(([key, value]) => {
-            const target = heroDebug.querySelector('[data-home-hero-debug-value="' + key + '"]');
-            if (target) {
-                target.textContent = value === undefined || value === '' ? '—' : String(value);
-            }
-        });
-    };
+    const setHeroStatus = () => {};
+    const clearHeroStatus = () => {};
+    const updateHeroDebug = () => {};
     let heroHlsPromise = null;
     const loadHeroHls = () => new Promise((resolve, reject) => {
         if (typeof window.Hls === 'function') {
