@@ -3593,6 +3593,26 @@ body.is-site-fullscreen .plyr * {
 .admin-mobile-table-card__title {
     min-width: 0;
     max-width: 100%;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.admin-mobile-table-card--file-manager .admin-mobile-table-card__title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.admin-mobile-table-card--file-manager [data-file-select] {
+    flex: 0 0 auto;
+    min-height: 2.5rem;
+    padding-inline: 1rem;
+}
+
+.admin-mobile-table-card--file-manager .admin-mobile-table-card__path-field .fw-medium {
+    font-size: .86rem;
+    line-height: 1.35;
     overflow-wrap: anywhere;
 }
 

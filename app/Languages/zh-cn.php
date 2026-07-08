@@ -877,6 +877,7 @@ return [
     'admin_files_folder_submit' => '创建',
     'admin_files_folders' => '文件夹',
     'admin_files_col_name' => '名称',
+    'admin_files_public_path' => '路径',
     'admin_files_col_type' => '类型',
     'admin_files_size' => '大小',
     'admin_files_modified' => '修改时间',

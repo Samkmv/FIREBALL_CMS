@@ -220,6 +220,7 @@ class Auth
         }
 
         session()->set(self::ADMIN_SESSION_LAST_ACTIVITY_KEY, $now);
+        session()->refreshCookie();
     }
 
     protected static function getAdminSessionLifetimeHours(): int

@@ -373,6 +373,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                                 ];
                                 $mobileCards[] = [
                                     'attributes' => $rowAttributes,
+                                    'class' => 'admin-mobile-table-card--file-manager',
                                     'selection' => ['html' => $selectionHtml],
                                     'title' => $itemName,
                                     'image' => $previewable ? [
@@ -396,8 +397,9 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                                     'actions' => $actionsHtml,
                                     'extra_fields' => [
                                         [
-                                            'label' => return_translation('admin_files_col_name'),
+                                            'label' => return_translation('admin_files_public_path'),
                                             'value' => $isDirectory ? '/' . $relativePath : (string)($item['public_path'] ?? ''),
+                                            'class' => 'admin-mobile-table-card__path-field',
                                         ],
                                     ],
                                 ];

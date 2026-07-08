@@ -192,7 +192,7 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
         <?php
         $card = is_array($card) ? $card : [];
         $cardAttributes = is_array($card['attributes'] ?? null) ? $card['attributes'] : [];
-        $cardAttributes['class'] = trim('card admin-mobile-table-card shadow-sm ' . (string)($cardAttributes['class'] ?? ''));
+        $cardAttributes['class'] = trim('card admin-mobile-table-card shadow-sm ' . (string)($card['class'] ?? '') . ' ' . (string)($cardAttributes['class'] ?? ''));
         $actionsHtml = $renderActions($card['actions'] ?? null);
         $image = $card['image'] ?? null;
         $imageSrc = is_array($image) ? trim((string)($image['src'] ?? '')) : trim((string)$image);
@@ -254,7 +254,7 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
                     $fieldValue = array_key_exists('html', $field)
                         ? ['html' => (string)$field['html']]
                         : ($field['value'] ?? null);
-                    $renderField((string)($field['label'] ?? ''), $fieldValue);
+                    $renderField((string)($field['label'] ?? ''), $fieldValue, (string)($field['class'] ?? ''));
                     ?>
                 <?php endforeach; ?>
 
@@ -293,9 +293,6 @@ $attributes = array_merge(['data-admin-mobile-table-cards' => true], $attributes
                                 <span class="d-block small text-body-secondary"><?= htmlSC((string)($card['published_at_label'] ?? return_translation('admin_posts_col_date'))) ?></span>
                                 <span class="fw-medium text-body-emphasis text-break"><?= $renderValue($card['published_at']) ?></span>
                             </div>
-                            <?php if ($actionsHtml !== ''): ?>
-                                <div class="flex-shrink-0"><?= $actionsHtml ?></div>
-                            <?php endif; ?>
                         </div>
                     </li>
                 <?php endif; ?>

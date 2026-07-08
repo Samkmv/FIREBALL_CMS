@@ -886,6 +886,7 @@ return [
     'admin_files_folder_submit' => 'Создать',
     'admin_files_folders' => 'Папки',
     'admin_files_col_name' => 'Название',
+    'admin_files_public_path' => 'Путь',
     'admin_files_col_type' => 'Тип',
     'admin_files_size' => 'Размер',
     'admin_files_modified' => 'Изменён',

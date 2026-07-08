@@ -877,6 +877,7 @@ return [
     'admin_files_folder_submit' => 'Erstellen',
     'admin_files_folders' => 'Ordner',
     'admin_files_col_name' => 'Name',
+    'admin_files_public_path' => 'Pfad',
     'admin_files_col_type' => 'Typ',
     'admin_files_size' => 'Groesse',
     'admin_files_modified' => 'Geaendert',

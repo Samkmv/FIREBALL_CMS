@@ -886,6 +886,7 @@ return [
     'admin_files_folder_submit' => 'Create',
     'admin_files_folders' => 'Folders',
     'admin_files_col_name' => 'Name',
+    'admin_files_public_path' => 'Path',
     'admin_files_col_type' => 'Type',
     'admin_files_size' => 'Size',
     'admin_files_modified' => 'Modified',
