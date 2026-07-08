@@ -10,7 +10,9 @@ $analyticsI18nJson = json_encode([
     'visits' => return_translation('admin_analytics_chart_visits'),
     'sources' => return_translation('admin_analytics_chart_sources'),
     'devices' => return_translation('admin_analytics_chart_devices'),
+    'countries' => return_translation('admin_analytics_geo_title'),
     'unavailable' => return_translation('admin_analytics_chart_unavailable'),
+    'empty' => return_translation('admin_table_empty'),
     'unknown' => return_translation('admin_analytics_country_unknown'),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -111,36 +113,10 @@ echo view()->renderPartial('admin/shell_open', [
 
         <div class="row g-3 mt-1">
             <div class="col-lg-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
-                    <h3 class="h5 mb-3"><?= print_translation('admin_analytics_geo_title') ?></h3>
-                    <?php $countriesMobileCards = []; ?>
-                    <?php ob_start(); ?>
-                        <thead>
-                            <tr><th><?= print_translation('admin_analytics_col_country') ?></th><th class="text-end"><?= print_translation('admin_analytics_col_visits') ?></th></tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach (($analytics['countries'] ?? []) as $row): ?>
-                                <?php
-                                $countriesMobileCards[] = [
-                                    'title' => (string)($row['label'] ?? $unknownCountryLabel),
-                                    'views' => (int)($row['total'] ?? 0),
-                                    'views_label' => return_translation('admin_analytics_col_visits'),
-                                ];
-                                ?>
-                                <tr>
-                                    <td><?= htmlSC((string)($row['label'] ?? $unknownCountryLabel)) ?></td>
-                                    <td class="text-end"><?= (int)($row['total'] ?? 0) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            <?php if (empty($analytics['countries'])): ?>
-                                <tr><td colspan="2" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    <?php $adminTableContent = ob_get_clean(); ?>
-                    <?= view()->renderPartial('admin/partials/table', [
-                        'content' => $adminTableContent,
-                        'mobile_cards' => $countriesMobileCards,
-                    ]) ?>
+                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
+                    <h3 class="h5 mb-1"><?= print_translation('admin_analytics_geo_title') ?></h3>
+                    <p class="text-body-secondary mb-3"><?= print_translation('admin_analytics_col_visits') ?></p>
+                    <div style="min-height: 300px" data-analytics-chart="countries"></div>
                     <div class="small text-body-tertiary mt-3">
                         <a class="text-body-tertiary" href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>
                     </div>

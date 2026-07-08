@@ -39,7 +39,11 @@
                 cssVar('--chart-accent-1', '#f59e0b'),
                 cssVar('--chart-accent-2', '#dc3545'),
                 cssVar('--chart-accent-3', '#6f42c1'),
-                cssVar('--chart-accent-4', '#20c997')
+                cssVar('--chart-accent-4', '#20c997'),
+                cssVar('--chart-accent-5', '#0ea5e9'),
+                cssVar('--chart-accent-6', '#84cc16'),
+                cssVar('--chart-accent-7', '#e11d48'),
+                cssVar('--chart-accent-8', '#64748b')
             ]
         };
     }
@@ -86,6 +90,17 @@
         });
     }
 
+    function renderCountries() {
+        const target = root.querySelector('[data-analytics-chart="countries"]');
+        const data = seriesRows(payload.countries || []);
+        renderChart('countries', target, {
+            type: 'pie',
+            labels: data.labels,
+            values: data.values,
+            label: i18n.countries || 'Countries'
+        });
+    }
+
     function renderChart(key, target, config) {
         if (!target) {
             return;
@@ -93,9 +108,15 @@
 
         if (charts[key] && typeof charts[key].destroy === 'function') {
             charts[key].destroy();
+            delete charts[key];
         }
 
         target.innerHTML = '';
+
+        if (config.type !== 'line' && !hasChartData(config.values)) {
+            renderChartMessage(target, i18n.empty || i18n.unavailable || 'No data.');
+            return;
+        }
 
         if (window.Chart) {
             charts[key] = renderChartJs(target, config);
@@ -107,15 +128,24 @@
             return;
         }
 
+        renderChartMessage(target, i18n.unavailable || 'Chart is unavailable.');
+    }
+
+    function hasChartData(values) {
+        return Array.isArray(values) && values.some((value) => Number(value || 0) > 0);
+    }
+
+    function renderChartMessage(target, text) {
         const message = document.createElement('div');
         message.className = 'text-body-secondary py-5 text-center';
-        message.textContent = i18n.unavailable || 'Chart is unavailable.';
+        message.textContent = text;
         target.appendChild(message);
     }
 
     function renderApex(target, config) {
         const theme = palette();
         const isLine = config.type === 'line';
+        const isPie = config.type === 'pie';
         const options = isLine
             ? {
                 chart: {
@@ -144,7 +174,7 @@
             }
             : {
                 chart: {
-                    type: 'donut',
+                    type: isPie ? 'pie' : 'donut',
                     height: 320,
                     foreColor: theme.text
                 },
@@ -175,6 +205,7 @@
         target.appendChild(canvas);
         const context = canvas.getContext('2d');
         const isLine = config.type === 'line';
+        const isPie = config.type === 'pie';
         let lineFill = colorWithAlpha(theme.line, 0.12);
 
         if (isLine && context) {
@@ -186,7 +217,7 @@
         }
 
         const chart = new window.Chart(canvas, {
-            type: isLine ? 'line' : 'doughnut',
+            type: isLine ? 'line' : (isPie ? 'pie' : 'doughnut'),
             data: {
                 labels: config.labels,
                 datasets: [{
@@ -301,6 +332,7 @@
         renderTraffic(activeRange);
         renderSources();
         renderDevices();
+        renderCountries();
     }
 
     root.querySelectorAll('[data-analytics-range]').forEach((button) => {
