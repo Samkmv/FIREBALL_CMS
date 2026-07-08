@@ -39,27 +39,41 @@ class PwaController extends BaseController
 
     public function support(): void
     {
+        $currentUser = check_auth() ? get_user() : null;
+
         response()->json([
             'status' => true,
             'pwa_enabled' => $this->pwa->isEnabled(),
             'push_enabled' => $this->pwa->isPushEnabled(),
             'vapid_public_key' => pwa_head_data()['vapid_public_key'] ?? '',
-            'secure_context' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            'secure_context' => request_is_secure()
                 || in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true),
+            'user' => $currentUser ? $this->pwa->pushStatusForUser((int)$currentUser['id']) : null,
         ]);
     }
 
     public function subscribe(): void
     {
-        $currentUser = check_auth() ? get_user() : null;
+        if (!check_auth()) {
+            response()->json(['status' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        if (!$this->pwa->isPushEnabled()) {
+            response()->json(['status' => false, 'message' => 'Push is disabled.'], 403);
+        }
+
+        $currentUser = get_user();
         $payload = request()->json();
         $ok = $this->pwa->saveSubscription(
-            $currentUser ? (int)$currentUser['id'] : null,
+            (int)$currentUser['id'],
             $payload,
             (string)($_SERVER['HTTP_USER_AGENT'] ?? '')
         );
 
-        response()->json(['status' => $ok], $ok ? 200 : 422);
+        response()->json([
+            'status' => $ok,
+            'push' => $this->pwa->pushStatusForUser((int)$currentUser['id']),
+        ], $ok ? 200 : 422);
     }
 
     public function updateSubscription(): void
@@ -69,13 +83,32 @@ class PwaController extends BaseController
 
     public function unsubscribe(): void
     {
-        $currentUser = check_auth() ? get_user() : null;
+        if (!check_auth()) {
+            response()->json(['status' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        $currentUser = get_user();
         $this->pwa->deleteSubscription(
-            $currentUser ? (int)$currentUser['id'] : null,
+            (int)$currentUser['id'],
             (string)request()->post('endpoint', '')
         );
 
-        response()->json(['status' => true]);
+        response()->json([
+            'status' => true,
+            'push' => $this->pwa->pushStatusForUser((int)$currentUser['id']),
+        ]);
+    }
+
+    public function pushStatus(): void
+    {
+        if (!check_auth()) {
+            response()->json(['status' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        response()->json([
+            'status' => true,
+            'push' => $this->pwa->pushStatusForUser((int)get_user()['id']),
+        ]);
     }
 
     public function clearBadge(): void

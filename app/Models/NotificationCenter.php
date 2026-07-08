@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\NotificationService;
 use App\Services\UpdateCenter;
 
 /**
@@ -13,6 +14,7 @@ class NotificationCenter
     protected ChatMessage $chatMessages;
     protected ContactRequest $contactRequests;
     protected UpdateCenter $updateCenter;
+    protected NotificationService $notifications;
 
     /**
      * Инициализирует модели уведомлений по чатам и заявкам.
@@ -22,6 +24,7 @@ class NotificationCenter
         $this->chatMessages = new ChatMessage();
         $this->contactRequests = new ContactRequest();
         $this->updateCenter = new UpdateCenter(new SiteSetting());
+        $this->notifications = new NotificationService();
     }
 
     /**
@@ -32,11 +35,13 @@ class NotificationCenter
         $limit = max(1, min(20, $limit));
         $chatUnreadCount = $this->chatMessages->getUnreadCountForUser($userId);
         $contactUnreadCount = $isAdmin ? $this->contactRequests->countUnread() : 0;
+        $notificationUnreadCount = $this->notifications->unreadCountForUser($userId);
         $updateItem = $isAdmin && check_creator() ? $this->getUpdateNotificationItem() : null;
         $updateUnreadCount = $updateItem !== null ? 1 : 0;
 
         $chatItems = $this->chatMessages->getUnreadNotificationItemsForUser($userId, $limit);
         $contactItems = $isAdmin ? $this->contactRequests->getUnreadNotificationItems($limit) : [];
+        $notificationItems = $this->notifications->unreadItemsForUser($userId, $limit);
         $pluginItems = [];
         try {
             $pluginItems = apply_filters('notification_feed_items', [], $userId, $isAdmin, $limit);
@@ -51,7 +56,7 @@ class NotificationCenter
             $pluginItems = [];
         }
 
-        $items = array_merge($chatItems, $contactItems, $pluginItems);
+        $items = array_merge($notificationItems, $chatItems, $contactItems, $pluginItems);
         if ($updateItem !== null) {
             $items[] = $updateItem;
         }
@@ -68,7 +73,8 @@ class NotificationCenter
         });
 
         return [
-            'total_unread_count' => $chatUnreadCount + $contactUnreadCount + $updateUnreadCount + count($pluginItems),
+            'total_unread_count' => $notificationUnreadCount + $chatUnreadCount + $contactUnreadCount + $updateUnreadCount + count($pluginItems),
+            'notification_unread_count' => $notificationUnreadCount,
             'chat_unread_count' => $chatUnreadCount,
             'contact_unread_count' => $contactUnreadCount,
             'update_unread_count' => $updateUnreadCount,

@@ -63,20 +63,28 @@ On iPhone, Push works only for the site installed to the home screen and opened 
 
 ## NotificationService
 
-Any module or plugin can send a notification:
+Any module or plugin should create notifications through the unified service. The CMS stores the in-site notification first and then sends Web Push automatically when the user has enabled push and has an active browser or PWA subscription.
 
 ```php
 use App\Services\NotificationService;
 
-NotificationService::sendToUser($userId, [
+NotificationService::create([
+    'user_id' => $userId,
     'title' => 'New request',
-    'body' => 'A new request was submitted.',
-    'url' => base_href('/admin/contact-requests'),
-    'tag' => 'contact-request',
+    'message' => 'A new request was submitted.',
+    'type' => 'support_ticket',
+    'action_url' => '/admin/contact-requests',
+    'source' => 'support',
+    'priority' => 'normal',
+    'metadata' => [
+        'request_id' => 123,
+    ],
 ]);
 ```
 
-Supported fields: `title`, `body`, `icon`, `badge`, `image`, `url`, `tag`, `data`, `vibrate`, `timestamp` and `actions`.
+The helper `notification_create([...])` is also available to plugins. Do not send Web Push directly from a plugin; push is an additional delivery channel managed by the CMS.
+
+Supported fields: `user_id`, `title`, `message`, `type`, `action_url`, `icon`, `source`, `priority` and `metadata`. Legacy `sendToUser()` calls are still accepted and are routed through the same notification flow.
 
 ## Offline
 

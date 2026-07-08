@@ -8,6 +8,7 @@ use App\Models\Page;
 use App\Models\Post;
 use App\Models\SiteSetting;
 use App\Models\Support;
+use App\Services\NotificationService;
 use FBL\Theme;
 use FBL\RateLimiter;
 
@@ -131,7 +132,8 @@ class HomeController extends BaseController
                 response()->redirect(base_href('/contacts'));
             }
 
-            $this->contactRequests->create($data);
+            $requestId = $this->contactRequests->create($data);
+            $this->notifyAdminsAboutContactRequest($requestId, $data, 'contacts');
             session()->remove('form_data');
             session()->remove('form_errors');
             session()->setFlash('success', return_translation('contacts_form_success'));
@@ -171,7 +173,8 @@ class HomeController extends BaseController
                 response()->redirect($this->supportQuestionFormRedirectUrl());
             }
 
-            $this->contactRequests->create($data);
+            $requestId = $this->contactRequests->create($data);
+            $this->notifyAdminsAboutContactRequest($requestId, $data, 'support');
             session()->remove('form_data');
             session()->remove('form_errors');
             session()->setFlash('success', return_translation('support_question_success'));
@@ -256,6 +259,33 @@ class HomeController extends BaseController
         }
 
         return hash('sha256', 'support-feedback|' . client_ip() . '|' . (string)($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    }
+
+    protected function notifyAdminsAboutContactRequest(int $requestId, array $data, string $source): void
+    {
+        if ($requestId <= 0) {
+            return;
+        }
+
+        try {
+            NotificationService::createForAdmins([
+                'title' => (string)($data['subject'] ?? return_translation('notification_request_fallback_subject')),
+                'message' => str_replace(':name', (string)($data['name'] ?? ''), return_translation('notification_request_from')),
+                'type' => 'contact_request',
+                'action_url' => '/admin/contact-requests',
+                'source' => $source,
+                'priority' => 'normal',
+                'metadata' => [
+                    'request_id' => $requestId,
+                ],
+                'store_unread' => false,
+            ]);
+        } catch (\Throwable $exception) {
+            log_error_details('Contact request notification dispatch failed', [
+                'request_id' => $requestId,
+                'source' => $source,
+            ], $exception);
+        }
     }
 
     /**

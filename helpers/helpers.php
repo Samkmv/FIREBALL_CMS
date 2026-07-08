@@ -140,6 +140,11 @@ function plugin_view(string $pluginSlug, string $view, array $data = [], bool $l
     return plugin_manager()->renderView($pluginSlug, $view, $data, $layout);
 }
 
+function notification_create(array $payload): array
+{
+    return \App\Services\NotificationService::create($payload);
+}
+
 function get_route_params(): array
 {
     return app()->router->route_params;

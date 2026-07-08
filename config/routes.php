@@ -53,6 +53,7 @@ $app->router->get('/service-worker.js', [PwaController::class, 'serviceWorker'])
 $app->router->get('/sw.js', [PwaController::class, 'serviceWorker']);
 $app->router->get('/offline', [PwaController::class, 'offline']);
 $app->router->get('/api/pwa/support', [PwaController::class, 'support']);
+$app->router->get('/api/pwa/status', [PwaController::class, 'pushStatus']);
 $app->router->post('/api/pwa/subscriptions', [PwaController::class, 'subscribe']);
 $app->router->put('/api/pwa/subscriptions', [PwaController::class, 'updateSubscription']);
 $app->router->delete('/api/pwa/subscriptions', [PwaController::class, 'unsubscribe']);
@@ -80,6 +81,7 @@ $app->router->post('/chat/messages/delete', [ChatController::class, 'deleteMessa
 $app->router->post('/chat/conversation/clear', [ChatController::class, 'clearConversation'])->middleware(['auth']);
 $app->router->get('/chat/conversation/audit', [ChatController::class, 'audit'])->middleware(['auth']);
 $app->router->get('/notifications/feed', [NotificationController::class, 'feed'])->middleware(['auth']);
+$app->router->post('/notifications/read', [NotificationController::class, 'markRead'])->middleware(['auth']);
 $app->router->post('/logout', [AuthController::class, 'logout'])->middleware(['auth']);
 $app->router->get('/search/suggest', [SearchController::class, 'suggest']);
 $app->router->get('/search', [SearchController::class, 'index']);

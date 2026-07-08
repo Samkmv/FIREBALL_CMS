@@ -812,8 +812,11 @@ $(function(){
                 ? `<img src="${escapeHtml(item.avatar)}" alt="" class="rounded-circle object-fit-cover border flex-shrink-0" style="width: 40px; height: 40px;">`
                 : '';
 
+            const notificationId = Number(item.notification_id || 0);
+            const notificationAttr = notificationId > 0 ? ` data-notification-id="${notificationId}"` : '';
+
             html += `
-                <a class="list-group-item list-group-item-action px-3 py-3" href="${escapeHtml(item.url || '#')}">
+                <a class="list-group-item list-group-item-action px-3 py-3" href="${escapeHtml(item.url || '#')}"${notificationAttr}>
                     <div class="d-flex align-items-start justify-content-between gap-3">
                         <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
                             ${avatar}
@@ -938,6 +941,37 @@ $(function(){
             return url;
         }
     };
+
+    notificationList.on('click', '[data-notification-id]', function (event) {
+        const readUrl = notificationCenter.data('read-url');
+        const notificationId = Number($(this).data('notification-id') || 0);
+        if (!readUrl || notificationId <= 0) {
+            return;
+        }
+
+        event.preventDefault();
+        const targetUrl = $(this).attr('href') || '#';
+        $.ajax({
+            url: sameOriginUrl(readUrl),
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                notification_id: notificationId,
+                needCSRFToken: getCsrfToken(),
+            },
+            headers: {
+                'X-CSRF-Token': getCsrfToken(),
+            },
+            complete: function () {
+                if (targetUrl && targetUrl !== '#') {
+                    window.location.href = targetUrl;
+                    return;
+                }
+
+                setTimeout(pollNotificationFeed, 250);
+            },
+        });
+    });
 
     const pollNotificationFeed = () => {
         if (!notificationCenter.length) {

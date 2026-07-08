@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\NotificationCenter;
+use App\Services\NotificationService;
 
 /**
  * Возвращает ленту уведомлений для текущего пользователя.
@@ -31,6 +32,21 @@ class NotificationController extends BaseController
 
         $items = array_map(function (array $item): array {
             $type = (string)($item['type'] ?? '');
+            $storedNotificationId = (int)($item['notification_id'] ?? 0);
+
+            if ($storedNotificationId > 0) {
+                return [
+                    'type' => $type !== '' ? $type : 'system',
+                    'notification_id' => $storedNotificationId,
+                    'source_label' => (string)($item['source_label'] ?? return_translation('tpl_notifications')),
+                    'title' => (string)($item['title'] ?? return_translation('tpl_notifications')),
+                    'text' => (string)($item['text'] ?? ''),
+                    'url' => (string)($item['url'] ?? '#'),
+                    'created_at' => (string)($item['created_at'] ?? ''),
+                    'time' => (string)($item['time'] ?? ($item['created_at'] ?? '')),
+                    'sort_id' => (int)($item['sort_id'] ?? 0),
+                ];
+            }
 
             if ($type === 'update') {
                 return [
@@ -85,11 +101,20 @@ class NotificationController extends BaseController
         response()->json([
             'status' => true,
             'total_unread_count' => (int)$feed['total_unread_count'],
+            'notification_unread_count' => (int)($feed['notification_unread_count'] ?? 0),
             'chat_unread_count' => (int)$feed['chat_unread_count'],
             'contact_unread_count' => (int)$feed['contact_unread_count'],
             'plugin_unread_count' => (int)($feed['plugin_unread_count'] ?? 0),
             'items' => $items,
         ]);
+    }
+
+    public function markRead(): void
+    {
+        $notificationId = (int)request()->post('notification_id', 0);
+        $ok = (new NotificationService())->markRead((int)get_user()['id'], $notificationId);
+
+        response()->json(['status' => $ok]);
     }
 
 }

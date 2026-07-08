@@ -92,6 +92,57 @@
     });
   };
 
+  const setPushStatusText = (key) => {
+    document.querySelectorAll('[data-pwa-push-status]').forEach((element) => {
+      const value = element.dataset[`status${key.charAt(0).toUpperCase()}${key.slice(1)}`] || '';
+      if (value) element.textContent = value;
+      element.classList.toggle('text-bg-success', key === 'enabled');
+      element.classList.toggle('text-bg-secondary', key !== 'enabled');
+    });
+  };
+
+  const browserPushStatus = () => {
+    if (body.dataset.pwaPushEnabled !== '1' || !body.dataset.pwaVapidPublicKey) return 'unavailable';
+    if (!isSecure) return 'unavailable';
+    if (isIos && !isStandalone()) return 'unavailable';
+    if (!('Notification' in window) || !('PushManager' in window)) return 'unsupported';
+    if (Notification.permission === 'denied') return 'permission';
+    return '';
+  };
+
+  const syncPushStatus = async () => {
+    const browserStatus = browserPushStatus();
+    if (browserStatus) {
+      setPushStatusText(browserStatus);
+      return;
+    }
+
+    const registration = window.FireballPwa.registration || await registerServiceWorker();
+    const subscription = registration?.pushManager ? await registration.pushManager.getSubscription() : null;
+    if (subscription) {
+      setPushStatusText('enabled');
+      return;
+    }
+
+    if (!body.dataset.pwaStatusUrl) {
+      setPushStatusText('disabled');
+      return;
+    }
+
+    try {
+      const response = await fetch(body.dataset.pwaStatusUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const data = await response.json();
+      const push = data && data.push ? data.push : {};
+      setPushStatusText(push.user_enabled && Number(push.active_subscriptions || 0) > 0 ? 'enabled' : 'disabled');
+    } catch (error) {
+      setPushStatusText('disabled');
+    }
+  };
+
   const registerServiceWorker = async () => {
     if (body.dataset.pwaEnabled !== '1' || !isSecure || !('serviceWorker' in navigator)) {
       showIosHint();
@@ -143,16 +194,26 @@
     });
 
     await postJson(body.dataset.pwaSubscribeUrl, subscription.toJSON());
+    await syncPushStatus();
     return { status: true, subscription };
   };
 
   const unsubscribePush = async () => {
     const registration = window.FireballPwa.registration || await registerServiceWorker();
-    if (!registration || !registration.pushManager) return { status: true };
+    if (!registration || !registration.pushManager) {
+      await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: '' });
+      await syncPushStatus();
+      return { status: true };
+    }
     const subscription = await registration.pushManager.getSubscription();
-    if (!subscription) return { status: true };
+    if (!subscription) {
+      await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: '' });
+      await syncPushStatus();
+      return { status: true };
+    }
     await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: subscription.endpoint });
     await subscription.unsubscribe();
+    await syncPushStatus();
     return { status: true };
   };
 
@@ -212,13 +273,19 @@
       const enable = event.target.closest('[data-pwa-enable-push]');
       if (enable) {
         event.preventDefault();
-        subscribePush().then((result) => document.dispatchEvent(new CustomEvent('fireball:pwa-subscribe-result', { detail: result })));
+        subscribePush().then((result) => {
+          document.dispatchEvent(new CustomEvent('fireball:pwa-subscribe-result', { detail: result }));
+          syncPushStatus();
+        });
         return;
       }
       const disable = event.target.closest('[data-pwa-disable-push]');
       if (disable) {
         event.preventDefault();
-        unsubscribePush().then((result) => document.dispatchEvent(new CustomEvent('fireball:pwa-unsubscribe-result', { detail: result })));
+        unsubscribePush().then((result) => {
+          document.dispatchEvent(new CustomEvent('fireball:pwa-unsubscribe-result', { detail: result }));
+          syncPushStatus();
+        });
       }
     });
   };
@@ -242,6 +309,6 @@
   bindInstallPrompt();
   bindPwaLinks();
   bindPushButtons();
-  registerServiceWorker();
+  registerServiceWorker().then(syncPushStatus);
   showIosHint();
 })();

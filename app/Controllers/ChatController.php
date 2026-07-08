@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\UploadSettings;
 use FBL\File;
 
@@ -136,6 +137,7 @@ class ChatController extends BaseController
                 $this->chatMessages->create($currentUserId, $contactId, $text, $attachment, $requestContext);
             }
         }
+        $this->notifyChatRecipient($currentUserId, $contactId, $message, $attachments);
 
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
         $payload['message'] = return_translation('chat_message_sent');
@@ -640,6 +642,43 @@ class ChatController extends BaseController
         ];
 
         return $mimeTypes[$extension] ?? $fallbackType;
+    }
+
+    protected function notifyChatRecipient(int $senderId, int $receiverId, string $message, array $attachments): void
+    {
+        if ($senderId <= 0 || $receiverId <= 0 || $senderId === $receiverId) {
+            return;
+        }
+
+        try {
+            $sender = get_user();
+            $preview = trim($message);
+            if ($preview === '' && !empty($attachments[0]['name'])) {
+                $preview = return_translation('chat_attachment_label') . ': ' . (string)$attachments[0]['name'];
+            }
+            if ($preview === '') {
+                $preview = return_translation('chat_message_sent');
+            }
+
+            NotificationService::create([
+                'user_id' => $receiverId,
+                'title' => (string)($sender['name'] ?? return_translation('notification_chat_fallback_title')),
+                'message' => mb_substr($preview, 0, 240),
+                'type' => 'chat',
+                'action_url' => '/chat?user_id=' . $senderId,
+                'source' => 'chat',
+                'priority' => 'normal',
+                'metadata' => [
+                    'sender_id' => $senderId,
+                ],
+                'store_unread' => false,
+            ]);
+        } catch (\Throwable $exception) {
+            log_error_details('Chat notification dispatch failed', [
+                'sender_id' => $senderId,
+                'receiver_id' => $receiverId,
+            ], $exception);
+        }
     }
 
 }

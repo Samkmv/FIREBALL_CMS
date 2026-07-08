@@ -6,6 +6,7 @@ use App\Models\SecurityLog;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\MailService;
+use App\Services\PwaService;
 use App\Services\TwoFactorService;
 use FBL\Auth;
 use FBL\File;
@@ -599,6 +600,7 @@ class AuthController extends BaseController
             'two_factor_uri' => $twoFactorUri,
             'two_factor_qr_code' => $twoFactor->qrCodeDataUri($twoFactorUri),
             'two_factor_recovery_codes' => is_array($recoveryCodes) ? $recoveryCodes : [],
+            'push_status' => (new PwaService())->pushStatusForUser((int)$user['id']),
         ]);
     }
 

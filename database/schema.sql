@@ -60,6 +60,76 @@ CREATE TABLE IF NOT EXISTS site_metrics (
     UNIQUE KEY metric_key (metric_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT(10) UNSIGNED NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NULL,
+    type VARCHAR(80) NOT NULL DEFAULT 'system',
+    action_url VARCHAR(500) NULL,
+    icon VARCHAR(500) NULL,
+    source VARCHAR(120) NULL,
+    priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+    metadata MEDIUMTEXT NULL,
+    is_read TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+    read_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    KEY user_unread (user_id, is_read, created_at),
+    KEY type (type),
+    KEY source (source)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS notification_settings (
+    user_id INT(10) UNSIGNED NOT NULL,
+    push_enabled TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pwa_subscriptions (
+    id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT(10) UNSIGNED NULL,
+    is_active TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+    endpoint_hash CHAR(64) NOT NULL,
+    endpoint TEXT NOT NULL,
+    p256dh TEXT NULL,
+    auth TEXT NULL,
+    platform VARCHAR(60) NULL,
+    browser VARCHAR(60) NULL,
+    user_agent VARCHAR(255) NULL,
+    subscription_json MEDIUMTEXT NOT NULL,
+    last_seen_at DATETIME NOT NULL,
+    last_used_at DATETIME NULL,
+    revoked_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY endpoint_hash (endpoint_hash),
+    KEY user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pwa_notifications (
+    id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    notification_id BIGINT UNSIGNED NULL,
+    user_id INT(10) UNSIGNED NULL,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NULL,
+    type VARCHAR(80) NULL,
+    source VARCHAR(120) NULL,
+    payload MEDIUMTEXT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'queued',
+    sent_count INT(10) UNSIGNED NOT NULL DEFAULT 0,
+    failed_count INT(10) UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    sent_at DATETIME NULL,
+    PRIMARY KEY (id),
+    KEY notification_id (notification_id),
+    KEY user_id (user_id),
+    KEY created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS post_categories (
     id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(150) NOT NULL,

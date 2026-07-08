@@ -108,6 +108,34 @@ $imageField = static function (string $name, string $label, string $hint) use ($
             <div class="col-md-6">
                 <?php $imageField('pwa_startup_image', return_translation('admin_pwa_startup_image'), return_translation('admin_pwa_startup_image_hint')); ?>
             </div>
+            <div class="col-12"><hr class="my-2"></div>
+            <div class="col-lg-6">
+                <label class="form-label" for="pwa_vapid_public_key"><?= print_translation('admin_pwa_vapid_public_key') ?></label>
+                <textarea class="form-control font-monospace small" id="pwa_vapid_public_key" name="pwa_vapid_public_key" rows="3"><?= htmlSC($value('pwa_vapid_public_key')) ?></textarea>
+            </div>
+            <div class="col-lg-6">
+                <label class="form-label" for="pwa_vapid_private_key"><?= print_translation('admin_pwa_vapid_private_key') ?></label>
+                <textarea class="form-control font-monospace small" id="pwa_vapid_private_key" name="pwa_vapid_private_key" rows="3" placeholder="<?= htmlSC(!empty($settings['pwa_vapid_private_key']) ? return_translation('admin_pwa_vapid_private_configured') : '') ?>"></textarea>
+                <div class="form-text"><?= print_translation('admin_pwa_vapid_private_key_hint') ?></div>
+            </div>
+            <div class="col-lg-8">
+                <label class="form-label" for="pwa_vapid_subject"><?= print_translation('admin_pwa_vapid_subject') ?></label>
+                <input class="form-control <?= get_validation_class('pwa_vapid_subject') ?>" type="text" id="pwa_vapid_subject" name="pwa_vapid_subject" value="<?= htmlSC($value('pwa_vapid_subject')) ?>" placeholder="admin@example.com">
+                <div class="form-text"><?= print_translation('admin_pwa_vapid_subject_hint') ?></div>
+                <?= get_errors('pwa_vapid_subject') ?>
+            </div>
+            <div class="col-lg-4">
+                <label class="form-label" for="pwa_push_ttl"><?= print_translation('admin_pwa_push_ttl') ?></label>
+                <input class="form-control <?= get_validation_class('pwa_push_ttl') ?>" type="number" id="pwa_push_ttl" name="pwa_push_ttl" value="<?= htmlSC($value('pwa_push_ttl', '86400')) ?>" min="60" max="2419200" step="60">
+                <div class="form-text"><?= print_translation('admin_pwa_push_ttl_hint') ?></div>
+                <?= get_errors('pwa_push_ttl') ?>
+            </div>
+            <div class="col-md-6">
+                <?php $imageField('pwa_notification_icon', return_translation('admin_pwa_notification_icon'), return_translation('admin_pwa_notification_icon_hint')); ?>
+            </div>
+            <div class="col-md-6">
+                <?php $imageField('pwa_notification_badge', return_translation('admin_pwa_notification_badge'), return_translation('admin_pwa_notification_badge_hint')); ?>
+            </div>
         </div>
         <div class="d-flex flex-wrap gap-2 mt-4">
             <button class="btn btn-primary rounded-pill" type="submit">
@@ -126,7 +154,11 @@ $imageField = static function (string $name, string $label, string $hint) use ($
                 <label class="form-label"><?= print_translation('admin_pwa_vapid_public_key') ?></label>
                 <textarea class="form-control font-monospace small mb-3" rows="4" readonly><?= htmlSC($settings['pwa_vapid_public_key'] ?? '') ?></textarea>
                 <label class="form-label"><?= print_translation('admin_pwa_vapid_private_key') ?></label>
-                <textarea class="form-control font-monospace small" rows="4" readonly><?= htmlSC($settings['pwa_vapid_private_key'] ?? '') ?></textarea>
+                <div class="form-control bg-body-tertiary">
+                    <?= !empty($settings['pwa_vapid_private_key'])
+                        ? htmlSC(return_translation('admin_pwa_vapid_private_configured'))
+                        : htmlSC(return_translation('admin_pwa_vapid_private_missing')) ?>
+                </div>
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <form action="<?= base_href('/admin/settings/pwa/vapid') ?>" method="post">
                         <?= get_csrf_field() ?>

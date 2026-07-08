@@ -567,12 +567,55 @@ final class FireballPluginToyCarRental implements PluginInterface
     {
         self::ensureRideSchema();
 
+        $now = date('Y-m-d H:i:s');
+        $newlyOverdue = db()->query(
+            "SELECT r.id, r.car_id, r.planned_end_at, c.name AS car_name, c.number AS car_number
+             FROM toy_rental_rides r
+             INNER JOIN toy_rental_cars c ON c.id = r.car_id
+             WHERE r.status = 'active' AND r.billing_type = 'fixed' AND r.planned_end_at < ?",
+            [$now]
+        )->get() ?: [];
+
         db()->query(
             "UPDATE toy_rental_rides
              SET status = 'overdue', updated_at = ?
              WHERE status = 'active' AND billing_type = 'fixed' AND planned_end_at < ?",
-            [date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]
+            [$now, $now]
         );
+
+        foreach ($newlyOverdue as $ride) {
+            self::notifyAdminsAboutOverdueRide($ride);
+        }
+    }
+
+    protected static function notifyAdminsAboutOverdueRide(array $ride): void
+    {
+        try {
+            $plannedAt = strtotime((string)($ride['planned_end_at'] ?? '')) ?: time();
+            $minutesOverdue = max(1, (int)floor((time() - $plannedAt) / 60));
+            $carLabel = trim((string)($ride['car_name'] ?? '') . ' №' . (string)($ride['car_number'] ?? ''));
+
+            \App\Services\NotificationService::createForAdmins([
+                'title' => self::t('toy_rental_notification_overdue_title'),
+                'message' => self::t('toy_rental_notification_overdue_text', [
+                    'car' => $carLabel,
+                    'minutes' => $minutesOverdue,
+                ]),
+                'type' => 'toy_rental',
+                'action_url' => '/admin/toy-rental',
+                'source' => self::SLUG,
+                'priority' => 'high',
+                'metadata' => [
+                    'ride_id' => (int)($ride['id'] ?? 0),
+                    'car_id' => (int)($ride['car_id'] ?? 0),
+                ],
+                'store_unread' => false,
+            ]);
+        } catch (Throwable $exception) {
+            log_error_details('Toy rental overdue notification dispatch failed', [
+                'ride_id' => (int)($ride['id'] ?? 0),
+            ], $exception);
+        }
     }
 
     public static function notificationFeedItems(array $items, int $userId, bool $isAdmin, int $limit): array

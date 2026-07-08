@@ -1126,7 +1126,9 @@ class AdminController extends BaseController
             try {
                 $pwa->syncIcons();
             } catch (\Throwable $exception) {
-                log_error_details('PWA icon sync failed', $data, $exception);
+                $safeLogData = $data;
+                unset($safeLogData['pwa_vapid_private_key']);
+                log_error_details('PWA icon sync failed', $safeLogData, $exception);
             }
             session()->remove('form_data');
             session()->remove('form_errors');
@@ -1162,17 +1164,20 @@ class AdminController extends BaseController
     public function testPwaPush()
     {
         try {
-            $result = NotificationService::broadcast([
+            $result = NotificationService::create([
+                'user_id' => (int)get_user()['id'],
                 'title' => return_translation('pwa_test_push_title'),
-                'body' => return_translation('pwa_test_push_body'),
+                'message' => return_translation('pwa_test_push_body'),
+                'type' => 'test_push',
+                'source' => 'system',
                 'url' => base_href('/'),
-                'tag' => 'fireball-test-push',
             ]);
+            $push = $result['push'] ?? ['sent' => 0, 'failed' => 0, 'total' => 0];
             session()->setFlash(
-                $result['sent'] > 0 ? 'success' : 'warning',
+                ($push['sent'] ?? 0) > 0 ? 'success' : 'warning',
                 str_replace(
                     [':sent', ':failed', ':total'],
-                    [(string)$result['sent'], (string)$result['failed'], (string)$result['total']],
+                    [(string)($push['sent'] ?? 0), (string)($push['failed'] ?? 0), (string)($push['total'] ?? 0)],
                     return_translation('admin_pwa_test_push_result')
                 )
             );
@@ -1705,6 +1710,21 @@ class AdminController extends BaseController
 
         try {
             $result = $this->updateCenter->checkForUpdates();
+            if (!empty($result['update_available'])) {
+                NotificationService::create([
+                    'user_id' => (int)get_user()['id'],
+                    'title' => return_translation('notification_update_fallback_title'),
+                    'message' => (string)($result['message'] ?? return_translation('notification_update_available_generic')),
+                    'type' => 'update',
+                    'action_url' => '/admin/updates',
+                    'source' => 'system',
+                    'priority' => 'normal',
+                    'metadata' => [
+                        'remote_version' => (string)($result['remote_version'] ?? ''),
+                    ],
+                    'store_unread' => false,
+                ]);
+            }
             session()->setFlash('success', (string)($result['message'] ?? return_translation('admin_update_check_available')));
         } catch (\Throwable $exception) {
             session()->setFlash('error', $exception->getMessage());
@@ -1920,8 +1940,12 @@ class AdminController extends BaseController
     protected function normalizePwaSettingsData(array $data): array
     {
         $orientation = (string)($data['pwa_orientation'] ?? 'any');
+        $ttl = (int)($data['pwa_push_ttl'] ?? 86400);
+        if ($ttl < 60 || $ttl > 2419200) {
+            $ttl = 86400;
+        }
 
-        return [
+        $settings = [
             'pwa_enabled' => !empty($data['pwa_enabled']) ? '1' : '0',
             'pwa_push_enabled' => !empty($data['pwa_push_enabled']) ? '1' : '0',
             'pwa_app_name' => mb_substr(trim((string)($data['pwa_app_name'] ?? '')), 0, 80),
@@ -1932,8 +1956,20 @@ class AdminController extends BaseController
             'pwa_orientation' => in_array($orientation, ['any', 'portrait', 'portrait-primary', 'landscape', 'landscape-primary'], true) ? $orientation : 'any',
             'pwa_logo' => trim((string)($data['pwa_logo'] ?? '')),
             'pwa_startup_image' => trim((string)($data['pwa_startup_image'] ?? '')),
+            'pwa_vapid_public_key' => trim((string)($data['pwa_vapid_public_key'] ?? '')),
+            'pwa_vapid_subject' => mb_substr(trim((string)($data['pwa_vapid_subject'] ?? '')), 0, 190),
+            'pwa_notification_icon' => trim((string)($data['pwa_notification_icon'] ?? '')),
+            'pwa_notification_badge' => trim((string)($data['pwa_notification_badge'] ?? '')),
+            'pwa_push_ttl' => (string)$ttl,
             'pwa_cache_version' => (string)time(),
         ];
+
+        $privateKey = trim((string)($data['pwa_vapid_private_key'] ?? ''));
+        if ($privateKey !== '') {
+            $settings['pwa_vapid_private_key'] = $privateKey;
+        }
+
+        return $settings;
     }
 
     protected function validatePwaSettingsData(array $data): array
@@ -1946,10 +1982,25 @@ class AdminController extends BaseController
             }
         }
 
-        foreach (['pwa_logo', 'pwa_startup_image'] as $field) {
+        foreach (['pwa_logo', 'pwa_startup_image', 'pwa_notification_icon', 'pwa_notification_badge'] as $field) {
             if (($data[$field] ?? '') !== '' && !$this->isValidSeoImage((string)$data[$field])) {
                 $errors[$field][] = return_translation('admin_validation_seo_image_invalid');
             }
+        }
+
+        if (!empty($data['pwa_vapid_subject'])) {
+            $subject = (string)$data['pwa_vapid_subject'];
+            if (
+                !filter_var($subject, FILTER_VALIDATE_EMAIL)
+                && !str_starts_with($subject, 'mailto:')
+                && !filter_var($subject, FILTER_VALIDATE_URL)
+            ) {
+                $errors['pwa_vapid_subject'][] = return_translation('admin_pwa_vapid_subject_error');
+            }
+        }
+
+        if ((int)($data['pwa_push_ttl'] ?? 0) < 60 || (int)($data['pwa_push_ttl'] ?? 0) > 2419200) {
+            $errors['pwa_push_ttl'][] = return_translation('admin_pwa_push_ttl_error');
         }
 
         return $errors;

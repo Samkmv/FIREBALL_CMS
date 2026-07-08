@@ -290,6 +290,7 @@ self.addEventListener("sync", () => {});
             "CREATE TABLE IF NOT EXISTS pwa_subscriptions (
                 id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
                 user_id INT(10) UNSIGNED NULL,
+                is_active TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
                 endpoint_hash CHAR(64) NOT NULL,
                 endpoint TEXT NOT NULL,
                 p256dh TEXT NULL,
@@ -299,6 +300,8 @@ self.addEventListener("sync", () => {});
                 user_agent VARCHAR(255) NULL,
                 subscription_json MEDIUMTEXT NOT NULL,
                 last_seen_at DATETIME NOT NULL,
+                last_used_at DATETIME NULL,
+                revoked_at DATETIME NULL,
                 created_at DATETIME NOT NULL,
                 updated_at DATETIME NOT NULL,
                 PRIMARY KEY (id),
@@ -310,9 +313,12 @@ self.addEventListener("sync", () => {});
         db()->query(
             "CREATE TABLE IF NOT EXISTS pwa_notifications (
                 id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                notification_id BIGINT UNSIGNED NULL,
                 user_id INT(10) UNSIGNED NULL,
                 title VARCHAR(255) NOT NULL,
                 body TEXT NULL,
+                type VARCHAR(80) NULL,
+                source VARCHAR(120) NULL,
                 payload MEDIUMTEXT NULL,
                 status VARCHAR(30) NOT NULL DEFAULT 'queued',
                 sent_count INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -320,8 +326,19 @@ self.addEventListener("sync", () => {});
                 created_at DATETIME NOT NULL,
                 sent_at DATETIME NULL,
                 PRIMARY KEY (id),
+                KEY notification_id (notification_id),
                 KEY user_id (user_id),
                 KEY created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+
+        db()->query(
+            "CREATE TABLE IF NOT EXISTS notification_settings (
+                user_id INT(10) UNSIGNED NOT NULL,
+                push_enabled TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                PRIMARY KEY (user_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
 
@@ -333,6 +350,7 @@ self.addEventListener("sync", () => {});
     protected function upgradeSchema(): void
     {
         $this->addColumnIfMissing('pwa_subscriptions', 'user_id', 'INT(10) UNSIGNED NULL AFTER id');
+        $this->addColumnIfMissing('pwa_subscriptions', 'is_active', 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 1 AFTER user_id');
         $this->addColumnIfMissing('pwa_subscriptions', 'endpoint_hash', 'CHAR(64) NULL AFTER user_id');
         $this->addColumnIfMissing('pwa_subscriptions', 'p256dh', 'TEXT NULL AFTER endpoint');
         $this->addColumnIfMissing('pwa_subscriptions', 'auth', 'TEXT NULL AFTER p256dh');
@@ -341,11 +359,16 @@ self.addEventListener("sync", () => {});
         $this->addColumnIfMissing('pwa_subscriptions', 'user_agent', 'VARCHAR(255) NULL AFTER browser');
         $this->addColumnIfMissing('pwa_subscriptions', 'subscription_json', 'MEDIUMTEXT NULL AFTER user_agent');
         $this->addColumnIfMissing('pwa_subscriptions', 'last_seen_at', 'DATETIME NULL AFTER subscription_json');
+        $this->addColumnIfMissing('pwa_subscriptions', 'last_used_at', 'DATETIME NULL AFTER last_seen_at');
+        $this->addColumnIfMissing('pwa_subscriptions', 'revoked_at', 'DATETIME NULL AFTER last_used_at');
         $this->addColumnIfMissing('pwa_subscriptions', 'created_at', 'DATETIME NULL AFTER last_seen_at');
         $this->addColumnIfMissing('pwa_subscriptions', 'updated_at', 'DATETIME NULL AFTER created_at');
 
+        $this->addColumnIfMissing('pwa_notifications', 'notification_id', 'BIGINT UNSIGNED NULL AFTER id');
         $this->addColumnIfMissing('pwa_notifications', 'user_id', 'INT(10) UNSIGNED NULL AFTER id');
         $this->addColumnIfMissing('pwa_notifications', 'body', 'TEXT NULL AFTER title');
+        $this->addColumnIfMissing('pwa_notifications', 'type', 'VARCHAR(80) NULL AFTER body');
+        $this->addColumnIfMissing('pwa_notifications', 'source', 'VARCHAR(120) NULL AFTER type');
         $this->addColumnIfMissing('pwa_notifications', 'payload', 'MEDIUMTEXT NULL AFTER body');
         $this->addColumnIfMissing('pwa_notifications', 'status', "VARCHAR(30) NOT NULL DEFAULT 'queued' AFTER payload");
         $this->addColumnIfMissing('pwa_notifications', 'sent_count', 'INT(10) UNSIGNED NOT NULL DEFAULT 0 AFTER status');
@@ -354,8 +377,10 @@ self.addEventListener("sync", () => {});
         $this->addColumnIfMissing('pwa_notifications', 'sent_at', 'DATETIME NULL AFTER created_at');
 
         db()->query("UPDATE pwa_subscriptions SET endpoint_hash = SHA2(endpoint, 256) WHERE endpoint_hash IS NULL OR endpoint_hash = ''");
+        db()->query("UPDATE pwa_subscriptions SET is_active = 1 WHERE is_active IS NULL");
         db()->query("UPDATE pwa_subscriptions SET subscription_json = '{}' WHERE subscription_json IS NULL OR subscription_json = ''");
         db()->query("UPDATE pwa_subscriptions SET last_seen_at = COALESCE(last_seen_at, updated_at, created_at, NOW())");
+        db()->query("UPDATE pwa_subscriptions SET last_used_at = COALESCE(last_used_at, last_seen_at) WHERE last_used_at IS NULL");
         db()->query("UPDATE pwa_subscriptions SET created_at = COALESCE(created_at, last_seen_at, NOW())");
         db()->query("UPDATE pwa_subscriptions SET updated_at = COALESCE(updated_at, last_seen_at, created_at, NOW())");
         db()->query("UPDATE pwa_notifications SET created_at = COALESCE(created_at, sent_at, NOW())");
@@ -376,11 +401,22 @@ self.addEventListener("sync", () => {});
         }
     }
 
-    public function saveSubscription(?int $userId, array $subscription, string $userAgent = ''): bool
+    public function saveSubscription(int $userId, array $subscription, string $userAgent = ''): bool
     {
+        if ($userId <= 0) {
+            return false;
+        }
+
         $endpoint = trim((string)($subscription['endpoint'] ?? ''));
         $keys = is_array($subscription['keys'] ?? null) ? $subscription['keys'] : [];
-        if ($endpoint === '' || !filter_var($endpoint, FILTER_VALIDATE_URL) || empty($keys['p256dh']) || empty($keys['auth'])) {
+        if (
+            $endpoint === ''
+            || !filter_var($endpoint, FILTER_VALIDATE_URL)
+            || empty($keys['p256dh'])
+            || empty($keys['auth'])
+            || strlen((string)$keys['p256dh']) > 512
+            || strlen((string)$keys['auth']) > 255
+        ) {
             return false;
         }
 
@@ -391,10 +427,11 @@ self.addEventListener("sync", () => {});
         $this->ensureTables();
         db()->query(
             "INSERT INTO pwa_subscriptions
-                (user_id, endpoint_hash, endpoint, p256dh, auth, platform, browser, user_agent, subscription_json, last_seen_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (user_id, is_active, endpoint_hash, endpoint, p256dh, auth, platform, browser, user_agent, subscription_json, last_seen_at, last_used_at, revoked_at, created_at, updated_at)
+             VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)
              ON DUPLICATE KEY UPDATE
                 user_id = VALUES(user_id),
+                is_active = 1,
                 p256dh = VALUES(p256dh),
                 auth = VALUES(auth),
                 platform = VALUES(platform),
@@ -402,6 +439,7 @@ self.addEventListener("sync", () => {});
                 user_agent = VALUES(user_agent),
                 subscription_json = VALUES(subscription_json),
                 last_seen_at = VALUES(last_seen_at),
+                revoked_at = NULL,
                 updated_at = VALUES(updated_at)",
             [
                 $userId,
@@ -418,6 +456,7 @@ self.addEventListener("sync", () => {});
                 $now,
             ]
         );
+        $this->setUserPushEnabled($userId, true);
 
         return true;
     }
@@ -426,25 +465,31 @@ self.addEventListener("sync", () => {});
     {
         $endpoint = trim($endpoint);
         if ($endpoint === '') {
+            if ($userId !== null && $userId > 0) {
+                $this->setUserPushEnabled($userId, false);
+            }
             return;
         }
 
         $this->ensureTables();
-        $params = [hash('sha256', $endpoint)];
+        $params = [date('Y-m-d H:i:s'), hash('sha256', $endpoint)];
         $where = 'endpoint_hash = ?';
         if ($userId !== null) {
             $where .= ' AND user_id = ?';
             $params[] = $userId;
         }
 
-        db()->query('DELETE FROM pwa_subscriptions WHERE ' . $where, $params);
+        db()->query('UPDATE pwa_subscriptions SET is_active = 0, revoked_at = ?, updated_at = ? WHERE ' . $where, [$params[0], $params[0], ...array_slice($params, 1)]);
+        if ($userId !== null && $userId > 0) {
+            $this->setUserPushEnabled($userId, false);
+        }
     }
 
     public function devices(int $limit = 100): array
     {
         $this->ensureTables();
 
-        return db()->query('SELECT * FROM pwa_subscriptions ORDER BY last_seen_at DESC LIMIT ' . max(1, min(500, $limit)))->get() ?: [];
+        return db()->query('SELECT * FROM pwa_subscriptions ORDER BY is_active DESC, last_seen_at DESC LIMIT ' . max(1, min(500, $limit)))->get() ?: [];
     }
 
     public function recentNotifications(int $limit = 30): array
@@ -489,56 +534,65 @@ self.addEventListener("sync", () => {});
     public function send(array $payload, array $options = []): array
     {
         $this->ensureTables();
-        if (!$this->isPushEnabled()) {
+        $payload = $this->normalizePayload($payload);
+
+        if (!$this->canSendPush()) {
+            $this->recordPushNotification($payload, $options, 'disabled', 0, 0);
             return ['sent' => 0, 'failed' => 0, 'total' => 0, 'disabled' => true];
         }
 
-        $where = '';
+        if (isset($options['user_id']) && !$this->isUserPushEnabled((int)$options['user_id'])) {
+            $this->recordPushNotification($payload, $options, 'user_disabled', 0, 0);
+            return ['sent' => 0, 'failed' => 0, 'total' => 0, 'disabled' => true, 'user_disabled' => true];
+        }
+
+        $where = 'WHERE s.is_active = 1 AND s.revoked_at IS NULL AND s.user_id IS NOT NULL AND COALESCE(ns.push_enabled, 0) = 1';
         $params = [];
         if (isset($options['user_id'])) {
-            $where = 'WHERE user_id = ?';
+            $where .= ' AND s.user_id = ?';
             $params[] = (int)$options['user_id'];
         } elseif (!empty($options['user_ids']) && is_array($options['user_ids'])) {
             $ids = array_values(array_filter(array_map('intval', $options['user_ids'])));
             if ($ids !== []) {
-                $where = 'WHERE user_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+                $where .= ' AND s.user_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
                 $params = $ids;
             }
         }
 
-        $subscriptions = db()->query('SELECT * FROM pwa_subscriptions ' . $where . ' ORDER BY last_seen_at DESC', $params)->get() ?: [];
-        $payload = $this->normalizePayload($payload);
+        $subscriptions = db()->query(
+            'SELECT s.*
+             FROM pwa_subscriptions s
+             LEFT JOIN notification_settings ns ON ns.user_id = s.user_id
+             ' . $where . '
+             ORDER BY s.last_seen_at DESC',
+            $params
+        )->get() ?: [];
         $sent = 0;
         $failed = 0;
+        $invalid = 0;
 
         foreach ($subscriptions as $subscription) {
             try {
-                $this->sendWebPush($subscription, $payload);
-                $sent++;
+                $status = $this->sendWebPush($subscription, $payload);
+                if ($status === 'sent') {
+                    $sent++;
+                } else {
+                    $failed++;
+                    $invalid++;
+                }
             } catch (\Throwable $exception) {
                 $failed++;
                 log_error_details('PWA push send failed', [
                     'Endpoint hash' => hash('sha256', (string)$subscription['endpoint']),
+                    'Notification ID' => (string)($options['notification_id'] ?? ''),
                 ], $exception);
             }
         }
 
-        $now = date('Y-m-d H:i:s');
-        db()->query(
-            'INSERT INTO pwa_notifications (user_id, title, body, payload, status, sent_count, failed_count, created_at, sent_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                isset($options['user_id']) ? (int)$options['user_id'] : null,
-                (string)$payload['title'],
-                (string)($payload['body'] ?? ''),
-                json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                $failed > 0 && $sent === 0 ? 'failed' : 'sent',
-                $sent,
-                $failed,
-                $now,
-                $now,
-            ]
-        );
+        $status = count($subscriptions) === 0
+            ? 'no_subscriptions'
+            : ($failed > 0 && $sent === 0 ? ($invalid > 0 ? 'invalid' : 'failed') : 'sent');
+        $this->recordPushNotification($payload, $options, $status, $sent, $failed);
 
         return ['sent' => $sent, 'failed' => $failed, 'total' => count($subscriptions), 'disabled' => false];
     }
@@ -559,31 +613,130 @@ self.addEventListener("sync", () => {});
             'https' => $this->isSecureContext(),
             'manifest' => !empty($manifest['name']) && !empty($manifest['icons']) && $iconsOk,
             'service_worker' => true,
-            'push' => $this->isPushEnabled() && $this->settings->get('pwa_vapid_public_key', '') !== '',
+            'push' => $this->canSendPush(),
             'vapid' => $this->settings->get('pwa_vapid_public_key', '') !== '' && $this->settings->get('pwa_vapid_private_key', '') !== '',
         ];
+    }
+
+    public function pushStatusForUser(int $userId): array
+    {
+        $this->ensureTables();
+        $subscriptions = $userId > 0
+            ? (int)db()->query(
+                'SELECT COUNT(*) FROM pwa_subscriptions WHERE user_id = ? AND is_active = 1 AND revoked_at IS NULL',
+                [$userId]
+            )->getColumn()
+            : 0;
+
+        return [
+            'global_enabled' => $this->isPushEnabled(),
+            'vapid_ready' => $this->settings->get('pwa_vapid_public_key', '') !== '' && $this->settings->get('pwa_vapid_private_key', '') !== '',
+            'secure_context' => $this->isSecureContext(),
+            'user_enabled' => $userId > 0 && $this->isUserPushEnabled($userId),
+            'active_subscriptions' => $subscriptions,
+        ];
+    }
+
+    public function setUserPushEnabled(int $userId, bool $enabled): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+
+        $this->ensureTables();
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            "INSERT INTO notification_settings (user_id, push_enabled, created_at, updated_at)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE push_enabled = VALUES(push_enabled), updated_at = VALUES(updated_at)",
+            [$userId, $enabled ? 1 : 0, $now, $now]
+        );
+    }
+
+    public function isUserPushEnabled(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+
+        $this->ensureTables();
+        $value = db()->query(
+            'SELECT push_enabled FROM notification_settings WHERE user_id = ? LIMIT 1',
+            [$userId]
+        )->getColumn();
+
+        return (string)$value === '1';
+    }
+
+    protected function canSendPush(): bool
+    {
+        return $this->isPushEnabled()
+            && $this->settings->get('pwa_vapid_public_key', '') !== ''
+            && $this->settings->get('pwa_vapid_private_key', '') !== '';
+    }
+
+    protected function recordPushNotification(array $payload, array $options, string $status, int $sent, int $failed): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $encodedPayload = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        db()->query(
+            'INSERT INTO pwa_notifications
+                (notification_id, user_id, title, body, type, source, payload, status, sent_count, failed_count, created_at, sent_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                !empty($options['notification_id']) ? (int)$options['notification_id'] : null,
+                isset($options['user_id']) ? (int)$options['user_id'] : null,
+                (string)$payload['title'],
+                (string)($payload['body'] ?? ''),
+                (string)($options['type'] ?? $payload['type'] ?? ''),
+                (string)($options['source'] ?? $payload['source'] ?? ''),
+                $encodedPayload !== false ? $encodedPayload : '{}',
+                $status,
+                $sent,
+                $failed,
+                $now,
+                $now,
+            ]
+        );
     }
 
     protected function normalizePayload(array $payload): array
     {
         $icons = $this->icons();
+        $defaultIcon = $this->notificationAssetUrl('pwa_notification_icon')
+            ?: ($icons['sizes'][192] ?? $icons['apple']['src'] ?? '');
+        $defaultBadge = $this->notificationAssetUrl('pwa_notification_badge')
+            ?: ($icons['sizes'][72] ?? $icons['favicon']['src'] ?? '');
+        $notificationId = (int)($payload['notification_id'] ?? 0);
+        $type = (string)($payload['type'] ?? 'system');
+        $source = (string)($payload['source'] ?? 'system');
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : [];
+        if ($notificationId > 0) {
+            $data['notification_id'] = $notificationId;
+        }
+        $data['type'] = $type;
+        $data['source'] = $source;
 
         return [
             'title' => trim((string)($payload['title'] ?? $this->settings->get('site_title', SITE_NAME))),
             'body' => trim((string)($payload['body'] ?? '')),
-            'icon' => (string)($payload['icon'] ?? ($icons['sizes'][192] ?? $icons['apple']['src'] ?? '')),
-            'badge' => (string)($payload['badge'] ?? ($icons['sizes'][72] ?? $icons['favicon']['src'] ?? '')),
+            'icon' => (string)($payload['icon'] ?? $defaultIcon),
+            'badge' => (string)($payload['badge'] ?? $defaultBadge),
             'image' => (string)($payload['image'] ?? ''),
             'url' => (string)($payload['url'] ?? base_url('/')),
             'tag' => (string)($payload['tag'] ?? ''),
-            'data' => is_array($payload['data'] ?? null) ? $payload['data'] : [],
+            'notification_id' => $notificationId,
+            'type' => $type,
+            'source' => $source,
+            'priority' => (string)($payload['priority'] ?? 'normal'),
+            'data' => $data,
             'vibrate' => is_array($payload['vibrate'] ?? null) ? $payload['vibrate'] : [120, 60, 120],
             'timestamp' => (int)($payload['timestamp'] ?? time() * 1000),
             'actions' => is_array($payload['actions'] ?? null) ? $payload['actions'] : [],
         ];
     }
 
-    protected function sendWebPush(array $subscription, array $payload): void
+    protected function sendWebPush(array $subscription, array $payload): string
     {
         $endpoint = (string)$subscription['endpoint'];
         $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -592,13 +745,15 @@ self.addEventListener("sync", () => {});
         }
 
         $encrypted = $this->encryptPayload($body, (string)$subscription['p256dh'], (string)$subscription['auth']);
+        $ttl = $this->pushTtl();
         $headers = [
-            'TTL: 2419200',
-            'Urgency: normal',
+            'TTL: ' . $ttl,
+            'Urgency: ' . $this->pushUrgency((string)($payload['priority'] ?? 'normal')),
             'Content-Type: application/octet-stream',
             'Content-Encoding: aes128gcm',
             'Authorization: vapid t=' . $this->vapidJwt($endpoint) . ', k=' . $this->settings->get('pwa_vapid_public_key', ''),
         ];
+        $timeout = $this->pushTimeout();
 
         $code = 0;
         if (function_exists('curl_init')) {
@@ -608,20 +763,22 @@ self.addEventListener("sync", () => {});
                 CURLOPT_POSTFIELDS => $encrypted,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_TIMEOUT => 10,
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_CONNECTTIMEOUT => min(3, $timeout),
             ]);
             curl_exec($ch);
             $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
             curl_close($ch);
             if ($code === 404 || $code === 410) {
-                $this->deleteInvalidEndpoint($endpoint);
-                return;
+                $this->deactivateInvalidEndpoint($endpoint);
+                return 'invalid';
             }
             if ($code < 200 || $code >= 300) {
                 throw new \RuntimeException($error !== '' ? $error : 'Push endpoint returned HTTP ' . $code);
             }
-            return;
+            $this->touchSubscription((int)($subscription['id'] ?? 0));
+            return 'sent';
         }
 
         $context = stream_context_create([
@@ -629,13 +786,22 @@ self.addEventListener("sync", () => {});
                 'method' => 'POST',
                 'header' => implode("\r\n", $headers),
                 'content' => $encrypted,
-                'timeout' => 10,
+                'timeout' => $timeout,
             ],
         ]);
         $result = @file_get_contents($endpoint, false, $context);
+        $statusLine = $http_response_header[0] ?? '';
+        if (preg_match('/\s(404|410)\s/', (string)$statusLine)) {
+            $this->deactivateInvalidEndpoint($endpoint);
+            return 'invalid';
+        }
         if ($result === false) {
             throw new \RuntimeException('Push endpoint request failed.');
         }
+
+        $this->touchSubscription((int)($subscription['id'] ?? 0));
+
+        return 'sent';
     }
 
     protected function encryptPayload(string $payload, string $receiverPublicKey, string $authSecret): string
@@ -689,7 +855,7 @@ self.addEventListener("sync", () => {});
         $payload = [
             'aud' => $audience,
             'exp' => time() + 3600,
-            'sub' => 'mailto:admin@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
+            'sub' => $this->vapidSubject(),
         ];
 
         $unsigned = $this->base64UrlEncode(json_encode($header)) . '.' . $this->base64UrlEncode(json_encode($payload));
@@ -735,10 +901,91 @@ self.addEventListener("sync", () => {});
         return "-----BEGIN PUBLIC KEY-----\n" . chunk_split(base64_encode($der), 64, "\n") . "-----END PUBLIC KEY-----\n";
     }
 
-    protected function deleteInvalidEndpoint(string $endpoint): void
+    protected function deactivateInvalidEndpoint(string $endpoint): void
     {
         $this->ensureTables();
-        db()->query('DELETE FROM pwa_subscriptions WHERE endpoint_hash = ?', [hash('sha256', $endpoint)]);
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            'UPDATE pwa_subscriptions SET is_active = 0, revoked_at = ?, updated_at = ? WHERE endpoint_hash = ?',
+            [$now, $now, hash('sha256', $endpoint)]
+        );
+        log_error_details('PWA push subscription invalidated', [
+            'Endpoint hash' => hash('sha256', $endpoint),
+        ]);
+    }
+
+    protected function touchSubscription(int $subscriptionId): void
+    {
+        if ($subscriptionId <= 0) {
+            return;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            'UPDATE pwa_subscriptions SET last_used_at = ?, last_seen_at = ?, updated_at = ? WHERE id = ?',
+            [$now, $now, $now, $subscriptionId]
+        );
+    }
+
+    protected function pushTtl(): int
+    {
+        $ttl = (int)$this->settings->get('pwa_push_ttl', '86400');
+
+        return $ttl >= 60 && $ttl <= 2419200 ? $ttl : 86400;
+    }
+
+    protected function pushTimeout(): int
+    {
+        $timeout = (int)$this->settings->get('pwa_push_timeout_seconds', '3');
+
+        return max(1, min(10, $timeout));
+    }
+
+    protected function pushUrgency(string $priority): string
+    {
+        return match ($priority) {
+            'low' => 'low',
+            'high', 'urgent' => 'high',
+            default => 'normal',
+        };
+    }
+
+    protected function vapidSubject(): string
+    {
+        $subject = trim($this->settings->get('pwa_vapid_subject', ''));
+        if ($subject !== '') {
+            if (filter_var($subject, FILTER_VALIDATE_EMAIL)) {
+                return 'mailto:' . $subject;
+            }
+
+            if (str_starts_with($subject, 'mailto:') || filter_var($subject, FILTER_VALIDATE_URL)) {
+                return $subject;
+            }
+        }
+
+        return 'mailto:admin@' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+
+    protected function notificationAssetUrl(string $setting): string
+    {
+        $value = trim($this->settings->get($setting, ''));
+        if ($value === '') {
+            return '';
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            $baseHost = strtolower((string)(parse_url(base_url('/'), PHP_URL_HOST) ?? ''));
+            $valueHost = strtolower((string)(parse_url($value, PHP_URL_HOST) ?? ''));
+
+            return $baseHost !== '' && $baseHost === $valueHost ? $value : '';
+        }
+
+        $path = $this->localPath($value);
+        if ($path !== null && is_file($path)) {
+            return $this->withVersion($this->assetUrlFromLocalPath($path) ?: '', $path);
+        }
+
+        return '';
     }
 
     protected function resolveIconSource(): array
@@ -974,6 +1221,10 @@ self.addEventListener("sync", () => {});
             'pwa_app_icon',
             'pwa_logo',
             'pwa_startup_image',
+            'pwa_notification_icon',
+            'pwa_notification_badge',
+            'pwa_push_ttl',
+            'pwa_vapid_subject',
             'pwa_cache_version',
             'default_locale',
         ] as $key) {
@@ -1003,8 +1254,7 @@ self.addEventListener("sync", () => {});
 
     protected function isSecureContext(): bool
     {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+        return request_is_secure()
             || in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true);
     }
 

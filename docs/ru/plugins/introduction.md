@@ -120,6 +120,42 @@ $duration = plugin_setting('toy-car-rental', 'default_duration', 10);
 
 Настройки хранятся в `plugin_settings`.
 
+## Уведомления
+
+Плагины создают уведомления только через единый сервис CMS. Сервис сохранит уведомление внутри сайта и сам отправит Web Push, если пользователь включил push и у него есть активная подписка браузера или PWA.
+
+```php
+use App\Services\NotificationService;
+
+NotificationService::create([
+    'user_id' => $userId,
+    'title' => 'Новая заявка',
+    'message' => 'Поступила новая заявка от клиента',
+    'type' => 'support_ticket',
+    'action_url' => '/admin/support/tickets/123',
+    'source' => 'support',
+    'priority' => 'normal',
+    'metadata' => [
+        'ticket_id' => 123,
+    ],
+]);
+```
+
+Также доступен helper:
+
+```php
+notification_create([
+    'user_id' => $userId,
+    'title' => 'Поездка завершена',
+    'message' => 'Прокат машинки завершён.',
+    'type' => 'toy_rental',
+    'action_url' => '/admin/toy-rental/rides',
+    'source' => 'toy-car-rental',
+]);
+```
+
+Не отправляйте Web Push напрямую из плагина. Если push отключён или подписка недействительна, уведомление всё равно останется в центре уведомлений сайта.
+
 ## Языковые файлы
 
 Переводы плагина хранятся внутри самого плагина:

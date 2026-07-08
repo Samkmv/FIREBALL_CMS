@@ -240,6 +240,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-pwa-service-worker-url="<?= htmlSC((string)($pwaHeadData['service_worker_url'] ?? base_url('/service-worker.js'))) ?>"
     data-pwa-subscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions')) ?>"
     data-pwa-unsubscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions/delete')) ?>"
+    data-pwa-status-url="<?= htmlSC(base_url('/api/pwa/status')) ?>"
     data-pwa-badge-clear-url="<?= htmlSC(base_url('/api/pwa/badge/clear')) ?>"
     data-pwa-safari-hint="<?= htmlSC(return_translation('pwa_safari_install_hint')) ?>"
 >
@@ -479,6 +480,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                     class="dropdown"
                     data-notifications-center
                     data-feed-url="<?= base_href('/notifications/feed') ?>"
+                    data-read-url="<?= base_href('/notifications/read') ?>"
                     data-empty-text="<?= htmlSC(return_translation('notification_empty')) ?>"
                     data-chat-source-label="<?= htmlSC(return_translation('notification_source_chat')) ?>"
                 >

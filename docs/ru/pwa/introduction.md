@@ -63,20 +63,28 @@ CMS использует Web Push + VAPID без сторонних сервис
 
 ## NotificationService
 
-Любой модуль или плагин может отправить уведомление:
+Любой модуль или плагин должен создавать уведомления через единый сервис. CMS сначала сохранит уведомление внутри сайта, а затем автоматически отправит Web Push, если пользователь включил push и у него есть активная подписка браузера или PWA.
 
 ```php
 use App\Services\NotificationService;
 
-NotificationService::sendToUser($userId, [
+NotificationService::create([
+    'user_id' => $userId,
     'title' => 'Новая заявка',
-    'body' => 'Поступила новая заявка с сайта.',
-    'url' => base_href('/admin/contact-requests'),
-    'tag' => 'contact-request',
+    'message' => 'Поступила новая заявка с сайта.',
+    'type' => 'support_ticket',
+    'action_url' => '/admin/contact-requests',
+    'source' => 'support',
+    'priority' => 'normal',
+    'metadata' => [
+        'request_id' => 123,
+    ],
 ]);
 ```
 
-Поддерживаются поля `title`, `body`, `icon`, `badge`, `image`, `url`, `tag`, `data`, `vibrate`, `timestamp` и `actions`.
+Для плагинов также доступен helper `notification_create([...])`. Не отправляйте Web Push напрямую из плагина: push является дополнительным каналом доставки, которым управляет CMS.
+
+Поддерживаются поля `user_id`, `title`, `message`, `type`, `action_url`, `icon`, `source`, `priority` и `metadata`. Старые вызовы `sendToUser()` продолжают работать и проходят через тот же поток уведомлений.
 
 ## Offline
 
