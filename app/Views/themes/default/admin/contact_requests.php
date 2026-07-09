@@ -140,6 +140,7 @@ $renderActions = static function (array $request, string $requestStatus) use ($s
                         <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('id', (string)$sort, (string)$direction) ?>">#<?= $sortIndicator('id') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('name', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_name') ?><?= $sortIndicator('name') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('email', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_email') ?><?= $sortIndicator('email') ?></a></th>
+                        <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('phone', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_phone') ?><?= $sortIndicator('phone') ?></a></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('subject', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_subject') ?><?= $sortIndicator('subject') ?></a></th>
                         <th scope="col"><?= print_translation('admin_contacts_col_message') ?></th>
                         <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= admin_table_sort_url('status', (string)$sort, (string)$direction) ?>"><?= print_translation('admin_contacts_col_status') ?><?= $sortIndicator('status') ?></a></th>
@@ -173,6 +174,10 @@ $renderActions = static function (array $request, string $requestStatus) use ($s
                             'actions' => $actionsHtml,
                             'extra_fields' => [
                                 [
+                                    'label' => return_translation('admin_contacts_col_phone'),
+                                    'html' => htmlSC((string)($request['phone'] ?? '')),
+                                ],
+                                [
                                     'label' => return_translation('admin_contacts_col_message'),
                                     'html' => nl2br(htmlSC($request['message'])),
                                 ],
@@ -186,6 +191,13 @@ $renderActions = static function (array $request, string $requestStatus) use ($s
                             <th class="text-nowrap" scope="row"><?= (int)$request['id'] ?></th>
                             <td class="fw-medium"><?= htmlSC($request['name']) ?></td>
                             <td><a href="mailto:<?= htmlSC($request['email']) ?>"><?= htmlSC($request['email']) ?></a></td>
+                            <td>
+                                <?php if (trim((string)($request['phone'] ?? '')) !== ''): ?>
+                                    <a href="tel:<?= htmlSC(preg_replace('/[^0-9+]/', '', (string)$request['phone']) ?: (string)$request['phone']) ?>"><?= htmlSC($request['phone']) ?></a>
+                                <?php else: ?>
+                                    <span class="text-body-tertiary">&mdash;</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?= htmlSC($request['subject']) ?></td>
                             <td style="min-width: 320px;">
                                 <div class="small lh-base"><?= nl2br(htmlSC($request['message'])) ?></div>

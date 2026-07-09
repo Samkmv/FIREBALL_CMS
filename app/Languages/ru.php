@@ -279,6 +279,7 @@ return [
     'admin_contacts_empty' => 'Заявок пока нет.',
     'admin_contacts_col_name' => 'Имя',
     'admin_contacts_col_email' => 'Email',
+    'admin_contacts_col_phone' => 'Телефон',
     'admin_contacts_col_subject' => 'Тема',
     'admin_contacts_col_message' => 'Сообщение',
     'admin_contacts_col_status' => 'Статус',

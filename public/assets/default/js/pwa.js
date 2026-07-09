@@ -42,6 +42,24 @@
     return output;
   };
 
+  const buffersEqual = (left, right) => {
+    if (!left || !right || left.byteLength !== right.byteLength) return false;
+    const leftView = new Uint8Array(left);
+    const rightView = new Uint8Array(right);
+    for (let i = 0; i < leftView.length; i++) {
+      if (leftView[i] !== rightView[i]) return false;
+    }
+    return true;
+  };
+
+  const subscriptionUsesCurrentVapidKey = (subscription) => {
+    const currentKey = body.dataset.pwaVapidPublicKey ? urlBase64ToUint8Array(body.dataset.pwaVapidPublicKey) : null;
+    const subscriptionKey = subscription?.options?.applicationServerKey || null;
+    if (!currentKey || !subscriptionKey) return true;
+
+    return buffersEqual(subscriptionKey, currentKey);
+  };
+
   const showIosHint = () => {
     if (!isIos || !isSafari || isStandalone()) return;
     if (!body.dataset.pwaSafariHint || localStorage.getItem(iosHintStorageKey) === '1') return;
@@ -187,7 +205,16 @@
     if (permission === 'default') permission = await Notification.requestPermission();
     if (permission !== 'granted') return { status: false, reason: 'permission' };
 
-    const existing = await registration.pushManager.getSubscription();
+    let existing = await registration.pushManager.getSubscription();
+    if (existing && !subscriptionUsesCurrentVapidKey(existing)) {
+      const endpoint = existing.endpoint || '';
+      await existing.unsubscribe().catch(() => {});
+      if (endpoint && body.dataset.pwaUnsubscribeUrl) {
+        await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint }).catch(() => {});
+      }
+      existing = null;
+    }
+
     const subscription = existing || await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(body.dataset.pwaVapidPublicKey)

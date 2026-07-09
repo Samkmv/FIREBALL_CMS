@@ -766,7 +766,7 @@ self.addEventListener("sync", () => {});
                 CURLOPT_TIMEOUT => $timeout,
                 CURLOPT_CONNECTTIMEOUT => min(3, $timeout),
             ]);
-            curl_exec($ch);
+            $responseBody = curl_exec($ch);
             $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
             curl_close($ch);
@@ -775,7 +775,8 @@ self.addEventListener("sync", () => {});
                 return 'invalid';
             }
             if ($code < 200 || $code >= 300) {
-                throw new \RuntimeException($error !== '' ? $error : 'Push endpoint returned HTTP ' . $code);
+                $message = $this->pushEndpointErrorMessage($endpoint, $code, is_string($responseBody) ? $responseBody : '', $error);
+                throw new \RuntimeException($message);
             }
             $this->touchSubscription((int)($subscription['id'] ?? 0));
             return 'sent';
@@ -787,21 +788,44 @@ self.addEventListener("sync", () => {});
                 'header' => implode("\r\n", $headers),
                 'content' => $encrypted,
                 'timeout' => $timeout,
+                'ignore_errors' => true,
             ],
         ]);
         $result = @file_get_contents($endpoint, false, $context);
         $statusLine = $http_response_header[0] ?? '';
+        $code = preg_match('/\s(\d{3})\s/', (string)$statusLine, $matches) ? (int)$matches[1] : 0;
         if (preg_match('/\s(404|410)\s/', (string)$statusLine)) {
             $this->deactivateInvalidEndpoint($endpoint);
             return 'invalid';
         }
-        if ($result === false) {
-            throw new \RuntimeException('Push endpoint request failed.');
+        if ($result === false || $code < 200 || $code >= 300) {
+            throw new \RuntimeException($this->pushEndpointErrorMessage($endpoint, $code, is_string($result) ? $result : '', ''));
         }
 
         $this->touchSubscription((int)($subscription['id'] ?? 0));
 
         return 'sent';
+    }
+
+    protected function pushEndpointErrorMessage(string $endpoint, int $code, string $responseBody, string $transportError = ''): string
+    {
+        $response = trim(mb_substr($responseBody, 0, 500));
+        $message = $transportError !== ''
+            ? $transportError
+            : 'Push endpoint returned HTTP ' . ($code > 0 ? (string)$code : '0');
+
+        if ($response !== '') {
+            $message .= ': ' . $response;
+        }
+
+        log_error_details('PWA push endpoint rejected request', [
+            'HTTP code' => $code,
+            'Endpoint host' => (string)(parse_url($endpoint, PHP_URL_HOST) ?: ''),
+            'Endpoint hash' => hash('sha256', $endpoint),
+            'Response' => $response,
+        ]);
+
+        return $message;
     }
 
     protected function encryptPayload(string $payload, string $receiverPublicKey, string $authSecret): string
@@ -851,6 +875,9 @@ self.addEventListener("sync", () => {});
 
         $parts = parse_url($endpoint);
         $audience = ($parts['scheme'] ?? 'https') . '://' . ($parts['host'] ?? '');
+        if (!empty($parts['port'])) {
+            $audience .= ':' . (int)$parts['port'];
+        }
         $header = ['typ' => 'JWT', 'alg' => 'ES256'];
         $payload = [
             'aud' => $audience,
@@ -869,15 +896,52 @@ self.addEventListener("sync", () => {});
 
     protected function derToJose(string $der): string
     {
-        $offset = 3;
-        $rLength = ord($der[$offset]);
-        $r = substr($der, $offset + 1, $rLength);
-        $offset += 1 + $rLength + 1;
-        $sLength = ord($der[$offset]);
-        $s = substr($der, $offset + 1, $sLength);
+        $offset = 0;
+        if (($der[$offset] ?? '') !== "\x30") {
+            throw new \RuntimeException('Invalid DER ECDSA signature.');
+        }
+        $offset++;
+        $this->readDerLength($der, $offset);
+
+        if (($der[$offset] ?? '') !== "\x02") {
+            throw new \RuntimeException('Invalid DER ECDSA signature integer.');
+        }
+        $offset++;
+        $rLength = $this->readDerLength($der, $offset);
+        $r = substr($der, $offset, $rLength);
+        $offset += $rLength;
+
+        if (($der[$offset] ?? '') !== "\x02") {
+            throw new \RuntimeException('Invalid DER ECDSA signature integer.');
+        }
+        $offset++;
+        $sLength = $this->readDerLength($der, $offset);
+        $s = substr($der, $offset, $sLength);
 
         return str_pad(ltrim($r, "\x00"), 32, "\x00", STR_PAD_LEFT)
             . str_pad(ltrim($s, "\x00"), 32, "\x00", STR_PAD_LEFT);
+    }
+
+    protected function readDerLength(string $der, int &$offset): int
+    {
+        $length = ord($der[$offset] ?? "\x00");
+        $offset++;
+        if (($length & 0x80) === 0) {
+            return $length;
+        }
+
+        $bytes = $length & 0x7f;
+        if ($bytes <= 0 || $bytes > 4 || strlen($der) < $offset + $bytes) {
+            throw new \RuntimeException('Invalid DER length.');
+        }
+
+        $length = 0;
+        for ($i = 0; $i < $bytes; $i++) {
+            $length = ($length << 8) | ord($der[$offset + $i]);
+        }
+        $offset += $bytes;
+
+        return $length;
     }
 
     protected function hkdfExpand(string $prk, string $info, int $length): string
@@ -963,7 +1027,10 @@ self.addEventListener("sync", () => {});
             }
         }
 
-        return 'mailto:admin@' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $host = (string)($_SERVER['HTTP_HOST'] ?? parse_url(base_url('/'), PHP_URL_HOST) ?: 'localhost');
+        $host = trim(preg_replace('/:\d+$/', '', $host) ?: 'localhost', '[]');
+
+        return 'mailto:admin@' . ($host !== '' ? $host : 'localhost');
     }
 
     protected function notificationAssetUrl(string $setting): string

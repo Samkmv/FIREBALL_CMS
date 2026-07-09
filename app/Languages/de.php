@@ -278,6 +278,7 @@ return [
     'admin_contacts_empty' => 'Noch keine Anfragen.',
     'admin_contacts_col_name' => 'Name',
     'admin_contacts_col_email' => 'E-Mail',
+    'admin_contacts_col_phone' => 'Telefon',
     'admin_contacts_col_subject' => 'Betreff',
     'admin_contacts_col_message' => 'Nachricht',
     'admin_contacts_col_status' => 'Status',

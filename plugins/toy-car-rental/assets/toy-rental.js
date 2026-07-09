@@ -2,6 +2,7 @@
     const settings = window.toyRentalSettings || {};
     const labels = settings.labels || {};
     const notified = new Set();
+    const csrf = document.querySelector('meta[name="needCSRFToken"]')?.getAttribute('content') || '';
 
     const format = (seconds) => {
         const sign = seconds < 0 ? '+' : '';
@@ -64,11 +65,33 @@
         }
     };
 
+    const syncOverdueStatus = (rideId) => {
+        if (!settings.syncOverdueUrl || !rideId) {
+            return;
+        }
+
+        const body = new URLSearchParams();
+        body.set('needCSRFToken', csrf);
+        body.set('ride_id', rideId);
+
+        fetch(settings.syncOverdueUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': csrf,
+            },
+            body,
+        }).catch(() => {});
+    };
+
     const markFixedOverdue = (card) => {
         const rideId = card?.dataset?.rideId || '';
         if (rideId !== '' && !notified.has(rideId)) {
             notified.add(rideId);
             playSound();
+            syncOverdueStatus(rideId);
         }
 
         card?.classList.add('is-overdue', 'toy-rental-alert-pulse');

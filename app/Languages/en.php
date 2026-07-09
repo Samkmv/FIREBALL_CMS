@@ -279,6 +279,7 @@ return [
     'admin_contacts_empty' => 'No requests yet.',
     'admin_contacts_col_name' => 'Name',
     'admin_contacts_col_email' => 'Email',
+    'admin_contacts_col_phone' => 'Phone',
     'admin_contacts_col_subject' => 'Subject',
     'admin_contacts_col_message' => 'Message',
     'admin_contacts_col_status' => 'Status',

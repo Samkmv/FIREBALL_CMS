@@ -72,6 +72,22 @@ $router->post('/admin/toy-rental/rides/complete', static function () use ($toyRe
     $toyRentalRedirect('/admin/toy-rental');
 })->middleware(['auth', 'admin']);
 
+$router->post('/admin/toy-rental/rides/sync-overdue', static function (): void {
+    try {
+        $updated = FireballPluginToyCarRental::markOverdueRides();
+        response()->json([
+            'status' => true,
+            'updated' => $updated,
+        ]);
+    } catch (Throwable $exception) {
+        log_error_details('Toy rental overdue sync failed', [], $exception);
+        response()->json([
+            'status' => false,
+            'message' => FireballPluginToyCarRental::t('toy_rental_error_overdue_sync'),
+        ], 500);
+    }
+})->middleware(['auth', 'admin']);
+
 $router->post('/admin/toy-rental/rides/pay', static function () use ($toyRentalHistoryRedirect): void {
     try {
         FireballPluginToyCarRental::markRidePaid((int)request()->post('id'), request()->getData());

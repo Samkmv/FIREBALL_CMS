@@ -22,6 +22,7 @@ class ContactRequest
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 name VARCHAR(150) NOT NULL,
                 email VARCHAR(190) NOT NULL,
+                phone VARCHAR(50) NOT NULL DEFAULT '',
                 subject VARCHAR(190) NOT NULL,
                 message TEXT NOT NULL,
                 is_viewed TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
@@ -37,6 +38,11 @@ class ContactRequest
         $isViewedExists = (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE 'is_viewed'")->getColumn();
         if (!$isViewedExists) {
             db()->query("ALTER TABLE {$this->table} ADD COLUMN is_viewed TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER message");
+        }
+
+        $phoneExists = (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE 'phone'")->getColumn();
+        if (!$phoneExists) {
+            db()->query("ALTER TABLE {$this->table} ADD COLUMN phone VARCHAR(50) NOT NULL DEFAULT '' AFTER email");
         }
 
         $statusExists = (bool)db()->query("SHOW COLUMNS FROM {$this->table} LIKE 'status'")->getColumn();
@@ -56,11 +62,12 @@ class ContactRequest
 
         db()->query(
             "INSERT INTO {$this->table}
-             (name, email, subject, message, is_viewed, status, created_at)
-             VALUES (:name, :email, :subject, :message, :is_viewed, :status, :created_at)",
+             (name, email, phone, subject, message, is_viewed, status, created_at)
+             VALUES (:name, :email, :phone, :subject, :message, :is_viewed, :status, :created_at)",
             [
                 'name' => trim((string)$data['name']),
                 'email' => mb_strtolower(trim((string)$data['email'])),
+                'phone' => mb_substr(trim((string)($data['phone'] ?? '')), 0, 50),
                 'subject' => trim((string)$data['subject']),
                 'message' => trim((string)$data['message']),
                 'is_viewed' => 0,
@@ -80,7 +87,7 @@ class ContactRequest
         $this->ensureTableExists();
 
         return db()->query(
-            "SELECT id, name, email, subject, message, is_viewed, status, created_at
+            "SELECT id, name, email, phone, subject, message, is_viewed, status, created_at
              FROM {$this->table}
              ORDER BY id DESC"
         )->get() ?: [];
@@ -103,6 +110,7 @@ class ContactRequest
             'id' => 'id',
             'name' => 'name',
             'email' => 'email',
+            'phone' => 'phone',
             'subject' => 'subject',
             'status' => 'status',
             'created_at' => 'created_at',
@@ -113,9 +121,9 @@ class ContactRequest
         $params = [];
 
         if ($search !== '') {
-            $whereParts[] = "(name LIKE ? OR email LIKE ? OR subject LIKE ? OR message LIKE ?)";
+            $whereParts[] = "(name LIKE ? OR email LIKE ? OR phone LIKE ? OR subject LIKE ? OR message LIKE ?)";
             $searchLike = '%' . $search . '%';
-            $params = [$searchLike, $searchLike, $searchLike, $searchLike];
+            $params = [$searchLike, $searchLike, $searchLike, $searchLike, $searchLike];
         }
 
         if ($status !== '') {
@@ -134,7 +142,7 @@ class ContactRequest
         $offset = $pagination->getOffset();
 
         $items = db()->query(
-            "SELECT id, name, email, subject, message, is_viewed, status, created_at
+            "SELECT id, name, email, phone, subject, message, is_viewed, status, created_at
              FROM {$this->table}
              {$where}
              ORDER BY {$orderBy} {$direction}, id DESC

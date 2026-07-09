@@ -64,6 +64,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             'default_minute_price' => 50,
             'currency' => '₽',
             'sound_enabled' => true,
+            'overdue_push_enabled' => true,
             'auto_refresh_seconds' => 0,
         ];
     }
@@ -80,6 +81,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         $settings['default_minute_price'] = self::money($settings['default_minute_price']);
         $settings['currency'] = trim((string)$settings['currency']) ?: '₽';
         $settings['sound_enabled'] = (bool)$settings['sound_enabled'];
+        $settings['overdue_push_enabled'] = (bool)$settings['overdue_push_enabled'];
         $settings['auto_refresh_seconds'] = max(0, (int)$settings['auto_refresh_seconds']);
 
         return $settings;
@@ -93,6 +95,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             'default_minute_price' => self::money($data['default_minute_price'] ?? 0),
             'currency' => mb_substr(trim((string)($data['currency'] ?? '₽')), 0, 12),
             'sound_enabled' => !empty($data['sound_enabled']),
+            'overdue_push_enabled' => !empty($data['overdue_push_enabled']),
             'auto_refresh_seconds' => max(0, min(3600, (int)($data['auto_refresh_seconds'] ?? 0))),
         ];
 
@@ -563,7 +566,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         return $stats;
     }
 
-    public static function markOverdueRides(): void
+    public static function markOverdueRides(): int
     {
         self::ensureRideSchema();
 
@@ -583,9 +586,13 @@ final class FireballPluginToyCarRental implements PluginInterface
             [$now, $now]
         );
 
-        foreach ($newlyOverdue as $ride) {
-            self::notifyAdminsAboutOverdueRide($ride);
+        if (!empty(self::settings()['overdue_push_enabled'])) {
+            foreach ($newlyOverdue as $ride) {
+                self::notifyAdminsAboutOverdueRide($ride);
+            }
         }
+
+        return count($newlyOverdue);
     }
 
     protected static function notifyAdminsAboutOverdueRide(array $ride): void

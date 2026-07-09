@@ -309,6 +309,7 @@ $toyHint = static function (string $key): void {
             'soundEnabled' => (bool)$settings['sound_enabled'],
             'autoRefreshSeconds' => (int)$settings['auto_refresh_seconds'],
             'dashboardUrl' => base_href('/admin/toy-rental'),
+            'syncOverdueUrl' => base_href('/admin/toy-rental/rides/sync-overdue'),
             'currency' => $currency,
             'labels' => [
                 'overdue' => FireballPluginToyCarRental::t('toy_rental_status_overdue'),

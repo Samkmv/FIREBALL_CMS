@@ -160,7 +160,7 @@ class HomeController extends BaseController
 
         if (request()->isPost()) {
             $data = $this->normalizeContactData(request()->getData());
-            $errors = $this->validateContactData($data, $supportSubjectOptions, 'support_validation_category');
+            $errors = $this->validateContactData($data, $supportSubjectOptions, 'support_validation_category', false);
             $rateKey = 'support|' . client_ip();
             if (!RateLimiter::attempt($rateKey, 3, 600)) {
                 $errors['message'][] = return_translation('contacts_form_rate_limited');
@@ -277,6 +277,7 @@ class HomeController extends BaseController
                 'priority' => 'normal',
                 'metadata' => [
                     'request_id' => $requestId,
+                    'phone' => (string)($data['phone'] ?? ''),
                 ],
                 'store_unread' => false,
             ]);
@@ -296,15 +297,16 @@ class HomeController extends BaseController
         return [
             'name' => trim((string)($data['name'] ?? '')),
             'email' => mb_strtolower(trim((string)($data['email'] ?? ''))),
+            'phone' => $this->normalizeContactPhone((string)($data['phone'] ?? '')),
             'subject' => trim((string)($data['subject'] ?? '')),
             'message' => trim((string)($data['message'] ?? '')),
         ];
     }
 
     /**
-     * Проверяет обязательные поля и формат e-mail в форме контактов.
+     * Проверяет обязательные поля и форматы контактов в форме обращения.
      */
-    protected function validateContactData(array $data, ?array $allowedSubjects = null, string $subjectErrorKey = 'contacts_validation_subject'): array
+    protected function validateContactData(array $data, ?array $allowedSubjects = null, string $subjectErrorKey = 'contacts_validation_subject', bool $requirePhone = true): array
     {
         $errors = [];
         $allowedSubjects = $allowedSubjects ?? $this->getContactSubjectOptions();
@@ -323,6 +325,12 @@ class HomeController extends BaseController
             $errors['email'][] = return_translation('contacts_validation_email_invalid');
         }
 
+        if ($requirePhone && $data['phone'] === '') {
+            $errors['phone'][] = return_translation('contacts_validation_phone');
+        } elseif ($data['phone'] !== '' && !$this->isValidContactPhone($data['phone'])) {
+            $errors['phone'][] = return_translation('contacts_validation_phone_invalid');
+        }
+
         if ($data['subject'] === '' || !in_array($data['subject'], $allowedSubjects, true)) {
             $errors['subject'][] = return_translation($subjectErrorKey);
         }
@@ -334,6 +342,23 @@ class HomeController extends BaseController
         }
 
         return $errors;
+    }
+
+    protected function normalizeContactPhone(string $phone): string
+    {
+        $phone = preg_replace('/\p{C}+/u', '', trim($phone)) ?? '';
+        $phone = preg_replace('/\s+/u', ' ', $phone) ?? $phone;
+
+        return mb_substr($phone, 0, 50);
+    }
+
+    protected function isValidContactPhone(string $phone): bool
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        return mb_strlen($phone) <= 50
+            && strlen($digits) >= 5
+            && preg_match('/^[0-9+\-\s().]+$/u', $phone) === 1;
     }
 
     protected function getContactSubjectOptions(): array

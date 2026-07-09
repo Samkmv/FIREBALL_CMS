@@ -278,6 +278,7 @@ return [
     'admin_contacts_empty' => '暂时没有请求。',
     'admin_contacts_col_name' => '姓名',
     'admin_contacts_col_email' => '邮箱',
+    'admin_contacts_col_phone' => '电话',
     'admin_contacts_col_subject' => '主题',
     'admin_contacts_col_message' => '消息',
     'admin_contacts_col_status' => '状态',

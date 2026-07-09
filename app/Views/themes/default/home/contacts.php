@@ -104,6 +104,12 @@ $hasSupportBlock = $contactsSupportTitle !== '' || $contactsSupportText !== '';
                         <?= get_errors('email') ?>
                     </div>
                     <div class="position-relative mb-4">
+                        <label for="phone" class="form-label"><?= print_translation('contacts_form_phone') ?> *</label>
+                        <input type="tel" class="form-control form-control-lg rounded-pill <?= get_validation_class('phone') ?>" id="phone" name="phone" value="<?= old('phone') ?>" inputmode="tel" autocomplete="tel" required>
+                        <div class="invalid-tooltip bg-transparent z-0 py-0 ps-3"><?= print_translation('contacts_validation_phone') ?></div>
+                        <?= get_errors('phone') ?>
+                    </div>
+                    <div class="position-relative mb-4">
                         <label for="subject" class="form-label"><?= print_translation('contacts_form_subject') ?> *</label>
                         <?php $selectedSubject = old('subject'); ?>
                         <select class="form-select form-select-lg rounded-pill <?= get_validation_class('subject') ?>" id="subject" name="subject" data-select aria-label="<?= htmlSC(return_translation('contacts_form_subject')) ?>" required>

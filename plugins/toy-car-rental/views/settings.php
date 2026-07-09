@@ -36,6 +36,14 @@
                     <label class="form-check-label fw-medium" for="toySound"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_sound')) ?></label>
                 </div>
             </div>
+            <div class="col-md-4">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
+                <div class="form-check form-switch mb-0 py-2">
+                    <input class="form-check-input" type="checkbox" name="overdue_push_enabled" value="1" id="toyOverduePush" <?= !empty($settings['overdue_push_enabled']) ? 'checked' : '' ?>>
+                    <label class="form-check-label fw-medium" for="toyOverduePush"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_overdue_push')) ?></label>
+                    <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_overdue_push_hint')) ?></div>
+                </div>
+            </div>
         </div>
         <button class="btn btn-dark rounded-pill mt-4" type="submit"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_save')) ?></button>
     </form>
