@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS vpn_servers (
     country VARCHAR(120) NULL,
     city VARCHAR(120) NULL,
     panel_url VARCHAR(500) NOT NULL,
+    public_host VARCHAR(255) NULL,
     panel_path VARCHAR(190) NULL,
     api_auth_type VARCHAR(30) NOT NULL DEFAULT 'token',
     api_token_encrypted MEDIUMTEXT NULL,
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS vpn_inbounds (
     remark VARCHAR(255) NULL,
     port INT(10) UNSIGNED NULL,
     is_enabled TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+    status VARCHAR(40) NOT NULL DEFAULT 'active',
     settings_json MEDIUMTEXT NULL,
     stream_settings_json MEDIUMTEXT NULL,
     created_at DATETIME NOT NULL,
@@ -42,6 +44,7 @@ CREATE TABLE IF NOT EXISTS vpn_inbounds (
     UNIQUE KEY server_remote_inbound (server_id, remote_inbound_id),
     KEY server_id (server_id),
     KEY remote_inbound_id (remote_inbound_id),
+    KEY status (status),
     KEY is_enabled (is_enabled)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -94,6 +97,8 @@ CREATE TABLE IF NOT EXISTS vpn_subscriptions (
     created_by INT(10) UNSIGNED NULL,
     source VARCHAR(80) NULL,
     source_order_id VARCHAR(120) NULL,
+    subscription_url VARCHAR(700) NULL,
+    subscription_token_encrypted MEDIUMTEXT NULL,
     subscription_token_hash VARCHAR(128) NULL,
     subscription_token_preview VARCHAR(32) NULL,
     created_at DATETIME NOT NULL,
@@ -125,6 +130,7 @@ CREATE TABLE IF NOT EXISTS vpn_subscription_nodes (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     PRIMARY KEY (id),
+    UNIQUE KEY subscription_server_inbound (subscription_id, server_id, inbound_id),
     KEY subscription_id (subscription_id),
     KEY server_id (server_id),
     KEY inbound_id (inbound_id),
@@ -137,13 +143,20 @@ CREATE TABLE IF NOT EXISTS vpn_traffic_snapshots (
     subscription_id BIGINT UNSIGNED NULL,
     node_id BIGINT UNSIGNED NULL,
     server_id INT(10) UNSIGNED NULL,
+    inbound_id INT(10) UNSIGNED NULL,
+    upload_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    download_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    total_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
     traffic_used_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    captured_at DATETIME NULL,
     recorded_at DATETIME NOT NULL,
     created_at DATETIME NOT NULL,
     PRIMARY KEY (id),
     KEY subscription_id (subscription_id),
     KEY node_id (node_id),
     KEY server_id (server_id),
+    KEY inbound_id (inbound_id),
+    KEY captured_at (captured_at),
     KEY recorded_at (recorded_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

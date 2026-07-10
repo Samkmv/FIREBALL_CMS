@@ -2,10 +2,12 @@
 
 namespace Fireball\VpnManager\Jobs;
 
+use Fireball\VpnManager\Services\TrafficSyncService;
+
 final class VpnSyncTrafficJob
 {
     public function handle(): array
     {
-        return ['synced' => 0, 'message' => 'Traffic sync is prepared for the next integration stage.'];
+        return (new TrafficSyncService())->syncActiveNodes();
     }
 }

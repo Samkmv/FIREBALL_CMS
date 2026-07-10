@@ -8,11 +8,20 @@ final class ThreeXuiClient
 {
     private array $server;
     private int $timeout;
+    private ?string $cookieFile = null;
+    private bool $loggedIn = false;
 
     public function __construct(array $server, int $timeout = 10)
     {
         $this->server = $server;
         $this->timeout = max(2, min(60, $timeout));
+    }
+
+    public function __destruct()
+    {
+        if ($this->cookieFile !== null && is_file($this->cookieFile)) {
+            @unlink($this->cookieFile);
+        }
     }
 
     public function testConnection(): array
@@ -42,16 +51,22 @@ final class ThreeXuiClient
 
     public function listInbounds(): array
     {
+        $this->authenticateIfNeeded();
+
         return $this->requestJson('GET', $this->url('/panel/api/inbounds/list'));
     }
 
     public function getInbound(int|string $id): array
     {
+        $this->authenticateIfNeeded();
+
         return $this->requestJson('GET', $this->url('/panel/api/inbounds/get/' . rawurlencode((string)$id)));
     }
 
     public function addClient(int|string $inboundId, array $clientData): array
     {
+        $this->authenticateIfNeeded();
+
         return $this->requestJson('POST', $this->url('/panel/api/inbounds/addClient'), [
             'id' => $inboundId,
             'settings' => json_encode(['clients' => [$clientData]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -60,6 +75,8 @@ final class ThreeXuiClient
 
     public function updateClient(int|string $inboundId, int|string $clientId, array $clientData): array
     {
+        $this->authenticateIfNeeded();
+
         return $this->requestJson('POST', $this->url('/panel/api/inbounds/updateClient/' . rawurlencode((string)$clientId)), [
             'id' => $inboundId,
             'settings' => json_encode(['clients' => [$clientData]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -68,27 +85,73 @@ final class ThreeXuiClient
 
     public function deleteClient(int|string $inboundId, int|string $clientId): array
     {
+        $this->authenticateIfNeeded();
+
         return $this->requestJson('POST', $this->url('/panel/api/inbounds/' . rawurlencode((string)$inboundId) . '/delClient/' . rawurlencode((string)$clientId)));
     }
 
     public function enableClient(int|string $inboundId, int|string $clientId): array
     {
-        return $this->updateClient($inboundId, $clientId, ['id' => $clientId, 'enable' => true]);
+        $client = $this->findClient($inboundId, (string)$clientId);
+        $client['enable'] = true;
+
+        return $this->updateClient($inboundId, $clientId, $client);
     }
 
     public function disableClient(int|string $inboundId, int|string $clientId): array
     {
-        return $this->updateClient($inboundId, $clientId, ['id' => $clientId, 'enable' => false]);
+        $client = $this->findClient($inboundId, (string)$clientId);
+        $client['enable'] = false;
+
+        return $this->updateClient($inboundId, $clientId, $client);
     }
 
     public function resetClientTraffic(int|string $inboundId, int|string $clientId): array
     {
+        $this->authenticateIfNeeded();
+
         return $this->requestJson('POST', $this->url('/panel/api/inbounds/' . rawurlencode((string)$inboundId) . '/resetClientTraffic/' . rawurlencode((string)$clientId)));
     }
 
     public function getClientTraffic(int|string $clientId): array
     {
+        $this->authenticateIfNeeded();
+
         return $this->requestJson('GET', $this->url('/panel/api/inbounds/getClientTraffics/' . rawurlencode((string)$clientId)));
+    }
+
+    public function clientExists(int|string $inboundId, string $clientEmail, string $clientUuid): bool
+    {
+        return $this->findClient($inboundId, $clientUuid, $clientEmail, false) !== null;
+    }
+
+    private function findClient(int|string $inboundId, string $clientId, string $clientEmail = '', bool $throw = true): ?array
+    {
+        $response = $this->getInbound($inboundId);
+        $inbound = is_array($response['obj'] ?? null) ? $response['obj'] : $response;
+        $settings = $inbound['settings'] ?? [];
+        if (is_string($settings)) {
+            $decoded = json_decode($settings, true);
+            $settings = is_array($decoded) ? $decoded : [];
+        }
+
+        foreach ((array)($settings['clients'] ?? []) as $client) {
+            if (!is_array($client)) {
+                continue;
+            }
+
+            $email = (string)($client['email'] ?? '');
+            $id = (string)($client['id'] ?? $client['uuid'] ?? $client['password'] ?? '');
+            if (($clientId !== '' && $id === $clientId) || ($clientEmail !== '' && $email === $clientEmail)) {
+                return $client;
+            }
+        }
+
+        if ($throw) {
+            throw new \RuntimeException(\FireballPluginVpnManager::t('vpn_manager_error_client_not_confirmed'));
+        }
+
+        return null;
     }
 
     private function requestJson(string $method, string $url, array $payload = []): array
@@ -97,6 +160,10 @@ final class ThreeXuiClient
         $decoded = json_decode($response['body'], true);
         if (!is_array($decoded)) {
             throw new \RuntimeException('3x-ui returned a non-JSON response.');
+        }
+        if (array_key_exists('success', $decoded) && empty($decoded['success'])) {
+            $message = trim((string)($decoded['msg'] ?? $decoded['message'] ?? '3x-ui API request failed.'));
+            throw new \RuntimeException($message !== '' ? $message : '3x-ui API request failed.');
         }
 
         return $decoded;
@@ -124,6 +191,11 @@ final class ThreeXuiClient
             CURLOPT_HTTPHEADER => $headers,
         ]);
 
+        if ($this->cookieFile !== null) {
+            curl_setopt($ch, CURLOPT_COOKIEJAR, $this->cookieFile);
+            curl_setopt($ch, CURLOPT_COOKIEFILE, $this->cookieFile);
+        }
+
         if (!empty($payload)) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
         }
@@ -141,6 +213,36 @@ final class ThreeXuiClient
             'status' => $status,
             'body' => (string)$body,
         ];
+    }
+
+    private function authenticateIfNeeded(): void
+    {
+        if ($this->loggedIn) {
+            return;
+        }
+
+        $username = Crypto::decrypt($this->server['username_encrypted'] ?? null);
+        $password = Crypto::decrypt($this->server['password_encrypted'] ?? null);
+        if ($username === '' || $password === '') {
+            $this->loggedIn = true;
+            return;
+        }
+
+        $this->cookieFile = tempnam(sys_get_temp_dir(), 'vpn-3xui-cookie-') ?: null;
+        $response = $this->request('POST', $this->url('/login'), [
+            'username' => $username,
+            'password' => $password,
+        ]);
+        if ($response['status'] < 200 || $response['status'] >= 400) {
+            throw new \RuntimeException('3x-ui login failed with HTTP ' . $response['status'] . '.');
+        }
+
+        $decoded = json_decode($response['body'], true);
+        if (is_array($decoded) && array_key_exists('success', $decoded) && empty($decoded['success'])) {
+            throw new \RuntimeException((string)($decoded['msg'] ?? '3x-ui login failed.'));
+        }
+
+        $this->loggedIn = true;
     }
 
     private function url(string $path): string

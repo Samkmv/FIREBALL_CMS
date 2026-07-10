@@ -4,13 +4,13 @@ namespace Fireball\VpnManager\Jobs;
 
 use Fireball\VpnManager\Services\NotificationScheduler;
 
-final class VpnSendExpirationNotificationsJob
+final class VpnSendTrafficNotificationsJob
 {
     public function handle(): array
     {
         $scheduler = new NotificationScheduler();
-        $queued = $scheduler->queueExpirationNotifications();
-        $sent = $scheduler->sendPending(['expires_3_days', 'expires_today', 'subscription_expired', 'manual_reminder']);
+        $queued = $scheduler->queueTrafficNotifications();
+        $sent = $scheduler->sendPending(['traffic_80', 'traffic_100']);
 
         return array_merge(['queued' => (int)($queued['created'] ?? 0)], $sent);
     }

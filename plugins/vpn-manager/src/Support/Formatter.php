@@ -25,6 +25,18 @@ final class Formatter
         return (int)round($value * 1024 * 1024 * 1024);
     }
 
+    public static function trafficToBytes(mixed $value, string $unit): int
+    {
+        $number = max(0.0, (float)str_replace(',', '.', (string)$value));
+        $multiplier = match (strtolower($unit)) {
+            'mb' => 1024 * 1024,
+            'tb' => 1024 * 1024 * 1024 * 1024,
+            default => 1024 * 1024 * 1024,
+        };
+
+        return (int)round($number * $multiplier);
+    }
+
     public static function bytesToGb(mixed $bytes): string
     {
         $value = max(0.0, (float)$bytes) / 1024 / 1024 / 1024;
@@ -36,13 +48,48 @@ final class Formatter
     {
         $class = match ($status) {
             'active', 'online', 'sent' => 'text-success bg-success-subtle',
-            'expired', 'disabled', 'cancelled', 'deleted', 'offline', 'skipped' => 'text-secondary bg-secondary-subtle',
+            'expired', 'disabled', 'cancelled', 'deleted', 'offline', 'skipped', 'sync_missing' => 'text-secondary bg-secondary-subtle',
             'traffic_exceeded', 'provisioning_failed', 'sync_error', 'create_failed', 'error', 'failed' => 'text-danger bg-danger-subtle',
-            'provisioning', 'creating', 'pending', 'unchecked' => 'text-warning bg-warning-subtle',
+            'provisioning', 'creating', 'deleting', 'pending', 'unchecked' => 'text-warning bg-warning-subtle',
             default => 'text-info bg-info-subtle',
         };
 
-        return '<span class="badge rounded-pill ' . htmlSC($class) . '">' . htmlSC($status) . '</span>';
+        return '<span class="badge rounded-pill ' . htmlSC($class) . '">' . htmlSC(self::statusLabel($status)) . '</span>';
+    }
+
+    public static function statusLabel(string $status): string
+    {
+        $key = 'vpn_manager_status_' . preg_replace('/[^a-z0-9_]/', '_', strtolower(trim($status)));
+        $label = \FireballPluginVpnManager::t($key);
+
+        return $label !== $key ? $label : $status;
+    }
+
+    public static function dateTime(?string $value, string $emptyKey = 'vpn_manager_date_never'): string
+    {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return \FireballPluginVpnManager::t($emptyKey);
+        }
+
+        $timestamp = strtotime($value);
+        if (!$timestamp) {
+            return $value;
+        }
+
+        $locale = function_exists('current_locale') ? (string)current_locale() : '';
+
+        return match ($locale) {
+            'ru', 'de' => date('d.m.Y H:i', $timestamp),
+            default => date('Y-m-d H:i', $timestamp),
+        };
+    }
+
+    public static function dateInput(?string $value): string
+    {
+        $timestamp = strtotime((string)$value);
+
+        return $timestamp ? date('Y-m-d\TH:i', $timestamp) : '';
     }
 
     public static function maskSensitive(?string $value): string

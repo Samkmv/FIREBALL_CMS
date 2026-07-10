@@ -1,17 +1,30 @@
 <?php
 require_once __DIR__ . '/partials/helpers.php';
 
+use Fireball\VpnManager\Services\QrCodeService;
+use Fireball\VpnManager\Services\SubscriptionLinkService;
 use Fireball\VpnManager\Support\Formatter;
 
 $subscription = is_array($subscription ?? null) ? $subscription : [];
 $nodes = is_array($nodes ?? null) ? $nodes : [];
 $notifications = is_array($notifications ?? null) ? $notifications : [];
+$diagnostics = is_array($diagnostics ?? null) ? $diagnostics : [];
+$subscriptionId = (int)($subscription['id'] ?? 0);
+$linkService = new SubscriptionLinkService();
+$subscriptionUrl = $linkService->subscriptionUrl($subscription);
+$toggleStatus = (string)($subscription['status'] ?? '') === 'active' ? 'suspended' : 'active';
+$userLabel = trim((string)($subscription['user_name'] ?? $subscription['user_email'] ?? ''));
+$planLabel = trim((string)($subscription['plan_name'] ?? ''));
+$actions = '<a class="btn btn-outline-secondary rounded-pill" href="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions')) . '">' . htmlSC(FireballPluginVpnManager::t('vpn_manager_back_to_list')) . '</a>'
+    . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/extend/' . $subscriptionId)) . '"><i class="ci-calendar-plus"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_extend')) . '</a>'
+    . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/status')) . '" method="post">' . get_csrf_field() . '<input type="hidden" name="id" value="' . $subscriptionId . '"><input type="hidden" name="status" value="' . htmlSC($toggleStatus) . '"><button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-power"></i>' . htmlSC($toggleStatus === 'active' ? FireballPluginVpnManager::t('vpn_manager_action_enable') : FireballPluginVpnManager::t('vpn_manager_action_disable')) . '</button></form>'
+    . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/provision')) . '" method="post">' . get_csrf_field() . '<input type="hidden" name="id" value="' . $subscriptionId . '"><button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-refresh-cw"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_recreate_clients')) . '</button></form>';
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
-    'title' => ($title ?? FireballPluginVpnManager::t('vpn_manager_subscription_card_title')) . ' #' . (int)($subscription['id'] ?? 0),
+    'title' => ($title ?? FireballPluginVpnManager::t('vpn_manager_subscription_card_title')) . ' #' . $subscriptionId,
     'subtitle' => $subtitle ?? '',
-    'actions' => '<a class="btn btn-outline-secondary rounded-pill" href="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions')) . '">' . htmlSC(FireballPluginVpnManager::t('vpn_manager_back_to_list')) . '</a>',
+    'actions' => $actions,
 ]) ?>
 
     <?php require __DIR__ . '/partials/tabs.php'; ?>
@@ -22,15 +35,15 @@ $notifications = is_array($notifications ?? null) ? $notifications : [];
                 <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
                     <div>
                         <h2 class="h5 mb-1"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_summary')) ?></h2>
-                        <div class="text-body-secondary"><?= htmlSC((string)($subscription['user_name'] ?? $subscription['user_email'] ?? '-')) ?></div>
+                        <div class="text-body-secondary"><?= htmlSC($userLabel !== '' ? $userLabel : FireballPluginVpnManager::t('vpn_manager_user_missing')) ?></div>
                     </div>
                     <?= vpnm_status_badge((string)($subscription['status'] ?? '')) ?>
                 </div>
                 <dl class="row mb-0">
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_plan')) ?></dt>
-                    <dd class="col-7"><?= htmlSC((string)($subscription['plan_name'] ?? '-')) ?></dd>
+                    <dd class="col-7"><?= htmlSC($planLabel !== '' ? $planLabel : FireballPluginVpnManager::t('vpn_manager_plan_missing')) ?></dd>
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_expires_at')) ?></dt>
-                    <dd class="col-7"><?= htmlSC((string)($subscription['expires_at'] ?? '-')) ?></dd>
+                    <dd class="col-7"><?= htmlSC(Formatter::dateTime((string)($subscription['expires_at'] ?? ''))) ?></dd>
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_traffic_limit')) ?></dt>
                     <dd class="col-7"><?= htmlSC(Formatter::bytes((int)($subscription['traffic_limit_bytes'] ?? 0))) ?></dd>
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_traffic_used')) ?></dt>
@@ -38,13 +51,22 @@ $notifications = is_array($notifications ?? null) ? $notifications : [];
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_devices')) ?></dt>
                     <dd class="col-7"><?= (int)($subscription['device_limit'] ?? 0) ?></dd>
                 </dl>
-                <form action="<?= base_href('/admin/plugins/vpn-manager/subscriptions/manual-reminder') ?>" method="post" class="mt-4">
-                    <?= get_csrf_field() ?>
-                    <input type="hidden" name="id" value="<?= (int)($subscription['id'] ?? 0) ?>">
-                    <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
-                        <i class="ci-bell"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_action_manual_reminder')) ?>
-                    </button>
-                </form>
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <form action="<?= base_href('/admin/plugins/vpn-manager/subscriptions/manual-reminder') ?>" method="post">
+                        <?= get_csrf_field() ?>
+                        <input type="hidden" name="id" value="<?= $subscriptionId ?>">
+                        <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                            <i class="ci-bell"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_action_manual_reminder')) ?>
+                        </button>
+                    </form>
+                    <form action="<?= base_href('/admin/plugins/vpn-manager/subscriptions/reset-traffic') ?>" method="post">
+                        <?= get_csrf_field() ?>
+                        <input type="hidden" name="id" value="<?= $subscriptionId ?>">
+                        <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                            <i class="ci-activity"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_action_reset_traffic')) ?>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
         <div class="col-xl-7">
@@ -76,6 +98,49 @@ $notifications = is_array($notifications ?? null) ? $notifications : [];
     </div>
 
     <div class="border rounded-5 p-3 p-md-4 mt-4">
+        <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_diagnostics')) ?></h2>
+        <dl class="row mb-0">
+            <dt class="col-md-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_diag_subscription_created')) ?></dt>
+            <dd class="col-md-7"><?= htmlSC(!empty($diagnostics['subscription_created']) ? FireballPluginVpnManager::t('vpn_manager_yes') : FireballPluginVpnManager::t('vpn_manager_no')) ?></dd>
+            <dt class="col-md-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_diag_plan_found')) ?></dt>
+            <dd class="col-md-7"><?= htmlSC(!empty($diagnostics['plan_found']) ? FireballPluginVpnManager::t('vpn_manager_yes') : FireballPluginVpnManager::t('vpn_manager_no')) ?></dd>
+            <dt class="col-md-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_diag_active_plan_items')) ?></dt>
+            <dd class="col-md-7"><?= (int)($diagnostics['active_plan_items'] ?? 0) ?></dd>
+            <dt class="col-md-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_diag_nodes_created')) ?></dt>
+            <dd class="col-md-7"><?= (int)($diagnostics['nodes_created'] ?? 0) ?></dd>
+            <dt class="col-md-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_diag_clients_created')) ?></dt>
+            <dd class="col-md-7"><?= (int)($diagnostics['clients_created'] ?? 0) ?></dd>
+            <dt class="col-md-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_diag_last_error')) ?></dt>
+            <dd class="col-md-7 text-break"><?= htmlSC(trim((string)($diagnostics['last_error'] ?? '')) !== '' ? (string)$diagnostics['last_error'] : FireballPluginVpnManager::t('vpn_manager_none')) ?></dd>
+        </dl>
+    </div>
+
+    <div class="border rounded-5 p-3 p-md-4 mt-4" id="subscription-link">
+        <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+            <div>
+                <h2 class="h5 mb-1"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_action_copy_subscription_link')) ?></h2>
+                <p class="text-body-secondary mb-0">
+                    <?= htmlSC($subscriptionUrl !== '' ? FireballPluginVpnManager::t('vpn_manager_subscription_link_ready') : FireballPluginVpnManager::t('vpn_manager_subscription_link_unavailable')) ?>
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button" <?= $subscriptionUrl === '' ? 'disabled' : '' ?> data-vpn-copy-value="<?= htmlSC($subscriptionUrl) ?>" data-vpn-copy-done="<?= htmlSC(FireballPluginVpnManager::t('vpn_manager_copied')) ?>">
+                    <i class="ci-copy"></i><span data-vpn-copy-label><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_action_copy_subscription_link')) ?></span>
+                </button>
+                <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2 <?= $subscriptionUrl === '' ? 'disabled' : '' ?>" href="#subscription-link" <?= $subscriptionUrl === '' ? 'aria-disabled="true"' : '' ?>>
+                    <i class="ci-qr-code"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_action_show_qr')) ?>
+                </a>
+            </div>
+        </div>
+        <?php if ($subscriptionUrl !== ''): ?>
+            <div class="mb-3">
+                <input class="form-control" type="text" value="<?= htmlSC($subscriptionUrl) ?>" readonly>
+            </div>
+            <?= (new QrCodeService())->render($subscriptionUrl) ?>
+        <?php endif; ?>
+    </div>
+
+    <div class="border rounded-5 p-3 p-md-4 mt-4">
         <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_notifications')) ?></h2>
         <?= view()->renderPartial('admin/partials/table', [
             'columns' => [
@@ -89,10 +154,10 @@ $notifications = is_array($notifications ?? null) ? $notifications : [];
                 return [
                     'cells' => [
                         ['value' => (string)$notification['type']],
-                        ['value' => (string)($notification['scheduled_for'] ?? '-')],
+                        ['value' => Formatter::dateTime((string)($notification['scheduled_for'] ?? ''))],
                         ['value' => (string)$notification['channel']],
                         ['html' => vpnm_status_badge((string)$notification['status'])],
-                        ['html' => htmlSC((string)($notification['sent_at'] ?? '-')) . (!empty($notification['error_message']) ? '<div class="small text-danger text-break">' . htmlSC((string)$notification['error_message']) . '</div>' : '')],
+                        ['html' => htmlSC(Formatter::dateTime((string)($notification['sent_at'] ?? ''))) . (!empty($notification['error_message']) ? '<div class="small text-danger text-break">' . htmlSC((string)$notification['error_message']) . '</div>' : '')],
                     ],
                 ];
             }, $notifications),

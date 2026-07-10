@@ -2,11 +2,13 @@
 use Fireball\VpnManager\Support\Formatter;
 
 $plan = is_array($plan ?? null) ? $plan : null;
-$servers = is_array($servers ?? null) ? $servers : [];
-$selectedServers = array_map('intval', is_array($selectedServers ?? null) ? $selectedServers : []);
+$inbounds = is_array($inbounds ?? null) ? $inbounds : [];
+$selectedInboundIds = array_map('intval', is_array($selectedInboundIds ?? null) ? $selectedInboundIds : []);
 $isEdit = $plan !== null;
 $action = $isEdit ? base_href('/admin/plugins/vpn-manager/plans/edit/' . (int)$plan['id']) : base_href('/admin/plugins/vpn-manager/plans/create');
 $trafficMode = (string)($plan['traffic_mode'] ?? 'shared');
+$trafficBytes = (int)($plan['traffic_limit_bytes'] ?? 0);
+$trafficValue = $trafficBytes > 0 ? Formatter::bytesToGb($trafficBytes) : '0';
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -35,15 +37,23 @@ $trafficMode = (string)($plan['traffic_mode'] ?? 'shared');
                 <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_description')) ?></label>
                 <textarea class="form-control" name="description" rows="3"><?= htmlSC((string)($plan['description'] ?? '')) ?></textarea>
             </div>
-            <div class="col-md-4">
-                <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_traffic_limit_gb')) ?></label>
-                <input class="form-control" type="number" min="0" step="0.01" name="traffic_limit_gb" value="<?= htmlSC(Formatter::bytesToGb($plan['traffic_limit_bytes'] ?? 0)) ?>">
+            <div class="col-md-3">
+                <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_traffic_limit')) ?></label>
+                <input class="form-control" type="number" min="0" step="0.01" name="traffic_limit_value" value="<?= htmlSC($trafficValue) ?>">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_traffic_unit')) ?></label>
+                <select class="form-select" name="traffic_unit">
+                    <option value="mb">MB</option>
+                    <option value="gb" selected>GB</option>
+                    <option value="tb">TB</option>
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_sort_order')) ?></label>
                 <input class="form-control" type="number" min="0" step="1" name="sort_order" value="<?= (int)($plan['sort_order'] ?? 0) ?>">
             </div>
-            <div class="col-md-4 d-flex align-items-end">
+            <div class="col-md-3 d-flex align-items-end">
                 <div class="form-check form-switch py-2">
                     <input class="form-check-input" type="checkbox" name="is_active" value="1" id="vpnPlanActive" <?= (int)($plan['is_active'] ?? 1) === 1 ? 'checked' : '' ?>>
                     <label class="form-check-label fw-medium" for="vpnPlanActive"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_active')) ?></label>
@@ -64,17 +74,32 @@ $trafficMode = (string)($plan['traffic_mode'] ?? 'shared');
         </div>
 
         <div class="border rounded-4 p-3 mt-4">
-            <h2 class="h6 mb-3"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_plan_servers')) ?></h2>
-            <?php if (empty($servers)): ?>
-                <p class="text-body-secondary mb-0"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_empty_servers_for_plan')) ?></p>
+            <h2 class="h6 mb-3"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_plan_inbounds')) ?></h2>
+            <?php if (empty($inbounds)): ?>
+                <div class="alert alert-warning mb-0">
+                    <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_warning_sync_inbounds_first')) ?>
+                </div>
             <?php else: ?>
                 <div class="row g-2">
-                    <?php foreach ($servers as $server): ?>
+                    <?php foreach ($inbounds as $inbound): ?>
+                        <?php
+                        $id = (int)$inbound['inbound_id'];
+                        $serverLine = trim((string)($inbound['country'] ?? '') . ' ' . (string)($inbound['city'] ?? ''));
+                        $remark = trim((string)($inbound['remark'] ?? ''));
+                        $inboundTitle = trim((string)($inbound['name'] ?? 'Inbound') . ($remark !== '' && $remark !== (string)($inbound['name'] ?? '') ? ' / ' . $remark : ''));
+                        ?>
                         <div class="col-md-6">
                             <div class="form-check border rounded-4 p-3 ps-5 h-100">
-                                <input class="form-check-input" type="checkbox" name="server_ids[]" value="<?= (int)$server['id'] ?>" id="vpnPlanServer<?= (int)$server['id'] ?>" <?= in_array((int)$server['id'], $selectedServers, true) ? 'checked' : '' ?>>
-                                <label class="form-check-label fw-medium" for="vpnPlanServer<?= (int)$server['id'] ?>"><?= htmlSC((string)$server['name']) ?></label>
-                                <div class="small text-body-secondary"><?= htmlSC(trim((string)($server['country'] ?? '') . ' ' . (string)($server['city'] ?? ''))) ?></div>
+                                <input class="form-check-input" type="checkbox" name="inbound_ids[]" value="<?= $id ?>" id="vpnPlanInbound<?= $id ?>" <?= in_array($id, $selectedInboundIds, true) ? 'checked' : '' ?>>
+                                <label class="form-check-label fw-medium" for="vpnPlanInbound<?= $id ?>">
+                                    <?= htmlSC((string)$inbound['server_name']) ?>
+                                </label>
+                                <div class="small text-body-secondary">
+                                    <?= htmlSC($inboundTitle) ?> · <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_remote_id')) ?> #<?= htmlSC((string)$inbound['remote_inbound_id']) ?>
+                                </div>
+                                <?php if ($serverLine !== ''): ?>
+                                    <div class="small text-body-secondary"><?= htmlSC($serverLine) ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

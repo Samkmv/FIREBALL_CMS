@@ -150,8 +150,10 @@ foreach ($groupedItems as &$items) {
 }
 unset($items);
 
-$isActive = static function (string $href) use ($currentPath, $normalizeAdminPath): bool {
+$isActive = static function (array $item) use ($currentPath, $normalizeAdminPath): bool {
+    $href = (string)($item['href'] ?? '#');
     $routePath = $normalizeAdminPath((string)(parse_url($href, PHP_URL_PATH) ?: '/'));
+    $navKey = (string)($item['nav_key'] ?? '');
 
     if ($routePath === '/admin/support' && $currentPath === '/admin/contact-requests') {
         return true;
@@ -161,7 +163,7 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
         return $currentPath === '/admin';
     }
 
-    if ($routePath === '/admin/plugins') {
+    if ($navKey === 'plugins' || $routePath === '/admin/plugins') {
         return $currentPath === '/admin/plugins';
     }
 
@@ -190,7 +192,7 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
                         if (!str_starts_with($icon, 'ci-')) {
                             $icon = 'ci-' . $icon;
                         }
-                        $active = $isActive($itemHref);
+                        $active = $isActive($item);
                         ?>
                         <a
                             class="list-group-item list-group-item-action d-flex align-items-center gap-3 rounded-4 px-3 py-2 border-0 <?= $active ? 'active shadow-sm' : 'bg-transparent' ?>"

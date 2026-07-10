@@ -4,10 +4,10 @@ namespace Fireball\VpnManager\Jobs;
 
 use Fireball\VpnManager\Services\SubscriptionAutomationService;
 
-final class VpnCheckExpirationsJob
+final class VpnCheckTrafficLimitsJob
 {
     public function handle(): array
     {
-        return (new SubscriptionAutomationService())->expireDueSubscriptions();
+        return (new SubscriptionAutomationService())->checkTrafficLimits();
     }
 }

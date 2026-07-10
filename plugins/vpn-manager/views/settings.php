@@ -49,9 +49,22 @@ $checked = static fn(string $key): string => !empty($settings[$key]) ? 'checked'
         </section>
 
         <section class="mb-4">
-            <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_settings_notifications')) ?></h2>
-            <div class="row g-2">
+            <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_settings_automation')) ?></h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="form-check form-switch py-2">
+                        <input class="form-check-input" type="checkbox" name="traffic_sync_enabled" value="1" id="vpnTrafficSyncEnabled" <?= $checked('traffic_sync_enabled') ?>>
+                        <label class="form-check-label fw-medium" for="vpnTrafficSyncEnabled"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_setting_traffic_sync_enabled')) ?></label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_traffic_sync_interval')) ?></label>
+                    <input class="form-control" type="number" min="1" step="1" name="traffic_sync_interval_minutes" value="<?= (int)($settings['traffic_sync_interval_minutes'] ?? 10) ?>">
+                </div>
+                <div class="col-md-4"></div>
                 <?php foreach ([
+                    'auto_disable_expired_subscriptions' => 'vpn_manager_setting_auto_disable_expired',
+                    'auto_disable_traffic_exceeded' => 'vpn_manager_setting_auto_disable_traffic',
                     'notify_3_days_before_expire' => 'vpn_manager_setting_notify_3_days',
                     'notify_on_expire_day' => 'vpn_manager_setting_notify_today',
                     'notify_traffic_80' => 'vpn_manager_setting_notify_traffic_80',
@@ -78,10 +91,6 @@ $checked = static fn(string $key): string => !empty($settings[$key]) ? 'checked'
                         <input class="form-check-input" type="checkbox" name="sync_enabled" value="1" id="vpnSyncEnabled" <?= $checked('sync_enabled') ?>>
                         <label class="form-check-label fw-medium" for="vpnSyncEnabled"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_setting_sync_enabled')) ?></label>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_sync_interval')) ?></label>
-                    <input class="form-control" type="number" min="1" step="1" name="sync_interval_minutes" value="<?= (int)($settings['sync_interval_minutes'] ?? 15) ?>">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_server_check_interval')) ?></label>

@@ -13,9 +13,9 @@ if (!function_exists('vpnm_actions_dropdown')) {
     function vpnm_actions_dropdown(array $actions, string $label = ''): string
     {
         $label = $label !== '' ? $label : FireballPluginVpnManager::t('vpn_manager_actions');
-        $html = '<div class="dropdown admin-post-actions-dropdown d-inline-block">';
-        $html .= '<button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="' . htmlSC($label) . '"><i class="ci-more-vertical"></i></button>';
-        $html .= '<div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">';
+        $html = '<div class="dropdown admin-post-actions-dropdown d-inline-block" data-vpn-dropdown>';
+        $html .= '<button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" aria-expanded="false" aria-label="' . htmlSC($label) . '" data-vpn-dropdown-toggle><i class="ci-more-vertical"></i></button>';
+        $html .= '<div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4" data-vpn-dropdown-menu>';
 
         foreach ($actions as $action) {
             if (($action['type'] ?? '') === 'divider') {
@@ -34,12 +34,12 @@ if (!function_exists('vpnm_actions_dropdown')) {
                 foreach ((array)($action['hidden'] ?? []) as $name => $value) {
                     $html .= '<input type="hidden" name="' . htmlSC((string)$name) . '" value="' . htmlSC((string)$value) . '">';
                 }
-                $html .= '<button class="' . htmlSC($class) . '" type="submit">' . $content . '</button>';
+                $html .= '<button class="' . htmlSC($class) . '" type="submit" data-vpn-dropdown-action>' . $content . '</button>';
                 $html .= '</form>';
                 continue;
             }
 
-            $html .= '<a class="' . htmlSC($class) . '" href="' . htmlSC((string)($action['href'] ?? '#')) . '">' . $content . '</a>';
+            $html .= '<a class="' . htmlSC($class) . '" href="' . htmlSC((string)($action['href'] ?? '#')) . '" data-vpn-dropdown-action>' . $content . '</a>';
         }
 
         $html .= '</div></div>';

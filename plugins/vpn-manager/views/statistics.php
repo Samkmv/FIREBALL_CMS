@@ -1,15 +1,13 @@
 <?php
-use Fireball\VpnManager\Support\Formatter;
-
 $stats = is_array($stats ?? null) ? $stats : [];
 $items = [
     'vpn_manager_stat_active_subscriptions' => (int)($stats['active_subscriptions'] ?? 0),
     'vpn_manager_stat_expires_3_days' => (int)($stats['expires_3_days'] ?? 0),
     'vpn_manager_stat_expires_today' => (int)($stats['expires_today'] ?? 0),
     'vpn_manager_stat_expired_subscriptions' => (int)($stats['expired_subscriptions'] ?? 0),
+    'vpn_manager_stat_connections' => (int)($stats['connections'] ?? 0),
+    'vpn_manager_stat_vpn_users' => (int)($stats['vpn_users'] ?? 0),
     'vpn_manager_stat_servers_online' => (int)($stats['servers_online'] ?? 0),
-    'vpn_manager_stat_servers_error' => (int)($stats['servers_error'] ?? 0),
-    'vpn_manager_stat_traffic_used' => Formatter::bytes((int)($stats['traffic_used'] ?? 0)),
     'vpn_manager_stat_sync_errors' => (int)($stats['sync_errors'] ?? 0),
 ];
 ?>

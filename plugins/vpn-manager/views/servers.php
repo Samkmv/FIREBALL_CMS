@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/partials/helpers.php';
 
+use Fireball\VpnManager\Support\Formatter;
+
 $servers = is_array($servers ?? null) ? $servers : [];
 $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/plugins/vpn-manager/servers/create')) . '"><i class="ci-plus"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_add_server')) . '</a>';
 ?>
@@ -20,6 +22,7 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                 ['label' => FireballPluginVpnManager::t('vpn_manager_col_name')],
                 ['label' => FireballPluginVpnManager::t('vpn_manager_col_location')],
                 ['label' => FireballPluginVpnManager::t('vpn_manager_col_panel_url')],
+                ['label' => FireballPluginVpnManager::t('vpn_manager_col_public_host')],
                 ['label' => FireballPluginVpnManager::t('vpn_manager_col_status')],
                 ['label' => FireballPluginVpnManager::t('vpn_manager_col_last_check')],
                 ['label' => FireballPluginVpnManager::t('vpn_manager_actions')],
@@ -46,8 +49,9 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                         ['html' => '<span class="fw-medium">' . htmlSC((string)$server['name']) . '</span><div class="small text-body-secondary">' . htmlSC((string)$server['code']) . '</div>'],
                         ['value' => $location],
                         ['value' => (string)$server['panel_url']],
+                        ['value' => (string)($server['public_host'] ?? '') ?: '-'],
                         ['html' => vpnm_status_badge($status)],
-                        ['html' => htmlSC((string)($server['last_check_at'] ?? '-')) . (!empty($server['last_error']) ? '<div class="small text-danger text-break">' . htmlSC((string)$server['last_error']) . '</div>' : '')],
+                        ['html' => htmlSC(Formatter::dateTime((string)($server['last_check_at'] ?? ''))) . (!empty($server['last_error']) ? '<div class="small text-danger text-break">' . htmlSC((string)$server['last_error']) . '</div>' : '')],
                         ['html' => vpnm_actions_dropdown($actions)],
                     ],
                 ];

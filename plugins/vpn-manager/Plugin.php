@@ -111,11 +111,17 @@ final class FireballPluginVpnManager implements PluginInterface
     public static function viewData(string $active, array $data = []): array
     {
         $settings = SettingsService::settings();
+        $assetBase = base_href('/plugins/vpn-manager/assets/');
+        $assetPath = __DIR__ . '/assets';
+        $cssVersion = is_file($assetPath . '/vpn-manager.css') ? (string)filemtime($assetPath . '/vpn-manager.css') : (string)time();
+        $jsVersion = is_file($assetPath . '/vpn-manager.js') ? (string)filemtime($assetPath . '/vpn-manager.js') : (string)time();
 
         return array_merge([
             'tabs' => self::tabs($active),
             'settings' => $settings,
             'serviceName' => $settings['service_name'] ?? 'My VPN',
+            'styles' => [$assetBase . 'vpn-manager.css?v=' . $cssVersion],
+            'footer_scripts' => [$assetBase . 'vpn-manager.js?v=' . $jsVersion],
         ], $data);
     }
 

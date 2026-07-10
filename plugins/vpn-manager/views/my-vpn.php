@@ -1,4 +1,6 @@
 <?php
+use Fireball\VpnManager\Services\QrCodeService;
+use Fireball\VpnManager\Services\SubscriptionLinkService;
 use Fireball\VpnManager\Support\Formatter;
 
 $subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
@@ -10,6 +12,7 @@ foreach ($subscriptions as $item) {
     }
 }
 $visible = $active ?: ($subscriptions[0] ?? null);
+$subscriptionUrl = is_array($visible) ? (new SubscriptionLinkService())->subscriptionUrl($visible) : '';
 ?>
 
 <section class="container py-5">
@@ -43,7 +46,7 @@ $visible = $active ?: ($subscriptions[0] ?? null);
                         <div>
                             <div class="badge rounded-pill text-success bg-success-subtle mb-2"><?= htmlSC($statusText) ?></div>
                             <h2 class="h4 mb-1"><?= htmlSC((string)($visible['plan_name'] ?? $settings['subscription_title'] ?? 'VPN subscription')) ?></h2>
-                            <div class="text-body-secondary"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_valid_until')) ?>: <?= htmlSC((string)($visible['expires_at'] ?? '-')) ?></div>
+                            <div class="text-body-secondary"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_valid_until')) ?>: <?= htmlSC(Formatter::dateTime((string)($visible['expires_at'] ?? ''))) ?></div>
                         </div>
                         <i class="ci-server fs-2 text-body-secondary"></i>
                     </div>
@@ -68,12 +71,17 @@ $visible = $active ?: ($subscriptions[0] ?? null);
                         </div>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="button" disabled><i class="ci-copy"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_copy_subscription')) ?></button>
-                        <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button" disabled><i class="ci-scan"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_show_qr')) ?></button>
+                        <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="button" <?= $subscriptionUrl === '' ? 'disabled' : '' ?> data-vpn-copy-value="<?= htmlSC($subscriptionUrl) ?>" data-vpn-copy-done="<?= htmlSC(FireballPluginVpnManager::t('vpn_manager_copied')) ?>"><i class="ci-copy"></i><span data-vpn-copy-label><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_copy_subscription')) ?></span></button>
+                        <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2 <?= $subscriptionUrl === '' ? 'disabled' : '' ?>" href="#my-vpn-qr" <?= $subscriptionUrl === '' ? 'aria-disabled="true"' : '' ?>><i class="ci-scan"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_show_qr')) ?></a>
                         <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/my-vpn') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_instruction_android')) ?></a>
                         <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/my-vpn') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_instruction_iphone')) ?></a>
                         <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/my-vpn') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_instruction_windows')) ?></a>
                     </div>
+                    <?php if ($subscriptionUrl !== ''): ?>
+                        <div class="mt-4" id="my-vpn-qr">
+                            <?= (new QrCodeService())->render($subscriptionUrl) ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>

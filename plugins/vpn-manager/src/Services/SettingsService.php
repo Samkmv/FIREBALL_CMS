@@ -23,7 +23,11 @@ final class SettingsService
             'use_push_notifications' => true,
             'use_account_notifications' => true,
             'use_email_notifications' => false,
-            'sync_enabled' => false,
+            'traffic_sync_enabled' => true,
+            'traffic_sync_interval_minutes' => 10,
+            'auto_disable_expired_subscriptions' => true,
+            'auto_disable_traffic_exceeded' => true,
+            'sync_enabled' => true,
             'sync_interval_minutes' => 15,
             'server_check_interval_minutes' => 10,
             'retry_failed_jobs' => true,
@@ -62,6 +66,9 @@ final class SettingsService
             'use_push_notifications',
             'use_account_notifications',
             'use_email_notifications',
+            'traffic_sync_enabled',
+            'auto_disable_expired_subscriptions',
+            'auto_disable_traffic_exceeded',
             'sync_enabled',
             'retry_failed_jobs',
             'hide_sensitive_data',
@@ -76,6 +83,7 @@ final class SettingsService
 
         $settings['service_name'] = trim((string)$settings['service_name']) ?: 'My VPN';
         $settings['server_name_template'] = trim((string)$settings['server_name_template']) ?: '{service} — {server}';
+        $settings['traffic_sync_interval_minutes'] = max(1, min(1440, (int)$settings['traffic_sync_interval_minutes']));
         $settings['sync_interval_minutes'] = max(1, min(1440, (int)$settings['sync_interval_minutes']));
         $settings['server_check_interval_minutes'] = max(1, min(1440, (int)$settings['server_check_interval_minutes']));
         $settings['max_retry_attempts'] = max(1, min(20, (int)$settings['max_retry_attempts']));
@@ -100,6 +108,10 @@ final class SettingsService
             'use_push_notifications' => !empty($data['use_push_notifications']),
             'use_account_notifications' => !empty($data['use_account_notifications']),
             'use_email_notifications' => !empty($data['use_email_notifications']),
+            'traffic_sync_enabled' => !empty($data['traffic_sync_enabled']),
+            'traffic_sync_interval_minutes' => max(1, min(1440, (int)($data['traffic_sync_interval_minutes'] ?? 10))),
+            'auto_disable_expired_subscriptions' => !empty($data['auto_disable_expired_subscriptions']),
+            'auto_disable_traffic_exceeded' => !empty($data['auto_disable_traffic_exceeded']),
             'sync_enabled' => !empty($data['sync_enabled']),
             'sync_interval_minutes' => max(1, min(1440, (int)($data['sync_interval_minutes'] ?? 15))),
             'server_check_interval_minutes' => max(1, min(1440, (int)($data['server_check_interval_minutes'] ?? 10))),

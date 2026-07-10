@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/partials/helpers.php';
 
+use Fireball\VpnManager\Support\Formatter;
+
 $events = is_array($events ?? null) ? $events : [];
 ?>
 
@@ -29,7 +31,7 @@ $events = is_array($events ?? null) ? $events : [];
                         ['html' => '<span class="text-break">' . htmlSC((string)$event['message']) . '</span>'],
                         ['value' => (string)($event['admin_name'] ?? '-')],
                         ['value' => (string)($event['user_name'] ?? '-')],
-                        ['value' => (string)$event['created_at']],
+                        ['value' => Formatter::dateTime((string)($event['created_at'] ?? ''))],
                     ],
                 ];
             }, $events),

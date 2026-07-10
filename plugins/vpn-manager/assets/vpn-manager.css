@@ -1,0 +1,26 @@
+.admin-dropdown-portal {
+    position: fixed;
+    z-index: 9999;
+    min-width: 180px;
+    max-width: min(320px, calc(100vw - 24px));
+}
+
+.admin-dropdown-portal.show {
+    display: block;
+}
+
+[data-vpn-dropdown-menu] {
+    display: none;
+}
+
+[data-vpn-dropdown].is-open > [data-vpn-dropdown-toggle] {
+    color: var(--cz-primary, var(--bs-primary));
+    border-color: currentColor;
+}
+
+.vpn-qr-code svg {
+    display: block;
+    width: 240px;
+    max-width: 100%;
+    height: auto;
+}

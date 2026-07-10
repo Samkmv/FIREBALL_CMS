@@ -28,10 +28,12 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                 ['label' => FireballPluginVpnManager::t('vpn_manager_actions')],
             ],
             'rows' => array_map(static function (array $plan): array {
+                $trafficMode = (string)($plan['traffic_mode'] ?? 'shared');
+                $trafficModeLabel = FireballPluginVpnManager::t($trafficMode === 'per_node' ? 'vpn_manager_traffic_per_node' : 'vpn_manager_traffic_shared');
                 return [
                     'cells' => [
                         ['value' => '#' . (int)$plan['id']],
-                        ['html' => '<span class="fw-medium">' . htmlSC((string)$plan['name']) . '</span><div class="small text-body-secondary">' . htmlSC((string)($plan['traffic_mode'] ?? 'shared')) . '</div>'],
+                        ['html' => '<span class="fw-medium">' . htmlSC((string)$plan['name']) . '</span><div class="small text-body-secondary">' . htmlSC($trafficModeLabel) . '</div>'],
                         ['value' => (string)(int)$plan['duration_days'] . ' ' . FireballPluginVpnManager::t('vpn_manager_days')],
                         ['value' => Formatter::bytes((int)$plan['traffic_limit_bytes'])],
                         ['value' => (string)(int)$plan['device_limit']],

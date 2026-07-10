@@ -40,6 +40,11 @@ $action = $isEdit ? base_href('/admin/plugins/vpn-manager/servers/edit/' . (int)
                 <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_panel_path')) ?></label>
                 <input class="form-control" type="text" name="panel_path" placeholder="panel" value="<?= htmlSC((string)($server['panel_path'] ?? '')) ?>">
             </div>
+            <div class="col-md-8">
+                <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_public_host')) ?></label>
+                <input class="form-control" type="text" name="public_host" placeholder="vpn.example.com" value="<?= htmlSC((string)($server['public_host'] ?? '')) ?>">
+                <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_public_host_hint')) ?></div>
+            </div>
             <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_auth_type')) ?></label>
                 <?php $authType = (string)($server['api_auth_type'] ?? 'token'); ?>
