@@ -1,0 +1,17 @@
+{
+  "name": "VPN Manager",
+  "slug": "vpn-manager",
+  "version": "1.0.0",
+  "type": "system",
+  "description": "VPN management plugin with 3x-ui integration",
+  "author": "CMS",
+  "admin_menu": {
+    "title": "VPN",
+    "icon": "ci-server",
+    "route": "/admin/plugins/vpn-manager",
+    "position": 80
+  },
+  "requires": {
+    "cms": ">=1.7.0"
+  }
+}

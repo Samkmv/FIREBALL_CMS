@@ -1,0 +1,60 @@
+<?php
+
+use Fireball\VpnManager\Support\Formatter;
+
+if (!function_exists('vpnm_status_badge')) {
+    function vpnm_status_badge(string $status): string
+    {
+        return Formatter::statusBadge($status);
+    }
+}
+
+if (!function_exists('vpnm_actions_dropdown')) {
+    function vpnm_actions_dropdown(array $actions, string $label = ''): string
+    {
+        $label = $label !== '' ? $label : FireballPluginVpnManager::t('vpn_manager_actions');
+        $html = '<div class="dropdown admin-post-actions-dropdown d-inline-block">';
+        $html .= '<button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="' . htmlSC($label) . '"><i class="ci-more-vertical"></i></button>';
+        $html .= '<div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">';
+
+        foreach ($actions as $action) {
+            if (($action['type'] ?? '') === 'divider') {
+                $html .= '<hr class="dropdown-divider">';
+                continue;
+            }
+
+            $icon = trim((string)($action['icon'] ?? 'ci-chevron-right'));
+            $text = htmlSC((string)($action['label'] ?? ''));
+            $class = trim('dropdown-item d-flex align-items-center gap-2 ' . (string)($action['class'] ?? ''));
+            $content = '<i class="' . htmlSC($icon) . '"></i><span>' . $text . '</span>';
+
+            if (($action['type'] ?? 'link') === 'form') {
+                $html .= '<form action="' . htmlSC((string)($action['action'] ?? '#')) . '" method="post">';
+                $html .= get_csrf_field();
+                foreach ((array)($action['hidden'] ?? []) as $name => $value) {
+                    $html .= '<input type="hidden" name="' . htmlSC((string)$name) . '" value="' . htmlSC((string)$value) . '">';
+                }
+                $html .= '<button class="' . htmlSC($class) . '" type="submit">' . $content . '</button>';
+                $html .= '</form>';
+                continue;
+            }
+
+            $html .= '<a class="' . htmlSC($class) . '" href="' . htmlSC((string)($action['href'] ?? '#')) . '">' . $content . '</a>';
+        }
+
+        $html .= '</div></div>';
+
+        return $html;
+    }
+}
+
+if (!function_exists('vpnm_empty_state')) {
+    function vpnm_empty_state(string $title, string $text, string $icon = 'ci-info'): string
+    {
+        return '<div class="border rounded-5 p-4 p-md-5 text-center text-body-secondary">'
+            . '<div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary mb-3" style="width:3rem;height:3rem;"><i class="' . htmlSC($icon) . ' fs-4"></i></div>'
+            . '<h2 class="h5 text-body-emphasis mb-2">' . htmlSC($title) . '</h2>'
+            . '<p class="mb-0">' . htmlSC($text) . '</p>'
+            . '</div>';
+    }
+}
