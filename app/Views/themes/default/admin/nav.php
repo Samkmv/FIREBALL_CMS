@@ -161,6 +161,10 @@ $isActive = static function (string $href) use ($currentPath, $normalizeAdminPat
         return $currentPath === '/admin';
     }
 
+    if ($routePath === '/admin/plugins') {
+        return $currentPath === '/admin/plugins';
+    }
+
     return $currentPath === $routePath || str_starts_with($currentPath, rtrim($routePath, '/') . '/');
 };
 ?>
