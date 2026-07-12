@@ -55,7 +55,7 @@ final class ConnectionActionService
     {
         $node = $this->node($nodeId);
         try {
-            (new ThreeXuiClient($node))->deleteClient((string)$node['remote_inbound_id'], (string)$node['client_uuid']);
+            (new ThreeXuiClient($node))->deleteClient((string)$node['remote_inbound_id'], (string)$node['client_uuid'], (string)$node['client_email']);
 
             return $this->repo->setNodeStatus($nodeId, 'deleted', 'connection.deleted');
         } catch (\Throwable $exception) {

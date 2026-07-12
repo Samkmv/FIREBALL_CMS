@@ -50,6 +50,7 @@ final class Schema
     {
         self::addColumnIfMissing('vpn_inbounds', 'status', "VARCHAR(40) NOT NULL DEFAULT 'active' AFTER is_enabled");
         self::addColumnIfMissing('vpn_servers', 'public_host', 'VARCHAR(255) NULL AFTER panel_url');
+        self::addColumnIfMissing('vpn_subscriptions', 'subscription_token', 'VARCHAR(128) NULL AFTER source_order_id');
         self::addColumnIfMissing('vpn_subscriptions', 'subscription_url', 'VARCHAR(700) NULL AFTER source_order_id');
         self::addColumnIfMissing('vpn_subscriptions', 'subscription_token_encrypted', 'MEDIUMTEXT NULL AFTER source_order_id');
         self::addColumnIfMissing('vpn_subscriptions', 'subscription_token_hash', 'VARCHAR(128) NULL AFTER subscription_token_encrypted');
@@ -60,6 +61,7 @@ final class Schema
         self::addColumnIfMissing('vpn_traffic_snapshots', 'total_bytes', 'BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER download_bytes');
         self::addColumnIfMissing('vpn_traffic_snapshots', 'captured_at', 'DATETIME NULL AFTER traffic_used_bytes');
         self::addIndexIfMissing('vpn_inbounds', 'status', 'KEY status (status)');
+        self::addIndexIfMissing('vpn_subscriptions', 'subscription_token', 'KEY subscription_token (subscription_token)');
         self::addIndexIfMissing('vpn_subscriptions', 'subscription_token_hash', 'KEY subscription_token_hash (subscription_token_hash)');
         self::addIndexIfMissing('vpn_subscription_nodes', 'subscription_server_inbound', 'UNIQUE KEY subscription_server_inbound (subscription_id, server_id, inbound_id)');
         self::addIndexIfMissing('vpn_traffic_snapshots', 'inbound_id', 'KEY inbound_id (inbound_id)');

@@ -177,7 +177,7 @@ $router->post('/admin/plugins/vpn-manager/servers/sync-inbounds', static functio
         );
     } catch (Throwable $exception) {
         log_error_details('VPN Manager inbound sync failed', ['Server' => $id], $exception);
-        $vpnRepo()->logEvent('inbounds.sync_failed', 'VPN inbounds synchronization failed.', ['error' => $exception->getMessage()], serverId: $id);
+        $vpnRepo()->logEvent('inbounds.sync_failed', 'VPN inbounds synchronization failed.', ['error' => $exception->getMessage()], null, null, null, $id);
         session()->setFlash('error', FireballPluginVpnManager::t('vpn_manager_flash_inbounds_sync_failed'));
     }
 
@@ -334,7 +334,7 @@ $router->post('/admin/plugins/vpn-manager/subscriptions/create', static function
                     'subscription_id' => $subscriptionId,
                     'error_code' => get_class($exception),
                     'error_message' => $exception->getMessage(),
-                ], subscriptionId: $subscriptionId);
+                ], null, $subscriptionId);
                 log_error_details('VPN Manager subscription provisioning failed after create', ['Subscription' => $subscriptionId], $exception);
                 $result = ['created' => 0, 'skipped' => 0, 'failed' => 1];
             }
@@ -404,6 +404,7 @@ $router->get('/admin/plugins/vpn-manager/subscriptions/(?P<id>\d+)/?', static fu
         'subscription' => $subscription,
         'nodes' => $vpnRepo()->subscriptionNodes($id),
         'notifications' => $vpnRepo()->subscriptionNotifications($id),
+        'events' => $vpnRepo()->subscriptionEvents($id),
         'diagnostics' => $vpnRepo()->subscriptionDiagnostics($id),
     ]));
 })->middleware(['auth', 'admin']);
@@ -488,6 +489,7 @@ $router->get('/admin/plugins/vpn-manager/connections', static function () use ($
         'title' => FireballPluginVpnManager::t('vpn_manager_connections_title'),
         'subtitle' => FireballPluginVpnManager::t('vpn_manager_connections_subtitle'),
         'connections' => $vpnRepo()->connections(),
+        'remote_clients' => $vpnRepo()->remoteClients(),
     ]));
 })->middleware(['auth', 'admin']);
 
@@ -556,6 +558,7 @@ $router->get('/admin/plugins/vpn-manager/users', static function () use ($vpnRep
         'title' => FireballPluginVpnManager::t('vpn_manager_users_title'),
         'subtitle' => FireballPluginVpnManager::t('vpn_manager_users_subtitle'),
         'users' => $vpnRepo()->userSummaries(),
+        'remote_clients' => $vpnRepo()->remoteClientSummaries(),
     ]));
 })->middleware(['auth', 'admin']);
 

@@ -32,6 +32,16 @@ final class ThreeXuiClient
         }
 
         try {
+            if ($this->hasApiCredentials()) {
+                $this->listInbounds();
+
+                return [
+                    'success' => true,
+                    'message' => 'Connection established.',
+                    'status' => 200,
+                ];
+            }
+
             $response = $this->request('GET', $url);
             $success = $response['status'] > 0 && $response['status'] < 500;
 
@@ -67,27 +77,74 @@ final class ThreeXuiClient
     {
         $this->authenticateIfNeeded();
 
-        return $this->requestJson('POST', $this->url('/panel/api/inbounds/addClient'), [
-            'id' => $inboundId,
-            'settings' => json_encode(['clients' => [$clientData]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        ]);
+        try {
+            return $this->requestJson('POST', $this->url('/panel/api/clients/add'), [
+                'client' => $clientData,
+                'inboundIds' => [(int)$inboundId],
+            ], 'json', 'clients.add');
+        } catch (ThreeXuiHttpException $exception) {
+            if ($exception->statusCode() !== 404) {
+                throw $exception;
+            }
+        }
+
+        try {
+            return $this->requestJson('POST', $this->url('/panel/api/inbounds/addClient'), [
+                'id' => $inboundId,
+                'settings' => json_encode(['clients' => [$clientData]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ], 'form', 'inbounds.addClient');
+        } catch (ThreeXuiHttpException $exception) {
+            if ($exception->statusCode() === 404) {
+                throw new \RuntimeException(\FireballPluginVpnManager::t('vpn_manager_error_3xui_add_client_404'));
+            }
+
+            throw $exception;
+        }
     }
 
     public function updateClient(int|string $inboundId, int|string $clientId, array $clientData): array
     {
         $this->authenticateIfNeeded();
 
+        $email = trim((string)($clientData['email'] ?? ''));
+        if ($email !== '') {
+            try {
+                return $this->requestJson(
+                    'POST',
+                    $this->url('/panel/api/clients/update/' . rawurlencode($email)) . '?inboundIds=' . rawurlencode((string)$inboundId),
+                    $clientData,
+                    'json',
+                    'clients.update'
+                );
+            } catch (ThreeXuiHttpException $exception) {
+                if ($exception->statusCode() !== 404) {
+                    throw $exception;
+                }
+            }
+        }
+
         return $this->requestJson('POST', $this->url('/panel/api/inbounds/updateClient/' . rawurlencode((string)$clientId)), [
             'id' => $inboundId,
             'settings' => json_encode(['clients' => [$clientData]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        ]);
+        ], 'form', 'inbounds.updateClient');
     }
 
-    public function deleteClient(int|string $inboundId, int|string $clientId): array
+    public function deleteClient(int|string $inboundId, int|string $clientId, ?string $clientEmail = null): array
     {
         $this->authenticateIfNeeded();
 
-        return $this->requestJson('POST', $this->url('/panel/api/inbounds/' . rawurlencode((string)$inboundId) . '/delClient/' . rawurlencode((string)$clientId)));
+        $email = trim((string)$clientEmail);
+        if ($email !== '') {
+            try {
+                return $this->requestJson('POST', $this->url('/panel/api/clients/del/' . rawurlencode($email)), [], 'json', 'clients.del');
+            } catch (ThreeXuiHttpException $exception) {
+                if ($exception->statusCode() !== 404) {
+                    throw $exception;
+                }
+            }
+        }
+
+        return $this->requestJson('POST', $this->url('/panel/api/inbounds/' . rawurlencode((string)$inboundId) . '/delClient/' . rawurlencode((string)$clientId)), [], 'form', 'inbounds.delClient');
     }
 
     public function enableClient(int|string $inboundId, int|string $clientId): array
@@ -110,14 +167,30 @@ final class ThreeXuiClient
     {
         $this->authenticateIfNeeded();
 
-        return $this->requestJson('POST', $this->url('/panel/api/inbounds/' . rawurlencode((string)$inboundId) . '/resetClientTraffic/' . rawurlencode((string)$clientId)));
+        try {
+            return $this->requestJson('POST', $this->url('/panel/api/clients/resetTraffic/' . rawurlencode((string)$clientId)), [], 'json', 'clients.resetTraffic');
+        } catch (ThreeXuiHttpException $exception) {
+            if ($exception->statusCode() !== 404) {
+                throw $exception;
+            }
+        }
+
+        return $this->requestJson('POST', $this->url('/panel/api/inbounds/' . rawurlencode((string)$inboundId) . '/resetClientTraffic/' . rawurlencode((string)$clientId)), [], 'form', 'inbounds.resetClientTraffic');
     }
 
     public function getClientTraffic(int|string $clientId): array
     {
         $this->authenticateIfNeeded();
 
-        return $this->requestJson('GET', $this->url('/panel/api/inbounds/getClientTraffics/' . rawurlencode((string)$clientId)));
+        try {
+            return $this->requestJson('GET', $this->url('/panel/api/clients/traffic/' . rawurlencode((string)$clientId)), [], 'json', 'clients.traffic');
+        } catch (ThreeXuiHttpException $exception) {
+            if ($exception->statusCode() !== 404) {
+                throw $exception;
+            }
+        }
+
+        return $this->requestJson('GET', $this->url('/panel/api/inbounds/getClientTraffics/' . rawurlencode((string)$clientId)), [], 'form', 'inbounds.getClientTraffics');
     }
 
     public function clientExists(int|string $inboundId, string $clientEmail, string $clientUuid): bool
@@ -154,9 +227,13 @@ final class ThreeXuiClient
         return null;
     }
 
-    private function requestJson(string $method, string $url, array $payload = []): array
+    private function requestJson(string $method, string $url, array $payload = [], string $encoding = 'form', string $stage = 'api'): array
     {
-        $response = $this->request($method, $url, $payload);
+        $response = $this->request($method, $url, $payload, $encoding);
+        if ($response['status'] >= 400) {
+            throw new ThreeXuiHttpException($this->httpErrorMessage($response['status'], $stage), $response['status']);
+        }
+
         $decoded = json_decode($response['body'], true);
         if (!is_array($decoded)) {
             throw new \RuntimeException('3x-ui returned a non-JSON response.');
@@ -169,16 +246,22 @@ final class ThreeXuiClient
         return $decoded;
     }
 
-    private function request(string $method, string $url, array $payload = []): array
+    private function request(string $method, string $url, array $payload = [], string $encoding = 'form'): array
     {
         if (!function_exists('curl_init')) {
             throw new \RuntimeException('PHP curl extension is required for 3x-ui requests.');
         }
 
         $headers = ['Accept: application/json'];
-        $token = Crypto::decrypt($this->server['api_token_encrypted'] ?? null);
-        if ($token !== '') {
+        $encoding = $encoding === 'json' ? 'json' : 'form';
+        if ($encoding === 'json') {
+            $headers[] = 'Content-Type: application/json';
+        }
+
+        $token = $this->apiToken();
+        if ($this->authType() === 'token' && $token !== '') {
             $headers[] = 'Authorization: Bearer ' . $token;
+            $headers[] = 'X-API-Key: ' . $token;
         }
 
         $ch = curl_init($url);
@@ -197,7 +280,13 @@ final class ThreeXuiClient
         }
 
         if (!empty($payload)) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
+            curl_setopt(
+                $ch,
+                CURLOPT_POSTFIELDS,
+                $encoding === 'json'
+                    ? json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                    : http_build_query($payload)
+            );
         }
 
         $body = curl_exec($ch);
@@ -221,11 +310,19 @@ final class ThreeXuiClient
             return;
         }
 
+        if ($this->authType() === 'token') {
+            if ($this->apiToken() === '') {
+                throw new \RuntimeException(\FireballPluginVpnManager::t('vpn_manager_error_3xui_token_required'));
+            }
+
+            $this->loggedIn = true;
+            return;
+        }
+
         $username = Crypto::decrypt($this->server['username_encrypted'] ?? null);
         $password = Crypto::decrypt($this->server['password_encrypted'] ?? null);
         if ($username === '' || $password === '') {
-            $this->loggedIn = true;
-            return;
+            throw new \RuntimeException(\FireballPluginVpnManager::t('vpn_manager_error_3xui_credentials_required'));
         }
 
         $this->cookieFile = tempnam(sys_get_temp_dir(), 'vpn-3xui-cookie-') ?: null;
@@ -234,7 +331,7 @@ final class ThreeXuiClient
             'password' => $password,
         ]);
         if ($response['status'] < 200 || $response['status'] >= 400) {
-            throw new \RuntimeException('3x-ui login failed with HTTP ' . $response['status'] . '.');
+            throw new \RuntimeException($this->httpErrorMessage($response['status'], 'login'));
         }
 
         $decoded = json_decode($response['body'], true);
@@ -243,6 +340,43 @@ final class ThreeXuiClient
         }
 
         $this->loggedIn = true;
+    }
+
+    private function httpErrorMessage(int $status, string $stage): string
+    {
+        if ($status === 403 && $stage === 'login') {
+            return \FireballPluginVpnManager::t('vpn_manager_error_3xui_login_403');
+        }
+
+        if ($status === 403) {
+            return \FireballPluginVpnManager::t('vpn_manager_error_3xui_api_403');
+        }
+
+        if ($status === 404 && $stage !== 'api') {
+            return sprintf(\FireballPluginVpnManager::t('vpn_manager_error_3xui_http_stage'), $status, $stage);
+        }
+
+        return sprintf(\FireballPluginVpnManager::t('vpn_manager_error_3xui_http'), $status);
+    }
+
+    private function authType(): string
+    {
+        return (string)($this->server['api_auth_type'] ?? 'token') === 'password' ? 'password' : 'token';
+    }
+
+    private function apiToken(): string
+    {
+        return Crypto::decrypt($this->server['api_token_encrypted'] ?? null);
+    }
+
+    private function hasApiCredentials(): bool
+    {
+        if ($this->authType() === 'token') {
+            return $this->apiToken() !== '';
+        }
+
+        return Crypto::decrypt($this->server['username_encrypted'] ?? null) !== ''
+            && Crypto::decrypt($this->server['password_encrypted'] ?? null) !== '';
     }
 
     private function url(string $path): string
@@ -256,5 +390,21 @@ final class ThreeXuiClient
         $path = '/' . ltrim($path, '/');
 
         return $base . ($panelPath !== '' ? '/' . $panelPath : '') . $path;
+    }
+}
+
+final class ThreeXuiHttpException extends \RuntimeException
+{
+    private int $statusCode;
+
+    public function __construct(string $message, int $statusCode)
+    {
+        parent::__construct($message, $statusCode);
+        $this->statusCode = $statusCode;
+    }
+
+    public function statusCode(): int
+    {
+        return $this->statusCode;
     }
 }

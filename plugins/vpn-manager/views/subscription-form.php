@@ -5,6 +5,13 @@ $users = is_array($users ?? null) ? $users : [];
 $plans = is_array($plans ?? null) ? $plans : [];
 $statuses = is_array($statuses ?? null) ? $statuses : [];
 $now = date('Y-m-d\TH:i');
+$hasReadyPlans = false;
+foreach ($plans as $plan) {
+    if ((int)($plan['active_inbound_count'] ?? 0) > 0) {
+        $hasReadyPlans = true;
+        break;
+    }
+}
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -18,9 +25,17 @@ $now = date('Y-m-d\TH:i');
     <form class="border rounded-5 p-3 p-md-4" action="<?= base_href('/admin/plugins/vpn-manager/subscriptions/create') ?>" method="post">
         <?= get_csrf_field() ?>
 
+        <div class="alert alert-info">
+            <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_create_hint')) ?>
+        </div>
+
         <?php if (empty($plans)): ?>
             <div class="alert alert-warning">
                 <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_empty_plans')) ?>
+            </div>
+        <?php elseif (!$hasReadyPlans): ?>
+            <div class="alert alert-warning">
+                <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_empty_ready_plans')) ?>
             </div>
         <?php endif; ?>
 
@@ -48,8 +63,10 @@ $now = date('Y-m-d\TH:i');
                 <select class="form-select" name="plan_id" required>
                     <option value=""></option>
                     <?php foreach ($plans as $plan): ?>
-                        <option value="<?= (int)$plan['id'] ?>">
+                        <?php $activeInboundCount = (int)($plan['active_inbound_count'] ?? 0); ?>
+                        <option value="<?= (int)$plan['id'] ?>" <?= $activeInboundCount <= 0 ? 'disabled' : '' ?>>
                             <?= htmlSC((string)$plan['name']) ?> · <?= (int)$plan['duration_days'] ?> <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_days')) ?> · <?= htmlSC(Formatter::bytes((int)$plan['traffic_limit_bytes'])) ?>
+                            <?= $activeInboundCount <= 0 ? ' · ' . htmlSC(FireballPluginVpnManager::t('vpn_manager_plan_without_inbounds')) : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -82,7 +99,7 @@ $now = date('Y-m-d\TH:i');
         </div>
 
         <div class="d-flex flex-wrap gap-2 mt-4">
-            <button class="btn btn-dark rounded-pill" type="submit" <?= empty($plans) ? 'disabled' : '' ?>>
+            <button class="btn btn-dark rounded-pill" type="submit" <?= !$hasReadyPlans ? 'disabled' : '' ?>>
                 <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_save')) ?>
             </button>
             <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/plugins/vpn-manager/subscriptions') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_cancel')) ?></a>

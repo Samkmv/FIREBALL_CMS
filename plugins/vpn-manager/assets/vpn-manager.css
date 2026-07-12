@@ -1,12 +1,28 @@
 .admin-dropdown-portal {
     position: fixed;
-    z-index: 9999;
-    min-width: 180px;
+    z-index: 10000;
+    min-width: 220px;
     max-width: min(320px, calc(100vw - 24px));
+    margin: 0;
+    padding: .55rem;
+    border-radius: 16px;
+    transform: none !important;
+    will-change: top, left;
 }
 
 .admin-dropdown-portal.show {
     display: block;
+}
+
+.admin-dropdown-portal .dropdown-item {
+    min-height: 46px;
+    border-radius: 12px;
+    padding: .72rem .85rem;
+    white-space: normal;
+}
+
+.admin-dropdown-portal form {
+    margin: 0;
 }
 
 [data-vpn-dropdown-menu] {
@@ -14,8 +30,19 @@
 }
 
 [data-vpn-dropdown].is-open > [data-vpn-dropdown-toggle] {
-    color: var(--cz-primary, var(--bs-primary));
-    border-color: currentColor;
+    color: inherit !important;
+    border-color: var(--bs-border-color, rgba(255, 255, 255, .35)) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+[data-vpn-dropdown-toggle]:focus,
+[data-vpn-dropdown-toggle]:active,
+[data-vpn-dropdown-toggle].show {
+    color: inherit !important;
+    border-color: var(--bs-border-color, rgba(255, 255, 255, .35)) !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
 .vpn-qr-code svg {
@@ -23,4 +50,23 @@
     width: 240px;
     max-width: 100%;
     height: auto;
+}
+
+@media (max-width: 767.98px) {
+    .admin-dropdown-portal {
+        min-width: 220px;
+        max-width: calc(100vw - 24px);
+        -webkit-overflow-scrolling: touch;
+        box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, .25);
+    }
+
+    .admin-dropdown-portal .dropdown-item {
+        min-height: 50px;
+        padding-block: .75rem;
+        gap: .625rem;
+    }
+
+    .admin-dropdown-portal .dropdown-divider {
+        margin-block: .35rem;
+    }
 }

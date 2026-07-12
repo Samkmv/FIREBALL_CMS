@@ -43,7 +43,12 @@ $checked = static fn(string $key): string => !empty($settings[$key]) ? 'checked'
                 </div>
                 <div class="col-md-4">
                     <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_support_url')) ?></label>
-                    <input class="form-control" type="url" name="support_url" value="<?= htmlSC((string)($settings['support_url'] ?? '')) ?>">
+                    <input class="form-control" type="text" name="support_url" value="<?= htmlSC((string)($settings['support_url'] ?? '')) ?>">
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_subscription_public_base_url')) ?></label>
+                    <input class="form-control" type="text" name="subscription_public_base_url" placeholder="https://example.com" value="<?= htmlSC((string)($settings['subscription_public_base_url'] ?? '')) ?>">
+                    <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_public_base_url_hint')) ?></div>
                 </div>
             </div>
         </section>

@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS vpn_subscriptions (
     created_by INT(10) UNSIGNED NULL,
     source VARCHAR(80) NULL,
     source_order_id VARCHAR(120) NULL,
+    subscription_token VARCHAR(128) NULL,
     subscription_url VARCHAR(700) NULL,
     subscription_token_encrypted MEDIUMTEXT NULL,
     subscription_token_hash VARCHAR(128) NULL,
@@ -109,6 +110,7 @@ CREATE TABLE IF NOT EXISTS vpn_subscriptions (
     KEY status (status),
     KEY expires_at (expires_at),
     KEY source_order (source, source_order_id),
+    KEY subscription_token (subscription_token),
     KEY subscription_token_hash (subscription_token_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -136,6 +138,33 @@ CREATE TABLE IF NOT EXISTS vpn_subscription_nodes (
     KEY inbound_id (inbound_id),
     KEY status (status),
     KEY client_email (client_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS vpn_remote_clients (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    server_id INT(10) UNSIGNED NOT NULL,
+    inbound_id INT(10) UNSIGNED NULL,
+    remote_inbound_id VARCHAR(80) NULL,
+    remote_client_key VARCHAR(128) NOT NULL,
+    client_uuid VARCHAR(120) NULL,
+    client_email VARCHAR(255) NULL,
+    client_remark VARCHAR(255) NULL,
+    status VARCHAR(40) NOT NULL DEFAULT 'active',
+    traffic_limit_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    traffic_used_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    expires_at DATETIME NULL,
+    raw_json MEDIUMTEXT NULL,
+    last_seen_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY server_inbound_client (server_id, remote_inbound_id, remote_client_key),
+    KEY server_id (server_id),
+    KEY inbound_id (inbound_id),
+    KEY client_email (client_email),
+    KEY client_uuid (client_uuid),
+    KEY status (status),
+    KEY last_seen_at (last_seen_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS vpn_traffic_snapshots (

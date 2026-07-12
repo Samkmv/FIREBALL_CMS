@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManager\Services;
 
+use Fireball\VpnManager\Support\Crypto;
 use FireballPluginVpnManager;
 
 final class SettingsService
@@ -16,6 +17,7 @@ final class SettingsService
             'logo_path' => '',
             'support_email' => '',
             'support_url' => '',
+            'subscription_public_base_url' => '',
             'notify_3_days_before_expire' => true,
             'notify_on_expire_day' => true,
             'notify_traffic_80' => true,
@@ -83,6 +85,7 @@ final class SettingsService
 
         $settings['service_name'] = trim((string)$settings['service_name']) ?: 'My VPN';
         $settings['server_name_template'] = trim((string)$settings['server_name_template']) ?: '{service} — {server}';
+        $settings['subscription_public_base_url'] = self::normalizeBaseUrl((string)($settings['subscription_public_base_url'] ?? ''));
         $settings['traffic_sync_interval_minutes'] = max(1, min(1440, (int)$settings['traffic_sync_interval_minutes']));
         $settings['sync_interval_minutes'] = max(1, min(1440, (int)$settings['sync_interval_minutes']));
         $settings['server_check_interval_minutes'] = max(1, min(1440, (int)$settings['server_check_interval_minutes']));
@@ -101,6 +104,7 @@ final class SettingsService
             'logo_path' => mb_substr(trim((string)($data['logo_path'] ?? '')), 0, 255),
             'support_email' => mb_substr(trim((string)($data['support_email'] ?? '')), 0, 190),
             'support_url' => mb_substr(trim((string)($data['support_url'] ?? '')), 0, 255),
+            'subscription_public_base_url' => mb_substr(self::normalizeBaseUrl((string)($data['subscription_public_base_url'] ?? '')), 0, 255),
             'notify_3_days_before_expire' => !empty($data['notify_3_days_before_expire']),
             'notify_on_expire_day' => !empty($data['notify_on_expire_day']),
             'notify_traffic_80' => !empty($data['notify_traffic_80']),
@@ -127,6 +131,66 @@ final class SettingsService
 
         foreach ($settings as $key => $value) {
             plugin_setting_set(FireballPluginVpnManager::SLUG, $key, $value);
+        }
+
+        self::refreshSubscriptionUrls();
+    }
+
+    private static function normalizeBaseUrl(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (!preg_match('~^https?://~i', $value)) {
+            $value = 'https://' . $value;
+        }
+
+        $parts = parse_url($value);
+        if (!is_array($parts) || empty($parts['host'])) {
+            return '';
+        }
+
+        $scheme = strtolower((string)($parts['scheme'] ?? 'https'));
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            $scheme = 'https';
+        }
+
+        $host = (string)$parts['host'];
+        $port = isset($parts['port']) ? ':' . (int)$parts['port'] : '';
+        $path = trim((string)($parts['path'] ?? ''), '/');
+
+        return rtrim($scheme . '://' . $host . $port . ($path !== '' ? '/' . $path : ''), '/');
+    }
+
+    private static function refreshSubscriptionUrls(): void
+    {
+        try {
+            $link = new SubscriptionLinkService();
+            $rows = db()->query(
+                'SELECT id, subscription_token, subscription_token_encrypted
+                 FROM vpn_subscriptions
+                 WHERE (subscription_token IS NOT NULL AND subscription_token <> "")
+                    OR (subscription_token_encrypted IS NOT NULL AND subscription_token_encrypted <> "")'
+            )->get() ?: [];
+
+            foreach ($rows as $row) {
+                $token = Crypto::decrypt((string)($row['subscription_token_encrypted'] ?? ''));
+                if ($token === '') {
+                    $token = trim((string)($row['subscription_token'] ?? ''));
+                }
+                if ($token === '') {
+                    continue;
+                }
+
+                db()->query(
+                    'UPDATE vpn_subscriptions SET subscription_url = ? WHERE id = ?',
+                    [$link->subscriptionUrlForToken($token), (int)$row['id']]
+                );
+            }
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager subscription URL refresh failed', [], $exception);
         }
     }
 }

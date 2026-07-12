@@ -13,17 +13,17 @@ final class SubscriptionConfigService
         $this->repo = $repo ?: new VpnRepository();
     }
 
-    public function encodedPayload(array $subscription): string
+    public function encodedPayload(array $subscription, bool $logErrors = false): string
     {
-        $uris = $this->uris($subscription);
+        $uris = $this->uris($subscription, $logErrors);
         if (!$uris) {
             return '';
         }
 
-        return base64_encode(implode("\n", $uris));
+        return base64_encode(implode("\n", $uris) . "\n");
     }
 
-    public function uris(array $subscription): array
+    public function uris(array $subscription, bool $logErrors = false): array
     {
         $subscriptionId = (int)($subscription['id'] ?? 0);
         if ($subscriptionId <= 0) {
@@ -32,7 +32,7 @@ final class SubscriptionConfigService
 
         $uris = [];
         foreach ($this->repo->subscriptionConfigNodes($subscriptionId) as $node) {
-            $uri = $this->uriForNode($node);
+            $uri = $this->uriForNode($node, $logErrors, (int)($subscription['user_id'] ?? 0), $subscriptionId);
             if ($uri !== '') {
                 $uris[] = $uri;
             }
@@ -41,30 +41,57 @@ final class SubscriptionConfigService
         return $uris;
     }
 
-    private function uriForNode(array $node): string
+    private function uriForNode(array $node, bool $logErrors, int $userId, int $subscriptionId): string
     {
         $protocol = strtolower(trim((string)($node['protocol'] ?? '')));
         $host = $this->publicHost($node);
         $port = (int)($node['port'] ?? 0);
         $id = trim((string)($node['client_uuid'] ?? ''));
-        if ($protocol === '' || $host === '' || $port <= 0 || $id === '') {
+        $missing = [];
+        if ($protocol === '') {
+            $missing[] = 'protocol';
+        }
+        if ($host === '') {
+            $missing[] = 'host';
+        }
+        if ($port <= 0) {
+            $missing[] = 'port';
+        }
+        if ($id === '') {
+            $missing[] = 'client_uuid';
+        }
+        if ($missing) {
+            $this->logConfigError($logErrors, $userId, $subscriptionId, $node, 'Missing config fields: ' . implode(', ', $missing));
+
             return '';
         }
 
         $settings = $this->json((string)($node['settings_json'] ?? ''));
         $stream = $this->json((string)($node['stream_settings_json'] ?? ''));
+        $streamMissing = $this->requiredStreamFields($protocol, $stream);
+        if ($streamMissing) {
+            $this->logConfigError($logErrors, $userId, $subscriptionId, $node, 'Missing config fields: ' . implode(', ', $streamMissing));
+
+            return '';
+        }
+
         $client = $this->clientSettings($settings, (string)($node['client_email'] ?? ''), $id);
         $name = trim((string)($node['subscription_item_name'] ?? ''));
         if ($name === '') {
             $name = (new SubscriptionLinkService())->configName((string)($node['server_name'] ?? $node['inbound_name'] ?? 'VPN'));
         }
 
-        return match ($protocol) {
+        $uri = match ($protocol) {
             'vless' => $this->vless($host, $port, $id, $name, $stream, $client),
             'vmess' => $this->vmess($host, $port, $id, $name, $stream, $client),
             'trojan' => $this->trojan($host, $port, (string)($client['password'] ?? $id), $name, $stream),
             default => '',
         };
+        if ($uri === '') {
+            $this->logConfigError($logErrors, $userId, $subscriptionId, $node, 'Unsupported inbound protocol: ' . $protocol);
+        }
+
+        return $uri;
     }
 
     private function vless(string $host, int $port, string $id, string $name, array $stream, array $client): string
@@ -82,6 +109,9 @@ final class SubscriptionConfigService
 
         $this->addSecurityParams($params, $stream, $security);
         $this->addTransportParams($params, $stream, $network);
+        if (($params['headerType'] ?? '') === 'none') {
+            unset($params['headerType']);
+        }
 
         return 'vless://' . rawurlencode($id) . '@' . $this->hostForUri($host) . ':' . $port . '?' . $this->query($params) . '#' . rawurlencode($name);
     }
@@ -125,6 +155,9 @@ final class SubscriptionConfigService
 
         $this->addSecurityParams($params, $stream, $security);
         $this->addTransportParams($params, $stream, $network);
+        if (($params['headerType'] ?? '') === 'none') {
+            unset($params['headerType']);
+        }
 
         return 'trojan://' . rawurlencode($password) . '@' . $this->hostForUri($host) . ':' . $port . '?' . $this->query($params) . '#' . rawurlencode($name);
     }
@@ -133,11 +166,35 @@ final class SubscriptionConfigService
     {
         if ($security === 'reality') {
             $reality = is_array($stream['realitySettings'] ?? null) ? $stream['realitySettings'] : [];
-            $params['pbk'] = (string)($reality['publicKey'] ?? '');
-            $params['fp'] = (string)($reality['fingerprint'] ?? 'chrome');
-            $params['sni'] = $this->first((array)($reality['serverNames'] ?? []));
-            $params['sid'] = $this->first((array)($reality['shortIds'] ?? []));
-            $params['spx'] = (string)($reality['spiderX'] ?? '/');
+            $realityClient = is_array($reality['settings'] ?? null) ? $reality['settings'] : [];
+            $params['pbk'] = $this->firstValue([
+                $reality['publicKey'] ?? null,
+                $reality['public_key'] ?? null,
+                $realityClient['publicKey'] ?? null,
+                $realityClient['public_key'] ?? null,
+            ]);
+            $params['fp'] = $this->firstValue([
+                $reality['fingerprint'] ?? null,
+                $realityClient['fingerprint'] ?? null,
+                'chrome',
+            ]);
+            $params['sni'] = $this->firstValue([
+                $realityClient['serverName'] ?? null,
+                $realityClient['server_name'] ?? null,
+                $reality['serverName'] ?? null,
+                $reality['server_name'] ?? null,
+            ]);
+            if ($params['sni'] === '') {
+                $params['sni'] = $this->first((array)($reality['serverNames'] ?? []));
+            }
+            $params['sid'] = $this->first((array)($reality['shortIds'] ?? $reality['short_ids'] ?? []));
+            $params['spx'] = $this->firstValue([
+                $reality['spiderX'] ?? null,
+                $reality['spider_x'] ?? null,
+                $realityClient['spiderX'] ?? null,
+                $realityClient['spider_x'] ?? null,
+                '/',
+            ]);
             if (!empty($reality['alpn'])) {
                 $params['alpn'] = is_array($reality['alpn']) ? implode(',', $reality['alpn']) : (string)$reality['alpn'];
             }
@@ -221,9 +278,18 @@ final class SubscriptionConfigService
 
     private function clientSettings(array $settings, string $email, string $id): array
     {
+        $fallback = [];
         foreach ((array)($settings['clients'] ?? []) as $client) {
             if (!is_array($client)) {
                 continue;
+            }
+
+            if (!$fallback) {
+                foreach (['flow', 'encryption', 'alterId', 'aid', 'security'] as $key) {
+                    if (array_key_exists($key, $client)) {
+                        $fallback[$key] = $client[$key];
+                    }
+                }
             }
 
             if ((string)($client['email'] ?? '') === $email || (string)($client['id'] ?? $client['password'] ?? '') === $id) {
@@ -231,7 +297,36 @@ final class SubscriptionConfigService
             }
         }
 
-        return [];
+        return $fallback;
+    }
+
+    private function requiredStreamFields(string $protocol, array $stream): array
+    {
+        $missing = [];
+        $security = strtolower((string)($stream['security'] ?? ''));
+        if ($protocol === 'vless' && $security === 'reality') {
+            $reality = is_array($stream['realitySettings'] ?? null) ? $stream['realitySettings'] : [];
+            $realityClient = is_array($reality['settings'] ?? null) ? $reality['settings'] : [];
+            if ($this->firstValue([
+                $reality['publicKey'] ?? null,
+                $reality['public_key'] ?? null,
+                $realityClient['publicKey'] ?? null,
+                $realityClient['public_key'] ?? null,
+            ]) === '') {
+                $missing[] = 'realitySettings.publicKey';
+            }
+            if ($this->firstValue([
+                $realityClient['serverName'] ?? null,
+                $realityClient['server_name'] ?? null,
+                $reality['serverName'] ?? null,
+                $reality['server_name'] ?? null,
+                $this->first((array)($reality['serverNames'] ?? [])),
+            ]) === '') {
+                $missing[] = 'realitySettings.serverNames';
+            }
+        }
+
+        return $missing;
     }
 
     private function publicHost(array $node): string
@@ -241,7 +336,8 @@ final class SubscriptionConfigService
             return $this->normalizeHost($host);
         }
 
-        return $this->normalizeHost((string)($node['panel_url'] ?? ''));
+        $panelHost = trim((string)($node['panel_url'] ?? ''));
+        return $panelHost !== '' ? $this->normalizeHost($panelHost) : '';
     }
 
     private function normalizeHost(string $value): string
@@ -263,6 +359,9 @@ final class SubscriptionConfigService
     private function json(string $value): array
     {
         $decoded = json_decode($value, true);
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
 
         return is_array($decoded) ? $decoded : [];
     }
@@ -290,5 +389,35 @@ final class SubscriptionConfigService
         }
 
         return '';
+    }
+
+    private function firstValue(array $values): string
+    {
+        foreach ($values as $value) {
+            if (is_array($value)) {
+                $value = $this->first($value);
+            }
+
+            $value = trim((string)$value);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    private function logConfigError(bool $enabled, int $userId, int $subscriptionId, array $node, string $message): void
+    {
+        if (!$enabled) {
+            return;
+        }
+
+        $this->repo->logEvent('subscription_config_error', 'VPN subscription config generation failed for a node.', [
+            'node_id' => (int)($node['id'] ?? 0),
+            'server_id' => (int)($node['server_id'] ?? 0),
+            'inbound_id' => (int)($node['inbound_id'] ?? 0),
+            'error_message' => $message,
+        ], $userId ?: null, $subscriptionId ?: null, (int)($node['id'] ?? 0), (int)($node['server_id'] ?? 0));
     }
 }

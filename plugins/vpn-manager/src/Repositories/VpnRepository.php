@@ -16,6 +16,9 @@ final class VpnRepository
 
     public function dashboardStats(): array
     {
+        $connections = $this->count("vpn_subscription_nodes WHERE status <> 'deleted'")
+            + $this->count("vpn_remote_clients WHERE status <> 'sync_missing'");
+
         return [
             'subscriptions' => $this->count('vpn_subscriptions'),
             'active_subscriptions' => $this->count("vpn_subscriptions WHERE status = 'active'"),
@@ -24,7 +27,7 @@ final class VpnRepository
             'expires_today' => $this->count("vpn_subscriptions WHERE status = 'active' AND DATE(expires_at) = CURDATE()"),
             'expired_subscriptions' => $this->count("vpn_subscriptions WHERE status = 'expired' OR (status = 'active' AND expires_at < NOW())"),
             'traffic_exceeded' => $this->count("vpn_subscriptions WHERE status = 'traffic_exceeded'"),
-            'connections' => $this->count("vpn_subscription_nodes WHERE status <> 'deleted'"),
+            'connections' => $connections,
             'vpn_users' => (int)db()->query('SELECT COUNT(DISTINCT user_id) FROM vpn_subscriptions WHERE user_id IS NOT NULL')->getColumn(),
             'servers_online' => $this->count("vpn_servers WHERE status = 'online' AND is_enabled = 1"),
             'servers_error' => $this->count("vpn_servers WHERE status IN ('offline', 'error')"),
@@ -239,6 +242,7 @@ final class VpnRepository
         }
 
         $count = 0;
+        $clientCount = 0;
         $now = date('Y-m-d H:i:s');
         $seen = [];
         foreach ($remoteItems as $item) {
@@ -283,6 +287,10 @@ final class VpnRepository
                     $now,
                 ]
             );
+            $inboundId = $this->inboundIdByRemote($serverId, $remoteId);
+            if ($inboundId > 0) {
+                $clientCount += $this->syncRemoteClientsFromInboundItem($serverId, $inboundId, $remoteId, $item);
+            }
             $count++;
         }
 
@@ -301,9 +309,117 @@ final class VpnRepository
             );
         }
 
-        $this->logEvent('inbounds.synced', 'VPN inbounds synchronized from server.', ['count' => $count], serverId: $serverId);
+        $this->logEvent('inbounds.synced', 'VPN inbounds synchronized from server.', [
+            'count' => $count,
+            'remote_clients' => $clientCount,
+        ], serverId: $serverId);
 
         return $count;
+    }
+
+    private function inboundIdByRemote(int $serverId, string $remoteId): int
+    {
+        return (int)db()->query(
+            'SELECT id FROM vpn_inbounds WHERE server_id = ? AND remote_inbound_id = ? LIMIT 1',
+            [$serverId, $remoteId]
+        )->getColumn();
+    }
+
+    private function syncRemoteClientsFromInboundItem(int $serverId, int $inboundId, string $remoteInboundId, array $item): int
+    {
+        $settings = $this->decodeRemoteJson($item['settings'] ?? null);
+        $clients = array_values(array_filter((array)($settings['clients'] ?? []), static fn($client): bool => is_array($client)));
+        $now = date('Y-m-d H:i:s');
+        $seen = [];
+        $count = 0;
+
+        foreach ($clients as $client) {
+            $client = (array)$client;
+            $uuid = trim((string)($client['id'] ?? $client['uuid'] ?? $client['password'] ?? ''));
+            $email = trim((string)($client['email'] ?? ''));
+            $keySource = $email !== '' ? 'email:' . $email : ($uuid !== '' ? 'uuid:' . $uuid : json_encode($client, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $clientKey = hash('sha256', (string)$keySource);
+            $seen[] = $clientKey;
+            $enabled = !array_key_exists('enable', $client) || !empty($client['enable']);
+            $expiresAt = $this->dateTimeFromMillis((int)($client['expiryTime'] ?? $client['expiry_time'] ?? 0));
+            $trafficLimit = (int)($client['totalGB'] ?? $client['total'] ?? $client['traffic_limit_bytes'] ?? 0);
+            $trafficUsed = (int)($client['up'] ?? 0) + (int)($client['down'] ?? 0);
+
+            db()->query(
+                'INSERT INTO vpn_remote_clients
+                    (server_id, inbound_id, remote_inbound_id, remote_client_key, client_uuid, client_email, client_remark, status, traffic_limit_bytes, traffic_used_bytes, expires_at, raw_json, last_seen_at, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                    inbound_id = VALUES(inbound_id),
+                    client_uuid = VALUES(client_uuid),
+                    client_email = VALUES(client_email),
+                    client_remark = VALUES(client_remark),
+                    status = VALUES(status),
+                    traffic_limit_bytes = VALUES(traffic_limit_bytes),
+                    traffic_used_bytes = VALUES(traffic_used_bytes),
+                    expires_at = VALUES(expires_at),
+                    raw_json = VALUES(raw_json),
+                    last_seen_at = VALUES(last_seen_at),
+                    updated_at = VALUES(updated_at)',
+                [
+                    $serverId,
+                    $inboundId,
+                    $remoteInboundId,
+                    $clientKey,
+                    $uuid !== '' ? $uuid : null,
+                    $email !== '' ? mb_substr($email, 0, 255) : null,
+                    mb_substr((string)($client['comment'] ?? $client['remark'] ?? ''), 0, 255) ?: null,
+                    $enabled ? 'active' : 'disabled',
+                    max(0, $trafficLimit),
+                    max(0, $trafficUsed),
+                    $expiresAt,
+                    json_encode($client, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    $now,
+                    $now,
+                    $now,
+                ]
+            );
+            $count++;
+        }
+
+        if ($seen) {
+            $placeholders = implode(',', array_fill(0, count($seen), '?'));
+            db()->query(
+                "UPDATE vpn_remote_clients
+                 SET status = 'sync_missing', updated_at = ?
+                 WHERE server_id = ? AND remote_inbound_id = ? AND remote_client_key NOT IN ({$placeholders})",
+                array_merge([$now, $serverId, $remoteInboundId], $seen)
+            );
+        } else {
+            db()->query(
+                "UPDATE vpn_remote_clients SET status = 'sync_missing', updated_at = ? WHERE server_id = ? AND remote_inbound_id = ?",
+                [$now, $serverId, $remoteInboundId]
+            );
+        }
+
+        return $count;
+    }
+
+    private function decodeRemoteJson(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $decoded = json_decode((string)$value, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function dateTimeFromMillis(int $value): ?string
+    {
+        if ($value <= 0) {
+            return null;
+        }
+
+        $seconds = $value > 20000000000 ? (int)floor($value / 1000) : $value;
+
+        return date('Y-m-d H:i:s', $seconds);
     }
 
     public function plans(): array
@@ -359,7 +475,9 @@ final class VpnRepository
                     i.remote_inbound_id,
                     i.name AS inbound_name,
                     i.protocol,
-                    i.remark
+                    i.remark,
+                    i.settings_json,
+                    i.stream_settings_json
              FROM vpn_plan_servers ps
              INNER JOIN vpn_servers s ON s.id = ps.server_id
              INNER JOIN vpn_inbounds i ON i.id = ps.inbound_id
@@ -465,7 +583,21 @@ final class VpnRepository
 
     public function activePlans(): array
     {
-        return db()->query('SELECT * FROM vpn_plans WHERE is_active = 1 ORDER BY sort_order ASC, id ASC')->get() ?: [];
+        return db()->query(
+            "SELECT p.*,
+                    (SELECT COUNT(*)
+                     FROM vpn_plan_servers ps
+                     INNER JOIN vpn_servers s ON s.id = ps.server_id
+                     INNER JOIN vpn_inbounds i ON i.id = ps.inbound_id
+                     WHERE ps.plan_id = p.id
+                       AND ps.is_enabled = 1
+                       AND s.is_enabled = 1
+                       AND i.is_enabled = 1
+                       AND i.status = 'active') AS active_inbound_count
+             FROM vpn_plans p
+             WHERE p.is_active = 1
+             ORDER BY p.sort_order ASC, p.id ASC"
+        )->get() ?: [];
     }
 
     public function usersForSubscriptionForm(): array
@@ -519,7 +651,7 @@ final class VpnRepository
 
         $link = new SubscriptionLinkService();
         $token = $link->generateToken();
-        $subscriptionUrl = base_href('/vpn/subscription/' . rawurlencode($token));
+        $subscriptionUrl = $link->subscriptionUrlForToken($token);
         $admin = function_exists('get_user') ? get_user() : null;
         $now = date('Y-m-d H:i:s');
         $database = db();
@@ -542,8 +674,8 @@ final class VpnRepository
 
             $database->query(
                 'INSERT INTO vpn_subscriptions
-                    (user_id, plan_id, status, traffic_mode, traffic_limit_bytes, traffic_used_bytes, device_limit, starts_at, expires_at, created_by, source, source_order_id, subscription_url, subscription_token_encrypted, subscription_token_hash, subscription_token_preview, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    (user_id, plan_id, status, traffic_mode, traffic_limit_bytes, traffic_used_bytes, device_limit, starts_at, expires_at, created_by, source, source_order_id, subscription_token, subscription_url, subscription_token_encrypted, subscription_token_hash, subscription_token_preview, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $userId,
                     $planId,
@@ -556,6 +688,7 @@ final class VpnRepository
                     is_array($admin) ? (int)($admin['id'] ?? 0) : null,
                     'manual',
                     null,
+                    $token,
                     $subscriptionUrl,
                     $link->encryptToken($token),
                     $link->tokenHash($token),
@@ -669,9 +802,9 @@ final class VpnRepository
              FROM vpn_subscriptions s
              LEFT JOIN users u ON u.id = s.user_id
              LEFT JOIN vpn_plans p ON p.id = s.plan_id
-             WHERE s.subscription_token_hash = ?
+             WHERE s.subscription_token_hash = ? OR s.subscription_token = ?
              LIMIT 1',
-            [(new SubscriptionLinkService())->tokenHash($token)]
+            [(new SubscriptionLinkService())->tokenHash($token), $token]
         )->getOne();
 
         return is_array($row) ? $row : null;
@@ -721,6 +854,14 @@ final class VpnRepository
     {
         return db()->query(
             'SELECT * FROM vpn_notifications WHERE subscription_id = ? ORDER BY created_at DESC, id DESC LIMIT 50',
+            [$subscriptionId]
+        )->get() ?: [];
+    }
+
+    public function subscriptionEvents(int $subscriptionId): array
+    {
+        return db()->query(
+            'SELECT * FROM vpn_events WHERE subscription_id = ? ORDER BY id DESC LIMIT 50',
             [$subscriptionId]
         )->get() ?: [];
     }
@@ -819,9 +960,10 @@ final class VpnRepository
 
         $nodeId = (int)db()->getInsertId();
         $clientEmail = 'vpn-user-' . (int)$subscription['user_id'] . '-sub-' . $subscriptionId . '-node-' . $nodeId;
+        $clientRemark = 'VPN User #' . (int)$subscription['user_id'] . ' / Subscription #' . $subscriptionId . ' / Node #' . $nodeId;
         db()->query(
             'UPDATE vpn_subscription_nodes SET client_email = ?, client_remark = ?, updated_at = ? WHERE id = ?',
-            [$clientEmail, $clientEmail, date('Y-m-d H:i:s'), $nodeId]
+            [$clientEmail, $clientRemark, date('Y-m-d H:i:s'), $nodeId]
         );
 
         return db()->query('SELECT * FROM vpn_subscription_nodes WHERE id = ? LIMIT 1', [$nodeId])->getOne() ?: [];
@@ -1128,6 +1270,41 @@ final class VpnRepository
         )->get() ?: [];
     }
 
+    public function remoteClients(int $limit = 200): array
+    {
+        $limit = max(1, min(500, $limit));
+
+        return db()->query(
+            "SELECT rc.*, s.name AS server_name, i.name AS inbound_name
+             FROM vpn_remote_clients rc
+             LEFT JOIN vpn_servers s ON s.id = rc.server_id
+             LEFT JOIN vpn_inbounds i ON i.id = rc.inbound_id
+             ORDER BY rc.last_seen_at DESC, rc.id DESC
+             LIMIT {$limit}"
+        )->get() ?: [];
+    }
+
+    public function remoteClientSummaries(int $limit = 200): array
+    {
+        $limit = max(1, min(500, $limit));
+
+        return db()->query(
+            "SELECT rc.client_email,
+                    MAX(rc.client_remark) AS client_remark,
+                    COUNT(*) AS connection_count,
+                    SUM(CASE WHEN rc.status = 'active' THEN 1 ELSE 0 END) AS active_count,
+                    COALESCE(SUM(rc.traffic_used_bytes), 0) AS traffic_used_bytes,
+                    MAX(rc.last_seen_at) AS last_seen_at,
+                    GROUP_CONCAT(DISTINCT s.name ORDER BY s.sort_order ASC, s.id ASC SEPARATOR ', ') AS server_names
+             FROM vpn_remote_clients rc
+             LEFT JOIN vpn_servers s ON s.id = rc.server_id
+             WHERE rc.client_email IS NOT NULL AND rc.client_email <> ''
+             GROUP BY rc.client_email
+             ORDER BY last_seen_at DESC
+             LIMIT {$limit}"
+        )->get() ?: [];
+    }
+
     public function userSummaries(): array
     {
         return db()->query(
@@ -1135,6 +1312,7 @@ final class VpnRepository
                     COUNT(s.id) AS subscription_count,
                     SUM(CASE WHEN s.status = 'active' THEN 1 ELSE 0 END) AS active_count,
                     SUM(CASE WHEN s.status = 'expired' OR (s.status = 'active' AND s.expires_at < NOW()) THEN 1 ELSE 0 END) AS expired_count,
+                    (SELECT COUNT(*) FROM vpn_subscription_nodes n INNER JOIN vpn_subscriptions ns ON ns.id = n.subscription_id WHERE ns.user_id = u.id) AS connection_count,
                     COALESCE(SUM(s.traffic_used_bytes), 0) AS traffic_used_bytes,
                     MAX(s.expires_at) AS latest_expires_at
              FROM users u
@@ -1172,7 +1350,12 @@ final class VpnRepository
     public function mySubscriptions(int $userId): array
     {
         return db()->query(
-            'SELECT s.*, p.name AS plan_name, p.description AS plan_description
+            'SELECT s.*, p.name AS plan_name, p.description AS plan_description,
+                    (SELECT GROUP_CONCAT(DISTINCT vs.name ORDER BY vs.sort_order ASC, vs.id ASC SEPARATOR ", ")
+                     FROM vpn_subscription_nodes n
+                     INNER JOIN vpn_servers vs ON vs.id = n.server_id
+                     WHERE n.subscription_id = s.id AND n.status <> "deleted") AS server_names,
+                    (SELECT COUNT(*) FROM vpn_subscription_nodes n WHERE n.subscription_id = s.id AND n.status <> "deleted") AS node_count
              FROM vpn_subscriptions s
              LEFT JOIN vpn_plans p ON p.id = s.plan_id
              WHERE s.user_id = ?

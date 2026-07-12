@@ -1793,3 +1793,164 @@ Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Plugins/HookManager.php(30
 #15 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
 #16 {main}
 ========================================================================
+[2026-07-11 21:47:29] VPN Manager inbound sync failed
+Request URI: /admin/plugins/vpn-manager/servers/sync-inbounds
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: 3x-ui login failed with HTTP 403.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php
+Line: 237
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php(54): Fireball\VpnManager\Clients\ThreeXuiClient->authenticateIfNeeded()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(166): Fireball\VpnManager\Clients\ThreeXuiClient->listInbounds()
+#2 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#6 {main}
+Server: 1
+========================================================================
+[2026-07-11 21:47:56] VPN Manager plan create failed
+Request URI: /admin/plugins/vpn-manager/plans/create
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Сначала синхронизируйте inbound'ы.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Repositories/VpnRepository.php
+Line: 1237
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Repositories/VpnRepository.php(444): Fireball\VpnManager\Repositories\VpnRepository->syncPlanInbounds(1, Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(241): Fireball\VpnManager\Repositories\VpnRepository->savePlan(Array)
+#2 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#6 {main}
+========================================================================
+[2026-07-11 21:48:21] VPN Manager subscription create failed
+Request URI: /admin/plugins/vpn-manager/subscriptions/create
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Сначала синхронизируйте inbound'ы.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Repositories/VpnRepository.php
+Line: 504
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(326): Fireball\VpnManager\Repositories\VpnRepository->createSubscription(Array)
+#1 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-07-11 21:48:31] VPN Manager inbound sync failed
+Request URI: /admin/plugins/vpn-manager/servers/sync-inbounds
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: 3x-ui login failed with HTTP 403.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php
+Line: 237
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php(54): Fireball\VpnManager\Clients\ThreeXuiClient->authenticateIfNeeded()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(166): Fireball\VpnManager\Clients\ThreeXuiClient->listInbounds()
+#2 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#6 {main}
+Server: 1
+========================================================================
+[2026-07-11 21:48:59] VPN Manager inbound sync failed
+Request URI: /admin/plugins/vpn-manager/servers/sync-inbounds
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: 3x-ui login failed with HTTP 403.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php
+Line: 237
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php(54): Fireball\VpnManager\Clients\ThreeXuiClient->authenticateIfNeeded()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(166): Fireball\VpnManager\Clients\ThreeXuiClient->listInbounds()
+#2 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#6 {main}
+Server: 1
+========================================================================
+[2026-07-11 21:54:19] VPN Manager inbound sync failed
+Request URI: /admin/plugins/vpn-manager/servers/sync-inbounds
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: 3x-ui login failed with HTTP 403.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php
+Line: 237
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php(54): Fireball\VpnManager\Clients\ThreeXuiClient->authenticateIfNeeded()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(166): Fireball\VpnManager\Clients\ThreeXuiClient->listInbounds()
+#2 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#6 {main}
+Server: 1
+========================================================================
+[2026-07-11 21:58:15] VPN Manager inbound sync failed
+Request URI: /admin/plugins/vpn-manager/servers/sync-inbounds
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: 3x-ui login failed with HTTP 403.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php
+Line: 250
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Clients/ThreeXuiClient.php(67): Fireball\VpnManager\Clients\ThreeXuiClient->authenticateIfNeeded()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(166): Fireball\VpnManager\Clients\ThreeXuiClient->listInbounds()
+#2 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#6 {main}
+Server: 1
+========================================================================
+[2026-07-11 22:13:38] VPN Manager subscription create failed
+Request URI: /admin/plugins/vpn-manager/subscriptions/create
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Сначала синхронизируйте inbound'ы.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Repositories/VpnRepository.php
+Line: 504
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(326): Fireball\VpnManager\Repositories\VpnRepository->createSubscription(Array)
+#1 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-07-11 22:13:59] VPN Manager subscription create failed
+Request URI: /admin/plugins/vpn-manager/subscriptions/create
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Сначала синхронизируйте inbound'ы.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Repositories/VpnRepository.php
+Line: 504
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(326): Fireball\VpnManager\Repositories\VpnRepository->createSubscription(Array)
+#1 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-07-11 22:15:55] VPN Manager subscription create failed
+Request URI: /admin/plugins/vpn-manager/subscriptions/create
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Сначала синхронизируйте inbound'ы.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/src/Repositories/VpnRepository.php
+Line: 504
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager/admin.php(326): Fireball\VpnManager\Repositories\VpnRepository->createSubscription(Array)
+#1 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(77): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================

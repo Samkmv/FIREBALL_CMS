@@ -12,7 +12,9 @@ foreach ($subscriptions as $item) {
     }
 }
 $visible = $active ?: ($subscriptions[0] ?? null);
-$subscriptionUrl = is_array($visible) ? (new SubscriptionLinkService())->subscriptionUrl($visible) : '';
+$linkService = new SubscriptionLinkService();
+$subscriptionUrl = is_array($visible) ? $linkService->subscriptionUrl($visible, 'plain') : '';
+$subscriptionStandardUrl = is_array($visible) ? $linkService->subscriptionUrl($visible, 'base64') : '';
 ?>
 
 <section class="container py-5">
@@ -69,17 +71,41 @@ $subscriptionUrl = is_array($visible) ? (new SubscriptionLinkService())->subscri
                                 <div class="fw-semibold"><?= (int)($visible['device_limit'] ?? 0) ?></div>
                             </div>
                         </div>
+                        <div class="col-12">
+                            <div class="bg-body-tertiary rounded-4 p-3">
+                                <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_servers')) ?></div>
+                                <div class="fw-semibold"><?= htmlSC(trim((string)($visible['server_names'] ?? '')) !== '' ? (string)$visible['server_names'] : FireballPluginVpnManager::t('vpn_manager_none')) ?></div>
+                            </div>
+                        </div>
                     </div>
+                    <?php if ($subscriptionUrl !== '' && $linkService->isLocalUrl($subscriptionUrl)): ?>
+                        <div class="alert alert-warning rounded-4">
+                            <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_local_url_warning')) ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="d-flex flex-wrap gap-2">
                         <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="button" <?= $subscriptionUrl === '' ? 'disabled' : '' ?> data-vpn-copy-value="<?= htmlSC($subscriptionUrl) ?>" data-vpn-copy-done="<?= htmlSC(FireballPluginVpnManager::t('vpn_manager_copied')) ?>"><i class="ci-copy"></i><span data-vpn-copy-label><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_copy_subscription')) ?></span></button>
                         <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2 <?= $subscriptionUrl === '' ? 'disabled' : '' ?>" href="#my-vpn-qr" <?= $subscriptionUrl === '' ? 'aria-disabled="true"' : '' ?>><i class="ci-scan"></i><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_show_qr')) ?></a>
+                        <?php if ($subscriptionStandardUrl !== '' && $subscriptionStandardUrl !== $subscriptionUrl): ?>
+                            <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button" data-vpn-copy-value="<?= htmlSC($subscriptionStandardUrl) ?>" data-vpn-copy-done="<?= htmlSC(FireballPluginVpnManager::t('vpn_manager_copied')) ?>"><i class="ci-copy"></i><span data-vpn-copy-label><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_link_standard_label')) ?></span></button>
+                        <?php endif; ?>
                         <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/my-vpn') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_instruction_android')) ?></a>
                         <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/my-vpn') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_instruction_iphone')) ?></a>
                         <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/my-vpn') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_instruction_windows')) ?></a>
+                        <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/my-vpn') ?>"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_my_vpn_instruction_macos')) ?></a>
                     </div>
                     <?php if ($subscriptionUrl !== ''): ?>
-                        <div class="mt-4" id="my-vpn-qr">
-                            <?= (new QrCodeService())->render($subscriptionUrl) ?>
+                        <div class="row g-3 mt-4" id="my-vpn-qr">
+                            <div class="col-md-6">
+                                <div class="small text-body-secondary mb-2"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_link_happ_help')) ?></div>
+                                <?= (new QrCodeService())->render($subscriptionUrl) ?>
+                            </div>
+                            <?php if ($subscriptionStandardUrl !== '' && $subscriptionStandardUrl !== $subscriptionUrl): ?>
+                                <div class="col-md-6">
+                                    <div class="small text-body-secondary mb-2"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_subscription_qr_standard_label')) ?></div>
+                                    <?= (new QrCodeService())->render($subscriptionStandardUrl) ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>

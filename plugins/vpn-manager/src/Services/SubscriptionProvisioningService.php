@@ -58,6 +58,17 @@ final class SubscriptionProvisioningService
 
             try {
                 $client = new ThreeXuiClient($item);
+                if ($client->clientExists((string)$item['remote_inbound_id'], (string)$node['client_email'], (string)$node['client_uuid'])) {
+                    $this->repo->markNodeProvisioned((int)$node['id'], (string)$node['client_uuid']);
+                    $this->repo->logEvent('provisioning_existing_client', 'VPN client already exists in 3x-ui; local node synchronized.', [
+                        'node_id' => (int)$node['id'],
+                        'server_id' => (int)$item['server_id'],
+                        'inbound_id' => (int)$item['inbound_id'],
+                    ], (int)$subscription['user_id'], $subscriptionId, (int)$node['id'], (int)$item['server_id']);
+                    $skipped++;
+                    continue;
+                }
+
                 $clientData = $this->clientData($subscription, $node, $item);
                 $client->addClient((string)$item['remote_inbound_id'], $clientData);
                 if (!$client->clientExists((string)$item['remote_inbound_id'], (string)$node['client_email'], (string)$node['client_uuid'])) {
@@ -105,15 +116,16 @@ final class SubscriptionProvisioningService
         $expiresAt = strtotime((string)($subscription['expires_at'] ?? '')) ?: 0;
         $expiryMs = $expiresAt > 0 ? $expiresAt * 1000 : 0;
         $clientId = (string)$node['client_uuid'];
+        $template = $this->firstClientTemplate($item);
 
         $data = [
-            'flow' => '',
+            'flow' => (string)($template['flow'] ?? ''),
             'email' => (string)$node['client_email'],
             'limitIp' => (int)($subscription['device_limit'] ?? 1),
             'totalGB' => (int)($node['traffic_limit_bytes'] ?? $subscription['traffic_limit_bytes'] ?? 0),
             'expiryTime' => $expiryMs,
             'enable' => true,
-            'tgId' => '',
+            'tgId' => 0,
             'subId' => (string)($subscription['subscription_token_preview'] ?? ''),
             'comment' => (string)($node['client_remark'] ?? ''),
         ];
@@ -123,8 +135,27 @@ final class SubscriptionProvisioningService
             $data['password'] = $clientId;
         } else {
             $data['id'] = $clientId;
+            if (!empty($template['encryption'])) {
+                $data['encryption'] = (string)$template['encryption'];
+            }
         }
 
         return $data;
+    }
+
+    private function firstClientTemplate(array $item): array
+    {
+        $settings = json_decode((string)($item['settings_json'] ?? ''), true);
+        if (!is_array($settings)) {
+            return [];
+        }
+
+        foreach ((array)($settings['clients'] ?? []) as $client) {
+            if (is_array($client)) {
+                return $client;
+            }
+        }
+
+        return [];
     }
 }
