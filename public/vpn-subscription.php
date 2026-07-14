@@ -38,6 +38,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-VPN-Manager-Endpoint: file');
 
 if ($token === '') {
+    http_response_code(404);
     exit($debug ? "VPN Manager endpoint OK\nerror=missing_token\n" : '');
 }
 
@@ -46,6 +47,7 @@ if (!$subscription) {
     $repo->logEvent('subscription_endpoint_invalid_token', 'VPN subscription file endpoint was opened with an invalid token.', [
         'preview' => substr($token, 0, 12),
     ]);
+    http_response_code(404);
     if ($debug) {
         $count = (int)db()->query('SELECT COUNT(*) FROM vpn_subscriptions')->getColumn();
         exit("VPN Manager endpoint OK\nerror=token_not_found\ntoken_preview=" . substr($token, 0, 12) . "\nsubscriptions_count={$count}\n");

@@ -40,11 +40,13 @@ final class FireballPluginVpnManager implements PluginInterface
         Schema::ensure();
         Schema::seedPermissions();
         SettingsService::ensureDefaults();
+        SettingsService::invalidateCache();
         fireball_event('vpn_manager.activated', ['slug' => self::SLUG]);
     }
 
     public function deactivate(): void
     {
+        SettingsService::invalidateCache();
         fireball_event('vpn_manager.deactivated', ['slug' => self::SLUG]);
     }
 
@@ -69,6 +71,29 @@ final class FireballPluginVpnManager implements PluginInterface
 
             return $menu;
         });
+
+        add_filter('profile_menu', function (array $items, array $user = []): array {
+            try {
+                $settings = SettingsService::settings();
+                $userId = (int)($user['id'] ?? 0);
+                if (empty($settings['public_account_enabled']) || $userId <= 0 || !self::repository()->hasSubscriptionsForUser($userId)) {
+                    return $items;
+                }
+
+                $items[] = [
+                    'key' => 'vpn',
+                    'label' => self::t('vpn_manager_my_vpn_title'),
+                    'href' => base_href('/profile/vpn'),
+                    'icon' => 'ci-server',
+                    'order' => 80,
+                    'plugin' => self::SLUG,
+                ];
+            } catch (Throwable $exception) {
+                log_error_details('VPN Manager profile menu failed', [], $exception);
+            }
+
+            return $items;
+        }, 10);
 
         fireball_listen('commerce.order.paid', [CommerceOrderPaidListener::class, 'handle']);
     }

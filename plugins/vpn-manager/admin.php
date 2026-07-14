@@ -18,6 +18,36 @@ $vpnRedirect = static function (string $path = '/admin/plugins/vpn-manager'): vo
     response()->redirect(base_href($path));
 };
 
+$vpnSafeReturnUrl = static function (string $default = '/admin/plugins/vpn-manager/subscriptions'): string {
+    $raw = trim((string)(request()->post('return_url', '') ?: request()->get('return_url', '')));
+    if ($raw === '') {
+        return base_href($default);
+    }
+
+    $parts = parse_url($raw);
+    if (!is_array($parts)) {
+        return base_href($default);
+    }
+
+    $host = strtolower((string)($parts['host'] ?? ''));
+    $currentHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+    if ($host !== '' && $currentHost !== '' && $host !== $currentHost) {
+        return base_href($default);
+    }
+
+    $path = (string)($parts['path'] ?? '');
+    if (!str_contains($path, '/admin/plugins/vpn-manager')) {
+        return base_href($default);
+    }
+
+    $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+    if ($host !== '') {
+        return $path . $query;
+    }
+
+    return $path . $query;
+};
+
 $vpnRepo = static fn() => FireballPluginVpnManager::repository();
 
 $router->get('/admin/plugins/vpn-manager/assets/(?P<file>[a-z0-9._-]+)', static function (): never {
@@ -484,6 +514,29 @@ $router->post('/admin/plugins/vpn-manager/subscriptions/reset-traffic', static f
     $vpnRedirect('/admin/plugins/vpn-manager/subscriptions/' . $id);
 })->middleware(['auth', 'admin']);
 
+$router->post('/admin/plugins/vpn-manager/subscriptions/delete', static function () use ($vpnSafeReturnUrl, $vpnRepo): void {
+    $id = (int)request()->post('id');
+    $returnUrl = $vpnSafeReturnUrl('/admin/plugins/vpn-manager/subscriptions');
+    try {
+        $result = (new SubscriptionAutomationService($vpnRepo()))->deletePermanently($id);
+        if (!empty($result['deleted'])) {
+            session()->setFlash('success', FireballPluginVpnManager::t('vpn_manager_flash_subscription_deleted'));
+        } else {
+            session()->setFlash('error', FireballPluginVpnManager::t('vpn_manager_flash_subscription_delete_failed'));
+        }
+    } catch (Throwable $exception) {
+        log_error_details('VPN Manager subscription permanent delete failed', ['Subscription' => $id], $exception);
+        $vpnRepo()->logEvent('subscription.delete_failed', 'VPN subscription permanent deletion failed.', [
+            'subscription_id' => $id,
+            'error_code' => get_class($exception),
+            'error_message' => $exception->getMessage(),
+        ], null, $id ?: null);
+        session()->setFlash('error', FireballPluginVpnManager::t('vpn_manager_flash_subscription_delete_failed'));
+    }
+
+    response()->redirect($returnUrl);
+})->middleware(['auth', 'admin']);
+
 $router->get('/admin/plugins/vpn-manager/connections', static function () use ($vpnRepo): string {
     return plugin_view('vpn-manager', 'connections', FireballPluginVpnManager::viewData('connections', [
         'title' => FireballPluginVpnManager::t('vpn_manager_connections_title'),
@@ -594,13 +647,37 @@ $router->get('/admin/plugins/vpn-manager/settings', static function (): string {
 })->middleware(['auth', 'admin']);
 
 $router->post('/admin/plugins/vpn-manager/settings', static function () use ($vpnRedirect, $vpnRepo): void {
+    $data = request()->getData();
+    $fieldNames = SettingsService::fieldNames($data);
     try {
-        SettingsService::save(request()->getData());
-        $vpnRepo()->logEvent('settings.updated', 'VPN Manager settings updated.');
+        $repo = $vpnRepo();
+        $repo->logEvent('vpn_settings_update_started', 'VPN Manager settings update started.', [
+            'fields' => $fieldNames,
+        ]);
+        SettingsService::save($data);
+        $repo->logEvent('vpn_settings_updated', 'VPN Manager settings updated.', [
+            'fields' => $fieldNames,
+        ]);
         session()->setFlash('success', FireballPluginVpnManager::t('vpn_manager_flash_settings_saved'));
     } catch (Throwable $exception) {
-        log_error_details('VPN Manager settings save failed', [], $exception);
-        session()->setFlash('error', $exception->getMessage());
+        log_error_details('VPN Manager settings save failed', [
+            'User ID' => (int)(get_user()['id'] ?? 0),
+            'Plugin Slug' => FireballPluginVpnManager::SLUG,
+            'Fields' => $fieldNames,
+            'SQLSTATE' => $exception instanceof PDOException ? (string)$exception->getCode() : '',
+        ], $exception);
+        try {
+            $vpnRepo()->logEvent('vpn_settings_update_failed', 'VPN Manager settings update failed.', [
+                'fields' => $fieldNames,
+                'error_code' => get_class($exception),
+                'error_message' => $exception->getMessage(),
+            ]);
+        } catch (Throwable) {
+        }
+        $message = $exception->getMessage() === FireballPluginVpnManager::t('vpn_manager_error_migrations_not_applied')
+            ? FireballPluginVpnManager::t('vpn_manager_error_migrations_not_applied')
+            : FireballPluginVpnManager::t('vpn_manager_flash_settings_save_failed');
+        session()->setFlash('error', $message);
     }
 
     $vpnRedirect('/admin/plugins/vpn-manager/settings');

@@ -4,6 +4,7 @@ require_once __DIR__ . '/partials/helpers.php';
 use Fireball\VpnManager\Support\Formatter;
 
 $subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
+$currentUrl = $_SERVER['REQUEST_URI'] ?? base_href('/admin/plugins/vpn-manager/subscriptions');
 $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/create')) . '"><i class="ci-plus"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_create_subscription')) . '</a>'
     . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/jobs/check-expirations')) . '" method="post">' . get_csrf_field() . '<button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-clock"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_check_expirations')) . '</button></form>'
     . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/jobs/check-traffic-limits')) . '" method="post">' . get_csrf_field() . '<button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-activity"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_check_traffic_limits')) . '</button></form>'
@@ -33,12 +34,16 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                 ['label' => FireballPluginVpnManager::t('vpn_manager_col_nodes')],
                 ['label' => FireballPluginVpnManager::t('vpn_manager_actions')],
             ],
-            'rows' => array_map(static function (array $item): array {
+            'rows' => array_map(static function (array $item) use ($currentUrl): array {
                 $id = (int)$item['id'];
                 $status = (string)($item['status'] ?? '');
                 $toggleStatus = $status === 'active' ? 'suspended' : 'active';
                 $userLabel = trim((string)($item['user_name'] ?? $item['user_email'] ?? ''));
                 $planLabel = trim((string)($item['plan_name'] ?? ''));
+                $deleteLabel = $status === 'delete_failed'
+                    ? FireballPluginVpnManager::t('vpn_manager_action_retry_delete')
+                    : FireballPluginVpnManager::t('vpn_manager_action_delete_forever');
+                $confirm = sprintf(FireballPluginVpnManager::t('vpn_manager_confirm_delete_subscription'), $id);
                 return [
                     'cells' => [
                         ['value' => '#' . $id],
@@ -47,7 +52,7 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                         ['html' => vpnm_status_badge($status)],
                         ['value' => Formatter::dateTime((string)($item['starts_at'] ?? ''))],
                         ['value' => Formatter::dateTime((string)($item['expires_at'] ?? ''))],
-                        ['value' => Formatter::bytes((int)($item['traffic_used_bytes'] ?? 0)) . ' / ' . Formatter::bytes((int)($item['traffic_limit_bytes'] ?? 0))],
+                        ['value' => Formatter::traffic((int)($item['traffic_used_bytes'] ?? 0), (int)($item['traffic_limit_bytes'] ?? 0))],
                         ['value' => (string)(int)($item['server_count'] ?? 0)],
                         ['value' => (string)(int)($item['node_count'] ?? 0)],
                         ['html' => vpnm_actions_dropdown([
@@ -60,7 +65,7 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                             ['label' => FireballPluginVpnManager::t('vpn_manager_action_show_qr'), 'href' => base_href('/admin/plugins/vpn-manager/subscriptions/' . $id . '#subscription-link'), 'icon' => 'ci-qr-code'],
                             ['label' => FireballPluginVpnManager::t('vpn_manager_action_copy_subscription_link'), 'href' => base_href('/admin/plugins/vpn-manager/subscriptions/' . $id . '#subscription-link'), 'icon' => 'ci-copy'],
                             ['type' => 'divider'],
-                            ['label' => FireballPluginVpnManager::t('vpn_manager_action_delete'), 'type' => 'form', 'action' => base_href('/admin/plugins/vpn-manager/subscriptions/status'), 'hidden' => ['id' => $id, 'status' => 'deleted'], 'icon' => 'ci-trash', 'class' => 'text-danger'],
+                            ['label' => $deleteLabel, 'type' => 'form', 'action' => base_href('/admin/plugins/vpn-manager/subscriptions/delete'), 'hidden' => ['id' => $id, 'return_url' => $currentUrl], 'icon' => 'ci-trash', 'class' => 'text-danger', 'confirm' => $confirm, 'delete_item' => '#' . $id, 'delete_confirm_label' => $deleteLabel],
                         ])],
                     ],
                 ];

@@ -52,13 +52,45 @@ final class SubscriptionLinkService
     public function configName(string $serverName): string
     {
         $settings = SettingsService::settings();
-        $template = (string)($settings['server_name_template'] ?? '{service} — {server}');
+        $template = (string)($settings['server_name_template'] ?? '{flag} {server}');
 
-        return str_replace(
-            ['{service}', '{server}'],
-            [(string)$settings['service_name'], $serverName],
+        return $this->cleanConfigName(str_replace(
+            ['{flag}', '{service}', '{country}', '{country_code}', '{city}', '{server}', '{protocol}'],
+            ['', (string)$settings['service_name'], '', '', '', $serverName, ''],
             $template
-        );
+        ));
+    }
+
+    public function configNameForServer(array $server, string $protocol = ''): string
+    {
+        $settings = SettingsService::settings();
+        $flagsEnabled = !empty($settings['show_country_flags'])
+            && !empty($server['show_flag']);
+        $flagService = new CountryFlagService();
+        $countryCode = $flagService->normalizeCountryCode((string)($server['country_code'] ?? ''));
+        $flag = $flagsEnabled && $flagService->isValidCountryCode($countryCode)
+            ? $flagService->flagFromCountryCode($countryCode)
+            : '';
+        $country = trim((string)($server['country_name'] ?? $server['country'] ?? ''));
+        if ($country === '' && $countryCode !== '') {
+            $country = $flagService->countryName($countryCode);
+        }
+        $serverName = trim((string)($server['server_name'] ?? $server['name'] ?? $server['code'] ?? 'VPN'));
+        $template = (string)($settings['server_name_template'] ?? '{flag} {server}');
+
+        return $this->cleanConfigName(str_replace(
+            ['{flag}', '{service}', '{country}', '{country_code}', '{city}', '{server}', '{protocol}'],
+            [
+                $flag,
+                (string)$settings['service_name'],
+                $country,
+                $countryCode,
+                trim((string)($server['city'] ?? '')),
+                $serverName,
+                strtoupper(trim($protocol)),
+            ],
+            $template
+        ));
     }
 
     public function subscriptionUrl(array $subscription, string $format = 'plain'): string
@@ -103,5 +135,14 @@ final class SubscriptionLinkService
         }
 
         return $url . (str_contains($url, '?') ? '&' : '?') . 'format=base64';
+    }
+
+    private function cleanConfigName(string $value): string
+    {
+        $value = preg_replace('/\s+/u', ' ', trim($value)) ?? trim($value);
+        $value = preg_replace('/^((?:[\x{1F1E6}-\x{1F1FF}]{2}))\s+\1\s+/u', '$1 ', $value) ?? $value;
+        $value = preg_replace('/\s+([,;:])/u', '$1', $value) ?? $value;
+
+        return trim($value) !== '' ? trim($value) : 'VPN';
     }
 }

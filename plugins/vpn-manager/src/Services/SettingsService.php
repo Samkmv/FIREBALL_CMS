@@ -13,7 +13,8 @@ final class SettingsService
             'service_name' => 'My VPN',
             'config_name_prefix' => '',
             'subscription_title' => 'VPN subscription',
-            'server_name_template' => '{service} — {server}',
+            'server_name_template' => '{flag} {server}',
+            'show_country_flags' => true,
             'logo_path' => '',
             'support_email' => '',
             'support_url' => '',
@@ -79,12 +80,13 @@ final class SettingsService
             'allow_user_reset_config',
             'allow_user_view_qr',
             'public_account_enabled',
+            'show_country_flags',
         ] as $key) {
             $settings[$key] = (bool)$settings[$key];
         }
 
         $settings['service_name'] = trim((string)$settings['service_name']) ?: 'My VPN';
-        $settings['server_name_template'] = trim((string)$settings['server_name_template']) ?: '{service} — {server}';
+        $settings['server_name_template'] = trim((string)$settings['server_name_template']) ?: '{flag} {server}';
         $settings['subscription_public_base_url'] = self::normalizeBaseUrl((string)($settings['subscription_public_base_url'] ?? ''));
         $settings['traffic_sync_interval_minutes'] = max(1, min(1440, (int)$settings['traffic_sync_interval_minutes']));
         $settings['sync_interval_minutes'] = max(1, min(1440, (int)$settings['sync_interval_minutes']));
@@ -94,13 +96,16 @@ final class SettingsService
         return $settings;
     }
 
-    public static function save(array $data): void
+    public static function save(array $data): array
     {
+        self::assertSettingsStorageReady();
+
         $settings = [
             'service_name' => mb_substr(trim((string)($data['service_name'] ?? 'My VPN')), 0, 120) ?: 'My VPN',
             'config_name_prefix' => mb_substr(trim((string)($data['config_name_prefix'] ?? '')), 0, 120),
             'subscription_title' => mb_substr(trim((string)($data['subscription_title'] ?? 'VPN subscription')), 0, 190),
-            'server_name_template' => mb_substr(trim((string)($data['server_name_template'] ?? '{service} — {server}')), 0, 190) ?: '{service} — {server}',
+            'server_name_template' => mb_substr(trim((string)($data['server_name_template'] ?? '{flag} {server}')), 0, 190) ?: '{flag} {server}',
+            'show_country_flags' => !empty($data['show_country_flags']),
             'logo_path' => mb_substr(trim((string)($data['logo_path'] ?? '')), 0, 255),
             'support_email' => mb_substr(trim((string)($data['support_email'] ?? '')), 0, 190),
             'support_url' => mb_substr(trim((string)($data['support_url'] ?? '')), 0, 255),
@@ -133,7 +138,71 @@ final class SettingsService
             plugin_setting_set(FireballPluginVpnManager::SLUG, $key, $value);
         }
 
+        self::invalidateCache();
+        $verified = self::verifySavedSettings($settings);
         self::refreshSubscriptionUrls();
+
+        return $verified;
+    }
+
+    public static function invalidateCache(): void
+    {
+        if (function_exists('cache')) {
+            cache()->remove('vpn-manager:settings');
+            cache()->remove('vpn-manager:profile-menu');
+        }
+    }
+
+    public static function fieldNames(array $data): array
+    {
+        $fields = array_keys($data);
+        sort($fields);
+
+        return array_values(array_filter($fields, static fn(string $field): bool => !str_contains(strtolower($field), 'token') && !str_contains(strtolower($field), 'password') && !str_contains(strtolower($field), 'secret')));
+    }
+
+    private static function assertSettingsStorageReady(): void
+    {
+        foreach (['plugins', 'plugin_settings'] as $table) {
+            $exists = (int)db()->query(
+                'SELECT COUNT(*)
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = ?',
+                [$table]
+            )->getColumn();
+
+            if ($exists === 0) {
+                throw new \RuntimeException(FireballPluginVpnManager::t('vpn_manager_error_migrations_not_applied'));
+            }
+        }
+    }
+
+    private static function verifySavedSettings(array $expected): array
+    {
+        $actual = [];
+        $mismatches = [];
+
+        foreach ($expected as $key => $value) {
+            $stored = plugin_setting(FireballPluginVpnManager::SLUG, $key, null);
+            $actual[$key] = $stored;
+            if (is_bool($value)) {
+                if ((bool)$stored !== $value) {
+                    $mismatches[] = $key;
+                }
+                continue;
+            }
+
+            if ((string)$stored !== (string)$value) {
+                $mismatches[] = $key;
+            }
+        }
+
+        if ($mismatches) {
+            throw new \RuntimeException(FireballPluginVpnManager::t('vpn_manager_flash_settings_save_failed'));
+        }
+
+        return $actual;
     }
 
     private static function normalizeBaseUrl(string $value): string

@@ -76,10 +76,7 @@ final class SubscriptionConfigService
         }
 
         $client = $this->clientSettings($settings, (string)($node['client_email'] ?? ''), $id);
-        $name = trim((string)($node['subscription_item_name'] ?? ''));
-        if ($name === '') {
-            $name = (new SubscriptionLinkService())->configName((string)($node['server_name'] ?? $node['inbound_name'] ?? 'VPN'));
-        }
+        $name = (new SubscriptionLinkService())->configNameForServer($node, $protocol);
 
         $uri = match ($protocol) {
             'vless' => $this->vless($host, $port, $id, $name, $stream, $client),

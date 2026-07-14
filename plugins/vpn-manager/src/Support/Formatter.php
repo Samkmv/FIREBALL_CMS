@@ -7,7 +7,11 @@ final class Formatter
     public static function bytes(int|float|string|null $bytes): string
     {
         $value = max(0.0, (float)$bytes);
-        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        $locale = function_exists('current_locale') ? (string)current_locale() : '';
+        $units = $locale === 'ru'
+            ? ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ', 'ПБ']
+            : ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        $decimalSeparator = in_array($locale, ['ru', 'de'], true) ? ',' : '.';
         $index = 0;
 
         while ($value >= 1024 && $index < count($units) - 1) {
@@ -15,7 +19,27 @@ final class Formatter
             $index++;
         }
 
-        return rtrim(rtrim(number_format($value, $index === 0 ? 0 : 2, '.', ' '), '0'), '.') . ' ' . $units[$index];
+        $formatted = number_format($value, $index === 0 ? 0 : 2, $decimalSeparator, ' ');
+        $formatted = rtrim(rtrim($formatted, '0'), $decimalSeparator);
+        if ($formatted === '') {
+            $formatted = '0';
+        }
+
+        return $formatted . ' ' . $units[$index];
+    }
+
+    public static function bytesLimit(int|float|string|null $bytes): string
+    {
+        if ((float)$bytes <= 0) {
+            return \FireballPluginVpnManager::t('vpn_manager_unlimited');
+        }
+
+        return self::bytes($bytes);
+    }
+
+    public static function traffic(int|float|string|null $used, int|float|string|null $limit): string
+    {
+        return self::bytes($used) . ' / ' . self::bytesLimit($limit);
     }
 
     public static function gbToBytes(mixed $gb): int
@@ -49,7 +73,7 @@ final class Formatter
         $class = match ($status) {
             'active', 'online', 'sent' => 'text-success bg-success-subtle',
             'expired', 'disabled', 'cancelled', 'deleted', 'offline', 'skipped', 'sync_missing' => 'text-secondary bg-secondary-subtle',
-            'traffic_exceeded', 'provisioning_failed', 'sync_error', 'create_failed', 'error', 'failed' => 'text-danger bg-danger-subtle',
+            'traffic_exceeded', 'provisioning_failed', 'sync_error', 'create_failed', 'delete_failed', 'error', 'failed' => 'text-danger bg-danger-subtle',
             'provisioning', 'creating', 'deleting', 'pending', 'unchecked' => 'text-warning bg-warning-subtle',
             default => 'text-info bg-info-subtle',
         };

@@ -5,6 +5,7 @@ namespace Fireball\VpnManager\Repositories;
 use Fireball\VpnManager\Support\Crypto;
 use Fireball\VpnManager\Support\Formatter;
 use Fireball\VpnManager\Support\Schema;
+use Fireball\VpnManager\Services\CountryFlagService;
 use Fireball\VpnManager\Services\SubscriptionLinkService;
 
 final class VpnRepository
@@ -64,11 +65,24 @@ final class VpnRepository
         if ($name === '' || $code === '' || $panelUrl === '') {
             throw new \RuntimeException(\FireballPluginVpnManager::t('vpn_manager_error_server_required'));
         }
+        $flagService = new CountryFlagService();
+        $countryCode = $flagService->normalizeCountryCode((string)($data['country_code'] ?? ''));
+        if ($countryCode !== '' && !$flagService->isValidCountryCode($countryCode)) {
+            throw new \RuntimeException(\FireballPluginVpnManager::t('vpn_manager_error_invalid_country_code'));
+        }
+        $countryName = trim((string)($data['country_name'] ?? $data['country'] ?? ''));
+        if ($countryName === '' && $countryCode !== '') {
+            $countryName = $flagService->countryName($countryCode);
+        }
 
         $normalized = [
             'name' => mb_substr($name, 0, 255),
             'code' => mb_substr($code, 0, 80),
-            'country' => mb_substr(trim((string)($data['country'] ?? '')), 0, 120),
+            'country_code' => $countryCode !== '' ? $countryCode : null,
+            'country_name' => mb_substr($countryName, 0, 120) ?: null,
+            'flag_emoji' => $countryCode !== '' ? $flagService->flagFromCountryCode($countryCode) : null,
+            'show_flag' => !empty($data['show_flag']) ? 1 : 0,
+            'country' => mb_substr($countryName, 0, 120),
             'city' => mb_substr(trim((string)($data['city'] ?? '')), 0, 120),
             'panel_url' => mb_substr($panelUrl, 0, 500),
             'public_host' => mb_substr($this->normalizePublicHost((string)($data['public_host'] ?? '')), 0, 255),
@@ -93,6 +107,10 @@ final class VpnRepository
             $params = [
                 $normalized['name'],
                 $normalized['code'],
+                $normalized['country_code'],
+                $normalized['country_name'],
+                $normalized['flag_emoji'],
+                $normalized['show_flag'],
                 $normalized['country'] ?: null,
                 $normalized['city'] ?: null,
                 $normalized['panel_url'],
@@ -114,7 +132,7 @@ final class VpnRepository
 
             db()->query(
                 'UPDATE vpn_servers
-                 SET name = ?, code = ?, country = ?, city = ?, panel_url = ?, public_host = ?, panel_path = ?, api_auth_type = ?, is_enabled = ?, sort_order = ?, updated_at = ?' . $secretSql . '
+                 SET name = ?, code = ?, country_code = ?, country_name = ?, flag_emoji = ?, show_flag = ?, country = ?, city = ?, panel_url = ?, public_host = ?, panel_path = ?, api_auth_type = ?, is_enabled = ?, sort_order = ?, updated_at = ?' . $secretSql . '
                  WHERE id = ?',
                 $params
             );
@@ -126,11 +144,15 @@ final class VpnRepository
 
         db()->query(
             'INSERT INTO vpn_servers
-                (name, code, country, city, panel_url, public_host, panel_path, api_auth_type, api_token_encrypted, username_encrypted, password_encrypted, status, is_enabled, sort_order, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (name, code, country_code, country_name, flag_emoji, show_flag, country, city, panel_url, public_host, panel_path, api_auth_type, api_token_encrypted, username_encrypted, password_encrypted, status, is_enabled, sort_order, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $normalized['name'],
                 $normalized['code'],
+                $normalized['country_code'],
+                $normalized['country_name'],
+                $normalized['flag_emoji'],
+                $normalized['show_flag'],
                 $normalized['country'] ?: null,
                 $normalized['city'] ?: null,
                 $normalized['panel_url'],
@@ -217,6 +239,11 @@ final class VpnRepository
                     i.id AS inbound_id,
                     s.id AS server_id,
                     s.name AS server_name,
+                    s.code AS server_code,
+                    s.country_code,
+                    s.country_name,
+                    s.flag_emoji,
+                    s.show_flag,
                     s.country,
                     s.city
              FROM vpn_inbounds i
@@ -465,6 +492,13 @@ final class VpnRepository
             "SELECT ps.*,
                     s.id AS server_id,
                     s.name AS server_name,
+                    s.code AS server_code,
+                    s.country_code,
+                    s.country_name,
+                    s.flag_emoji,
+                    s.show_flag,
+                    s.country,
+                    s.city,
                     s.panel_url,
                     s.panel_path,
                     s.api_auth_type,
@@ -756,6 +790,7 @@ final class VpnRepository
                 'inbound_id' => (int)($node['inbound_id'] ?? 0),
             ], $userId, $subscriptionId, $nodeId, (int)($node['server_id'] ?? 0));
         }
+        \Fireball\VpnManager\Services\SettingsService::invalidateCache();
 
         return $subscriptionId;
     }
@@ -771,6 +806,8 @@ final class VpnRepository
             'provisioning_failed',
             'sync_error',
             'cancelled',
+            'deleting',
+            'delete_failed',
             'deleted',
         ];
     }
@@ -813,7 +850,7 @@ final class VpnRepository
     public function subscriptionNodes(int $subscriptionId): array
     {
         return db()->query(
-            'SELECT n.*, s.name AS server_name, i.name AS inbound_name
+            'SELECT n.*, s.name AS server_name, s.code AS server_code, s.country_code, s.country_name, s.flag_emoji, s.show_flag, s.country, s.city, i.name AS inbound_name
              FROM vpn_subscription_nodes n
              LEFT JOIN vpn_servers s ON s.id = n.server_id
              LEFT JOIN vpn_inbounds i ON i.id = n.inbound_id
@@ -823,11 +860,145 @@ final class VpnRepository
         )->get() ?: [];
     }
 
+    public function hasSubscriptionsForUser(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+
+        return (int)db()->query('SELECT COUNT(*) FROM vpn_subscriptions WHERE user_id = ?', [$userId])->getColumn() > 0;
+    }
+
+    public function subscriptionForUser(int $subscriptionId, int $userId): ?array
+    {
+        if ($subscriptionId <= 0 || $userId <= 0) {
+            return null;
+        }
+
+        $row = db()->query(
+            'SELECT s.*, p.name AS plan_name, p.description AS plan_description
+             FROM vpn_subscriptions s
+             LEFT JOIN vpn_plans p ON p.id = s.plan_id
+             WHERE s.id = ? AND s.user_id = ?
+             LIMIT 1',
+            [$subscriptionId, $userId]
+        )->getOne();
+
+        return is_array($row) ? $row : null;
+    }
+
+    public function markSubscriptionDeleting(int $subscriptionId): void
+    {
+        db()->query('UPDATE vpn_subscriptions SET status = "deleting", updated_at = ? WHERE id = ?', [date('Y-m-d H:i:s'), $subscriptionId]);
+        db()->query('UPDATE vpn_subscription_nodes SET status = "deleting", last_error = NULL, updated_at = ? WHERE subscription_id = ? AND status <> "deleted"', [date('Y-m-d H:i:s'), $subscriptionId]);
+    }
+
+    public function markSubscriptionDeleteFailed(int $subscriptionId, string $error): void
+    {
+        db()->query(
+            'UPDATE vpn_subscriptions SET status = "delete_failed", updated_at = ? WHERE id = ?',
+            [date('Y-m-d H:i:s'), $subscriptionId]
+        );
+        $this->logEvent('subscription.delete_failed', 'VPN subscription permanent deletion failed.', [
+            'error_message' => mb_substr($error, 0, 1000),
+        ], null, $subscriptionId);
+    }
+
+    public function markNodeDeleteFailed(int $nodeId, string $error): void
+    {
+        db()->query(
+            'UPDATE vpn_subscription_nodes SET status = "delete_failed", last_error = ?, updated_at = ? WHERE id = ?',
+            [mb_substr($error, 0, 1000), date('Y-m-d H:i:s'), $nodeId]
+        );
+    }
+
+    public function markNodeDeleted(int $nodeId): void
+    {
+        db()->query(
+            'UPDATE vpn_subscription_nodes SET status = "deleted", last_error = NULL, updated_at = ? WHERE id = ?',
+            [date('Y-m-d H:i:s'), $nodeId]
+        );
+    }
+
+    public function deleteSubscriptionLocalData(int $subscriptionId, int $deletedNodesCount): void
+    {
+        $subscription = $this->subscription($subscriptionId);
+        if (!$subscription) {
+            return;
+        }
+
+        $admin = function_exists('get_user') ? get_user() : null;
+        $adminId = is_array($admin) ? (int)($admin['id'] ?? 0) : null;
+        $database = db();
+        $startedTransaction = false;
+        if (!$database->inTransaction()) {
+            $database->beginTransaction();
+            $startedTransaction = true;
+        }
+
+        try {
+            $database->query(
+                'UPDATE vpn_subscriptions
+                 SET subscription_token = NULL,
+                     subscription_token_encrypted = NULL,
+                     subscription_token_hash = NULL,
+                     subscription_token_preview = NULL,
+                     subscription_url = NULL,
+                     updated_at = ?
+                 WHERE id = ?',
+                [date('Y-m-d H:i:s'), $subscriptionId]
+            );
+            $database->query('DELETE FROM vpn_traffic_snapshots WHERE subscription_id = ?', [$subscriptionId]);
+            $database->query('DELETE FROM vpn_notifications WHERE subscription_id = ?', [$subscriptionId]);
+            $database->query('DELETE FROM vpn_jobs WHERE payload_json LIKE ?', ['%"subscription_id":' . $subscriptionId . '%']);
+            $database->query('DELETE FROM vpn_jobs WHERE payload_json LIKE ?', ['%"subscription_id":"' . $subscriptionId . '"%']);
+            $database->query('DELETE FROM vpn_jobs WHERE payload_json LIKE ? AND payload_json LIKE ?', ['%subscription_id%', '%' . $subscriptionId . '%']);
+            $database->query('DELETE FROM vpn_subscription_nodes WHERE subscription_id = ?', [$subscriptionId]);
+            $database->query('UPDATE vpn_events SET subscription_id = NULL WHERE subscription_id = ?', [$subscriptionId]);
+            $database->query('DELETE FROM vpn_subscriptions WHERE id = ?', [$subscriptionId]);
+            $database->query(
+                'INSERT INTO vpn_events
+                    (event_type, user_id, admin_id, subscription_id, node_id, server_id, message, context_json, ip_address, created_at)
+                 VALUES (?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?)',
+                [
+                    'subscription_deleted',
+                    (int)($subscription['user_id'] ?? 0) ?: null,
+                    $adminId ?: null,
+                    'VPN subscription deleted permanently.',
+                    json_encode([
+                        'deleted_subscription_id' => $subscriptionId,
+                        'deleted_nodes_count' => $deletedNodesCount,
+                        'deleted_at' => date('c'),
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    function_exists('client_ip') ? client_ip() : null,
+                    date('Y-m-d H:i:s'),
+                ]
+            );
+
+            if ($startedTransaction) {
+                $database->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $database->inTransaction()) {
+                $database->rollBack();
+            }
+
+            throw $exception;
+        }
+    }
+
     public function subscriptionConfigNodes(int $subscriptionId): array
     {
         return db()->query(
             "SELECT n.*,
                     s.name AS server_name,
+                    s.code AS server_code,
+                    s.country_code,
+                    s.country_name,
+                    s.flag_emoji,
+                    s.show_flag,
+                    s.country,
+                    s.city,
                     s.public_host,
                     s.panel_url,
                     i.name AS inbound_name,
@@ -951,7 +1122,7 @@ final class VpnRepository
                 $inboundId,
                 $this->uuidV4(),
                 'VPN subscription #' . $subscriptionId,
-                (new \Fireball\VpnManager\Services\SubscriptionLinkService())->configName((string)$planItem['server_name']),
+                (new \Fireball\VpnManager\Services\SubscriptionLinkService())->configNameForServer($planItem, (string)($planItem['protocol'] ?? '')),
                 (int)$subscription['traffic_limit_bytes'],
                 $now,
                 $now,
@@ -1019,6 +1190,13 @@ final class VpnRepository
         return db()->query(
             "SELECT n.*,
                     s.name AS server_name,
+                    s.code AS server_code,
+                    s.country_code,
+                    s.country_name,
+                    s.flag_emoji,
+                    s.show_flag,
+                    s.country,
+                    s.city,
                     s.panel_url,
                     s.panel_path,
                     s.api_auth_type,
@@ -1197,6 +1375,13 @@ final class VpnRepository
         $row = db()->query(
             'SELECT n.*,
                     s.name AS server_name,
+                    s.code AS server_code,
+                    s.country_code,
+                    s.country_name,
+                    s.flag_emoji,
+                    s.show_flag,
+                    s.country,
+                    s.city,
                     s.panel_url,
                     s.panel_path,
                     s.api_auth_type,
@@ -1257,6 +1442,13 @@ final class VpnRepository
         return db()->query(
             'SELECT n.*,
                     s.name AS server_name,
+                    s.code AS server_code,
+                    s.country_code,
+                    s.country_name,
+                    s.flag_emoji,
+                    s.show_flag,
+                    s.country,
+                    s.city,
                     i.name AS inbound_name,
                     sub.user_id,
                     u.name AS user_name
@@ -1275,7 +1467,7 @@ final class VpnRepository
         $limit = max(1, min(500, $limit));
 
         return db()->query(
-            "SELECT rc.*, s.name AS server_name, i.name AS inbound_name
+            "SELECT rc.*, s.name AS server_name, s.code AS server_code, s.country_code, s.country_name, s.flag_emoji, s.show_flag, s.country, s.city, i.name AS inbound_name
              FROM vpn_remote_clients rc
              LEFT JOIN vpn_servers s ON s.id = rc.server_id
              LEFT JOIN vpn_inbounds i ON i.id = rc.inbound_id
@@ -1351,7 +1543,11 @@ final class VpnRepository
     {
         return db()->query(
             'SELECT s.*, p.name AS plan_name, p.description AS plan_description,
-                    (SELECT GROUP_CONCAT(DISTINCT vs.name ORDER BY vs.sort_order ASC, vs.id ASC SEPARATOR ", ")
+                    (SELECT GROUP_CONCAT(DISTINCT TRIM(CONCAT(
+                                IF(vs.show_flag = 1 AND vs.flag_emoji IS NOT NULL AND vs.flag_emoji <> "", CONCAT(vs.flag_emoji, " "), ""),
+                                COALESCE(NULLIF(vs.country_name, ""), NULLIF(vs.country, ""), vs.name),
+                                IF(vs.city IS NOT NULL AND vs.city <> "", CONCAT(", ", vs.city), "")
+                            )) ORDER BY vs.sort_order ASC, vs.id ASC SEPARATOR ", ")
                      FROM vpn_subscription_nodes n
                      INNER JOIN vpn_servers vs ON vs.id = n.server_id
                      WHERE n.subscription_id = s.id AND n.status <> "deleted") AS server_names,

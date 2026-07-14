@@ -52,7 +52,32 @@
     height: auto;
 }
 
+.vpn-stat-icon {
+    width: 3rem;
+    height: 3rem;
+    min-width: 3rem;
+    min-height: 3rem;
+    flex: 0 0 3rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.vpn-stat-icon > i,
+.vpn-stat-icon > svg {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    line-height: 1;
+}
+
 @media (max-width: 767.98px) {
+    .admin-mobile-table-cards {
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
+
     .admin-dropdown-portal {
         min-width: 220px;
         max-width: calc(100vw - 24px);

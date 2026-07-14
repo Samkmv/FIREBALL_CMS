@@ -37,7 +37,10 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                     ['label' => FireballPluginVpnManager::t('vpn_manager_action_delete'), 'type' => 'form', 'action' => base_href('/admin/plugins/vpn-manager/servers/delete'), 'hidden' => ['id' => (int)$server['id']], 'icon' => 'ci-trash', 'class' => 'text-danger'],
                 ];
 
-                $location = trim((string)($server['country'] ?? '') . ' ' . (string)($server['city'] ?? '')) ?: '-';
+                $flag = !empty($server['show_flag']) ? trim((string)($server['flag_emoji'] ?? '')) : '';
+                $country = trim((string)($server['country_name'] ?? $server['country'] ?? ''));
+                $city = trim((string)($server['city'] ?? ''));
+                $location = trim(($flag !== '' ? $flag . ' ' : '') . ($country !== '' ? $country : '') . ($city !== '' ? ', ' . $city : '')) ?: '-';
                 $status = (string)($server['status'] ?? 'unchecked');
                 if (empty($server['is_enabled'])) {
                     $status = 'disabled';

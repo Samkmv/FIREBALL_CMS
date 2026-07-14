@@ -30,8 +30,14 @@ $checked = static fn(string $key): string => !empty($settings[$key]) ? 'checked'
                 </div>
                 <div class="col-md-6">
                     <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_server_name_template')) ?></label>
-                    <input class="form-control" type="text" name="server_name_template" value="<?= htmlSC((string)($settings['server_name_template'] ?? '{service} — {server}')) ?>">
+                    <input class="form-control" type="text" name="server_name_template" value="<?= htmlSC((string)($settings['server_name_template'] ?? '{flag} {server}')) ?>">
                     <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_server_name_template_hint')) ?></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch border rounded-4 p-3 ps-5 h-100">
+                        <input class="form-check-input" type="checkbox" name="show_country_flags" value="1" id="vpnShowCountryFlags" <?= $checked('show_country_flags') ?>>
+                        <label class="form-check-label fw-medium" for="vpnShowCountryFlags"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_setting_show_country_flags')) ?></label>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_logo_path')) ?></label>

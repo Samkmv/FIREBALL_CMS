@@ -1,6 +1,8 @@
 <?php
 
 use Fireball\VpnManager\Services\SubscriptionConfigService;
+use Fireball\VpnManager\Services\QrCodeService;
+use Fireball\VpnManager\Services\SubscriptionLinkService;
 
 /** @var \FBL\Router $router */
 
@@ -23,15 +25,55 @@ $router->get('/plugins/vpn-manager/assets/(?P<file>[a-z0-9._-]+)', static functi
     exit;
 });
 
-$router->get('/my-vpn', static function (): string {
+$renderMyVpn = static function (?int $subscriptionId = null, string $platform = ''): string {
     $user = get_user();
     $userId = is_array($user) ? (int)($user['id'] ?? 0) : 0;
     $repo = FireballPluginVpnManager::repository();
+    $selected = $subscriptionId !== null ? $repo->subscriptionForUser($subscriptionId, $userId) : null;
+    if ($subscriptionId !== null && !$selected) {
+        abort('', 404);
+    }
 
     return plugin_view('vpn-manager', 'my-vpn', FireballPluginVpnManager::viewData('dashboard', [
         'title' => FireballPluginVpnManager::t('vpn_manager_my_vpn_title'),
         'subscriptions' => $repo->mySubscriptions($userId),
+        'selectedSubscription' => $selected,
+        'selectedPlatform' => $platform,
     ]));
+};
+
+$router->get('/profile/vpn', static function () use ($renderMyVpn): string {
+    return $renderMyVpn();
+})->middleware(['auth']);
+
+$router->get('/profile/vpn/(?P<id>\d+)/?', static function () use ($renderMyVpn): string {
+    return $renderMyVpn((int)get_route_param('id'));
+})->middleware(['auth']);
+
+$router->get('/profile/vpn/(?P<id>\d+)/qr/?', static function (): string {
+    $user = get_user();
+    $userId = is_array($user) ? (int)($user['id'] ?? 0) : 0;
+    $id = (int)get_route_param('id');
+    $repo = FireballPluginVpnManager::repository();
+    $subscription = $repo->subscriptionForUser($id, $userId);
+    if (!$subscription) {
+        abort('', 404);
+    }
+
+    $url = (new SubscriptionLinkService())->subscriptionUrl($subscription, 'plain');
+    if ($url === '' || (string)($subscription['status'] ?? '') !== 'active') {
+        return '<div class="container py-5"><div class="alert alert-warning rounded-4">' . htmlSC(FireballPluginVpnManager::t('vpn_manager_qr_pending')) . '</div></div>';
+    }
+
+    return '<div class="container py-5">' . (new QrCodeService())->render($url) . '</div>';
+})->middleware(['auth']);
+
+$router->get('/profile/vpn/instructions/(?P<platform>[a-z0-9_-]+)/?', static function () use ($renderMyVpn): string {
+    return $renderMyVpn(null, (string)get_route_param('platform'));
+})->middleware(['auth']);
+
+$router->get('/my-vpn', static function (): void {
+    response()->redirect(base_href('/profile/vpn'));
 })->middleware(['auth']);
 
 $vpnSubscriptionEndpoint = static function (): string {
@@ -47,6 +89,7 @@ $vpnSubscriptionEndpoint = static function (): string {
         $repo->logEvent('subscription_endpoint_invalid_token', 'VPN subscription endpoint was opened with an invalid token.', [
             'preview' => substr($token, 0, 12),
         ]);
+        http_response_code(404);
         if ($debug) {
             $count = (int)db()->query('SELECT COUNT(*) FROM vpn_subscriptions')->getColumn();
             return "VPN Manager endpoint OK\nerror=token_not_found\ntoken_preview=" . substr($token, 0, 12) . "\nsubscriptions_count={$count}\n";

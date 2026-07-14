@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManager\Services;
 
+use Fireball\VpnManager\Clients\ThreeXuiClient;
 use Fireball\VpnManager\Repositories\VpnRepository;
 
 final class SubscriptionAutomationService
@@ -171,6 +172,83 @@ final class SubscriptionAutomationService
         }
 
         return ['success' => $success, 'failed' => $failed];
+    }
+
+    public function deletePermanently(int $subscriptionId): array
+    {
+        $subscription = $this->repo->subscription($subscriptionId);
+        if (!$subscription) {
+            return ['deleted' => true, 'already_deleted' => true, 'deleted_nodes' => 0, 'failed' => 0];
+        }
+
+        $nodes = $this->repo->subscriptionNodes($subscriptionId);
+        $this->repo->markSubscriptionDeleting($subscriptionId);
+        $deletedNodes = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($nodes as $nodeRow) {
+            $nodeId = (int)($nodeRow['id'] ?? 0);
+            $node = $nodeId > 0 ? $this->repo->connection($nodeId) : null;
+            if (!$node) {
+                continue;
+            }
+
+            $remoteInboundId = trim((string)($node['remote_inbound_id'] ?? ''));
+            $clientUuid = trim((string)($node['client_uuid'] ?? ''));
+            $clientEmail = trim((string)($node['client_email'] ?? ''));
+            if ($remoteInboundId === '' || ($clientUuid === '' && $clientEmail === '')) {
+                $this->repo->markNodeDeleted($nodeId);
+                $deletedNodes++;
+                continue;
+            }
+
+            try {
+                $client = new ThreeXuiClient($node);
+                if ($client->clientExists($remoteInboundId, $clientEmail, $clientUuid)) {
+                    $client->deleteClient($remoteInboundId, $clientUuid, $clientEmail);
+                }
+
+                if ($client->clientExists($remoteInboundId, $clientEmail, $clientUuid)) {
+                    throw new \RuntimeException(\FireballPluginVpnManager::t('vpn_manager_error_client_not_confirmed'));
+                }
+
+                $this->repo->markNodeDeleted($nodeId);
+                $this->repo->logEvent('subscription.node_deleted_remote', 'VPN client deleted from 3x-ui.', [
+                    'node_id' => $nodeId,
+                    'server_id' => (int)($node['server_id'] ?? 0),
+                    'inbound_id' => (int)($node['inbound_id'] ?? 0),
+                ], (int)($subscription['user_id'] ?? 0), $subscriptionId, $nodeId, (int)($node['server_id'] ?? 0));
+                $deletedNodes++;
+            } catch (\Throwable $exception) {
+                $failed++;
+                $errors[] = $exception->getMessage();
+                $this->repo->markNodeDeleteFailed($nodeId, $exception->getMessage());
+                $this->repo->logEvent('subscription.node_delete_failed', 'VPN client deletion from 3x-ui failed.', [
+                    'node_id' => $nodeId,
+                    'server_id' => (int)($node['server_id'] ?? 0),
+                    'inbound_id' => (int)($node['inbound_id'] ?? 0),
+                    'error_code' => get_class($exception),
+                    'error_message' => $exception->getMessage(),
+                ], (int)($subscription['user_id'] ?? 0), $subscriptionId, $nodeId, (int)($node['server_id'] ?? 0));
+            }
+        }
+
+        if ($failed > 0) {
+            $this->repo->markSubscriptionDeleteFailed($subscriptionId, implode('; ', $errors));
+
+            return ['deleted' => false, 'deleted_nodes' => $deletedNodes, 'failed' => $failed];
+        }
+
+        try {
+            $this->repo->deleteSubscriptionLocalData($subscriptionId, $deletedNodes);
+        } catch (\Throwable $exception) {
+            $this->repo->markSubscriptionDeleteFailed($subscriptionId, $exception->getMessage());
+            throw $exception;
+        }
+        SettingsService::invalidateCache();
+
+        return ['deleted' => true, 'deleted_nodes' => $deletedNodes, 'failed' => 0];
     }
 
     private function disableNodes(int $subscriptionId, string $eventType): array

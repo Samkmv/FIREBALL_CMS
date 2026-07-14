@@ -41,7 +41,7 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                             <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManager::t($card[0])) ?></div>
                             <div class="h4 mb-0 mt-1"><?= htmlSC((string)$card[1]) ?></div>
                         </div>
-                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary" style="width:2.5rem;height:2.5rem;">
+                        <span class="vpn-stat-icon bg-body-tertiary">
                             <i class="<?= htmlSC((string)$card[2]) ?>"></i>
                         </span>
                     </div>
@@ -68,7 +68,7 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                 ['label' => FireballPluginVpnManager::t('vpn_manager_actions')],
             ],
             'rows' => array_map(static function (array $item): array {
-                $traffic = Formatter::bytes((int)($item['traffic_used_bytes'] ?? 0)) . ' / ' . Formatter::bytes((int)($item['traffic_limit_bytes'] ?? 0));
+                $traffic = Formatter::traffic((int)($item['traffic_used_bytes'] ?? 0), (int)($item['traffic_limit_bytes'] ?? 0));
                 $userLabel = trim((string)($item['user_name'] ?? $item['user_email'] ?? ''));
                 $planLabel = trim((string)($item['plan_name'] ?? ''));
                 return [

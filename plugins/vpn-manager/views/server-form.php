@@ -1,9 +1,22 @@
 <?php
+use Fireball\VpnManager\Services\CountryFlagService;
+use Fireball\VpnManager\Services\SubscriptionLinkService;
 use Fireball\VpnManager\Support\Crypto;
 
 $server = is_array($server ?? null) ? $server : null;
 $isEdit = $server !== null;
 $action = $isEdit ? base_href('/admin/plugins/vpn-manager/servers/edit/' . (int)$server['id']) : base_href('/admin/plugins/vpn-manager/servers/create');
+$flagService = new CountryFlagService();
+$countries = $flagService->countries();
+$countryCode = $flagService->normalizeCountryCode((string)($server['country_code'] ?? ''));
+$countryName = trim((string)($server['country_name'] ?? $server['country'] ?? ''));
+$preview = (new SubscriptionLinkService())->configNameForServer([
+    'server_name' => (string)($server['name'] ?? FireballPluginVpnManager::t('vpn_manager_server_preview_name')),
+    'country_code' => $countryCode,
+    'country_name' => $countryName,
+    'city' => (string)($server['city'] ?? ''),
+    'show_flag' => (int)($server['show_flag'] ?? 1),
+], '');
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -58,15 +71,40 @@ $action = $isEdit ? base_href('/admin/plugins/vpn-manager/servers/edit/' . (int)
                 <input class="form-control" type="text" name="code" placeholder="de-01" value="<?= htmlSC((string)($server['code'] ?? '')) ?>">
                 <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_server_code_hint')) ?></div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_country')) ?></label>
-                <input class="form-control" type="text" name="country" placeholder="Germany" value="<?= htmlSC((string)($server['country'] ?? '')) ?>">
+            <div class="col-md-4">
+                <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_country_code')) ?></label>
+                <select class="form-select" name="country_code">
+                    <option value=""><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_country_not_selected')) ?></option>
+                    <?php foreach ($countries as $country): ?>
+                        <option value="<?= htmlSC($country['code']) ?>" <?= $countryCode === $country['code'] ? 'selected' : '' ?>>
+                            <?= htmlSC($country['flag'] . ' ' . $country['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_server_country_code_hint')) ?></div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_country_name')) ?></label>
+                <input class="form-control" type="text" name="country_name" placeholder="Germany" value="<?= htmlSC($countryName) ?>">
                 <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_server_country_hint')) ?></div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_city')) ?></label>
                 <input class="form-control" type="text" name="city" placeholder="Frankfurt" value="<?= htmlSC((string)($server['city'] ?? '')) ?>">
                 <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_server_city_hint')) ?></div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch border rounded-4 p-3 ps-5 h-100">
+                    <input class="form-check-input" type="checkbox" name="show_flag" value="1" id="vpnServerShowFlag" <?= (int)($server['show_flag'] ?? 1) === 1 ? 'checked' : '' ?>>
+                    <label class="form-check-label fw-medium" for="vpnServerShowFlag"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_show_flag')) ?></label>
+                    <div class="form-text"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_flag_preview')) ?>: <?= htmlSC($countryCode !== '' ? $flagService->flagFromCountryCode($countryCode) : FireballPluginVpnManager::t('vpn_manager_no_flag')) ?></div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="border rounded-4 p-3 h-100">
+                    <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_preview')) ?></div>
+                    <div class="fw-semibold"><?= htmlSC($preview) ?></div>
+                </div>
             </div>
             <div class="col-md-8">
                 <label class="form-label"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_field_panel_url')) ?></label>

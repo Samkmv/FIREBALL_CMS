@@ -40,9 +40,13 @@ $renderAttributes = static function (array $attributes): string {
     return $html;
 };
 
-$renderCell = static function (array $cell, string $tag = 'td') use ($renderAttributes): string {
+$renderCell = static function (array $cell, string $tag = 'td', string $label = '') use ($renderAttributes): string {
     $cellTag = !empty($cell['header']) ? 'th' : $tag;
     $attributes = is_array($cell['attributes'] ?? null) ? $cell['attributes'] : [];
+
+    if ($cellTag === 'td' && $label !== '' && !isset($attributes['data-label'])) {
+        $attributes['data-label'] = $label;
+    }
 
     if (!empty($cell['class'])) {
         $attributes['class'] = trim((string)($attributes['class'] ?? '') . ' ' . (string)$cell['class']);
@@ -174,8 +178,8 @@ if ($shouldRenderMobileCards) {
                     }
                     ?>
                     <tr<?= $renderAttributes($rowAttributes) ?>>
-                        <?php foreach ((array)($row['cells'] ?? []) as $cell): ?>
-                            <?= $renderCell((array)$cell) ?>
+                        <?php foreach ((array)($row['cells'] ?? []) as $index => $cell): ?>
+                            <?= $renderCell((array)$cell, 'td', $columnLabel((array)($columns[$index] ?? []))) ?>
                         <?php endforeach; ?>
                     </tr>
                 <?php endforeach; ?>

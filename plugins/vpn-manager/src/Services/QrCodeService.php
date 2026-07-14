@@ -38,6 +38,6 @@ final class QrCodeService
 
     private function unavailable(): string
     {
-        return '<div class="alert alert-warning mb-0">' . htmlSC(\FireballPluginVpnManager::t('vpn_manager_qr_unavailable')) . '</div>';
+        return '<div class="alert alert-warning mb-0">' . htmlSC(\FireballPluginVpnManager::t('vpn_manager_qr_create_failed')) . '</div>';
     }
 }

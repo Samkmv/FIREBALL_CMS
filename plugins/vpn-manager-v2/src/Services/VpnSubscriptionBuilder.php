@@ -1,0 +1,335 @@
+<?php
+
+namespace Fireball\VpnManagerV2\Services;
+
+use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
+use Fireball\VpnManagerV2\Support\CountryFlag;
+
+final class VpnSubscriptionBuilder
+{
+    public function __construct(
+        private readonly ?SubscriptionConfigRepository $repository = null,
+        private readonly ?VpnConfigValidator $validator = null,
+        private readonly ?VpnFlowResolver $flowResolver = null,
+    ) {
+    }
+
+    public function build(array $subscription): array
+    {
+        return $this->buildFromNodes(
+            $subscription,
+            ($this->repository ?? new SubscriptionConfigRepository())->activeNodes((int)($subscription['id'] ?? 0))
+        );
+    }
+
+    public function buildFromNodes(array $subscription, array $nodes): array
+    {
+        if ((int)($subscription['id'] ?? 0) <= 0) {
+            throw new \Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_config_invalid')
+            );
+        }
+
+        $uris = [];
+        foreach ($nodes as $node) {
+            if (!is_array($node)) {
+                throw new \Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException(
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_config_invalid')
+                );
+            }
+            $uris[] = $this->buildNode($node);
+        }
+
+        return $uris;
+    }
+
+    private function buildNode(array $node): string
+    {
+        $stream = $this->json((string)($node['stream_settings_json'] ?? ''));
+        $protocol = strtolower(trim((string)($node['protocol'] ?? '')));
+        $network = strtolower(trim((string)($node['network'] ?? $stream['network'] ?? 'tcp')));
+        $security = strtolower(trim((string)($node['security'] ?? $stream['security'] ?? 'none')));
+        $host = $this->serverHost((string)($node['panel_url'] ?? ''));
+        $flow = ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow($node['flow'] ?? null);
+        $params = [
+            'encryption' => 'none',
+            'security' => $security !== '' ? $security : 'none',
+            'type' => $network !== '' ? $network : 'tcp',
+        ];
+        if ($flow !== null) {
+            $params['flow'] = $flow;
+        }
+
+        $this->addSecurity($params, $stream, $security, $host);
+        $this->addTransport($params, $stream, $network);
+        $params = $this->filterParams($params);
+
+        $validationNode = array_replace($node, [
+            'protocol' => $protocol,
+            'network' => $network,
+            'security' => $security,
+            'flow' => $flow,
+            'config_host' => $host,
+        ]);
+        $validator = $this->validator ?? new VpnConfigValidator($this->flowResolver ?? new VpnFlowResolver());
+        $validator->validate($validationNode, $stream, $params);
+
+        $uri = 'vless://' . rawurlencode(trim((string)$node['client_uuid']))
+            . '@' . $this->hostForUri($host)
+            . ':' . (int)$node['port']
+            . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986)
+            . '#' . rawurlencode($this->displayName($node));
+        $validator->validateUri($uri);
+
+        return $uri;
+    }
+
+    private function addSecurity(array &$params, array $stream, string $security, string $host): void
+    {
+        if ($security === 'reality') {
+            $reality = is_array($stream['realitySettings'] ?? null) ? $stream['realitySettings'] : [];
+            $settings = is_array($reality['settings'] ?? null) ? $reality['settings'] : [];
+            $params['sni'] = $this->firstValue([
+                $settings['serverName'] ?? null,
+                $reality['serverName'] ?? null,
+                $reality['serverNames'] ?? null,
+            ]);
+            $params['fp'] = $this->firstValue([
+                $settings['fingerprint'] ?? null,
+                $reality['fingerprint'] ?? null,
+                'chrome',
+            ]);
+            $params['pbk'] = $this->firstValue([
+                $settings['publicKey'] ?? null,
+                $reality['publicKey'] ?? null,
+            ]);
+            $params['sid'] = $this->firstValue([
+                $reality['shortIds'] ?? null,
+                $reality['shortId'] ?? null,
+                $settings['shortId'] ?? null,
+            ]);
+            $params['spx'] = $this->firstValue([
+                $settings['spiderX'] ?? null,
+                $reality['spiderX'] ?? null,
+            ]);
+            $params['pqv'] = $this->firstValue([
+                $settings['mldsa65Verify'] ?? null,
+                $reality['mldsa65Verify'] ?? null,
+            ]);
+
+            return;
+        }
+
+        if ($security === 'tls') {
+            $tls = is_array($stream['tlsSettings'] ?? null) ? $stream['tlsSettings'] : [];
+            $settings = is_array($tls['settings'] ?? null) ? $tls['settings'] : [];
+            $params['sni'] = $this->firstValue([$tls['serverName'] ?? null, $host]);
+            $params['fp'] = $this->firstValue([$settings['fingerprint'] ?? null, $tls['fingerprint'] ?? null]);
+            if (is_array($tls['alpn'] ?? null)) {
+                $params['alpn'] = implode(',', array_values(array_filter(array_map('strval', $tls['alpn']))));
+            }
+            if (!empty($tls['allowInsecure'])) {
+                $params['allowInsecure'] = '1';
+            }
+        }
+    }
+
+    private function addTransport(array &$params, array $stream, string $network): void
+    {
+        if (in_array($network, ['tcp', 'raw'], true)) {
+            $transport = $network === 'raw'
+                ? ($stream['rawSettings'] ?? $stream['tcpSettings'] ?? [])
+                : ($stream['tcpSettings'] ?? $stream['rawSettings'] ?? []);
+            $transport = is_array($transport) ? $transport : [];
+            $header = is_array($transport['header'] ?? null) ? $transport['header'] : [];
+            if (strtolower((string)($header['type'] ?? 'none')) === 'http') {
+                $request = is_array($header['request'] ?? null) ? $header['request'] : [];
+                $params['headerType'] = 'http';
+                $params['path'] = $this->firstValue([$request['path'] ?? null]);
+                $params['host'] = $this->headerHost($request['headers'] ?? []);
+            }
+
+            return;
+        }
+
+        if (in_array($network, ['xhttp', 'splithttp'], true)) {
+            $xhttp = $stream['xhttpSettings'] ?? $stream['splithttpSettings'] ?? [];
+            $xhttp = is_array($xhttp) ? $xhttp : [];
+            $params['path'] = $this->firstValue([$xhttp['path'] ?? null, '/']);
+            $params['host'] = $this->firstValue([$xhttp['host'] ?? null, $this->headerHost($xhttp['headers'] ?? [])]);
+            $params['mode'] = $this->firstValue([$xhttp['mode'] ?? null, 'auto']);
+            if ($this->firstValue([$xhttp['xPaddingBytes'] ?? null]) !== '') {
+                $params['x_padding_bytes'] = (string)$xhttp['xPaddingBytes'];
+            }
+            $extra = $this->xhttpExtra($xhttp);
+            if ($extra !== []) {
+                $params['extra'] = json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
+            }
+
+            return;
+        }
+
+        if ($network === 'ws') {
+            $ws = is_array($stream['wsSettings'] ?? null) ? $stream['wsSettings'] : [];
+            $params['path'] = $this->firstValue([$ws['path'] ?? null, '/']);
+            $params['host'] = $this->firstValue([$ws['host'] ?? null, $this->headerHost($ws['headers'] ?? [])]);
+
+            return;
+        }
+
+        if ($network === 'grpc') {
+            $grpc = is_array($stream['grpcSettings'] ?? null) ? $stream['grpcSettings'] : [];
+            $params['serviceName'] = (string)($grpc['serviceName'] ?? '');
+            $params['authority'] = (string)($grpc['authority'] ?? '');
+            if (!empty($grpc['multiMode'])) {
+                $params['mode'] = 'multi';
+            }
+
+            return;
+        }
+
+        if ($network === 'httpupgrade') {
+            $upgrade = is_array($stream['httpupgradeSettings'] ?? null) ? $stream['httpupgradeSettings'] : [];
+            $params['path'] = $this->firstValue([$upgrade['path'] ?? null, '/']);
+            $params['host'] = $this->firstValue([$upgrade['host'] ?? null, $this->headerHost($upgrade['headers'] ?? [])]);
+        }
+    }
+
+    private function xhttpExtra(array $xhttp): array
+    {
+        $extra = [];
+        foreach (['mode', 'xPaddingBytes', 'uplinkHTTPMethod', 'sessionIDPlacement', 'sessionIDKey',
+                     'sessionIDTable', 'sessionIDLength', 'seqPlacement', 'seqKey', 'uplinkDataPlacement',
+                     'uplinkDataKey', 'scMaxEachPostBytes', 'scMinPostsIntervalMs'] as $key) {
+            if (isset($xhttp[$key]) && trim((string)$xhttp[$key]) !== '') {
+                $extra[$key] = $xhttp[$key];
+            }
+        }
+        foreach (['scMaxEachPostBytes' => '1000000', 'scMinPostsIntervalMs' => '30'] as $key => $default) {
+            if (($extra[$key] ?? null) === $default) {
+                unset($extra[$key]);
+            }
+        }
+        foreach (['sessionPlacement' => 'sessionIDPlacement', 'sessionKey' => 'sessionIDKey'] as $legacy => $current) {
+            if (!isset($extra[$current]) && isset($xhttp[$legacy]) && trim((string)$xhttp[$legacy]) !== '') {
+                $extra[$current] = $xhttp[$legacy];
+            }
+        }
+        foreach (['uplinkChunkSize'] as $key) {
+            if (isset($xhttp[$key]) && (float)$xhttp[$key] !== 0.0) {
+                $extra[$key] = $xhttp[$key];
+            }
+        }
+        if (!empty($xhttp['noGRPCHeader'])) {
+            $extra['noGRPCHeader'] = true;
+        }
+        foreach (['xmux', 'downloadSettings'] as $key) {
+            if (is_array($xhttp[$key] ?? null) && $xhttp[$key] !== []) {
+                $extra[$key] = $xhttp[$key];
+            }
+        }
+        if (!empty($xhttp['xPaddingObfsMode'])) {
+            $extra['xPaddingObfsMode'] = true;
+            foreach (['xPaddingKey', 'xPaddingHeader', 'xPaddingPlacement', 'xPaddingMethod'] as $key) {
+                if (isset($xhttp[$key]) && trim((string)$xhttp[$key]) !== '') {
+                    $extra[$key] = $xhttp[$key];
+                }
+            }
+        }
+        if (is_array($xhttp['headers'] ?? null)) {
+            $headers = [];
+            foreach ($xhttp['headers'] as $key => $value) {
+                if (strtolower((string)$key) !== 'host') {
+                    $headers[$key] = $value;
+                }
+            }
+            if ($headers !== []) {
+                $extra['headers'] = $headers;
+            }
+        }
+
+        return $extra;
+    }
+
+    private function displayName(array $node): string
+    {
+        $parts = [];
+        if (!empty($node['show_flag'])) {
+            $flag = CountryFlag::emoji((string)($node['country_code'] ?? ''));
+            if ($flag !== '') {
+                $parts[] = $flag;
+            }
+        }
+        $parts[] = trim((string)($node['server_name'] ?? $node['server_code'] ?? 'VPN'));
+        $location = trim(implode(', ', array_filter([
+            trim((string)($node['country_name'] ?? '')),
+            trim((string)($node['city'] ?? '')),
+        ])));
+        if ($location !== '') {
+            $parts[] = $location;
+        }
+        $parts[] = trim((string)($node['inbound_remark'] ?? $node['inbound_name'] ?? 'VLESS'));
+        $name = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', implode(' · ', array_values(array_filter($parts))));
+
+        return mb_substr(trim((string)$name), 0, 180) ?: 'VPN V2';
+    }
+
+    private function serverHost(string $panelUrl): string
+    {
+        $host = parse_url(trim($panelUrl), PHP_URL_HOST);
+
+        return is_string($host) ? trim($host, '[]') : '';
+    }
+
+    private function hostForUri(string $host): string
+    {
+        return str_contains($host, ':') ? '[' . trim($host, '[]') . ']' : $host;
+    }
+
+    private function headerHost(mixed $headers): string
+    {
+        if (!is_array($headers)) {
+            return '';
+        }
+        foreach ($headers as $key => $value) {
+            if (strtolower((string)$key) === 'host') {
+                return $this->firstValue([$value]);
+            }
+        }
+
+        return '';
+    }
+
+    private function firstValue(array $values): string
+    {
+        foreach ($values as $value) {
+            if (is_array($value)) {
+                if (!array_is_list($value)) {
+                    continue;
+                }
+                $value = $this->firstValue($value);
+            }
+            $value = trim((string)$value);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    private function filterParams(array $params): array
+    {
+        return array_filter($params, static fn(mixed $value): bool => $value !== null && $value !== '');
+    }
+
+    private function json(string $value): array
+    {
+        $decoded = json_decode($value, true);
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
+
+        return is_array($decoded) ? $decoded : [];
+    }
+}

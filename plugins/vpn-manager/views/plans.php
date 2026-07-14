@@ -35,7 +35,7 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
                         ['value' => '#' . (int)$plan['id']],
                         ['html' => '<span class="fw-medium">' . htmlSC((string)$plan['name']) . '</span><div class="small text-body-secondary">' . htmlSC($trafficModeLabel) . '</div>'],
                         ['value' => (string)(int)$plan['duration_days'] . ' ' . FireballPluginVpnManager::t('vpn_manager_days')],
-                        ['value' => Formatter::bytes((int)$plan['traffic_limit_bytes'])],
+                        ['value' => Formatter::bytesLimit((int)$plan['traffic_limit_bytes'])],
                         ['value' => (string)(int)$plan['device_limit']],
                         ['value' => (string)(int)($plan['server_count'] ?? 0)],
                         ['html' => vpnm_status_badge(!empty($plan['is_active']) ? 'active' : 'disabled')],

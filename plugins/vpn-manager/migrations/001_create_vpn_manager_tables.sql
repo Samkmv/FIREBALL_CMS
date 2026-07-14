@@ -2,6 +2,10 @@ CREATE TABLE IF NOT EXISTS vpn_servers (
     id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     code VARCHAR(80) NOT NULL,
+    country_code CHAR(2) NULL,
+    country_name VARCHAR(120) NULL,
+    flag_emoji VARCHAR(16) NULL,
+    show_flag TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
     country VARCHAR(120) NULL,
     city VARCHAR(120) NULL,
     panel_url VARCHAR(500) NOT NULL,
@@ -21,6 +25,7 @@ CREATE TABLE IF NOT EXISTS vpn_servers (
     updated_at DATETIME NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY code (code),
+    KEY country_code (country_code),
     KEY status (status),
     KEY is_enabled (is_enabled),
     KEY sort_order (sort_order)
@@ -137,7 +142,8 @@ CREATE TABLE IF NOT EXISTS vpn_subscription_nodes (
     KEY server_id (server_id),
     KEY inbound_id (inbound_id),
     KEY status (status),
-    KEY client_email (client_email)
+    KEY client_email (client_email),
+    CONSTRAINT fk_vpn_nodes_subscription FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS vpn_remote_clients (
@@ -186,7 +192,8 @@ CREATE TABLE IF NOT EXISTS vpn_traffic_snapshots (
     KEY server_id (server_id),
     KEY inbound_id (inbound_id),
     KEY captured_at (captured_at),
-    KEY recorded_at (recorded_at)
+    KEY recorded_at (recorded_at),
+    CONSTRAINT fk_vpn_traffic_subscription FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS vpn_notifications (
@@ -206,7 +213,8 @@ CREATE TABLE IF NOT EXISTS vpn_notifications (
     KEY user_id (user_id),
     KEY type (type),
     KEY status (status),
-    KEY scheduled_for (scheduled_for)
+    KEY scheduled_for (scheduled_for),
+    CONSTRAINT fk_vpn_notifications_subscription FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS vpn_events (
@@ -228,7 +236,8 @@ CREATE TABLE IF NOT EXISTS vpn_events (
     KEY subscription_id (subscription_id),
     KEY node_id (node_id),
     KEY server_id (server_id),
-    KEY created_at (created_at)
+    KEY created_at (created_at),
+    CONSTRAINT fk_vpn_events_subscription FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS vpn_jobs (

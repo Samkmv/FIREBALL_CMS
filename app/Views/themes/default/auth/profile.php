@@ -15,6 +15,12 @@ $pushEnabled = $pushReady && !empty($pushStatus['user_enabled']) && (int)($pushS
 $pushStatusKey = $pushEnabled
     ? 'auth_profile_push_status_enabled'
     : ($pushReady ? 'auth_profile_push_status_disabled' : 'auth_profile_push_status_unavailable');
+$profileMenuItems = apply_filters('profile_menu', [], $user);
+if (is_array($profileMenuItems)) {
+    usort($profileMenuItems, static fn(array $a, array $b): int => (int)($a['order'] ?? 100) <=> (int)($b['order'] ?? 100));
+} else {
+    $profileMenuItems = [];
+}
 ?>
 
 <section class="container py-5 my-2 my-md-4 my-lg-5">
@@ -105,6 +111,30 @@ $pushStatusKey = $pushEnabled
                         <span><?= print_translation('auth_profile_avatar_save') ?></span>
                     </button>
                 </form>
+
+                <?php if ($profileMenuItems !== []): ?>
+                    <nav class="border rounded-5 p-3 mt-4" aria-label="<?= print_translation('auth_profile_heading') ?>">
+                        <div class="vstack gap-1">
+                            <?php foreach ($profileMenuItems as $item): ?>
+                                <?php
+                                if (!is_array($item)) {
+                                    continue;
+                                }
+                                $href = trim((string)($item['href'] ?? ''));
+                                $label = trim((string)($item['label'] ?? ''));
+                                if ($href === '' || $label === '') {
+                                    continue;
+                                }
+                                $icon = trim((string)($item['icon'] ?? 'ci-chevron-right'));
+                                ?>
+                                <a class="btn btn-outline-secondary rounded-pill justify-content-start d-inline-flex align-items-center gap-2" href="<?= htmlSC($href) ?>">
+                                    <i class="<?= htmlSC($icon) ?>"></i>
+                                    <span><?= htmlSC($label) ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </nav>
+                <?php endif; ?>
             </div>
         </aside>
 

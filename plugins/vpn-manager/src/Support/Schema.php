@@ -31,6 +31,7 @@ final class Schema
             'vpn.servers' => 'Manage VPN servers',
             'vpn.plans' => 'Manage VPN plans',
             'vpn.subscriptions' => 'Manage VPN subscriptions',
+            'vpn.subscriptions.delete' => 'Delete VPN subscriptions permanently',
             'vpn.connections' => 'Manage VPN connections',
             'vpn.settings' => 'Manage VPN settings',
             'vpn.logs' => 'View VPN logs',
@@ -50,6 +51,10 @@ final class Schema
     {
         self::addColumnIfMissing('vpn_inbounds', 'status', "VARCHAR(40) NOT NULL DEFAULT 'active' AFTER is_enabled");
         self::addColumnIfMissing('vpn_servers', 'public_host', 'VARCHAR(255) NULL AFTER panel_url');
+        self::addColumnIfMissing('vpn_servers', 'country_code', 'CHAR(2) NULL AFTER code');
+        self::addColumnIfMissing('vpn_servers', 'country_name', 'VARCHAR(120) NULL AFTER country_code');
+        self::addColumnIfMissing('vpn_servers', 'flag_emoji', 'VARCHAR(16) NULL AFTER country_name');
+        self::addColumnIfMissing('vpn_servers', 'show_flag', 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 1 AFTER flag_emoji');
         self::addColumnIfMissing('vpn_subscriptions', 'subscription_token', 'VARCHAR(128) NULL AFTER source_order_id');
         self::addColumnIfMissing('vpn_subscriptions', 'subscription_url', 'VARCHAR(700) NULL AFTER source_order_id');
         self::addColumnIfMissing('vpn_subscriptions', 'subscription_token_encrypted', 'MEDIUMTEXT NULL AFTER source_order_id');
@@ -66,6 +71,11 @@ final class Schema
         self::addIndexIfMissing('vpn_subscription_nodes', 'subscription_server_inbound', 'UNIQUE KEY subscription_server_inbound (subscription_id, server_id, inbound_id)');
         self::addIndexIfMissing('vpn_traffic_snapshots', 'inbound_id', 'KEY inbound_id (inbound_id)');
         self::addIndexIfMissing('vpn_traffic_snapshots', 'captured_at', 'KEY captured_at (captured_at)');
+        self::addIndexIfMissing('vpn_servers', 'country_code', 'KEY country_code (country_code)');
+        self::addForeignKeyIfMissing('vpn_subscription_nodes', 'fk_vpn_nodes_subscription', 'FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE CASCADE');
+        self::addForeignKeyIfMissing('vpn_traffic_snapshots', 'fk_vpn_traffic_subscription', 'FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE CASCADE');
+        self::addForeignKeyIfMissing('vpn_notifications', 'fk_vpn_notifications_subscription', 'FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE CASCADE');
+        self::addForeignKeyIfMissing('vpn_events', 'fk_vpn_events_subscription', 'FOREIGN KEY (subscription_id) REFERENCES vpn_subscriptions(id) ON DELETE SET NULL');
     }
 
     private static function addColumnIfMissing(string $table, string $column, string $definition): void
@@ -105,6 +115,31 @@ final class Schema
             log_error_details('VPN Manager index migration skipped', [
                 'Table' => $table,
                 'Index' => $index,
+            ], $exception);
+        }
+    }
+
+    private static function addForeignKeyIfMissing(string $table, string $constraint, string $definition): void
+    {
+        $exists = db()->query(
+            'SELECT COUNT(*)
+             FROM information_schema.TABLE_CONSTRAINTS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND CONSTRAINT_NAME = ?',
+            [$table, $constraint]
+        )->getColumn();
+
+        if ((int)$exists > 0) {
+            return;
+        }
+
+        try {
+            db()->query("ALTER TABLE {$table} ADD CONSTRAINT {$constraint} {$definition}");
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager foreign key migration skipped', [
+                'Table' => $table,
+                'Constraint' => $constraint,
             ], $exception);
         }
     }

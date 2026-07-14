@@ -1,0 +1,17 @@
+{
+  "name": "VPN Manager V2",
+  "slug": "vpn-manager-v2",
+  "version": "0.6.0",
+  "type": "system",
+  "description": "Isolated VPN Manager V2 foundation for FIREBALL CMS",
+  "author": "FIREBALL CMS",
+  "admin_menu": {
+    "title": "VPN V2",
+    "icon": "ci-server",
+    "route": "/admin/plugins/vpn-manager-v2",
+    "position": 81
+  },
+  "requires": {
+    "cms": ">=1.7.0"
+  }
+}

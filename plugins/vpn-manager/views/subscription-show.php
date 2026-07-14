@@ -17,11 +17,15 @@ $subscriptionStandardUrl = $linkService->subscriptionUrl($subscription, 'base64'
 $toggleStatus = (string)($subscription['status'] ?? '') === 'active' ? 'suspended' : 'active';
 $userLabel = trim((string)($subscription['user_name'] ?? $subscription['user_email'] ?? ''));
 $planLabel = trim((string)($subscription['plan_name'] ?? ''));
+$deleteLabel = (string)($subscription['status'] ?? '') === 'delete_failed'
+    ? FireballPluginVpnManager::t('vpn_manager_action_retry_delete')
+    : FireballPluginVpnManager::t('vpn_manager_action_delete_forever');
+$deleteConfirm = sprintf(FireballPluginVpnManager::t('vpn_manager_confirm_delete_subscription'), $subscriptionId);
 $actions = '<a class="btn btn-outline-secondary rounded-pill" href="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions')) . '">' . htmlSC(FireballPluginVpnManager::t('vpn_manager_back_to_list')) . '</a>'
     . '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/extend/' . $subscriptionId)) . '"><i class="ci-calendar-plus"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_extend')) . '</a>'
     . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/status')) . '" method="post">' . get_csrf_field() . '<input type="hidden" name="id" value="' . $subscriptionId . '"><input type="hidden" name="status" value="' . htmlSC($toggleStatus) . '"><button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-power"></i>' . htmlSC($toggleStatus === 'active' ? FireballPluginVpnManager::t('vpn_manager_action_enable') : FireballPluginVpnManager::t('vpn_manager_action_disable')) . '</button></form>'
     . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/provision')) . '" method="post">' . get_csrf_field() . '<input type="hidden" name="id" value="' . $subscriptionId . '"><button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-refresh-cw"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_recreate_clients')) . '</button></form>'
-    . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/status')) . '" method="post">' . get_csrf_field() . '<input type="hidden" name="id" value="' . $subscriptionId . '"><input type="hidden" name="status" value="deleted"><button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-trash"></i>' . htmlSC(FireballPluginVpnManager::t('vpn_manager_action_delete')) . '</button></form>';
+    . '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/delete')) . '" method="post" data-admin-delete-form data-delete-message="' . htmlSC($deleteConfirm) . '" data-delete-item="#' . $subscriptionId . '" data-delete-confirm-label="' . htmlSC($deleteLabel) . '">' . get_csrf_field() . '<input type="hidden" name="id" value="' . $subscriptionId . '"><input type="hidden" name="return_url" value="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions')) . '"><button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-trash"></i>' . htmlSC($deleteLabel) . '</button></form>';
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -50,7 +54,7 @@ $actions = '<a class="btn btn-outline-secondary rounded-pill" href="' . htmlSC(b
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_expires_at')) ?></dt>
                     <dd class="col-7"><?= htmlSC(Formatter::dateTime((string)($subscription['expires_at'] ?? ''))) ?></dd>
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_traffic_limit')) ?></dt>
-                    <dd class="col-7"><?= htmlSC(Formatter::bytes((int)($subscription['traffic_limit_bytes'] ?? 0))) ?></dd>
+                    <dd class="col-7"><?= htmlSC(Formatter::bytesLimit((int)($subscription['traffic_limit_bytes'] ?? 0))) ?></dd>
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_traffic_used')) ?></dt>
                     <dd class="col-7"><?= htmlSC(Formatter::bytes((int)($subscription['traffic_used_bytes'] ?? 0))) ?></dd>
                     <dt class="col-5 text-body-secondary fw-normal"><?= htmlSC(FireballPluginVpnManager::t('vpn_manager_col_devices')) ?></dt>
@@ -88,11 +92,11 @@ $actions = '<a class="btn btn-outline-secondary rounded-pill" href="' . htmlSC(b
                     'rows' => array_map(static function (array $node): array {
                         return [
                             'cells' => [
-                                ['value' => (string)($node['server_name'] ?? '-')],
+                                ['value' => vpnm_server_label($node, '-')],
                                 ['value' => (string)($node['inbound_name'] ?? '-')],
                                 ['html' => vpnm_status_badge((string)($node['status'] ?? ''))],
                                 ['value' => '••••••••'],
-                                ['value' => Formatter::bytes((int)($node['traffic_used_bytes'] ?? 0)) . ' / ' . Formatter::bytes((int)($node['traffic_limit_bytes'] ?? 0))],
+                                ['value' => Formatter::traffic((int)($node['traffic_used_bytes'] ?? 0), (int)($node['traffic_limit_bytes'] ?? 0))],
                             ],
                         ];
                     }, $nodes),

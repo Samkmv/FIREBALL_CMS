@@ -11,7 +11,9 @@
 
         return {
             width: visual ? visual.width : (window.innerWidth || document.documentElement.clientWidth),
-            height: visual ? visual.height : (window.innerHeight || document.documentElement.clientHeight)
+            height: visual ? visual.height : (window.innerHeight || document.documentElement.clientHeight),
+            offsetLeft: visual ? visual.offsetLeft : 0,
+            offsetTop: visual ? visual.offsetTop : 0
         };
     }
 
@@ -33,6 +35,7 @@
         active.menu.style.maxHeight = '';
         active.menu.style.overflowY = '';
         active.menu.style.width = '';
+        active.menu.hidden = true;
         active.toggle.setAttribute('aria-expanded', 'false');
         active.root.classList.remove('is-open');
         active = null;
@@ -49,6 +52,9 @@
         var view = viewport();
         var viewportWidth = view.width;
         var viewportHeight = view.height;
+        var viewportLeft = view.offsetLeft || 0;
+        var viewportTop = view.offsetTop || 0;
+        var viewportPadding = 8;
         var isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
         var isMobile = viewportWidth < 992 || isTouch;
 
@@ -74,10 +80,10 @@
 
             var center = rect.left + (rect.width / 2);
             var leftMobile = center - (width / 2);
-            leftMobile = Math.max(mobileGap, Math.min(leftMobile, viewportWidth - width - mobileGap));
+            leftMobile = Math.max(viewportLeft + mobileGap, Math.min(leftMobile, viewportLeft + viewportWidth - width - mobileGap));
 
-            var belowSpace = viewportHeight - rect.bottom - mobileGap;
-            var aboveSpace = rect.top - mobileGap;
+            var belowSpace = viewportTop + viewportHeight - rect.bottom - mobileGap;
+            var aboveSpace = rect.top - viewportTop - mobileGap;
             var openUp = belowSpace < Math.min(height, 220) && aboveSpace > belowSpace;
             var availableHeight = openUp ? aboveSpace - gap : belowSpace - gap;
             var maxHeight = Math.max(160, Math.min(height, availableHeight, viewportHeight - mobileGap * 2));
@@ -85,7 +91,7 @@
             menu.style.overflowY = height > maxHeight ? 'auto' : '';
 
             var topMobile = openUp ? rect.top - Math.min(height, maxHeight) - gap : rect.bottom + gap;
-            topMobile = Math.max(mobileGap, Math.min(topMobile, viewportHeight - Math.min(height, maxHeight) - mobileGap));
+            topMobile = Math.max(viewportTop + mobileGap, Math.min(topMobile, viewportTop + viewportHeight - Math.min(height, maxHeight) - mobileGap));
 
             menu.style.left = Math.round(leftMobile) + 'px';
             menu.style.top = Math.round(topMobile) + 'px';
@@ -94,20 +100,20 @@
         }
 
         var left = rect.right - width;
-        if (left < gap) {
-            left = Math.min(rect.left, viewportWidth - width - gap);
+        if (left < viewportLeft + viewportPadding) {
+            left = Math.min(rect.left, viewportLeft + viewportWidth - width - viewportPadding);
         }
-        if (left + width > viewportWidth - gap) {
-            left = viewportWidth - width - gap;
+        if (left + width > viewportLeft + viewportWidth - viewportPadding) {
+            left = viewportLeft + viewportWidth - width - viewportPadding;
         }
-        left = Math.max(gap, left);
+        left = Math.max(viewportLeft + viewportPadding, left);
 
         var top = rect.bottom + gap;
-        if (top + height > viewportHeight - gap) {
+        if (top + height > viewportTop + viewportHeight - viewportPadding) {
             top = rect.top - height - gap;
         }
-        if (top < gap) {
-            top = Math.max(gap, viewportHeight - height - gap);
+        if (top < viewportTop + viewportPadding) {
+            top = Math.max(viewportTop + viewportPadding, viewportTop + viewportHeight - height - viewportPadding);
         }
 
         menu.style.left = Math.round(left) + 'px';
@@ -124,11 +130,54 @@
             source: root
         };
 
+        menu.hidden = false;
         document.body.appendChild(menu);
         menu.classList.add(portalClass, 'show');
         toggle.setAttribute('aria-expanded', 'true');
         root.classList.add('is-open');
         positionMenu();
+    }
+
+    function copyText(value) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(value);
+        }
+
+        return new Promise(function (resolve, reject) {
+            var textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.setAttribute('readonly', 'readonly');
+            textarea.style.position = 'fixed';
+            textarea.style.top = '-1000px';
+            textarea.style.left = '-1000px';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+            try {
+                if (document.execCommand('copy')) {
+                    resolve();
+                } else {
+                    reject(new Error('copy_failed'));
+                }
+            } catch (error) {
+                reject(error);
+            } finally {
+                textarea.remove();
+            }
+        });
+    }
+
+    function handlePageScroll(event) {
+        if (!active) {
+            return;
+        }
+
+        if (event && event.target && active.menu.contains(event.target)) {
+            return;
+        }
+
+        closeDropdown();
     }
 
     function handleDropdownToggle(event) {
@@ -173,11 +222,11 @@
         if (copyButton) {
             event.preventDefault();
             var value = copyButton.getAttribute('data-vpn-copy-value') || '';
-            if (!value || !navigator.clipboard) {
+            if (!value) {
                 return;
             }
 
-            navigator.clipboard.writeText(value).then(function () {
+            copyText(value).then(function () {
                 var label = copyButton.querySelector('[data-vpn-copy-label]') || copyButton;
                 var original = copyButton.getAttribute('data-vpn-copy-original') || label.textContent;
                 copyButton.setAttribute('data-vpn-copy-original', original);
@@ -219,9 +268,9 @@
 
     window.addEventListener('resize', positionMenu);
     window.addEventListener('orientationchange', closeDropdown);
-    window.addEventListener('scroll', positionMenu, true);
+    window.addEventListener('scroll', handlePageScroll, true);
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', positionMenu);
-        window.visualViewport.addEventListener('scroll', positionMenu);
+        window.visualViewport.addEventListener('scroll', closeDropdown);
     }
 })();

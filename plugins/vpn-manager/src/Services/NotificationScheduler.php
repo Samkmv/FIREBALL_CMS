@@ -124,7 +124,7 @@ final class NotificationScheduler
                     'title' => $this->title((string)$row['type']),
                     'message' => $this->message((string)$row['type']),
                     'type' => 'vpn_' . (string)$row['type'],
-                    'action_url' => '/my-vpn',
+                    'action_url' => '/profile/vpn',
                     'source' => 'vpn-manager',
                     'priority' => 'normal',
                     'store_unread' => !empty($settings['use_account_notifications']),

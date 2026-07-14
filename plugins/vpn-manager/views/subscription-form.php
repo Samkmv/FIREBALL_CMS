@@ -65,7 +65,7 @@ foreach ($plans as $plan) {
                     <?php foreach ($plans as $plan): ?>
                         <?php $activeInboundCount = (int)($plan['active_inbound_count'] ?? 0); ?>
                         <option value="<?= (int)$plan['id'] ?>" <?= $activeInboundCount <= 0 ? 'disabled' : '' ?>>
-                            <?= htmlSC((string)$plan['name']) ?> · <?= (int)$plan['duration_days'] ?> <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_days')) ?> · <?= htmlSC(Formatter::bytes((int)$plan['traffic_limit_bytes'])) ?>
+                            <?= htmlSC((string)$plan['name']) ?> · <?= (int)$plan['duration_days'] ?> <?= htmlSC(FireballPluginVpnManager::t('vpn_manager_days')) ?> · <?= htmlSC(Formatter::bytesLimit((int)$plan['traffic_limit_bytes'])) ?>
                             <?= $activeInboundCount <= 0 ? ' · ' . htmlSC(FireballPluginVpnManager::t('vpn_manager_plan_without_inbounds')) : '' ?>
                         </option>
                     <?php endforeach; ?>

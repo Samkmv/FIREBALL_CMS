@@ -37,18 +37,18 @@ $actions = '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/jobs/
                 $status = (string)($node['status'] ?? '');
                 $toggleStatus = $status === 'active' ? 'disabled' : 'active';
                 $userLabel = trim((string)($node['user_name'] ?? ''));
-                $serverLabel = trim((string)($node['server_name'] ?? ''));
+                $serverLabel = vpnm_server_label($node, FireballPluginVpnManager::t('vpn_manager_server_missing'));
                 $inboundLabel = trim((string)($node['inbound_name'] ?? ''));
                 return [
                     'cells' => [
                         ['value' => '#' . $id],
                         ['html' => '<a href="' . htmlSC(base_href('/admin/plugins/vpn-manager/subscriptions/' . (int)$node['subscription_id'])) . '">#' . (int)$node['subscription_id'] . '</a>'],
                         ['value' => $userLabel !== '' ? $userLabel : FireballPluginVpnManager::t('vpn_manager_user_missing')],
-                        ['value' => $serverLabel !== '' ? $serverLabel : FireballPluginVpnManager::t('vpn_manager_server_missing')],
+                        ['value' => $serverLabel],
                         ['value' => $inboundLabel !== '' ? $inboundLabel : FireballPluginVpnManager::t('vpn_manager_inbound_missing')],
                         ['html' => vpnm_status_badge((string)($node['status'] ?? ''))],
                         ['value' => (string)($node['client_email'] ?? '-')],
-                        ['value' => Formatter::bytes((int)($node['traffic_used_bytes'] ?? 0)) . ' / ' . Formatter::bytes((int)($node['traffic_limit_bytes'] ?? 0))],
+                        ['value' => Formatter::traffic((int)($node['traffic_used_bytes'] ?? 0), (int)($node['traffic_limit_bytes'] ?? 0))],
                         ['value' => Formatter::dateTime((string)($node['last_sync_at'] ?? ''))],
                         ['html' => !empty($node['last_error']) ? '<div class="small text-danger text-break">' . htmlSC((string)$node['last_error']) . '</div>' : '<span class="text-body-secondary">' . htmlSC(FireballPluginVpnManager::t('vpn_manager_none')) . '</span>'],
                         ['html' => vpnm_actions_dropdown([
@@ -86,17 +86,17 @@ $actions = '<form action="' . htmlSC(base_href('/admin/plugins/vpn-manager/jobs/
                 ['label' => FireballPluginVpnManager::t('vpn_manager_col_last_sync')],
             ],
             'rows' => array_map(static function (array $client): array {
-                $serverLabel = trim((string)($client['server_name'] ?? ''));
+                $serverLabel = vpnm_server_label($client, FireballPluginVpnManager::t('vpn_manager_server_missing'));
                 $inboundLabel = trim((string)($client['inbound_name'] ?? ''));
                 return [
                     'cells' => [
                         ['value' => '#' . (int)($client['id'] ?? 0)],
-                        ['value' => $serverLabel !== '' ? $serverLabel : FireballPluginVpnManager::t('vpn_manager_server_missing')],
+                        ['value' => $serverLabel],
                         ['value' => $inboundLabel !== '' ? $inboundLabel : FireballPluginVpnManager::t('vpn_manager_inbound_missing')],
                         ['html' => vpnm_status_badge((string)($client['status'] ?? ''))],
                         ['value' => (string)($client['client_email'] ?? '-')],
                         ['value' => trim((string)($client['client_uuid'] ?? '')) !== '' ? '••••••••' : '-'],
-                        ['value' => Formatter::bytes((int)($client['traffic_used_bytes'] ?? 0)) . ' / ' . Formatter::bytes((int)($client['traffic_limit_bytes'] ?? 0))],
+                        ['value' => Formatter::traffic((int)($client['traffic_used_bytes'] ?? 0), (int)($client['traffic_limit_bytes'] ?? 0))],
                         ['value' => Formatter::dateTime((string)($client['expires_at'] ?? ''))],
                         ['value' => Formatter::dateTime((string)($client['last_seen_at'] ?? ''))],
                     ],
