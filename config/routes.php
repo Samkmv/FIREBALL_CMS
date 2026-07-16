@@ -205,6 +205,7 @@ $app->router->get('/admin/settings/mail', [AdminController::class, 'mailSettings
 $app->router->post('/admin/settings/mail', [AdminController::class, 'mailSettings'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/mail/logs', [AdminController::class, 'mailLogs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/security/logs', [AdminController::class, 'securityLogs'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/security/logs/clear', [AdminController::class, 'clearSecurityLogs'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/system/database-maintenance', [AdminMaintenanceController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/system/database-maintenance/run', [AdminMaintenanceController::class, 'run'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/system/database-maintenance/logs/clear', [AdminMaintenanceController::class, 'clearLogs'])->middleware(['auth', 'admin']);

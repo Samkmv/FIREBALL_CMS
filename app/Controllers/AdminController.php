@@ -483,7 +483,19 @@ class AdminController extends BaseController
             'search' => $logs['search'],
             'sort' => $logs['sort'],
             'direction' => $logs['direction'],
+            'logs_total' => $this->securityLogs->countAll(),
         ]);
+    }
+
+    public function clearSecurityLogs(): void
+    {
+        $deleted = $this->securityLogs->clearAll();
+
+        session()->setFlash(
+            'success',
+            str_replace(':count', (string)$deleted, return_translation('admin_security_logs_cleared'))
+        );
+        response()->redirect(base_href('/admin/security/logs'));
     }
 
     /**

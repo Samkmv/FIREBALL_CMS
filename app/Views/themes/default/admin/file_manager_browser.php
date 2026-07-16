@@ -89,7 +89,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
         >
             <i class="ci-more-vertical"></i>
         </button>
-        <ul class="dropdown-menu shadow-sm border-0 rounded-4">
+        <ul class="dropdown-menu shadow-sm rounded-4">
             <li>
                 <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-row-action="open">
                     <i class="<?= $isDirectory ? 'ci-folder' : 'ci-eye' ?>"></i><?= $isDirectory ? print_translation('admin_btn_open') : print_translation('admin_btn_view') ?>
@@ -200,7 +200,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                             <button class="btn btn-dark rounded-pill dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="ci-plus"></i><?= print_translation('admin_files_add_btn') ?>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4">
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
                                 <li>
                                     <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-open-upload>
                                         <i class="ci-upload"></i><?= print_translation('admin_files_upload_label') ?>
@@ -218,7 +218,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                             <button class="btn btn-outline-dark rounded-pill dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-file-manager-action-toggle disabled>
                                 <i class="ci-settings"></i><?= print_translation('admin_files_actions_btn') ?>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-4">
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
                                 <li>
                                     <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="open">
                                         <i class="ci-folder"></i><?= print_translation('admin_btn_open') ?>

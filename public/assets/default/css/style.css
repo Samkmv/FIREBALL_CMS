@@ -3422,10 +3422,47 @@ body.is-site-fullscreen .plyr * {
     }
 }
 
-.admin-security-log-table.admin-table-component__table,
 .admin-maintenance-log-table.admin-table-component__table {
     min-width: 0;
     table-layout: fixed;
+}
+
+.admin-security-log-table.admin-table-component__table {
+    min-width: 76rem;
+    table-layout: fixed;
+}
+
+.admin-security-log-table__col-id {
+    width: 4.5rem;
+}
+
+.admin-security-log-table__col-event {
+    width: 9.5rem;
+}
+
+.admin-security-log-table__col-actor,
+.admin-security-log-table__col-target {
+    width: 7.5rem;
+}
+
+.admin-security-log-table__col-result {
+    width: 6.75rem;
+}
+
+.admin-security-log-table__col-reason {
+    width: 8.5rem;
+}
+
+.admin-security-log-table__col-ip {
+    width: 8.5rem;
+}
+
+.admin-security-log-table__col-user-agent {
+    width: 14rem;
+}
+
+.admin-security-log-table__col-date {
+    width: 9.5rem;
 }
 
 .admin-security-log-table.admin-table-component__table th,
@@ -3434,6 +3471,27 @@ body.is-site-fullscreen .plyr * {
 .admin-maintenance-log-table.admin-table-component__table td {
     white-space: normal;
     overflow-wrap: anywhere;
+}
+
+.admin-security-log-table__event {
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.admin-security-log-table__clamp {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    overflow-wrap: normal;
+    word-break: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.admin-security-log-table__user-agent {
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: 3;
 }
 
 [data-admin-table] .table > :not(caption) > * > * {

@@ -146,17 +146,6 @@
             white-space: nowrap;
         }
 
-        [data-file-manager-page] .dropdown-menu {
-            min-width: 13.5rem;
-            padding: .45rem;
-        }
-
-        [data-file-manager-page] .dropdown-item {
-            width: 100%;
-            border-radius: .85rem;
-            padding: .65rem .8rem;
-        }
-
         [data-file-manager-table-wrap] {
             overflow-x: auto;
             overflow-y: visible !important;
@@ -277,14 +266,12 @@
             border-bottom-color: rgba(255, 255, 255, .08);
         }
 
-        [data-bs-theme="dark"] [data-file-manager-page] .dropdown-menu,
         [data-bs-theme="dark"] [data-file-manager-page] .modal-content,
         [data-bs-theme="dark"] [data-file-manager-page] .input-group-text {
             background-color: #18212a;
             color: var(--bs-body-color);
         }
 
-        [data-bs-theme="dark"] [data-file-manager-page] .dropdown-divider,
         [data-bs-theme="dark"] [data-file-manager-page] .modal-header,
         [data-bs-theme="dark"] [data-file-manager-page] .modal-footer,
         [data-bs-theme="dark"] [data-file-manager-page] .input-group-text {

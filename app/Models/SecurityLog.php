@@ -106,4 +106,19 @@ class SecurityLog
             'direction' => strtolower($direction),
         ];
     }
+
+    public function countAll(): int
+    {
+        $this->ensureTableExists();
+
+        return (int)db()->query("SELECT COUNT(*) FROM {$this->table}")->getColumn();
+    }
+
+    public function clearAll(): int
+    {
+        $this->ensureTableExists();
+        db()->query("DELETE FROM {$this->table}");
+
+        return db()->rowCount();
+    }
 }
