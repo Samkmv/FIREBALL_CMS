@@ -2,26 +2,41 @@
 
 use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
+use Fireball\VpnManagerV2\Support\AdminTableState;
 
 $subscription = is_array($subscription ?? null) ? $subscription : [];
 $nodes = is_array($nodes ?? null) ? $nodes : [];
 $subscriptionId = (int)($subscription['id'] ?? 0);
 $subscriptionUrl = trim((string)($subscriptionUrl ?? ''));
 $subscriptionQr = (string)($subscriptionQr ?? '');
+$returnQuery = AdminTableState::sanitize($returnQuery ?? '');
+$deleteRetry = (string)($subscription['status'] ?? '') === 'delete_failed';
+$deleteLabel = FireballPluginVpnManagerV2::t($deleteRetry
+    ? 'vpn_manager_v2_action_retry_delete'
+    : 'vpn_manager_v2_action_delete_forever');
+$deleteConfirm = sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_delete_subscription'), $subscriptionId);
 $rows = [];
 $mobileCards = [];
 foreach ($nodes as $node) {
     $nodeId = (int)$node['id'];
     $showUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $nodeId);
+    $editUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $nodeId . '/edit');
     $badge = ProvisioningStatus::badge((string)$node['status']);
     $flow = trim((string)($node['flow'] ?? '')) ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_flow_none');
     $actionItems = [[
         'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'),
         'href' => $showUrl,
         'icon' => 'ci-eye',
+    ], [
+        'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'),
+        'href' => $editUrl,
+        'icon' => 'ci-edit-2',
     ]];
     $desktop = '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($showUrl)
         . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view')) . '"><i class="ci-eye"></i></a>';
+    $desktop .= '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($editUrl)
+        . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'))
+        . '"><i class="ci-edit-2"></i></a>';
     if (ProvisioningStatus::canRetry((string)$node['status'])) {
         $retryUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $nodeId . '/retry');
         $actionItems[] = [
@@ -67,9 +82,32 @@ foreach ($nodes as $node) {
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
-    <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions')) ?>">
+    <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(AdminTableState::append('/admin/plugins/vpn-manager-v2/subscriptions', $returnQuery)) ?>">
         <i class="ci-arrow-left" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_back_to_subscriptions')) ?>
     </a>
+    <a class="btn btn-dark rounded-pill" href="<?= htmlSC(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $subscriptionId, $returnQuery)) ?>">
+        <i class="ci-edit-2" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit')) ?>
+    </a>
+    <?php if ((string)($subscription['status'] ?? '') === 'active'): ?>
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/suspend')) ?>">
+            <?= get_csrf_field() ?>
+            <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
+            <button class="btn btn-outline-warning rounded-pill" type="submit">
+                <i class="ci-pause-circle" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_suspend')) ?>
+            </button>
+        </form>
+    <?php endif; ?>
+    <?php if ((string)($subscription['status'] ?? '') !== 'deleting'): ?>
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/delete')) ?>"
+              data-admin-delete-form data-delete-message="<?= htmlSC($deleteConfirm) ?>"
+              data-delete-item="#<?= $subscriptionId ?>" data-delete-confirm-label="<?= htmlSC($deleteLabel) ?>">
+            <?= get_csrf_field() ?>
+            <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
+            <button class="btn btn-outline-danger rounded-pill" type="submit">
+                <i class="<?= $deleteRetry ? 'ci-refresh-cw' : 'ci-trash' ?>" aria-hidden="true"></i> <?= htmlSC($deleteLabel) ?>
+            </button>
+        </form>
+    <?php endif; ?>
 </div>
 
 <div class="border rounded-5 p-3 p-md-4 mb-4">
@@ -88,6 +126,10 @@ foreach ($nodes as $node) {
         <dd class="col-sm-9 mb-0"><?= htmlSC(TrafficFormatter::limit(isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null)) ?> · <?= (int)$subscription['device_limit'] ?> IP</dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_token_preview')) ?></dt>
         <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)$subscription['token_preview']) ?></code></dd>
+        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_revision')) ?></dt>
+        <dd class="col-sm-9 mb-0"><?= (int)$subscription['revision'] ?></dd>
+        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_internal_comment')) ?></dt>
+        <dd class="col-sm-9 mb-0 text-break"><?= nl2br(htmlSC((string)($subscription['internal_comment'] ?? '—'))) ?></dd>
         <?php if (!empty($subscription['last_error'])): ?>
             <dt class="col-sm-3 text-danger"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_error')) ?></dt>
             <dd class="col-sm-9 mb-0 text-danger"><?= htmlSC((string)$subscription['last_error']) ?></dd>

@@ -13,6 +13,7 @@ final class PluginManager
     private bool $schemaReady = false;
     private bool $booted = false;
     private array $loadErrors = [];
+    private ?string $bootingPluginSlug = null;
 
     public function __construct(?string $pluginsPath = null)
     {
@@ -38,9 +39,14 @@ final class PluginManager
 
             try {
                 $metadata = $this->readMetadata($path);
+                if ($this->shouldRunPendingMigrations($row, $metadata)
+                    && $this->hasPendingMigrations($metadata)) {
+                    $this->runMigrations($metadata);
+                }
+                $this->syncInstalledMetadata($row, $metadata);
                 $this->registerPluginLanguage($metadata);
                 $plugin = $this->loadPluginInstance($metadata);
-                $plugin->boot();
+                $this->bootPluginInstance($slug, $plugin);
                 $this->includePluginRoutes($metadata, $router);
             } catch (Throwable $exception) {
                 $this->recordError($slug, 'Plugin boot failed.', $exception);
@@ -136,13 +142,28 @@ final class PluginManager
         }
 
         try {
-            $this->loadPluginInstance($metadata)->activate();
+            $row = $this->pluginRow($slug);
+            if (is_array($row) && $this->shouldRunPendingMigrations($row, $metadata)
+                && $this->hasPendingMigrations($metadata)) {
+                $this->runMigrations($metadata);
+            }
+            if (is_array($row)) {
+                $this->syncInstalledMetadata($row, $metadata);
+            }
+            $plugin = $this->loadPluginInstance($metadata);
+            $plugin->activate();
             db()->query(
                 "UPDATE plugins
                  SET status = 'active', activated_at = ?, deactivated_at = NULL, updated_at = ?
                  WHERE slug = ?",
                 [date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $slug]
             );
+            $this->bootPluginInstance($slug, $plugin);
+            if (function_exists('search_indexer')) {
+                foreach (search_registry()->namesByOwner($slug) as $providerName) {
+                    search_indexer()->reindexProvider($providerName);
+                }
+            }
         } catch (Throwable $exception) {
             $this->recordError($slug, 'Plugin activation failed.', $exception);
             throw $exception;
@@ -165,6 +186,9 @@ final class PluginManager
                  WHERE slug = ?",
                 [date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $slug]
             );
+            if (function_exists('search_indexer')) {
+                search_indexer()->removeOwner($slug);
+            }
         } catch (Throwable $exception) {
             $this->recordError($slug, 'Plugin deactivation failed.', $exception);
             throw $exception;
@@ -200,6 +224,22 @@ final class PluginManager
              ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = VALUES(updated_at)",
             [$pluginSlug, $key, $encoded !== false ? $encoded : 'null', date('Y-m-d H:i:s')]
         );
+    }
+
+    public function currentBootingPluginSlug(): ?string
+    {
+        return $this->bootingPluginSlug;
+    }
+
+    private function bootPluginInstance(string $slug, PluginInterface $plugin): void
+    {
+        $previous = $this->bootingPluginSlug;
+        $this->bootingPluginSlug = $slug;
+        try {
+            $plugin->boot();
+        } finally {
+            $this->bootingPluginSlug = $previous;
+        }
     }
 
     public function renderView(string $pluginSlug, string $view, array $data = [], bool $layout = true): string
@@ -404,35 +444,106 @@ final class PluginManager
             return;
         }
 
-        $runner = new SqlFileRunner();
-        $files = glob($migrationsPath . '/*.sql') ?: [];
-        sort($files);
+        $lockName = 'fblpm:' . substr(hash('sha256', (string)$metadata['slug']), 0, 48);
+        $locked = (int)db()->query('SELECT GET_LOCK(?, 15)', [$lockName])->getColumn() === 1;
+        if (!$locked) {
+            throw new \RuntimeException('Could not acquire plugin migration lock.');
+        }
 
-        foreach ($files as $file) {
-            $realFile = realpath($file);
-            $root = realpath($migrationsPath);
-            if ($realFile === false || $root === false || !$this->isInside($realFile, $root)) {
-                continue;
+        try {
+            $runner = new SqlFileRunner();
+            $files = glob($migrationsPath . '/*.sql') ?: [];
+            sort($files);
+
+            foreach ($files as $file) {
+                $realFile = realpath($file);
+                $root = realpath($migrationsPath);
+                if ($realFile === false || $root === false || !$this->isInside($realFile, $root)) {
+                    continue;
+                }
+
+                $migration = basename($realFile);
+                $exists = db()->query(
+                    'SELECT id FROM plugin_migrations WHERE plugin_slug = ? AND migration = ? LIMIT 1',
+                    [$metadata['slug'], $migration]
+                )->getOne();
+                if ($exists) {
+                    continue;
+                }
+
+                $sql = (string)file_get_contents($realFile);
+                if (trim($sql) !== '') {
+                    $runner->executeDatabase($sql);
+                }
+
+                db()->query(
+                    'INSERT INTO plugin_migrations (plugin_slug, migration, executed_at) VALUES (?, ?, ?)',
+                    [$metadata['slug'], $migration, date('Y-m-d H:i:s')]
+                );
             }
-
-            $migration = basename($realFile);
-            $exists = db()->query(
-                'SELECT id FROM plugin_migrations WHERE plugin_slug = ? AND migration = ? LIMIT 1',
-                [$metadata['slug'], $migration]
-            )->getOne();
-            if ($exists) {
-                continue;
+        } finally {
+            try {
+                db()->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+            } catch (Throwable) {
+                // The connection closing also releases a MySQL advisory lock.
             }
+        }
+    }
 
-            $sql = (string)file_get_contents($realFile);
-            if (trim($sql) !== '') {
-                $runner->executeDatabase($sql);
+    private function hasPendingMigrations(array $metadata): bool
+    {
+        $migrationsPath = (string)($metadata['path'] ?? '') . '/migrations';
+        if (!is_dir($migrationsPath)) {
+            return false;
+        }
+        $files = array_map('basename', glob($migrationsPath . '/*.sql') ?: []);
+        if ($files === []) {
+            return false;
+        }
+        $applied = db()->query(
+            'SELECT migration FROM plugin_migrations WHERE plugin_slug = ?',
+            [$metadata['slug']]
+        )->get() ?: [];
+
+        return array_diff($files, array_column($applied, 'migration')) !== [];
+    }
+
+    private function shouldRunPendingMigrations(array $row, array $metadata): bool
+    {
+        if (!empty($metadata['auto_migrate'])) {
+            return true;
+        }
+
+        return version_compare(
+            (string)($metadata['version'] ?? '0.0.0'),
+            (string)($row['version'] ?? '0.0.0'),
+            '>'
+        );
+    }
+
+    private function syncInstalledMetadata(array $row, array $metadata): void
+    {
+        $values = [
+            'name' => (string)$metadata['name'],
+            'version' => (string)$metadata['version'],
+            'description' => (string)($metadata['description'] ?? ''),
+            'author' => (string)($metadata['author'] ?? ''),
+        ];
+        foreach ($values as $column => $value) {
+            if ((string)($row[$column] ?? '') !== $value) {
+                db()->query(
+                    'UPDATE plugins SET name = ?, version = ?, description = ?, author = ?, updated_at = ? WHERE slug = ?',
+                    [
+                        $values['name'],
+                        $values['version'],
+                        $values['description'],
+                        $values['author'],
+                        date('Y-m-d H:i:s'),
+                        $metadata['slug'],
+                    ]
+                );
+                break;
             }
-
-            db()->query(
-                'INSERT INTO plugin_migrations (plugin_slug, migration, executed_at) VALUES (?, ?, ?)',
-                [$metadata['slug'], $migration, date('Y-m-d H:i:s')]
-            );
         }
     }
 

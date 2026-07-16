@@ -67,6 +67,11 @@ final class Stage5FakeClient implements ThreeXuiClientInterface
         ];
     }
 
+    public function getClientTraffic(string $clientIdentifier): array
+    {
+        return ['success' => true, 'obj' => ['email' => $clientIdentifier, 'up' => 0, 'down' => 0]];
+    }
+
     public function findClient(int $remoteInboundId, string $clientId = '', string $clientEmail = ''): ?array
     {
         $this->touch();
@@ -238,7 +243,10 @@ try {
         }
         throw new RuntimeException('Unknown fake server.');
     };
-    $service = new SubscriptionProvisioningService(clientFactory: $factory);
+    $service = new SubscriptionProvisioningService(
+        clientFactory: $factory,
+        notificationCallback: static fn(string $type, int $subscriptionId, ?string $operation): null => null
+    );
     $input = static fn(int $planId): array => [
         'user_id' => $userId,
         'plan_id' => $planId,

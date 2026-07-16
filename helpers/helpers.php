@@ -90,6 +90,63 @@ function plugin_manager(): \FBL\Plugins\PluginManager
     return app()->plugins;
 }
 
+function search_registry(): \App\Search\SearchRegistry
+{
+    $registry = app()->get('search.registry');
+    if (!$registry instanceof \App\Search\SearchRegistry) {
+        $registry = new \App\Search\SearchRegistry();
+        app()->set('search.registry', $registry);
+    }
+
+    return $registry;
+}
+
+function search_indexer(): \App\Search\SearchIndexer
+{
+    $indexer = app()->get('search.indexer');
+    if (!$indexer instanceof \App\Search\SearchIndexer) {
+        $indexer = new \App\Search\SearchIndexer(search_registry());
+        app()->set('search.indexer', $indexer);
+    }
+
+    return $indexer;
+}
+
+function search_register_provider(
+    string $name,
+    \App\Search\Contracts\SearchProviderInterface|string|callable $provider,
+    ?string $owner = null
+): void {
+    $owner ??= plugin_manager()->currentBootingPluginSlug();
+    search_registry()->registerProvider($name, $provider, $owner);
+}
+
+function search_sync_entity(string $provider, int|string $entityId): void
+{
+    try {
+        if (search_registry()->has($provider)) {
+            search_indexer()->sync($provider, $entityId);
+        }
+    } catch (\Throwable $exception) {
+        log_error_details('Search entity synchronization failed', [
+            'Provider' => $provider,
+            'Entity ID' => (string)$entityId,
+        ], $exception);
+    }
+}
+
+function search_remove_entity(string $provider, int|string $entityId): void
+{
+    try {
+        search_indexer()->removeEntity($provider, $entityId);
+    } catch (\Throwable $exception) {
+        log_error_details('Search entity removal failed', [
+            'Provider' => $provider,
+            'Entity ID' => (string)$entityId,
+        ], $exception);
+    }
+}
+
 function add_action(string $hook, callable $callback, int $priority = 10): void
 {
     app()->hooks->addAction($hook, $callback, $priority);

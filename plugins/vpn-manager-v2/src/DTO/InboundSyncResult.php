@@ -9,6 +9,7 @@ final readonly class InboundSyncResult
         public int $created,
         public int $updated,
         public int $missing,
+        public bool $configChanged = true,
     ) {
     }
 }

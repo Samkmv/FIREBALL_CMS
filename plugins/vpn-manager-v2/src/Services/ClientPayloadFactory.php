@@ -15,6 +15,7 @@ final class ClientPayloadFactory
             $expiryTime = $timestamp !== false ? $timestamp * 1000 : 0;
         }
 
+        $status = strtolower(trim((string)($subscription['status'] ?? 'active')));
         $payload = [
             'flow' => trim((string)($node['flow'] ?? '')),
             // This is 3x-ui's per-client cipher field, not inbound TLS/Reality security.
@@ -24,7 +25,7 @@ final class ClientPayloadFactory
             'limitIp' => max(0, (int)($node['device_limit'] ?? $subscription['device_limit'] ?? 0)),
             'totalGB' => max(0, (int)($node['traffic_limit_bytes'] ?? $subscription['traffic_limit_bytes'] ?? 0)),
             'expiryTime' => $expiryTime,
-            'enable' => true,
+            'enable' => !in_array($status, ['suspended', 'expired', 'traffic_exceeded', 'deleting', 'delete_failed'], true),
             'tgId' => 0,
             'group' => '',
             'comment' => '',
@@ -40,6 +41,15 @@ final class ClientPayloadFactory
         } else {
             $payload['id'] = $clientId;
         }
+
+        return $payload;
+    }
+
+    public function mergeForUpdate(array $remoteClient, array $expected): array
+    {
+        $payload = array_replace($remoteClient, $expected);
+        // 3x-ui treats reset as an explicit command. Ordinary edits must always preserve counters.
+        $payload['reset'] = 0;
 
         return $payload;
     }

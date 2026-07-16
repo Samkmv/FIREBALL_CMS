@@ -12,6 +12,7 @@ final class VpnSubscriptionEndpointService
         private readonly ?SubscriptionConfigRepository $repository = null,
         private readonly ?VpnSubscriptionBuilder $builder = null,
         private readonly ?VpnSubscriptionCache $subscriptionCache = null,
+        private readonly ?SettingsService $settings = null,
     ) {
     }
 
@@ -37,7 +38,10 @@ final class VpnSubscriptionEndpointService
             return new SubscriptionEndpointResponse(404, '', $headers);
         }
         if ($this->expired($subscription)) {
-            return new SubscriptionEndpointResponse(410, '', $headers);
+            $settings = ($this->settings ?? new SettingsService())->current();
+            $status = (string)($settings['expired_subscription_behavior'] ?? 'gone') === 'not_found' ? 404 : 410;
+
+            return new SubscriptionEndpointResponse($status, '', $headers);
         }
         if ((string)$subscription['status'] !== 'active' || !$this->started($subscription)) {
             return new SubscriptionEndpointResponse(403, '', $headers);

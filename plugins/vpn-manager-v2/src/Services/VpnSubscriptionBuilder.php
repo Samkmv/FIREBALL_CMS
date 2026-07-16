@@ -3,7 +3,6 @@
 namespace Fireball\VpnManagerV2\Services;
 
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
-use Fireball\VpnManagerV2\Support\CountryFlag;
 
 final class VpnSubscriptionBuilder
 {
@@ -11,6 +10,8 @@ final class VpnSubscriptionBuilder
         private readonly ?SubscriptionConfigRepository $repository = null,
         private readonly ?VpnConfigValidator $validator = null,
         private readonly ?VpnFlowResolver $flowResolver = null,
+        private readonly ?VpnServerNameRenderer $nameRenderer = null,
+        private readonly ?SettingsService $settings = null,
     ) {
     }
 
@@ -31,19 +32,20 @@ final class VpnSubscriptionBuilder
         }
 
         $uris = [];
+        $settings = ($this->settings ?? new SettingsService())->current();
         foreach ($nodes as $node) {
             if (!is_array($node)) {
                 throw new \Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException(
                     \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_config_invalid')
                 );
             }
-            $uris[] = $this->buildNode($node);
+            $uris[] = $this->buildNode($node, $settings);
         }
 
         return $uris;
     }
 
-    private function buildNode(array $node): string
+    private function buildNode(array $node, array $settings): string
     {
         $stream = $this->json((string)($node['stream_settings_json'] ?? ''));
         $protocol = strtolower(trim((string)($node['protocol'] ?? '')));
@@ -78,7 +80,7 @@ final class VpnSubscriptionBuilder
             . '@' . $this->hostForUri($host)
             . ':' . (int)$node['port']
             . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986)
-            . '#' . rawurlencode($this->displayName($node));
+            . '#' . rawurlencode($this->displayName($node, $settings));
         $validator->validateUri($uri);
 
         return $uri;
@@ -251,27 +253,9 @@ final class VpnSubscriptionBuilder
         return $extra;
     }
 
-    private function displayName(array $node): string
+    private function displayName(array $node, array $settings): string
     {
-        $parts = [];
-        if (!empty($node['show_flag'])) {
-            $flag = CountryFlag::emoji((string)($node['country_code'] ?? ''));
-            if ($flag !== '') {
-                $parts[] = $flag;
-            }
-        }
-        $parts[] = trim((string)($node['server_name'] ?? $node['server_code'] ?? 'VPN'));
-        $location = trim(implode(', ', array_filter([
-            trim((string)($node['country_name'] ?? '')),
-            trim((string)($node['city'] ?? '')),
-        ])));
-        if ($location !== '') {
-            $parts[] = $location;
-        }
-        $parts[] = trim((string)($node['inbound_remark'] ?? $node['inbound_name'] ?? 'VLESS'));
-        $name = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', implode(' · ', array_values(array_filter($parts))));
-
-        return mb_substr(trim((string)$name), 0, 180) ?: 'VPN V2';
+        return ($this->nameRenderer ?? new VpnServerNameRenderer())->render($node, $settings);
     }
 
     private function serverHost(string $panelUrl): string

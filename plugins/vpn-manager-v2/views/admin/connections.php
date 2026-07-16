@@ -8,16 +8,24 @@ $mobileCards = [];
 foreach ($connections as $connection) {
     $id = (int)$connection['id'];
     $showUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $id);
+    $editUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/edit');
     $badge = ProvisioningStatus::badge((string)$connection['status']);
     $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_flow_none');
     $actions = [[
         'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'),
         'href' => $showUrl,
         'icon' => 'ci-eye',
+    ], [
+        'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'),
+        'href' => $editUrl,
+        'icon' => 'ci-edit-2',
     ]];
     $desktop = '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($showUrl)
         . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'))
         . '"><i class="ci-eye"></i></a>';
+    $desktop .= '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($editUrl)
+        . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'))
+        . '"><i class="ci-edit-2"></i></a>';
     if (ProvisioningStatus::canRetry((string)$connection['status'])) {
         $retryUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/retry');
         $actions[] = [

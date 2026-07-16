@@ -107,6 +107,31 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         return $inbound;
     }
 
+    public function getClientTraffic(string $clientIdentifier): array
+    {
+        $clientIdentifier = trim($clientIdentifier);
+        if ($clientIdentifier === '') {
+            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_client_traffic_identifier'));
+        }
+
+        $this->authenticate();
+        try {
+            return $this->requestJson(
+                'GET',
+                $this->config->endpoint('/panel/api/clients/traffic/' . rawurlencode($clientIdentifier))
+            );
+        } catch (ThreeXuiHttpException $exception) {
+            if ($exception->httpStatus() !== 404) {
+                throw $exception;
+            }
+        }
+
+        return $this->requestJson(
+            'GET',
+            $this->config->endpoint('/panel/api/inbounds/getClientTraffics/' . rawurlencode($clientIdentifier))
+        );
+    }
+
     public function findClient(int $remoteInboundId, string $clientId = '', string $clientEmail = ''): ?array
     {
         $inbound = $this->getInbound($remoteInboundId);

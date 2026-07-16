@@ -154,7 +154,7 @@ $renderActions = static function ($actions) use ($actionsLabel, $renderActionIte
         return '';
     }
 
-    return '<div class="dropdown admin-post-actions-dropdown admin-mobile-table-card__actions d-inline-block">'
+    return '<div class="dropdown admin-post-actions-dropdown admin-mobile-table-card__actions d-inline-block" data-admin-post-actions-dropdown>'
         . '<button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="' . htmlSC($actionsLabel) . '">'
         . '<i class="ci-more-vertical"></i>'
         . '</button>'

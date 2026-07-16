@@ -83,6 +83,24 @@ final class SubscriptionConfigRepository
         )));
     }
 
+    public function activeRevisionMetadata(): array
+    {
+        return db()->query(
+            "SELECT id, subscription_token, revision, config_updated_at, updated_at
+             FROM vpn_v2_subscriptions
+             WHERE status = 'active'
+             ORDER BY id ASC"
+        )->get() ?: [];
+    }
+
+    public function subscriptionIdsForGlobalConfig(): array
+    {
+        return array_values(array_filter(array_map(
+            static fn(array $row): int => (int)($row['id'] ?? 0),
+            $this->activeRevisionMetadata()
+        )));
+    }
+
     public function tokenForSubscription(int $subscriptionId): ?string
     {
         $token = db()->query(

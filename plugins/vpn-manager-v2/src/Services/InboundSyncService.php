@@ -39,7 +39,9 @@ final class InboundSyncService
 
             $result = ($this->inbounds ?? new InboundRepository())->syncServer($serverId, $parsed);
             $servers->recordConnectionSuccess($serverId, $result->received);
-            (new VpnSubscriptionRevisionService())->touchByServer($serverId);
+            if ($result->configChanged) {
+                (new VpnSubscriptionRevisionService())->touchByServer($serverId);
+            }
 
             return $result;
         } catch (ThreeXuiTransportException $exception) {

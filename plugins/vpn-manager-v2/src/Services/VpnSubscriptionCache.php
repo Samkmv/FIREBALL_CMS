@@ -4,7 +4,7 @@ namespace Fireball\VpnManagerV2\Services;
 
 final class VpnSubscriptionCache
 {
-    private const TTL = 300;
+    private const DEFAULT_TTL = 300;
     private const FORMATS = ['base64', 'plain'];
 
     public function get(string $token, int $revision, string $format): ?array
@@ -23,7 +23,7 @@ final class VpnSubscriptionCache
         cache()->set($this->key($token, $revision, $format), [
             'body' => $body,
             'config_count' => $configCount,
-        ], self::TTL);
+        ], $this->ttl());
     }
 
     public function invalidate(string $token, int $revision): void
@@ -40,5 +40,12 @@ final class VpnSubscriptionCache
         return 'vpn-v2:subscription:' . hash('sha256', $token)
             . ':revision:' . max(1, $revision)
             . ':format:' . $format;
+    }
+
+    public function ttl(): int
+    {
+        $settings = (new SettingsService())->current();
+
+        return max(30, min(3600, (int)($settings['subscription_cache_ttl_seconds'] ?? self::DEFAULT_TTL)));
     }
 }

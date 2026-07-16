@@ -48,6 +48,49 @@ final class TrafficFormatter
         return ['value' => rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.'), 'unit' => 'mb'];
     }
 
+    public static function bytes(int $bytes): string
+    {
+        $bytes = max(0, $bytes);
+        if ($bytes === 0) {
+            return '0 ' . self::unit('B');
+        }
+        $value = (float)$bytes;
+        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        $unit = 0;
+        while ($value >= 1024 && $unit < count($units) - 1) {
+            $value /= 1024;
+            $unit++;
+        }
+        $formatted = number_format($value, $unit === 0 ? 0 : 2, '.', '');
+        if ($unit !== 0) {
+            $formatted = rtrim(rtrim($formatted, '0'), '.');
+        }
+
+        return $formatted . ' ' . self::unit($units[$unit]);
+    }
+
+    public static function localizedLimit(?int $bytes): string
+    {
+        if ($bytes === null || $bytes <= 0) {
+            return \FireballPluginVpnManagerV2::t('vpn_manager_v2_unlimited');
+        }
+
+        return self::bytes($bytes);
+    }
+
+    public static function usage(int $usedBytes, ?int $limitBytes): string
+    {
+        return self::bytes($usedBytes) . ' / ' . self::localizedLimit($limitBytes);
+    }
+
+    private static function unit(string $unit): string
+    {
+        $key = 'vpn_manager_v2_traffic_unit_' . strtolower($unit);
+        $translated = \FireballPluginVpnManagerV2::t($key);
+
+        return $translated !== '' && $translated !== $key ? $translated : $unit;
+    }
+
     private function __construct()
     {
     }

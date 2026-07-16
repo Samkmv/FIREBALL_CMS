@@ -37,17 +37,20 @@ final class InboundRepository
 
         try {
             $existingRows = $database->query(
-                'SELECT id, remote_inbound_id FROM vpn_v2_inbounds WHERE server_id = ?',
+                'SELECT id, remote_inbound_id, name, remark, protocol, port, network, security,
+                        default_flow, settings_json, stream_settings_json, status, is_enabled
+                 FROM vpn_v2_inbounds WHERE server_id = ?',
                 [$serverId]
             )->get() ?: [];
             $existing = [];
             foreach ($existingRows as $row) {
-                $existing[(string)$row['remote_inbound_id']] = (int)$row['id'];
+                $existing[(string)$row['remote_inbound_id']] = $row;
             }
 
             $seen = [];
             $created = 0;
             $updated = 0;
+            $configChanged = false;
             $now = date('Y-m-d H:i:s');
             foreach ($inbounds as $inbound) {
                 if (!$inbound instanceof ParsedInbound) {
@@ -94,12 +97,21 @@ final class InboundRepository
 
                 if (isset($existing[$inbound->remoteInboundId])) {
                     $updated++;
+                    $configChanged = $configChanged
+                        || $this->configurationDiffers($existing[$inbound->remoteInboundId], $data);
                 } else {
                     $created++;
+                    $configChanged = true;
                 }
             }
 
             $missingIds = array_diff(array_keys($existing), array_keys($seen));
+            foreach ($missingIds as $missingId) {
+                if ((string)($existing[$missingId]['status'] ?? '') !== 'sync_missing') {
+                    $configChanged = true;
+                    break;
+                }
+            }
             if ($seen !== []) {
                 $placeholders = implode(',', array_fill(0, count($seen), '?'));
                 $database->query(
@@ -115,7 +127,13 @@ final class InboundRepository
                 );
             }
 
-            $result = new InboundSyncResult(count($seen), $created, $updated, count($missingIds));
+            $result = new InboundSyncResult(
+                count($seen),
+                $created,
+                $updated,
+                count($missingIds),
+                $configChanged
+            );
             $this->logEvent($serverId, $result);
             $database->commit();
 
@@ -128,6 +146,44 @@ final class InboundRepository
         }
     }
 
+    private function configurationDiffers(array $existing, array $incoming): bool
+    {
+        foreach (['name', 'protocol', 'network', 'security', 'default_flow', 'status'] as $key) {
+            if ($this->nullableString($existing[$key] ?? null) !== $this->nullableString($incoming[$key] ?? null)) {
+                return true;
+            }
+        }
+        if ($this->nullableString($existing['remark'] ?? null) !== $this->nullableString($incoming['remark'] ?? null)
+            || (int)($existing['port'] ?? 0) !== (int)($incoming['port'] ?? 0)
+            || (int)($existing['is_enabled'] ?? 0) !== (int)($incoming['is_enabled'] ?? 0)) {
+            return true;
+        }
+        foreach (['settings_json', 'stream_settings_json'] as $key) {
+            if ($this->jsonValue($existing[$key] ?? null) !== $this->jsonValue($incoming[$key] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        $value = trim((string)$value);
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function jsonValue(mixed $value): mixed
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+        $decoded = json_decode($value, true);
+
+        return json_last_error() === JSON_ERROR_NONE ? $decoded : trim($value);
+    }
+
     private function logEvent(int $serverId, InboundSyncResult $result): void
     {
         $user = get_user();
@@ -137,6 +193,7 @@ final class InboundRepository
             'created' => $result->created,
             'updated' => $result->updated,
             'missing' => $result->missing,
+            'config_changed' => $result->configChanged,
         ], JSON_UNESCAPED_SLASHES);
 
         db()->query(

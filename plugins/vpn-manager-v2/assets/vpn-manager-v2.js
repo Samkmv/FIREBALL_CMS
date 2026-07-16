@@ -127,7 +127,97 @@
         });
     }
 
+    function legacyCopy(value) {
+        var textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.readOnly = true;
+        textarea.setAttribute('aria-hidden', 'true');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.width = '1px';
+        textarea.style.height = '1px';
+        textarea.style.opacity = '0';
+        textarea.style.fontSize = '16px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        var copied = false;
+        try {
+            copied = document.execCommand('copy');
+        } catch (error) {
+            copied = false;
+        } finally {
+            textarea.remove();
+        }
+
+        return copied;
+    }
+
+    function copyText(value) {
+        return new Promise(function (resolve, reject) {
+            if (legacyCopy(value)) {
+                resolve();
+                return;
+            }
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(value).then(resolve).catch(reject);
+                return;
+            }
+            reject(new Error('copy_failed'));
+        });
+    }
+
+    function setupProfileCopy() {
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-vpn-v2-copy-value]');
+            if (!button || button.disabled) {
+                return;
+            }
+            event.preventDefault();
+            var value = button.getAttribute('data-vpn-v2-copy-value') || '';
+            if (!value) {
+                return;
+            }
+            var label = button.querySelector('[data-vpn-v2-copy-label]');
+            var status = button.parentElement ? button.parentElement.querySelector('[data-vpn-v2-copy-status]') : null;
+            var original = button.getAttribute('data-vpn-v2-copy-original') || (label ? label.textContent : '');
+            button.setAttribute('data-vpn-v2-copy-original', original);
+            copyText(value).then(function () {
+                var message = button.getAttribute('data-vpn-v2-copy-done') || original;
+                if (label) {
+                    label.textContent = message;
+                }
+                if (status) {
+                    status.textContent = message;
+                }
+                window.setTimeout(function () {
+                    if (label) {
+                        label.textContent = original;
+                    }
+                }, 1800);
+            }).catch(function () {
+                var message = button.getAttribute('data-vpn-v2-copy-failed') || '';
+                if (status) {
+                    status.textContent = message;
+                }
+                var manual = button.parentElement ? button.parentElement.querySelector('[data-vpn-v2-manual-copy]') : null;
+                var input = manual ? manual.querySelector('[data-vpn-v2-copy-input]') : null;
+                if (manual) {
+                    manual.classList.remove('d-none');
+                }
+                if (input) {
+                    input.focus();
+                    input.select();
+                    input.setSelectionRange(0, input.value.length);
+                }
+            });
+        });
+    }
+
     ready(function () {
         document.querySelectorAll('[data-vpn-v2-plan-nodes]').forEach(setupPlanNodes);
+        setupProfileCopy();
     });
 }());

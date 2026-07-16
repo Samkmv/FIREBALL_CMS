@@ -153,7 +153,7 @@ final class SubscriptionRepository
         return db()->query(
             'SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
-                    s.created_by, s.last_error, s.created_at, s.updated_at,
+                    s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     u.name AS user_name, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
                     SUM(CASE WHEN n.status = "active" THEN 1 ELSE 0 END) AS active_node_count
@@ -163,7 +163,7 @@ final class SubscriptionRepository
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                       s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
-                      s.created_by, s.last_error, s.created_at, s.updated_at,
+                      s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                       u.name, u.email, p.name
              ORDER BY s.id ASC'
         )->get() ?: [];
@@ -174,7 +174,7 @@ final class SubscriptionRepository
         $row = db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
-                    s.created_by, s.last_error, s.created_at, s.updated_at,
+                    s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     CONCAT(LEFT(s.subscription_token, 4), '…', RIGHT(s.subscription_token, 4)) AS token_preview,
                     u.name AS user_name, u.email AS user_email, p.name AS plan_name
              FROM vpn_v2_subscriptions s
@@ -191,7 +191,20 @@ final class SubscriptionRepository
     {
         $row = db()->query(
             'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    device_limit, revision, created_by, last_error, created_at, updated_at
+                    device_limit, revision, created_by, internal_comment, last_error, created_at, updated_at
+             FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
+            [$id]
+        )->getOne();
+
+        return is_array($row) ? $row : null;
+    }
+
+    public function findForDeletion(int $id): ?array
+    {
+        $row = db()->query(
+            'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+                    device_limit, subscription_token, revision, config_updated_at, created_by,
+                    internal_comment, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$id]
         )->getOne();
@@ -291,6 +304,19 @@ final class SubscriptionRepository
         return is_array($row) ? $row : null;
     }
 
+    public function nodeIdsForSubscription(int $subscriptionId): array
+    {
+        $rows = db()->query(
+            'SELECT id FROM vpn_v2_subscription_nodes WHERE subscription_id = ? ORDER BY id ASC',
+            [$subscriptionId]
+        )->get() ?: [];
+
+        return array_values(array_filter(array_map(
+            static fn(array $row): int => (int)($row['id'] ?? 0),
+            $rows
+        )));
+    }
+
     public function inbound(int $id): ?array
     {
         $row = db()->query(
@@ -321,6 +347,166 @@ final class SubscriptionRepository
             'UPDATE vpn_v2_subscription_nodes SET status = ?, last_error = ?, updated_at = ? WHERE id = ?',
             [$status, mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $id]
         );
+    }
+
+    public function updateNodeConfirmed(
+        int $id,
+        ?string $flow,
+        ?int $trafficLimitBytes,
+        ?int $trafficUsedBytes = null
+    ): void {
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            "UPDATE vpn_v2_subscription_nodes
+             SET flow = ?, traffic_limit_bytes = ?,
+                 traffic_used_bytes = COALESCE(?, traffic_used_bytes), status = 'active',
+                 last_sync_at = ?, last_error = NULL, updated_at = ?
+             WHERE id = ?",
+            [$flow, $trafficLimitBytes, $trafficUsedBytes, $now, $now, $id]
+        );
+    }
+
+    public function updateSubscriptionConfirmed(int $id, array $data, ?string $safeError = null): void
+    {
+        $status = in_array((string)($data['status'] ?? ''), ['active', 'suspended', 'expired'], true)
+            ? (string)$data['status']
+            : 'suspended';
+        db()->query(
+            'UPDATE vpn_v2_subscriptions
+             SET expires_at = ?, traffic_limit_bytes = ?, status = ?, internal_comment = ?,
+                 last_error = ?, updated_at = ?
+             WHERE id = ?',
+            [
+                $data['expires_at'] ?? null,
+                $data['traffic_limit_bytes'] ?? null,
+                $status,
+                $data['internal_comment'] ?? null,
+                $safeError !== null ? mb_substr(trim($safeError), 0, 1000) : null,
+                date('Y-m-d H:i:s'),
+                $id,
+            ]
+        );
+    }
+
+    public function updateInternalComment(int $id, ?string $comment): void
+    {
+        db()->query(
+            'UPDATE vpn_v2_subscriptions SET internal_comment = ?, updated_at = ? WHERE id = ?',
+            [$comment, date('Y-m-d H:i:s'), $id]
+        );
+    }
+
+    public function markDeleting(int $id): bool
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $now = date('Y-m-d H:i:s');
+            $database->query(
+                "UPDATE vpn_v2_subscriptions
+                 SET status = 'deleting', last_error = NULL, updated_at = ? WHERE id = ?",
+                [$now, $id]
+            );
+            if ($database->rowCount() !== 1) {
+                $database->rollBack();
+                return false;
+            }
+            $database->query(
+                "UPDATE vpn_v2_subscription_nodes
+                 SET status = 'deleting', last_error = NULL, updated_at = ?
+                 WHERE subscription_id = ? AND status <> 'deleted'",
+                [$now, $id]
+            );
+            $database->commit();
+
+            return true;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    public function markNodeDeleted(int $id): void
+    {
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            "UPDATE vpn_v2_subscription_nodes
+             SET status = 'deleted', last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?",
+            [$now, $now, $id]
+        );
+    }
+
+    public function markNodeDeleteFailed(int $id, string $safeError): void
+    {
+        db()->query(
+            "UPDATE vpn_v2_subscription_nodes
+             SET status = 'delete_failed', last_error = ?, updated_at = ? WHERE id = ?",
+            [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $id]
+        );
+    }
+
+    public function markSubscriptionDeleteFailed(int $id, string $safeError): void
+    {
+        db()->query(
+            "UPDATE vpn_v2_subscriptions
+             SET status = 'delete_failed', last_error = ?, updated_at = ? WHERE id = ?",
+            [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $id]
+        );
+    }
+
+    public function allNodesDeleted(int $subscriptionId): bool
+    {
+        return (int)db()->query(
+            "SELECT COUNT(*) FROM vpn_v2_subscription_nodes
+             WHERE subscription_id = ? AND status <> 'deleted'",
+            [$subscriptionId]
+        )->getColumn() === 0;
+    }
+
+    public function finalizeDeletion(int $subscriptionId, string $revokedToken): bool
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $subscription = $database->query(
+                'SELECT id FROM vpn_v2_subscriptions WHERE id = ? FOR UPDATE',
+                [$subscriptionId]
+            )->getOne();
+            if (!$subscription) {
+                $database->rollBack();
+                return true;
+            }
+            $nodes = $database->query(
+                'SELECT id, status FROM vpn_v2_subscription_nodes WHERE subscription_id = ? FOR UPDATE',
+                [$subscriptionId]
+            )->get() ?: [];
+            foreach ($nodes as $node) {
+                if ((string)($node['status'] ?? '') !== 'deleted') {
+                    throw new \RuntimeException('Unconfirmed remote clients remain.');
+                }
+            }
+
+            $database->query(
+                "UPDATE vpn_v2_subscriptions
+                 SET subscription_token = ?, status = 'deleting', updated_at = ? WHERE id = ?",
+                [$revokedToken, date('Y-m-d H:i:s'), $subscriptionId]
+            );
+            $database->query('DELETE FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$subscriptionId]);
+            $database->query('DELETE FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]);
+            if ($database->rowCount() !== 1) {
+                throw new \RuntimeException('Subscription row was not deleted.');
+            }
+            $database->commit();
+
+            return true;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public function claimRetry(int $id): bool

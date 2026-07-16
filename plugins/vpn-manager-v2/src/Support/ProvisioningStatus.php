@@ -16,7 +16,11 @@ final class ProvisioningStatus
             'sync_error' => 'text-bg-warning',
             'suspended' => 'text-bg-secondary',
             'expired' => 'text-bg-secondary',
+            'traffic_exceeded' => 'text-bg-danger',
             'cancelled' => 'text-bg-secondary',
+            'deleting' => 'text-bg-info',
+            'deleted' => 'text-bg-secondary',
+            'delete_failed' => 'text-bg-danger',
         ];
         $class = $classes[$status] ?? 'text-bg-light border text-body-secondary';
         $key = array_key_exists($status, $classes) ? $status : 'unknown';

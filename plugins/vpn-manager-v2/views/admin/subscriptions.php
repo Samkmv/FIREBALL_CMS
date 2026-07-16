@@ -2,8 +2,10 @@
 
 use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
+use Fireball\VpnManagerV2\Support\AdminTableState;
 
 $subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
+$returnQuery = AdminTableState::sanitize($returnQuery ?? '');
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/create');
 $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
     . htmlSC($addUrl) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
@@ -13,7 +15,15 @@ $rows = [];
 $mobileCards = [];
 foreach ($subscriptions as $subscription) {
     $id = (int)$subscription['id'];
-    $showUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $id);
+    $showUrl = AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $id, $returnQuery);
+    $editUrl = AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $id, $returnQuery);
+    $suspendUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $id . '/suspend');
+    $deleteUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $id . '/delete');
+    $deleteRetry = (string)$subscription['status'] === 'delete_failed';
+    $deleteLabel = FireballPluginVpnManagerV2::t($deleteRetry
+        ? 'vpn_manager_v2_action_retry_delete'
+        : 'vpn_manager_v2_action_delete_forever');
+    $deleteConfirm = sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_delete_subscription'), $id);
     $badge = ProvisioningStatus::badge((string)$subscription['status']);
     $nodeCount = (int)($subscription['node_count'] ?? 0);
     $activeCount = (int)($subscription['active_node_count'] ?? 0);
@@ -23,11 +33,55 @@ foreach ($subscriptions as $subscription) {
         'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'),
         'href' => $showUrl,
         'icon' => 'ci-eye',
+    ], [
+        'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'),
+        'href' => $editUrl,
+        'icon' => 'ci-edit-2',
     ]];
     $desktopAction = '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="'
         . htmlSC($showUrl) . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'))
         . '" aria-label="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'))
         . '"><i class="ci-eye" aria-hidden="true"></i></a>';
+    $desktopAction .= '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="'
+        . htmlSC($editUrl) . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'))
+        . '"><i class="ci-edit-2" aria-hidden="true"></i></a>';
+    if ((string)$subscription['status'] === 'active') {
+        $showAction[] = [
+            'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_suspend'),
+            'type' => 'form',
+            'action' => $suspendUrl,
+            'icon' => 'ci-pause-circle',
+            'hidden' => ['return_query' => $returnQuery],
+        ];
+        $desktopAction .= '<form method="post" action="' . htmlSC($suspendUrl) . '">' . get_csrf_field()
+            . '<input type="hidden" name="return_query" value="' . htmlSC($returnQuery) . '">'
+            . '<button class="btn btn-sm btn-outline-warning btn-icon rounded-circle" type="submit" title="'
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_suspend'))
+            . '"><i class="ci-pause-circle" aria-hidden="true"></i></button></form>';
+    }
+    if ((string)$subscription['status'] !== 'deleting') {
+        $showAction[] = [
+            'label' => $deleteLabel,
+            'type' => 'form',
+            'action' => $deleteUrl,
+            'icon' => $deleteRetry ? 'ci-refresh-cw' : 'ci-trash',
+            'class' => 'text-danger',
+            'hidden' => ['return_query' => $returnQuery],
+            'form_attributes' => [
+                'data-admin-delete-form' => true,
+                'data-delete-message' => $deleteConfirm,
+                'data-delete-item' => '#' . $id,
+                'data-delete-confirm-label' => $deleteLabel,
+            ],
+        ];
+        $desktopAction .= '<form method="post" action="' . htmlSC($deleteUrl)
+            . '" data-admin-delete-form data-delete-message="' . htmlSC($deleteConfirm)
+            . '" data-delete-item="#' . $id . '" data-delete-confirm-label="' . htmlSC($deleteLabel) . '">'
+            . get_csrf_field() . '<input type="hidden" name="return_query" value="' . htmlSC($returnQuery) . '">'
+            . '<button class="btn btn-sm btn-outline-danger btn-icon rounded-circle" type="submit" title="'
+            . htmlSC($deleteLabel) . '"><i class="' . ($deleteRetry ? 'ci-refresh-cw' : 'ci-trash')
+            . '" aria-hidden="true"></i></button></form>';
+    }
 
     $rows[] = ['cells' => [
         ['value' => '#' . $id],
@@ -40,7 +94,7 @@ foreach ($subscriptions as $subscription) {
         ['value' => (string)($subscription['expires_at'] ?: '—')],
         ['html' => htmlSC($nodeText) . '<div class="small text-body-secondary">'
             . htmlSC($traffic) . ' · ' . (int)$subscription['device_limit'] . '</div>'],
-        ['html' => '<div class="d-flex justify-content-end">' . $desktopAction . '</div>'],
+        ['html' => '<div class="d-flex justify-content-end gap-1">' . $desktopAction . '</div>'],
     ]];
 
     $mobileCards[] = [

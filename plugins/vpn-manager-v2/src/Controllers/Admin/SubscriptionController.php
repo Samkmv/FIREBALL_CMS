@@ -8,7 +8,12 @@ use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
 use Fireball\VpnManagerV2\Services\QrCodeService;
 use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
+use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
+use Fireball\VpnManagerV2\Services\SubscriptionDeletionService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionUrlService;
+use Fireball\VpnManagerV2\Support\AdminTableState;
+use Fireball\VpnManagerV2\Support\Permissions;
+use Fireball\VpnManagerV2\Support\TrafficFormatter;
 
 final class SubscriptionController
 {
@@ -18,6 +23,7 @@ final class SubscriptionController
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_subtitle'),
             'subscriptions' => (new SubscriptionRepository())->all(),
+            'returnQuery' => AdminTableState::capture(),
         ]));
     }
 
@@ -50,6 +56,51 @@ final class SubscriptionController
         $this->redirect('/admin/plugins/vpn-manager-v2/subscriptions/create');
     }
 
+    public function edit(): string
+    {
+        $subscription = (new SubscriptionRepository())->find((int)get_route_param('id'));
+        if (!$subscription) {
+            abort('', 404);
+        }
+
+        return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscription-edit', \FireballPluginVpnManagerV2::viewData('subscriptions', [
+            'title' => sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_edit_title'), (int)$subscription['id']),
+            'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_edit_subtitle'),
+            'subscription' => $subscription,
+            'trafficInput' => TrafficFormatter::inputParts(
+                isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null
+            ),
+            'returnQuery' => AdminTableState::sanitize(request()->get('return_query', '')),
+        ]));
+    }
+
+    public function update(): void
+    {
+        $subscriptionId = (int)get_route_param('id');
+        $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
+        try {
+            $result = (new SubscriptionEditingService())->update($subscriptionId, request()->getData(), $this->adminId());
+            if ($result->failed > 0) {
+                session()->setFlash('warning', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_sync_partial'));
+            } elseif (!$result->remoteRequest && $result->changed) {
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_comment_saved'));
+            } elseif ($result->changed) {
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_updated'));
+            } else {
+                session()->setFlash('info', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_no_changes'));
+            }
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+            response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $subscriptionId, $returnQuery));
+        } catch (\Throwable $exception) {
+            error_log('VPN Manager V2 subscription update failed: ' . get_class($exception));
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_sync_generic'));
+            response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $subscriptionId, $returnQuery));
+        }
+
+        response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId, $returnQuery));
+    }
+
     public function show(): string
     {
         $repository = new SubscriptionRepository();
@@ -78,7 +129,52 @@ final class SubscriptionController
             'nodes' => $repository->nodesForSubscription((int)$subscription['id']),
             'subscriptionUrl' => $subscriptionUrl,
             'subscriptionQr' => $subscriptionQr,
+            'returnQuery' => AdminTableState::sanitize(request()->get('return_query', '')),
         ]));
+    }
+
+    public function suspend(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $subscriptionId = (int)get_route_param('id');
+        $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
+        try {
+            $result = (new SubscriptionDeletionService())->suspend($subscriptionId, $this->adminId());
+            if ($result->failed > 0) {
+                session()->setFlash('warning', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_sync_partial'));
+            } else {
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_suspended'));
+            }
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            error_log('VPN Manager V2 subscription suspend failed: ' . get_class($exception));
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_sync_generic'));
+        }
+
+        response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId, $returnQuery));
+    }
+
+    public function delete(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $subscriptionId = (int)get_route_param('id');
+        $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
+        try {
+            $result = (new SubscriptionDeletionService())->deleteForever($subscriptionId, $this->adminId());
+            if ($result->successful()) {
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_deleted'));
+                response()->redirect(AdminTableState::append('/admin/plugins/vpn-manager-v2/subscriptions', $returnQuery));
+            }
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_delete_failed'));
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            error_log('VPN Manager V2 subscription delete failed: ' . get_class($exception));
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_delete_failed'));
+        }
+
+        response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId, $returnQuery));
     }
 
     private function flashResult(ProvisioningResult $result, bool $created): void

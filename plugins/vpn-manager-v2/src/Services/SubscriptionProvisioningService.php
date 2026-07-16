@@ -25,6 +25,7 @@ final class SubscriptionProvisioningService
         private readonly ?ClientVerifier $clientVerifier = null,
         private readonly ?\Closure $clientFactory = null,
         private readonly ?VpnSubscriptionRevisionService $revisionService = null,
+        private readonly ?\Closure $notificationCallback = null,
     ) {
     }
 
@@ -138,6 +139,11 @@ final class SubscriptionProvisioningService
                 'status' => $status,
             ]
         );
+        if ($configChanged && $status === 'active') {
+            $this->notifyProvisioned($subscriptionId);
+        } elseif ($status !== 'active') {
+            $this->notifyCritical($subscriptionId, 'provisioning');
+        }
 
         return new ProvisioningResult($subscriptionId, $created, $reused, $failed, $syncErrors, $flowError, $status);
     }
@@ -169,6 +175,9 @@ final class SubscriptionProvisioningService
         $status = $repository->recalculateSubscriptionStatus($subscriptionId);
         if (in_array($outcome['status'], ['created', 'reused'], true) && $status === 'active') {
             ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
+            $this->notifyProvisioned($subscriptionId);
+        } elseif ($status !== 'active') {
+            $this->notifyCritical($subscriptionId, 'provisioning-retry');
         }
 
         return new ProvisioningResult(
@@ -332,6 +341,32 @@ final class SubscriptionProvisioningService
         }
 
         throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_token'));
+    }
+
+    private function notifyProvisioned(int $subscriptionId): void
+    {
+        try {
+            if ($this->notificationCallback !== null) {
+                ($this->notificationCallback)('provisioned', $subscriptionId, null);
+                return;
+            }
+            (new VpnNotificationService())->notifyProvisioned($subscriptionId);
+        } catch (\Throwable) {
+            // Provisioning is already confirmed; a notification transport cannot roll it back.
+        }
+    }
+
+    private function notifyCritical(int $subscriptionId, string $operation): void
+    {
+        try {
+            if ($this->notificationCallback !== null) {
+                ($this->notificationCallback)('critical_error', $subscriptionId, $operation);
+                return;
+            }
+            (new VpnNotificationService())->notifyCritical($subscriptionId, $operation);
+        } catch (\Throwable) {
+            // A notification transport cannot alter the recoverable provisioning state.
+        }
     }
 
     private function client(array $server, array $inbound, array $node): ThreeXuiClientInterface

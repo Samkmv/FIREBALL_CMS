@@ -3,6 +3,11 @@
 namespace FBL;
 
 use App\Services\ConfigService;
+use App\Search\Providers\PageSearchProvider;
+use App\Search\Providers\PostSearchProvider;
+use App\Search\Providers\ProductSearchProvider;
+use App\Search\SearchIndexer;
+use App\Search\SearchRegistry;
 use FBL\Plugins\EventManager;
 use FBL\Plugins\HookManager;
 use FBL\Plugins\PluginManager;
@@ -230,6 +235,14 @@ class Application
         }
 
         $this->set('config', new ConfigService());
+        if (!$this->get('search.registry') instanceof SearchRegistry) {
+            $registry = new SearchRegistry();
+            $registry->registerProvider('pages', PageSearchProvider::class);
+            $registry->registerProvider('posts', PostSearchProvider::class);
+            $registry->registerProvider('products', ProductSearchProvider::class);
+            $this->set('search.registry', $registry);
+            $this->set('search.indexer', new SearchIndexer($registry));
+        }
         Auth::setUser();
     }
 

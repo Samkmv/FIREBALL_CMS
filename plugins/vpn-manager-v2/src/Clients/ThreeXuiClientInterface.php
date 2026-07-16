@@ -14,6 +14,8 @@ interface ThreeXuiClientInterface
 
     public function getInbound(int $remoteInboundId): array;
 
+    public function getClientTraffic(string $clientIdentifier): array;
+
     public function findClient(int $remoteInboundId, string $clientId = '', string $clientEmail = ''): ?array;
 
     public function addClient(int $remoteInboundId, array $client): array;
