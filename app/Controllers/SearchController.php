@@ -2,125 +2,159 @@
 
 namespace App\Controllers;
 
-use App\Models\Search;
-use App\Models\Page;
-use App\Models\Post;
+use App\Search\SearchConfig;
+use App\Search\SearchEngine;
 use FBL\Pagination;
 use FBL\Theme;
 
 /**
- * Выполняет поиск по сайту и отдаёт поисковые подсказки.
+ * Выполняет единый поиск по публичному содержимому сайта и отдаёт подсказки.
  */
 class SearchController extends BaseController
 {
+    protected SearchEngine $search;
+    protected SearchConfig $config;
 
-    protected Search $search;
-    protected Page $pages;
-    protected Post $posts;
-
-    /**
-     * Инициализирует поисковую модель.
-     */
     public function __construct()
     {
         parent::__construct();
-        $this->search = new Search();
-        $this->pages = new Page();
-        $this->posts = new Post();
+
+        $this->config = new SearchConfig();
+        $this->search = new SearchEngine(
+            search_registry(),
+            search_indexer(),
+            $this->config
+        );
     }
 
     /**
-     * Показывает страницу результатов поиска по товарам и постам.
+     * Показывает общую ленту результатов с сортировкой по релевантности.
      */
     public function index()
     {
-        $query = trim((string)request()->get('q', ''));
-        $results = $query !== '' ? $this->search->find($query) : [
-            'products' => [],
-            'products_total' => 0,
-            'products_pagination' => null,
-            'posts' => [],
-            'posts_total' => 0,
-            'posts_pagination' => null,
-            'total' => 0,
-        ];
+        $query = $this->query();
+        $perPage = max(1, (int)PAGINATION_SETTINGS['perPage']);
+        $page = max(1, (int)request()->get('page', 1));
+        $searchResult = $query !== ''
+            ? $this->search->search($query, $perPage, ($page - 1) * $perPage)
+            : $this->emptyResult($query);
+        $items = array_map(fn(array $item): array => $this->decorateItem($item), $searchResult['items']);
+        $total = (int)$searchResult['total'];
+        $pagination = $total > $perPage ? new Pagination($total, $perPage) : null;
 
-        $allStandardResults = $this->pages->searchPublished($query, 100);
-        foreach ($this->posts->searchPublished($query, 100) as $post) {
-            $allStandardResults[] = [
-                'title' => (string)$post['title'],
-                'url' => (string)$post['url'],
-                'excerpt' => (string)($post['excerpt'] ?? ''),
-                'type' => 'post',
-            ];
-        }
-        $standardTotal = count($allStandardResults);
-        $perPage = PAGINATION_SETTINGS['perPage'];
-        $standardPagination = $standardTotal > $perPage
-            ? new Pagination($standardTotal, $perPage)
-            : null;
-        $standardOffset = $standardPagination ? $standardPagination->getOffset() : 0;
-        $standardResults = array_slice($allStandardResults, $standardOffset, $perPage);
+        // The generic result variables are the public search contract. The typed
+        // collections keep older custom themes working while they migrate.
+        $products = array_values(array_filter($items, static fn(array $item): bool => $item['type'] === 'product'));
+        $posts = array_values(array_filter($items, static fn(array $item): bool => $item['type'] === 'post'));
+        $counts = (array)($searchResult['counts'] ?? []);
 
         return Theme::render('search', [
             'title' => return_translation('search_index_title'),
             'query' => $query,
-            'results' => $standardResults,
-            'total' => $standardTotal,
-            'pagination' => $standardPagination,
+            'results' => $items,
+            'total' => $total,
+            'pagination' => $pagination,
+            'normalized_query' => (string)$searchResult['normalized_query'],
+            'search_tokens' => (array)$searchResult['tokens'],
             'search_query' => $query,
-            'products' => $results['products'],
-            'products_total' => $results['products_total'],
-            'products_pagination' => $results['products_pagination'],
-            'posts' => $results['posts'],
-            'posts_total' => $results['posts_total'],
-            'posts_pagination' => $results['posts_pagination'],
-            'total_results' => $results['total'],
+            'total_results' => $total,
+            'products' => $products,
+            'products_total' => (int)($counts['product'] ?? 0),
+            'products_pagination' => null,
+            'posts' => $posts,
+            'posts_total' => (int)($counts['post'] ?? 0),
+            'posts_pagination' => null,
             'seo_robots' => 'noindex,follow',
         ]);
     }
 
     /**
-     * Возвращает короткие поисковые подсказки для строки поиска.
+     * Возвращает релевантные подсказки из всех зарегистрированных источников.
      */
-    public function suggest()
+    public function suggest(): void
     {
-        $query = trim((string)request()->get('q', ''));
-
-        if (mb_strlen($query) < 2) {
+        $query = $this->query();
+        if (mb_strlen(trim(preg_replace('/[^\p{L}\p{N}]+/u', '', $query) ?? ''), 'UTF-8') < $this->config->minimumQueryLength()) {
             response()->json([
                 'items' => [],
+                'empty_text' => return_translation('search_suggest_empty'),
             ]);
         }
 
-        $maxItems = 24;
-        $results = $this->search->suggest($query, 12);
-        $items = [];
+        $results = $this->search->search($query, 12);
+        $items = array_map(function (array $item): array {
+            $item = $this->decorateItem($item);
 
-        foreach ($results['products'] as $product) {
-            $items[] = [
-                'type' => 'product',
-                'type_label' => return_translation('search_suggest_product'),
-                'title' => $product['title'],
-                'meta' => '$' . (int)$product['price'],
-                'url' => base_href('/product/' . $product['slug']),
+            return [
+                'type' => $item['type'],
+                'type_label' => $item['type_label'],
+                'title' => $item['title'],
+                'meta' => $this->suggestionMeta($item),
+                'url' => $item['url'],
             ];
-        }
-
-        foreach ($results['posts'] as $post) {
-            $items[] = [
-                'type' => 'post',
-                'type_label' => return_translation('search_suggest_post'),
-                'title' => $post['title'],
-                'meta' => $post['category_label'] ?? $post['category'],
-                'url' => base_href('/posts/' . $post['slug']),
-            ];
-        }
+        }, $results['items']);
 
         response()->json([
-            'items' => array_slice($items, 0, $maxItems),
+            'items' => $items,
             'empty_text' => return_translation('search_suggest_empty'),
         ]);
     }
 
+    private function query(): string
+    {
+        $query = trim((string)request()->get('q', ''));
+        $query = preg_replace('/\s+/u', ' ', $query) ?? '';
+
+        return mb_substr($query, 0, $this->config->maximumQueryLength(), 'UTF-8');
+    }
+
+    private function decorateItem(array $item): array
+    {
+        $metadata = (array)($item['metadata'] ?? []);
+        $item['type_label'] = trim((string)($metadata['type_label'] ?? '')) ?: $this->typeLabel((string)$item['type']);
+
+        return $item;
+    }
+
+    private function typeLabel(string $type): string
+    {
+        $key = match ($type) {
+            'product' => 'search_suggest_product',
+            'post' => 'search_suggest_post',
+            'page' => 'search_suggest_page',
+            'support' => 'search_suggest_support',
+            'faq' => 'search_suggest_faq',
+            default => '',
+        };
+
+        if ($key !== '') {
+            return return_translation($key);
+        }
+
+        $label = trim(str_replace(['-', '_', '.'], ' ', $type));
+
+        return $label !== '' ? mb_convert_case($label, MB_CASE_TITLE, 'UTF-8') : return_translation('search_suggest_result');
+    }
+
+    private function suggestionMeta(array $item): string
+    {
+        $metadata = (array)($item['metadata'] ?? []);
+        if ($item['type'] === 'product' && (int)($metadata['price'] ?? 0) > 0) {
+            return '$' . (int)$metadata['price'];
+        }
+
+        return trim((string)($item['subtitle'] ?? '')) ?: trim((string)($item['module'] ?? ''));
+    }
+
+    private function emptyResult(string $query): array
+    {
+        return [
+            'query' => $query,
+            'normalized_query' => '',
+            'tokens' => [],
+            'items' => [],
+            'counts' => [],
+            'total' => 0,
+        ];
+    }
 }

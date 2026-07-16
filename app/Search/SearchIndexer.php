@@ -9,6 +9,8 @@ use Throwable;
  */
 final class SearchIndexer
 {
+    private const PROVIDER_REFRESH_SECONDS = 300;
+
     private bool $schemaReady = false;
 
     public function __construct(private readonly SearchRegistry $registry)
@@ -251,11 +253,15 @@ final class SearchIndexer
     {
         $this->ensureSchema();
         foreach ($this->registry->names() as $providerName) {
-            $exists = (bool)db()->query(
-                'SELECT provider FROM search_index_state WHERE provider = ? LIMIT 1',
+            $indexedAt = (string)db()->query(
+                'SELECT indexed_at FROM search_index_state WHERE provider = ? LIMIT 1',
                 [$providerName]
             )->getColumn();
-            if (!$exists) {
+            $indexedTimestamp = $indexedAt !== '' ? strtotime($indexedAt) : false;
+            if (
+                $indexedTimestamp === false
+                || $indexedTimestamp < time() - self::PROVIDER_REFRESH_SECONDS
+            ) {
                 $this->reindexProvider($providerName);
             }
         }

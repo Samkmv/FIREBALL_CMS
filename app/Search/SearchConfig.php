@@ -28,6 +28,16 @@ final class SearchConfig
         return $this->integer('search_min_token_length', 3, 1, 20);
     }
 
+    public function maximumQueryLength(): int
+    {
+        return $this->integer('search_max_query_length', 200, 20, 1000);
+    }
+
+    public function maximumQueryTokens(): int
+    {
+        return $this->integer('search_max_query_tokens', 12, 1, 50);
+    }
+
     public function maximumResults(): int
     {
         return $this->integer('search_max_results', 100, 1, 500);

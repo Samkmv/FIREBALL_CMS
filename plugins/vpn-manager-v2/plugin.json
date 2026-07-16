@@ -6,6 +6,13 @@
   "description": "Isolated VPN Manager V2 foundation for FIREBALL CMS",
   "author": "FIREBALL CMS",
   "auto_migrate": true,
+  "update": {
+    "enabled": true,
+    "provider": "github_directory",
+    "repository": "Samkmv/FIREBALL_CMS",
+    "branch": "main",
+    "path": "plugins/vpn-manager-v2"
+  },
   "admin_menu": {
     "title": "VPN V2",
     "icon": "ci-server",

@@ -12,19 +12,17 @@ final class SearchHighlighter
         $escaped = htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $patterns = [];
         foreach ($tokens as $token) {
-            $token = SearchNormalizer::normalize((string)$token);
-            if ($token === '') {
-                continue;
+            foreach (SearchNormalizer::matchingPrefixes((string)$token) as $prefix) {
+                $quoted = preg_quote($prefix, '/');
+                $patterns[$quoted] = str_replace('е', '[её]', $quoted);
             }
-            $quoted = preg_quote($token, '/');
-            $patterns[] = str_replace('е', '[её]', $quoted);
         }
 
         if ($patterns === []) {
             return $escaped;
         }
 
-        $pattern = '/(?<![\p{L}\p{N}])(?:' . implode('|', $patterns) . ')[\p{L}\p{N}]*/iu';
+        $pattern = '/(?<![\p{L}\p{N}])(?:' . implode('|', array_values($patterns)) . ')[\p{L}\p{N}]*/iu';
         $highlighted = preg_replace_callback(
             $pattern,
             static fn(array $match): string => '<mark>' . $match[0] . '</mark>',

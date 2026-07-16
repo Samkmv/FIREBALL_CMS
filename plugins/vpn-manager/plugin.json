@@ -5,6 +5,13 @@
   "type": "system",
   "description": "VPN management plugin with 3x-ui integration",
   "author": "CMS",
+  "update": {
+    "enabled": true,
+    "provider": "github_directory",
+    "repository": "Samkmv/FIREBALL_CMS",
+    "branch": "main",
+    "path": "plugins/vpn-manager"
+  },
   "admin_menu": {
     "title": "VPN",
     "icon": "ci-server",

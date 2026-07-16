@@ -86,6 +86,33 @@ final class PluginManager
         return array_values($items);
     }
 
+    public function metadata(string $slug): array
+    {
+        return $this->validMetadataBySlug($slug);
+    }
+
+    /**
+     * Завершает файловое обновление одного уже установленного плагина.
+     * Статус активации не меняется, выполняются только его новые миграции
+     * и синхронизация безопасных полей metadata.
+     */
+    public function completeUpdate(string $slug): array
+    {
+        $this->ensureSchema();
+        $row = $this->pluginRow($slug);
+        if ($row === null) {
+            throw new \RuntimeException('Plugin is not installed.');
+        }
+
+        $metadata = $this->validMetadataBySlug($slug);
+        if ($this->hasPendingMigrations($metadata)) {
+            $this->runMigrations($metadata);
+        }
+        $this->syncInstalledMetadata($row, $metadata);
+
+        return $metadata;
+    }
+
     public function install(string $slug): void
     {
         $this->ensureSchema();
@@ -301,7 +328,7 @@ final class PluginManager
 
         $items = [];
         foreach (scandir($this->pluginsPath) ?: [] as $entry) {
-            if ($entry === '.' || $entry === '..') {
+            if ($entry === '.' || $entry === '..' || str_starts_with($entry, '.')) {
                 continue;
             }
 

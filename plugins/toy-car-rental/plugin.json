@@ -4,6 +4,13 @@
   "version": "1.0.0",
   "description": "Модуль проката детских машинок с таймером, оплатой и статистикой.",
   "author": "FIREBALL CMS",
+  "update": {
+    "enabled": true,
+    "provider": "github_directory",
+    "repository": "Samkmv/FIREBALL_CMS",
+    "branch": "main",
+    "path": "plugins/toy-car-rental"
+  },
   "requires": {
     "cms": ">=1.7.0"
   }

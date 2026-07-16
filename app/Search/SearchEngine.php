@@ -17,12 +17,17 @@ final class SearchEngine
 
     public function search(string $query, int $limit = 20, int $offset = 0): array
     {
+        $query = mb_substr(trim($query), 0, $this->config->maximumQueryLength(), 'UTF-8');
         $normalizedQuery = SearchNormalizer::normalize($query);
         if (mb_strlen($normalizedQuery, 'UTF-8') < $this->config->minimumQueryLength()) {
             return $this->emptyResult($query, $normalizedQuery);
         }
 
-        $tokens = SearchNormalizer::tokens($normalizedQuery, $this->config->minimumTokenLength());
+        $tokens = array_slice(
+            SearchNormalizer::tokens($normalizedQuery, $this->config->minimumTokenLength()),
+            0,
+            $this->config->maximumQueryTokens()
+        );
         if ($tokens === []) {
             return $this->emptyResult($query, $normalizedQuery);
         }
@@ -71,6 +76,10 @@ final class SearchEngine
         $maximum = $this->config->maximumResults();
         $ranked = array_slice($ranked, 0, $maximum);
         $total = count($ranked);
+        $counts = array_count_values(array_map(
+            static fn(array $item): string => $item['document']->type,
+            $ranked
+        ));
         $limit = max(1, min($maximum, $limit));
         $offset = max(0, $offset);
         $items = array_map(
@@ -83,6 +92,7 @@ final class SearchEngine
             'normalized_query' => $normalizedQuery,
             'tokens' => $tokens,
             'items' => $items,
+            'counts' => $counts,
             'total' => $total,
         ];
     }
@@ -94,14 +104,21 @@ final class SearchEngine
         foreach ($tokens as $token) {
             $allowPrefix = $this->config->partialMatching()
                 && mb_strlen($token, 'UTF-8') >= $this->config->minimumTokenLength();
-            $operator = $allowPrefix ? 'LIKE' : '=';
-            $value = $allowPrefix ? $token . '%' : $token;
+            $prefixes = $allowPrefix
+                ? SearchNormalizer::matchingPrefixes($token, $this->config->minimumTokenLength())
+                : [$token];
+            $conditions = [];
+            $params = [];
+            foreach ($prefixes as $prefix) {
+                $conditions[] = $allowPrefix ? 'token LIKE ?' : 'token = ?';
+                $params[] = $allowPrefix ? $prefix . '%' : $prefix;
+            }
             $rows = db()->query(
                 "SELECT DISTINCT search_index_id
                  FROM search_index_tokens
-                 WHERE token {$operator} ?
+                 WHERE (" . implode(' OR ', $conditions) . ")
                  LIMIT {$candidateLimit}",
-                [$value]
+                $params
             )->get() ?: [];
             $ids = array_map(static fn(array $row): int => (int)$row['search_index_id'], $rows);
             if ($ids === []) {
@@ -181,6 +198,7 @@ final class SearchEngine
             'normalized_query' => $normalizedQuery,
             'tokens' => $tokens,
             'items' => [],
+            'counts' => [],
             'total' => 0,
         ];
     }

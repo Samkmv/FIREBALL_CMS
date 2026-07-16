@@ -139,8 +139,16 @@ final class SearchScorer
             return true;
         }
 
-        return $partialMatching
-            && mb_strlen($queryToken, 'UTF-8') >= $minimumPartialLength
-            && str_starts_with($documentToken, $queryToken);
+        if (!$partialMatching || mb_strlen($queryToken, 'UTF-8') < $minimumPartialLength) {
+            return false;
+        }
+
+        foreach (SearchNormalizer::matchingPrefixes($queryToken, $minimumPartialLength) as $prefix) {
+            if (str_starts_with($documentToken, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

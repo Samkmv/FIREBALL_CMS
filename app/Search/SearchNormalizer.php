@@ -35,4 +35,29 @@ final class SearchNormalizer
 
         return array_keys($tokens);
     }
+
+    /**
+     * Returns full and conservative word-form prefixes for partial matching.
+     * For example, both "камера" and "камеры" share the prefix "камер".
+     *
+     * @return list<string>
+     */
+    public static function matchingPrefixes(string $token, int $minimumLength = 3): array
+    {
+        $token = str_replace(' ', '', self::normalize($token));
+        if ($token === '') {
+            return [];
+        }
+
+        $prefixes = [$token];
+        $length = mb_strlen($token, 'UTF-8');
+        if (
+            $length >= max(5, $minimumLength + 2)
+            && preg_match('/^\p{L}+$/u', $token) === 1
+        ) {
+            $prefixes[] = mb_substr($token, 0, $length - 1, 'UTF-8');
+        }
+
+        return array_values(array_unique($prefixes));
+    }
 }
