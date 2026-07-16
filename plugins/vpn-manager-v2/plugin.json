@@ -1,7 +1,7 @@
 {
   "name": "VPN Manager V2",
   "slug": "vpn-manager-v2",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "type": "system",
   "description": "Isolated VPN Manager V2 foundation for FIREBALL CMS",
   "author": "FIREBALL CMS",

@@ -56,7 +56,9 @@ final class PluginUpdateService extends UpdateCenter
                     'configured' => true,
                     'repository' => $config['repository'],
                     'branch' => $config['branch'],
-                    'update_available' => $comparison !== null && $comparison < 0,
+                    'update_available' => ($state['status'] ?? '') !== 'error'
+                        && $comparison !== null
+                        && $comparison < 0,
                 ]);
             } catch (Throwable $exception) {
                 $plugin['update'] = array_merge($this->emptyDisplayState(), [
@@ -142,8 +144,9 @@ final class PluginUpdateService extends UpdateCenter
         $workspace = '';
         $stagePath = '';
         $rollbackPath = '';
+        $failedPath = '';
         $targetPath = $this->pluginsPath . '/' . $slug;
-        $maintenanceEnabled = false;
+        $maintenanceOwned = false;
         $oldMoved = false;
         $swapped = false;
         $committed = false;
@@ -152,8 +155,24 @@ final class PluginUpdateService extends UpdateCenter
 
         try {
             $lock = $this->acquireUpdateLock();
-            $this->enableMaintenanceMode($user);
-            $maintenanceEnabled = true;
+            $lockedMetadata = $this->pluginManager->metadata($slug);
+            $lockedVersion = (string)($lockedMetadata['version'] ?? '0.0.0');
+            $lockedComparison = $this->compareVersions($lockedVersion, $remoteVersion);
+            if ($lockedComparison !== null && $lockedComparison >= 0) {
+                return [
+                    'status' => 'current',
+                    'message' => return_translation('admin_plugin_updates_current'),
+                    'version' => $lockedVersion,
+                ];
+            }
+            if ($lockedVersion !== $fromVersion) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_failed'));
+            }
+
+            if (!is_file(STORAGE . '/update.maintenance')) {
+                $this->enableMaintenanceMode($user);
+                $maintenanceOwned = true;
+            }
             $this->ensureDirectory($this->workspaceRoot . '/work');
             $workspace = $this->workspaceRoot . '/work/' . $slug . '-' . bin2hex(random_bytes(8));
             $extractPath = $workspace . '/extract';
@@ -188,6 +207,7 @@ final class PluginUpdateService extends UpdateCenter
             $identifier = bin2hex(random_bytes(8));
             $stagePath = $this->pluginsPath . '/.' . $slug . '.update-' . $identifier;
             $rollbackPath = $this->pluginsPath . '/.' . $slug . '.rollback-' . $identifier;
+            $failedPath = $this->pluginsPath . '/.' . $slug . '.failed-' . $identifier;
             $this->copyDirectory($packagePath, $stagePath);
             $this->readPackageMetadata($stagePath, $slug);
 
@@ -226,11 +246,15 @@ final class PluginUpdateService extends UpdateCenter
             $this->invalidatePluginOpcodeCache($targetPath);
             $this->clearRuntimeCache();
             if (function_exists('fireball_event')) {
-                fireball_event('plugin.updated', [
-                    'slug' => $slug,
-                    'from_version' => $fromVersion,
-                    'to_version' => $remoteVersion,
-                ]);
+                try {
+                    fireball_event('plugin.updated', [
+                        'slug' => $slug,
+                        'from_version' => $fromVersion,
+                        'to_version' => $remoteVersion,
+                    ]);
+                } catch (Throwable $eventException) {
+                    log_error_details('Plugin updated event failed', ['Plugin' => $slug], $eventException);
+                }
             }
 
             return [
@@ -241,13 +265,19 @@ final class PluginUpdateService extends UpdateCenter
             ];
         } catch (Throwable $exception) {
             if (!$committed && $swapped) {
-                $this->deleteDirectory($targetPath);
-                if (!@rename($rollbackPath, $targetPath)) {
+                if (!@rename($targetPath, $failedPath)) {
                     log_error_details('Plugin update rollback failed', ['Plugin' => $slug]);
-                } else {
+                } elseif (@rename($rollbackPath, $targetPath)) {
                     $swapped = false;
                     $oldMoved = false;
                     $this->invalidatePluginOpcodeCache($targetPath);
+                    $this->deleteDirectory($failedPath);
+                } else {
+                    // Keep a loadable plugin directory even when the old directory
+                    // cannot be restored automatically. The hidden rollback copy is
+                    // deliberately retained for manual recovery.
+                    @rename($failedPath, $targetPath);
+                    log_error_details('Plugin update rollback failed', ['Plugin' => $slug]);
                 }
             } elseif (!$committed && $oldMoved && !is_dir($targetPath)) {
                 if (@rename($rollbackPath, $targetPath)) {
@@ -278,7 +308,7 @@ final class PluginUpdateService extends UpdateCenter
             if ($workspace !== '' && is_dir($workspace)) {
                 $this->deleteDirectory($workspace);
             }
-            if ($maintenanceEnabled) {
+            if ($maintenanceOwned) {
                 $this->disableMaintenanceMode();
             }
             if ($lock !== null) {
@@ -442,10 +472,12 @@ final class PluginUpdateService extends UpdateCenter
     private function readPackageMetadata(string $path, string $expectedSlug): array
     {
         $file = rtrim($path, '/') . '/plugin.json';
-        if (!is_file($file) || filesize($file) > self::MAX_MANIFEST_BYTES) {
+        $size = is_file($file) ? @filesize($file) : false;
+        if ($size === false || $size <= 0 || $size > self::MAX_MANIFEST_BYTES) {
             throw new RuntimeException(return_translation('admin_plugin_updates_package_invalid'));
         }
-        $metadata = json_decode((string)file_get_contents($file), true);
+        $json = @file_get_contents($file);
+        $metadata = $json === false ? null : json_decode($json, true);
         if (!is_array($metadata)
             || (string)($metadata['slug'] ?? '') !== $expectedSlug
             || trim((string)($metadata['version'] ?? '')) === '') {
@@ -493,15 +525,25 @@ final class PluginUpdateService extends UpdateCenter
         $directory = $this->workspaceRoot . '/backups/' . $slug;
         $this->ensureDirectory($directory);
         $safeVersion = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $version) ?: 'unknown';
-        $file = $directory . '/' . $slug . '-' . $safeVersion . '-' . date('Ymd-His') . '.zip';
+        $file = $directory . '/' . $slug . '-' . $safeVersion . '-' . date('Ymd-His')
+            . '-' . bin2hex(random_bytes(3)) . '.zip';
         $zip = new \ZipArchive();
         if ($zip->open($file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new RuntimeException(return_translation('admin_plugin_updates_backup_failed'));
         }
         try {
             $this->addDirectoryToZip($zip, $source, $slug);
-        } finally {
-            $zip->close();
+            if (!$zip->close()) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_backup_failed'));
+            }
+        } catch (Throwable $exception) {
+            try {
+                $zip->close();
+            } catch (Throwable) {
+                // The original backup error is more useful.
+            }
+            @unlink($file);
+            throw $exception;
         }
         if (!is_file($file) || filesize($file) <= 0) {
             throw new RuntimeException(return_translation('admin_plugin_updates_backup_failed'));
@@ -649,7 +691,7 @@ final class PluginUpdateService extends UpdateCenter
     {
         $directory = $this->workspaceRoot . '/backups/' . $slug;
         $files = glob($directory . '/*.zip') ?: [];
-        usort($files, static fn(string $left, string $right): int => filemtime($right) <=> filemtime($left));
+        usort($files, static fn(string $left, string $right): int => (int)@filemtime($right) <=> (int)@filemtime($left));
         foreach (array_slice($files, self::BACKUP_RETENTION) as $file) {
             @unlink($file);
         }

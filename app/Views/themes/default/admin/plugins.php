@@ -78,9 +78,11 @@ $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
                                         <div class="fw-semibold">
                                             <?= htmlSC(return_translation($updateAvailable
                                                 ? 'admin_plugin_updates_available'
-                                                : ($updateStatus === 'never'
-                                                    ? 'admin_plugin_updates_not_checked'
-                                                    : 'admin_plugin_updates_current'))) ?>
+                                                : ($updateStatus === 'error'
+                                                    ? 'admin_plugin_updates_check_failed'
+                                                    : ($updateStatus === 'never'
+                                                        ? 'admin_plugin_updates_not_checked'
+                                                        : 'admin_plugin_updates_current')))) ?>
                                         </div>
                                         <?php if (($update['message'] ?? '') !== ''): ?>
                                             <div class="mt-1"><?= htmlSC((string)$update['message']) ?></div>

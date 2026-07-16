@@ -22,6 +22,7 @@ storage/backups/*
 !storage/backups/.gitkeep
 !storage/backups/.htaccess
 !storage/backups/.gitignore
+storage/plugin-updates/*
 storage/logs/*
 !storage/logs/.gitkeep
 !storage/logs/.htaccess
