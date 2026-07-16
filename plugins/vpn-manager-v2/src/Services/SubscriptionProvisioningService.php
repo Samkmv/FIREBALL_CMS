@@ -191,6 +191,15 @@ final class SubscriptionProvisioningService
         );
     }
 
+    /**
+     * Provisions one local-first node without changing the subscription revision.
+     * Reconciliation aggregates confirmed node changes and bumps the revision once.
+     */
+    public function provisionNodeForReconciliation(int $nodeId): array
+    {
+        return $this->provisionNode($nodeId);
+    }
+
     private function provisionNode(int $nodeId): array
     {
         $repository = $this->repository();
@@ -217,17 +226,30 @@ final class SubscriptionProvisioningService
             }
 
             $client = $this->client($server, $inbound, $node);
-            $payload = ($this->payloadFactory ?? new ClientPayloadFactory())->build($node, $node);
+            $subscriptionState = [
+                'expires_at' => $node['expires_at'] ?? null,
+                'status' => $node['subscription_status'] ?? 'active',
+                'device_limit' => $node['device_limit'] ?? 0,
+                'traffic_limit_bytes' => $node['subscription_traffic_limit_bytes'] ?? null,
+            ];
+            $payload = ($this->payloadFactory ?? new ClientPayloadFactory())->build($subscriptionState, $node);
             $verifier = $this->clientVerifier ?? new ClientVerifier($this->flowResolver ?? new VpnFlowResolver());
             $remoteInboundId = (int)$inbound['remote_inbound_id'];
-            $existing = $client->findClient(
-                $remoteInboundId,
+            $currentInbound = $client->getInbound($remoteInboundId);
+            $existing = $verifier->findInInbound(
+                $currentInbound,
                 (string)$node['client_uuid'],
-                (string)$node['client_email']
+                (string)$node['client_email'],
+                (string)($node['remote_client_id'] ?? ''),
+                (string)($node['client_sub_id'] ?? '')
             );
             if ($existing !== null) {
                 $verifier->verify($existing, $payload);
-                $repository->markNodeActive($nodeId, (string)$node['client_uuid']);
+                $repository->markNodeActive(
+                    $nodeId,
+                    (string)$node['client_uuid'],
+                    empty($node['desired_enabled']) ? 'disabled' : 'active'
+                );
                 $repository->logEvent(
                     'node.client_reused',
                     (int)$node['subscription_id'],
@@ -246,14 +268,20 @@ final class SubscriptionProvisioningService
             $confirmed = $verifier->findInInbound(
                 $freshInbound,
                 (string)$node['client_uuid'],
-                (string)$node['client_email']
+                (string)$node['client_email'],
+                (string)($node['remote_client_id'] ?? ''),
+                (string)($node['client_sub_id'] ?? '')
             );
             if ($confirmed === null) {
                 throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed'));
             }
             $verifier->verify($confirmed, $payload);
 
-            $repository->markNodeActive($nodeId, (string)$node['client_uuid']);
+            $repository->markNodeActive(
+                $nodeId,
+                (string)$node['client_uuid'],
+                empty($node['desired_enabled']) ? 'disabled' : 'active'
+            );
             $repository->logEvent(
                 'node.client_created',
                 (int)$node['subscription_id'],

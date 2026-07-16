@@ -26,9 +26,16 @@ final class ProfileVpnRepository
             'SELECT sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
                     sub.traffic_limit_bytes, sub.device_limit, sub.revision,
                     p.name AS plan_name, p.description AS plan_description,
-                    COUNT(CASE WHEN n.status <> \'deleted\' THEN 1 END) AS connection_count,
-                    COALESCE(SUM(CASE WHEN n.status <> \'deleted\' THEN n.traffic_used_bytes ELSE 0 END), 0)
-                        AS traffic_used_bytes
+                    COUNT(CASE WHEN n.status IN (\'active\', \'disabled\') THEN 1 END) AS connection_count,
+                    COUNT(CASE WHEN n.status = \'creating\' THEN 1 END) AS creating_count,
+                    COUNT(CASE WHEN n.status IN (\'create_failed\', \'sync_error\') THEN 1 END) AS failed_count,
+                    (SELECT COUNT(*) FROM vpn_v2_plan_nodes pn
+                     INNER JOIN vpn_v2_servers ps ON ps.id = pn.server_id AND ps.is_enabled = 1
+                     INNER JOIN vpn_v2_inbounds pi ON pi.id = pn.inbound_id
+                        AND pi.server_id = pn.server_id AND pi.is_enabled = 1 AND pi.status = \'active\'
+                     WHERE pn.plan_id = sub.plan_id AND pn.is_enabled = 1) AS plan_connection_count,
+                    COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.traffic_used_bytes ELSE 0 END), 0) AS traffic_used_bytes
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
@@ -51,9 +58,16 @@ final class ProfileVpnRepository
             'SELECT sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
                     sub.traffic_limit_bytes, sub.device_limit, sub.revision,
                     p.name AS plan_name, p.description AS plan_description,
-                    COUNT(CASE WHEN n.status <> \'deleted\' THEN 1 END) AS connection_count,
-                    COALESCE(SUM(CASE WHEN n.status <> \'deleted\' THEN n.traffic_used_bytes ELSE 0 END), 0)
-                        AS traffic_used_bytes
+                    COUNT(CASE WHEN n.status IN (\'active\', \'disabled\') THEN 1 END) AS connection_count,
+                    COUNT(CASE WHEN n.status = \'creating\' THEN 1 END) AS creating_count,
+                    COUNT(CASE WHEN n.status IN (\'create_failed\', \'sync_error\') THEN 1 END) AS failed_count,
+                    (SELECT COUNT(*) FROM vpn_v2_plan_nodes pn
+                     INNER JOIN vpn_v2_servers ps ON ps.id = pn.server_id AND ps.is_enabled = 1
+                     INNER JOIN vpn_v2_inbounds pi ON pi.id = pn.inbound_id
+                        AND pi.server_id = pn.server_id AND pi.is_enabled = 1 AND pi.status = \'active\'
+                     WHERE pn.plan_id = sub.plan_id AND pn.is_enabled = 1) AS plan_connection_count,
+                    COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.traffic_used_bytes ELSE 0 END), 0) AS traffic_used_bytes
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
@@ -76,12 +90,13 @@ final class ProfileVpnRepository
 
         return db()->query(
             'SELECT s.name, s.country_code, s.country_name, s.city, s.show_flag,
+                    CASE WHEN SUM(n.status = \'active\') > 0 THEN \'active\' ELSE \'disabled\' END AS status,
                     MIN(n.id) AS first_node_id
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub
                 ON sub.id = n.subscription_id AND sub.user_id = ?
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
-             WHERE n.subscription_id = ? AND n.status <> \'deleted\'
+             WHERE n.subscription_id = ? AND n.status IN (\'active\', \'disabled\')
              GROUP BY s.id, s.name, s.country_code, s.country_name, s.city, s.show_flag
              ORDER BY first_node_id ASC',
             [$userId, $subscriptionId]

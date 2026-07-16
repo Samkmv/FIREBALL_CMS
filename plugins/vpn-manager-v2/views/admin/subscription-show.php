@@ -3,6 +3,7 @@
 use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
 use Fireball\VpnManagerV2\Support\AdminTableState;
+use Fireball\VpnManagerV2\Support\Permissions;
 
 $subscription = is_array($subscription ?? null) ? $subscription : [];
 $nodes = is_array($nodes ?? null) ? $nodes : [];
@@ -10,6 +11,14 @@ $subscriptionId = (int)($subscription['id'] ?? 0);
 $subscriptionUrl = trim((string)($subscriptionUrl ?? ''));
 $subscriptionQr = (string)($subscriptionQr ?? '');
 $returnQuery = AdminTableState::sanitize($returnQuery ?? '');
+$reconciliationSummary = is_array($reconciliationSummary ?? null) ? $reconciliationSummary : [
+    'plan_count' => 0,
+    'created_count' => 0,
+    'missing_count' => 0,
+    'obsolete_count' => 0,
+    'matches' => true,
+    'checked_at' => null,
+];
 $deleteRetry = (string)($subscription['status'] ?? '') === 'delete_failed';
 $deleteLabel = FireballPluginVpnManagerV2::t($deleteRetry
     ? 'vpn_manager_v2_action_retry_delete'
@@ -108,6 +117,45 @@ foreach ($nodes as $node) {
             </button>
         </form>
     <?php endif; ?>
+</div>
+
+<div class="border rounded-5 p-3 p-md-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+            <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconciliation_title')) ?></h2>
+            <div class="d-flex flex-wrap gap-3 small">
+                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_by_plan')) ?>:
+                    <strong><?= (int)$reconciliationSummary['plan_count'] ?></strong></span>
+                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_actually_created')) ?>:
+                    <strong><?= (int)$reconciliationSummary['created_count'] ?></strong></span>
+                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_missing_connections')) ?>:
+                    <strong><?= (int)$reconciliationSummary['missing_count'] ?></strong></span>
+                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_connections')) ?>:
+                    <strong><?= (int)$reconciliationSummary['obsolete_count'] ?></strong></span>
+                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_last_check')) ?>:
+                    <strong><?= htmlSC((string)($reconciliationSummary['checked_at'] ?? '—')) ?></strong></span>
+            </div>
+        </div>
+        <?php if ((int)$reconciliationSummary['missing_count'] > 0
+            && Permissions::allows(Permissions::CREATE_CONNECTIONS)
+            && Permissions::allows(Permissions::RECONCILE)): ?>
+            <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/create-missing')) ?>">
+                <?= get_csrf_field() ?>
+                <button class="btn btn-dark rounded-pill" type="submit">
+                    <i class="ci-plus" aria-hidden="true"></i>
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_create_missing')) ?>
+                </button>
+            </form>
+        <?php elseif (!empty($reconciliationSummary['matches'])): ?>
+            <span class="badge rounded-pill text-bg-success">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconciliation_matches')) ?>
+            </span>
+        <?php else: ?>
+            <span class="badge rounded-pill text-bg-warning">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconciliation_has_differences')) ?>
+            </span>
+        <?php endif; ?>
+    </div>
 </div>
 
 <div class="border rounded-5 p-3 p-md-4 mb-4">

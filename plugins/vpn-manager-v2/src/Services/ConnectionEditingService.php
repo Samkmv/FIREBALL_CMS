@@ -50,12 +50,14 @@ final class ConnectionEditingService
             $remote = ($this->remoteSync ?? new RemoteClientSyncService())->pull($node);
             $changed = $this->flow($node['flow'] ?? null) !== $remote['flow']
                 || $this->limit($node['traffic_limit_bytes'] ?? null) !== $remote['traffic_limit_bytes']
-                || (string)$node['status'] !== 'active';
+                || (string)$node['status'] !== (!empty($node['desired_enabled']) ? 'active' : 'disabled');
             $repository->updateNodeConfirmed(
                 $nodeId,
                 $remote['flow'],
                 $remote['traffic_limit_bytes'],
-                $remote['traffic_used_bytes']
+                $remote['traffic_used_bytes'],
+                !empty($node['desired_enabled']) ? 'active' : 'disabled',
+                !empty($node['desired_enabled'])
             );
             $revision = $changed
                 ? ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId)
@@ -89,9 +91,12 @@ final class ConnectionEditingService
                 (int)$node['id'],
                 $desiredNode['flow'],
                 $desiredNode['traffic_limit_bytes'],
-                $result['traffic_used_bytes']
+                $result['traffic_used_bytes'],
+                !empty($node['desired_enabled']) ? 'active' : 'disabled',
+                !empty($node['desired_enabled'])
             );
-            $changed = $localChanged || $result['remote_updated'] || (string)$node['status'] !== 'active';
+            $changed = $localChanged || $result['remote_updated']
+                || (string)$node['status'] !== (!empty($node['desired_enabled']) ? 'active' : 'disabled');
             $revision = $changed
                 ? ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId)
                 : (int)$this->subscriptionRevision($subscriptionId);

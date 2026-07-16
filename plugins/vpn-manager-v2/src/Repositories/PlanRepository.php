@@ -9,7 +9,7 @@ final class PlanRepository
 {
     public function all(): array
     {
-        return db()->query(
+        $rows = db()->query(
             'SELECT p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
                     p.device_limit, p.is_active, p.created_at, p.updated_at,
                     COUNT(DISTINCT n.server_id) AS server_count, COUNT(n.id) AS node_count
@@ -19,6 +19,18 @@ final class PlanRepository
                       p.device_limit, p.is_active, p.created_at, p.updated_at
              ORDER BY p.id ASC'
         )->get() ?: [];
+        $reconciliation = new PlanReconciliationRepository();
+        foreach ($rows as &$row) {
+            $planId = (int)$row['id'];
+            $row['subscription_count'] = $reconciliation->eligibleSubscriptionCount($planId);
+            $row['mismatch_subscription_count'] = $reconciliation->mismatchSubscriptionCount($planId);
+            $latest = $reconciliation->latestOperation($planId);
+            $row['last_reconcile_at'] = $latest['finished_at'] ?? $latest['started_at'] ?? null;
+            $row['last_reconcile_status'] = $latest['status'] ?? null;
+        }
+        unset($row);
+
+        return $rows;
     }
 
     public function find(int $id): ?array

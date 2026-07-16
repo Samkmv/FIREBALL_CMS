@@ -10,6 +10,9 @@ final class Permissions
     public const MANAGE_INBOUNDS = 'vpn_v2.inbounds.manage';
     public const MANAGE_PLANS = 'vpn_v2.plans.manage';
     public const MANAGE_SUBSCRIPTIONS = 'vpn_v2.subscriptions.manage';
+    public const CREATE_CONNECTIONS = 'vpn_v2.connections.create';
+    public const DELETE_CONNECTIONS = 'vpn_v2.connections.delete';
+    public const RECONCILE = 'vpn_v2.reconcile';
     public const MANAGE_SETTINGS = 'vpn_v2.settings.manage';
     public const VIEW_EVENTS = 'vpn_v2.events.view';
 
@@ -22,6 +25,9 @@ final class Permissions
             self::MANAGE_INBOUNDS => 'vpn_manager_v2_permission_inbounds',
             self::MANAGE_PLANS => 'vpn_manager_v2_permission_plans',
             self::MANAGE_SUBSCRIPTIONS => 'vpn_manager_v2_permission_subscriptions',
+            self::CREATE_CONNECTIONS => 'vpn_manager_v2_permission_connections_create',
+            self::DELETE_CONNECTIONS => 'vpn_manager_v2_permission_connections_delete',
+            self::RECONCILE => 'vpn_manager_v2_permission_reconcile',
             self::MANAGE_SETTINGS => 'vpn_manager_v2_permission_settings',
             self::VIEW_EVENTS => 'vpn_manager_v2_permission_events',
         ];

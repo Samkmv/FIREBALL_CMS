@@ -43,13 +43,14 @@ $tables = db()->query(
     "SELECT TABLE_NAME FROM information_schema.TABLES
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'vpn_v2_%' ORDER BY TABLE_NAME"
 )->get() ?: [];
-$assert(count($tables) === 8, 'The V2 table set is incomplete.');
+$assert(count($tables) === 9, 'The V2 table set is incomplete.');
 
 $uniqueIndexes = db()->query(
     "SELECT TABLE_NAME, INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS columns_list
      FROM information_schema.STATISTICS
      WHERE TABLE_SCHEMA = DATABASE() AND NON_UNIQUE = 0
-       AND TABLE_NAME IN ('vpn_v2_inbounds', 'vpn_v2_plan_nodes', 'vpn_v2_subscriptions', 'vpn_v2_notifications')
+       AND TABLE_NAME IN ('vpn_v2_inbounds', 'vpn_v2_plan_nodes', 'vpn_v2_subscriptions',
+                          'vpn_v2_subscription_nodes', 'vpn_v2_notifications', 'vpn_v2_reconcile_operations')
      GROUP BY TABLE_NAME, INDEX_NAME"
 )->get() ?: [];
 $uniqueMap = [];
@@ -59,6 +60,8 @@ foreach ($uniqueIndexes as $index) {
 $assert(in_array('server_id,remote_inbound_id', $uniqueMap, true)
     && in_array('plan_id,server_id,inbound_id', $uniqueMap, true)
     && in_array('subscription_token', $uniqueMap, true)
+    && in_array('subscription_id,server_id,inbound_id', $uniqueMap, true)
+    && in_array('operation_id', $uniqueMap, true)
     && in_array('subscription_id,notification_type,occurrence_key,channel', $uniqueMap, true),
     'A required V2 unique index is missing.');
 
@@ -67,7 +70,7 @@ $foreignKeys = (int)db()->query(
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'vpn_v2_%'
        AND REFERENCED_TABLE_NAME IS NOT NULL"
 )->getColumn();
-$assert($foreignKeys === 17, 'The V2 foreign-key set is incomplete.');
+$assert($foreignKeys === 19, 'The V2 foreign-key set is incomplete.');
 
 (new FireballPluginVpnManagerV2())->boot();
 $menu = apply_filters('admin_menu', []);
@@ -79,7 +82,7 @@ $assert(count($menuItem) === 1 && ($menuItem[0]['icon'] ?? '') === 'ci-server'
 
 $permissions = apply_filters('vpn_manager_v2_permissions', []);
 $jobs = apply_filters('vpn_manager_v2_jobs', []);
-$assert(count($permissions) === 8
+$assert(count($permissions) === 11
     && Fireball\VpnManagerV2\Support\Permissions::allows(
         Fireball\VpnManagerV2\Support\Permissions::MANAGE_SUBSCRIPTIONS,
         ['role' => 'admin']
@@ -88,7 +91,7 @@ $assert(count($permissions) === 8
         Fireball\VpnManagerV2\Support\Permissions::MANAGE_SUBSCRIPTIONS,
         ['role' => 'user']
     ), 'V2 permission registration or enforcement is invalid.');
-$assert(count($jobs) === 5, 'The five V2 jobs are not registered.');
+$assert(count($jobs) === 6, 'The six V2 jobs are not registered.');
 
 $adminRoutes = (string)file_get_contents(dirname(__DIR__) . '/routes/admin.php');
 $publicRoutes = (string)file_get_contents(dirname(__DIR__) . '/routes/public.php');
@@ -123,7 +126,7 @@ echo json_encode([
     'old_plugin_status' => (string)$oldPlugin['status'],
     'migration_count' => count($migrationFiles),
     'table_count' => count($tables),
-    'unique_indexes_checked' => 4,
+    'unique_indexes_checked' => 6,
     'foreign_key_count' => $foreignKeys,
     'permissions' => count($permissions),
     'jobs' => count($jobs),

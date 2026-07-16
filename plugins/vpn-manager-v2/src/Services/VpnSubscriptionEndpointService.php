@@ -43,7 +43,8 @@ final class VpnSubscriptionEndpointService
 
             return new SubscriptionEndpointResponse($status, '', $headers);
         }
-        if ((string)$subscription['status'] !== 'active' || !$this->started($subscription)) {
+        if (!in_array((string)$subscription['status'], ['active', 'partial_sync', 'sync_error'], true)
+            || !$this->started($subscription)) {
             return new SubscriptionEndpointResponse(403, '', $headers);
         }
 

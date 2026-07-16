@@ -4,7 +4,7 @@ $statusLabels = [
     'inactive' => [return_translation('admin_plugins_status_inactive'), 'text-secondary bg-secondary-subtle'],
     'not_installed' => [return_translation('admin_plugins_status_not_installed'), 'text-body bg-body-tertiary'],
 ];
-$isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
+$canUpdatePlugins = \FBL\Auth::isAdmin();
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -40,7 +40,8 @@ $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
                 $isActive = $status === 'active';
                 $update = is_array($plugin['update'] ?? null) ? $plugin['update'] : [];
                 $updateConfigured = !empty($update['configured']);
-                $updateAvailable = !empty($update['update_available']);
+                $remoteVersion = trim((string)($update['remote_version'] ?? ''));
+                $updateAvailable = !empty($update['update_available']) && $remoteVersion !== '';
                 $updateStatus = (string)($update['status'] ?? 'never');
                 $updateAlert = $updateStatus === 'error'
                     ? 'danger'
@@ -66,7 +67,7 @@ $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
                                 <dd class="col-7 mb-0 text-end"><?= htmlSC((string)$plugin['author']) ?></dd>
                                 <?php if ($isInstalled && $updateConfigured): ?>
                                     <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugin_updates_latest_version') ?></dt>
-                                    <dd class="col-7 mb-0 text-end"><?= htmlSC((string)(($update['remote_version'] ?? '') !== '' ? $update['remote_version'] : '—')) ?></dd>
+                                    <dd class="col-7 mb-0 text-end"><?= htmlSC($remoteVersion !== '' ? $remoteVersion : '—') ?></dd>
                                     <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugin_updates_checked_at') ?></dt>
                                     <dd class="col-7 mb-0 text-end"><?= htmlSC((string)(($update['checked_at'] ?? '') !== '' ? $update['checked_at'] : '—')) ?></dd>
                                 <?php endif; ?>
@@ -84,6 +85,14 @@ $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
                                                         ? 'admin_plugin_updates_not_checked'
                                                         : 'admin_plugin_updates_current')))) ?>
                                         </div>
+                                        <?php if ($updateAvailable): ?>
+                                            <div class="mt-1">
+                                                <?= print_translation('admin_plugins_version') ?>:
+                                                <strong><?= htmlSC((string)$plugin['version']) ?></strong>
+                                                <i class="ci-arrow-right mx-1" aria-hidden="true"></i>
+                                                <strong><?= htmlSC($remoteVersion) ?></strong>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if (($update['message'] ?? '') !== ''): ?>
                                             <div class="mt-1"><?= htmlSC((string)$update['message']) ?></div>
                                         <?php endif; ?>
@@ -109,7 +118,7 @@ $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
                         </div>
                         <div class="card-footer bg-transparent border-0 p-4 pt-0">
                             <div class="d-grid gap-2">
-                                <?php if ($isCreator && $isInstalled && $isValid && $updateConfigured): ?>
+                                <?php if ($canUpdatePlugins && $isInstalled && $isValid && $updateConfigured): ?>
                                     <form action="<?= base_href('/admin/plugins/check-update') ?>" method="post">
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
@@ -132,7 +141,7 @@ $isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
                                             <button class="btn btn-warning rounded-pill w-100 d-inline-flex align-items-center justify-content-center gap-2" type="submit">
                                                 <i class="ci-download" aria-hidden="true"></i>
                                                 <?= print_translation('admin_plugin_updates_install') ?>
-                                                <?= htmlSC((string)($update['remote_version'] ?? '')) ?>
+                                                <?= htmlSC($remoteVersion) ?>
                                             </button>
                                         </form>
                                     <?php endif; ?>

@@ -11,7 +11,9 @@ final class AutomationRepository
         return db()->query(
             "SELECT n.id, n.subscription_id, n.server_id, n.inbound_id, n.client_uuid,
                     n.client_email, n.client_sub_id, n.protocol, n.network, n.security, n.flow,
-                    n.status, n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
+                    n.status, n.traffic_limit_bytes, n.traffic_used_bytes,
+                    n.upload_bytes, n.download_bytes, n.traffic_synced_at,
+                    n.traffic_sync_status, n.last_sync_at,
                     sub.user_id, sub.status AS subscription_status, sub.starts_at, sub.expires_at,
                     sub.device_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
                     i.remote_inbound_id
@@ -27,7 +29,12 @@ final class AutomationRepository
         )->get() ?: [];
     }
 
-    public function recordNodeTraffic(int $nodeId, int $remoteUsedBytes): array
+    public function recordNodeTraffic(
+        int $nodeId,
+        int $remoteUsedBytes,
+        ?int $remoteUploadBytes = null,
+        ?int $remoteDownloadBytes = null
+    ): array
     {
         $database = db();
         $ownsTransaction = !$database->inTransaction();
@@ -36,7 +43,7 @@ final class AutomationRepository
         }
         try {
             $row = $database->query(
-                'SELECT subscription_id, traffic_used_bytes
+                'SELECT subscription_id, traffic_used_bytes, upload_bytes, download_bytes
                  FROM vpn_v2_subscription_nodes WHERE id = ? FOR UPDATE',
                 [$nodeId]
             )->getOne();
@@ -45,12 +52,16 @@ final class AutomationRepository
             }
             $stored = max(0, (int)($row['traffic_used_bytes'] ?? 0));
             $confirmed = max($stored, max(0, $remoteUsedBytes));
+            $upload = max((int)($row['upload_bytes'] ?? 0), max(0, (int)($remoteUploadBytes ?? 0)));
+            $download = max((int)($row['download_bytes'] ?? 0), max(0, (int)($remoteDownloadBytes ?? 0)));
             $now = date('Y-m-d H:i:s');
             $database->query(
                 'UPDATE vpn_v2_subscription_nodes
-                 SET traffic_used_bytes = ?, last_sync_at = ?, last_error = NULL, updated_at = ?
+                 SET traffic_used_bytes = ?, upload_bytes = ?, download_bytes = ?,
+                     traffic_synced_at = ?, traffic_sync_status = \'synced\',
+                     last_sync_at = ?, last_error = NULL, updated_at = ?
                  WHERE id = ?',
-                [$confirmed, $now, $now, $nodeId]
+                [$confirmed, $upload, $download, $now, $now, $now, $nodeId]
             );
             if ($ownsTransaction) {
                 $database->commit();
@@ -61,6 +72,8 @@ final class AutomationRepository
                 'previous_bytes' => $stored,
                 'remote_bytes' => max(0, $remoteUsedBytes),
                 'stored_bytes' => $confirmed,
+                'upload_bytes' => $upload,
+                'download_bytes' => $download,
             ];
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $database->inTransaction()) {
@@ -73,7 +86,8 @@ final class AutomationRepository
     public function recordNodeTrafficFailure(int $nodeId, string $safeError): void
     {
         db()->query(
-            'UPDATE vpn_v2_subscription_nodes SET last_error = ?, updated_at = ? WHERE id = ?',
+            "UPDATE vpn_v2_subscription_nodes
+             SET traffic_sync_status = 'failed', last_error = ?, updated_at = ? WHERE id = ?",
             [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $nodeId]
         );
     }
@@ -140,15 +154,28 @@ final class AutomationRepository
         );
     }
 
-    public function recordAutomationNodeSuccess(int $nodeId, ?int $trafficUsedBytes): void
+    public function recordAutomationNodeSuccess(
+        int $nodeId,
+        ?int $trafficUsedBytes,
+        ?bool $desiredEnabled = null
+    ): void
     {
+        $status = $desiredEnabled === false ? 'disabled' : 'active';
         $now = date('Y-m-d H:i:s');
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
              SET traffic_used_bytes = GREATEST(traffic_used_bytes, COALESCE(?, traffic_used_bytes)),
-                 status = 'active', last_sync_at = ?, last_error = NULL, updated_at = ?
+                 status = ?, desired_enabled = COALESCE(?, desired_enabled),
+                 last_sync_at = ?, last_error = NULL, updated_at = ?
              WHERE id = ?",
-            [$trafficUsedBytes, $now, $now, $nodeId]
+            [
+                $trafficUsedBytes,
+                $status,
+                $desiredEnabled === null ? null : ($desiredEnabled ? 1 : 0),
+                $now,
+                $now,
+                $nodeId,
+            ]
         );
     }
 

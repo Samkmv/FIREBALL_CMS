@@ -25,7 +25,9 @@ final class ClientPayloadFactory
             'limitIp' => max(0, (int)($node['device_limit'] ?? $subscription['device_limit'] ?? 0)),
             'totalGB' => max(0, (int)($node['traffic_limit_bytes'] ?? $subscription['traffic_limit_bytes'] ?? 0)),
             'expiryTime' => $expiryTime,
-            'enable' => !in_array($status, ['suspended', 'expired', 'traffic_exceeded', 'deleting', 'delete_failed'], true),
+            'enable' => array_key_exists('desired_enabled', $node)
+                ? !empty($node['desired_enabled'])
+                : !in_array($status, ['suspended', 'expired', 'traffic_exceeded', 'deleting', 'delete_failed'], true),
             'tgId' => 0,
             'group' => '',
             'comment' => '',

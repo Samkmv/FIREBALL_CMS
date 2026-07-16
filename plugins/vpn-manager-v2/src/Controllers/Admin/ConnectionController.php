@@ -5,8 +5,9 @@ namespace Fireball\VpnManagerV2\Controllers\Admin;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Services\ConnectionEditingService;
-use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
+use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
 use Fireball\VpnManagerV2\Services\VpnFlowResolver;
+use Fireball\VpnManagerV2\Support\Permissions;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
 
 final class ConnectionController
@@ -101,19 +102,17 @@ final class ConnectionController
 
     public function retry(): void
     {
+        Permissions::authorize(Permissions::CREATE_CONNECTIONS);
+        Permissions::authorize(Permissions::RECONCILE);
         $nodeId = (int)get_route_param('id');
         try {
-            $result = (new SubscriptionProvisioningService())->retryNode($nodeId);
+            $result = (new VpnPlanSubscriptionReconciler())->retryFailedNode($nodeId);
             if ($result->flowError) {
                 session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_flow_not_saved'));
-            } elseif ($result->failed > 0 || $result->syncErrors > 0) {
+            } elseif (!$result->successful()) {
                 session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_connection_retry_failed'));
             } else {
-                session()->setFlash('success', sprintf(
-                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_connection_retry_success'),
-                    $result->created,
-                    $result->reused
-                ));
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_create_missing_success'));
             }
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());

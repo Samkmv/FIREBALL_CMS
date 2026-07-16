@@ -219,7 +219,8 @@ final class SubscriptionRepository
                     CASE WHEN n.remote_client_id IS NULL OR n.remote_client_id = "" THEN NULL
                          ELSE CONCAT(LEFT(n.remote_client_id, 8), "…", RIGHT(n.remote_client_id, 4)) END AS remote_client_preview,
                     n.client_email, n.protocol, n.network, n.security, n.flow,
-                    n.status, n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
+                    n.status, n.desired_enabled, n.is_obsolete,
+                    n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
                     n.last_error, n.created_at, n.updated_at,
                     s.name AS server_name, s.code AS server_code, i.name AS inbound_name,
                     i.remote_inbound_id, u.name AS user_name, u.email AS user_email
@@ -241,6 +242,7 @@ final class SubscriptionRepository
                     CASE WHEN n.remote_client_id IS NULL OR n.remote_client_id = "" THEN NULL
                          ELSE CONCAT(LEFT(n.remote_client_id, 8), "…", RIGHT(n.remote_client_id, 4)) END AS remote_client_preview,
                     n.client_email, n.protocol, n.network, n.security, n.flow, n.status,
+                    n.desired_enabled, n.is_obsolete,
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at, n.last_error,
                     n.created_at, n.updated_at, sub.user_id, sub.plan_id,
                     u.name AS user_name, u.email AS user_email, p.name AS plan_name,
@@ -263,7 +265,8 @@ final class SubscriptionRepository
                     CASE WHEN n.remote_client_id IS NULL OR n.remote_client_id = "" THEN NULL
                          ELSE CONCAT(LEFT(n.remote_client_id, 8), "…", RIGHT(n.remote_client_id, 4)) END AS remote_client_preview,
                     n.client_email, n.protocol, n.network, n.security, n.flow,
-                    n.status, n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
+                    n.status, n.desired_enabled, n.is_obsolete,
+                    n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
                     n.last_error, n.created_at, n.updated_at, sub.user_id, sub.plan_id,
                     sub.status AS subscription_status, sub.starts_at, sub.expires_at,
                     sub.device_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
@@ -290,7 +293,8 @@ final class SubscriptionRepository
         $row = db()->query(
             'SELECT n.id, n.subscription_id, n.server_id, n.inbound_id, n.remote_client_id,
                     n.client_uuid, n.client_email, n.client_sub_id, n.protocol, n.network,
-                    n.security, n.flow, n.status, n.traffic_limit_bytes, n.traffic_used_bytes,
+                    n.security, n.flow, n.status, n.desired_enabled, n.is_obsolete,
+                    n.traffic_limit_bytes, n.traffic_used_bytes,
                     n.last_sync_at, n.last_error, sub.user_id, sub.plan_id,
                     sub.status AS subscription_status, sub.starts_at, sub.expires_at,
                     sub.device_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
@@ -329,14 +333,15 @@ final class SubscriptionRepository
         return is_array($row) ? $row : null;
     }
 
-    public function markNodeActive(int $id, string $remoteClientId): void
+    public function markNodeActive(int $id, string $remoteClientId, string $status = 'active'): void
     {
+        $status = $status === 'disabled' ? 'disabled' : 'active';
         $now = date('Y-m-d H:i:s');
         db()->query(
-            "UPDATE vpn_v2_subscription_nodes
-             SET remote_client_id = ?, status = 'active', last_sync_at = ?, last_error = NULL, updated_at = ?
-             WHERE id = ?",
-            [$remoteClientId, $now, $now, $id]
+            'UPDATE vpn_v2_subscription_nodes
+             SET remote_client_id = ?, status = ?, is_obsolete = 0,
+                 last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?',
+            [$remoteClientId, $status, $now, $now, $id]
         );
     }
 
@@ -353,16 +358,29 @@ final class SubscriptionRepository
         int $id,
         ?string $flow,
         ?int $trafficLimitBytes,
-        ?int $trafficUsedBytes = null
+        ?int $trafficUsedBytes = null,
+        string $status = 'active',
+        ?bool $desiredEnabled = null
     ): void {
+        $status = $status === 'disabled' ? 'disabled' : 'active';
         $now = date('Y-m-d H:i:s');
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
              SET flow = ?, traffic_limit_bytes = ?,
-                 traffic_used_bytes = COALESCE(?, traffic_used_bytes), status = 'active',
+                 traffic_used_bytes = COALESCE(?, traffic_used_bytes), status = ?,
+                 desired_enabled = COALESCE(?, desired_enabled), is_obsolete = 0,
                  last_sync_at = ?, last_error = NULL, updated_at = ?
              WHERE id = ?",
-            [$flow, $trafficLimitBytes, $trafficUsedBytes, $now, $now, $id]
+            [
+                $flow,
+                $trafficLimitBytes,
+                $trafficUsedBytes,
+                $status,
+                $desiredEnabled === null ? null : ($desiredEnabled ? 1 : 0),
+                $now,
+                $now,
+                $id,
+            ]
         );
     }
 

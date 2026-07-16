@@ -55,8 +55,14 @@ final class TrafficSyncService
                     $identifier = trim((string)($node['client_uuid'] ?? ''));
                 }
                 $response = $this->client($node)->getClientTraffic($identifier);
-                $remoteUsed = self::trafficUsedFromResponse($response, $identifier);
-                $result = $repository->recordNodeTraffic($nodeId, $remoteUsed);
+                $traffic = self::trafficFromResponse($response, $identifier);
+                $remoteUsed = $traffic['total'];
+                $result = $repository->recordNodeTraffic(
+                    $nodeId,
+                    $remoteUsed,
+                    $traffic['upload'],
+                    $traffic['download']
+                );
                 $synced++;
                 $unchanged += (int)$result['stored_bytes'] === (int)$result['previous_bytes'] ? 1 : 0;
                 $touchedSubscriptions[$subscriptionId] = true;
@@ -98,6 +104,11 @@ final class TrafficSyncService
 
     public static function trafficUsedFromResponse(array $response, string $clientIdentifier = ''): int
     {
+        return self::trafficFromResponse($response, $clientIdentifier)['total'];
+    }
+
+    public static function trafficFromResponse(array $response, string $clientIdentifier = ''): array
+    {
         $payload = $response['obj'] ?? $response;
         if (!is_array($payload)) {
             throw new ThreeXuiResponseException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_traffic_response'));
@@ -125,11 +136,9 @@ final class TrafficSyncService
         }
         $up = self::bytes($payload['up'] ?? 0);
         $down = self::bytes($payload['down'] ?? 0);
-        if ($up > PHP_INT_MAX - $down) {
-            return PHP_INT_MAX;
-        }
+        $total = $up > PHP_INT_MAX - $down ? PHP_INT_MAX : $up + $down;
 
-        return $up + $down;
+        return ['upload' => $up, 'download' => $down, 'total' => $total];
     }
 
     private static function bytes(mixed $value): int

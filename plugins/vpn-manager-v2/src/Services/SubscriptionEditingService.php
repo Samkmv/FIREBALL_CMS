@@ -52,17 +52,25 @@ final class SubscriptionEditingService
                 $failed++;
                 continue;
             }
+            if (in_array((string)$node['status'], ['creating', 'create_failed', 'deleted', 'deleting'], true)) {
+                continue;
+            }
             try {
                 $result = ($this->remoteSync ?? new RemoteClientSyncService())->push(
                     $node,
                     $desired,
-                    ['traffic_limit_bytes' => $edit->trafficLimitBytes]
+                    [
+                        'traffic_limit_bytes' => $edit->trafficLimitBytes,
+                        'desired_enabled' => $edit->status === 'active',
+                    ]
                 );
                 $repository->updateNodeConfirmed(
                     $nodeId,
                     $this->flow($node['flow'] ?? null),
                     $edit->trafficLimitBytes,
-                    $result['traffic_used_bytes']
+                    $result['traffic_used_bytes'],
+                    $edit->status === 'active' ? 'active' : 'disabled',
+                    $edit->status === 'active'
                 );
                 $synced++;
                 $repository->logEvent('node.subscription_update_confirmed', $subscriptionId, $nodeId,
@@ -90,6 +98,22 @@ final class SubscriptionEditingService
             $adminId,
             ['synced' => $synced, 'failed' => $failed, 'revision' => $revision]
         );
+
+        // Renewal/reactivation must pick up plan connections that were skipped while expired.
+        if ($edit->status === 'active'
+            && ($edit->expiresAt === null || strtotime($edit->expiresAt) === false || strtotime($edit->expiresAt) > time())) {
+            try {
+                (new VpnPlanSubscriptionReconciler())->reconcileSubscription($subscriptionId, [
+                    'initiated_by' => $adminId,
+                    'authorized' => true,
+                ]);
+            } catch (\Throwable $exception) {
+                $repository->logEvent('plan_reconcile_failed', $subscriptionId, null, null,
+                    (int)$current['user_id'], $adminId, ['safe_error_code' => $this->errorType($exception)]);
+            }
+            $fresh = $repository->findForProvisioning($subscriptionId);
+            $revision = max($revision, (int)($fresh['revision'] ?? $revision));
+        }
 
         return new SyncResult($subscriptionId, $synced, $failed, $revision, true, true);
     }

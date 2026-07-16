@@ -119,7 +119,25 @@ $showQrInProfile = !empty($showQrInProfile);
                     </div>
 
                     <div class="border-top pt-4">
-                        <h3 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_servers_title')) ?></h3>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <h3 class="h5 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_servers_title')) ?></h3>
+                            <span class="small text-body-secondary">
+                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_by_plan')) ?>:
+                                <?= (int)($selected['plan_connection_count'] ?? 0) ?> ·
+                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_actually_created')) ?>:
+                                <?= (int)$selected['connection_count'] ?>
+                            </span>
+                        </div>
+                        <?php if ((int)($selected['creating_count'] ?? 0) > 0): ?>
+                            <div class="alert alert-info rounded-4 py-2 mb-3">
+                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_server_adding')) ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ((int)($selected['failed_count'] ?? 0) > 0): ?>
+                            <div class="alert alert-warning rounded-4 py-2 mb-3">
+                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_server_unavailable')) ?>
+                            </div>
+                        <?php endif; ?>
                         <?php if ($servers === []): ?>
                             <div class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_no_servers')) ?></div>
                         <?php else: ?>
@@ -136,6 +154,13 @@ $showQrInProfile = !empty($showQrInProfile);
                                                 <div class="small text-body-secondary"><?= htmlSC($location !== ''
                                                     ? $location
                                                     : FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_location_unknown')) ?></div>
+                                                <div class="small mt-1 <?= (string)($server['status'] ?? '') === 'active' ? 'text-success' : 'text-body-secondary' ?>">
+                                                    <?= htmlSC(FireballPluginVpnManagerV2::t(
+                                                        (string)($server['status'] ?? '') === 'active'
+                                                            ? 'vpn_manager_v2_server_status_available'
+                                                            : 'vpn_manager_v2_server_status_disabled'
+                                                    )) ?>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

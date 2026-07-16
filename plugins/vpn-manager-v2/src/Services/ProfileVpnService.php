@@ -36,7 +36,7 @@ final class ProfileVpnService
             $requestedFound = $selected !== null && (int)$selected['user_id'] === $userId;
         } elseif ($subscriptions !== []) {
             foreach ($subscriptions as $subscription) {
-                if ((string)$subscription['effective_status'] === 'active') {
+                if (in_array((string)$subscription['effective_status'], ['active', 'partial_sync', 'sync_error'], true)) {
                     $selected = $subscription;
                     break;
                 }
@@ -67,9 +67,10 @@ final class ProfileVpnService
                         $showFlag,
                         !empty($settings['global_show_flags'])
                     ),
+                    'status' => (string)($server['status'] ?? 'active'),
                 ];
             }, $repository->serversForUserSubscription((int)$selected['id'], $userId));
-            $linkReady = (string)$selected['effective_status'] === 'active'
+            $linkReady = in_array((string)$selected['effective_status'], ['active', 'partial_sync', 'sync_error'], true)
                 && (int)$selected['connection_count'] > 0;
             if ($linkReady) {
                 $token = $repository->tokenForUserSubscription((int)$selected['id'], $userId);

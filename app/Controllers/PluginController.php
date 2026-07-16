@@ -66,7 +66,7 @@ final class PluginController extends BaseController
 
     public function checkUpdate(): void
     {
-        $this->requireCreator();
+        $this->requirePluginUpdatePermission();
         $slug = (string)request()->post('slug', '');
         try {
             $result = (new PluginUpdateService())->check($slug);
@@ -84,7 +84,7 @@ final class PluginController extends BaseController
 
     public function update(): void
     {
-        $this->requireCreator();
+        $this->requirePluginUpdatePermission();
         $slug = (string)request()->post('slug', '');
         try {
             $result = (new PluginUpdateService())->update($slug, (array)get_user());
@@ -100,9 +100,9 @@ final class PluginController extends BaseController
         $this->redirectToPlugin($slug);
     }
 
-    private function requireCreator(): void
+    private function requirePluginUpdatePermission(): void
     {
-        if (!\FBL\Auth::hasRole('creator')) {
+        if (!\FBL\Auth::isAdmin()) {
             abort(\FBL\Language::get('error_403_message'), 403);
         }
     }

@@ -129,7 +129,8 @@ final class SubscriptionAutomationService
             ]);
             $this->repository()->recordAutomationNodeSuccess(
                 $nodeId,
-                isset($result['traffic_used_bytes']) ? (int)$result['traffic_used_bytes'] : null
+                isset($result['traffic_used_bytes']) ? (int)$result['traffic_used_bytes'] : null,
+                (string)$subscription['status'] === 'active'
             );
             $this->repository()->recalculateSubscriptionTraffic((int)$node['subscription_id']);
             $this->subscriptions()->logEvent('node.automation_retry_confirmed', (int)$node['subscription_id'],
@@ -165,10 +166,12 @@ final class SubscriptionAutomationService
                 $result = $this->push($node, $desired, [
                     'flow' => $this->flow($node['flow'] ?? null),
                     'traffic_limit_bytes' => $this->limit($node['traffic_limit_bytes'] ?? null),
+                    'desired_enabled' => false,
                 ]);
                 $this->repository()->recordAutomationNodeSuccess(
                     $nodeId,
-                    isset($result['traffic_used_bytes']) ? (int)$result['traffic_used_bytes'] : null
+                    isset($result['traffic_used_bytes']) ? (int)$result['traffic_used_bytes'] : null,
+                    false
                 );
                 $synced++;
             } catch (\Throwable $exception) {

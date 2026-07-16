@@ -14,6 +14,8 @@ final class ProvisioningStatus
             'provisioning_failed' => 'text-bg-danger',
             'create_failed' => 'text-bg-danger',
             'sync_error' => 'text-bg-warning',
+            'partial_sync' => 'text-bg-warning',
+            'disabled' => 'text-bg-secondary',
             'suspended' => 'text-bg-secondary',
             'expired' => 'text-bg-secondary',
             'traffic_exceeded' => 'text-bg-danger',

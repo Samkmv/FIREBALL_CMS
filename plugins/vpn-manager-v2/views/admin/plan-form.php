@@ -2,12 +2,19 @@
 
 use Fireball\VpnManagerV2\Services\VpnFlowResolver;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
+use Fireball\VpnManagerV2\Support\Permissions;
 
 $plan = is_array($plan ?? null) ? $plan : null;
 $servers = is_array($servers ?? null) ? $servers : [];
 $inbounds = is_array($inbounds ?? null) ? $inbounds : [];
 $selectedNodes = is_array($selectedNodes ?? null) ? $selectedNodes : [];
 $editing = $plan !== null;
+$affectedSubscriptions = max(0, (int)($affectedSubscriptions ?? 0));
+$missingConnectionCount = max(0, (int)($missingConnectionCount ?? 0));
+$latestReconciliation = is_array($latestReconciliation ?? null) ? $latestReconciliation : null;
+$obsoleteConnectionCount = max(0, (int)($obsoleteConnectionCount ?? 0));
+$obsoleteSubscriptionCount = max(0, (int)($obsoleteSubscriptionCount ?? 0));
+$obsoleteTargets = is_array($obsoleteTargets ?? null) ? $obsoleteTargets : [];
 $planId = (int)($plan['id'] ?? 0);
 $action = $editing
     ? base_href('/admin/plugins/vpn-manager-v2/plans/edit/' . $planId)
@@ -202,10 +209,120 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
         </template>
     </section>
 
+    <?php if ($editing): ?>
+        <div class="form-check form-switch border rounded-4 p-3 ps-5 mt-4">
+            <input class="form-check-input" id="vpnV2ReconcileExisting" type="checkbox"
+                   name="reconcile_existing" value="1" checked>
+            <label class="form-check-label fw-medium" for="vpnV2ReconcileExisting">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_existing_label')) ?>
+            </label>
+            <div class="form-text">
+                <?= htmlSC(sprintf(
+                    FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_affected_count'),
+                    $affectedSubscriptions
+                )) ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <div class="d-flex flex-wrap gap-2 mt-4">
         <button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_save')) ?></button>
         <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans')) ?>"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_cancel')) ?></a>
     </div>
 </form>
+
+<?php if ($editing): ?>
+    <section class="border rounded-5 p-3 p-md-4 mt-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h2 class="h6 mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconciliation_title')) ?></h2>
+                <p class="small text-body-secondary mb-0">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconciliation_help')) ?>
+                </p>
+                <div class="d-flex flex-wrap gap-3 small text-body-secondary mt-2">
+                    <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_affected_subscriptions')) ?>:
+                        <strong class="text-body"><?= $affectedSubscriptions ?></strong></span>
+                    <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_missing_connections')) ?>:
+                        <strong class="text-body"><?= $missingConnectionCount ?></strong></span>
+                    <span>
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_connections')) ?>:
+                    <strong class="text-body"><?= $obsoleteConnectionCount ?></strong></span>
+                </div>
+                <?php if ($obsoleteTargets !== []): ?>
+                    <div class="small text-body-secondary mt-2">
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_targets')) ?>:
+                        <?php foreach ($obsoleteTargets as $target): ?>
+                            <span class="badge rounded-pill text-bg-light border ms-1">
+                                #<?= (int)$target['server_id'] ?> <?= htmlSC((string)$target['server_name']) ?> /
+                                #<?= (int)$target['inbound_id'] ?> <?= htmlSC((string)$target['inbound_name']) ?> ·
+                                <?= (int)$target['connection_count'] ?>
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php if ($latestReconciliation !== null): ?>
+                <div class="small text-body-secondary text-md-end">
+                    <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_last_reconciliation')) ?>:
+                        <?= htmlSC((string)($latestReconciliation['finished_at'] ?? $latestReconciliation['started_at'] ?? '—')) ?></div>
+                    <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_operation_status')) ?>:
+                        <span class="fw-semibold text-body"><?= htmlSC(FireballPluginVpnManagerV2::t(
+                            'vpn_manager_v2_reconcile_status_' . (string)$latestReconciliation['status']
+                        )) ?></span></div>
+                    <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_processed')) ?>:
+                        <?= (int)$latestReconciliation['processed_count'] ?> / <?= (int)$latestReconciliation['total_count'] ?> ·
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_successful')) ?>: <?= (int)$latestReconciliation['success_count'] ?> ·
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_errors')) ?>: <?= (int)$latestReconciliation['failure_count'] ?> ·
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_skipped')) ?>: <?= (int)$latestReconciliation['skipped_count'] ?>
+                    </div>
+                    <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_started_at')) ?>:
+                        <?= htmlSC((string)($latestReconciliation['started_at'] ?? '—')) ?> ·
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_finished_at')) ?>:
+                        <?= htmlSC((string)($latestReconciliation['finished_at'] ?? '—')) ?></div>
+                    <?php if ((int)$latestReconciliation['failure_count'] > 0): ?>
+                        <a href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections')) ?>">
+                            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_open_sync_errors')) ?>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <?php if (Permissions::allows(Permissions::RECONCILE)): ?>
+            <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/preview')) ?>">
+                <?= get_csrf_field() ?>
+                <button class="btn btn-outline-secondary rounded-pill" type="submit">
+                    <i class="ci-search" aria-hidden="true"></i>
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_preview_reconciliation')) ?>
+                </button>
+            </form>
+            <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/reconcile')) ?>">
+                <?= get_csrf_field() ?>
+                <button class="btn btn-dark rounded-pill" type="submit">
+                    <i class="ci-refresh-cw" aria-hidden="true"></i>
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reconcile')) ?>
+                </button>
+            </form>
+            <?php endif; ?>
+            <?php if ($obsoleteConnectionCount > 0 && Permissions::allows(Permissions::DELETE_CONNECTIONS)): ?>
+            <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/remove-obsolete')) ?>"
+                  data-admin-delete-form
+                  data-delete-message="<?= htmlSC(sprintf(
+                      FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_remove_obsolete'),
+                      $obsoleteSubscriptionCount,
+                      $obsoleteConnectionCount
+                  )) ?>"
+                  data-delete-item="#<?= $planId ?>"
+                  data-delete-confirm-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_remove_obsolete')) ?>">
+                <?= get_csrf_field() ?>
+                <button class="btn btn-outline-danger rounded-pill" type="submit">
+                    <i class="ci-trash" aria-hidden="true"></i>
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_remove_obsolete')) ?>
+                </button>
+            </form>
+            <?php endif; ?>
+        </div>
+    </section>
+<?php endif; ?>
 
 <?= view()->renderPartial('admin/shell_close') ?>

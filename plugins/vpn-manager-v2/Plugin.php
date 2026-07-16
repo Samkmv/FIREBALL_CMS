@@ -5,6 +5,7 @@ use Fireball\VpnManagerV2\Repositories\ProfileVpnRepository;
 use Fireball\VpnManagerV2\Jobs\VpnV2CheckExpirationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2CheckTrafficLimitsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2RetryFailedOperationsJob;
+use Fireball\VpnManagerV2\Jobs\VpnV2ReconcilePlanSubscriptionsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SendExpirationNotificationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SyncTrafficJob;
 use Fireball\VpnManagerV2\Services\SettingsService;
@@ -134,6 +135,10 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
             'vpn_v2_retry_failed_operations' => [
                 'class' => VpnV2RetryFailedOperationsJob::class,
                 'schedule' => '*/10 * * * *',
+            ],
+            'vpn_v2_reconcile_plan_subscriptions' => [
+                'class' => VpnV2ReconcilePlanSubscriptionsJob::class,
+                'schedule' => '* * * * *',
             ],
         ];
     }

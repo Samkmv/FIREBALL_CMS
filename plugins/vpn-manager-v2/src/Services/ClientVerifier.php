@@ -10,7 +10,13 @@ final class ClientVerifier
     {
     }
 
-    public function findInInbound(array $inbound, string $clientId, string $clientEmail): ?array
+    public function findInInbound(
+        array $inbound,
+        string $clientId,
+        string $clientEmail,
+        string $remoteClientId = '',
+        string $clientSubId = ''
+    ): ?array
     {
         $settings = $inbound['settings'] ?? [];
         if (is_string($settings)) {
@@ -18,15 +24,50 @@ final class ClientVerifier
             $settings = is_array($decoded) ? $decoded : [];
         }
 
-        foreach ((array)($settings['clients'] ?? []) as $client) {
+        $clients = array_values(array_filter(
+            (array)($settings['clients'] ?? []),
+            static fn(mixed $client): bool => is_array($client)
+        ));
+        foreach ([
+            ['id', $clientId],
+            ['remote', $remoteClientId],
+            ['email', $clientEmail],
+            ['sub_id', $clientSubId],
+        ] as [$dimension, $expected]) {
+            $expected = trim((string)$expected);
+            if ($expected === '') {
+                continue;
+            }
+            $matches = [];
+            foreach ($clients as $client) {
+                $actual = match ($dimension) {
+                    'id' => trim((string)($client['id'] ?? $client['uuid'] ?? $client['password'] ?? '')),
+                    'remote' => trim((string)($client['remote_client_id'] ?? $client['clientId'] ?? '')),
+                    'email' => trim((string)($client['email'] ?? '')),
+                    'sub_id' => trim((string)($client['subId'] ?? $client['subid'] ?? '')),
+                    default => '',
+                };
+                if ($actual !== '' && hash_equals($actual, $expected)) {
+                    $matches[] = $client;
+                }
+            }
+            if (count($matches) === 1) {
+                return $matches[0];
+            }
+            if (count($matches) > 1) {
+                return null;
+            }
+        }
+
+        foreach ($clients as $client) {
             if (!is_array($client)) {
                 continue;
             }
 
             $remoteId = trim((string)($client['id'] ?? $client['uuid'] ?? $client['password'] ?? ''));
             $remoteEmail = trim((string)($client['email'] ?? ''));
-            if (($clientId !== '' && $remoteId !== '' && hash_equals($remoteId, $clientId))
-                || ($clientEmail !== '' && $remoteEmail !== '' && hash_equals($remoteEmail, $clientEmail))) {
+            if ($clientId !== '' && $remoteId !== '' && hash_equals($remoteId, $clientId)
+                && $clientEmail !== '' && $remoteEmail !== '' && hash_equals($remoteEmail, $clientEmail)) {
                 return $client;
             }
         }

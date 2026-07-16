@@ -6,11 +6,13 @@ use Fireball\VpnManagerV2\DTO\ProvisioningResult;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
+use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Services\QrCodeService;
 use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
 use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
 use Fireball\VpnManagerV2\Services\SubscriptionDeletionService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionUrlService;
+use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
 use Fireball\VpnManagerV2\Support\AdminTableState;
 use Fireball\VpnManagerV2\Support\Permissions;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
@@ -19,6 +21,7 @@ final class SubscriptionController
 {
     public function index(): string
     {
+        Permissions::authorize(Permissions::VIEW);
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscriptions', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_subtitle'),
@@ -29,6 +32,7 @@ final class SubscriptionController
 
     public function create(): string
     {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
         $repository = new SubscriptionRepository();
 
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscription-form', \FireballPluginVpnManagerV2::viewData('subscriptions', [
@@ -42,6 +46,7 @@ final class SubscriptionController
 
     public function store(): void
     {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
         try {
             $result = (new SubscriptionProvisioningService())->create(request()->getData(), $this->adminId());
             $this->flashResult($result, true);
@@ -58,6 +63,7 @@ final class SubscriptionController
 
     public function edit(): string
     {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
         $subscription = (new SubscriptionRepository())->find((int)get_route_param('id'));
         if (!$subscription) {
             abort('', 404);
@@ -76,6 +82,7 @@ final class SubscriptionController
 
     public function update(): void
     {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
         $subscriptionId = (int)get_route_param('id');
         $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
         try {
@@ -103,6 +110,7 @@ final class SubscriptionController
 
     public function show(): string
     {
+        Permissions::authorize(Permissions::VIEW);
         $repository = new SubscriptionRepository();
         $subscription = $repository->find((int)get_route_param('id'));
         if (!$subscription) {
@@ -112,7 +120,7 @@ final class SubscriptionController
         $subscriptionQr = '';
         $expiresAt = strtotime((string)($subscription['expires_at'] ?? ''));
         $startsAt = strtotime((string)($subscription['starts_at'] ?? ''));
-        if ((string)$subscription['status'] === 'active'
+        if (in_array((string)$subscription['status'], ['active', 'partial_sync', 'sync_error'], true)
             && ($startsAt === false || $startsAt <= time())
             && ($expiresAt === false || $expiresAt > time())) {
             $token = (new SubscriptionConfigRepository())->tokenForSubscription((int)$subscription['id']);
@@ -122,11 +130,30 @@ final class SubscriptionController
             }
         }
 
+        $reconciler = new VpnPlanSubscriptionReconciler();
+        $planRepository = new PlanReconciliationRepository();
+        $nodes = $repository->nodesForSubscription((int)$subscription['id']);
+        $missing = $reconciler->findMissingNodes((int)$subscription['id']);
+        $obsolete = $reconciler->findObsoleteNodes((int)$subscription['id']);
+        $planCount = count($planRepository->activePlanNodes((int)$subscription['plan_id']));
+        $createdCount = count(array_filter($nodes, static fn(array $node): bool =>
+            in_array((string)$node['status'], ['active', 'disabled'], true)
+        ));
+        $missingCount = max(count($missing), max(0, $planCount - $createdCount));
+
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscription-show', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_show_title'), (int)$subscription['id']),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_show_subtitle'),
             'subscription' => $subscription,
-            'nodes' => $repository->nodesForSubscription((int)$subscription['id']),
+            'nodes' => $nodes,
+            'reconciliationSummary' => [
+                'plan_count' => $planCount,
+                'created_count' => $createdCount,
+                'missing_count' => $missingCount,
+                'obsolete_count' => count($obsolete),
+                'matches' => $missingCount === 0 && $obsolete === [],
+                'checked_at' => date('Y-m-d H:i:s'),
+            ],
             'subscriptionUrl' => $subscriptionUrl,
             'subscriptionQr' => $subscriptionQr,
             'returnQuery' => AdminTableState::sanitize(request()->get('return_query', '')),
@@ -175,6 +202,33 @@ final class SubscriptionController
         }
 
         response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId, $returnQuery));
+    }
+
+    public function createMissing(): void
+    {
+        Permissions::authorize(Permissions::CREATE_CONNECTIONS);
+        Permissions::authorize(Permissions::RECONCILE);
+        $subscriptionId = (int)get_route_param('id');
+        try {
+            $result = (new VpnPlanSubscriptionReconciler())->reconcileSubscription(
+                $subscriptionId,
+                ['initiated_by' => $this->adminId()]
+            );
+            if (!$result->successful()) {
+                session()->setFlash('warning', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_create_missing_partial'));
+            } elseif ($result->noChanges()) {
+                session()->setFlash('info', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_reconcile_already_matches'));
+            } else {
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_create_missing_success'));
+            }
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 missing connection creation failed', ['Subscription' => $subscriptionId], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_create_missing'));
+        }
+
+        $this->redirect('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId);
     }
 
     private function flashResult(ProvisioningResult $result, bool $created): void

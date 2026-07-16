@@ -46,6 +46,12 @@ $router->post('/admin/plugins/vpn-manager-v2/plans/edit/(?P<id>\d+)/?', [PlanCon
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/plans/toggle', [PlanController::class, 'toggle'])
     ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/preview/?', [PlanController::class, 'preview'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/reconcile/?', [PlanController::class, 'reconcile'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/remove-obsolete/?', [PlanController::class, 'removeObsolete'])
+    ->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions', [SubscriptionController::class, 'index'])
     ->middleware(['auth', 'admin']);
@@ -60,6 +66,8 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/edit/(?P<id>\d+)/?', 
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/suspend/?', [SubscriptionController::class, 'suspend'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/delete/?', [SubscriptionController::class, 'delete'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/create-missing/?', [SubscriptionController::class, 'createMissing'])
     ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/?', [SubscriptionController::class, 'show'])
     ->middleware(['auth', 'admin']);

@@ -42,12 +42,15 @@ final class SubscriptionDeletionService
                 $result = ($this->remoteSync ?? new RemoteClientSyncService())->push($node, $desired, [
                     'flow' => $this->flow($node['flow'] ?? null),
                     'traffic_limit_bytes' => $this->limit($node['traffic_limit_bytes'] ?? null),
+                    'desired_enabled' => false,
                 ]);
                 $repository->updateNodeConfirmed(
                     $nodeId,
                     $this->flow($node['flow'] ?? null),
                     $this->limit($node['traffic_limit_bytes'] ?? null),
-                    $result['traffic_used_bytes']
+                    $result['traffic_used_bytes'],
+                    'disabled',
+                    false
                 );
                 $synced++;
                 $configChanged = $configChanged || $result['remote_updated'] || (string)$node['status'] !== 'active';
