@@ -12,19 +12,19 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
-    <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections')) ?>">
+    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections')) ?>">
         <i class="ci-arrow-left" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_back_to_connections')) ?>
     </a>
-    <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . (int)$connection['subscription_id'])) ?>">
+    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . (int)$connection['subscription_id'])) ?>">
         <i class="ci-link" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_open_subscription')) ?> #<?= (int)$connection['subscription_id'] ?>
     </a>
-    <a class="btn btn-dark rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/edit')) ?>">
+    <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/edit')) ?>">
         <i class="ci-edit-2" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit')) ?>
     </a>
     <?php if (ProvisioningStatus::canRetry((string)($connection['status'] ?? ''))): ?>
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/retry')) ?>">
             <?= get_csrf_field() ?>
-            <button class="btn btn-warning rounded-pill" type="submit">
+            <button class="btn btn-warning rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                 <i class="ci-refresh-cw" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_creation')) ?>
             </button>
         </form>
@@ -38,14 +38,14 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/sync')) ?>">
             <?= get_csrf_field() ?>
             <input type="hidden" name="mode" value="pull">
-            <button class="btn btn-outline-secondary rounded-pill" type="submit">
+            <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                 <i class="ci-download" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_pull')) ?>
             </button>
         </form>
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/sync')) ?>">
             <?= get_csrf_field() ?>
             <input type="hidden" name="mode" value="push">
-            <button class="btn btn-outline-primary rounded-pill" type="submit">
+            <button class="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                 <i class="ci-upload" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_push')) ?>
             </button>
         </form>

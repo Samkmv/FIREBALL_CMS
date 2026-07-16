@@ -91,17 +91,17 @@ foreach ($nodes as $node) {
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
-    <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(AdminTableState::append('/admin/plugins/vpn-manager-v2/subscriptions', $returnQuery)) ?>">
+    <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(AdminTableState::append('/admin/plugins/vpn-manager-v2/subscriptions', $returnQuery)) ?>">
         <i class="ci-arrow-left" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_back_to_subscriptions')) ?>
     </a>
-    <a class="btn btn-dark rounded-pill" href="<?= htmlSC(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $subscriptionId, $returnQuery)) ?>">
+    <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $subscriptionId, $returnQuery)) ?>">
         <i class="ci-edit-2" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit')) ?>
     </a>
     <?php if ((string)($subscription['status'] ?? '') === 'active'): ?>
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/suspend')) ?>">
             <?= get_csrf_field() ?>
             <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
-            <button class="btn btn-outline-warning rounded-pill" type="submit">
+            <button class="btn btn-outline-warning rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                 <i class="ci-pause-circle" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_suspend')) ?>
             </button>
         </form>
@@ -112,7 +112,7 @@ foreach ($nodes as $node) {
               data-delete-item="#<?= $subscriptionId ?>" data-delete-confirm-label="<?= htmlSC($deleteLabel) ?>">
             <?= get_csrf_field() ?>
             <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
-            <button class="btn btn-outline-danger rounded-pill" type="submit">
+            <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                 <i class="<?= $deleteRetry ? 'ci-refresh-cw' : 'ci-trash' ?>" aria-hidden="true"></i> <?= htmlSC($deleteLabel) ?>
             </button>
         </form>
@@ -141,7 +141,7 @@ foreach ($nodes as $node) {
             && Permissions::allows(Permissions::RECONCILE)): ?>
             <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/create-missing')) ?>">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-dark rounded-pill" type="submit">
+                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                     <i class="ci-plus" aria-hidden="true"></i>
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_create_missing')) ?>
                 </button>

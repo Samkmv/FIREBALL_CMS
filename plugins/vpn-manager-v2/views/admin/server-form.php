@@ -91,15 +91,19 @@ $secretPlaceholder = static function (string $key) use ($server): string {
             <input class="form-control" id="vpnV2City" type="text" name="city" maxlength="120" value="<?= htmlSC((string)($server['city'] ?? '')) ?>">
         </div>
         <div class="col-md-6">
-            <div class="form-check form-switch border rounded-4 p-3 ps-5 h-100">
-                <input class="form-check-input" id="vpnV2ShowFlag" type="checkbox" name="show_flag" value="1" <?= (int)($server['show_flag'] ?? 1) === 1 ? 'checked' : '' ?>>
-                <label class="form-check-label fw-medium" for="vpnV2ShowFlag"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_show_flag')) ?></label>
+            <div class="border rounded-4 p-3">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" id="vpnV2ShowFlag" type="checkbox" name="show_flag" value="1" <?= (int)($server['show_flag'] ?? 1) === 1 ? 'checked' : '' ?>>
+                    <label class="form-check-label fw-medium" for="vpnV2ShowFlag"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_show_flag')) ?></label>
+                </div>
             </div>
         </div>
         <div class="col-md-6">
-            <div class="form-check form-switch border rounded-4 p-3 ps-5 h-100">
-                <input class="form-check-input" id="vpnV2Enabled" type="checkbox" name="is_enabled" value="1" <?= (int)($server['is_enabled'] ?? 1) === 1 ? 'checked' : '' ?>>
-                <label class="form-check-label fw-medium" for="vpnV2Enabled"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_is_enabled')) ?></label>
+            <div class="border rounded-4 p-3">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" id="vpnV2Enabled" type="checkbox" name="is_enabled" value="1" <?= (int)($server['is_enabled'] ?? 1) === 1 ? 'checked' : '' ?>>
+                    <label class="form-check-label fw-medium" for="vpnV2Enabled"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_is_enabled')) ?></label>
+                </div>
             </div>
         </div>
     </div>

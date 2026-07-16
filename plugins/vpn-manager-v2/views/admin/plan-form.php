@@ -164,9 +164,11 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
             </select>
         </div>
         <div class="col-md-6 d-flex align-items-end">
-            <div class="form-check form-switch border rounded-4 p-3 ps-5 w-100">
-                <input class="form-check-input" id="vpnV2PlanActive" type="checkbox" name="is_active" value="1" <?= (int)($plan['is_active'] ?? 1) === 1 ? 'checked' : '' ?>>
-                <label class="form-check-label fw-medium" for="vpnV2PlanActive"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_plan_active')) ?></label>
+            <div class="border rounded-4 p-3 w-100">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" id="vpnV2PlanActive" type="checkbox" name="is_active" value="1" <?= (int)($plan['is_active'] ?? 1) === 1 ? 'checked' : '' ?>>
+                    <label class="form-check-label fw-medium" for="vpnV2PlanActive"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_plan_active')) ?></label>
+                </div>
             </div>
         </div>
     </div>
@@ -210,17 +212,19 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
     </section>
 
     <?php if ($editing): ?>
-        <div class="form-check form-switch border rounded-4 p-3 ps-5 mt-4">
-            <input class="form-check-input" id="vpnV2ReconcileExisting" type="checkbox"
-                   name="reconcile_existing" value="1" checked>
-            <label class="form-check-label fw-medium" for="vpnV2ReconcileExisting">
-                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_existing_label')) ?>
-            </label>
-            <div class="form-text">
-                <?= htmlSC(sprintf(
-                    FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_affected_count'),
-                    $affectedSubscriptions
-                )) ?>
+        <div class="border rounded-4 p-3 mt-4">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" id="vpnV2ReconcileExisting" type="checkbox"
+                       name="reconcile_existing" value="1" checked>
+                <label class="form-check-label fw-medium" for="vpnV2ReconcileExisting">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_existing_label')) ?>
+                </label>
+                <div class="form-text">
+                    <?= htmlSC(sprintf(
+                        FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_affected_count'),
+                        $affectedSubscriptions
+                    )) ?>
+                </div>
             </div>
         </div>
     <?php endif; ?>
@@ -291,14 +295,14 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
             <?php if (Permissions::allows(Permissions::RECONCILE)): ?>
             <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/preview')) ?>">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-outline-secondary rounded-pill" type="submit">
+                <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                     <i class="ci-search" aria-hidden="true"></i>
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_preview_reconciliation')) ?>
                 </button>
             </form>
             <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/reconcile')) ?>">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-dark rounded-pill" type="submit">
+                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                     <i class="ci-refresh-cw" aria-hidden="true"></i>
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reconcile')) ?>
                 </button>
@@ -315,7 +319,7 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                   data-delete-item="#<?= $planId ?>"
                   data-delete-confirm-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_remove_obsolete')) ?>">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-outline-danger rounded-pill" type="submit">
+                <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                     <i class="ci-trash" aria-hidden="true"></i>
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_remove_obsolete')) ?>
                 </button>

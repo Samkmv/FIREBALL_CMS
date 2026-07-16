@@ -58,7 +58,7 @@ $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQ
     </div>
 
     <div class="d-flex flex-wrap gap-2 mt-4">
-        <button class="btn btn-dark rounded-pill" type="submit">
+        <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
             <i class="ci-save" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_save_and_sync')) ?>
         </button>
         <a class="btn btn-outline-secondary rounded-pill"
