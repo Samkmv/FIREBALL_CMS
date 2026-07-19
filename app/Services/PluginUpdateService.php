@@ -90,6 +90,7 @@ final class PluginUpdateService extends UpdateCenter
                 throw new RuntimeException(return_translation('admin_plugin_updates_version_invalid'));
             }
 
+            $previousState = $this->storedState($slug);
             $state = [
                 'status' => 'ok',
                 'message' => return_translation($comparison < 0
@@ -100,7 +101,8 @@ final class PluginUpdateService extends UpdateCenter
                 'remote_commit' => $remote['commit'],
                 'update_available' => $comparison < 0,
                 'checked_at' => date('Y-m-d H:i:s'),
-                'last_updated_at' => (string)($this->storedState($slug)['last_updated_at'] ?? ''),
+                'last_updated_at' => (string)($previousState['last_updated_at'] ?? ''),
+                'backup_file' => (string)($previousState['backup_file'] ?? ''),
                 'release_notes' => $this->normalizeReleaseNotes($remote['metadata']['release_notes'] ?? []),
             ];
             $this->persistState($slug, $state);
@@ -116,6 +118,52 @@ final class PluginUpdateService extends UpdateCenter
             $this->persistStateSafely($slug, $state);
             throw new RuntimeException((string)$state['message'], 0, $exception);
         }
+    }
+
+    /**
+     * Проверяет все установленные плагины с включённым источником обновлений.
+     * Ошибка одного репозитория не прерывает проверку остальных плагинов.
+     */
+    public function checkAll(): array
+    {
+        $summary = [
+            'configured' => 0,
+            'checked' => 0,
+            'available' => 0,
+            'failed' => 0,
+            'failures' => [],
+        ];
+
+        foreach ($this->pluginManager->all() as $plugin) {
+            if (empty($plugin['installed']) || empty($plugin['valid'])) {
+                continue;
+            }
+
+            $slug = (string)($plugin['slug'] ?? '');
+            try {
+                $metadata = $this->pluginManager->metadata($slug);
+                $update = $metadata['update'] ?? null;
+                if (!is_array($update) || empty($update['enabled'])) {
+                    continue;
+                }
+
+                $summary['configured']++;
+                $state = $this->check($slug);
+                $summary['checked']++;
+                if (!empty($state['update_available'])) {
+                    $summary['available']++;
+                }
+            } catch (Throwable $exception) {
+                $summary['failed']++;
+                $summary['failures'][$slug] = $this->safeError(
+                    $exception,
+                    'admin_plugin_updates_check_failed'
+                );
+                log_error_details('Plugin update check failed', ['Plugin' => $slug], $exception);
+            }
+        }
+
+        return $summary;
     }
 
     public function update(string $slug, array $user = []): array
@@ -706,10 +754,21 @@ final class PluginUpdateService extends UpdateCenter
             return [];
         }
 
-        return array_slice(array_values(array_filter(array_map(
-            static fn(mixed $note): string => mb_substr(trim((string)$note), 0, 240),
-            $notes
-        ))), 0, 10);
+        $normalized = [];
+        foreach ($notes as $note) {
+            if (!is_scalar($note)) {
+                continue;
+            }
+            $note = mb_substr(trim((string)$note), 0, 240);
+            if ($note !== '') {
+                $normalized[] = $note;
+            }
+            if (count($normalized) >= 10) {
+                break;
+            }
+        }
+
+        return $normalized;
     }
 
     private function safeError(Throwable $exception, string $fallbackKey): string
@@ -735,6 +794,7 @@ final class PluginUpdateService extends UpdateCenter
             'update_available' => false,
             'checked_at' => '',
             'last_updated_at' => '',
+            'backup_file' => '',
             'release_notes' => [],
             'repository' => '',
             'branch' => '',

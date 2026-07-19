@@ -122,6 +122,11 @@ final class Stage8Client implements ThreeXuiClientInterface
         return ['success' => true];
     }
 
+    public function resetClientTraffic(int $remoteInboundId, string $clientEmail): array
+    {
+        throw new LogicException('Not used in stage 8.');
+    }
+
     private function touch(int $remoteInboundId): void
     {
         $this->panel->remoteInboundIds[] = $remoteInboundId;

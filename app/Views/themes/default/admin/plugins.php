@@ -5,12 +5,33 @@ $statusLabels = [
     'not_installed' => [return_translation('admin_plugins_status_not_installed'), 'text-body bg-body-tertiary'],
 ];
 $canUpdatePlugins = \FBL\Auth::isAdmin();
+$configuredUpdateCount = count(array_filter(
+    $plugins,
+    static fn(array $plugin): bool => !empty($plugin['update']['configured'])
+));
+$availableUpdateCount = count(array_filter(
+    $plugins,
+    static fn(array $plugin): bool => !empty($plugin['update']['update_available'])
+));
+$pageActions = '<div class="d-flex flex-wrap align-items-center gap-2">';
+$pageActions .= '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="'
+    . htmlSC(base_href('/admin/docs/plugins')) . '"><i class="ci-book-open"></i>'
+    . htmlSC(return_translation('admin_plugins_docs')) . '</a>';
+if ($canUpdatePlugins && $configuredUpdateCount > 0) {
+    $pageActions .= '<form action="' . htmlSC(base_href('/admin/plugins/check-updates')) . '" method="post" class="d-inline-flex">'
+        . get_csrf_field()
+        . '<button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">'
+        . '<i class="ci-refresh-cw" aria-hidden="true"></i>'
+        . htmlSC(return_translation('admin_plugin_updates_check_all'))
+        . '</button></form>';
+}
+$pageActions .= '</div>';
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_plugins_title'),
     'subtitle' => return_translation('admin_plugins_subtitle'),
-    'actions' => '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/docs/plugins') . '"><i class="ci-book-open"></i>' . htmlSC(return_translation('admin_plugins_docs')) . '</a>',
+    'actions' => $pageActions,
 ]) ?>
 
     <div class="alert alert-info rounded-4 mb-4" role="alert">
@@ -19,6 +40,20 @@ $canUpdatePlugins = \FBL\Auth::isAdmin();
             <div>
                 <div class="fw-semibold"><?= print_translation('admin_plugin_updates_independent_title') ?></div>
                 <div class="small mt-1"><?= print_translation('admin_plugin_updates_independent_text') ?></div>
+                <?php if ($configuredUpdateCount > 0): ?>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <span class="badge rounded-pill text-bg-light">
+                            <?= print_translation('admin_plugin_updates_configured_count') ?>:
+                            <?= htmlSC((string)$configuredUpdateCount) ?>
+                        </span>
+                        <?php if ($availableUpdateCount > 0): ?>
+                            <span class="badge rounded-pill text-bg-warning">
+                                <?= print_translation('admin_plugin_updates_available_count') ?>:
+                                <?= htmlSC((string)$availableUpdateCount) ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -43,6 +78,10 @@ $canUpdatePlugins = \FBL\Auth::isAdmin();
                 $remoteVersion = trim((string)($update['remote_version'] ?? ''));
                 $updateAvailable = !empty($update['update_available']) && $remoteVersion !== '';
                 $updateStatus = (string)($update['status'] ?? 'never');
+                $releaseNotes = is_array($update['release_notes'] ?? null)
+                    ? array_values(array_filter($update['release_notes'], 'is_string'))
+                    : [];
+                $backupFile = trim((string)($update['backup_file'] ?? ''));
                 $updateAlert = $updateStatus === 'error'
                     ? 'danger'
                     : ($updateAvailable ? 'warning' : ($updateStatus === 'ok' || $updateStatus === 'updated' ? 'success' : 'secondary'));
@@ -102,7 +141,23 @@ $canUpdatePlugins = \FBL\Auth::isAdmin();
                                                 <?= htmlSC((string)$update['last_updated_at']) ?>
                                             </div>
                                         <?php endif; ?>
+                                        <?php if ($backupFile !== ''): ?>
+                                            <div class="mt-1 text-body-secondary">
+                                                <?= print_translation('admin_plugin_updates_backup') ?>:
+                                                <code><?= htmlSC($backupFile) ?></code>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
+                                    <?php if ($releaseNotes !== []): ?>
+                                        <div class="border rounded-4 p-3 small mt-3">
+                                            <div class="fw-semibold mb-2"><?= print_translation('admin_plugin_updates_release_notes') ?></div>
+                                            <ul class="mb-0 ps-3">
+                                                <?php foreach ($releaseNotes as $note): ?>
+                                                    <li><?= htmlSC($note) ?></li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <div class="alert alert-secondary small mt-3 mb-0" role="status">
                                         <?= print_translation('admin_plugin_updates_not_configured') ?>

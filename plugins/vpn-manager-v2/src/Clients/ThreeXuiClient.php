@@ -9,6 +9,7 @@ use Fireball\VpnManagerV2\Exceptions\ThreeXuiAuthenticationException;
 use Fireball\VpnManagerV2\Exceptions\ThreeXuiHttpException;
 use Fireball\VpnManagerV2\Exceptions\ThreeXuiResponseException;
 use Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException;
+use Fireball\VpnManagerV2\Support\NetworkTargetGuard;
 
 final class ThreeXuiClient implements ThreeXuiClientInterface
 {
@@ -99,12 +100,8 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
 
         $this->authenticate();
         $decoded = $this->requestJson('GET', $this->config->endpoint('/panel/api/inbounds/get/' . $remoteInboundId));
-        $inbound = $decoded['obj'] ?? $decoded;
-        if (!is_array($inbound) || array_is_list($inbound)) {
-            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_inbound_response'));
-        }
 
-        return $inbound;
+        return (new ThreeXuiResponseMapper())->inbound($decoded);
     }
 
     public function getClientTraffic(string $clientIdentifier): array
@@ -121,7 +118,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
                 $this->config->endpoint('/panel/api/clients/traffic/' . rawurlencode($clientIdentifier))
             );
         } catch (ThreeXuiHttpException $exception) {
-            if ($exception->httpStatus() !== 404) {
+            if (!$this->isEndpointFallbackStatus($exception)) {
                 throw $exception;
             }
         }
@@ -135,13 +132,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
     public function findClient(int $remoteInboundId, string $clientId = '', string $clientEmail = ''): ?array
     {
         $inbound = $this->getInbound($remoteInboundId);
-        $settings = $inbound['settings'] ?? [];
-        if (is_string($settings)) {
-            $decoded = json_decode($settings, true);
-            $settings = is_array($decoded) ? $decoded : [];
-        }
-
-        foreach ((array)($settings['clients'] ?? []) as $client) {
+        foreach ((new ThreeXuiResponseMapper())->clients($inbound) as $client) {
             if (!is_array($client)) {
                 continue;
             }
@@ -169,7 +160,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
                 'inboundIds' => [$remoteInboundId],
             ], 'json');
         } catch (ThreeXuiHttpException $exception) {
-            if ($exception->httpStatus() !== 404) {
+            if (!$this->isEndpointFallbackStatus($exception)) {
                 throw $exception;
             }
         }
@@ -195,7 +186,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
                     'json'
                 );
             } catch (ThreeXuiHttpException $exception) {
-                if ($exception->httpStatus() !== 404) {
+                if (!$this->isEndpointFallbackStatus($exception)) {
                     throw $exception;
                 }
             }
@@ -216,7 +207,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             try {
                 return $this->requestJson('POST', $this->config->endpoint('/panel/api/clients/del/' . rawurlencode($email)), [], 'json');
             } catch (ThreeXuiHttpException $exception) {
-                if ($exception->httpStatus() !== 404) {
+                if (!$this->isEndpointFallbackStatus($exception)) {
                     throw $exception;
                 }
             }
@@ -228,35 +219,50 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         );
     }
 
-    private function fetchInbounds(): array
+    /** Explicit command only; ordinary synchronization never calls this method. */
+    public function resetClientTraffic(int $remoteInboundId, string $clientEmail): array
     {
-        $decoded = $this->requestJson('GET', $this->config->endpoint('/panel/api/inbounds/list'));
-        if (array_key_exists('obj', $decoded)) {
-            $items = $decoded['obj'];
-        } elseif (array_key_exists('inbounds', $decoded)) {
-            $items = $decoded['inbounds'];
-        } elseif (array_is_list($decoded)) {
-            $items = $decoded;
-        } else {
-            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_inbounds_response'));
+        $clientEmail = trim($clientEmail);
+        if ($remoteInboundId <= 0 || $clientEmail === '') {
+            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_client_traffic_identifier'));
         }
+        $this->authenticate();
 
-        if (!is_array($items) || !array_is_list($items)) {
-            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_inbounds_response'));
-        }
-
-        foreach ($items as $item) {
-            if (!is_array($item)) {
-                throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_inbounds_response'));
-            }
-        }
-
-        return $items;
+        return $this->requestJson(
+            'POST',
+            $this->config->endpoint('/panel/api/inbounds/' . $remoteInboundId
+                . '/resetClientTraffic/' . rawurlencode($clientEmail))
+        );
     }
 
-    private function requestJson(string $method, string $url, array $payload = [], string $encoding = 'form'): array
+    private function fetchInbounds(): array
     {
-        return $this->decodeJsonResponse($this->request($method, $url, $payload, $encoding));
+        return (new ThreeXuiResponseMapper())->inbounds(
+            $this->requestJson('GET', $this->config->endpoint('/panel/api/inbounds/list'))
+        );
+    }
+
+    private function requestJson(
+        string $method,
+        string $url,
+        array $payload = [],
+        string $encoding = 'form',
+        bool $retryAuthentication = true
+    ): array
+    {
+        try {
+            return $this->decodeJsonResponse($this->request($method, $url, $payload, $encoding));
+        } catch (ThreeXuiAuthenticationException $exception) {
+            if (!$retryAuthentication || $this->config->authType !== 'password') {
+                throw $exception;
+            }
+            $this->authenticated = false;
+            $this->cachedInbounds = null;
+            $this->resetCookieFile();
+            $this->authenticate();
+
+            return $this->requestJson($method, $url, $payload, $encoding, false);
+        }
     }
 
     private function decodeJsonResponse(ThreeXuiHttpResponse $response, bool $authenticationStage = false): array
@@ -302,6 +308,10 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         if (!function_exists('curl_init')) {
             throw new ThreeXuiTransportException($this->message('vpn_manager_v2_error_curl_required'));
         }
+        $addresses = (new NetworkTargetGuard())->validatedRequestAddresses(
+            $url,
+            $this->config->allowPrivateNetwork
+        );
 
         $headers = ['Accept: application/json'];
         if ($this->config->authType === 'token' && $this->config->token !== '') {
@@ -321,10 +331,16 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             CURLOPT_CUSTOMREQUEST => strtoupper($method),
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_ENCODING => '',
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.2',
+            CURLOPT_SSL_VERIFYPEER => $this->config->verifySsl,
+            CURLOPT_SSL_VERIFYHOST => $this->config->verifySsl ? 2 : 0,
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.15',
         ]);
+        $resolve = $this->curlResolveEntries($url, $addresses);
+        if ($resolve !== []) {
+            // Pin cURL to the addresses that passed validation. A second DNS
+            // answer cannot redirect the request to a private service.
+            curl_setopt($handle, CURLOPT_RESOLVE, $resolve);
+        }
 
         if ($this->cookieFile !== null) {
             curl_setopt($handle, CURLOPT_COOKIEJAR, $this->cookieFile);
@@ -370,6 +386,14 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         $this->cookieFile = $file;
     }
 
+    private function resetCookieFile(): void
+    {
+        if ($this->cookieFile !== null && is_file($this->cookieFile)) {
+            @unlink($this->cookieFile);
+        }
+        $this->cookieFile = null;
+    }
+
     private function encodeJson(array $payload): string
     {
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -378,6 +402,27 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         }
 
         return $json;
+    }
+
+    private function isEndpointFallbackStatus(ThreeXuiHttpException $exception): bool
+    {
+        return in_array($exception->httpStatus(), [404, 405], true);
+    }
+
+    private function curlResolveEntries(string $url, array $addresses): array
+    {
+        $host = trim((string)(parse_url($url, PHP_URL_HOST) ?: ''), '[]');
+        if ($host === '' || filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return [];
+        }
+        $scheme = strtolower((string)(parse_url($url, PHP_URL_SCHEME) ?: 'https'));
+        $port = (int)(parse_url($url, PHP_URL_PORT) ?: ($scheme === 'http' ? 80 : 443));
+
+        return array_values(array_map(
+            static fn(string $address): string => $host . ':' . $port . ':'
+                . (str_contains($address, ':') ? '[' . $address . ']' : $address),
+            $addresses
+        ));
     }
 
     private function message(string $key): string

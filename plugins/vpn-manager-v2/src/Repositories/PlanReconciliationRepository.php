@@ -3,6 +3,7 @@
 namespace Fireball\VpnManagerV2\Repositories;
 
 use Fireball\VpnManagerV2\Support\Uuid;
+use Fireball\VpnManagerV2\Services\RemoteClientCredentialService;
 
 final class PlanReconciliationRepository
 {
@@ -30,7 +31,8 @@ final class PlanReconciliationRepository
         return db()->query(
             "SELECT pn.id AS plan_node_id, pn.plan_id, pn.server_id, pn.inbound_id,
                     pn.flow_override, pn.is_enabled, pn.sort_order,
-                    s.name AS server_name, s.is_enabled AS server_is_enabled,
+                    s.name AS server_name, s.country_code, s.is_enabled AS server_is_enabled,
+                    s.maintenance_mode, s.allow_new_connections,
                     i.name AS inbound_name, i.remote_inbound_id, i.protocol, i.network,
                     i.security, i.default_flow, i.stream_settings_json,
                     i.is_enabled AS inbound_is_enabled, i.status AS inbound_status
@@ -38,7 +40,8 @@ final class PlanReconciliationRepository
              INNER JOIN vpn_v2_servers s ON s.id = pn.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = pn.inbound_id AND i.server_id = pn.server_id
              WHERE pn.plan_id = ? AND pn.is_enabled = 1
-               AND s.is_enabled = 1 AND i.is_enabled = 1 AND i.status = 'active'
+               AND s.is_enabled = 1 AND s.maintenance_mode = 0 AND s.allow_new_connections = 1
+               AND i.is_enabled = 1 AND i.status = 'active'
              ORDER BY pn.sort_order ASC, pn.id ASC",
             [$planId]
         )->get() ?: [];
@@ -48,8 +51,9 @@ final class PlanReconciliationRepository
     {
         return db()->query(
             'SELECT pn.id AS plan_node_id, pn.plan_id, pn.server_id, pn.inbound_id,
-                    pn.flow_override, pn.is_enabled, s.name AS server_name,
-                    s.is_enabled AS server_is_enabled, i.name AS inbound_name,
+                    pn.flow_override, pn.is_enabled, s.name AS server_name, s.country_code,
+                    s.is_enabled AS server_is_enabled, s.maintenance_mode, s.allow_new_connections,
+                    i.name AS inbound_name,
                     i.is_enabled AS inbound_is_enabled, i.status AS inbound_status
              FROM vpn_v2_plan_nodes pn
              INNER JOIN vpn_v2_servers s ON s.id = pn.server_id
@@ -64,7 +68,8 @@ final class PlanReconciliationRepository
         $row = db()->query(
             "SELECT pn.id AS plan_node_id, pn.plan_id, pn.server_id, pn.inbound_id,
                     pn.flow_override, pn.is_enabled, pn.sort_order,
-                    s.name AS server_name, s.is_enabled AS server_is_enabled,
+                    s.name AS server_name, s.country_code, s.is_enabled AS server_is_enabled,
+                    s.maintenance_mode, s.allow_new_connections,
                     i.name AS inbound_name, i.remote_inbound_id, i.protocol, i.network,
                     i.security, i.default_flow, i.stream_settings_json,
                     i.is_enabled AS inbound_is_enabled, i.status AS inbound_status
@@ -98,7 +103,7 @@ final class PlanReconciliationRepository
 
         return (int)db()->query(
             "SELECT COUNT(*) FROM vpn_v2_subscriptions
-             WHERE plan_id = ? AND status IN ({$statusSql})
+             WHERE plan_id = ? AND status IN ({$statusSql}) AND starts_at <= NOW()
                AND (expires_at IS NULL OR expires_at > NOW())",
             array_merge([$planId], $params)
         )->getColumn();
@@ -111,13 +116,14 @@ final class PlanReconciliationRepository
         return (int)db()->query(
             "SELECT COUNT(*)
              FROM vpn_v2_subscriptions sub
-             WHERE sub.plan_id = ? AND sub.status IN ({$statusSql})
+             WHERE sub.plan_id = ? AND sub.status IN ({$statusSql}) AND sub.starts_at <= NOW()
                AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
                AND (
                     EXISTS (
                         SELECT 1
                         FROM vpn_v2_plan_nodes pn
                         INNER JOIN vpn_v2_servers srv ON srv.id = pn.server_id AND srv.is_enabled = 1
+                            AND srv.maintenance_mode = 0 AND srv.allow_new_connections = 1
                         INNER JOIN vpn_v2_inbounds ib ON ib.id = pn.inbound_id
                             AND ib.server_id = pn.server_id AND ib.is_enabled = 1 AND ib.status = 'active'
                         WHERE pn.plan_id = sub.plan_id AND pn.is_enabled = 1
@@ -141,6 +147,7 @@ final class PlanReconciliationRepository
                         SELECT 1
                         FROM vpn_v2_plan_nodes pn
                         INNER JOIN vpn_v2_servers srv ON srv.id = pn.server_id AND srv.is_enabled = 1
+                            AND srv.maintenance_mode = 0 AND srv.allow_new_connections = 1
                         INNER JOIN vpn_v2_inbounds ib ON ib.id = pn.inbound_id
                             AND ib.server_id = pn.server_id AND ib.is_enabled = 1 AND ib.status = 'active'
                         INNER JOIN vpn_v2_subscription_nodes sn
@@ -173,9 +180,10 @@ final class PlanReconciliationRepository
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_plan_nodes pn ON pn.plan_id = sub.plan_id AND pn.is_enabled = 1
              INNER JOIN vpn_v2_servers srv ON srv.id = pn.server_id AND srv.is_enabled = 1
+                AND srv.maintenance_mode = 0 AND srv.allow_new_connections = 1
              INNER JOIN vpn_v2_inbounds ib ON ib.id = pn.inbound_id
                 AND ib.server_id = pn.server_id AND ib.is_enabled = 1 AND ib.status = 'active'
-             WHERE sub.plan_id = ? AND sub.status IN ({$statusSql})
+             WHERE sub.plan_id = ? AND sub.status IN ({$statusSql}) AND sub.starts_at <= NOW()
                AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
                AND NOT EXISTS (
                    SELECT 1 FROM vpn_v2_subscription_nodes sn
@@ -196,7 +204,7 @@ final class PlanReconciliationRepository
             "SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions
-             WHERE plan_id = ? AND id > ? AND status IN ({$statusSql})
+             WHERE plan_id = ? AND id > ? AND status IN ({$statusSql}) AND starts_at <= NOW()
                AND (expires_at IS NULL OR expires_at > NOW())
              ORDER BY id ASC{$limitSql}",
             array_merge([$planId, max(0, $afterId)], $params)
@@ -209,7 +217,7 @@ final class PlanReconciliationRepository
         $row = db()->query(
             "SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, revision, created_by, last_error, created_at, updated_at
-             FROM vpn_v2_subscriptions WHERE id = ? AND status IN ({$statusSql})
+             FROM vpn_v2_subscriptions WHERE id = ? AND status IN ({$statusSql}) AND starts_at <= NOW()
                AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1",
             array_merge([$subscriptionId], $params)
         )->getOne();
@@ -233,6 +241,7 @@ final class PlanReconciliationRepository
     {
         return db()->query(
             'SELECT id, subscription_id, server_id, inbound_id, remote_client_id, client_uuid,
+                    encrypted_client_credential,
                     client_email, client_sub_id, protocol, network, security, flow, status,
                     desired_enabled, is_obsolete, traffic_limit_bytes, traffic_used_bytes,
                     upload_bytes, download_bytes, traffic_synced_at, traffic_sync_status,
@@ -246,7 +255,7 @@ final class PlanReconciliationRepository
     {
         $row = db()->query(
             'SELECT n.id, n.subscription_id, n.server_id, n.inbound_id, n.remote_client_id,
-                    n.client_uuid, n.client_email, n.client_sub_id, n.protocol, n.network,
+                    n.client_uuid, n.encrypted_client_credential, n.client_email, n.client_sub_id, n.protocol, n.network,
                     n.security, n.flow, n.status, n.desired_enabled, n.is_obsolete,
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at, n.last_error,
                     sub.user_id, sub.plan_id, sub.status AS subscription_status,
@@ -261,11 +270,15 @@ final class PlanReconciliationRepository
         return is_array($row) ? $row : null;
     }
 
-    public function createOrClaimNode(array $subscription, array $planNode, ?string $flow): array
+    public function createOrClaimNode(array $subscription, array $planNode, ?string $flow, array $identity = []): array
     {
         $database = db();
         $database->beginTransaction();
         try {
+            $database->query(
+                'SELECT id FROM vpn_v2_subscriptions WHERE id = ? FOR UPDATE',
+                [(int)$subscription['id']]
+            )->getOne();
             $existing = $database->query(
                 'SELECT id, status, is_obsolete FROM vpn_v2_subscription_nodes
                  WHERE subscription_id = ? AND server_id = ? AND inbound_id = ? FOR UPDATE',
@@ -310,29 +323,42 @@ final class PlanReconciliationRepository
                 return ['id' => (int)$existing['id'], 'claimed' => true, 'status' => 'creating', 'existing' => true];
             }
 
-            $uuid = Uuid::v4();
-            $email = 'vpn-v2-u' . (int)$subscription['user_id']
-                . '-s' . (int)$subscription['id']
-                . '-v' . (int)$planNode['server_id']
-                . '-i' . (int)$planNode['inbound_id'];
+            $uuid = trim((string)($identity['client_uuid'] ?? ''));
+            $email = trim((string)($identity['remote_client_name'] ?? ''));
+            if ($uuid === '' || $email === '') {
+                throw new \RuntimeException('A stable VPN client identity is required.');
+            }
             $protocol = strtolower(trim((string)$planNode['protocol']));
             $subId = $protocol === 'vless' ? bin2hex(random_bytes(8)) : null;
+            $sortOrder = (int)$database->query(
+                'SELECT COALESCE(MAX(sort_order), 0) + 10
+                 FROM vpn_v2_subscription_nodes WHERE subscription_id = ?',
+                [(int)$subscription['id']]
+            )->getColumn();
             $database->query(
                 'INSERT INTO vpn_v2_subscription_nodes
-                    (subscription_id, server_id, inbound_id, remote_client_id, client_uuid,
-                     client_email, client_sub_id, protocol, network, security, flow, status,
+                    (subscription_id, server_id, inbound_id, sort_order, remote_client_id, client_uuid, encrypted_client_credential,
+                     client_email, remote_client_name, country_code, client_sub_id,
+                     protocol, network, security, flow, status,
                      desired_enabled, is_obsolete, expires_at, device_limit,
                      traffic_limit_bytes, traffic_used_bytes,
-                     upload_bytes, download_bytes, traffic_synced_at, traffic_sync_status,
+                     upload_bytes, download_bytes, traffic_synced_at, traffic_sync_status, sync_status,
                      last_sync_at, last_error, created_at, updated_at)
-                 VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, \'creating\', ?, 0, ?, ?, ?, 0,
-                         0, 0, NULL, \'pending\', NULL, NULL, ?, ?)',
+                 VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'creating\', ?, 0, ?, ?, ?, 0,
+                         0, 0, NULL, \'pending\', \'pending\', NULL, NULL, ?, ?)',
                 [
                     (int)$subscription['id'],
                     (int)$planNode['server_id'],
                     (int)$planNode['inbound_id'],
+                    max(10, $sortOrder),
                     $uuid,
+                    (new RemoteClientCredentialService())->encryptForStorage(
+                        $protocol,
+                        isset($identity['client_password']) ? (string)$identity['client_password'] : null
+                    ),
                     $email,
+                    $email,
+                    strtoupper((string)($identity['country_code'] ?? $planNode['country_code'] ?? '')),
                     $subId,
                     $protocol,
                     $this->nullable($planNode['network'] ?? null),

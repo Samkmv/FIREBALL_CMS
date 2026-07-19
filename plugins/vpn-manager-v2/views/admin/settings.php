@@ -92,6 +92,12 @@ $switch = static function (string $key, string $label, string $help = '') use ($
             <h2 class="h5 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_subscription')) ?></h2>
         </div>
         <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label" for="vpnV2SubscriptionName"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_subscription_name')) ?></label>
+                <input class="form-control" id="vpnV2SubscriptionName" type="text" name="subscription_name" maxlength="120" required
+                       value="<?= htmlSC((string)($settings['subscription_name'] ?? 'VPN V2')) ?>">
+                <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_subscription_name_help')) ?></div>
+            </div>
             <div class="col-12 col-lg-4">
                 <label class="form-label" for="vpnV2ExpiredBehavior"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_expired_behavior')) ?></label>
                 <select class="form-select" id="vpnV2ExpiredBehavior" name="expired_subscription_behavior">

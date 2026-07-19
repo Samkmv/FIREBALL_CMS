@@ -7,7 +7,7 @@ final class ClientPayloadFactory
     public function build(array $subscription, array $node): array
     {
         $protocol = strtolower(trim((string)($node['protocol'] ?? '')));
-        $clientId = trim((string)($node['client_uuid'] ?? ''));
+        $clientId = (new RemoteClientCredentialService())->credential($node);
         $expiresAt = trim((string)($subscription['expires_at'] ?? ''));
         $expiryTime = 0;
         if ($expiresAt !== '') {
@@ -38,7 +38,7 @@ final class ClientPayloadFactory
             $payload['subId'] = (string)$node['client_sub_id'];
         }
 
-        if ($protocol === 'trojan') {
+        if ((new RemoteClientCredentialService())->usesPassword($protocol)) {
             $payload['password'] = $clientId;
         } else {
             $payload['id'] = $clientId;

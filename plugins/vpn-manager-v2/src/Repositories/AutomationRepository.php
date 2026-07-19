@@ -4,12 +4,13 @@ namespace Fireball\VpnManagerV2\Repositories;
 
 final class AutomationRepository
 {
-    public function activeNodesForTrafficSync(int $limit = 500): array
+    public function activeNodesForTrafficSync(int $limit = 500, int $afterId = 0): array
     {
         $limit = max(1, min(2000, $limit));
 
         return db()->query(
             "SELECT n.id, n.subscription_id, n.server_id, n.inbound_id, n.client_uuid,
+                    n.encrypted_client_credential,
                     n.client_email, n.client_sub_id, n.protocol, n.network, n.security, n.flow,
                     n.status, n.traffic_limit_bytes, n.traffic_used_bytes,
                     n.upload_bytes, n.download_bytes, n.traffic_synced_at,
@@ -21,12 +22,12 @@ final class AutomationRepository
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id AND i.server_id = n.server_id
-             WHERE sub.status = 'active' AND sub.starts_at <= NOW()
+             WHERE n.id > ? AND sub.status = 'active' AND sub.starts_at <= NOW()
                AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
                AND n.status = 'active' AND s.is_enabled = 1 AND i.is_enabled = 1
              ORDER BY n.id ASC
              LIMIT {$limit}"
-        )->get() ?: [];
+        , [max(0, $afterId)])->get() ?: [];
     }
 
     public function recordNodeTraffic(
@@ -107,6 +108,47 @@ final class AutomationRepository
         );
 
         return $total;
+    }
+
+    public function recordExplicitTrafficReset(int $nodeId): int
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $node = $database->query(
+                'SELECT subscription_id FROM vpn_v2_subscription_nodes WHERE id = ? FOR UPDATE',
+                [$nodeId]
+            )->getOne();
+            if (!is_array($node)) {
+                throw new \RuntimeException('VPN connection not found for traffic reset.');
+            }
+            $now = date('Y-m-d H:i:s');
+            $database->query(
+                "UPDATE vpn_v2_subscription_nodes
+                 SET traffic_used_bytes = 0, upload_bytes = 0, download_bytes = 0,
+                     traffic_synced_at = ?, traffic_sync_status = 'synced',
+                     last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?",
+                [$now, $now, $now, $nodeId]
+            );
+            $subscriptionId = (int)$node['subscription_id'];
+            $total = (int)$database->query(
+                "SELECT COALESCE(SUM(traffic_used_bytes), 0) FROM vpn_v2_subscription_nodes
+                 WHERE subscription_id = ? AND status <> 'deleted'",
+                [$subscriptionId]
+            )->getColumn();
+            $database->query(
+                'UPDATE vpn_v2_subscriptions SET traffic_used_bytes = ?, updated_at = ? WHERE id = ?',
+                [max(0, $total), $now, $subscriptionId]
+            );
+            $database->commit();
+
+            return $subscriptionId;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public function dueSubscriptions(int $limit = 500): array
@@ -234,7 +276,7 @@ final class AutomationRepository
 
         return db()->query(
             "SELECT id FROM vpn_v2_subscriptions
-             WHERE status = 'delete_failed' ORDER BY updated_at ASC, id ASC LIMIT {$limit}"
+             WHERE status IN ('delete_failed', 'pending_remote_delete') ORDER BY updated_at ASC, id ASC LIMIT {$limit}"
         )->get() ?: [];
     }
 

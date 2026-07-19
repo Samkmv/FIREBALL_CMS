@@ -18,10 +18,13 @@ final class OverviewRepository
     private const REQUIRED_COLUMNS = [
         'vpn_v2_servers.auth_type',
         'vpn_v2_subscriptions.revision',
+        'vpn_v2_subscriptions.subscription_token_hash',
         'vpn_v2_subscriptions.internal_comment',
         'vpn_v2_subscriptions.traffic_used_bytes',
         'vpn_v2_subscription_nodes.flow',
+        'vpn_v2_subscription_nodes.sort_order',
         'vpn_v2_subscription_nodes.traffic_used_bytes',
+        'vpn_v2_subscription_nodes.encrypted_client_credential',
         'vpn_v2_notifications.occurrence_key',
     ];
 

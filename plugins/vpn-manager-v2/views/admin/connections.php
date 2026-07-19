@@ -19,6 +19,12 @@ foreach ($connections as $connection) {
         'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'),
         'href' => $editUrl,
         'icon' => 'ci-edit-2',
+    ], [
+        'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_client'),
+        'type' => 'form',
+        'action' => base_href('/admin/plugins/vpn-manager-v2/sync/connection/' . $id),
+        'form_attributes' => ['data-vpn-v2-async-operation' => true],
+        'icon' => 'ci-refresh-cw',
     ]];
     $desktop = '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($showUrl)
         . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'))
@@ -26,6 +32,11 @@ foreach ($connections as $connection) {
     $desktop .= '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($editUrl)
         . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'))
         . '"><i class="ci-edit-2"></i></a>';
+    $desktop .= '<form method="post" action="' . htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/connection/' . $id))
+        . '" data-vpn-v2-async-operation>' . get_csrf_field()
+        . '<button class="btn btn-sm btn-outline-primary btn-icon rounded-circle" type="submit" title="'
+        . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_client'))
+        . '"><i class="ci-refresh-cw"></i></button></form>';
     if (ProvisioningStatus::canRetry((string)$connection['status'])) {
         $retryUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/retry');
         $actions[] = [
@@ -53,7 +64,8 @@ foreach ($connections as $connection) {
         ['value' => strtoupper((string)($connection['network'] ?: '—'))],
         ['value' => strtoupper((string)($connection['security'] ?: 'none'))],
         ['value' => $flow],
-        ['html' => $badge . (!empty($connection['last_error']) ? '<div class="small text-danger mt-1">' . htmlSC((string)$connection['last_error']) . '</div>' : '')],
+        ['html' => $badge . '<div class="small text-body-secondary mt-1">' . htmlSC((string)($connection['sync_status'] ?? 'pending')) . '</div>'
+            . (!empty($connection['last_error']) ? '<div class="small text-danger mt-1">' . htmlSC((string)$connection['last_error']) . '</div>' : '')],
         ['html' => '<div class="d-flex justify-content-end gap-1">' . $desktop . '</div>'],
     ]];
     $mobileCards[] = [
@@ -78,6 +90,8 @@ foreach ($connections as $connection) {
 ]) ?>
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
+
+<div data-vpn-v2-operation-alert aria-live="polite"></div>
 
 <div class="border rounded-5 p-3 p-md-4">
     <?= view()->renderPartial('admin/partials/table', [

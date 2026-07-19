@@ -235,6 +235,7 @@ $app->router->post('/admin/plugins/install', [PluginController::class, 'install'
 $app->router->post('/admin/plugins/activate', [PluginController::class, 'activate'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/deactivate', [PluginController::class, 'deactivate'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/check-update', [PluginController::class, 'checkUpdate'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/plugins/check-updates', [PluginController::class, 'checkAllUpdates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/update', [PluginController::class, 'update'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin', 'creator']);

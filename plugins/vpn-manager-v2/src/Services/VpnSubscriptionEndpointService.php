@@ -48,6 +48,11 @@ final class VpnSubscriptionEndpointService
             return new SubscriptionEndpointResponse(403, '', $headers);
         }
 
+        $settings = ($this->settings ?? new SettingsService())->current();
+        $subscriptionName = trim((string)($settings['subscription_name'] ?? 'VPN V2'));
+        if ($subscriptionName !== '') {
+            $headers['profile-title'] = 'base64:' . base64_encode($subscriptionName);
+        }
         $revision = max(1, (int)$subscription['revision']);
         $etag = $this->etag($token, $revision, $format);
         $modifiedTimestamp = $this->modifiedTimestamp($subscription);
@@ -155,6 +160,8 @@ final class VpnSubscriptionEndpointService
         }
         $timestamp = strtotime($header);
 
-        return $timestamp !== false && $timestamp >= $modifiedTimestamp;
+        // Equality is intentionally not a 304: DATETIME has one-second precision and two
+        // different configurations may be confirmed within the same second. ETag remains exact.
+        return $timestamp !== false && $timestamp > $modifiedTimestamp;
     }
 }

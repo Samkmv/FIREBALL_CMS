@@ -1,11 +1,17 @@
 {
   "name": "VPN Manager V2",
   "slug": "vpn-manager-v2",
-  "version": "0.13.0",
+  "version": "0.15.0",
   "type": "system",
-  "description": "Isolated VPN Manager V2 foundation for FIREBALL CMS",
+  "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
   "auto_migrate": true,
+  "release_notes": [
+    "Added per-subscription connection ordering with drag-and-drop controls.",
+    "Added a configurable subscription profile name in VPN Manager settings.",
+    "Expanded bidirectional synchronization, conflict handling, audit logs and retry operations.",
+    "Improved server validation, encrypted credentials and safe remote client reconciliation."
+  ],
   "update": {
     "enabled": true,
     "provider": "github_directory",

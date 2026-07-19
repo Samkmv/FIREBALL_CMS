@@ -3,6 +3,7 @@
 namespace Fireball\VpnManagerV2\Services;
 
 use App\Services\SqlFileRunner;
+use Fireball\VpnManagerV2\Support\Uuid;
 
 final class VpnV2SchemaUpgradeService
 {
@@ -46,6 +47,9 @@ final class VpnV2SchemaUpgradeService
                 if (trim($sql) !== '') {
                     $runner->executeDatabase($sql);
                 }
+                if ($migration === '007_add_bidirectional_sync.sql') {
+                    $this->backfillLegacyPasswordCredentials();
+                }
                 db()->query(
                     'INSERT INTO plugin_migrations (plugin_slug, migration, executed_at) VALUES (?, ?, ?)',
                     [\FireballPluginVpnManagerV2::SLUG, $migration, date('Y-m-d H:i:s')]
@@ -58,6 +62,42 @@ final class VpnV2SchemaUpgradeService
             } catch (\Throwable) {
                 // MySQL releases the advisory lock when this connection closes.
             }
+        }
+    }
+
+    private function backfillLegacyPasswordCredentials(): void
+    {
+        $rows = db()->query(
+            "SELECT id, protocol, client_uuid, remote_client_id
+             FROM vpn_v2_subscription_nodes
+             WHERE protocol IN ('trojan', 'shadowsocks')
+               AND encrypted_client_credential IS NULL AND client_uuid <> ''
+             ORDER BY id ASC"
+        )->get() ?: [];
+        $credentials = new RemoteClientCredentialService();
+        foreach ($rows as $row) {
+            $plainText = trim((string)($row['client_uuid'] ?? ''));
+            if ($plainText === '') {
+                continue;
+            }
+            $encrypted = $credentials->encryptForStorage((string)$row['protocol'], $plainText);
+            if ($encrypted === null || $encrypted === '') {
+                throw new \RuntimeException('Could not encrypt a legacy VPN client credential.');
+            }
+            $remoteId = trim((string)($row['remote_client_id'] ?? ''));
+            db()->query(
+                'UPDATE vpn_v2_subscription_nodes
+                 SET client_uuid = ?, encrypted_client_credential = ?,
+                     remote_client_id = ?, updated_at = ?
+                 WHERE id = ? AND encrypted_client_credential IS NULL',
+                [
+                    Uuid::v4(),
+                    $encrypted,
+                    $remoteId !== '' && !hash_equals($remoteId, $plainText) ? $remoteId : null,
+                    date('Y-m-d H:i:s'),
+                    (int)$row['id'],
+                ]
+            );
         }
     }
 

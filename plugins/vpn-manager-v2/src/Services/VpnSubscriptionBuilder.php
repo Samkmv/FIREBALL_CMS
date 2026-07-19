@@ -39,10 +39,11 @@ final class VpnSubscriptionBuilder
                     \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_config_invalid')
                 );
             }
-            $uris[] = $this->buildNode($node, $settings);
+            $uri = $this->buildNode($node, $settings);
+            $uris[$uri] = $uri;
         }
 
-        return $uris;
+        return array_values($uris);
     }
 
     private function buildNode(array $node, array $settings): string
@@ -54,10 +55,12 @@ final class VpnSubscriptionBuilder
         $host = $this->serverHost((string)($node['panel_url'] ?? ''));
         $flow = ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow($node['flow'] ?? null);
         $params = [
-            'encryption' => 'none',
             'security' => $security !== '' ? $security : 'none',
             'type' => $network !== '' ? $network : 'tcp',
         ];
+        if ($protocol === 'vless') {
+            $params['encryption'] = 'none';
+        }
         if ($flow !== null) {
             $params['flow'] = $flow;
         }
@@ -66,24 +69,62 @@ final class VpnSubscriptionBuilder
         $this->addTransport($params, $stream, $network);
         $params = $this->filterParams($params);
 
+        $credential = (new RemoteClientCredentialService())->credential($node);
         $validationNode = array_replace($node, [
             'protocol' => $protocol,
             'network' => $network,
             'security' => $security,
             'flow' => $flow,
             'config_host' => $host,
+            'client_uuid' => $credential,
         ]);
         $validator = $this->validator ?? new VpnConfigValidator($this->flowResolver ?? new VpnFlowResolver());
         $validator->validate($validationNode, $stream, $params);
 
-        $uri = 'vless://' . rawurlencode(trim((string)$node['client_uuid']))
-            . '@' . $this->hostForUri($host)
-            . ':' . (int)$node['port']
-            . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986)
-            . '#' . rawurlencode($this->displayName($node, $settings));
+        $displayName = $this->displayName($node, $settings);
+        $uri = match ($protocol) {
+            'vless' => 'vless://' . rawurlencode($credential)
+                . '@' . $this->hostForUri($host)
+                . ':' . (int)$node['port']
+                . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986)
+                . '#' . rawurlencode($displayName),
+            'trojan' => 'trojan://' . rawurlencode($credential)
+                . '@' . $this->hostForUri($host)
+                . ':' . (int)$node['port']
+                . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986)
+                . '#' . rawurlencode($displayName),
+            'vmess' => $this->vmessUri($credential, $host, (int)$node['port'], $displayName, $params),
+            default => '',
+        };
         $validator->validateUri($uri);
 
         return $uri;
+    }
+
+    private function vmessUri(string $credential, string $host, int $port, string $displayName, array $params): string
+    {
+        $payload = [
+            'v' => '2',
+            'ps' => $displayName,
+            'add' => $host,
+            'port' => (string)$port,
+            'id' => $credential,
+            'aid' => '0',
+            'scy' => 'auto',
+            'net' => (string)($params['type'] ?? 'tcp'),
+            'type' => (string)($params['headerType'] ?? 'none'),
+            'host' => (string)($params['host'] ?? ''),
+            'path' => (string)($params['path'] ?? $params['serviceName'] ?? ''),
+            'tls' => (string)($params['security'] ?? 'none') === 'none' ? '' : 'tls',
+            'sni' => (string)($params['sni'] ?? ''),
+            'alpn' => (string)($params['alpn'] ?? ''),
+            'fp' => (string)($params['fp'] ?? ''),
+        ];
+
+        return 'vmess://' . base64_encode(json_encode(
+            $payload,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        ));
     }
 
     private function addSecurity(array &$params, array $stream, string $security, string $host): void

@@ -34,9 +34,15 @@ final class TrafficSyncService
         $failed = 0;
         $unchanged = 0;
         $touchedSubscriptions = [];
+        $trafficCursorKey = 'vpn-v2:traffic-sync-cursor';
+        $cursor = $this->nodeProvider !== null ? 0 : max(0, (int)cache()->get($trafficCursorKey, 0));
         $nodes = $this->nodeProvider !== null
             ? ($this->nodeProvider)()
-            : $repository->activeNodesForTrafficSync();
+            : $repository->activeNodesForTrafficSync(500, $cursor);
+        if ($this->nodeProvider === null && $nodes === [] && $cursor > 0) {
+            $cursor = 0;
+            $nodes = $repository->activeNodesForTrafficSync(500, 0);
+        }
         if (!is_array($nodes)) {
             throw new \LogicException('Invalid traffic node provider result.');
         }
@@ -52,7 +58,7 @@ final class TrafficSyncService
                 }
                 $identifier = trim((string)($node['client_email'] ?? ''));
                 if ($identifier === '') {
-                    $identifier = trim((string)($node['client_uuid'] ?? ''));
+                    $identifier = (new RemoteClientCredentialService())->credential($node);
                 }
                 $response = $this->client($node)->getClientTraffic($identifier);
                 $traffic = self::trafficFromResponse($response, $identifier);
@@ -87,6 +93,10 @@ final class TrafficSyncService
                     // Notification delivery must never overwrite confirmed traffic state.
                 }
             }
+        }
+        if ($this->nodeProvider === null && $nodes !== []) {
+            $last = end($nodes);
+            cache()->set($trafficCursorKey, max(0, (int)($last['id'] ?? $cursor)), 86400 * 30);
         }
 
         foreach (array_keys($touchedSubscriptions) as $subscriptionId) {

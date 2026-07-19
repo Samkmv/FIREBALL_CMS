@@ -150,9 +150,9 @@ final class PlanController
             $repository = new PlanReconciliationRepository();
             $count = $repository->eligibleSubscriptionCount($id);
             $service = new VpnPlanSubscriptionReconciler();
-            $result = $count > VpnPlanSubscriptionReconciler::SYNC_THRESHOLD
+            $result = $count > 0
                 ? $service->queuePlan($id, $this->adminId(), ['batch_size' => 20])
-                : $service->reconcilePlan($id, ['initiated_by' => $this->adminId()]);
+                : new \Fireball\VpnManagerV2\DTO\ReconcileResult($id, 0);
             if ($result->queued) {
                 session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_reconcile_queued'));
             } elseif (!$result->successful()) {

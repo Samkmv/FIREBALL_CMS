@@ -37,21 +37,23 @@ final class RemoteClientSyncService
         $remoteInboundId = (int)$context['inbound']['remote_inbound_id'];
         $beforeInbound = $client->getInbound($remoteInboundId);
         $verifier = $this->verifier ?? new ClientVerifier($resolver);
+        $credential = (new RemoteClientCredentialService())->credential($node);
         $before = $verifier->findInInbound(
             $beforeInbound,
-            (string)$node['client_uuid'],
+            $credential,
             (string)$node['client_email']
         );
         if ($before === null) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_found_for_update'));
         }
-        $verifier->assertIdentity($before, $expected);
+        // UUID/password is the stable identity; email is CMS-owned and may need to be restored.
+        $verifier->assertStableCredential($before, $expected);
         $changedFields = $verifier->changedFields($before, $expected);
 
         if ($changedFields !== []) {
             $client->updateClient(
                 $remoteInboundId,
-                (string)$node['client_uuid'],
+                $credential,
                 $factory->mergeForUpdate($before, $expected)
             );
         }
@@ -60,7 +62,7 @@ final class RemoteClientSyncService
         $confirmedInbound = $changedFields !== [] ? $client->getInbound($remoteInboundId) : $beforeInbound;
         $confirmed = $verifier->findInInbound(
             $confirmedInbound,
-            (string)$node['client_uuid'],
+            $credential,
             (string)$node['client_email']
         );
         if ($confirmed === null) {
@@ -83,7 +85,8 @@ final class RemoteClientSyncService
         $client = $this->client($context['server'], $context['inbound'], $node);
         $inbound = $client->getInbound((int)$context['inbound']['remote_inbound_id']);
         $verifier = $this->verifier ?? new ClientVerifier($this->flowResolver ?? new VpnFlowResolver());
-        $remote = $verifier->findInInbound($inbound, (string)$node['client_uuid'], (string)$node['client_email']);
+        $credential = (new RemoteClientCredentialService())->credential($node);
+        $remote = $verifier->findInInbound($inbound, $credential, (string)$node['client_email']);
         if ($remote === null) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_found_for_update'));
         }

@@ -13,6 +13,12 @@ final class MigrationStatusRepository
         'vpn_v2_subscription_nodes',
         'vpn_v2_events',
         'vpn_v2_notifications',
+        'vpn_v2_profiles',
+        'vpn_v2_operations',
+        'vpn_v2_connection_snapshots',
+        'vpn_v2_sync_conflicts',
+        'vpn_v2_sync_logs',
+        'vpn_v2_remote_clients',
     ];
 
     public function expectedTables(): array

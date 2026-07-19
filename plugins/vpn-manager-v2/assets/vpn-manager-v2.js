@@ -216,8 +216,167 @@
         });
     }
 
+    function operationAlert(form) {
+        return form.closest('main, .container, .container-fluid')?.querySelector('[data-vpn-v2-operation-alert]')
+            || document.querySelector('[data-vpn-v2-operation-alert]');
+    }
+
+    function showOperationStatus(container, type, message) {
+        if (!container) {
+            return;
+        }
+        var alert = document.createElement('div');
+        alert.className = 'alert alert-' + type + ' rounded-4';
+        alert.setAttribute('role', 'status');
+        alert.textContent = message;
+        container.replaceChildren(alert);
+    }
+
+    function pollOperation(url, container, attempts) {
+        if (!url || attempts <= 0) {
+            return;
+        }
+        window.setTimeout(function () {
+            fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'}
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('operation_status_failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                var status = String(data.status || 'pending');
+                var progress = Number(data.processed_count || 0) + ' / ' + Number(data.total_count || 0);
+                showOperationStatus(
+                    container,
+                    status === 'completed' ? 'success'
+                        : (status === 'completed_partial' ? 'warning' : (status === 'failed' ? 'danger' : 'info')),
+                    status + ' · ' + progress
+                );
+                if (['completed', 'completed_partial', 'failed', 'cancelled'].indexOf(status) === -1) {
+                    pollOperation(url, container, attempts - 1);
+                }
+            }).catch(function () {
+                pollOperation(url, container, attempts - 1);
+            });
+        }, 2000);
+    }
+
+    function setupAsyncOperations() {
+        document.addEventListener('submit', function (event) {
+            var form = event.target.closest('form[data-vpn-v2-async-operation]');
+            if (!form) {
+                return;
+            }
+            event.preventDefault();
+            var confirmation = form.getAttribute('data-vpn-v2-confirm') || '';
+            if (confirmation && !window.confirm(confirmation)) {
+                return;
+            }
+            var button = form.querySelector('button[type="submit"]');
+            var container = operationAlert(form);
+            if (button) {
+                button.disabled = true;
+            }
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'}
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) {
+                        throw new Error(data.error || 'operation_failed');
+                    }
+                    return data;
+                });
+            }).then(function (data) {
+                showOperationStatus(container, 'info', data.message || data.status || 'queued');
+                if (data.progress_url) {
+                    pollOperation(data.progress_url, container, 150);
+                }
+            }).catch(function (error) {
+                showOperationStatus(container, 'danger', error.message || 'operation_failed');
+            }).finally(function () {
+                if (button) {
+                    button.disabled = false;
+                }
+            });
+        });
+    }
+
+    function setupConnectionOrder(container) {
+        var list = container.querySelector('[data-vpn-v2-connection-order-list]');
+        if (!list) {
+            return;
+        }
+        var dragged = null;
+
+        function updateButtons() {
+            var items = list.querySelectorAll('[data-vpn-v2-connection-order-item]');
+            Array.prototype.forEach.call(items, function (item, index) {
+                var up = item.querySelector('[data-vpn-v2-order-move="up"]');
+                var down = item.querySelector('[data-vpn-v2-order-move="down"]');
+                if (up) {
+                    up.disabled = index === 0;
+                }
+                if (down) {
+                    down.disabled = index === items.length - 1;
+                }
+            });
+        }
+
+        list.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-vpn-v2-order-move]');
+            var item = button ? button.closest('[data-vpn-v2-connection-order-item]') : null;
+            if (!button || !item) {
+                return;
+            }
+            var direction = button.getAttribute('data-vpn-v2-order-move');
+            if (direction === 'up' && item.previousElementSibling) {
+                list.insertBefore(item, item.previousElementSibling);
+            } else if (direction === 'down' && item.nextElementSibling) {
+                list.insertBefore(item.nextElementSibling, item);
+            }
+            updateButtons();
+        });
+
+        list.addEventListener('dragstart', function (event) {
+            dragged = event.target.closest('[data-vpn-v2-connection-order-item]');
+            if (!dragged) {
+                return;
+            }
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', 'vpn-v2-connection');
+            dragged.classList.add('opacity-50');
+        });
+        list.addEventListener('dragover', function (event) {
+            var target = event.target.closest('[data-vpn-v2-connection-order-item]');
+            if (!dragged || !target || target === dragged) {
+                return;
+            }
+            event.preventDefault();
+            var bounds = target.getBoundingClientRect();
+            list.insertBefore(dragged, event.clientY < bounds.top + bounds.height / 2 ? target : target.nextElementSibling);
+            updateButtons();
+        });
+        list.addEventListener('dragend', function () {
+            if (dragged) {
+                dragged.classList.remove('opacity-50');
+            }
+            dragged = null;
+            updateButtons();
+        });
+
+        updateButtons();
+    }
+
     ready(function () {
         document.querySelectorAll('[data-vpn-v2-plan-nodes]').forEach(setupPlanNodes);
+        document.querySelectorAll('[data-vpn-v2-connection-order]').forEach(setupConnectionOrder);
         setupProfileCopy();
+        setupAsyncOperations();
     });
 }());

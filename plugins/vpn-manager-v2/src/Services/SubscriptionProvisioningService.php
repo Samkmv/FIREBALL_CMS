@@ -12,7 +12,6 @@ use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Support\SubscriptionToken;
-use Fireball\VpnManagerV2\Support\Uuid;
 use Fireball\VpnManagerV2\Validators\SubscriptionValidator;
 
 final class SubscriptionProvisioningService
@@ -26,6 +25,7 @@ final class SubscriptionProvisioningService
         private readonly ?\Closure $clientFactory = null,
         private readonly ?VpnSubscriptionRevisionService $revisionService = null,
         private readonly ?\Closure $notificationCallback = null,
+        private readonly ?RemoteClientIdentityService $identityService = null,
     ) {
     }
 
@@ -55,9 +55,17 @@ final class SubscriptionProvisioningService
 
         $startsAt = new \DateTimeImmutable($request->startsAt);
         $expiresAt = $startsAt->add(new \DateInterval('P' . max(1, (int)$plan['duration_days']) . 'D'));
-        $localNodes = $this->prepareLocalNodes($planNodes);
+        if ($repository->hasOverlappingSubscription(
+            (int)$user['id'],
+            $startsAt->format('Y-m-d H:i:s'),
+            $expiresAt->format('Y-m-d H:i:s')
+        )) {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_overlap'));
+        }
+        $localNodes = $this->prepareLocalNodes($planNodes, $user);
         $subscriptionId = $repository->createLocal([
             'user_id' => (int)$user['id'],
+            'profile_id' => (int)($localNodes[0]['profile_id'] ?? 0),
             'plan_id' => (int)$plan['id'],
             'starts_at' => $startsAt->format('Y-m-d H:i:s'),
             'expires_at' => $expiresAt->format('Y-m-d H:i:s'),
@@ -234,11 +242,16 @@ final class SubscriptionProvisioningService
             ];
             $payload = ($this->payloadFactory ?? new ClientPayloadFactory())->build($subscriptionState, $node);
             $verifier = $this->clientVerifier ?? new ClientVerifier($this->flowResolver ?? new VpnFlowResolver());
+            $credentials = new RemoteClientCredentialService();
+            $credential = $credentials->credential($node);
+            $storedRemoteIdentity = $credentials->usesPassword((string)$node['protocol'])
+                ? (trim((string)($node['remote_client_id'] ?? '')) ?: null)
+                : $credential;
             $remoteInboundId = (int)$inbound['remote_inbound_id'];
             $currentInbound = $client->getInbound($remoteInboundId);
             $existing = $verifier->findInInbound(
                 $currentInbound,
-                (string)$node['client_uuid'],
+                $credential,
                 (string)$node['client_email'],
                 (string)($node['remote_client_id'] ?? ''),
                 (string)($node['client_sub_id'] ?? '')
@@ -247,7 +260,7 @@ final class SubscriptionProvisioningService
                 $verifier->verify($existing, $payload);
                 $repository->markNodeActive(
                     $nodeId,
-                    (string)$node['client_uuid'],
+                    $storedRemoteIdentity,
                     empty($node['desired_enabled']) ? 'disabled' : 'active'
                 );
                 $repository->logEvent(
@@ -267,7 +280,7 @@ final class SubscriptionProvisioningService
             $freshInbound = $client->getInbound($remoteInboundId);
             $confirmed = $verifier->findInInbound(
                 $freshInbound,
-                (string)$node['client_uuid'],
+                $credential,
                 (string)$node['client_email'],
                 (string)($node['remote_client_id'] ?? ''),
                 (string)($node['client_sub_id'] ?? '')
@@ -279,7 +292,7 @@ final class SubscriptionProvisioningService
 
             $repository->markNodeActive(
                 $nodeId,
-                (string)$node['client_uuid'],
+                $storedRemoteIdentity,
                 empty($node['desired_enabled']) ? 'disabled' : 'active'
             );
             $repository->logEvent(
@@ -324,11 +337,12 @@ final class SubscriptionProvisioningService
         }
     }
 
-    private function prepareLocalNodes(array $planNodes): array
+    private function prepareLocalNodes(array $planNodes, array $user): array
     {
         $resolver = $this->flowResolver ?? new VpnFlowResolver();
         $payloadFactory = $this->payloadFactory ?? new ClientPayloadFactory();
         $nodes = [];
+        $sortOrder = 0;
         foreach ($planNodes as $planNode) {
             $storedFlow = $planNode['flow_override'] ?? null;
             if ($storedFlow === null) {
@@ -343,11 +357,21 @@ final class SubscriptionProvisioningService
             }
 
             $protocol = strtolower(trim((string)$planNode['protocol']));
+            $identity = ($this->identityService ?? new RemoteClientIdentityService())->forUser(
+                $user,
+                (string)($planNode['country_code'] ?? ''),
+                $protocol
+            );
             $nodes[] = [
                 'plan_node_id' => (int)$planNode['plan_node_id'],
                 'server_id' => (int)$planNode['server_id'],
                 'inbound_id' => (int)$planNode['inbound_id'],
-                'client_uuid' => Uuid::v4(),
+                'sort_order' => $sortOrder += 10,
+                'profile_id' => (int)$identity['profile_id'],
+                'client_uuid' => (string)$identity['client_uuid'],
+                'client_credential' => $identity['client_password'] ?? null,
+                'remote_client_name' => (string)$identity['remote_client_name'],
+                'country_code' => (string)$identity['country_code'],
                 'client_sub_id' => $payloadFactory->requiresSubId($protocol) ? bin2hex(random_bytes(8)) : null,
                 'protocol' => $protocol,
                 'network' => $this->nullableDimension($planNode['network'] ?? null),

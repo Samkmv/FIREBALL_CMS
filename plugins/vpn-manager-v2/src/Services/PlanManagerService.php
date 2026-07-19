@@ -77,9 +77,9 @@ final class PlanManagerService
         $propagate = !empty($input['reconcile_existing']);
         try {
             if ($affected > 0 && $propagate && ($diff['added'] !== [] || $diff['changed'] !== [])) {
-                $reconciliation = $affected > VpnPlanSubscriptionReconciler::SYNC_THRESHOLD
-                    ? $reconciler->queuePlan($id, $adminId, ['batch_size' => 20])
-                    : $reconciler->reconcilePlan($id, ['initiated_by' => $adminId]);
+                // A plan edit can fan out to many panels. Keep the admin request
+                // local-only and let the registered worker perform remote I/O.
+                $reconciliation = $reconciler->queuePlan($id, $adminId, ['batch_size' => 20]);
             } elseif ($affected > 0 && $diff['removed'] !== []) {
                 // Removal only marks local connections obsolete. Remote clients keep working.
                 $removalOptions = [
@@ -88,9 +88,7 @@ final class PlanManagerService
                     'sync_flow' => false,
                     'batch_size' => 20,
                 ];
-                $reconciliation = $affected > VpnPlanSubscriptionReconciler::SYNC_THRESHOLD
-                    ? $reconciler->queuePlan($id, $adminId, $removalOptions)
-                    : $reconciler->reconcilePlan($id, $removalOptions);
+                $reconciliation = $reconciler->queuePlan($id, $adminId, $removalOptions);
             }
         } catch (\Throwable $exception) {
             $events->logEvent('plan_reconcile_failed', null, null, null, null, $adminId, [

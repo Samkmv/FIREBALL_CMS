@@ -1,5 +1,7 @@
 # VPN Manager V2
 
+Current implementation: version 0.15, bidirectional CMS/3x-ui reconciliation and editable per-subscription connection ordering. The historical stage notes below remain as an implementation record; the current contract is described in “Version 0.15 synchronization contract”.
+
 Stage 12 adds cron-compatible job entry points, monotonic traffic synchronization, expiration and traffic-limit enforcement, a persistent notification outbox and bounded retries. It does not migrate data from VPN Manager V1.
 
 This plugin is isolated from `vpn-manager` by its slug, namespace, routes, translations, permission keys, migration journal entry, and `vpn_v2_*` tables.
@@ -140,3 +142,33 @@ in bounded batches. Stage 12 does not reset traffic and does not migrate V1
 data.
 
 Database schema changes must be delivered only as new ordered SQL files in `migrations/`. Runtime requests and plugin lifecycle methods must not execute DDL.
+
+## Version 0.15 synchronization contract
+
+The CMS is authoritative for user identity, plan membership, activation, expiration, device limits and traffic limits. 3x-ui is authoritative for the technical inbound snapshot and for remote client state observed during a successful poll. A successful reconciliation imports technical changes, but policy differences are pushed back through a queued, verified read/update/read operation.
+
+One `vpn_v2_profiles` row represents a logical VPN identity for a CMS user. A new profile reuses that user's oldest confirmed legacy UUID when one exists; otherwise it creates a UUID once. Password protocols use a separate profile password. Existing remote credentials are not mass-replaced. New compatible nodes use the corresponding profile credential and a deterministic ASCII client name in the form `{normalized_name}-{normalized_login}-{COUNTRY}`.
+
+Because one profile credential maps to one remote client per inbound, the create workflow rejects overlapping effective subscriptions for the same CMS user. Historical overlaps are retained for compatibility, but if two local connections resolve to one remote client the reconciler records `remote_already_bound` and does not merge or overwrite either subscription automatically.
+
+Matching is deliberately conservative: stored remote ID, UUID/password, subscription/client sub-ID, then the server/inbound/name binding. Ambiguous candidates create a `vpn_v2_sync_conflicts` row and are not merged. Remote clients without a safe local match are retained in the remote inventory for audit. A client absent after a successful panel read is `missing_remote`; a failed panel read is `remote_unavailable` and preserves the last known good state.
+
+The Conflicts administration page exposes that unmanaged inventory without secrets. An authorized administrator may explicitly link a remote inventory row to a local connection on the same server. The link is transactional and immediately queues the normal read/validate/snapshot reconciliation; it is not an unchecked database import.
+
+Every accepted remote configuration is canonicalized, validated, hashed and versioned in `vpn_v2_connection_snapshots`. The node also contains a last-known-good snapshot. Public subscription responses use only valid, confirmed snapshots and deduplicate identical URIs. The permanent subscription URL and token do not change when a server is unavailable or its configuration changes.
+
+Each local subscription connection has its own `sort_order`. Administrators can reorder the complete non-deleted connection list from the subscription page by drag-and-drop or accessible up/down buttons. Saving the order is transactional, bumps the subscription revision, and changes only the URI sequence; it never recreates a 3x-ui client or rotates the permanent token. New plan connections are appended after the existing custom sequence.
+
+The persistent `subscription_name` setting is independent from `service_name` and the server-name template. Successful public responses expose it through the standard base64-encoded `profile-title` header, including conditional responses. Changing it bumps active subscription revisions so clients and caches observe the new profile metadata.
+
+Confirmed VLESS, VMess and Trojan nodes are rendered in their native subscription URI formats. Reality is accepted only for VLESS; TLS and non-TLS branches remain isolated. Unsupported or incomplete protocol/security combinations fail snapshot validation and never enter the public response.
+
+All fan-out work is persisted in `vpn_v2_operations`. Active idempotency keys suppress duplicate work, workers claim rows with leases and heartbeats, and failures retry with bounded exponential backoff. Plan topology changes always enqueue propagation; an administrator HTTP request never waits for all affected panels. Operation, conflict and safe synchronization logs are available as separate administration tabs.
+
+Pending or delayed retry operations may be cancelled from the Operations page. A running operation keeps its lease and cannot be force-cancelled mid-request; this avoids leaving an unknown half-applied panel mutation.
+
+Server requests use bounded connect/read timeouts, one automatic session re-authentication after an unauthorized response, response-shape normalization and per-request network target validation. HTTPS verification defaults to enabled. Private or reserved network targets are denied unless the server record explicitly opts in, which is intended only for trusted internal deployments.
+
+Panel passwords, API tokens, session cookies and password-protocol client credentials are never stored as plain text. Migration 007 encrypts legacy Trojan/Shadowsocks credentials and replaces their overloaded local `client_uuid` value with a non-secret logical UUID. Remote inventory JSON and factual snapshots redact passwords, tokens and server private keys; snapshots retain only a one-way hash when a password change must affect configuration versioning.
+
+No migration from VPN Manager V1 is performed. Migration `007_add_bidirectional_sync.sql` only extends the isolated `vpn_v2_*` schema and retains existing subscriptions, tokens and remote client identities. Migration `008_add_subscription_connection_order.sql` adds and backfills the isolated per-connection order without changing any remote client.

@@ -11,6 +11,8 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
 <?= view()->renderPartial('admin/shell_open', ['title' => $title ?? '', 'subtitle' => $subtitle ?? '']) ?>
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
+<div data-vpn-v2-operation-alert aria-live="polite"></div>
+
 <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections')) ?>">
         <i class="ci-arrow-left" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_back_to_connections')) ?>
@@ -35,18 +37,18 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
     <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_title')) ?></h2>
     <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_modes_help')) ?></p>
     <div class="d-flex flex-wrap gap-2">
-        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/sync')) ?>">
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/connection/' . $id)) ?>" data-vpn-v2-async-operation>
             <?= get_csrf_field() ?>
-            <input type="hidden" name="mode" value="pull">
-            <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
-                <i class="ci-download" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_pull')) ?>
+            <button class="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                <i class="ci-refresh-cw" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_client')) ?>
             </button>
         </form>
-        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/sync')) ?>">
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/connection/' . $id . '/reset-traffic')) ?>"
+              data-vpn-v2-async-operation
+              data-vpn-v2-confirm="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_reset_traffic')) ?>">
             <?= get_csrf_field() ?>
-            <input type="hidden" name="mode" value="push">
-            <button class="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
-                <i class="ci-upload" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_push')) ?>
+            <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                <i class="ci-rotate-ccw" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reset_traffic')) ?>
             </button>
         </form>
     </div>
@@ -74,6 +76,8 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
         <dd class="col-sm-9 mb-0"><?= htmlSC($flow) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_client_email')) ?></dt>
         <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)$connection['client_email']) ?></code></dd>
+        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_status')) ?></dt>
+        <dd class="col-sm-9 mb-0"><?= htmlSC((string)($connection['sync_status'] ?? 'pending')) ?> · snapshot v<?= (int)($connection['lkg_snapshot_version'] ?? 0) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_remote_client')) ?></dt>
         <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)($connection['remote_client_preview'] ?: '—')) ?></code></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_limits')) ?></dt>

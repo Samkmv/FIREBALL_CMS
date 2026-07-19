@@ -118,6 +118,11 @@ final class Stage5FakeClient implements ThreeXuiClientInterface
         throw new LogicException('Not used in stage 5.');
     }
 
+    public function resetClientTraffic(int $remoteInboundId, string $clientEmail): array
+    {
+        throw new LogicException('Not used in stage 5.');
+    }
+
     private function touch(): void
     {
         $this->panel->httpCount++;

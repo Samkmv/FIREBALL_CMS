@@ -7,6 +7,7 @@ use Fireball\VpnManagerV2\Controllers\Admin\ServerController;
 use Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController;
 use Fireball\VpnManagerV2\Controllers\Admin\ConnectionController;
 use Fireball\VpnManagerV2\Controllers\Admin\SettingsController;
+use Fireball\VpnManagerV2\Controllers\Admin\SyncController;
 
 /** @var \FBL\Router $router */
 
@@ -69,6 +70,8 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/delete/?'
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/create-missing/?', [SubscriptionController::class, 'createMissing'])
     ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/connections/order/?', [SubscriptionController::class, 'updateConnectionOrder'])
+    ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/?', [SubscriptionController::class, 'show'])
     ->middleware(['auth', 'admin']);
 
@@ -83,6 +86,31 @@ $router->post('/admin/plugins/vpn-manager-v2/connections/(?P<id>\d+)/edit/?', [C
 $router->post('/admin/plugins/vpn-manager-v2/connections/(?P<id>\d+)/sync/?', [ConnectionController::class, 'sync'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/connections/(?P<id>\d+)/retry/?', [ConnectionController::class, 'retry'])
+    ->middleware(['auth', 'admin']);
+
+$router->get('/admin/plugins/vpn-manager-v2/operations', [SyncController::class, 'operations'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/conflicts', [SyncController::class, 'conflicts'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/conflicts/link', [SyncController::class, 'linkRemoteClient'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/sync-logs', [SyncController::class, 'logs'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/sync/server/(?P<id>\d+)/?', [SyncController::class, 'server'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/sync/subscription/(?P<id>\d+)/?', [SyncController::class, 'subscription'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/sync/connection/(?P<id>\d+)/?', [SyncController::class, 'connection'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/sync/connection/(?P<id>\d+)/reset-traffic/?', [SyncController::class, 'resetTraffic'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/sync/full/?', [SyncController::class, 'full'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/operations/retry/?', [SyncController::class, 'retry'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/operations/(?P<operation>[a-fA-F0-9-]{36})/cancel/?', [SyncController::class, 'cancel'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/operations/(?P<operation>[a-fA-F0-9-]{36})/?', [SyncController::class, 'progress'])
     ->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2/settings', [SettingsController::class, 'index'])

@@ -231,6 +231,52 @@ final class SubscriptionController
         $this->redirect('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId);
     }
 
+    public function updateConnectionOrder(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $subscriptionId = (int)get_route_param('id');
+        $data = request()->getData();
+        $returnQuery = AdminTableState::sanitize($data['return_query'] ?? '');
+        $orderedNodeIds = is_array($data['connection_order'] ?? null)
+            ? $data['connection_order']
+            : [];
+
+        try {
+            $repository = new SubscriptionRepository();
+            $before = (new SubscriptionConfigRepository())->revisionMetadata($subscriptionId);
+            $changed = $repository->reorderNodes($subscriptionId, $orderedNodeIds, $this->adminId());
+            if ($changed && is_array($before)) {
+                (new \Fireball\VpnManagerV2\Services\VpnSubscriptionCache())->invalidate(
+                    (string)$before['subscription_token'],
+                    (int)$before['revision']
+                );
+            }
+            session()->setFlash(
+                $changed ? 'success' : 'info',
+                \FireballPluginVpnManagerV2::t($changed
+                    ? 'vpn_manager_v2_flash_connection_order_saved'
+                    : 'vpn_manager_v2_flash_no_changes')
+            );
+        } catch (\InvalidArgumentException $exception) {
+            $key = $exception->getMessage() === 'subscription_not_found'
+                ? 'vpn_manager_v2_error_subscription_not_found'
+                : 'vpn_manager_v2_error_connection_order_invalid';
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t($key));
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 connection order update failed', [
+                'Subscription' => $subscriptionId,
+                'User ID' => $this->adminId(),
+                'Error Class' => get_class($exception),
+            ], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_order_save'));
+        }
+
+        response()->redirect(AdminTableState::asParameter(
+            '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
+            $returnQuery
+        ));
+    }
+
     private function flashResult(ProvisioningResult $result, bool $created): void
     {
         if ($result->flowError) {

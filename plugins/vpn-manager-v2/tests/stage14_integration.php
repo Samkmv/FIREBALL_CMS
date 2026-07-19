@@ -88,6 +88,11 @@ final class Stage14FakeThreeXuiClient implements ThreeXuiClientInterface
 
         return ['success' => true];
     }
+
+    public function resetClientTraffic(int $remoteInboundId, string $clientEmail): array
+    {
+        return ['success' => true];
+    }
 }
 
 $assert = static function (bool $condition, string $message): void {

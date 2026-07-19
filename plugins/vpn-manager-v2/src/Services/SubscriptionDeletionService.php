@@ -7,6 +7,7 @@ use Fireball\VpnManagerV2\DTO\SyncResult;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
+use Fireball\VpnManagerV2\Repositories\OperationQueueRepository;
 
 final class SubscriptionDeletionService
 {
@@ -17,6 +18,7 @@ final class SubscriptionDeletionService
         private readonly ?VpnSubscriptionRevisionService $revisionService = null,
         private readonly ?VpnSubscriptionCache $subscriptionCache = null,
         private readonly ?QrCodeService $qrCode = null,
+        private readonly ?OperationQueueRepository $operations = null,
     ) {
     }
 
@@ -136,7 +138,16 @@ final class SubscriptionDeletionService
                 $failed++;
                 $safeError = $this->safeError($exception);
                 $firstError ??= $safeError;
-                $repository->markNodeDeleteFailed($nodeId, $safeError);
+                $repository->markNodePendingRemoteDelete($nodeId, $safeError);
+                ($this->operations ?? new OperationQueueRepository())->enqueue(
+                    'delete_client',
+                    'retry',
+                    (int)$node['server_id'],
+                    $subscriptionId,
+                    $nodeId,
+                    [],
+                    $adminId
+                );
                 $repository->logEvent('node.delete_failed', $subscriptionId, $nodeId,
                     (int)$node['server_id'], (int)$subscription['user_id'], $adminId,
                     ['error_type' => $this->errorType($exception)]);
@@ -144,7 +155,7 @@ final class SubscriptionDeletionService
         }
 
         if ($failed > 0 || !$repository->allNodesDeleted($subscriptionId)) {
-            $repository->markSubscriptionDeleteFailed(
+            $repository->markSubscriptionPendingRemoteDelete(
                 $subscriptionId,
                 $firstError ?? \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_delete_generic')
             );

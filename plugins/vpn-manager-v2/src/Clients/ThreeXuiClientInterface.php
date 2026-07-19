@@ -23,4 +23,6 @@ interface ThreeXuiClientInterface
     public function updateClient(int $remoteInboundId, string $clientId, array $client): array;
 
     public function deleteClient(int $remoteInboundId, string $clientId, ?string $clientEmail = null): array;
+
+    public function resetClientTraffic(int $remoteInboundId, string $clientEmail): array;
 }

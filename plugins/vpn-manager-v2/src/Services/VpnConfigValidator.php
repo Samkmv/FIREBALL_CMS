@@ -23,8 +23,10 @@ final class VpnConfigValidator
         $streamNetwork = strtolower(trim((string)($stream['network'] ?? '')));
         $streamSecurity = strtolower(trim((string)($stream['security'] ?? 'none')));
 
-        if ($protocol !== 'vless'
-            || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $uuid) !== 1
+        $uuidCredential = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $uuid) === 1;
+        if (!in_array($protocol, ['vless', 'vmess', 'trojan'], true)
+            || (($protocol === 'vless' || $protocol === 'vmess') && !$uuidCredential)
+            || ($protocol === 'trojan' && $uuid === '')
             || !$this->validHost($host)
             || (int)($node['port'] ?? 0) < 1
             || (int)($node['port'] ?? 0) > 65535
@@ -32,6 +34,9 @@ final class VpnConfigValidator
             || !in_array($security, ['reality', 'tls', 'none'], true)
             || $streamNetwork !== $network
             || $streamSecurity !== $security) {
+            $this->invalid();
+        }
+        if ($security === 'reality' && $protocol !== 'vless') {
             $this->invalid();
         }
 
@@ -44,6 +49,9 @@ final class VpnConfigValidator
             $this->invalid();
         }
         if (array_key_exists('flow', $params) && trim((string)$params['flow']) === '') {
+            $this->invalid();
+        }
+        if ($protocol === 'vless' && ($params['encryption'] ?? null) !== 'none') {
             $this->invalid();
         }
 
@@ -80,7 +88,27 @@ final class VpnConfigValidator
 
     public function validateUri(string $uri): void
     {
-        if ($uri === '' || str_contains($uri, "\n") || str_contains($uri, "\r") || !str_starts_with($uri, 'vless://')) {
+        if ($uri === '' || str_contains($uri, "\n") || str_contains($uri, "\r")) {
+            $this->invalid();
+        }
+
+        if (str_starts_with($uri, 'vmess://')) {
+            $encoded = substr($uri, strlen('vmess://'));
+            $json = base64_decode($encoded, true);
+            $payload = is_string($json) ? json_decode($json, true) : null;
+            if (!is_array($payload)
+                || !in_array((string)($payload['v'] ?? ''), ['2', '3'], true)
+                || preg_match('/^[0-9a-f-]{36}$/i', (string)($payload['id'] ?? '')) !== 1
+                || !$this->validHost((string)($payload['add'] ?? ''))
+                || (int)($payload['port'] ?? 0) < 1
+                || trim((string)($payload['ps'] ?? '')) === '') {
+                $this->invalid();
+            }
+
+            return;
+        }
+
+        if (!str_starts_with($uri, 'vless://') && !str_starts_with($uri, 'trojan://')) {
             $this->invalid();
         }
 
@@ -95,8 +123,10 @@ final class VpnConfigValidator
         }
 
         parse_str((string)$parts['query'], $query);
-        if (($query['encryption'] ?? null) !== 'none'
+        $vless = str_starts_with($uri, 'vless://');
+        if (($vless && ($query['encryption'] ?? null) !== 'none')
             || !in_array((string)($query['security'] ?? ''), ['reality', 'tls', 'none'], true)
+            || (!$vless && (string)($query['security'] ?? '') === 'reality')
             || empty($query['type'])
             || (array_key_exists('flow', $query) && trim((string)$query['flow']) === '')) {
             $this->invalid();

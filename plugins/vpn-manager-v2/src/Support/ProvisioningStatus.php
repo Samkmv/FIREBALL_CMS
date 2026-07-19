@@ -23,6 +23,9 @@ final class ProvisioningStatus
             'deleting' => 'text-bg-info',
             'deleted' => 'text-bg-secondary',
             'delete_failed' => 'text-bg-danger',
+            'missing_remote' => 'text-bg-warning',
+            'invalid_snapshot' => 'text-bg-danger',
+            'pending_remote_delete' => 'text-bg-warning',
         ];
         $class = $classes[$status] ?? 'text-bg-light border text-body-secondary';
         $key = array_key_exists($status, $classes) ? $status : 'unknown';
@@ -34,7 +37,7 @@ final class ProvisioningStatus
 
     public static function canRetry(string $status): bool
     {
-        return in_array(strtolower(trim($status)), ['create_failed', 'sync_error'], true);
+        return in_array(strtolower(trim($status)), ['create_failed', 'sync_error', 'missing_remote'], true);
     }
 
     private function __construct()

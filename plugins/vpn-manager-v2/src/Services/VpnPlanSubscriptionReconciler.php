@@ -300,6 +300,7 @@ final class VpnPlanSubscriptionReconciler
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_reconcile_target'));
         }
         if (empty($planNode['is_enabled']) || empty($planNode['server_is_enabled'])
+            || !empty($planNode['maintenance_mode']) || empty($planNode['allow_new_connections'])
             || empty($planNode['inbound_is_enabled']) || (string)$planNode['inbound_status'] !== 'active') {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_provisioning_inbound_unavailable'));
         }
@@ -311,7 +312,8 @@ final class VpnPlanSubscriptionReconciler
             (int)$planNode['server_id'],
             (int)$planNode['inbound_id'],
             function () use ($repository, $subscription, $planNode, $flow): NodeProvisionResult {
-                $claim = $repository->createOrClaimNode($subscription, $planNode, $flow);
+                $identity = (new RemoteClientIdentityService())->forSubscription($subscription, $planNode);
+                $claim = $repository->createOrClaimNode($subscription, $planNode, $flow, $identity);
                 $nodeId = (int)$claim['id'];
                 if (empty($claim['claimed'])) {
                     return new NodeProvisionResult(
@@ -366,7 +368,7 @@ final class VpnPlanSubscriptionReconciler
     public function retryFailedNode(int $nodeId): NodeProvisionResult
     {
         $node = $this->repository()->node($nodeId);
-        if (!$node || !in_array((string)$node['status'], ['creating', 'create_failed', 'sync_error'], true)) {
+        if (!$node || !in_array((string)$node['status'], ['creating', 'create_failed', 'sync_error', 'missing_remote'], true)) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_retry_status'));
         }
         $planNode = $this->repository()->planNodeForTarget(

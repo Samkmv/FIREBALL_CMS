@@ -125,10 +125,21 @@ final class ClientVerifier
         }
     }
 
+    public function assertStableCredential(array $remoteClient, array $expectedPayload): void
+    {
+        $expectedId = trim((string)($expectedPayload['id'] ?? $expectedPayload['password'] ?? ''));
+        $remoteId = trim((string)($remoteClient['id'] ?? $remoteClient['uuid'] ?? $remoteClient['password'] ?? ''));
+        if ($expectedId === '' || $remoteId === '' || !hash_equals($expectedId, $remoteId)) {
+            throw new ClientVerificationException(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_identity_changed')
+            );
+        }
+    }
+
     public function changedFields(array $remoteClient, array $expectedPayload): array
     {
         $changed = [];
-        foreach (['expiryTime', 'totalGB', 'limitIp', 'enable', 'flow'] as $field) {
+        foreach (['email', 'expiryTime', 'totalGB', 'limitIp', 'enable', 'flow'] as $field) {
             if (!$this->sameField($field, $remoteClient[$field] ?? null, $expectedPayload[$field] ?? null)) {
                 $changed[] = $field;
             }

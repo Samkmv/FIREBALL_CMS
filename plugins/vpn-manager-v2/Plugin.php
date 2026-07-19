@@ -8,6 +8,9 @@ use Fireball\VpnManagerV2\Jobs\VpnV2RetryFailedOperationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2ReconcilePlanSubscriptionsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SendExpirationNotificationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SyncTrafficJob;
+use Fireball\VpnManagerV2\Jobs\VpnV2SyncConfigurationJob;
+use Fireball\VpnManagerV2\Jobs\VpnV2FullReconcileJob;
+use Fireball\VpnManagerV2\Jobs\VpnV2ProvisionMissingClientsJob;
 use Fireball\VpnManagerV2\Services\SettingsService;
 use Fireball\VpnManagerV2\Services\VpnV2SchemaUpgradeService;
 use Fireball\VpnManagerV2\Support\Permissions;
@@ -116,6 +119,10 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
     public static function jobs(): array
     {
         return [
+            'vpn_v2_sync_configuration' => [
+                'class' => VpnV2SyncConfigurationJob::class,
+                'schedule' => '*/10 * * * *',
+            ],
             'vpn_v2_sync_traffic' => [
                 'class' => VpnV2SyncTrafficJob::class,
                 'schedule' => '*/10 * * * *',
@@ -140,6 +147,14 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
                 'class' => VpnV2ReconcilePlanSubscriptionsJob::class,
                 'schedule' => '* * * * *',
             ],
+            'vpn_v2_provision_missing_clients' => [
+                'class' => VpnV2ProvisionMissingClientsJob::class,
+                'schedule' => '5-59/10 * * * *',
+            ],
+            'vpn_v2_full_reconcile' => [
+                'class' => VpnV2FullReconcileJob::class,
+                'schedule' => '25 3 * * *',
+            ],
         ];
     }
 
@@ -152,6 +167,9 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
             'plans' => ['vpn_manager_v2_tab_plans', '/admin/plugins/vpn-manager-v2/plans', 'ci-package'],
             'subscriptions' => ['vpn_manager_v2_tab_subscriptions', '/admin/plugins/vpn-manager-v2/subscriptions', 'ci-link'],
             'connections' => ['vpn_manager_v2_tab_connections', '/admin/plugins/vpn-manager-v2/connections', 'ci-share-2'],
+            'operations' => ['vpn_manager_v2_tab_operations', '/admin/plugins/vpn-manager-v2/operations', 'ci-refresh-cw'],
+            'conflicts' => ['vpn_manager_v2_tab_conflicts', '/admin/plugins/vpn-manager-v2/conflicts', 'ci-alert-triangle'],
+            'sync-logs' => ['vpn_manager_v2_tab_sync_logs', '/admin/plugins/vpn-manager-v2/sync-logs', 'ci-list'],
             'settings' => ['vpn_manager_v2_tab_settings', '/admin/plugins/vpn-manager-v2/settings', 'ci-settings'],
         ];
         $tabs = [];

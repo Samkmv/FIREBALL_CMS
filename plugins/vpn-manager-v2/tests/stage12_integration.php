@@ -66,6 +66,8 @@ final class Stage12Client implements ThreeXuiClientInterface
     public function updateClient(int $remoteInboundId, string $clientId, array $client): array { throw new LogicException('Not used.'); }
 
     public function deleteClient(int $remoteInboundId, string $clientId, ?string $clientEmail = null): array { throw new LogicException('Not used.'); }
+
+    public function resetClientTraffic(int $remoteInboundId, string $clientEmail): array { throw new LogicException('Not used.'); }
 }
 
 final class Stage12NotificationService extends NotificationService

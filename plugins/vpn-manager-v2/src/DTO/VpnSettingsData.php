@@ -6,6 +6,7 @@ final readonly class VpnSettingsData
 {
     public function __construct(
         public string $serviceName,
+        public string $subscriptionName,
         public string $serverNameTemplate,
         public bool $globalShowFlags,
         public string $supportName,
@@ -37,6 +38,7 @@ final readonly class VpnSettingsData
     public function toArray(): array
     {
         return [
+            'subscription_name' => $this->subscriptionName,
             'service_name' => $this->serviceName,
             'server_name_template' => $this->serverNameTemplate,
             'global_show_flags' => $this->globalShowFlags,

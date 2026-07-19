@@ -86,7 +86,8 @@ foreach ($subscriptions as $subscription) {
     $rows[] = ['cells' => [
         ['value' => '#' . $id],
         ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['user_name'])
-            . '</span><div class="small text-body-secondary">' . htmlSC((string)$subscription['user_email']) . '</div>'],
+            . '</span><div class="small text-body-secondary">' . htmlSC((string)$subscription['user_login'])
+            . ' · ' . htmlSC((string)$subscription['user_email']) . '</div>'],
         ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['plan_name'])
             . '</span><div class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</div>'],
         ['html' => $badge],

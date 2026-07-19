@@ -45,7 +45,7 @@ final class RemoteClientDeletionService
 
         $client->deleteClient(
             $remoteInboundId,
-            (string)$node['client_uuid'],
+            (new RemoteClientCredentialService())->credential($node),
             (string)$node['client_email']
         );
         $after = $client->getInbound($remoteInboundId);
@@ -65,7 +65,7 @@ final class RemoteClientDeletionService
             $decoded = json_decode($settings, true);
             $settings = is_array($decoded) ? $decoded : [];
         }
-        $uuid = trim((string)($node['client_uuid'] ?? ''));
+        $uuid = (new RemoteClientCredentialService())->credential($node);
         $email = trim((string)($node['client_email'] ?? ''));
         $subId = trim((string)($node['client_sub_id'] ?? ''));
         $matches = [];
@@ -88,7 +88,7 @@ final class RemoteClientDeletionService
 
     private function assertExactIdentity(array $remote, array $node): void
     {
-        $uuid = trim((string)($node['client_uuid'] ?? ''));
+        $uuid = (new RemoteClientCredentialService())->credential($node);
         $email = trim((string)($node['client_email'] ?? ''));
         $subId = trim((string)($node['client_sub_id'] ?? ''));
         $remoteId = trim((string)($remote['id'] ?? $remote['uuid'] ?? $remote['password'] ?? ''));

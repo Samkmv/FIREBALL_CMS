@@ -6,22 +6,30 @@ final class SubscriptionConfigRepository
 {
     public function findByToken(string $token): ?array
     {
-        $row = db()->query(
+        $rows = db()->query(
             'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, subscription_token, revision, config_updated_at, created_by,
                     created_at, updated_at
-             FROM vpn_v2_subscriptions WHERE subscription_token = ? LIMIT 1',
-            [$token]
-        )->getOne();
+             FROM vpn_v2_subscriptions WHERE subscription_token_hash = ? LIMIT 3',
+            [hash('sha256', $token)]
+        )->get() ?: [];
+        foreach ($rows as $row) {
+            if (is_array($row) && hash_equals((string)($row['subscription_token'] ?? ''), $token)) {
+                return $row;
+            }
+        }
 
-        return is_array($row) ? $row : null;
+        return null;
     }
 
     public function activeNodes(int $subscriptionId): array
     {
-        return db()->query(
-            "SELECT n.id AS node_id, n.subscription_id, n.client_uuid, n.client_email,
-                    n.client_sub_id, n.flow, n.traffic_limit_bytes, n.updated_at AS node_updated_at,
+        $rows = db()->query(
+            "SELECT n.id AS node_id, n.subscription_id, n.sort_order, n.client_uuid, n.encrypted_client_credential,
+                    n.client_email,
+                    n.client_sub_id, n.flow, n.traffic_limit_bytes, n.sync_status,
+                    n.lkg_snapshot_json, n.lkg_snapshot_hash, n.lkg_validity,
+                    n.updated_at AS node_updated_at,
                     s.id AS server_id, s.name AS server_name, s.code AS server_code,
                     s.panel_url, s.country_code, s.country_name, s.city, s.show_flag,
                     s.updated_at AS server_updated_at,
@@ -34,9 +42,23 @@ final class SubscriptionConfigRepository
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id AND i.server_id = n.server_id
              WHERE n.subscription_id = ? AND n.status = 'active'
                AND s.is_enabled = 1 AND i.is_enabled = 1 AND i.status = 'active'
-             ORDER BY n.id ASC",
+             ORDER BY n.sort_order ASC, n.id ASC",
             [$subscriptionId]
         )->get() ?: [];
+
+        $nodes = [];
+        foreach ($rows as $row) {
+            $snapshot = [];
+            if ((string)($row['lkg_validity'] ?? '') === 'valid'
+                && trim((string)($row['lkg_snapshot_json'] ?? '')) !== '') {
+                $decoded = json_decode((string)$row['lkg_snapshot_json'], true);
+                $snapshot = is_array($decoded) ? $decoded : [];
+            }
+            unset($row['lkg_snapshot_json']);
+            $nodes[] = $snapshot !== [] ? array_replace($row, $snapshot) : $row;
+        }
+
+        return $nodes;
     }
 
     public function revisionMetadata(int $subscriptionId): ?array

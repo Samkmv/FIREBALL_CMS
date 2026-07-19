@@ -127,6 +127,11 @@ final class Stage7Client implements ThreeXuiClientInterface
         throw new LogicException('Stage 7 must never delete a client.');
     }
 
+    public function resetClientTraffic(int $remoteInboundId, string $clientEmail): array
+    {
+        throw new LogicException('Stage 7 must never reset traffic.');
+    }
+
     private function touch(): void
     {
         if (db()->inTransaction()) {

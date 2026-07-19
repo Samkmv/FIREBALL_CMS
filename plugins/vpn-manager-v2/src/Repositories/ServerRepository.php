@@ -4,15 +4,23 @@ namespace Fireball\VpnManagerV2\Repositories;
 
 final class ServerRepository
 {
-    private const PUBLIC_COLUMNS = 'id, name, code, panel_url, panel_path, auth_type, country_code, country_name, city,
-        show_flag, status, is_enabled, last_check_at, last_success_at, last_error, created_at, updated_at,
+    private const PUBLIC_COLUMNS = 'id, name, code, panel_url, panel_path, api_url, auth_type, country_code, country_name, city,
+        show_flag, status, is_enabled, maintenance_mode, allow_new_connections, verify_ssl, allow_private_network,
+        connect_timeout, read_timeout, last_check_at, last_success_at, last_auth_at, last_sync_at,
+        api_version, capabilities_json, last_error, created_at, updated_at,
         CASE WHEN encrypted_username IS NOT NULL AND encrypted_username <> "" THEN 1 ELSE 0 END AS has_username,
         CASE WHEN encrypted_password IS NOT NULL AND encrypted_password <> "" THEN 1 ELSE 0 END AS has_password,
         CASE WHEN encrypted_token IS NOT NULL AND encrypted_token <> "" THEN 1 ELSE 0 END AS has_token';
 
     public function all(): array
     {
-        return db()->query('SELECT ' . self::PUBLIC_COLUMNS . ' FROM vpn_v2_servers ORDER BY id ASC')->get() ?: [];
+        return db()->query(
+            'SELECT ' . self::PUBLIC_COLUMNS . ',
+                (SELECT COUNT(*) FROM vpn_v2_inbounds vi WHERE vi.server_id = vpn_v2_servers.id) AS inbound_count,
+                (SELECT COUNT(*) FROM vpn_v2_subscription_nodes vn
+                 WHERE vn.server_id = vpn_v2_servers.id AND vn.status NOT IN (\'deleted\', \'deleting\')) AS client_count
+             FROM vpn_v2_servers ORDER BY id ASC'
+        )->get() ?: [];
     }
 
     public function find(int $id): ?array
@@ -56,14 +64,16 @@ final class ServerRepository
         $now = date('Y-m-d H:i:s');
         db()->query(
             'INSERT INTO vpn_v2_servers
-                (name, code, panel_url, panel_path, auth_type, encrypted_username, encrypted_password, encrypted_token,
-                 country_code, country_name, city, show_flag, status, is_enabled, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (name, code, panel_url, panel_path, api_url, auth_type, encrypted_username, encrypted_password, encrypted_token,
+                 country_code, country_name, city, show_flag, status, is_enabled, maintenance_mode,
+                 allow_new_connections, verify_ssl, allow_private_network, connect_timeout, read_timeout, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['name'],
                 $data['code'],
                 $data['panel_url'],
                 $data['panel_path'],
+                $data['api_url'],
                 $data['auth_type'],
                 $encryptedSecrets['encrypted_username'] ?: null,
                 $encryptedSecrets['encrypted_password'] ?: null,
@@ -74,6 +84,12 @@ final class ServerRepository
                 $data['show_flag'],
                 'unchecked',
                 $data['is_enabled'],
+                $data['maintenance_mode'],
+                $data['allow_new_connections'],
+                $data['verify_ssl'],
+                $data['allow_private_network'],
+                $data['connect_timeout'],
+                $data['read_timeout'],
                 $now,
                 $now,
             ]
@@ -88,19 +104,28 @@ final class ServerRepository
     public function update(int $id, array $data, array $encryptedSecrets): void
     {
         $sql = 'UPDATE vpn_v2_servers
-                SET name = ?, code = ?, panel_url = ?, panel_path = ?, auth_type = ?, country_code = ?,
-                    country_name = ?, city = ?, show_flag = ?, is_enabled = ?, updated_at = ?';
+                SET name = ?, code = ?, panel_url = ?, panel_path = ?, api_url = ?, auth_type = ?, country_code = ?,
+                    country_name = ?, city = ?, show_flag = ?, is_enabled = ?, maintenance_mode = ?,
+                    allow_new_connections = ?, verify_ssl = ?, allow_private_network = ?,
+                    connect_timeout = ?, read_timeout = ?, updated_at = ?';
         $params = [
             $data['name'],
             $data['code'],
             $data['panel_url'],
             $data['panel_path'],
+            $data['api_url'],
             $data['auth_type'],
             $data['country_code'],
             $data['country_name'],
             $data['city'],
             $data['show_flag'],
             $data['is_enabled'],
+            $data['maintenance_mode'],
+            $data['allow_new_connections'],
+            $data['verify_ssl'],
+            $data['allow_private_network'],
+            $data['connect_timeout'],
+            $data['read_timeout'],
             date('Y-m-d H:i:s'),
         ];
 

@@ -47,6 +47,13 @@ $serverActions = static function (array $server): array {
             'icon' => 'ci-refresh-cw',
         ],
         [
+            'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_server'),
+            'type' => 'form',
+            'action' => base_href('/admin/plugins/vpn-manager-v2/sync/server/' . $id),
+            'form_attributes' => ['data-vpn-v2-async-operation' => true],
+            'icon' => 'ci-repeat',
+        ],
+        [
             'label' => FireballPluginVpnManagerV2::t(!empty($server['is_enabled'])
                 ? 'vpn_manager_v2_action_disable'
                 : 'vpn_manager_v2_action_enable'),
@@ -64,7 +71,9 @@ $desktopActions = static function (array $server) use ($serverActions): string {
         $content = '<i class="' . htmlSC((string)$action['icon']) . '" aria-hidden="true"></i><span class="visually-hidden">'
             . htmlSC((string)$action['label']) . '</span>';
         if (($action['type'] ?? 'link') === 'form') {
-            $html .= '<form method="post" action="' . htmlSC((string)$action['action']) . '">'
+            $async = !empty($action['form_attributes']['data-vpn-v2-async-operation'])
+                ? ' data-vpn-v2-async-operation' : '';
+            $html .= '<form method="post" action="' . htmlSC((string)$action['action']) . '"' . $async . '>'
                 . get_csrf_field();
             foreach ((array)($action['hidden'] ?? []) as $name => $value) {
                 $html .= '<input type="hidden" name="' . htmlSC((string)$name) . '" value="' . htmlSC((string)$value) . '">';
@@ -105,6 +114,8 @@ foreach ($servers as $server) {
             . htmlSC((string)$server['last_error']) . '</div>';
     }
     $badge = $statusBadge($server);
+    $counts = (int)($server['inbound_count'] ?? 0) . ' / ' . (int)($server['client_count'] ?? 0);
+    $lastSync = trim((string)($server['last_sync_at'] ?? '')) ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_never');
 
     $rows[] = [
         'cells' => [
@@ -115,6 +126,8 @@ foreach ($servers as $server) {
             ['html' => '<span class="text-break">' . htmlSC($panel) . '</span>'],
             ['value' => $authLabel],
             ['html' => $badge],
+            ['value' => $counts],
+            ['value' => $lastSync],
             ['html' => $lastCheckHtml],
             ['html' => $desktopActions($server)],
         ],
@@ -131,6 +144,8 @@ foreach ($servers as $server) {
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_location'), 'value' => $location],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_panel'), 'value' => $panel],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_auth'), 'value' => $authLabel],
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_inbounds_clients'), 'value' => $counts],
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_sync'), 'value' => $lastSync],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_check'), 'html' => $lastCheckHtml],
         ],
     ];
@@ -145,6 +160,8 @@ foreach ($servers as $server) {
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
+<div data-vpn-v2-operation-alert aria-live="polite"></div>
+
 <div class="border rounded-5 p-3 p-md-4">
     <?= view()->renderPartial('admin/partials/table', [
         'columns' => [
@@ -154,6 +171,8 @@ foreach ($servers as $server) {
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_panel')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_auth')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')],
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_inbounds_clients')],
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_sync')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_check')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_actions'), 'class' => 'text-end'],
         ],

@@ -59,10 +59,18 @@ final class SettingsValidator
             'vpn_manager_v2_error_settings_service_name',
             $strict
         );
+        $subscriptionName = $this->text(
+            $data['subscription_name'] ?? '',
+            120,
+            true,
+            'vpn_manager_v2_error_settings_subscription_name',
+            $strict
+        );
         $template = $this->template((string)($data['server_name_template'] ?? ''), $strict);
 
         return new VpnSettingsData(
             $serviceName,
+            $subscriptionName,
             $template,
             $this->boolean($data['global_show_flags'] ?? false),
             $this->text($data['support_name'] ?? '', 120, false, 'vpn_manager_v2_error_settings_support_name', $strict),

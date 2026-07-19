@@ -82,6 +82,46 @@ final class PluginController extends BaseController
         $this->redirectToPlugin($slug);
     }
 
+    public function checkAllUpdates(): void
+    {
+        $this->requirePluginUpdatePermission();
+        try {
+            $result = (new PluginUpdateService())->checkAll();
+            $configured = (int)($result['configured'] ?? 0);
+            $available = (int)($result['available'] ?? 0);
+            $failed = (int)($result['failed'] ?? 0);
+
+            if ($configured === 0) {
+                $message = \FBL\Language::get('admin_plugin_updates_all_none_configured');
+                $flash = 'info';
+            } elseif ($failed > 0) {
+                $message = str_replace(
+                    [':available', ':failed'],
+                    [(string)$available, (string)$failed],
+                    \FBL\Language::get('admin_plugin_updates_all_partial')
+                );
+                $flash = $failed === $configured ? 'error' : 'warning';
+            } elseif ($available > 0) {
+                $message = str_replace(
+                    ':count',
+                    (string)$available,
+                    \FBL\Language::get('admin_plugin_updates_all_available')
+                );
+                $flash = 'info';
+            } else {
+                $message = \FBL\Language::get('admin_plugin_updates_all_current');
+                $flash = 'success';
+            }
+
+            session()->setFlash($flash, $message);
+        } catch (Throwable $exception) {
+            log_error_details('Plugin updates check all failed', [], $exception);
+            session()->setFlash('error', $exception->getMessage());
+        }
+
+        response()->redirect(base_href('/admin/plugins'));
+    }
+
     public function update(): void
     {
         $this->requirePluginUpdatePermission();
