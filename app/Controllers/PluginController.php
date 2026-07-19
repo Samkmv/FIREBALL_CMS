@@ -89,6 +89,7 @@ final class PluginController extends BaseController
             $result = (new PluginUpdateService())->checkAll();
             $configured = (int)($result['configured'] ?? 0);
             $available = (int)($result['available'] ?? 0);
+            $sourceOlder = (int)($result['source_older'] ?? 0);
             $failed = (int)($result['failed'] ?? 0);
 
             if ($configured === 0) {
@@ -96,11 +97,18 @@ final class PluginController extends BaseController
                 $flash = 'info';
             } elseif ($failed > 0) {
                 $message = str_replace(
-                    [':available', ':failed'],
-                    [(string)$available, (string)$failed],
+                    [':available', ':older', ':failed'],
+                    [(string)$available, (string)$sourceOlder, (string)$failed],
                     \FBL\Language::get('admin_plugin_updates_all_partial')
                 );
                 $flash = $failed === $configured ? 'error' : 'warning';
+            } elseif ($available > 0 && $sourceOlder > 0) {
+                $message = str_replace(
+                    [':available', ':older'],
+                    [(string)$available, (string)$sourceOlder],
+                    \FBL\Language::get('admin_plugin_updates_all_mixed')
+                );
+                $flash = 'warning';
             } elseif ($available > 0) {
                 $message = str_replace(
                     ':count',
@@ -108,6 +116,13 @@ final class PluginController extends BaseController
                     \FBL\Language::get('admin_plugin_updates_all_available')
                 );
                 $flash = 'info';
+            } elseif ($sourceOlder > 0) {
+                $message = str_replace(
+                    ':count',
+                    (string)$sourceOlder,
+                    \FBL\Language::get('admin_plugin_updates_all_source_older')
+                );
+                $flash = 'warning';
             } else {
                 $message = \FBL\Language::get('admin_plugin_updates_all_current');
                 $flash = 'success';
@@ -129,7 +144,9 @@ final class PluginController extends BaseController
         try {
             $result = (new PluginUpdateService())->update($slug, (array)get_user());
             session()->setFlash(
-                ($result['status'] ?? '') === 'current' ? 'info' : 'success',
+                ($result['status'] ?? '') === 'source_older'
+                    ? 'warning'
+                    : (($result['status'] ?? '') === 'current' ? 'info' : 'success'),
                 (string)($result['message'] ?? \FBL\Language::get('admin_plugin_updates_success'))
             );
         } catch (Throwable $exception) {

@@ -13,6 +13,10 @@ $availableUpdateCount = count(array_filter(
     $plugins,
     static fn(array $plugin): bool => !empty($plugin['update']['update_available'])
 ));
+$olderSourceCount = count(array_filter(
+    $plugins,
+    static fn(array $plugin): bool => !empty($plugin['update']['source_older'])
+));
 $pageActions = '<div class="d-flex flex-wrap align-items-center gap-2">';
 $pageActions .= '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="'
     . htmlSC(base_href('/admin/docs/plugins')) . '"><i class="ci-book-open"></i>'
@@ -52,6 +56,12 @@ $pageActions .= '</div>';
                                 <?= htmlSC((string)$availableUpdateCount) ?>
                             </span>
                         <?php endif; ?>
+                        <?php if ($olderSourceCount > 0): ?>
+                            <span class="badge rounded-pill text-bg-warning">
+                                <?= print_translation('admin_plugin_updates_source_older_count') ?>:
+                                <?= htmlSC((string)$olderSourceCount) ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -77,14 +87,28 @@ $pageActions .= '</div>';
                 $updateConfigured = !empty($update['configured']);
                 $remoteVersion = trim((string)($update['remote_version'] ?? ''));
                 $updateAvailable = !empty($update['update_available']) && $remoteVersion !== '';
+                $sourceOlder = !empty($update['source_older']) && $remoteVersion !== '';
                 $updateStatus = (string)($update['status'] ?? 'never');
                 $releaseNotes = is_array($update['release_notes'] ?? null)
                     ? array_values(array_filter($update['release_notes'], 'is_string'))
                     : [];
                 $backupFile = trim((string)($update['backup_file'] ?? ''));
+                $updateMessageKey = $updateAvailable
+                    ? 'admin_plugin_updates_available'
+                    : ($updateStatus === 'error'
+                        ? 'admin_plugin_updates_check_failed'
+                        : ($sourceOlder
+                            ? 'admin_plugin_updates_source_older'
+                            : ($updateStatus === 'never'
+                                ? 'admin_plugin_updates_not_checked'
+                                : 'admin_plugin_updates_current')));
+                $updateMessage = return_translation($updateMessageKey);
+                $storedUpdateMessage = trim((string)($update['message'] ?? ''));
                 $updateAlert = $updateStatus === 'error'
                     ? 'danger'
-                    : ($updateAvailable ? 'warning' : ($updateStatus === 'ok' || $updateStatus === 'updated' ? 'success' : 'secondary'));
+                    : (($updateAvailable || $sourceOlder)
+                        ? 'warning'
+                        : ($updateStatus === 'ok' || $updateStatus === 'updated' ? 'success' : 'secondary'));
                 ?>
                 <div class="col-md-6 col-xl-4">
                     <article id="plugin-<?= htmlSC((string)$plugin['slug']) ?>" class="card h-100 rounded-5 border <?= $isActive ? 'border-success shadow-sm' : '' ?>">
@@ -116,24 +140,19 @@ $pageActions .= '</div>';
                                 <?php if ($updateConfigured): ?>
                                     <div class="alert alert-<?= htmlSC($updateAlert) ?> small mt-3 mb-0" role="status">
                                         <div class="fw-semibold">
-                                            <?= htmlSC(return_translation($updateAvailable
-                                                ? 'admin_plugin_updates_available'
-                                                : ($updateStatus === 'error'
-                                                    ? 'admin_plugin_updates_check_failed'
-                                                    : ($updateStatus === 'never'
-                                                        ? 'admin_plugin_updates_not_checked'
-                                                        : 'admin_plugin_updates_current')))) ?>
+                                            <?= htmlSC($updateMessage) ?>
                                         </div>
-                                        <?php if ($updateAvailable): ?>
+                                        <?php if ($updateAvailable || $sourceOlder): ?>
                                             <div class="mt-1">
-                                                <?= print_translation('admin_plugins_version') ?>:
+                                                <?= print_translation('admin_plugin_updates_installed_version') ?>:
                                                 <strong><?= htmlSC((string)$plugin['version']) ?></strong>
-                                                <i class="ci-arrow-right mx-1" aria-hidden="true"></i>
+                                                <span class="mx-1" aria-hidden="true">·</span>
+                                                <?= print_translation('admin_plugin_updates_source_version') ?>:
                                                 <strong><?= htmlSC($remoteVersion) ?></strong>
                                             </div>
                                         <?php endif; ?>
-                                        <?php if (($update['message'] ?? '') !== ''): ?>
-                                            <div class="mt-1"><?= htmlSC((string)$update['message']) ?></div>
+                                        <?php if ($storedUpdateMessage !== '' && $storedUpdateMessage !== $updateMessage): ?>
+                                            <div class="mt-1"><?= htmlSC($storedUpdateMessage) ?></div>
                                         <?php endif; ?>
                                         <?php if (($update['last_updated_at'] ?? '') !== ''): ?>
                                             <div class="mt-1 text-body-secondary">

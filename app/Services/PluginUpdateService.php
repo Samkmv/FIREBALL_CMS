@@ -49,16 +49,23 @@ final class PluginUpdateService extends UpdateCenter
                     continue;
                 }
                 $state = $this->storedState($slug);
+                if ($this->shouldRefreshState($state)) {
+                    try {
+                        $state = $this->check($slug);
+                    } catch (Throwable) {
+                        $state = $this->storedState($slug);
+                    }
+                }
                 $remoteVersion = trim((string)($state['remote_version'] ?? ''));
                 $localVersion = (string)($metadata['version'] ?? '0.0.0');
                 $comparison = $remoteVersion !== '' ? $this->compareVersions($localVersion, $remoteVersion) : null;
+                $stateIsValid = ($state['status'] ?? '') !== 'error' && $comparison !== null;
                 $plugin['update'] = array_merge($this->emptyDisplayState(), $state, [
                     'configured' => true,
                     'repository' => $config['repository'],
                     'branch' => $config['branch'],
-                    'update_available' => ($state['status'] ?? '') !== 'error'
-                        && $comparison !== null
-                        && $comparison < 0,
+                    'update_available' => $stateIsValid && $comparison < 0,
+                    'source_older' => $stateIsValid && $comparison > 0,
                 ]);
             } catch (Throwable $exception) {
                 $plugin['update'] = array_merge($this->emptyDisplayState(), [
@@ -91,15 +98,19 @@ final class PluginUpdateService extends UpdateCenter
             }
 
             $previousState = $this->storedState($slug);
+            $messageKey = $comparison < 0
+                ? 'admin_plugin_updates_available'
+                : ($comparison > 0
+                    ? 'admin_plugin_updates_source_older'
+                    : 'admin_plugin_updates_current');
             $state = [
-                'status' => 'ok',
-                'message' => return_translation($comparison < 0
-                    ? 'admin_plugin_updates_available'
-                    : 'admin_plugin_updates_current'),
+                'status' => $comparison > 0 ? 'source_older' : 'ok',
+                'message' => return_translation($messageKey),
                 'local_version' => $localVersion,
                 'remote_version' => $remoteVersion,
                 'remote_commit' => $remote['commit'],
                 'update_available' => $comparison < 0,
+                'source_older' => $comparison > 0,
                 'checked_at' => date('Y-m-d H:i:s'),
                 'last_updated_at' => (string)($previousState['last_updated_at'] ?? ''),
                 'backup_file' => (string)($previousState['backup_file'] ?? ''),
@@ -114,6 +125,7 @@ final class PluginUpdateService extends UpdateCenter
                 'message' => $this->safeError($exception, 'admin_plugin_updates_check_failed'),
                 'checked_at' => date('Y-m-d H:i:s'),
                 'update_available' => false,
+                'source_older' => false,
             ]);
             $this->persistStateSafely($slug, $state);
             throw new RuntimeException((string)$state['message'], 0, $exception);
@@ -130,6 +142,7 @@ final class PluginUpdateService extends UpdateCenter
             'configured' => 0,
             'checked' => 0,
             'available' => 0,
+            'source_older' => 0,
             'failed' => 0,
             'failures' => [],
         ];
@@ -152,6 +165,9 @@ final class PluginUpdateService extends UpdateCenter
                 $summary['checked']++;
                 if (!empty($state['update_available'])) {
                     $summary['available']++;
+                }
+                if (!empty($state['source_older'])) {
+                    $summary['source_older']++;
                 }
             } catch (Throwable $exception) {
                 $summary['failed']++;
@@ -178,8 +194,10 @@ final class PluginUpdateService extends UpdateCenter
         $checked = $this->check($slug);
         if (empty($checked['update_available'])) {
             return [
-                'status' => 'current',
-                'message' => return_translation('admin_plugin_updates_current'),
+                'status' => !empty($checked['source_older']) ? 'source_older' : 'current',
+                'message' => return_translation(!empty($checked['source_older'])
+                    ? 'admin_plugin_updates_source_older'
+                    : 'admin_plugin_updates_current'),
                 'version' => (string)$localMetadata['version'],
             ];
         }
@@ -284,6 +302,7 @@ final class PluginUpdateService extends UpdateCenter
                 'remote_version' => $remoteVersion,
                 'remote_commit' => $remoteCommit,
                 'update_available' => false,
+                'source_older' => false,
                 'checked_at' => date('Y-m-d H:i:s'),
                 'last_updated_at' => date('Y-m-d H:i:s'),
                 'backup_file' => basename($backupFile),
@@ -408,7 +427,10 @@ final class PluginUpdateService extends UpdateCenter
     private function fetchRemotePluginMetadata(array $config, string $slug, ?string $knownCommit = null): array
     {
         $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
-        $headers = $this->buildGithubHeaders($token);
+        $headers = array_merge($this->buildGithubHeaders($token), [
+            'Cache-Control: no-cache',
+            'Pragma: no-cache',
+        ]);
         $commit = trim((string)$knownCommit);
         if ($commit === '') {
             $commitResponse = $this->httpGet(
@@ -771,6 +793,19 @@ final class PluginUpdateService extends UpdateCenter
         return $normalized;
     }
 
+    private function shouldRefreshState(array $state): bool
+    {
+        $checkedAt = trim((string)($state['checked_at'] ?? ''));
+        $timestamp = $checkedAt !== '' ? strtotime($checkedAt) : false;
+        if ($timestamp === false) {
+            return true;
+        }
+
+        $age = time() - $timestamp;
+
+        return $age < 0 || $age >= self::AUTO_CHECK_INTERVAL_SECONDS;
+    }
+
     private function safeError(Throwable $exception, string $fallbackKey): string
     {
         $message = trim($exception->getMessage());
@@ -792,6 +827,7 @@ final class PluginUpdateService extends UpdateCenter
             'remote_version' => '',
             'remote_commit' => '',
             'update_available' => false,
+            'source_older' => false,
             'checked_at' => '',
             'last_updated_at' => '',
             'backup_file' => '',
