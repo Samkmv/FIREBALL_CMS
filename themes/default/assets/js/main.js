@@ -1089,12 +1089,12 @@ $(function(){
 
             items.forEach((item) => {
                 html += `
-                    <a class="search-suggest-menu__item d-flex align-items-start justify-content-between gap-3 text-decoration-none text-reset px-3 py-2 border-bottom" href="${escapeHtml(item.url)}">
-                        <div class="min-w-0">
-                            <div class="fs-xs text-body-tertiary text-uppercase mb-1">${escapeHtml(item.type_label)}</div>
-                            <div class="fw-medium text-truncate">${escapeHtml(item.title)}</div>
+                    <a class="search-suggest-menu__item d-block w-100 text-decoration-none text-reset px-3 py-2 border-bottom" href="${escapeHtml(item.url)}">
+                        <div class="search-suggest-menu__meta d-flex align-items-start justify-content-between flex-wrap gap-1 gap-sm-3 mb-1">
+                            <div class="fs-xs text-body-tertiary text-uppercase">${escapeHtml(item.type_label)}</div>
+                            <div class="fs-xs text-body-tertiary text-sm-end">${escapeHtml(item.meta)}</div>
                         </div>
-                        <div class="fs-xs text-body-tertiary text-end flex-shrink-0">${escapeHtml(item.meta)}</div>
+                        <div class="search-suggest-menu__title fw-medium">${escapeHtml(item.title)}</div>
                     </a>
                 `;
             });

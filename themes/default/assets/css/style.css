@@ -100,6 +100,26 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
     border-bottom: 0 !important;
 }
 
+.search-suggest-menu__item,
+.search-suggest-menu__meta,
+.search-suggest-menu__title {
+    min-width: 0;
+}
+
+.search-suggest-menu__meta > *,
+.search-suggest-menu__title {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.search-suggest-menu__title {
+    width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.35;
+}
+
 #navbarNav {
     height: 100dvh;
     max-height: 100dvh;
