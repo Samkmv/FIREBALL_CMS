@@ -90,6 +90,8 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/connection/?', [SubscriptionController::class, 'attachExternalConnection'])
     ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/order/?', [SubscriptionController::class, 'updateExternalSourceOrder'])
+    ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/(?P<source>\d+)/toggle/?', [SubscriptionController::class, 'toggleExternalSource'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/(?P<source>\d+)/sync/?', [SubscriptionController::class, 'syncExternalSource'])

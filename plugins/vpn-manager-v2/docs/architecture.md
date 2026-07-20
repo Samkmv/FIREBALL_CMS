@@ -1,6 +1,6 @@
 # VPN Manager V2
 
-Current implementation: version 0.15, bidirectional CMS/3x-ui reconciliation and editable per-subscription connection ordering. The historical stage notes below remain as an implementation record; the current contract is described in “Version 0.15 synchronization contract”.
+Current implementation: version 0.19, bidirectional CMS/3x-ui reconciliation, dependent subscriptions and editable ordering for native and external configurations. The historical stage notes below remain as an implementation record.
 
 Stage 12 adds cron-compatible job entry points, monotonic traffic synchronization, expiration and traffic-limit enforcement, a persistent notification outbox and bounded retries. It does not migrate data from VPN Manager V1.
 
@@ -234,3 +234,19 @@ Plan deletion is a soft archive. Archived plans disappear from plan management,
 reconciliation and new-subscription forms, while existing subscriptions, plan
 nodes and audit history retain valid references. VPN administration list rows
 use the standard FIREBALL CMS three-dot action dropdown.
+
+## Version 0.19 additive external source ordering contract
+
+External subscription snapshots and standalone connection links are appended to
+the native and dependent configurations already collected for the parent
+subscription. They never replace that base set. Final technical deduplication is
+stable and first-wins, so a native or dependent configuration keeps precedence
+when an external source contains the same server identity with another display
+name.
+
+Each parent subscription keeps a transactional `sort_order` for its external
+sources. The administrator can reorder them without changing the permanent
+subscription token; saving a changed order increments the configuration revision
+and invalidates its public cache. Sources remain independently enabled and
+synchronized, while their confirmed snapshots are concatenated in the saved
+order after all existing configurations.

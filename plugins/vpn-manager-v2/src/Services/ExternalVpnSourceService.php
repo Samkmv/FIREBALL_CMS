@@ -134,6 +134,21 @@ final class ExternalVpnSourceService
         return true;
     }
 
+    public function reorder(int $parentId, array $sourceIds, ?int $adminId = null): bool
+    {
+        $this->assertParent($parentId);
+        $changed = $this->sources()->reorder($parentId, $sourceIds);
+        if (!$changed) {
+            return false;
+        }
+        $this->touch($parentId);
+        $this->log('subscription.external_source_order_updated', $parentId, null, $adminId, [
+            'external_source_ids' => array_values(array_map('intval', $sourceIds)),
+        ]);
+
+        return true;
+    }
+
     public function detach(int $parentId, int $id, ?int $adminId = null): bool
     {
         if (!$this->sources()->detach($parentId, $id)) {
@@ -310,7 +325,7 @@ final class ExternalVpnSourceService
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.17',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19',
             CURLOPT_HTTPHEADER => ['Accept: text/plain, application/json;q=0.9, */*;q=0.5'],
         ]);
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
@@ -448,7 +463,7 @@ final class ExternalVpnSourceService
     private function log(
         string $event,
         int $parentId,
-        int $externalId,
+        ?int $externalId,
         ?int $adminId,
         array $context = []
     ): void {
@@ -460,7 +475,7 @@ final class ExternalVpnSourceService
             null,
             $parent ? (int)$parent['user_id'] : null,
             $adminId,
-            ['external_source_id' => $externalId] + $context
+            ($externalId !== null ? ['external_source_id' => $externalId] : []) + $context
         );
     }
 

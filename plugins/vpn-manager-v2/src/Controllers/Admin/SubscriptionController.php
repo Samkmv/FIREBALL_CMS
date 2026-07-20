@@ -308,6 +308,50 @@ final class SubscriptionController
         }, 'vpn_manager_v2_flash_external_synced');
     }
 
+    public function updateExternalSourceOrder(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $subscriptionId = (int)get_route_param('id');
+        $data = request()->getData();
+        $returnQuery = AdminTableState::sanitize($data['return_query'] ?? '');
+        $sourceIds = is_array($data['external_source_order'] ?? null)
+            ? $data['external_source_order']
+            : [];
+
+        try {
+            $changed = (new ExternalVpnSourceService())->reorder(
+                $subscriptionId,
+                $sourceIds,
+                $this->adminId()
+            );
+            session()->setFlash(
+                $changed ? 'success' : 'info',
+                \FireballPluginVpnManagerV2::t($changed
+                    ? 'vpn_manager_v2_flash_external_order_saved'
+                    : 'vpn_manager_v2_flash_no_changes')
+            );
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\InvalidArgumentException $exception) {
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t(
+                $exception->getMessage() === 'external_source_order_invalid'
+                    ? 'vpn_manager_v2_error_external_order_invalid'
+                    : 'vpn_manager_v2_error_external_missing'
+            ));
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 external source order update failed', [
+                'Subscription' => $subscriptionId,
+                'Error Class' => get_class($exception),
+            ], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_external_generic'));
+        }
+
+        response()->redirect(AdminTableState::asParameter(
+            '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
+            $returnQuery
+        ));
+    }
+
     public function suspend(): void
     {
         Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);

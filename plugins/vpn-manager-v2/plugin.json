@@ -1,12 +1,13 @@
 {
   "name": "VPN Manager V2",
   "slug": "vpn-manager-v2",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "External subscriptions and direct connection links now append after existing configurations, preserve first-party duplicates and support administrator-defined ordering.",
     "Completed localization of operation types, sources, statuses, synchronization states, dependency reasons and conflict values in all plugin languages.",
     "Manual synchronization now executes its exact queued operation immediately, with a recovery action for previously pending operations.",
     "Added full reconciliation to the regular queue worker and localized live progress messages.",

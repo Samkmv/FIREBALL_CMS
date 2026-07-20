@@ -469,6 +469,56 @@ foreach ($nodes as $node) {
     <?php if ($externalSources === []): ?>
         <div class="alert alert-info mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_external_sources_empty')) ?></div>
     <?php else: ?>
+        <?php if (count($externalSources) > 1 && Permissions::allows(Permissions::MANAGE_SUBSCRIPTIONS)): ?>
+            <form class="border rounded-4 p-3 mb-4"
+                  method="post"
+                  action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/external/order')) ?>"
+                  data-vpn-v2-connection-order>
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="h6 mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_external_order_title')) ?></h3>
+                        <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_external_order_help')) ?></div>
+                    </div>
+                    <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                        <i class="ci-save" aria-hidden="true"></i>
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_save_external_order')) ?>
+                    </button>
+                </div>
+                <div class="list-group list-group-flush border rounded-4 overflow-hidden" data-vpn-v2-connection-order-list>
+                    <?php foreach ($externalSources as $source): ?>
+                        <div class="list-group-item d-flex align-items-center gap-3 py-3"
+                             draggable="true" data-vpn-v2-connection-order-item>
+                            <input type="hidden" name="external_source_order[]" value="<?= (int)$source['id'] ?>">
+                            <i class="ci-menu text-body-tertiary" aria-hidden="true"></i>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-truncate"><?= htmlSC((string)$source['name']) ?></div>
+                                <div class="small text-body-secondary">
+                                    <?= htmlSC(LocalizedValue::externalSourceType($source['source_type'])) ?>
+                                    · <?= (int)$source['config_count'] ?>
+                                </div>
+                            </div>
+                            <div class="btn-group" role="group"
+                                 aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_external_order_actions')) ?>">
+                                <button class="btn btn-sm btn-outline-secondary btn-icon" type="button"
+                                        data-vpn-v2-order-move="up"
+                                        title="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_move_external_up')) ?>"
+                                        aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_move_external_up')) ?>">
+                                    <i class="ci-chevron-up" aria-hidden="true"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary btn-icon" type="button"
+                                        data-vpn-v2-order-move="down"
+                                        title="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_move_external_down')) ?>"
+                                        aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_move_external_down')) ?>">
+                                    <i class="ci-chevron-down" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </form>
+        <?php endif; ?>
         <div class="table-responsive">
             <table class="table align-middle mb-0">
                 <thead>

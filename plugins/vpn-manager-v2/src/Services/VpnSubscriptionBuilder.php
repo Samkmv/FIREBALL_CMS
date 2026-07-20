@@ -32,7 +32,10 @@ final class VpnSubscriptionBuilder
         }
         $unique = [];
         foreach ($uris as $uri) {
-            $unique[$external->technicalKey($uri)] = $uri;
+            $technicalKey = $external->technicalKey($uri);
+            if (!array_key_exists($technicalKey, $unique)) {
+                $unique[$technicalKey] = $uri;
+            }
         }
 
         return array_values($unique);

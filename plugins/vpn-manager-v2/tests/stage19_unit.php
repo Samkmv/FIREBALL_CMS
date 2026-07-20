@@ -102,7 +102,8 @@ $assert(substr_count($controller, 'processOperation($operationId)') >= 2
 $assert(str_contains($job, "'full_reconcile'") && str_contains($routes, '/operations/process'),
     'Full reconcile or the recovery endpoint is missing from queue processing.');
 $assert(str_contains($script, 'data.status_label'), 'Live operation progress is not localized.');
-$assert(($plugin['version'] ?? '') === '0.18.0', 'The plugin version was not bumped to 0.18.0.');
+$assert(version_compare((string)($plugin['version'] ?? '0.0.0'), '0.18.0', '>='),
+    'The plugin version is older than 0.18.0.');
 
 echo json_encode([
     'status' => 'ok',

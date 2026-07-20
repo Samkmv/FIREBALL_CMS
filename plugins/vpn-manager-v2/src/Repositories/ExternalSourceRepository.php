@@ -137,6 +137,49 @@ final class ExternalSourceRepository
         return db()->rowCount() === 1;
     }
 
+    public function reorder(int $parentId, array $sourceIds): bool
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $rows = $database->query(
+                'SELECT id FROM vpn_v2_external_sources
+                 WHERE parent_subscription_id = ? AND deleted_at IS NULL
+                 ORDER BY sort_order ASC, id ASC FOR UPDATE',
+                [$parentId]
+            )->get() ?: [];
+            $current = array_map(static fn(array $row): int => (int)$row['id'], $rows);
+            $submitted = array_values(array_map('intval', $sourceIds));
+            $left = $current;
+            $right = $submitted;
+            sort($left);
+            sort($right);
+            if ($submitted === [] || count($submitted) !== count(array_unique($submitted)) || $left !== $right) {
+                throw new \InvalidArgumentException('external_source_order_invalid');
+            }
+            if ($current === $submitted) {
+                $database->commit();
+                return false;
+            }
+            $now = date('Y-m-d H:i:s');
+            foreach ($submitted as $index => $id) {
+                $database->query(
+                    'UPDATE vpn_v2_external_sources SET sort_order = ?, updated_at = ?
+                     WHERE id = ? AND parent_subscription_id = ? AND deleted_at IS NULL',
+                    [($index + 1) * 10, $now, $id, $parentId]
+                );
+            }
+            $database->commit();
+
+            return true;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
     public function detach(int $parentId, int $id): bool
     {
         $now = date('Y-m-d H:i:s');
