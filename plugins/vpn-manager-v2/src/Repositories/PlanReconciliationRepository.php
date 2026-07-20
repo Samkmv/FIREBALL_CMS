@@ -19,7 +19,7 @@ final class PlanReconciliationRepository
     public function plan(int $planId): ?array
     {
         $row = db()->query(
-            'SELECT id, name, is_active FROM vpn_v2_plans WHERE id = ? LIMIT 1',
+            'SELECT id, name, is_active FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL LIMIT 1',
             [$planId]
         )->getOne();
 

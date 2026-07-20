@@ -95,6 +95,25 @@ final class PlanController
         $this->redirect('/admin/plugins/vpn-manager-v2/plans');
     }
 
+    public function delete(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_PLANS);
+        $id = (int)get_route_param('id');
+        try {
+            if (!(new PlanManagerService())->delete($id)) {
+                throw new \RuntimeException('Plan was not archived.');
+            }
+            session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_plan_deleted'));
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 plan delete failed', ['Plan' => $id], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_delete_generic'));
+        }
+
+        $this->redirect('/admin/plugins/vpn-manager-v2/plans');
+    }
+
     public function preview(): void
     {
         Permissions::authorize(Permissions::RECONCILE);

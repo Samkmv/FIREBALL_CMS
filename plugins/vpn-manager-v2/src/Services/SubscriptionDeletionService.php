@@ -8,6 +8,7 @@ use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\OperationQueueRepository;
+use Fireball\VpnManagerV2\Repositories\ExternalSourceRepository;
 
 final class SubscriptionDeletionService
 {
@@ -19,6 +20,7 @@ final class SubscriptionDeletionService
         private readonly ?VpnSubscriptionCache $subscriptionCache = null,
         private readonly ?QrCodeService $qrCode = null,
         private readonly ?OperationQueueRepository $operations = null,
+        private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
     ) {
     }
 
@@ -35,9 +37,16 @@ final class SubscriptionDeletionService
         $failed = 0;
         $firstError = null;
         $configChanged = (string)$subscription['status'] !== 'suspended';
+        $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService();
         foreach ($repository->nodeIdsForSubscription($subscriptionId) as $nodeId) {
             $node = $repository->connectionForProvisioning($nodeId);
             if (!$node || (string)$node['status'] === 'deleted') {
+                continue;
+            }
+            if ($dependencies->countActiveConsumers($nodeId, $subscriptionId) > 0) {
+                $repository->logEvent('node.disable_skipped_shared_consumer', $subscriptionId, $nodeId,
+                    (int)$node['server_id'], (int)$subscription['user_id'], $adminId,
+                    ['source' => 'subscription_suspend']);
                 continue;
             }
             try {
@@ -84,6 +93,14 @@ final class SubscriptionDeletionService
             $subscriptionId, null, null, (int)$subscription['user_id'], $adminId,
             ['synced' => $synced, 'failed' => $failed, 'revision' => $revision]);
 
+        $cascade = $dependencies->cascadeDisable(
+            $subscriptionId,
+            'parent_subscription_suspended',
+            $adminId
+        );
+        $synced += (int)($cascade['synced'] ?? 0);
+        $failed += (int)($cascade['failed'] ?? 0);
+
         return new SyncResult($subscriptionId, $synced, $failed, $revision, $configChanged, true);
     }
 
@@ -95,12 +112,22 @@ final class SubscriptionDeletionService
             return new DeletionResult($subscriptionId, 0, 0, 0, true, true);
         }
         $adminId = $adminId ?? $this->adminId();
+        $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService();
+        $retained = [];
+        foreach ($repository->nodeIdsForSubscription($subscriptionId) as $nodeId) {
+            if ($dependencies->countActiveConsumers($nodeId, $subscriptionId) > 0) {
+                $retained[$nodeId] = true;
+            }
+        }
         if (!$repository->markDeleting($subscriptionId)) {
             return new DeletionResult($subscriptionId, 0, 0, 0, true, true);
         }
         $repository->logEvent('subscription.deleting', $subscriptionId, null, null,
             (int)$subscription['user_id'], $adminId,
             ['node_count' => count($repository->nodeIdsForSubscription($subscriptionId))]);
+        $dependencies->cascadeDisable($subscriptionId, 'parent_subscription_deleted', $adminId);
+        $dependencies->archiveForDeletion($subscriptionId);
+        (new ExternalSourceRepository())->archiveForSubscription($subscriptionId);
 
         $deleted = 0;
         $alreadyAbsent = 0;
@@ -115,6 +142,20 @@ final class SubscriptionDeletionService
             }
             if ((string)$node['status'] === 'deleted') {
                 $alreadyAbsent++;
+                continue;
+            }
+            if (isset($retained[$nodeId])) {
+                $repository->markNodeSharedRetained($nodeId);
+                $alreadyAbsent++;
+                $repository->logEvent(
+                    'node.delete_skipped_shared_consumer',
+                    $subscriptionId,
+                    $nodeId,
+                    (int)$node['server_id'],
+                    (int)$subscription['user_id'],
+                    $adminId,
+                    ['active_consumers' => $dependencies->countActiveConsumers($nodeId, $subscriptionId)]
+                );
                 continue;
             }
             try {
@@ -154,7 +195,7 @@ final class SubscriptionDeletionService
             }
         }
 
-        if ($failed > 0 || !$repository->allNodesDeleted($subscriptionId)) {
+        if ($failed > 0 || !$repository->allNodesFinalizable($subscriptionId)) {
             $repository->markSubscriptionPendingRemoteDelete(
                 $subscriptionId,
                 $firstError ?? \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_delete_generic')

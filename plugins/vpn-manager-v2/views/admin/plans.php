@@ -2,6 +2,7 @@
 
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
 use Fireball\VpnManagerV2\Support\Permissions;
+use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 
 $plans = is_array($plans ?? null) ? $plans : [];
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/plans/create');
@@ -51,32 +52,26 @@ $planActions = static function (array $plan): array {
             'icon' => 'ci-refresh-cw',
         ];
     }
-
-    return $actions;
-};
-
-$desktopActions = static function (array $plan) use ($planActions): string {
-    $html = '<div class="d-flex flex-wrap justify-content-end gap-1">';
-    foreach ($planActions($plan) as $action) {
-        $label = (string)$action['label'];
-        $content = '<i class="' . htmlSC((string)$action['icon']) . '" aria-hidden="true"></i>'
-            . '<span class="visually-hidden">' . htmlSC($label) . '</span>';
-        if (($action['type'] ?? 'link') === 'form') {
-            $html .= '<form method="post" action="' . htmlSC((string)$action['action']) . '">' . get_csrf_field();
-            foreach ((array)($action['hidden'] ?? []) as $name => $value) {
-                $html .= '<input type="hidden" name="' . htmlSC((string)$name) . '" value="' . htmlSC((string)$value) . '">';
-            }
-            $html .= '<button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="submit" title="'
-                . htmlSC($label) . '" aria-label="' . htmlSC($label) . '">' . $content . '</button></form>';
-            continue;
-        }
-
-        $html .= '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="'
-            . htmlSC((string)$action['href']) . '" title="' . htmlSC($label) . '" aria-label="'
-            . htmlSC($label) . '">' . $content . '</a>';
+    if (Permissions::allows(Permissions::MANAGE_PLANS)) {
+        $actions[] = ['type' => 'divider'];
+        $actions[] = [
+            'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_delete_plan'),
+            'type' => 'form',
+            'action' => base_href('/admin/plugins/vpn-manager-v2/plans/' . $id . '/delete'),
+            'icon' => 'ci-trash',
+            'class' => 'text-danger',
+            'form_attributes' => [
+                'data-admin-delete-form' => true,
+                'data-delete-message' => sprintf(
+                    FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_delete_plan'),
+                    (string)$plan['name']
+                ),
+                'data-delete-item' => (string)$plan['name'],
+            ],
+        ];
     }
 
-    return $html . '</div>';
+    return $actions;
 };
 
 $rows = [];
@@ -114,7 +109,7 @@ foreach ($plans as $plan) {
             ['html' => htmlSC($lastReconcile !== '' ? $lastReconcile : '—')
                 . ($lastStatusLabel !== '' ? '<div class="small text-body-secondary">' . htmlSC($lastStatusLabel) . '</div>' : '')],
             ['html' => $status],
-            ['html' => $desktopActions($plan)],
+            ['html' => '<div class="text-end">' . AdminActionDropdown::render($planActions($plan)) . '</div>'],
         ],
     ];
 

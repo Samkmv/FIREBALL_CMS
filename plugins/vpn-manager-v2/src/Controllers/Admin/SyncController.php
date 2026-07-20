@@ -7,6 +7,8 @@ use Fireball\VpnManagerV2\Repositories\ConfigurationSyncRepository;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\SyncAuditRepository;
+use Fireball\VpnManagerV2\Services\RemoteOperationProcessor;
+use Fireball\VpnManagerV2\Support\LocalizedValue;
 use Fireball\VpnManagerV2\Support\Permissions;
 
 final class SyncController
@@ -56,8 +58,11 @@ final class SyncController
                 $this->adminId()
             );
             $operationId = (string)$operation['operation_id'];
+            (new RemoteOperationProcessor())->processOperation($operationId);
+            $progress = (new OperationQueueRepository())->progress($operationId) ?? $operation;
             $this->json([
-                'status' => (string)$operation['status'],
+                'status' => (string)$progress['status'],
+                'status_label' => LocalizedValue::operationStatus($progress['status'] ?? ''),
                 'operation_id' => $operationId,
                 'message' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_remote_client_linked'),
                 'progress_url' => base_href('/admin/plugins/vpn-manager-v2/operations/' . $operationId),
@@ -132,10 +137,28 @@ final class SyncController
     {
         Permissions::authorize(Permissions::RECONCILE);
         $count = (new OperationQueueRepository())->retryFailed();
+        $processed = $count > 0 ? $this->processDueOperations(min(10, $count)) : 0;
         $this->json([
             'status' => 'queued',
+            'status_label' => LocalizedValue::operationStatus('retry'),
             'message' => sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_operations_retried'), $count),
             'retried' => $count,
+            'processed' => $processed,
+        ]);
+    }
+
+    public function processPending(): never
+    {
+        Permissions::authorize(Permissions::RECONCILE);
+        $processed = $this->processDueOperations(10);
+        $this->json([
+            'status' => 'completed',
+            'status_label' => LocalizedValue::operationStatus('completed'),
+            'message' => sprintf(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_operations_processed'),
+                $processed
+            ),
+            'processed' => $processed,
         ]);
     }
 
@@ -163,6 +186,8 @@ final class SyncController
         if (!$operation) {
             $this->json(['error' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_not_found')], 404);
         }
+        $operation['status_label'] = LocalizedValue::operationStatus($operation['status'] ?? '');
+        $operation['operation_type_label'] = LocalizedValue::operationType($operation['operation_type'] ?? '');
         $this->json($operation);
     }
 
@@ -178,13 +203,34 @@ final class SyncController
             $this->adminId()
         );
         $operationId = (string)$operation['operation_id'];
+        (new RemoteOperationProcessor())->processOperation($operationId);
+        $progress = (new OperationQueueRepository())->progress($operationId) ?? $operation;
+        $completed = in_array((string)($progress['status'] ?? ''), ['completed', 'completed_partial'], true);
         $this->json([
-            'status' => (string)$operation['status'],
+            'status' => (string)$progress['status'],
+            'status_label' => LocalizedValue::operationStatus($progress['status'] ?? ''),
             'operation_id' => $operationId,
             'created' => !empty($operation['created']),
-            'message' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_sync_queued'),
+            'message' => \FireballPluginVpnManagerV2::t($completed
+                ? 'vpn_manager_v2_flash_sync_completed'
+                : 'vpn_manager_v2_flash_sync_queued'),
             'progress_url' => base_href('/admin/plugins/vpn-manager-v2/operations/' . $operationId),
         ], 202);
+    }
+
+    private function processDueOperations(int $limit): int
+    {
+        $processed = 0;
+        $processor = new RemoteOperationProcessor();
+        for ($index = 0; $index < max(1, min(50, $limit)); $index++) {
+            $result = $processor->processNext();
+            if (!empty($result['idle'])) {
+                break;
+            }
+            $processed++;
+        }
+
+        return $processed;
     }
 
     private function adminId(): ?int

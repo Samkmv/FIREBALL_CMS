@@ -1,5 +1,5 @@
 <?php if (!empty($tabs)): ?>
-    <nav class="d-flex flex-wrap gap-2 mb-4" aria-label="VPN Manager V2 navigation">
+    <nav class="d-flex flex-wrap gap-2 mb-4" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_navigation_label')) ?>">
         <?php foreach ($tabs as $tab): ?>
             <a class="btn rounded-pill d-inline-flex align-items-center gap-2 <?= !empty($tab['active']) ? 'btn-dark' : 'btn-outline-secondary' ?>"
                href="<?= htmlSC((string)$tab['href']) ?>">

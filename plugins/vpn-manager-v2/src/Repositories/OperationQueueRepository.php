@@ -144,6 +144,61 @@ final class OperationQueueRepository
         }
     }
 
+    public function claimByOperationId(string $operationId, int $leaseSeconds = 300): ?array
+    {
+        $operationId = strtolower(trim($operationId));
+        if (preg_match('/^[a-f0-9-]{36}$/', $operationId) !== 1) {
+            return null;
+        }
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $now = date('Y-m-d H:i:s');
+            $database->query(
+                "UPDATE vpn_v2_operations
+                 SET status = 'retry', lease_until = NULL, heartbeat_at = NULL,
+                     next_attempt_at = ?, updated_at = ?
+                 WHERE operation_id = ? AND status = 'running'
+                   AND lease_until IS NOT NULL AND lease_until < ?",
+                [$now, $now, $operationId, $now]
+            );
+            $operation = $database->query(
+                "SELECT * FROM vpn_v2_operations
+                 WHERE operation_id = ? AND status IN ('pending', 'retry') AND next_attempt_at <= ?
+                 LIMIT 1 FOR UPDATE",
+                [$operationId, $now]
+            )->getOne();
+            if (!is_array($operation)) {
+                $database->commit();
+
+                return null;
+            }
+            $leaseUntil = date('Y-m-d H:i:s', time() + max(30, min(1800, $leaseSeconds)));
+            $database->query(
+                "UPDATE vpn_v2_operations
+                 SET status = 'running', attempts = attempts + 1, lease_until = ?, heartbeat_at = ?,
+                     updated_at = ? WHERE id = ? AND status IN ('pending', 'retry')",
+                [$leaseUntil, $now, $now, (int)$operation['id']]
+            );
+            if ($database->rowCount() !== 1) {
+                $database->rollBack();
+
+                return null;
+            }
+            $database->commit();
+            $operation['status'] = 'running';
+            $operation['attempts'] = (int)$operation['attempts'] + 1;
+            $operation['lease_until'] = $leaseUntil;
+
+            return $operation;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
     public function heartbeat(int $id, int $processed = 0, int $total = 0): void
     {
         $now = date('Y-m-d H:i:s');
@@ -299,6 +354,9 @@ final class OperationQueueRepository
             'create_client', 'update_client', 'rename_client', 'enable_client', 'disable_client',
             'delete_client', 'move_client', 'sync_client', 'sync_inbound', 'sync_server',
             'sync_subscription', 'full_reconcile', 'reset_traffic',
+            'cascade_disable_children', 'cascade_enable_children',
+            'detach_child_subscription', 'detach_child_connection',
+            'recalculate_effective_status',
         ];
         if (!in_array($type, $allowed, true)) {
             throw new \InvalidArgumentException('Unsupported VPN operation type.');

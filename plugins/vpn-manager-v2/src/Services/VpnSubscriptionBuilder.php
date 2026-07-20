@@ -12,15 +12,30 @@ final class VpnSubscriptionBuilder
         private readonly ?VpnFlowResolver $flowResolver = null,
         private readonly ?VpnServerNameRenderer $nameRenderer = null,
         private readonly ?SettingsService $settings = null,
+        private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
+        private readonly ?ExternalVpnSourceService $externalSources = null,
     ) {
     }
 
     public function build(array $subscription): array
     {
-        return $this->buildFromNodes(
-            $subscription,
-            ($this->repository ?? new SubscriptionConfigRepository())->activeNodes((int)($subscription['id'] ?? 0))
+        $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService(
+            config: $this->repository ?? new SubscriptionConfigRepository()
         );
+        $uris = $this->buildFromNodes(
+            $subscription,
+            $dependencies->collectEffectiveConnections($subscription)
+        );
+        $external = $this->externalSources ?? new ExternalVpnSourceService();
+        foreach ($dependencies->collectEffectiveSubscriptionIds($subscription) as $subscriptionId) {
+            array_push($uris, ...$external->urisForParent($subscriptionId));
+        }
+        $unique = [];
+        foreach ($uris as $uri) {
+            $unique[$external->technicalKey($uri)] = $uri;
+        }
+
+        return array_values($unique);
     }
 
     public function buildFromNodes(array $subscription, array $nodes): array

@@ -8,7 +8,7 @@ final class SubscriptionConfigRepository
     {
         $rows = db()->query(
             'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    device_limit, subscription_token, revision, config_updated_at, created_by,
+                    traffic_used_bytes, device_limit, subscription_token, revision, config_updated_at, created_by,
                     created_at, updated_at
              FROM vpn_v2_subscriptions WHERE subscription_token_hash = ? LIMIT 3',
             [hash('sha256', $token)]
@@ -24,8 +24,19 @@ final class SubscriptionConfigRepository
 
     public function activeNodes(int $subscriptionId): array
     {
+        return $this->activeNodesForSubscriptions([$subscriptionId]);
+    }
+
+    public function activeNodesForSubscriptions(array $subscriptionIds): array
+    {
+        $subscriptionIds = array_values(array_unique(array_filter(array_map('intval', $subscriptionIds))));
+        if ($subscriptionIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($subscriptionIds), '?'));
         $rows = db()->query(
-            "SELECT n.id AS node_id, n.subscription_id, n.sort_order, n.client_uuid, n.encrypted_client_credential,
+            "SELECT n.id AS node_id, n.subscription_id, n.sort_order, n.remote_client_id,
+                    n.client_uuid, n.encrypted_client_credential,
                     n.client_email,
                     n.client_sub_id, n.flow, n.traffic_limit_bytes, n.sync_status,
                     n.lkg_snapshot_json, n.lkg_snapshot_hash, n.lkg_validity,
@@ -40,10 +51,10 @@ final class SubscriptionConfigRepository
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id AND i.server_id = n.server_id
-             WHERE n.subscription_id = ? AND n.status = 'active'
+             WHERE n.subscription_id IN (" . $placeholders . ") AND n.status = 'active'
                AND s.is_enabled = 1 AND i.is_enabled = 1 AND i.status = 'active'
              ORDER BY n.sort_order ASC, n.id ASC",
-            [$subscriptionId]
+            $subscriptionIds
         )->get() ?: [];
 
         $nodes = [];
@@ -59,6 +70,25 @@ final class SubscriptionConfigRepository
         }
 
         return $nodes;
+    }
+
+    public function activeNode(int $nodeId): ?array
+    {
+        $row = db()->query(
+            "SELECT subscription_id FROM vpn_v2_subscription_nodes
+             WHERE id = ? AND status = 'active' LIMIT 1",
+            [$nodeId]
+        )->getOne();
+        if (!is_array($row)) {
+            return null;
+        }
+        foreach ($this->activeNodesForSubscriptions([(int)$row['subscription_id']]) as $node) {
+            if ((int)($node['node_id'] ?? 0) === $nodeId) {
+                return $node;
+            }
+        }
+
+        return null;
     }
 
     public function revisionMetadata(int $subscriptionId): ?array

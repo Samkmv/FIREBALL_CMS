@@ -11,7 +11,11 @@ final class VpnV2RetryFailedOperationsJob
     {
         return [
             'legacy' => (new RetryFailedOperationsService())->retry(),
-            'queue' => (new RemoteOperationProcessor())->processNext(['delete_client', 'reset_traffic']),
+            'queue' => (new RemoteOperationProcessor())->processNext([
+                'delete_client', 'reset_traffic',
+                'cascade_disable_children', 'cascade_enable_children',
+                'recalculate_effective_status', 'detach_child_subscription', 'detach_child_connection',
+            ]),
         ];
     }
 }

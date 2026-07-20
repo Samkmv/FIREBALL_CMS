@@ -7,12 +7,15 @@ use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
+use Fireball\VpnManagerV2\Repositories\SubscriptionItemRepository;
 use Fireball\VpnManagerV2\Services\QrCodeService;
 use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
 use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
 use Fireball\VpnManagerV2\Services\SubscriptionDeletionService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionUrlService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
+use Fireball\VpnManagerV2\Services\VpnV2SubscriptionDependencyService;
+use Fireball\VpnManagerV2\Services\ExternalVpnSourceService;
 use Fireball\VpnManagerV2\Support\AdminTableState;
 use Fireball\VpnManagerV2\Support\Permissions;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
@@ -118,9 +121,17 @@ final class SubscriptionController
         }
         $subscriptionUrl = '';
         $subscriptionQr = '';
+        $dependencies = new VpnV2SubscriptionDependencyService();
+        $effectiveStatus = $dependencies->calculateEffectiveStatus($subscription);
+        $dependentChild = $dependencies->isDependentChild((int)$subscription['id']);
+        if ($dependentChild) {
+            $effectiveStatus['effective_status'] = 'inactive';
+            $effectiveStatus['inactive_reason'] = 'parent_subscription_required';
+        }
         $expiresAt = strtotime((string)($subscription['expires_at'] ?? ''));
         $startsAt = strtotime((string)($subscription['starts_at'] ?? ''));
-        if (in_array((string)$subscription['status'], ['active', 'partial_sync', 'sync_error'], true)
+        if ($effectiveStatus['effective_status'] === 'active'
+            && !$dependentChild
             && ($startsAt === false || $startsAt <= time())
             && ($expiresAt === false || $expiresAt > time())) {
             $token = (new SubscriptionConfigRepository())->tokenForSubscription((int)$subscription['id']);
@@ -140,6 +151,9 @@ final class SubscriptionController
             in_array((string)$node['status'], ['active', 'disabled'], true)
         ));
         $missingCount = max(count($missing), max(0, $planCount - $createdCount));
+        $dependencies->recalculateEffectiveStatuses((int)$subscription['id']);
+        $itemRepository = new SubscriptionItemRepository();
+        $externalSources = new ExternalVpnSourceService();
 
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscription-show', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_show_title'), (int)$subscription['id']),
@@ -156,8 +170,142 @@ final class SubscriptionController
             ],
             'subscriptionUrl' => $subscriptionUrl,
             'subscriptionQr' => $subscriptionQr,
+            'effectiveStatus' => $effectiveStatus,
+            'dependencyItems' => $itemRepository->itemsForParent((int)$subscription['id']),
+            'dependencySubscriptionCandidates' => $itemRepository->subscriptionCandidates((int)$subscription['id']),
+            'dependencyConnectionCandidates' => $itemRepository->connectionCandidates((int)$subscription['id']),
+            'externalSources' => $externalSources->itemsForParent((int)$subscription['id']),
             'returnQuery' => AdminTableState::sanitize(request()->get('return_query', '')),
         ]));
+    }
+
+    public function attachDependencySubscription(): void
+    {
+        $this->dependencyAction(function (VpnV2SubscriptionDependencyService $service, int $subscriptionId, array $data): void {
+            $service->attachSubscription(
+                $subscriptionId,
+                (int)($data['child_subscription_id'] ?? 0),
+                (string)($data['ownership_type'] ?? 'shared'),
+                $this->adminId()
+            );
+        }, 'vpn_manager_v2_flash_dependency_attached');
+    }
+
+    public function attachDependencyConnection(): void
+    {
+        $this->dependencyAction(function (VpnV2SubscriptionDependencyService $service, int $subscriptionId, array $data): void {
+            $service->attachConnection(
+                $subscriptionId,
+                (int)($data['connection_id'] ?? 0),
+                (string)($data['ownership_type'] ?? 'shared'),
+                $this->adminId()
+            );
+        }, 'vpn_manager_v2_flash_dependency_attached');
+    }
+
+    public function toggleDependency(): void
+    {
+        $this->dependencyAction(function (VpnV2SubscriptionDependencyService $service, int $subscriptionId, array $data): void {
+            if (!$service->setItemEnabled(
+                $subscriptionId,
+                (int)get_route_param('item'),
+                !empty($data['is_enabled']),
+                $this->adminId()
+            )) {
+                throw new \InvalidArgumentException('dependency_target_missing');
+            }
+        }, 'vpn_manager_v2_flash_dependency_updated');
+    }
+
+    public function detachDependency(): void
+    {
+        $this->dependencyAction(function (VpnV2SubscriptionDependencyService $service, int $subscriptionId): void {
+            if (!$service->detachItem($subscriptionId, (int)get_route_param('item'), $this->adminId())) {
+                throw new \InvalidArgumentException('dependency_target_missing');
+            }
+        }, 'vpn_manager_v2_flash_dependency_detached');
+    }
+
+    public function updateDependencyOrder(): void
+    {
+        $this->dependencyAction(function (VpnV2SubscriptionDependencyService $service, int $subscriptionId, array $data): void {
+            $service->reorderItems(
+                $subscriptionId,
+                is_array($data['dependency_order'] ?? null) ? $data['dependency_order'] : [],
+                $this->adminId()
+            );
+        }, 'vpn_manager_v2_flash_dependency_order_saved');
+    }
+
+    public function syncDependencies(): void
+    {
+        $this->dependencyAction(function (VpnV2SubscriptionDependencyService $service, int $subscriptionId): void {
+            $status = $service->effectiveStatusForSubscription($subscriptionId);
+            $result = $status['effective_status'] === 'active'
+                ? $service->cascadeEnable($subscriptionId, $this->adminId())
+                : $service->cascadeDisable(
+                    $subscriptionId,
+                    (string)($status['inactive_reason'] ?? 'parent_subscription_inactive'),
+                    $this->adminId()
+                );
+            if ((int)($result['failed'] ?? 0) > 0) {
+                throw new \RuntimeException('dependency_partial_sync');
+            }
+        }, 'vpn_manager_v2_flash_dependency_synced');
+    }
+
+    public function attachExternalSubscription(): void
+    {
+        $this->externalAction(function (ExternalVpnSourceService $service, int $subscriptionId, array $data): void {
+            $service->attachSubscription(
+                $subscriptionId,
+                (string)($data['source_url'] ?? ''),
+                (string)($data['name'] ?? ''),
+                $this->adminId()
+            );
+        }, 'vpn_manager_v2_flash_external_attached');
+    }
+
+    public function attachExternalConnection(): void
+    {
+        $this->externalAction(function (ExternalVpnSourceService $service, int $subscriptionId, array $data): void {
+            $service->attachConnection(
+                $subscriptionId,
+                (string)($data['connection_uri'] ?? ''),
+                (string)($data['name'] ?? ''),
+                $this->adminId()
+            );
+        }, 'vpn_manager_v2_flash_external_attached');
+    }
+
+    public function toggleExternalSource(): void
+    {
+        $this->externalAction(function (ExternalVpnSourceService $service, int $subscriptionId, array $data): void {
+            if (!$service->toggle(
+                $subscriptionId,
+                (int)get_route_param('source'),
+                !empty($data['is_enabled']),
+                $this->adminId()
+            )) {
+                throw new \InvalidArgumentException('external_source_missing');
+            }
+        }, 'vpn_manager_v2_flash_external_updated');
+    }
+
+    public function detachExternalSource(): void
+    {
+        $this->externalAction(function (ExternalVpnSourceService $service, int $subscriptionId): void {
+            if (!$service->detach($subscriptionId, (int)get_route_param('source'), $this->adminId())) {
+                throw new \InvalidArgumentException('external_source_missing');
+            }
+        }, 'vpn_manager_v2_flash_external_detached');
+    }
+
+    public function syncExternalSource(): void
+    {
+        $this->externalAction(function (ExternalVpnSourceService $service, int $subscriptionId): void {
+            $service->sync($subscriptionId, (int)get_route_param('source'), $this->adminId());
+        }, 'vpn_manager_v2_flash_external_synced');
     }
 
     public function suspend(): void
@@ -299,6 +447,74 @@ final class SubscriptionController
             $result->created,
             $result->reused,
             $result->failed + $result->syncErrors
+        ));
+    }
+
+    private function dependencyAction(\Closure $action, string $successKey): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $subscriptionId = (int)get_route_param('id');
+        $data = request()->getData();
+        $returnQuery = AdminTableState::sanitize($data['return_query'] ?? '');
+        try {
+            $action(new VpnV2SubscriptionDependencyService(), $subscriptionId, $data);
+            session()->setFlash('success', \FireballPluginVpnManagerV2::t($successKey));
+        } catch (\InvalidArgumentException $exception) {
+            $key = match ($exception->getMessage()) {
+                'dependency_cycle' => 'vpn_manager_v2_error_dependency_cycle',
+                'dependency_duplicate' => 'vpn_manager_v2_error_dependency_duplicate',
+                'dependency_user_forbidden' => 'vpn_manager_v2_error_dependency_user_forbidden',
+                'dependency_order_invalid' => 'vpn_manager_v2_error_dependency_order_invalid',
+                default => 'vpn_manager_v2_error_dependency_invalid',
+            };
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t($key));
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 dependency action failed', [
+                'Subscription' => $subscriptionId,
+                'Error Class' => get_class($exception),
+            ], $exception);
+            session()->setFlash(
+                $exception->getMessage() === 'dependency_partial_sync' ? 'warning' : 'error',
+                \FireballPluginVpnManagerV2::t($exception->getMessage() === 'dependency_partial_sync'
+                    ? 'vpn_manager_v2_flash_dependency_sync_partial'
+                    : 'vpn_manager_v2_error_dependency_generic')
+            );
+        }
+
+        response()->redirect(AdminTableState::asParameter(
+            '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
+            $returnQuery
+        ));
+    }
+
+    private function externalAction(\Closure $action, string $successKey): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $subscriptionId = (int)get_route_param('id');
+        $data = request()->getData();
+        $returnQuery = AdminTableState::sanitize($data['return_query'] ?? '');
+        try {
+            $action(new ExternalVpnSourceService(), $subscriptionId, $data);
+            session()->setFlash('success', \FireballPluginVpnManagerV2::t($successKey));
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\InvalidArgumentException $exception) {
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t(
+                $exception->getMessage() === 'external_source_duplicate'
+                    ? 'vpn_manager_v2_error_external_duplicate'
+                    : 'vpn_manager_v2_error_external_missing'
+            ));
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 external source action failed', [
+                'Subscription' => $subscriptionId,
+                'Error Class' => get_class($exception),
+            ], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_external_generic'));
+        }
+
+        response()->redirect(AdminTableState::asParameter(
+            '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
+            $returnQuery
         ));
     }
 

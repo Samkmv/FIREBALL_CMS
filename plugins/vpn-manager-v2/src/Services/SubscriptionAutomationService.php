@@ -17,6 +17,7 @@ final class SubscriptionAutomationService
         private readonly ?\Closure $remotePush = null,
         private readonly ?\Closure $expirationProvider = null,
         private readonly ?\Closure $trafficLimitProvider = null,
+        private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
     ) {
     }
 
@@ -39,6 +40,12 @@ final class SubscriptionAutomationService
             $this->repository()->updateSubscriptionStatus($subscriptionId, 'expired');
             ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
             $result = $this->syncDisabledState($subscription, 'expired', 'expiration');
+            $cascade = ($this->dependencies ?? new VpnV2SubscriptionDependencyService())->cascadeDisable(
+                $subscriptionId,
+                'parent_subscription_expired'
+            );
+            $result['synced'] += (int)($cascade['synced'] ?? 0);
+            $result['failed'] += (int)($cascade['failed'] ?? 0);
             $synced += $result['synced'];
             $failed += $result['failed'];
             $expired++;
@@ -82,6 +89,12 @@ final class SubscriptionAutomationService
             $this->repository()->updateSubscriptionStatus($subscriptionId, 'traffic_exceeded');
             ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
             $result = $this->syncDisabledState($subscription, 'traffic_exceeded', 'traffic-limit');
+            $cascade = ($this->dependencies ?? new VpnV2SubscriptionDependencyService())->cascadeDisable(
+                $subscriptionId,
+                'parent_subscription_limit_exceeded'
+            );
+            $result['synced'] += (int)($cascade['synced'] ?? 0);
+            $result['failed'] += (int)($cascade['failed'] ?? 0);
             $synced += $result['synced'];
             $failed += $result['failed'];
             $exceeded++;
@@ -160,6 +173,13 @@ final class SubscriptionAutomationService
         foreach ($this->subscriptions()->nodeIdsForSubscription($subscriptionId) as $nodeId) {
             $node = $this->subscriptions()->connectionForProvisioning($nodeId);
             if (!$node || (string)$node['status'] === 'deleted') {
+                continue;
+            }
+            if (($this->dependencies ?? new VpnV2SubscriptionDependencyService())
+                ->countActiveConsumers($nodeId, $subscriptionId) > 0) {
+                $this->subscriptions()->logEvent('node.disable_skipped_shared_consumer', $subscriptionId,
+                    $nodeId, (int)$node['server_id'], (int)$subscription['user_id'], null,
+                    ['source' => $operation]);
                 continue;
             }
             try {

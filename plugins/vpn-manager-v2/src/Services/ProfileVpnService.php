@@ -15,6 +15,7 @@ final class ProfileVpnService
         private readonly ?QrCodeService $qrCode = null,
         private readonly ?SettingsService $settings = null,
         private readonly ?CountryFlagService $flags = null,
+        private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
     ) {
     }
 
@@ -53,6 +54,25 @@ final class ProfileVpnService
         $linkReady = false;
         $localUrl = false;
         if ($selected !== null) {
+            $dependencyService = $this->dependencies ?? new VpnV2SubscriptionDependencyService();
+            $externalSources = new ExternalVpnSourceService();
+            $effectiveNodes = $dependencyService->isDependentChild((int)$selected['id'])
+                ? []
+                : $dependencyService->collectEffectiveConnections((int)$selected['id']);
+            $serverRows = [];
+            foreach ($effectiveNodes as $node) {
+                $serverId = (int)($node['server_id'] ?? 0);
+                if ($serverId > 0 && !isset($serverRows[$serverId])) {
+                    $serverRows[$serverId] = [
+                        'name' => (string)($node['server_name'] ?? ''),
+                        'country_code' => (string)($node['country_code'] ?? ''),
+                        'country_name' => (string)($node['country_name'] ?? ''),
+                        'city' => (string)($node['city'] ?? ''),
+                        'show_flag' => (int)($node['show_flag'] ?? 0),
+                        'status' => 'active',
+                    ];
+                }
+            }
             $servers = array_map(static function (array $server) use ($settings, $flags): array {
                 $showFlag = (int)($server['show_flag'] ?? 0) === 1;
                 $country = trim((string)($server['country_name'] ?? ''));
@@ -69,8 +89,13 @@ final class ProfileVpnService
                     ),
                     'status' => (string)($server['status'] ?? 'active'),
                 ];
-            }, $repository->serversForUserSubscription((int)$selected['id'], $userId));
+            }, array_values($serverRows));
+            $selected['connection_count'] = count($effectiveNodes)
+                + $externalSources->configCountForSubscriptions(
+                    $dependencyService->collectEffectiveSubscriptionIds((int)$selected['id'])
+                );
             $linkReady = in_array((string)$selected['effective_status'], ['active', 'partial_sync', 'sync_error'], true)
+                && !$dependencyService->isDependentChild((int)$selected['id'])
                 && (int)$selected['connection_count'] > 0;
             if ($linkReady) {
                 $token = $repository->tokenForUserSubscription((int)$selected['id'], $userId);
@@ -117,7 +142,20 @@ final class ProfileVpnService
 
     private function presentSubscription(array $subscription): array
     {
-        $subscription['effective_status'] = ProfileVpnFormatter::effectiveStatus($subscription);
+        $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService();
+        try {
+            $effective = $dependencies->calculateEffectiveStatus($subscription);
+            if ($dependencies->isDependentChild((int)($subscription['id'] ?? 0))) {
+                $subscription['effective_status'] = 'inactive';
+                $subscription['inactive_reason'] = 'parent_subscription_required';
+            } else {
+                $subscription['effective_status'] = (string)$effective['effective_status'];
+                $subscription['inactive_reason'] = $effective['inactive_reason'];
+            }
+        } catch (\Throwable) {
+            $subscription['effective_status'] = ProfileVpnFormatter::effectiveStatus($subscription);
+            $subscription['inactive_reason'] = null;
+        }
         $subscription['starts_at_display'] = ProfileVpnFormatter::date($subscription['starts_at'] ?? null);
         $subscription['expires_at_display'] = ProfileVpnFormatter::date($subscription['expires_at'] ?? null);
         $subscription['remaining_display'] = ProfileVpnFormatter::remaining($subscription['expires_at'] ?? null);

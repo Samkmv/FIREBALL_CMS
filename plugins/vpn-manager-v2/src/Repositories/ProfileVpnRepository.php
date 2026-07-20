@@ -11,7 +11,7 @@ final class ProfileVpnRepository
         }
 
         return (bool)db()->query(
-            'SELECT id FROM vpn_v2_subscriptions WHERE user_id = ? LIMIT 1',
+            "SELECT id FROM vpn_v2_subscriptions WHERE user_id = ? AND status <> 'deleted' LIMIT 1",
             [$userId]
         )->getOne();
     }
@@ -39,7 +39,7 @@ final class ProfileVpnRepository
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
-             WHERE sub.user_id = ?
+             WHERE sub.user_id = ? AND sub.status <> \'deleted\'
              GROUP BY sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
                       sub.traffic_limit_bytes, sub.device_limit, sub.revision,
                       p.name, p.description
@@ -71,7 +71,7 @@ final class ProfileVpnRepository
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
-             WHERE sub.id = ? AND sub.user_id = ?
+             WHERE sub.id = ? AND sub.user_id = ? AND sub.status <> \'deleted\'
              GROUP BY sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
                       sub.traffic_limit_bytes, sub.device_limit, sub.revision,
                       p.name, p.description
@@ -112,7 +112,7 @@ final class ProfileVpnRepository
         $token = db()->query(
             'SELECT subscription_token
              FROM vpn_v2_subscriptions
-             WHERE id = ? AND user_id = ?
+             WHERE id = ? AND user_id = ? AND status <> \'deleted\'
              LIMIT 1',
             [$subscriptionId, $userId]
         )->getColumn();

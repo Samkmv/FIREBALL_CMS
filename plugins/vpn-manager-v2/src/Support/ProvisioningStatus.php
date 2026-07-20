@@ -28,11 +28,24 @@ final class ProvisioningStatus
             'pending_remote_delete' => 'text-bg-warning',
         ];
         $class = $classes[$status] ?? 'text-bg-light border text-body-secondary';
-        $key = array_key_exists($status, $classes) ? $status : 'unknown';
 
         return '<span class="badge rounded-pill ' . $class . '">'
-            . htmlSC(\FireballPluginVpnManagerV2::t('vpn_manager_v2_provisioning_status_' . $key))
+            . htmlSC(self::label($status))
             . '</span>';
+    }
+
+    public static function label(string $status): string
+    {
+        $status = strtolower(trim($status));
+        $known = [
+            'active', 'provisioning', 'creating', 'provisioning_failed', 'create_failed',
+            'sync_error', 'partial_sync', 'disabled', 'inactive', 'suspended', 'expired',
+            'traffic_exceeded', 'cancelled', 'deleting', 'deleted', 'delete_failed',
+            'missing_remote', 'invalid_snapshot', 'pending_remote_delete',
+        ];
+        $key = in_array($status, $known, true) ? $status : 'unknown';
+
+        return \FireballPluginVpnManagerV2::t('vpn_manager_v2_provisioning_status_' . $key);
     }
 
     public static function canRetry(string $status): bool

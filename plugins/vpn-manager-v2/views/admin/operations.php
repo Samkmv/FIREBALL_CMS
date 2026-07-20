@@ -1,24 +1,31 @@
 <?php
+use Fireball\VpnManagerV2\Support\AdminActionDropdown;
+use Fireball\VpnManagerV2\Support\LocalizedValue;
+
 $operations = is_array($operations ?? null) ? $operations : [];
 $rows = [];
 foreach ($operations as $operation) {
     $status = (string)$operation['status'];
     $class = in_array($status, ['completed'], true) ? 'text-bg-success'
         : (in_array($status, ['failed'], true) ? 'text-bg-danger'
-            : (in_array($status, ['running'], true) ? 'text-bg-primary' : 'text-bg-warning'));
-    $cancel = in_array($status, ['pending', 'retry'], true)
-        ? '<form method="post" action="' . htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/'
-            . (string)$operation['operation_id'] . '/cancel')) . '" data-vpn-v2-async-operation>'
-            . get_csrf_field()
-            . '<button class="btn btn-sm btn-outline-danger rounded-pill" type="submit">'
-            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_cancel_operation'))
-            . '</button></form>'
-        : '—';
+            : (in_array($status, ['running'], true) ? 'text-bg-primary'
+                : (in_array($status, ['cancelled'], true) ? 'text-bg-secondary' : 'text-bg-warning')));
+    $cancelActions = in_array($status, ['pending', 'retry'], true) ? [[
+        'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_cancel_operation'),
+        'type' => 'form',
+        'action' => base_href('/admin/plugins/vpn-manager-v2/operations/'
+            . (string)$operation['operation_id'] . '/cancel'),
+        'form_attributes' => ['data-vpn-v2-async-operation' => true],
+        'icon' => 'ci-close',
+        'class' => 'text-danger',
+    ]] : [];
+    $cancel = AdminActionDropdown::render($cancelActions);
     $rows[] = ['cells' => [
         ['html' => '<code>' . htmlSC((string)$operation['operation_id']) . '</code>'],
-        ['value' => (string)$operation['operation_type']],
-        ['value' => (string)$operation['source']],
-        ['html' => '<span class="badge rounded-pill ' . $class . '">' . htmlSC($status) . '</span>'],
+        ['value' => LocalizedValue::operationType($operation['operation_type'] ?? '')],
+        ['value' => LocalizedValue::operationSource($operation['source'] ?? '')],
+        ['html' => '<span class="badge rounded-pill ' . $class . '">'
+            . htmlSC(LocalizedValue::operationStatus($status)) . '</span>'],
         ['value' => (int)$operation['processed_count'] . ' / ' . (int)$operation['total_count']],
         ['value' => (int)$operation['attempts'] . ' / ' . (int)$operation['max_attempts']],
         ['html' => !empty($operation['last_error']) ? '<span class="text-danger">' . htmlSC((string)$operation['last_error']) . '</span>' : '—'],
@@ -29,7 +36,10 @@ foreach ($operations as $operation) {
 ?>
 <?= view()->renderPartial('admin/shell_open', ['title' => $title ?? '', 'subtitle' => $subtitle ?? '']) ?>
 <?php require __DIR__ . '/partials/tabs.php'; ?>
-<div data-vpn-v2-operation-alert aria-live="polite"></div>
+<div data-vpn-v2-operation-alert
+     data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
+     data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
+     aria-live="polite"></div>
 <div class="d-flex flex-wrap gap-2 mb-3">
     <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/full')) ?>" data-vpn-v2-async-operation>
         <?= get_csrf_field() ?>
@@ -38,6 +48,10 @@ foreach ($operations as $operation) {
     <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/retry')) ?>" data-vpn-v2-async-operation>
         <?= get_csrf_field() ?>
         <button class="btn btn-outline-warning rounded-pill" type="submit"><i class="ci-rotate-ccw me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_operations')) ?></button>
+    </form>
+    <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/process')) ?>" data-vpn-v2-async-operation>
+        <?= get_csrf_field() ?>
+        <button class="btn btn-outline-primary rounded-pill" type="submit"><i class="ci-play me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_process_operations')) ?></button>
     </form>
 </div>
 <div class="border rounded-5 p-3 p-md-4">

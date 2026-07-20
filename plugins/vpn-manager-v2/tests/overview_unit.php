@@ -84,6 +84,8 @@ $tables = [
     'vpn_v2_plan_nodes',
     'vpn_v2_subscriptions',
     'vpn_v2_subscription_nodes',
+    'vpn_v2_subscription_items',
+    'vpn_v2_external_sources',
     'vpn_v2_events',
     'vpn_v2_notifications',
 ];
@@ -97,6 +99,9 @@ $columns = [
     'vpn_v2_subscription_nodes.sort_order',
     'vpn_v2_subscription_nodes.traffic_used_bytes',
     'vpn_v2_subscription_nodes.encrypted_client_credential',
+    'vpn_v2_subscription_items.effective_status',
+    'vpn_v2_external_sources.encrypted_snapshot',
+    'vpn_v2_plans.deleted_at',
     'vpn_v2_notifications.occurrence_key',
 ];
 $migrationFiles = array_map('basename', glob(dirname(__DIR__) . '/migrations/*.sql') ?: []);

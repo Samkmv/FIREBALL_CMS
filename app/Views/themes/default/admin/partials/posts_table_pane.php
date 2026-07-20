@@ -131,7 +131,7 @@ $mobileCards = [];
                             </td>
                             <td>
                                 <div class="admin-table-meta">
-                                    <span title="<?= htmlSC(return_translation('admin_posts_col_category')) ?>"><i class="ci-map-pin"></i><?= htmlSC($categoryName) ?></span>
+                                    <span title="<?= htmlSC(return_translation('admin_posts_col_category')) ?>"><i class="ci-folder"></i><?= htmlSC($categoryName) ?></span>
                                     <span title="<?= htmlSC(return_translation('admin_posts_col_priority')) ?>"><i class="ci-activity"></i><?= (int)($post['priority'] ?? 0) ?></span>
                                     <span title="<?= htmlSC(return_translation('admin_posts_col_views')) ?>"><i class="ci-eye"></i><?= (int)($post['views_count'] ?? 0) ?></span>
                                 </div>

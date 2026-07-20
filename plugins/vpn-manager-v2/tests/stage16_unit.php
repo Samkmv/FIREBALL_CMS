@@ -68,7 +68,8 @@ $assert(str_contains($route, '/connections/order/')
     && str_contains($view, 'data-vpn-v2-connection-order')
     && str_contains($javascript, 'setupConnectionOrder'),
     'The administrative connection-order workflow is incomplete.');
-$assert(($plugin['version'] ?? '') === '0.15.0', 'The plugin version was not bumped for migration 008.');
+$assert(version_compare((string)($plugin['version'] ?? ''), '0.15.0', '>='),
+    'The plugin version was not bumped for migration 008.');
 
 echo json_encode([
     'status' => 'ok',

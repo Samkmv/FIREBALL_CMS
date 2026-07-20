@@ -232,8 +232,19 @@
         container.replaceChildren(alert);
     }
 
+    function operationMessage(container, attribute, fallback) {
+        return container ? (container.getAttribute(attribute) || fallback) : fallback;
+    }
+
     function pollOperation(url, container, attempts) {
         if (!url || attempts <= 0) {
+            if (url && attempts <= 0) {
+                showOperationStatus(
+                    container,
+                    'danger',
+                    operationMessage(container, 'data-vpn-v2-operation-status-failed', 'Operation status is unavailable.')
+                );
+            }
             return;
         }
         window.setTimeout(function () {
@@ -243,22 +254,39 @@
                 headers: {'Accept': 'application/json'}
             }).then(function (response) {
                 if (!response.ok) {
-                    throw new Error('operation_status_failed');
+                    throw new Error(operationMessage(
+                        container,
+                        'data-vpn-v2-operation-status-failed',
+                        'Operation status is unavailable.'
+                    ));
                 }
                 return response.json();
             }).then(function (data) {
                 var status = String(data.status || 'pending');
+                var statusLabel = String(data.status_label || status);
                 var progress = Number(data.processed_count || 0) + ' / ' + Number(data.total_count || 0);
                 showOperationStatus(
                     container,
                     status === 'completed' ? 'success'
                         : (status === 'completed_partial' ? 'warning' : (status === 'failed' ? 'danger' : 'info')),
-                    status + ' · ' + progress
+                    statusLabel + ' · ' + progress
                 );
                 if (['completed', 'completed_partial', 'failed', 'cancelled'].indexOf(status) === -1) {
                     pollOperation(url, container, attempts - 1);
                 }
-            }).catch(function () {
+            }).catch(function (error) {
+                if (attempts <= 1) {
+                    showOperationStatus(
+                        container,
+                        'danger',
+                        error.message || operationMessage(
+                            container,
+                            'data-vpn-v2-operation-status-failed',
+                            'Operation status is unavailable.'
+                        )
+                    );
+                    return;
+                }
                 pollOperation(url, container, attempts - 1);
             });
         }, 2000);
@@ -288,7 +316,11 @@
             }).then(function (response) {
                 return response.json().then(function (data) {
                     if (!response.ok) {
-                        throw new Error(data.error || 'operation_failed');
+                        throw new Error(data.error || operationMessage(
+                            container,
+                            'data-vpn-v2-operation-failed',
+                            'The operation could not be completed.'
+                        ));
                     }
                     return data;
                 });
@@ -298,7 +330,16 @@
                     pollOperation(data.progress_url, container, 150);
                 }
             }).catch(function (error) {
-                showOperationStatus(container, 'danger', error.message || 'operation_failed');
+                var fallback = operationMessage(
+                    container,
+                    'data-vpn-v2-operation-failed',
+                    'The operation could not be completed.'
+                );
+                var message = error.message || fallback;
+                if (message === 'Failed to fetch' || message === 'operation_failed') {
+                    message = fallback;
+                }
+                showOperationStatus(container, 'danger', message);
             }).finally(function () {
                 if (button) {
                     button.disabled = false;

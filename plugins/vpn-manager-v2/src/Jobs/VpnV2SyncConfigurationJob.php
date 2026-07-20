@@ -12,6 +12,9 @@ final class VpnV2SyncConfigurationJob
         $manual = (new RemoteOperationProcessor())->processNext([
             'sync_server', 'sync_inbound', 'sync_client', 'sync_subscription',
             'update_client', 'rename_client', 'enable_client', 'disable_client',
+            'full_reconcile',
+            'cascade_disable_children', 'cascade_enable_children',
+            'recalculate_effective_status', 'detach_child_subscription', 'detach_child_connection',
         ]);
         $service = new ConfigurationSyncService();
         $cursorKey = 'vpn-v2:configuration-sync-cursor';

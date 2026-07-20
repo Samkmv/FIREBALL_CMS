@@ -11,6 +11,8 @@ final class OverviewRepository
         'vpn_v2_plan_nodes',
         'vpn_v2_subscriptions',
         'vpn_v2_subscription_nodes',
+        'vpn_v2_subscription_items',
+        'vpn_v2_external_sources',
         'vpn_v2_events',
         'vpn_v2_notifications',
     ];
@@ -25,6 +27,9 @@ final class OverviewRepository
         'vpn_v2_subscription_nodes.sort_order',
         'vpn_v2_subscription_nodes.traffic_used_bytes',
         'vpn_v2_subscription_nodes.encrypted_client_credential',
+        'vpn_v2_subscription_items.effective_status',
+        'vpn_v2_external_sources.encrypted_snapshot',
+        'vpn_v2_plans.deleted_at',
         'vpn_v2_notifications.occurrence_key',
     ];
 
@@ -93,7 +98,7 @@ final class OverviewRepository
             'SELECT TABLE_NAME
              FROM information_schema.TABLES
              WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME IN (?, ?, ?, ?, ?, ?, ?, ?)',
+               AND TABLE_NAME IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             self::TABLES
         )->get() ?: [];
         $tables = array_values(array_filter(array_map(
@@ -111,7 +116,7 @@ final class OverviewRepository
             'SELECT TABLE_NAME, COLUMN_NAME
              FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME IN (?, ?, ?, ?, ?, ?, ?, ?)',
+               AND TABLE_NAME IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             self::TABLES
         )->get() ?: [];
         $columns = [];
@@ -205,8 +210,8 @@ final class OverviewRepository
         }
         if (in_array('vpn_v2_plans', $presentTables, true)) {
             $data['plans'] = [
-                'total' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_plans'),
-                'active' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_plans WHERE is_active = 1'),
+                'total' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_plans WHERE deleted_at IS NULL'),
+                'active' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_plans WHERE is_active = 1 AND deleted_at IS NULL'),
                 'enabled' => null,
                 'errors' => null,
             ];

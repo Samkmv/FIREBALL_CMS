@@ -47,7 +47,10 @@ final class VpnV2SchemaUpgradeService
                 if (trim($sql) !== '') {
                     $runner->executeDatabase($sql);
                 }
-                if ($migration === '007_add_bidirectional_sync.sql') {
+                if (in_array($migration, [
+                    '007_add_bidirectional_sync.sql',
+                    '010_repair_bidirectional_credential_columns.sql',
+                ], true)) {
                     $this->backfillLegacyPasswordCredentials();
                 }
                 db()->query(

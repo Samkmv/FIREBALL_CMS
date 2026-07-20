@@ -172,3 +172,65 @@ Server requests use bounded connect/read timeouts, one automatic session re-auth
 Panel passwords, API tokens, session cookies and password-protocol client credentials are never stored as plain text. Migration 007 encrypts legacy Trojan/Shadowsocks credentials and replaces their overloaded local `client_uuid` value with a non-secret logical UUID. Remote inventory JSON and factual snapshots redact passwords, tokens and server private keys; snapshots retain only a one-way hash when a password change must affect configuration versioning.
 
 No migration from VPN Manager V1 is performed. Migration `007_add_bidirectional_sync.sql` only extends the isolated `vpn_v2_*` schema and retains existing subscriptions, tokens and remote client identities. Migration `008_add_subscription_connection_order.sql` adds and backfills the isolated per-connection order without changing any remote client.
+
+## Version 0.16 subscription dependency contract
+
+Migration `009_add_subscription_dependencies.sql` adds the normalized
+`vpn_v2_subscription_items` relationship table. A row targets exactly one child
+subscription or one connection, is soft-deleted for audit history, and stores
+ownership, enabled state, administrator order, last calculated effective status,
+and its inactive reason. A unique active relationship key prevents duplicates.
+
+The parent subscription is the access boundary. Public delivery first evaluates
+the parent status, start and expiration dates, and traffic limit. A subscription
+attached as a child cannot be downloaded through its own token. The merged parent
+response includes its own confirmed connections, enabled child subscriptions, and
+enabled individual connections. It traverses dependencies with a visited set and
+depth limit, rejects cycles before insert, uses valid last-known-good snapshots,
+deduplicates by server, inbound, protocol, credential, host, and port, and retains
+the saved order. Attaching or detaching an item never rotates the parent token.
+
+`own_status` remains factual local state. `effective_status` is calculated from
+the parent, relationship switch, child state and date, node state, and technical
+availability. Parent expiration, suspension, deletion, and traffic limits always
+win and produce explicit `parent_subscription_*` reasons. The endpoint, customer
+cabinet, QR/link generation, administrator view, reconciliation, expiration and
+limit jobs all use this effective result.
+
+Cascade operations disable or re-enable dependent 3x-ui clients through the
+existing verified update path. A shared connection is not remotely disabled or
+deleted while another effective parent consumes it. Partial panel failures leave
+local delivery blocked, record a partial result, and enqueue an idempotent retry.
+Deleting a parent revokes its token immediately, archives dependency relationships,
+keeps history, and retains shared node records required by another active parent.
+
+Migration `010_repair_bidirectional_credential_columns.sql` is an idempotent
+upgrade repair for installations that journaled an early form of migration 007.
+It restores the subscription token hash and encrypted node/remote credential
+columns, recreates the token-hash index when needed, backfills token hashes, and
+runs the existing legacy password encryption backfill. It does not rotate tokens
+or confirmed client identities.
+
+Migration `011_enforce_subscription_item_targets.sql` adds insert and update
+guards for MySQL/MariaDB versions that parse but do not enforce `CHECK`
+constraints. Invalid item-type/target combinations and unsupported ownership
+values are rejected by the database as well as by the application service.
+
+## Version 0.17 external source and plan archive contract
+
+Migration `012_add_external_sources_and_plan_archiving.sql` adds
+`vpn_v2_external_sources` and `vpn_v2_plans.deleted_at`. External subscription
+URLs, standalone connection URIs and confirmed snapshots are encrypted at rest;
+the administrator receives only a credential-free preview. Public delivery uses
+the latest confirmed snapshot and keeps it available when a later refresh fails.
+
+External downloads reject redirects and private or reserved network targets,
+pin cURL to validated DNS answers, enforce a two-megabyte limit and accept at
+most 500 valid VLESS, VMess, Trojan or Shadowsocks configurations. Plain,
+Base64 and JSON-list responses are supported. Invalid entries are skipped and
+technical duplicates are collapsed independently of their display names.
+
+Plan deletion is a soft archive. Archived plans disappear from plan management,
+reconciliation and new-subscription forms, while existing subscriptions, plan
+nodes and audit history retain valid references. VPN administration list rows
+use the standard FIREBALL CMS three-dot action dropdown.

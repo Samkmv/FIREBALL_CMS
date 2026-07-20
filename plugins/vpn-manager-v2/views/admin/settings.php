@@ -101,8 +101,8 @@ $switch = static function (string $key, string $label, string $help = '') use ($
             <div class="col-12 col-lg-4">
                 <label class="form-label" for="vpnV2ExpiredBehavior"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_expired_behavior')) ?></label>
                 <select class="form-select" id="vpnV2ExpiredBehavior" name="expired_subscription_behavior">
-                    <option value="gone" <?= ($settings['expired_subscription_behavior'] ?? 'gone') === 'gone' ? 'selected' : '' ?>>HTTP 410 Gone</option>
-                    <option value="not_found" <?= ($settings['expired_subscription_behavior'] ?? '') === 'not_found' ? 'selected' : '' ?>>HTTP 404 Not Found</option>
+                    <option value="gone" <?= ($settings['expired_subscription_behavior'] ?? 'gone') === 'gone' ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_expired_behavior_gone')) ?></option>
+                    <option value="not_found" <?= ($settings['expired_subscription_behavior'] ?? '') === 'not_found' ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_expired_behavior_not_found')) ?></option>
                 </select>
             </div>
             <div class="col-12 col-lg-4">

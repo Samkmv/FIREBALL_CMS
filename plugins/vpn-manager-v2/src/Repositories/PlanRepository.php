@@ -15,6 +15,7 @@ final class PlanRepository
                     COUNT(DISTINCT n.server_id) AS server_count, COUNT(n.id) AS node_count
              FROM vpn_v2_plans p
              LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
+             WHERE p.deleted_at IS NULL
              GROUP BY p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
                       p.device_limit, p.is_active, p.created_at, p.updated_at
              ORDER BY p.id ASC'
@@ -38,7 +39,7 @@ final class PlanRepository
         $row = db()->query(
             'SELECT id, name, description, duration_days, traffic_limit_bytes, device_limit,
                     is_active, created_at, updated_at
-             FROM vpn_v2_plans WHERE id = ? LIMIT 1',
+             FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL LIMIT 1',
             [$id]
         )->getOne();
 
@@ -188,6 +189,41 @@ final class PlanRepository
             $database->commit();
 
             return $active;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    public function archive(int $id): bool
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $plan = $database->query(
+                'SELECT id FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL LIMIT 1 FOR UPDATE',
+                [$id]
+            )->getOne();
+            if (!is_array($plan)) {
+                $database->rollBack();
+                return false;
+            }
+            $now = date('Y-m-d H:i:s');
+            $database->query(
+                'UPDATE vpn_v2_plans SET is_active = 0, deleted_at = ?, updated_at = ? WHERE id = ?',
+                [$now, $now, $id]
+            );
+            $this->logEvent('plan.deleted', $id, count($this->nodes($id)), [
+                'subscription_count' => (int)$database->query(
+                    'SELECT COUNT(*) FROM vpn_v2_subscriptions WHERE plan_id = ? AND status <> \'deleted\'',
+                    [$id]
+                )->getColumn(),
+            ]);
+            $database->commit();
+
+            return true;
         } catch (\Throwable $exception) {
             if ($database->inTransaction()) {
                 $database->rollBack();

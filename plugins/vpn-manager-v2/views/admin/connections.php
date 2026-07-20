@@ -1,6 +1,8 @@
 <?php
 
 use Fireball\VpnManagerV2\Support\ProvisioningStatus;
+use Fireball\VpnManagerV2\Support\AdminActionDropdown;
+use Fireball\VpnManagerV2\Support\LocalizedValue;
 
 $connections = is_array($connections ?? null) ? $connections : [];
 $rows = [];
@@ -26,17 +28,6 @@ foreach ($connections as $connection) {
         'form_attributes' => ['data-vpn-v2-async-operation' => true],
         'icon' => 'ci-refresh-cw',
     ]];
-    $desktop = '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($showUrl)
-        . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'))
-        . '"><i class="ci-eye"></i></a>';
-    $desktop .= '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="' . htmlSC($editUrl)
-        . '" title="' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'))
-        . '"><i class="ci-edit-2"></i></a>';
-    $desktop .= '<form method="post" action="' . htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/connection/' . $id))
-        . '" data-vpn-v2-async-operation>' . get_csrf_field()
-        . '<button class="btn btn-sm btn-outline-primary btn-icon rounded-circle" type="submit" title="'
-        . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_client'))
-        . '"><i class="ci-refresh-cw"></i></button></form>';
     if (ProvisioningStatus::canRetry((string)$connection['status'])) {
         $retryUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/retry');
         $actions[] = [
@@ -45,11 +36,8 @@ foreach ($connections as $connection) {
             'action' => $retryUrl,
             'icon' => 'ci-refresh-cw',
         ];
-        $desktop .= '<form method="post" action="' . htmlSC($retryUrl) . '">' . get_csrf_field()
-            . '<button class="btn btn-sm btn-outline-warning btn-icon rounded-circle" type="submit" title="'
-            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_creation'))
-            . '"><i class="ci-refresh-cw"></i></button></form>';
     }
+    $desktop = AdminActionDropdown::render($actions);
 
     $rows[] = ['cells' => [
         ['value' => '#' . $id],
@@ -59,14 +47,14 @@ foreach ($connections as $connection) {
             . htmlSC((string)$connection['plan_name']) . '</div>'],
         ['html' => htmlSC((string)$connection['user_name']) . '<div class="small text-body-secondary">' . htmlSC((string)$connection['user_email']) . '</div>'],
         ['html' => htmlSC((string)$connection['server_name']) . '<div class="small text-body-secondary">#' . (int)$connection['server_id'] . '</div>'],
-        ['html' => htmlSC((string)$connection['inbound_name']) . '<div class="small text-body-secondary">remote #' . htmlSC((string)$connection['remote_inbound_id']) . '</div>'],
+        ['html' => htmlSC((string)$connection['inbound_name']) . '<div class="small text-body-secondary">3x-ui #' . htmlSC((string)$connection['remote_inbound_id']) . '</div>'],
         ['value' => strtoupper((string)$connection['protocol'])],
         ['value' => strtoupper((string)($connection['network'] ?: '—'))],
         ['value' => strtoupper((string)($connection['security'] ?: 'none'))],
         ['value' => $flow],
-        ['html' => $badge . '<div class="small text-body-secondary mt-1">' . htmlSC((string)($connection['sync_status'] ?? 'pending')) . '</div>'
+        ['html' => $badge . '<div class="small text-body-secondary mt-1">' . htmlSC(LocalizedValue::syncStatus($connection['sync_status'] ?? 'pending')) . '</div>'
             . (!empty($connection['last_error']) ? '<div class="small text-danger mt-1">' . htmlSC((string)$connection['last_error']) . '</div>' : '')],
-        ['html' => '<div class="d-flex justify-content-end gap-1">' . $desktop . '</div>'],
+        ['html' => '<div class="text-end">' . $desktop . '</div>'],
     ]];
     $mobileCards[] = [
         'id' => (string)$id,
@@ -91,7 +79,10 @@ foreach ($connections as $connection) {
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
-<div data-vpn-v2-operation-alert aria-live="polite"></div>
+<div data-vpn-v2-operation-alert
+     data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
+     data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
+     aria-live="polite"></div>
 
 <div class="border rounded-5 p-3 p-md-4">
     <?= view()->renderPartial('admin/partials/table', [

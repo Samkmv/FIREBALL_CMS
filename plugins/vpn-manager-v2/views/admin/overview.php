@@ -1,4 +1,6 @@
 <?php
+use Fireball\VpnManagerV2\Support\ProvisioningStatus;
+
 
 $migrationStatus = is_array($migrationStatus ?? null) ? $migrationStatus : [];
 $expectedTables = is_array($migrationStatus['expected_tables'] ?? null) ? $migrationStatus['expected_tables'] : [];
@@ -91,7 +93,7 @@ $dataCards = [
                 <div class="h4 mb-0 mt-2"><?= (int)($overview['jobs_count'] ?? 0) ?></div>
                 <div class="small text-body-secondary mt-1">
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_plugin_status')) ?>:
-                    <?= htmlSC((string)($overview['plugin_status'] ?? '—')) ?>
+                    <?= htmlSC(ProvisioningStatus::label((string)($overview['plugin_status'] ?? ''))) ?>
                 </div>
             </div>
         </div>

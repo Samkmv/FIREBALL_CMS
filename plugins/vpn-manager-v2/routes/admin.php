@@ -47,6 +47,8 @@ $router->post('/admin/plugins/vpn-manager-v2/plans/edit/(?P<id>\d+)/?', [PlanCon
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/plans/toggle', [PlanController::class, 'toggle'])
     ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/delete/?', [PlanController::class, 'delete'])
+    ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/preview/?', [PlanController::class, 'preview'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/reconcile/?', [PlanController::class, 'reconcile'])
@@ -71,6 +73,28 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/delete/?'
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/create-missing/?', [SubscriptionController::class, 'createMissing'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/connections/order/?', [SubscriptionController::class, 'updateConnectionOrder'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/dependencies/subscription/?', [SubscriptionController::class, 'attachDependencySubscription'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/dependencies/connection/?', [SubscriptionController::class, 'attachDependencyConnection'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/dependencies/order/?', [SubscriptionController::class, 'updateDependencyOrder'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/dependencies/sync/?', [SubscriptionController::class, 'syncDependencies'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/dependencies/(?P<item>\d+)/toggle/?', [SubscriptionController::class, 'toggleDependency'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/dependencies/(?P<item>\d+)/detach/?', [SubscriptionController::class, 'detachDependency'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/subscription/?', [SubscriptionController::class, 'attachExternalSubscription'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/connection/?', [SubscriptionController::class, 'attachExternalConnection'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/(?P<source>\d+)/toggle/?', [SubscriptionController::class, 'toggleExternalSource'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/(?P<source>\d+)/sync/?', [SubscriptionController::class, 'syncExternalSource'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/(?P<source>\d+)/detach/?', [SubscriptionController::class, 'detachExternalSource'])
     ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/?', [SubscriptionController::class, 'show'])
     ->middleware(['auth', 'admin']);
@@ -107,6 +131,8 @@ $router->post('/admin/plugins/vpn-manager-v2/sync/connection/(?P<id>\d+)/reset-t
 $router->post('/admin/plugins/vpn-manager-v2/sync/full/?', [SyncController::class, 'full'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/operations/retry/?', [SyncController::class, 'retry'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/operations/process/?', [SyncController::class, 'processPending'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/operations/(?P<operation>[a-fA-F0-9-]{36})/cancel/?', [SyncController::class, 'cancel'])
     ->middleware(['auth', 'admin']);

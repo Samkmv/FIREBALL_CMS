@@ -1,4 +1,6 @@
 <?php
+use Fireball\VpnManagerV2\Support\LocalizedValue;
+
 $conflicts = is_array($conflicts ?? null) ? $conflicts : [];
 $unmanagedClients = is_array($unmanagedClients ?? null) ? $unmanagedClients : [];
 $connections = is_array($connections ?? null) ? $connections : [];
@@ -10,21 +12,24 @@ $rows = [];
 foreach ($conflicts as $conflict) {
     $rows[] = ['cells' => [
         ['value' => '#' . (int)$conflict['id']],
-        ['value' => (string)$conflict['conflict_type']],
+        ['value' => LocalizedValue::conflictType($conflict['conflict_type'] ?? '')],
         ['value' => !empty($conflict['server_id']) ? '#' . (int)$conflict['server_id'] . ' · ' . (string)($conflict['server_name'] ?? '') : '—'],
         ['value' => !empty($conflict['subscription_id']) ? '#' . (int)$conflict['subscription_id'] : '—'],
         ['value' => !empty($conflict['connection_id']) ? '#' . (int)$conflict['connection_id'] : '—'],
         ['value' => (string)($conflict['local_value'] ?? '—')],
         ['value' => (string)($conflict['remote_value'] ?? '—')],
-        ['value' => (string)($conflict['recommended_action'] ?? '—')],
-        ['value' => (string)$conflict['status']],
+        ['value' => LocalizedValue::conflictAction($conflict['recommended_action'] ?? '')],
+        ['value' => LocalizedValue::conflictStatus($conflict['status'] ?? '')],
         ['value' => (string)$conflict['detected_at']],
     ]];
 }
 ?>
 <?= view()->renderPartial('admin/shell_open', ['title' => $title ?? '', 'subtitle' => $subtitle ?? '']) ?>
 <?php require __DIR__ . '/partials/tabs.php'; ?>
-<div data-vpn-v2-operation-alert aria-live="polite"></div>
+<div data-vpn-v2-operation-alert
+     data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
+     data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
+     aria-live="polite"></div>
 
 <?php if ($unmanagedClients !== []): ?>
     <section class="border rounded-5 p-3 p-md-4 mb-4">

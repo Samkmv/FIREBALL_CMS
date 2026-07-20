@@ -2,6 +2,7 @@
 
 use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
+use Fireball\VpnManagerV2\Support\LocalizedValue;
 
 $connection = is_array($connection ?? null) ? $connection : [];
 $id = (int)($connection['id'] ?? 0);
@@ -11,7 +12,10 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
 <?= view()->renderPartial('admin/shell_open', ['title' => $title ?? '', 'subtitle' => $subtitle ?? '']) ?>
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
-<div data-vpn-v2-operation-alert aria-live="polite"></div>
+<div data-vpn-v2-operation-alert
+     data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
+     data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
+     aria-live="polite"></div>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections')) ?>">
@@ -67,7 +71,7 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_server')) ?></dt>
         <dd class="col-sm-9 mb-0">#<?= (int)$connection['server_id'] ?> · <?= htmlSC((string)$connection['server_name']) ?> (<?= htmlSC((string)$connection['server_code']) ?>)</dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_inbound')) ?></dt>
-        <dd class="col-sm-9 mb-0">#<?= (int)$connection['inbound_id'] ?> · <?= htmlSC((string)$connection['inbound_name']) ?> · remote #<?= htmlSC((string)$connection['remote_inbound_id']) ?></dd>
+        <dd class="col-sm-9 mb-0">#<?= (int)$connection['inbound_id'] ?> · <?= htmlSC((string)$connection['inbound_name']) ?> · 3x-ui #<?= htmlSC((string)$connection['remote_inbound_id']) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_protocol')) ?></dt>
         <dd class="col-sm-9 mb-0"><?= htmlSC(strtoupper((string)$connection['protocol'])) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_transport_security')) ?></dt>
@@ -77,7 +81,10 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_client_email')) ?></dt>
         <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)$connection['client_email']) ?></code></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_status')) ?></dt>
-        <dd class="col-sm-9 mb-0"><?= htmlSC((string)($connection['sync_status'] ?? 'pending')) ?> · snapshot v<?= (int)($connection['lkg_snapshot_version'] ?? 0) ?></dd>
+        <dd class="col-sm-9 mb-0"><?= htmlSC(LocalizedValue::syncStatus($connection['sync_status'] ?? 'pending')) ?> · <?= htmlSC(sprintf(
+            FireballPluginVpnManagerV2::t('vpn_manager_v2_snapshot_version'),
+            (int)($connection['lkg_snapshot_version'] ?? 0)
+        )) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_remote_client')) ?></dt>
         <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)($connection['remote_client_preview'] ?: '—')) ?></code></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_limits')) ?></dt>

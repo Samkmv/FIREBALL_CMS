@@ -166,6 +166,16 @@ final class PlanManagerService
         return $repository->toggle($id);
     }
 
+    public function delete(int $id): bool
+    {
+        $repository = $this->repository ?? new PlanRepository();
+        if (!$repository->find($id)) {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_not_found'));
+        }
+
+        return $repository->archive($id);
+    }
+
     private function inboundIds(array $input): array
     {
         $ids = [];

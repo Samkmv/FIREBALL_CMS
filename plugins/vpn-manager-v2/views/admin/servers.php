@@ -1,6 +1,7 @@
 <?php
 
 use Fireball\VpnManagerV2\Support\CountryFlag;
+use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 
 $servers = is_array($servers ?? null) ? $servers : [];
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/servers/create');
@@ -65,33 +66,6 @@ $serverActions = static function (array $server): array {
     ];
 };
 
-$desktopActions = static function (array $server) use ($serverActions): string {
-    $html = '<div class="d-flex flex-wrap justify-content-end gap-1">';
-    foreach ($serverActions($server) as $action) {
-        $content = '<i class="' . htmlSC((string)$action['icon']) . '" aria-hidden="true"></i><span class="visually-hidden">'
-            . htmlSC((string)$action['label']) . '</span>';
-        if (($action['type'] ?? 'link') === 'form') {
-            $async = !empty($action['form_attributes']['data-vpn-v2-async-operation'])
-                ? ' data-vpn-v2-async-operation' : '';
-            $html .= '<form method="post" action="' . htmlSC((string)$action['action']) . '"' . $async . '>'
-                . get_csrf_field();
-            foreach ((array)($action['hidden'] ?? []) as $name => $value) {
-                $html .= '<input type="hidden" name="' . htmlSC((string)$name) . '" value="' . htmlSC((string)$value) . '">';
-            }
-            $html .= '<button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="submit" title="'
-                . htmlSC((string)$action['label']) . '" aria-label="' . htmlSC((string)$action['label']) . '">'
-                . $content . '</button></form>';
-            continue;
-        }
-
-        $html .= '<a class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" href="'
-            . htmlSC((string)$action['href']) . '" title="' . htmlSC((string)$action['label'])
-            . '" aria-label="' . htmlSC((string)$action['label']) . '">' . $content . '</a>';
-    }
-
-    return $html . '</div>';
-};
-
 $rows = [];
 $mobileCards = [];
 foreach ($servers as $server) {
@@ -129,7 +103,7 @@ foreach ($servers as $server) {
             ['value' => $counts],
             ['value' => $lastSync],
             ['html' => $lastCheckHtml],
-            ['html' => $desktopActions($server)],
+            ['html' => '<div class="text-end">' . AdminActionDropdown::render($serverActions($server)) . '</div>'],
         ],
     ];
 
@@ -160,7 +134,10 @@ foreach ($servers as $server) {
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
-<div data-vpn-v2-operation-alert aria-live="polite"></div>
+<div data-vpn-v2-operation-alert
+     data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
+     data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
+     aria-live="polite"></div>
 
 <div class="border rounded-5 p-3 p-md-4">
     <?= view()->renderPartial('admin/partials/table', [

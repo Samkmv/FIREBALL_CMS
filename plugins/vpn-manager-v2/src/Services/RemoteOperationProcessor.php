@@ -23,6 +23,7 @@ final class RemoteOperationProcessor
         private readonly ?PlanReconciliationRepository $plans = null,
         private readonly ?SubscriptionRepository $subscriptions = null,
         private readonly ?SyncAuditRepository $audit = null,
+        private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
     ) {
     }
 
@@ -30,6 +31,20 @@ final class RemoteOperationProcessor
     {
         $queue = $this->operations ?? new OperationQueueRepository();
         $operation = $queue->claimNext($types);
+
+        return $this->processClaimed($queue, $operation);
+    }
+
+    public function processOperation(string $operationId): array
+    {
+        $queue = $this->operations ?? new OperationQueueRepository();
+        $operation = $queue->claimByOperationId($operationId);
+
+        return $this->processClaimed($queue, $operation);
+    }
+
+    private function processClaimed(OperationQueueRepository $queue, ?array $operation): array
+    {
         if (!$operation) {
             return ['idle' => true, 'processed' => 0, 'success' => 0, 'failure' => 0];
         }
@@ -96,11 +111,62 @@ final class RemoteOperationProcessor
             'sync_subscription' => $this->syncSubscription($subscriptionId, $source, $operationId),
             'full_reconcile' => ($this->sync ?? new ConfigurationSyncService())->syncAllPages(1000, 100, $source),
             'create_client' => $this->provision($nodeId),
-            'update_client', 'rename_client', 'enable_client', 'disable_client' => $this->push($nodeId, $source, $operationId),
+            'update_client', 'rename_client', 'enable_client' => $this->push($nodeId, $source, $operationId),
+            'disable_client' => $this->push($nodeId, $source, $operationId, true),
             'delete_client' => $this->delete($nodeId),
             'reset_traffic' => $this->resetTraffic($nodeId),
+            'cascade_disable_children' => $this->processDependencyCascade($operation, false),
+            'cascade_enable_children' => $this->processDependencyCascade($operation, true),
+            'recalculate_effective_status' => $this->recalculateDependencies($subscriptionId),
+            'detach_child_subscription', 'detach_child_connection' => $this->detachDependency($operation),
             default => throw new \RuntimeException('The queued VPN operation is not implemented.'),
         };
+    }
+
+    private function recalculateDependencies(int $subscriptionId): array
+    {
+        $result = ($this->dependencies ?? new VpnV2SubscriptionDependencyService())
+            ->recalculateEffectiveStatuses($subscriptionId);
+
+        return [
+            'processed' => (int)$result['active'] + (int)$result['inactive'],
+            'total' => (int)$result['active'] + (int)$result['inactive'],
+            'changed' => 0,
+        ];
+    }
+
+    private function processDependencyCascade(array $operation, bool $enable): array
+    {
+        $payload = json_decode((string)($operation['payload_json'] ?? ''), true);
+        $nodeIds = is_array($payload) && is_array($payload['node_ids'] ?? null)
+            ? $payload['node_ids']
+            : [];
+        $itemId = is_array($payload) && (int)($payload['item_id'] ?? 0) > 0
+            ? (int)$payload['item_id']
+            : null;
+
+        return ($this->dependencies ?? new VpnV2SubscriptionDependencyService())->processQueuedCascade(
+            (int)($operation['subscription_id'] ?? 0),
+            $enable,
+            $nodeIds,
+            $itemId
+        );
+    }
+
+    private function detachDependency(array $operation): array
+    {
+        $payload = json_decode((string)($operation['payload_json'] ?? ''), true);
+        $itemId = is_array($payload) ? (int)($payload['item_id'] ?? 0) : 0;
+        if ($itemId <= 0) {
+            throw new \RuntimeException('VPN dependency item was not specified.');
+        }
+        $changed = ($this->dependencies ?? new VpnV2SubscriptionDependencyService())->detachItem(
+            (int)($operation['subscription_id'] ?? 0),
+            $itemId,
+            isset($operation['initiated_by']) ? (int)$operation['initiated_by'] : null
+        );
+
+        return ['processed' => 1, 'total' => 1, 'changed' => $changed ? 1 : 0];
     }
 
     private function syncClient(int $nodeId, string $source, string $operationId): array
@@ -149,7 +215,7 @@ final class RemoteOperationProcessor
         ];
     }
 
-    private function push(int $nodeId, string $source, string $operationId): array
+    private function push(int $nodeId, string $source, string $operationId, bool $disabling = false): array
     {
         $plans = $this->plans ?? new PlanReconciliationRepository();
         $node = $plans->node($nodeId);
@@ -159,6 +225,10 @@ final class RemoteOperationProcessor
         $subscription = $plans->subscription((int)$node['subscription_id']);
         if (!$subscription) {
             throw new \RuntimeException('VPN subscription not found.');
+        }
+        if ($disabling && ($this->dependencies ?? new VpnV2SubscriptionDependencyService())
+            ->countActiveConsumers($nodeId, (int)$node['subscription_id']) > 0) {
+            return ['processed' => 1, 'total' => 1, 'changed' => 0, 'skipped_shared' => 1];
         }
         $result = ($this->remoteSync ?? new RemoteClientSyncService())->push($node, $subscription);
         ($this->subscriptions ?? new SubscriptionRepository())->updateNodeConfirmed(
@@ -187,7 +257,7 @@ final class RemoteOperationProcessor
         ($this->remoteDeletion ?? new RemoteClientDeletionService())->delete($node);
         $subscriptions = $this->subscriptions ?? new SubscriptionRepository();
         $subscriptions->markNodeDeleted($nodeId);
-        if ($subscriptions->allNodesDeleted((int)$node['subscription_id'])) {
+        if ($subscriptions->allNodesFinalizable((int)$node['subscription_id'])) {
             $subscription = $subscriptions->findForDeletion((int)$node['subscription_id']);
             if ($subscription) {
                 (new VpnSubscriptionCache())->invalidate(

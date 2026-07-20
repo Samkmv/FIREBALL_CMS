@@ -41,7 +41,10 @@ $plans = is_array($plans ?? null) ? $plans : [];
                         #<?= (int)$plan['id'] ?> · <?= htmlSC((string)$plan['name']) ?> ·
                         <?= (int)$plan['duration_days'] ?> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_days')) ?> ·
                         <?= htmlSC(TrafficFormatter::limit(isset($plan['traffic_limit_bytes']) ? (int)$plan['traffic_limit_bytes'] : null)) ?> ·
-                        <?= (int)$plan['device_limit'] ?> IP · <?= (int)$plan['node_count'] ?> node(s)
+                        <?= (int)$plan['device_limit'] ?> IP · <?= htmlSC(sprintf(
+                            FireballPluginVpnManagerV2::t('vpn_manager_v2_plan_connection_count'),
+                            (int)$plan['node_count']
+                        )) ?>
                     </option>
                 <?php endforeach; ?>
             </select>

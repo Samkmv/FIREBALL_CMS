@@ -15,6 +15,7 @@ final class SubscriptionEditingService
         private readonly ?SubscriptionEditValidator $validator = null,
         private readonly ?RemoteClientSyncService $remoteSync = null,
         private readonly ?VpnSubscriptionRevisionService $revisionService = null,
+        private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
     ) {
     }
 
@@ -46,6 +47,7 @@ final class SubscriptionEditingService
         $synced = 0;
         $failed = 0;
         $firstError = null;
+        $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService();
         foreach ($repository->nodeIdsForSubscription($subscriptionId) as $nodeId) {
             $node = $repository->connectionForProvisioning($nodeId);
             if (!$node) {
@@ -53,6 +55,12 @@ final class SubscriptionEditingService
                 continue;
             }
             if (in_array((string)$node['status'], ['creating', 'create_failed', 'deleted', 'deleting'], true)) {
+                continue;
+            }
+            if ($edit->status !== 'active' && $dependencies->countActiveConsumers($nodeId, $subscriptionId) > 0) {
+                $repository->logEvent('node.disable_skipped_shared_consumer', $subscriptionId, $nodeId,
+                    (int)$node['server_id'], (int)$current['user_id'], $adminId,
+                    ['source' => 'subscription_update']);
                 continue;
             }
             try {
@@ -114,6 +122,17 @@ final class SubscriptionEditingService
             $fresh = $repository->findForProvisioning($subscriptionId);
             $revision = max($revision, (int)($fresh['revision'] ?? $revision));
         }
+
+        $dependencyResult = $edit->status === 'active'
+            && ($edit->expiresAt === null || strtotime($edit->expiresAt) === false || strtotime($edit->expiresAt) > time())
+            ? $dependencies->cascadeEnable($subscriptionId, $adminId)
+            : $dependencies->cascadeDisable(
+                $subscriptionId,
+                $edit->status === 'expired' ? 'parent_subscription_expired' : 'parent_subscription_suspended',
+                $adminId
+            );
+        $synced += (int)($dependencyResult['synced'] ?? 0);
+        $failed += (int)($dependencyResult['failed'] ?? 0);
 
         return new SyncResult($subscriptionId, $synced, $failed, $revision, true, true);
     }

@@ -6,6 +6,8 @@ use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Services\ConfigurationSyncService;
 use Fireball\VpnManagerV2\Services\RemoteOperationProcessor;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
+use Fireball\VpnManagerV2\Services\VpnV2SubscriptionDependencyService;
+use Fireball\VpnManagerV2\Services\ExternalVpnSourceService;
 
 final class VpnV2FullReconcileJob
 {
@@ -13,7 +15,9 @@ final class VpnV2FullReconcileJob
     {
         $manual = (new RemoteOperationProcessor())->processNext(['full_reconcile']);
         $configuration = (new ConfigurationSyncService())->syncAllPages(1000, 100, 'reconciliation');
-        $plans = db()->query('SELECT id FROM vpn_v2_plans WHERE is_active = 1 ORDER BY id ASC')->get() ?: [];
+        $plans = db()->query(
+            'SELECT id FROM vpn_v2_plans WHERE is_active = 1 AND deleted_at IS NULL ORDER BY id ASC'
+        )->get() ?: [];
         $result = ['plans' => 0, 'changed' => 0, 'errors' => 0];
         foreach ($plans as $plan) {
             $result['plans']++;
@@ -28,6 +32,15 @@ final class VpnV2FullReconcileJob
             }
         }
 
-        return ['manual' => $manual, 'configuration' => $configuration, 'plans' => $result];
+        $dependencies = (new VpnV2SubscriptionDependencyService())->recalculateAll();
+        $externalSources = (new ExternalVpnSourceService())->syncAll(20);
+
+        return [
+            'manual' => $manual,
+            'configuration' => $configuration,
+            'plans' => $result,
+            'dependencies' => $dependencies,
+            'external_sources' => $externalSources,
+        ];
     }
 }

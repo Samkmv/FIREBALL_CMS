@@ -13,6 +13,7 @@ final class VpnSubscriptionEndpointService
         private readonly ?VpnSubscriptionBuilder $builder = null,
         private readonly ?VpnSubscriptionCache $subscriptionCache = null,
         private readonly ?SettingsService $settings = null,
+        private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
     ) {
     }
 
@@ -43,8 +44,12 @@ final class VpnSubscriptionEndpointService
 
             return new SubscriptionEndpointResponse($status, '', $headers);
         }
-        if (!in_array((string)$subscription['status'], ['active', 'partial_sync', 'sync_error'], true)
-            || !$this->started($subscription)) {
+        $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService(config: $repository);
+        if ($dependencies->isDependentChild((int)$subscription['id'])) {
+            return new SubscriptionEndpointResponse(403, '', $headers);
+        }
+        $effective = $dependencies->calculateEffectiveStatus($subscription);
+        if ($effective['effective_status'] !== 'active' || !$this->started($subscription)) {
             return new SubscriptionEndpointResponse(403, '', $headers);
         }
 
@@ -76,7 +81,10 @@ final class VpnSubscriptionEndpointService
         }
 
         try {
-            $uris = ($this->builder ?? new VpnSubscriptionBuilder($repository))->build($subscription);
+            $uris = ($this->builder ?? new VpnSubscriptionBuilder(
+                repository: $repository,
+                dependencies: $dependencies
+            ))->build($subscription);
         } catch (VpnManagerV2Exception) {
             return new SubscriptionEndpointResponse(422, '', $headers);
         }

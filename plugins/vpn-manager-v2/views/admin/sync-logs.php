@@ -1,17 +1,21 @@
 <?php
+use Fireball\VpnManagerV2\Support\LocalizedValue;
+
 $logs = is_array($logs ?? null) ? $logs : [];
 $rows = [];
 foreach ($logs as $log) {
     $changed = json_decode((string)($log['changed_fields_json'] ?? ''), true);
     $rows[] = ['cells' => [
         ['value' => '#' . (int)$log['id']],
-        ['value' => (string)$log['operation_type']],
-        ['value' => (string)$log['source']],
+        ['value' => LocalizedValue::operationType($log['operation_type'] ?? '')],
+        ['value' => LocalizedValue::operationSource($log['source'] ?? '')],
         ['value' => !empty($log['server_id']) ? '#' . (int)$log['server_id'] . ' · ' . (string)($log['server_name'] ?? '') : '—'],
         ['value' => !empty($log['subscription_id']) ? '#' . (int)$log['subscription_id'] : '—'],
         ['value' => !empty($log['connection_id']) ? '#' . (int)$log['connection_id'] : '—'],
-        ['value' => is_array($changed) && $changed !== [] ? implode(', ', $changed) : '—'],
-        ['value' => (string)$log['status']],
+        ['value' => is_array($changed) && $changed !== []
+            ? implode(', ', array_map([LocalizedValue::class, 'changedField'], $changed))
+            : '—'],
+        ['value' => LocalizedValue::operationStatus($log['status'] ?? '')],
         ['html' => !empty($log['safe_error']) ? '<span class="text-danger">' . htmlSC((string)$log['safe_error']) . '</span>' : '—'],
         ['value' => (string)$log['created_at']],
     ]];

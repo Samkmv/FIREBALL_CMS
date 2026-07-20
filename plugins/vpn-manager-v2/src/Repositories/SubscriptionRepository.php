@@ -78,7 +78,7 @@ final class SubscriptionRepository
                     COUNT(n.id) AS node_count
              FROM vpn_v2_plans p
              LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
-             WHERE p.is_active = 1
+             WHERE p.is_active = 1 AND p.deleted_at IS NULL
              GROUP BY p.id, p.name, p.duration_days, p.traffic_limit_bytes, p.device_limit
              HAVING COUNT(n.id) > 0
              ORDER BY p.id ASC'
@@ -89,7 +89,7 @@ final class SubscriptionRepository
     {
         $row = db()->query(
             'SELECT id, name, description, duration_days, traffic_limit_bytes, device_limit, is_active
-             FROM vpn_v2_plans WHERE id = ? AND is_active = 1 LIMIT 1',
+             FROM vpn_v2_plans WHERE id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1',
             [$id]
         )->getOne();
 
@@ -212,21 +212,22 @@ final class SubscriptionRepository
     public function all(): array
     {
         return db()->query(
-            'SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
+            "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     u.name AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
-                    SUM(CASE WHEN n.status = "active" THEN 1 ELSE 0 END) AS active_node_count
+                    SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
              FROM vpn_v2_subscriptions s
              INNER JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
+             WHERE s.status <> 'deleted'
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                       s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                       u.name, u.login, u.email, p.name
-             ORDER BY s.id ASC'
+             ORDER BY s.id ASC"
         )->get() ?: [];
     }
 
@@ -602,6 +603,17 @@ final class SubscriptionRepository
         );
     }
 
+    public function markNodeSharedRetained(int $id): void
+    {
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            "UPDATE vpn_v2_subscription_nodes
+             SET status = 'active', desired_enabled = 1, sync_status = 'synced',
+                 sync_error = NULL, last_error = NULL, updated_at = ? WHERE id = ?",
+            [$now, $id]
+        );
+    }
+
     public function markNodeDeleteFailed(int $id, string $safeError): void
     {
         db()->query(
@@ -648,6 +660,22 @@ final class SubscriptionRepository
         )->getColumn() === 0;
     }
 
+    public function allNodesFinalizable(int $subscriptionId): bool
+    {
+        return (int)db()->query(
+            "SELECT COUNT(*)
+             FROM vpn_v2_subscription_nodes n
+             WHERE n.subscription_id = ? AND n.status <> 'deleted'
+               AND NOT EXISTS (
+                   SELECT 1 FROM vpn_v2_subscription_items item
+                   WHERE item.connection_id = n.id AND item.item_type = 'connection'
+                     AND item.is_enabled = 1 AND item.deleted_at IS NULL
+                     AND item.parent_subscription_id <> ?
+               )",
+            [$subscriptionId, $subscriptionId]
+        )->getColumn() === 0;
+    }
+
     public function finalizeDeletion(int $subscriptionId, string $revokedToken): bool
     {
         $database = db();
@@ -665,23 +693,22 @@ final class SubscriptionRepository
                 'SELECT id, status FROM vpn_v2_subscription_nodes WHERE subscription_id = ? FOR UPDATE',
                 [$subscriptionId]
             )->get() ?: [];
-            foreach ($nodes as $node) {
-                if ((string)($node['status'] ?? '') !== 'deleted') {
-                    throw new \RuntimeException('Unconfirmed remote clients remain.');
-                }
+            if (!$this->allNodesFinalizable($subscriptionId)) {
+                throw new \RuntimeException('Unconfirmed remote clients remain.');
             }
 
             $database->query(
                 "UPDATE vpn_v2_subscriptions
                  SET subscription_token = ?, subscription_token_hash = ?,
-                     status = 'deleting', updated_at = ? WHERE id = ?",
-                [$revokedToken, hash('sha256', $revokedToken), date('Y-m-d H:i:s'), $subscriptionId]
+                     status = 'deleted', config_updated_at = ?, updated_at = ? WHERE id = ?",
+                [
+                    $revokedToken,
+                    hash('sha256', $revokedToken),
+                    date('Y-m-d H:i:s'),
+                    date('Y-m-d H:i:s'),
+                    $subscriptionId,
+                ]
             );
-            $database->query('DELETE FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$subscriptionId]);
-            $database->query('DELETE FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]);
-            if ($database->rowCount() !== 1) {
-                throw new \RuntimeException('Subscription row was not deleted.');
-            }
             $database->commit();
 
             return true;
