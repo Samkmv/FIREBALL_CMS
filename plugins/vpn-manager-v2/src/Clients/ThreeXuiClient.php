@@ -313,7 +313,10 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             $this->config->allowPrivateNetwork
         );
 
-        $headers = ['Accept: application/json'];
+        // Current 3x-ui deliberately masks an unauthenticated API request as
+        // HTTP 404 unless it is marked as XMLHttpRequest. Send the header so
+        // an expired or replaced token is reported correctly as HTTP 401.
+        $headers = ['Accept: application/json', 'X-Requested-With: XMLHttpRequest'];
         if ($this->config->authType === 'token' && $this->config->token !== '') {
             $headers[] = 'Authorization: Bearer ' . $this->config->token;
             $headers[] = 'X-API-Key: ' . $this->config->token;
@@ -333,8 +336,11 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => $this->config->verifySsl,
             CURLOPT_SSL_VERIFYHOST => $this->config->verifySsl ? 2 : 0,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.15',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19.4',
         ]);
+        if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
+            curl_setopt($handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        }
         $resolve = $this->curlResolveEntries($url, $addresses);
         if ($resolve !== []) {
             // Pin cURL to the addresses that passed validation. A second DNS

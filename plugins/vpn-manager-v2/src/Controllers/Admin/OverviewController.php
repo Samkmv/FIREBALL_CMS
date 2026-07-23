@@ -4,11 +4,14 @@ namespace Fireball\VpnManagerV2\Controllers\Admin;
 
 use Fireball\VpnManagerV2\Repositories\OverviewRepository;
 use Fireball\VpnManagerV2\Services\MigrationStatusService;
+use Fireball\VpnManagerV2\Support\Permissions;
 
 final class OverviewController
 {
     public function index(): string
     {
+        Permissions::authorize(Permissions::VIEW);
+
         $migrationStatus = (new MigrationStatusService())->status();
         try {
             $overview = (new OverviewRepository())->diagnostics();

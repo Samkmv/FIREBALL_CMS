@@ -92,45 +92,69 @@ final class VpnConfigValidator
             $this->invalid();
         }
 
-        if (str_starts_with($uri, 'vmess://')) {
-            $encoded = substr($uri, strlen('vmess://'));
-            $json = base64_decode($encoded, true);
+        $scheme = strtolower((string)(parse_url($uri, PHP_URL_SCHEME) ?: ''));
+        if ($scheme === 'vmess') {
+            $encoded = substr($uri, (int)strpos($uri, '://') + 3);
+            $json = $this->decodeBase64($encoded);
             $payload = is_string($json) ? json_decode($json, true) : null;
             if (!is_array($payload)
                 || !in_array((string)($payload['v'] ?? ''), ['2', '3'], true)
-                || preg_match('/^[0-9a-f-]{36}$/i', (string)($payload['id'] ?? '')) !== 1
+                || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+                    (string)($payload['id'] ?? '')) !== 1
                 || !$this->validHost((string)($payload['add'] ?? ''))
                 || (int)($payload['port'] ?? 0) < 1
-                || trim((string)($payload['ps'] ?? '')) === '') {
+                || (int)($payload['port'] ?? 0) > 65535) {
                 $this->invalid();
             }
 
             return;
         }
 
-        if (!str_starts_with($uri, 'vless://') && !str_starts_with($uri, 'trojan://')) {
+        if (!in_array($scheme, ['vless', 'trojan'], true)) {
             $this->invalid();
         }
 
         $parts = parse_url($uri);
-        if (!is_array($parts)
-            || empty($parts['user'])
-            || empty($parts['host'])
+        if (!is_array($parts)) {
+            $this->invalid();
+        }
+        $credential = rawurldecode((string)($parts['user'] ?? ''));
+        $vless = $scheme === 'vless';
+        if ($credential === ''
+            || ($vless && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+                $credential) !== 1)
+            || !$this->validHost((string)($parts['host'] ?? ''))
             || (int)($parts['port'] ?? 0) < 1
-            || empty($parts['query'])
-            || empty($parts['fragment'])) {
+            || (int)($parts['port'] ?? 0) > 65535) {
             $this->invalid();
         }
 
-        parse_str((string)$parts['query'], $query);
-        $vless = str_starts_with($uri, 'vless://');
-        if (($vless && ($query['encryption'] ?? null) !== 'none')
-            || !in_array((string)($query['security'] ?? ''), ['reality', 'tls', 'none'], true)
-            || (!$vless && (string)($query['security'] ?? '') === 'reality')
-            || empty($query['type'])
+        parse_str((string)($parts['query'] ?? ''), $query);
+        $security = strtolower(trim((string)($query['security'] ?? ($vless ? 'none' : 'tls'))));
+        $network = strtolower(trim((string)($query['type'] ?? 'tcp')));
+        if (($vless && isset($query['encryption']) && (string)$query['encryption'] !== 'none')
+            || !in_array($security, ['reality', 'tls', 'none'], true)
+            || (!$vless && $security === 'reality')
+            || !in_array($network, self::NETWORKS, true)
             || (array_key_exists('flow', $query) && trim((string)$query['flow']) === '')) {
             $this->invalid();
         }
+    }
+
+    private function decodeBase64(string $value): ?string
+    {
+        $value = preg_replace('/\s+/', '', trim($value)) ?? '';
+        if ($value === '') {
+            return null;
+        }
+        $value = strtr($value, '-_', '+/');
+        $remainder = strlen($value) % 4;
+        if ($remainder > 0) {
+            $value .= str_repeat('=', 4 - $remainder);
+        }
+        $decoded = base64_decode($value, true);
+
+        return is_string($decoded) && $decoded !== '' ? $decoded : null;
     }
 
     private function validHost(string $host): bool

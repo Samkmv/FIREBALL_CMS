@@ -20,7 +20,7 @@ final class MigrationStatusService
         return new MigrationStatus(
             expectedTables: $expected,
             presentTables: $present,
-            missingTables: array_values(array_diff($expected, $present)),
+            missingTables: $repository->missingTables(),
             migrations: $repository->migrations(),
         );
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\SqlFileRunner;
 use FBL\Plugins\PluginInterface;
 
 final class FireballPluginToyCarRental implements PluginInterface
@@ -8,7 +9,7 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public function install(): void
     {
-        self::ensureRideSchema();
+        self::ensureDatabaseSchema();
 
         foreach (self::defaultSettings() as $key => $value) {
             if (plugin_setting(self::SLUG, $key, null) === null) {
@@ -24,6 +25,7 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public function activate(): void
     {
+        self::ensureDatabaseSchema();
         fireball_event('toy_rental.activated', ['slug' => self::SLUG]);
     }
 
@@ -35,7 +37,7 @@ final class FireballPluginToyCarRental implements PluginInterface
     public function boot(): void
     {
         try {
-            self::ensureRideSchema();
+            self::ensureDatabaseSchema();
         } catch (Throwable $exception) {
             log_error_details('Toy rental schema check failed', [], $exception);
         }
@@ -810,6 +812,36 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
 
         return in_array($type, ['fixed', 'metered'], true) ? $type : 'fixed';
+    }
+
+    private static function ensureDatabaseSchema(): void
+    {
+        $runner = new SqlFileRunner();
+        foreach ([
+            'toy_rental_cars' => '001_create_toy_rental_cars_table.sql',
+            'toy_rental_rides' => '002_create_toy_rental_rides_table.sql',
+        ] as $table => $migration) {
+            if (self::tableExists($table)) {
+                continue;
+            }
+            $file = __DIR__ . '/migrations/' . $migration;
+            $sql = is_file($file) ? (string)file_get_contents($file) : '';
+            if (trim($sql) === '') {
+                throw new RuntimeException('Toy rental schema migration is missing: ' . $migration);
+            }
+            $runner->executeDatabase($sql);
+        }
+
+        self::ensureRideSchema();
+    }
+
+    private static function tableExists(string $table): bool
+    {
+        return (int)db()->query(
+            'SELECT COUNT(*) FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            [$table]
+        )->getColumn() === 1;
     }
 
     private static function ensureRideSchema(): void

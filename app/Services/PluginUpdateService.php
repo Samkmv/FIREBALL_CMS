@@ -60,12 +60,18 @@ final class PluginUpdateService extends UpdateCenter
                 $localVersion = (string)($metadata['version'] ?? '0.0.0');
                 $comparison = $remoteVersion !== '' ? $this->compareVersions($localVersion, $remoteVersion) : null;
                 $stateIsValid = ($state['status'] ?? '') !== 'error' && $comparison !== null;
+                $localizedReleaseNotes = $this->normalizeReleaseNotes(
+                    !empty($state['release_notes_i18n'])
+                        ? $state['release_notes_i18n']
+                        : ($state['release_notes'] ?? [])
+                );
                 $plugin['update'] = array_merge($this->emptyDisplayState(), $state, [
                     'configured' => true,
                     'repository' => $config['repository'],
                     'branch' => $config['branch'],
                     'update_available' => $stateIsValid && $comparison < 0,
                     'source_older' => $stateIsValid && $comparison > 0,
+                    'release_notes' => $localizedReleaseNotes,
                 ]);
             } catch (Throwable $exception) {
                 $plugin['update'] = array_merge($this->emptyDisplayState(), [
@@ -98,6 +104,11 @@ final class PluginUpdateService extends UpdateCenter
             }
 
             $previousState = $this->storedState($slug);
+            $releaseNotesFallback = $remote['metadata']['release_notes'] ?? [];
+            $releaseNotesI18n = $this->normalizeReleaseNoteTranslations(
+                $remote['metadata']['release_notes_i18n'] ?? $releaseNotesFallback
+            );
+            $releaseNotes = $releaseNotesI18n !== [] ? $releaseNotesI18n : $releaseNotesFallback;
             $messageKey = $comparison < 0
                 ? 'admin_plugin_updates_available'
                 : ($comparison > 0
@@ -114,7 +125,8 @@ final class PluginUpdateService extends UpdateCenter
                 'checked_at' => date('Y-m-d H:i:s'),
                 'last_updated_at' => (string)($previousState['last_updated_at'] ?? ''),
                 'backup_file' => (string)($previousState['backup_file'] ?? ''),
-                'release_notes' => $this->normalizeReleaseNotes($remote['metadata']['release_notes'] ?? []),
+                'release_notes' => $this->normalizeReleaseNotes($releaseNotes),
+                'release_notes_i18n' => $releaseNotesI18n,
             ];
             $this->persistState($slug, $state);
 
@@ -307,6 +319,7 @@ final class PluginUpdateService extends UpdateCenter
                 'last_updated_at' => date('Y-m-d H:i:s'),
                 'backup_file' => basename($backupFile),
                 'release_notes' => $checked['release_notes'] ?? [],
+                'release_notes_i18n' => $checked['release_notes_i18n'] ?? [],
             ];
             $this->persistStateSafely($slug, $state);
             $this->writeUpdateLogSafely($user, $slug, $fromVersion, $remoteVersion, 'success');
@@ -767,7 +780,50 @@ final class PluginUpdateService extends UpdateCenter
         }
     }
 
-    private function normalizeReleaseNotes(mixed $notes): array
+    private function normalizeReleaseNotes(mixed $notes, ?string $locale = null): array
+    {
+        $translations = $this->normalizeReleaseNoteTranslations($notes);
+        if ($translations !== []) {
+            try {
+                $candidates = \FBL\Localization::localeCandidates($locale, ['en', 'ru']);
+            } catch (\Throwable) {
+                $candidates = array_values(array_filter([$locale, 'en', 'ru']));
+            }
+            foreach ($candidates as $candidate) {
+                $candidate = \FBL\Localization::normalizeLocale((string)$candidate);
+                if ($candidate !== '' && isset($translations[$candidate])) {
+                    return $translations[$candidate];
+                }
+            }
+
+            return reset($translations) ?: [];
+        }
+
+        return $this->normalizeReleaseNoteList($notes);
+    }
+
+    private function normalizeReleaseNoteTranslations(mixed $notes): array
+    {
+        if (!is_array($notes) || array_is_list($notes)) {
+            return [];
+        }
+
+        $translations = [];
+        foreach ($notes as $locale => $localizedNotes) {
+            $locale = \FBL\Localization::normalizeLocale((string)$locale);
+            if ($locale === '') {
+                continue;
+            }
+            $items = $this->normalizeReleaseNoteList($localizedNotes);
+            if ($items !== []) {
+                $translations[$locale] = $items;
+            }
+        }
+
+        return $translations;
+    }
+
+    private function normalizeReleaseNoteList(mixed $notes): array
     {
         if (is_string($notes)) {
             $notes = preg_split('/\r\n|\r|\n/', $notes) ?: [];
@@ -832,6 +888,7 @@ final class PluginUpdateService extends UpdateCenter
             'last_updated_at' => '',
             'backup_file' => '',
             'release_notes' => [],
+            'release_notes_i18n' => [],
             'repository' => '',
             'branch' => '',
         ];

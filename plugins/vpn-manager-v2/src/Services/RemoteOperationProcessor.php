@@ -43,6 +43,32 @@ final class RemoteOperationProcessor
         return $this->processClaimed($queue, $operation);
     }
 
+    public function processDue(int $limit = 10, ?array $types = null): array
+    {
+        $result = [
+            'processed' => 0,
+            'success' => 0,
+            'failure' => 0,
+            'idle' => false,
+            'operation_ids' => [],
+        ];
+        for ($index = 0; $index < max(1, min(50, $limit)); $index++) {
+            $item = $this->processNext($types);
+            if (!empty($item['idle'])) {
+                $result['idle'] = $result['processed'] === 0;
+                break;
+            }
+            $result['processed']++;
+            $result['success'] += (int)($item['success'] ?? 0);
+            $result['failure'] += (int)($item['failure'] ?? 0);
+            if (!empty($item['operation_id'])) {
+                $result['operation_ids'][] = (string)$item['operation_id'];
+            }
+        }
+
+        return $result;
+    }
+
     private function processClaimed(OperationQueueRepository $queue, ?array $operation): array
     {
         if (!$operation) {
@@ -53,7 +79,11 @@ final class RemoteOperationProcessor
             $result = $this->execute($operation);
             $processed = max(1, (int)($result['processed'] ?? 1));
             $total = max($processed, (int)($result['total'] ?? $processed));
-            $completionStatus = (int)($result['errors'] ?? 0) > 0 ? 'completed_partial' : 'completed';
+            if ((int)($result['errors'] ?? 0) > 0) {
+                $queue->heartbeat((int)$operation['id'], $processed, $total);
+                throw new \RuntimeException('The VPN operation was only partially synchronized.');
+            }
+            $completionStatus = 'completed';
             $queue->complete((int)$operation['id'], $processed, $total, $completionStatus);
             ($this->audit ?? new SyncAuditRepository())->log([
                 'operation_id' => (string)$operation['operation_id'],

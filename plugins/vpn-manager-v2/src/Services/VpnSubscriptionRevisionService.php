@@ -63,6 +63,11 @@ final class VpnSubscriptionRevisionService
         return $touched;
     }
 
+    public function touchParents(int $subscriptionId, bool $touchConfig = true): int
+    {
+        return $this->propagateToParents($subscriptionId, $touchConfig);
+    }
+
     private function bump(int $subscriptionId, bool $touchConfig): int
     {
         $revision = $this->bumpSingle($subscriptionId, $touchConfig, true);
@@ -97,11 +102,12 @@ final class VpnSubscriptionRevisionService
         return (int)$after['revision'];
     }
 
-    private function propagateToParents(int $subscriptionId, bool $touchConfig): void
+    private function propagateToParents(int $subscriptionId, bool $touchConfig): int
     {
         $items = new SubscriptionItemRepository();
         $queue = [[$subscriptionId, 0]];
         $visited = [$subscriptionId => true];
+        $touched = 0;
         while ($queue !== []) {
             [$childId, $depth] = array_shift($queue);
             if ($depth >= 32) {
@@ -117,9 +123,12 @@ final class VpnSubscriptionRevisionService
                 }
                 $visited[$parentId] = true;
                 $this->bumpSingle($parentId, $touchConfig, false);
+                $touched++;
                 $queue[] = [$parentId, $depth + 1];
             }
         }
+
+        return $touched;
     }
 
     private function repository(): SubscriptionConfigRepository

@@ -325,7 +325,7 @@ final class ExternalVpnSourceService
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19.2',
             CURLOPT_HTTPHEADER => ['Accept: text/plain, application/json;q=0.9, */*;q=0.5'],
         ]);
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
@@ -367,7 +367,9 @@ final class ExternalVpnSourceService
                 $decoded = $this->decodeBase64($payload);
             }
             if (!is_string($decoded) || !str_contains($decoded, '@')
-                || preg_match('/^.+:.+@(?:\[[0-9a-f:]+\]|[^:@\/]+):\d{1,5}$/i', $decoded) !== 1) {
+                || preg_match('/^.+:.+@(?:\[[0-9a-f:]+\]|[^:@\/]+):(\d{1,5})$/i', $decoded, $matches) !== 1
+                || (int)$matches[1] < 1 || (int)$matches[1] > 65535
+                || preg_match('/[\x00-\x1F\x7F]/', $decoded) === 1) {
                 $this->invalidPayload();
             }
 

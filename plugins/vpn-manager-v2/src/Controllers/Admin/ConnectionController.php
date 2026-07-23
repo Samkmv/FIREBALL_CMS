@@ -14,6 +14,8 @@ final class ConnectionController
 {
     public function index(): string
     {
+        Permissions::authorize(Permissions::VIEW);
+
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/connections', \FireballPluginVpnManagerV2::viewData('connections', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_connections_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_connections_subtitle'),
@@ -23,6 +25,8 @@ final class ConnectionController
 
     public function show(): string
     {
+        Permissions::authorize(Permissions::VIEW);
+
         $connection = (new SubscriptionRepository())->connection((int)get_route_param('id'));
         if (!$connection) {
             abort('', 404);
@@ -37,6 +41,8 @@ final class ConnectionController
 
     public function edit(): string
     {
+        Permissions::authorize(Permissions::RECONCILE);
+
         $connection = (new SubscriptionRepository())->connection((int)get_route_param('id'));
         if (!$connection) {
             abort('', 404);
@@ -56,6 +62,8 @@ final class ConnectionController
 
     public function update(): void
     {
+        Permissions::authorize(Permissions::RECONCILE);
+
         $nodeId = (int)get_route_param('id');
         try {
             $result = (new ConnectionEditingService())->update($nodeId, request()->getData(), $this->adminId());
@@ -76,8 +84,9 @@ final class ConnectionController
 
     public function sync(): void
     {
+        Permissions::authorize(Permissions::RECONCILE);
         $nodeId = (int)get_route_param('id');
-        $mode = strtolower(trim((string)request()->get('mode', '')));
+        $mode = strtolower(trim((string)request()->post('mode', request()->get('mode', ''))));
         try {
             $service = new ConnectionEditingService();
             $result = match ($mode) {

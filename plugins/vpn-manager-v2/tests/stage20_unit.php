@@ -56,7 +56,8 @@ $assert(str_contains($controller, 'updateExternalSourceOrder')
     && str_contains($view, 'name="external_source_order[]"')
     && str_contains($view, 'data-vpn-v2-connection-order'),
     'The administrative external-source ordering workflow is incomplete.');
-$assert(($plugin['version'] ?? '') === '0.19.0', 'The plugin version was not bumped to 0.19.0.');
+$assert(version_compare((string)($plugin['version'] ?? '0.0.0'), '0.19.0', '>='),
+    'The plugin version is older than 0.19.0.');
 
 echo json_encode([
     'status' => 'ok',

@@ -13,6 +13,7 @@ use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
 use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
 use Fireball\VpnManagerV2\Services\SubscriptionDeletionService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionUrlService;
+use Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
 use Fireball\VpnManagerV2\Services\VpnV2SubscriptionDependencyService;
 use Fireball\VpnManagerV2\Services\ExternalVpnSourceService;
@@ -442,6 +443,7 @@ final class SubscriptionController
                     (string)$before['subscription_token'],
                     (int)$before['revision']
                 );
+                (new VpnSubscriptionRevisionService())->touchParents($subscriptionId);
             }
             session()->setFlash(
                 $changed ? 'success' : 'info',

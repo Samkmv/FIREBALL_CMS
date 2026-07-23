@@ -15,6 +15,7 @@ final class MigrationStatusRepository
         'vpn_v2_external_sources',
         'vpn_v2_events',
         'vpn_v2_notifications',
+        'vpn_v2_reconcile_operations',
         'vpn_v2_profiles',
         'vpn_v2_operations',
         'vpn_v2_connection_snapshots',
@@ -47,6 +48,11 @@ final class MigrationStatusRepository
         sort($tables);
 
         return $tables;
+    }
+
+    public function missingTables(): array
+    {
+        return array_values(array_diff(self::EXPECTED_TABLES, $this->presentTables()));
     }
 
     public function migrations(): array

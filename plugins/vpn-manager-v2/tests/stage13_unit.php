@@ -18,7 +18,8 @@ $tableCards = (string)file_get_contents(
 );
 $mainJs = (string)file_get_contents(ROOT . '/public/assets/default/js/main.js');
 $publicRoutes = (string)file_get_contents(dirname(__DIR__) . '/routes/public.php');
-$oldRoutes = (string)file_get_contents(ROOT . '/plugins/vpn-manager/routes.php');
+$oldRoutesPath = ROOT . '/plugins/vpn-manager/routes.php';
+$oldRoutes = is_file($oldRoutesPath) ? (string)file_get_contents($oldRoutesPath) : '';
 $serverForm = (string)file_get_contents(dirname(__DIR__) . '/views/admin/server-form.php');
 
 $assert(str_contains($tableCards, 'data-admin-post-actions-dropdown'),

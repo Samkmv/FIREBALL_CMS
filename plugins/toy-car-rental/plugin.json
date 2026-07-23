@@ -1,9 +1,41 @@
 {
   "name": "Toy Car Rental",
   "slug": "toy-car-rental",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Модуль проката детских машинок с таймером, оплатой и статистикой.",
   "author": "FIREBALL CMS",
+  "release_notes": [
+    "Added a complete children's toy car rental module for FIREBALL CMS.",
+    "Implemented fleet management, ride timers, billing, active rides and ride history.",
+    "Added statistics, settings, and administrator and customer interfaces in every plugin language.",
+    "Reactivating the plugin now recreates missing rental database tables and billing columns."
+  ],
+  "release_notes_i18n": {
+    "ru": [
+      "Добавлен полноценный модуль проката детских машинок для FIREBALL CMS.",
+      "Реализованы управление автопарком, таймер поездки, расчёт оплаты, активные поездки и история.",
+      "Добавлены статистика, настройки и интерфейсы администратора и клиента на всех языках плагина.",
+      "При повторной активации плагин теперь восстанавливает отсутствующие таблицы проката и платёжные поля."
+    ],
+    "en": [
+      "Added a complete children's toy car rental module for FIREBALL CMS.",
+      "Implemented fleet management, ride timers, billing, active rides and ride history.",
+      "Added statistics, settings, and administrator and customer interfaces in every plugin language.",
+      "Reactivating the plugin now recreates missing rental database tables and billing columns."
+    ],
+    "de": [
+      "Ein vollständiges Modul für den Verleih von Kinderautos wurde zu FIREBALL CMS hinzugefügt.",
+      "Fuhrparkverwaltung, Fahrtimer, Abrechnung, aktive Fahrten und Fahrtverlauf wurden umgesetzt.",
+      "Statistiken, Einstellungen sowie Administrations- und Kundenoberflächen stehen in allen Plugin-Sprachen bereit.",
+      "Bei erneuter Aktivierung stellt das Plugin fehlende Verleihtabellen und Abrechnungsspalten wieder her."
+    ],
+    "zh-cn": [
+      "为 FIREBALL CMS 新增完整的儿童玩具车租赁模块。",
+      "实现车辆管理、行程计时、费用计算、进行中行程和历史记录。",
+      "新增统计、设置以及支持插件全部语言的管理员和客户界面。",
+      "重新激活插件时，现在会重建缺失的租赁数据表和计费字段。"
+    ]
+  },
   "update": {
     "enabled": true,
     "provider": "github_directory",

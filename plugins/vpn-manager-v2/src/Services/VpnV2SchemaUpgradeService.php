@@ -3,6 +3,7 @@
 namespace Fireball\VpnManagerV2\Services;
 
 use App\Services\SqlFileRunner;
+use Fireball\VpnManagerV2\Repositories\MigrationStatusRepository;
 use Fireball\VpnManagerV2\Support\Uuid;
 
 final class VpnV2SchemaUpgradeService
@@ -15,16 +16,10 @@ final class VpnV2SchemaUpgradeService
         if ($files === []) {
             return;
         }
-        $applied = db()->query(
-            'SELECT migration FROM plugin_migrations WHERE plugin_slug = ?',
-            [\FireballPluginVpnManagerV2::SLUG]
-        )->get() ?: [];
-        $applied = array_fill_keys(array_column($applied, 'migration'), true);
-        $pending = array_values(array_filter(
-            $files,
-            static fn(string $file): bool => !isset($applied[basename($file)])
-        ));
-        if ($pending === []) {
+        $repository = new MigrationStatusRepository();
+        $applied = $this->appliedMigrations();
+        $schemaRepairRequired = $repository->missingTables() !== [];
+        if (!$schemaRepairRequired && $this->pendingMigrations($files, $applied) === []) {
             $this->syncVersion();
             return;
         }
@@ -34,15 +29,20 @@ final class VpnV2SchemaUpgradeService
             throw new \RuntimeException('Could not acquire VPN V2 migration lock.');
         }
         try {
+            $applied = $this->appliedMigrations();
+            $pending = $this->pendingMigrations($files, $applied);
+            $schemaRepairRequired = $repository->missingTables() !== [];
+            if (!$schemaRepairRequired && $pending === []) {
+                $this->syncVersion();
+                return;
+            }
+
+            // Every migration is repeat-safe. Replaying the complete chain creates
+            // only missing tables and upgrades a restored table to the current shape.
+            $migrations = $schemaRepairRequired ? $files : $pending;
             $runner = new SqlFileRunner();
-            foreach ($pending as $file) {
+            foreach ($migrations as $file) {
                 $migration = basename($file);
-                if (db()->query(
-                    'SELECT id FROM plugin_migrations WHERE plugin_slug = ? AND migration = ? LIMIT 1',
-                    [\FireballPluginVpnManagerV2::SLUG, $migration]
-                )->getOne()) {
-                    continue;
-                }
                 $sql = (string)file_get_contents($file);
                 if (trim($sql) !== '') {
                     $runner->executeDatabase($sql);
@@ -53,9 +53,19 @@ final class VpnV2SchemaUpgradeService
                 ], true)) {
                     $this->backfillLegacyPasswordCredentials();
                 }
-                db()->query(
-                    'INSERT INTO plugin_migrations (plugin_slug, migration, executed_at) VALUES (?, ?, ?)',
-                    [\FireballPluginVpnManagerV2::SLUG, $migration, date('Y-m-d H:i:s')]
+                if (!isset($applied[$migration])) {
+                    db()->query(
+                        'INSERT INTO plugin_migrations (plugin_slug, migration, executed_at) VALUES (?, ?, ?)',
+                        [\FireballPluginVpnManagerV2::SLUG, $migration, date('Y-m-d H:i:s')]
+                    );
+                    $applied[$migration] = true;
+                }
+            }
+
+            $missing = $repository->missingTables();
+            if ($missing !== []) {
+                throw new \RuntimeException(
+                    'VPN V2 schema repair did not create required tables: ' . implode(', ', $missing)
                 );
             }
             $this->syncVersion();
@@ -68,6 +78,24 @@ final class VpnV2SchemaUpgradeService
         }
     }
 
+    private function appliedMigrations(): array
+    {
+        $rows = db()->query(
+            'SELECT migration FROM plugin_migrations WHERE plugin_slug = ?',
+            [\FireballPluginVpnManagerV2::SLUG]
+        )->get() ?: [];
+
+        return array_fill_keys(array_column($rows, 'migration'), true);
+    }
+
+    private function pendingMigrations(array $files, array $applied): array
+    {
+        return array_values(array_filter(
+            $files,
+            static fn(string $file): bool => !isset($applied[basename($file)])
+        ));
+    }
+
     private function backfillLegacyPasswordCredentials(): void
     {
         $rows = db()->query(
@@ -77,6 +105,9 @@ final class VpnV2SchemaUpgradeService
                AND encrypted_client_credential IS NULL AND client_uuid <> ''
              ORDER BY id ASC"
         )->get() ?: [];
+        if ($rows === []) {
+            return;
+        }
         $credentials = new RemoteClientCredentialService();
         foreach ($rows as $row) {
             $plainText = trim((string)($row['client_uuid'] ?? ''));

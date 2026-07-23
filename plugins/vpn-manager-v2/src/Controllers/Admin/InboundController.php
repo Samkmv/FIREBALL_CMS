@@ -6,11 +6,14 @@ use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\InboundRepository;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Services\InboundSyncService;
+use Fireball\VpnManagerV2\Support\Permissions;
 
 final class InboundController
 {
     public function index(): string
     {
+        Permissions::authorize(Permissions::VIEW);
+
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/inbounds', \FireballPluginVpnManagerV2::viewData('inbounds', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_inbounds_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_inbounds_subtitle'),
@@ -21,6 +24,8 @@ final class InboundController
 
     public function sync(): void
     {
+        Permissions::authorize(Permissions::MANAGE_INBOUNDS);
+
         $serverId = (int)request()->post('server_id');
         try {
             $result = (new InboundSyncService())->sync($serverId);

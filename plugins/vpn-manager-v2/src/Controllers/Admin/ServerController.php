@@ -6,11 +6,14 @@ use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Services\ServerConnectionService;
 use Fireball\VpnManagerV2\Services\ServerManagerService;
+use Fireball\VpnManagerV2\Support\Permissions;
 
 final class ServerController
 {
     public function index(): string
     {
+        Permissions::authorize(Permissions::VIEW);
+
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/servers', \FireballPluginVpnManagerV2::viewData('servers', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_servers_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_servers_subtitle'),
@@ -20,11 +23,15 @@ final class ServerController
 
     public function create(): string
     {
+        Permissions::authorize(Permissions::MANAGE_SERVERS);
+
         return $this->form(null);
     }
 
     public function store(): void
     {
+        Permissions::authorize(Permissions::MANAGE_SERVERS);
+
         try {
             (new ServerManagerService())->create(request()->getData());
             session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_server_created'));
@@ -41,6 +48,8 @@ final class ServerController
 
     public function edit(): string
     {
+        Permissions::authorize(Permissions::MANAGE_SERVERS);
+
         $server = (new ServerRepository())->find((int)get_route_param('id'));
         if (!$server) {
             abort('', 404);
@@ -51,6 +60,8 @@ final class ServerController
 
     public function update(): void
     {
+        Permissions::authorize(Permissions::MANAGE_SERVERS);
+
         $id = (int)get_route_param('id');
         try {
             (new ServerManagerService())->update($id, request()->getData());
@@ -68,6 +79,8 @@ final class ServerController
 
     public function test(): void
     {
+        Permissions::authorize(Permissions::MANAGE_SERVERS);
+
         $id = (int)request()->post('id');
         $result = (new ServerConnectionService())->test($id);
         session()->setFlash($result->success ? 'success' : 'error', $result->message);
@@ -76,6 +89,8 @@ final class ServerController
 
     public function toggle(): void
     {
+        Permissions::authorize(Permissions::MANAGE_SERVERS);
+
         $id = (int)request()->post('id');
         try {
             $enabled = (new ServerManagerService())->toggle($id);

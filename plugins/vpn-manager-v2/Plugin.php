@@ -34,6 +34,7 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
 
     public function install(): void
     {
+        (new VpnV2SchemaUpgradeService())->ensureCurrent();
         (new SettingsService())->ensureDefaults();
         fireball_event('vpn_manager_v2.installed', [
             'slug' => self::SLUG,
@@ -48,6 +49,7 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
 
     public function activate(): void
     {
+        (new VpnV2SchemaUpgradeService())->ensureCurrent();
         (new SettingsService())->ensureDefaults();
         fireball_event('vpn_manager_v2.activated', ['slug' => self::SLUG]);
     }

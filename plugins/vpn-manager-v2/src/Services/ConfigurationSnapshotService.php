@@ -78,7 +78,12 @@ final class ConfigurationSnapshotService
             $reality = is_array($stream['realitySettings'] ?? null) ? $stream['realitySettings'] : [];
             $settings = is_array($reality['settings'] ?? null) ? $reality['settings'] : [];
             $publicKey = trim((string)($settings['publicKey'] ?? $reality['publicKey'] ?? ''));
-            $serverName = trim((string)($settings['serverName'] ?? $reality['serverName'] ?? ''));
+            $serverName = $this->firstValue([
+                $settings['serverName'] ?? null,
+                $settings['serverNames'] ?? null,
+                $reality['serverName'] ?? null,
+                $reality['serverNames'] ?? null,
+            ]);
             if ($publicKey === '' || $serverName === '') {
                 return 'reality_required_field_missing';
             }
@@ -134,6 +139,28 @@ final class ConfigurationSnapshotService
         }
 
         return is_array($decoded) ? $decoded : [];
+    }
+
+    private function firstValue(array $values): string
+    {
+        foreach ($values as $value) {
+            if (is_array($value)) {
+                $nested = $this->firstValue($value);
+                if ($nested !== '') {
+                    return $nested;
+                }
+                continue;
+            }
+            if (!is_scalar($value)) {
+                continue;
+            }
+            $value = trim((string)$value);
+            if ($value !== '' && $value !== '[redacted]') {
+                return $value;
+            }
+        }
+
+        return '';
     }
 
     private function encode(array $value): string

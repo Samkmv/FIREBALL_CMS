@@ -9,7 +9,7 @@ final class VpnV2SyncConfigurationJob
 {
     public function handle(): array
     {
-        $manual = (new RemoteOperationProcessor())->processNext([
+        $manual = (new RemoteOperationProcessor())->processDue(5, [
             'sync_server', 'sync_inbound', 'sync_client', 'sync_subscription',
             'update_client', 'rename_client', 'enable_client', 'disable_client',
             'full_reconcile',

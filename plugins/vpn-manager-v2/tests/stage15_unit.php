@@ -66,6 +66,21 @@ $remote = $snapshots->fromRemote(
     ['id' => 5, 'subscription_id' => 9, 'inbound_id' => 2]
 );
 $assert($snapshots->validate($remote) === null, 'A valid Reality snapshot was rejected.');
+$serverNamesVariant = $remote;
+$serverNamesStream = json_decode(
+    (string)$serverNamesVariant['stream_settings_json'],
+    true,
+    512,
+    JSON_THROW_ON_ERROR
+);
+$serverNamesStream['realitySettings']['settings']['serverName'] = '';
+$serverNamesStream['realitySettings']['serverNames'] = ['vpn.example.com'];
+$serverNamesVariant['stream_settings_json'] = json_encode(
+    $serverNamesStream,
+    JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+);
+$assert($snapshots->validate($serverNamesVariant) === null,
+    'A valid 3x-ui Reality serverNames array was rejected.');
 $reordered = array_reverse($remote, true);
 $assert(hash_equals($snapshots->hash($remote), $snapshots->hash($reordered)),
     'Snapshot hashing is not canonical.');
@@ -210,6 +225,7 @@ echo json_encode([
         'response_normalization',
         'capability_detection',
         'snapshot_validation_hash_and_diff',
+        'reality_server_names_variant',
         'encrypted_password_protocol_credentials',
         'snapshot_secret_redaction',
         'ssrf_private_target_guard',
