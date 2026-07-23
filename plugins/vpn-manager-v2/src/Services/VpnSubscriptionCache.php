@@ -6,6 +6,7 @@ final class VpnSubscriptionCache
 {
     private const DEFAULT_TTL = 300;
     private const FORMATS = ['base64', 'plain'];
+    private const PAYLOAD_SCHEMA_VERSION = 2;
 
     public function get(string $token, int $revision, string $format): ?array
     {
@@ -37,7 +38,7 @@ final class VpnSubscriptionCache
     {
         $format = in_array($format, self::FORMATS, true) ? $format : 'base64';
 
-        return 'vpn-v2:subscription:' . hash('sha256', $token)
+        return 'vpn-v2:subscription:v' . self::PAYLOAD_SCHEMA_VERSION . ':' . hash('sha256', $token)
             . ':revision:' . max(1, $revision)
             . ':format:' . $format;
     }

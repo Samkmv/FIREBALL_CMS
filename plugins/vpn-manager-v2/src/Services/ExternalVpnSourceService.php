@@ -325,7 +325,7 @@ final class ExternalVpnSourceService
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19.2',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19.5',
             CURLOPT_HTTPHEADER => ['Accept: text/plain, application/json;q=0.9, */*;q=0.5'],
         ]);
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {

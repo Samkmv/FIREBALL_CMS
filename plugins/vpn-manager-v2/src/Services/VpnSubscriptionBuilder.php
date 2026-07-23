@@ -22,19 +22,37 @@ final class VpnSubscriptionBuilder
         $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService(
             config: $this->repository ?? new SubscriptionConfigRepository()
         );
-        $uris = $this->buildFromNodes(
+        $firstPartyUris = $this->buildFromNodes(
             $subscription,
             $dependencies->collectEffectiveConnections($subscription)
         );
         $external = $this->externalSources ?? new ExternalVpnSourceService();
+        $externalUris = [];
         foreach ($dependencies->collectEffectiveSubscriptionIds($subscription) as $subscriptionId) {
-            array_push($uris, ...$external->urisForParent($subscriptionId));
+            array_push($externalUris, ...$external->urisForParent($subscriptionId));
         }
+
+        return $this->mergeUris($firstPartyUris, $externalUris);
+    }
+
+    /**
+     * First-party configurations always win technical duplicate conflicts.
+     * External sources may append new configurations, but must never replace
+     * an existing connection or its administrator-defined display name.
+     */
+    public function mergeUris(array $firstPartyUris, array $externalUris): array
+    {
+        $external = $this->externalSources ?? new ExternalVpnSourceService();
         $unique = [];
-        foreach ($uris as $uri) {
-            $technicalKey = $external->technicalKey($uri);
-            if (!array_key_exists($technicalKey, $unique)) {
-                $unique[$technicalKey] = $uri;
+        foreach ([$firstPartyUris, $externalUris] as $group) {
+            foreach ($group as $uri) {
+                if (!is_string($uri) || trim($uri) === '') {
+                    continue;
+                }
+                $technicalKey = $external->technicalKey($uri);
+                if (!array_key_exists($technicalKey, $unique)) {
+                    $unique[$technicalKey] = $uri;
+                }
             }
         }
 

@@ -336,7 +336,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => $this->config->verifySsl,
             CURLOPT_SSL_VERIFYHOST => $this->config->verifySsl ? 2 : 0,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19.4',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19.5',
         ]);
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
             curl_setopt($handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
