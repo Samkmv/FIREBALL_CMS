@@ -41,6 +41,7 @@ final class BlockRenderer
             'heading' => $this->heading($data),
             'image' => $this->image($data),
             'audio' => $this->audio($data),
+            'alert' => $this->alert($data),
             'newsletter' => $this->newsletter($data),
             'html' => (string)($data['html'] ?? ''),
             'code' => '<pre><code>' . htmlSC((string)($data['code'] ?? '')) . '</code></pre>',
@@ -167,23 +168,81 @@ final class BlockRenderer
         };
     }
 
+    private function alert(array $data): string
+    {
+        $variants = [
+            'primary' => 'ci-bell',
+            'secondary' => 'ci-clock',
+            'success' => 'ci-check-circle',
+            'danger' => 'ci-banned',
+            'warning' => 'ci-alert-triangle',
+            'info' => 'ci-info',
+            'light' => 'ci-unlock',
+            'dark' => 'ci-map-pin',
+        ];
+        $variant = strtolower(trim((string)($data['variant'] ?? 'primary')));
+        if (!isset($variants[$variant])) {
+            $variant = 'primary';
+        }
+
+        $icon = trim((string)($data['icon'] ?? $variants[$variant]));
+        if (!preg_match('/^ci-[a-z0-9-]+$/i', $icon)) {
+            $icon = $variants[$variant];
+        }
+
+        $title = trim((string)($data['title'] ?? ''));
+        $text = trim((string)($data['text'] ?? ''));
+        if ($title === '' && $text === '') {
+            return '';
+        }
+
+        return '<div class="alert d-flex alert-' . htmlSC($variant) . '" role="alert" data-fb-alert-block="1" data-alert-variant="' . htmlSC($variant) . '">' .
+            '<i class="' . htmlSC($icon) . ' fs-lg pe-1 mt-1 me-2" aria-hidden="true"></i>' .
+            '<div class="min-w-0">' .
+            ($title !== '' ? '<div class="fw-semibold mb-1" data-fb-alert-title="1">' . htmlSC($title) . '</div>' : '') .
+            ($text !== '' ? '<div data-fb-alert-text="1">' . nl2br(htmlSC($text), false) . '</div>' : '') .
+            '</div>' .
+            '</div>';
+    }
+
     private function newsletter(array $data): string
     {
-        $title = trim((string)($data['title'] ?? '')) ?: 'Sign up to our newsletter';
-        $text = trim((string)($data['text'] ?? '')) ?: 'Receive our latest updates about our products & promotions';
-        $buttonText = trim((string)($data['buttonText'] ?? '')) ?: 'Subscribe';
+        $title = trim((string)($data['title'] ?? ''))
+            ?: $this->translateOrFallback('admin_post_builder_newsletter_default_title', 'Sign up to our newsletter');
+        $text = trim((string)($data['text'] ?? ''))
+            ?: $this->translateOrFallback('admin_post_builder_newsletter_default_text', 'Receive our latest updates about our products & promotions');
+        $buttonText = trim((string)($data['buttonText'] ?? ''))
+            ?: $this->translateOrFallback('admin_post_builder_newsletter_default_button', 'Subscribe');
         $buttonUrl = trim((string)($data['buttonUrl'] ?? ''));
         $buttonIcon = trim((string)($data['buttonIcon'] ?? 'ci-mail')) ?: 'ci-mail';
-        $buttonTag = $buttonUrl !== '' ? 'a href="' . htmlSC($buttonUrl) . '"' : 'button type="button"';
+        if (!preg_match('/^ci-[a-z0-9-]+$/i', $buttonIcon)) {
+            $buttonIcon = 'ci-mail';
+        }
+        $buttonInner = '<i class="' . htmlSC($buttonIcon) . ' fs-base ms-n1 me-2"></i>' . htmlSC($buttonText);
+        $buttonHtml = $buttonUrl !== ''
+            ? '<a href="' . htmlSC($buttonUrl) . '" class="btn btn-dark" target="_blank" rel="noopener noreferrer" data-fb-newsletter-button="1">' . $buttonInner . '</a>'
+            : '<span class="btn btn-dark" role="button" aria-disabled="true" data-fb-newsletter-button="1">' . $buttonInner . '</span>';
 
-        return '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5" data-fb-newsletter-block>' .
+        return '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5" data-fb-newsletter-block="1" data-button-text="' . htmlSC($buttonText) . '" data-button-url="' . htmlSC($buttonUrl) . '" data-button-icon="' . htmlSC($buttonIcon) . '">' .
             '<div class="mb-4 mb-sm-0 me-sm-4">' .
-            '<h3 class="h5 mb-2" data-fb-newsletter-title>' . htmlSC($title) . '</h3>' .
-            '<p class="fs-sm mb-0" data-fb-newsletter-text>' . htmlSC($text) . '</p>' .
+            '<h3 class="h5 mb-2" data-fb-newsletter-title="1">' . htmlSC($title) . '</h3>' .
+            '<p class="fs-sm mb-0" data-fb-newsletter-text="1">' . htmlSC($text) . '</p>' .
             '</div>' .
-            '<' . $buttonTag . ' class="btn btn-dark" data-fb-newsletter-button>' .
-            '<i class="' . htmlSC($buttonIcon) . ' fs-base ms-n1 me-2"></i>' . htmlSC($buttonText) .
-            '</' . ($buttonUrl !== '' ? 'a' : 'button') . '>' .
+            $buttonHtml .
             '</div>';
+    }
+
+    private function translateOrFallback(string $key, string $fallback): string
+    {
+        if (!function_exists('\return_translation')) {
+            return $fallback;
+        }
+
+        try {
+            $value = \return_translation($key);
+            return $value !== '' && $value !== $key ? $value : $fallback;
+        } catch (\Throwable) {
+            return $fallback;
+        }
     }
 }

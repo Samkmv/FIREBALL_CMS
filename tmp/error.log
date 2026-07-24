@@ -13,3 +13,45 @@ SQL: INSERT INTO vpn_v2_external_sources (parent_subscription_id, source_type, n
 Param Count: 13
 Param Keys: ["0","1","2","3","4","5","6","7","8","9","10","11","12"]
 ========================================================================
+[2026-07-24 16:06:44] Database query error
+Request URI: /admin/system/database-maintenance/run
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`fbl`.`vpn_v2_notifications`, CONSTRAINT `fk_v2_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE CASCADE)
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/DatabaseMaintenanceService.php(260): FBL\Database->query('DELETE FROM use...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/DatabaseMaintenanceService.php(91): App\Services\DatabaseMaintenanceService->fullResetCms(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminMaintenanceController.php(44): App\Services\DatabaseMaintenanceService->run('full_reset', Array, '::1')
+#4 [internal function]: App\Controllers\AdminMaintenanceController->run()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#8 {main}
+SQL: DELETE FROM users WHERE id <> ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================
+[2026-07-24 16:08:07] Database query error
+Request URI: /admin/system/database-maintenance/run
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`fbl`.`vpn_v2_notifications`, CONSTRAINT `fk_v2_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE CASCADE)
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 48
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(48): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/DatabaseMaintenanceService.php(260): FBL\Database->query('DELETE FROM use...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/DatabaseMaintenanceService.php(91): App\Services\DatabaseMaintenanceService->fullResetCms(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminMaintenanceController.php(44): App\Services\DatabaseMaintenanceService->run('full_reset', Array, '::1')
+#4 [internal function]: App\Controllers\AdminMaintenanceController->run()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#8 {main}
+SQL: DELETE FROM users WHERE id <> ?
+Param Count: 1
+Param Keys: ["0"]
+========================================================================

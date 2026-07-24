@@ -732,7 +732,23 @@ class Post extends Model
         $post['seo_description'] = $post['seo_description'] !== ''
             ? $post['seo_description']
             : $this->seo->description($excerpt, $content, $post['title']);
-        $post['seo_image'] = $post['seo_image'] !== '' ? ltrim($post['seo_image'], '/') : $post['original_image'];
+
+        if ($post['seo_image'] !== '') {
+            $seoImage = $this->images->prepare($post['seo_image'], $this->publicCacheVersion());
+            $post['seo_image'] = (string)($seoImage['image_original'] ?? '');
+            $post['seo_image_width'] = (int)($seoImage['image_width'] ?? 0);
+            $post['seo_image_height'] = (int)($seoImage['image_height'] ?? 0);
+        } elseif ($post['has_image']) {
+            // Для удалённых исходников используем локальную кешированную копию:
+            // внешние серверы часто блокируют загрузку превью социальными сетями.
+            $post['seo_image'] = (string)($post['image_original'] ?? '');
+            $post['seo_image_width'] = (int)($post['image_width'] ?? 0);
+            $post['seo_image_height'] = (int)($post['image_height'] ?? 0);
+        } else {
+            $post['seo_image'] = '';
+            $post['seo_image_width'] = 0;
+            $post['seo_image_height'] = 0;
+        }
 
         return $post;
     }

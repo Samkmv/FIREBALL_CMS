@@ -96,6 +96,9 @@ $actionDescription = static fn(string $action): string => return_translation('ad
                                         <div class="alert alert-danger rounded-4">
                                             <?= print_translation('admin_maintenance_danger_confirm_text') ?>
                                         </div>
+                                        <p class="small text-body-secondary mb-3">
+                                            <?= htmlSC($actionDescription($action)) ?>
+                                        </p>
                                         <?= view()->renderPartial('incs/password_field', [
                                             'id' => 'maintenance-current-password-' . $action,
                                             'name' => 'current_password',

@@ -2,6 +2,8 @@
 
 namespace FBL;
 
+use App\Services\LanguagePackService;
+
 /**
  * Загружает языковые файлы макета и конкретного представления.
  */
@@ -58,13 +60,30 @@ class Language
             }
         }
 
-        self::$lang_layout = is_array($layoutData) ? $layoutData : [];
-        self::$lang_view = is_array($viewData) ? $viewData : [];
+        $languagePacks = new LanguagePackService();
+        $activePack = $languagePacks->activeId();
+        $packData = $languagePacks->loadTranslations(
+            $activePack,
+            Localization::localeCandidates($code),
+            $langFolder,
+            $langFile
+        );
+        $loadedFiles = array_merge($loadedFiles, $packData['files']);
+
+        self::$lang_layout = array_merge(
+            is_array($layoutData) ? $layoutData : [],
+            $packData['layout']
+        );
+        self::$lang_view = array_merge(
+            is_array($viewData) ? $viewData : [],
+            $packData['view']
+        );
         self::$lang_data = array_merge(self::$lang_layout, self::$lang_view);
         self::loadRegisteredPluginLanguages();
         self::mergePluginTranslations();
         Localization::debug('translation_load', [
             'locale' => $code,
+            'language_pack' => $activePack,
             'files' => $loadedFiles,
             'keys' => count(self::$lang_data),
         ]);

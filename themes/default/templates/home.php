@@ -29,7 +29,7 @@ foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
 
     $popularCameras[] = [
         'title' => $cameraTitle,
-        'city' => trim((string)($post['category_label'] ?? $post['category'] ?? 'MAXIPAPA')),
+        'city' => trim((string)($post['category_label'] ?? $post['category'] ?? return_translation('home_index_category_fallback'))),
         'category_url' => base_href('/posts') . (!empty($post['category_slug']) ? '?category=' . rawurlencode((string)$post['category_slug']) : ''),
         'date' => date('d.m.Y', strtotime((string)($post['published_at'] ?? 'now'))),
         'image' => (string)($post['image_thumb'] ?? get_image($post['image'] ?? '')),
@@ -83,7 +83,7 @@ $featuredCount = count($popularCameras);
         <div class="home-hero__overlay" aria-hidden="true"></div>
         <div class="container home-hero__inner">
             <div class="home-hero__content home-reveal">
-                <span class="home-eyebrow"><span class="home-live-dot"></span> MAXIPAPA live platform</span>
+                <span class="home-eyebrow"><span class="home-live-dot"></span> <?= print_translation('home_index_eyebrow') ?></span>
                 <h1 class="home-hero__title"><?= print_translation('home_index_hero_title') ?></h1>
                 <p class="home-hero__lead"><?= print_translation('home_index_hero_lead') ?></p>
                 <p class="home-hero__text"><?= print_translation('home_index_hero_text') ?></p>
@@ -120,7 +120,7 @@ $featuredCount = count($popularCameras);
                 <div class="col-md-4 col-lg-3 pb-1 pb-md-0 pe-3 ps-md-0 mb-4 mb-md-0">
                     <div class="d-flex flex-md-column align-items-end align-items-md-start home-featured-toolbar home-reveal">
                         <div class="home-featured-head mb-md-5 me-3 me-md-0">
-                            <span class="home-section-kicker">Featured on homepage</span>
+                            <span class="home-section-kicker"><?= print_translation('home_index_featured_kicker') ?></span>
                             <h2><?= print_translation('home_index_featured_posts') ?></h2>
                             <p><?= print_translation('home_index_featured_posts_subtitle') ?></p>
                         </div>
@@ -208,7 +208,7 @@ $featuredCount = count($popularCameras);
         <div class="container">
             <div class="home-section-head home-reveal">
                 <div>
-                    <span class="home-section-kicker">Use cases</span>
+                    <span class="home-section-kicker"><?= print_translation('home_index_use_cases_kicker') ?></span>
                     <h2><?= print_translation('home_index_use_cases_title') ?></h2>
                     <p><?= print_translation('home_index_use_cases_subtitle') ?></p>
                 </div>
@@ -233,7 +233,7 @@ $featuredCount = count($popularCameras);
         <div class="container">
             <div class="home-section-head home-reveal">
                 <div>
-                    <span class="home-section-kicker">Why MAXIPAPA</span>
+                    <span class="home-section-kicker"><?= print_translation('home_index_benefits_kicker') ?></span>
                     <h2><?= print_translation('home_index_benefits_title') ?></h2>
                 </div>
             </div>
@@ -253,7 +253,7 @@ $featuredCount = count($popularCameras);
         <div class="container">
             <div class="home-geo-card home-reveal">
                 <div class="home-geo-card__content">
-                    <span class="home-section-kicker">Coverage</span>
+                    <span class="home-section-kicker"><?= print_translation('home_index_coverage_kicker') ?></span>
                     <h2><?= print_translation('home_index_cities_title') ?></h2>
                     <p><?= print_translation('home_index_cities_subtitle') ?></p>
                     <div class="home-city-list" aria-label="<?= htmlSC(return_translation('home_index_cities_title')) ?>">
@@ -280,7 +280,7 @@ $featuredCount = count($popularCameras);
             <div class="home-cta home-reveal">
                 <div class="home-cta__glow home-cta__glow--one" aria-hidden="true"></div>
                 <div class="home-cta__glow home-cta__glow--two" aria-hidden="true"></div>
-                <span class="home-section-kicker">Start live</span>
+                <span class="home-section-kicker"><?= print_translation('home_index_cta_kicker') ?></span>
                 <h2><?= print_translation('home_index_cta_title') ?></h2>
                 <p><?= print_translation('home_index_cta_text') ?></p>
                 <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>

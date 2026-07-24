@@ -131,6 +131,12 @@ class PostsController extends BaseController
             'seo_description' => $post['seo_description'],
             'seo_keywords' => $post['seo_keywords'],
             'seo_image' => $post['seo_image'],
+            'seo_image_width' => (int)($post['seo_image_width'] ?? 0),
+            'seo_image_height' => (int)($post['seo_image_height'] ?? 0),
+            'seo_image_alt' => $post['title'],
+            'seo_type' => 'article',
+            'seo_article_published_time' => date(DATE_ATOM, strtotime($post['published_at'])),
+            'seo_article_section' => (string)($post['category_label'] ?? $post['category'] ?? ''),
             'seo_canonical' => base_href('/posts/' . $post['slug']),
         ]);
     }

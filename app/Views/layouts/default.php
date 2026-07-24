@@ -25,6 +25,12 @@ $pageSeoTitle = trim((string)($seo_title ?? ''));
 $pageSeoDescription = trim((string)($seo_description ?? ''));
 $pageSeoKeywords = trim((string)($seo_keywords ?? ''));
 $pageSeoImage = trim((string)($seo_image ?? ''));
+$pageSeoImageWidth = max(0, (int)($seo_image_width ?? 0));
+$pageSeoImageHeight = max(0, (int)($seo_image_height ?? 0));
+$pageSeoImageAlt = trim((string)($seo_image_alt ?? ''));
+$pageSeoType = trim((string)($seo_type ?? 'website'));
+$pageSeoArticlePublishedTime = trim((string)($seo_article_published_time ?? ''));
+$pageSeoArticleSection = trim((string)($seo_article_section ?? ''));
 $pageSeoRobots = trim((string)($seo_robots ?? ''));
 $pageSeoCanonical = trim((string)($seo_canonical ?? ''));
 $isHomePage = uri_without_lang() === '';
@@ -57,23 +63,14 @@ if ($languageSwitchPath === '' || ($canonicalUrl !== '' && in_array(rtrim($canon
 $languageSwitchHref = static function (string $key, array $language) use ($languageSwitchPath): string {
     return locale_switch_url($key, $languageSwitchPath);
 };
-$normalizeSeoImage = static function (string $value): string {
-    $value = trim($value);
-    if ($value === '') {
-        return '';
-    }
-
-    if (filter_var($value, FILTER_VALIDATE_URL)) {
-        return $value;
-    }
-
-    if (str_starts_with($value, '/')) {
-        return base_url($value);
-    }
-
-    return get_image(ltrim($value, '/'));
-};
-$metaImage = $normalizeSeoImage($pageSeoImage !== '' ? $pageSeoImage : $seoOgImage);
+$metaImageData = social_image_metadata(
+    $pageSeoImage !== '' ? $pageSeoImage : $seoOgImage,
+    $pageSeoImageWidth,
+    $pageSeoImageHeight
+);
+$metaImage = (string)$metaImageData['url'];
+$metaImageAlt = $pageSeoImageAlt !== '' ? $pageSeoImageAlt : $resolvedTitleBase;
+$metaType = $pageSeoType !== '' ? $pageSeoType : 'website';
 $currentLangCode = current_locale();
 $ogLocale = match ($currentLangCode) {
     'en' => 'en_US',
@@ -151,20 +148,38 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <meta name="robots" content="<?= htmlSC($metaRobots) ?>">
     <link rel="canonical" href="<?= htmlSC($canonicalUrl) ?>">
     <meta property="og:locale" content="<?= htmlSC($ogLocale) ?>">
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="<?= htmlSC($metaType) ?>">
     <meta property="og:site_name" content="<?= htmlSC($siteTitle) ?>">
     <meta property="og:title" content="<?= htmlSC($documentTitle) ?>">
     <meta property="og:description" content="<?= htmlSC($metaDescription) ?>">
     <meta property="og:url" content="<?= htmlSC($canonicalUrl) ?>">
     <?php if ($metaImage !== ''): ?>
         <meta property="og:image" content="<?= htmlSC($metaImage) ?>">
-        <meta property="og:image:alt" content="<?= htmlSC($documentTitle) ?>">
+        <meta property="og:image:url" content="<?= htmlSC($metaImage) ?>">
+        <?php if ($metaImageData['secure_url'] !== ''): ?>
+            <meta property="og:image:secure_url" content="<?= htmlSC((string)$metaImageData['secure_url']) ?>">
+        <?php endif; ?>
+        <?php if ($metaImageData['type'] !== ''): ?>
+            <meta property="og:image:type" content="<?= htmlSC((string)$metaImageData['type']) ?>">
+        <?php endif; ?>
+        <?php if ($metaImageData['width'] > 0 && $metaImageData['height'] > 0): ?>
+            <meta property="og:image:width" content="<?= (int)$metaImageData['width'] ?>">
+            <meta property="og:image:height" content="<?= (int)$metaImageData['height'] ?>">
+        <?php endif; ?>
+        <meta property="og:image:alt" content="<?= htmlSC($metaImageAlt) ?>">
+    <?php endif; ?>
+    <?php if ($metaType === 'article' && $pageSeoArticlePublishedTime !== ''): ?>
+        <meta property="article:published_time" content="<?= htmlSC($pageSeoArticlePublishedTime) ?>">
+    <?php endif; ?>
+    <?php if ($metaType === 'article' && $pageSeoArticleSection !== ''): ?>
+        <meta property="article:section" content="<?= htmlSC($pageSeoArticleSection) ?>">
     <?php endif; ?>
     <meta name="twitter:card" content="<?= htmlSC($seoTwitterCard !== '' ? $seoTwitterCard : 'summary_large_image') ?>">
     <meta name="twitter:title" content="<?= htmlSC($documentTitle) ?>">
     <meta name="twitter:description" content="<?= htmlSC($metaDescription) ?>">
     <?php if ($metaImage !== ''): ?>
         <meta name="twitter:image" content="<?= htmlSC($metaImage) ?>">
+        <meta name="twitter:image:alt" content="<?= htmlSC($metaImageAlt) ?>">
     <?php endif; ?>
 
     <!-- Webmanifest + Favicon / App icons -->

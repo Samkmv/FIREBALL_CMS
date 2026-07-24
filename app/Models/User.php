@@ -1513,7 +1513,7 @@ class User
     }
 
     /**
-     * Создаёт таблицу ролей и системные роли по умолчанию.
+     * Создаёт таблицу ролей и поддерживает набор ролей выбранного профиля CMS.
      */
     protected function ensureRolesTableExists(): void
     {
@@ -1534,7 +1534,8 @@ class User
             db()->query("ALTER TABLE {$this->rolesTable} ADD COLUMN is_system TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER slug");
         }
 
-        foreach ($this->roles as $slug) {
+        $systemRoles = $this->configuredSystemRoles();
+        foreach ($systemRoles as $slug) {
             $name = match ($slug) {
                 self::ROLE_CREATOR => 'Creator',
                 self::ROLE_ADMIN => 'Admin',
@@ -1547,8 +1548,30 @@ class User
             );
         }
 
-        db()->query("UPDATE {$this->rolesTable} SET is_system = 1 WHERE slug IN ('creator', 'admin', 'moderator', 'user')");
+        $placeholders = implode(',', array_fill(0, count($systemRoles), '?'));
+        db()->query(
+            "UPDATE {$this->rolesTable} SET is_system = 1 WHERE slug IN ({$placeholders})",
+            $systemRoles
+        );
         $this->ensureCreatorRoleFirst();
+    }
+
+    /**
+     * Полный сброс оставляет только Creator, демо-сброс — три административные роли.
+     */
+    protected function configuredSystemRoles(): array
+    {
+        try {
+            $profile = (new SiteSetting())->get('system_role_profile', 'all');
+        } catch (\Throwable) {
+            $profile = 'all';
+        }
+
+        return match ($profile) {
+            'creator_only' => [self::ROLE_CREATOR],
+            'demo' => [self::ROLE_CREATOR, self::ROLE_ADMIN, self::ROLE_MODERATOR],
+            default => $this->roles,
+        };
     }
 
     /**

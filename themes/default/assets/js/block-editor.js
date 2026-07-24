@@ -70,6 +70,7 @@ function initPostEditor() {
         addHtml: 'HTML',
         addSocial: 'Social buttons',
         addSlider: 'Slider',
+        addAlert: 'Alert',
         addNewsletter: 'Newsletter CTA',
         addCode: 'Code',
         textBlock: 'Text block',
@@ -79,6 +80,7 @@ function initPostEditor() {
         htmlBlock: 'HTML block',
         socialBlock: 'Social buttons block',
         sliderBlock: 'Slider block',
+        alertBlock: 'Alert block',
         newsletterBlock: 'Newsletter block',
         codeBlock: 'Code block',
         moveUp: 'Move up',
@@ -152,11 +154,28 @@ function initPostEditor() {
         sliderSlide: 'Slide',
         sliderPrev: 'Previous slide',
         sliderNext: 'Next slide',
+        alertVariant: 'Alert style',
+        alertIcon: 'Icon',
+        alertTitle: 'Title',
+        alertText: 'Alert text',
+        alertPrimary: 'Primary',
+        alertSecondary: 'Secondary',
+        alertSuccess: 'Success',
+        alertDanger: 'Danger',
+        alertWarning: 'Warning',
+        alertInfo: 'Information',
+        alertLight: 'Light',
+        alertDark: 'Dark',
+        alertDefaultTitle: 'Important information',
+        alertDefaultText: 'Add the notification text.',
         newsletterTitle: 'Title',
         newsletterText: 'Text',
         newsletterButton: 'Button text',
         newsletterUrl: 'Button link',
         newsletterIcon: 'Button icon',
+        newsletterDefaultTitle: 'Sign up to our newsletter',
+        newsletterDefaultText: 'Receive our latest news, updates, and special offers.',
+        newsletterDefaultButton: 'Subscribe',
         blockCount: 'Blocks',
         canvasTitle: 'Post content',
         style: 'Style',
@@ -181,6 +200,7 @@ function initPostEditor() {
         html: 'ci-layout',
         social: 'ci-share-2',
         slider: 'ci-sliders',
+        alert: 'ci-bell',
         newsletter: 'ci-mail',
         code: 'ci-code'
     };
@@ -191,6 +211,16 @@ function initPostEditor() {
         { value: '16x9', label: '16:9' },
         { value: '4x3', label: '4:3' },
         { value: '1x1', label: '1:1' }
+    ];
+    const alertVariantOptions = [
+        { value: 'primary', label: labels.alertPrimary, icon: 'ci-bell' },
+        { value: 'secondary', label: labels.alertSecondary, icon: 'ci-clock' },
+        { value: 'success', label: labels.alertSuccess, icon: 'ci-check-circle' },
+        { value: 'danger', label: labels.alertDanger, icon: 'ci-banned' },
+        { value: 'warning', label: labels.alertWarning, icon: 'ci-alert-triangle' },
+        { value: 'info', label: labels.alertInfo, icon: 'ci-info' },
+        { value: 'light', label: labels.alertLight, icon: 'ci-unlock' },
+        { value: 'dark', label: labels.alertDark, icon: 'ci-map-pin' }
     ];
     const socialNetworkOptions = [
         { value: 'telegram', label: 'Telegram', icon: 'ci-telegram' },
@@ -343,7 +373,9 @@ function initPostEditor() {
         }
 
         const type = getAllowedBlockType(block.type);
-        const data = Object.assign(defaultBlockData(type), cloneData(block.data));
+        const data = type === 'alert'
+            ? normalizeAlertData(block.data)
+            : Object.assign(defaultBlockData(type), cloneData(block.data));
         if ((type === 'text' || type === 'heading') && typeof data.html === 'string') {
             data.html = sanitizeHtml(data.html);
         }
@@ -545,7 +577,15 @@ function initPostEditor() {
             return;
         }
 
-        block.data = Object.assign({}, block.data, patch);
+        if (block.type === 'alert') {
+            const nextAlertData = Object.assign({}, block.data, patch);
+            if (Object.prototype.hasOwnProperty.call(patch, 'variant')) {
+                nextAlertData.icon = getAlertVariantMeta(patch.variant).icon;
+            }
+            block.data = normalizeAlertData(nextAlertData);
+        } else {
+            block.data = Object.assign({}, block.data, patch);
+        }
         sync();
     }
 
@@ -910,6 +950,7 @@ function initPostEditor() {
                 patch[fieldName] = blockField.value;
                 updateBlock(blockId, patch);
                 refreshNewsletterBlockContent(blockId);
+                refreshAlertBlockContent(blockId);
 
                 if (fieldName === 'html') {
                     refreshHtmlBlockPreview(blockField);
@@ -1015,8 +1056,13 @@ function initPostEditor() {
         });
 
         app.addEventListener('keydown', function (event) {
+            const codeInput = event.target.closest('[data-code-input]');
             const headingEditor = event.target.closest('[data-block-heading]');
             const richEditor = event.target.closest('[data-block-rich]');
+
+            if (codeInput && handleCodeEditorKeydown(event, codeInput)) {
+                return;
+            }
 
             if (headingEditor && event.key === 'Enter') {
                 event.preventDefault();
@@ -1347,6 +1393,7 @@ function initPostEditor() {
                     updateBlock(blockId, patch);
                     refreshMediaBlockContent(blockId, fieldName);
                     refreshNewsletterBlockContent(blockId);
+                    refreshAlertBlockContent(blockId);
                     sync();
                 }
             });
@@ -1532,6 +1579,26 @@ function initPostEditor() {
         const contentElement = blockElement ? blockElement.querySelector('.fb-post-block__content') : null;
         if (contentElement) {
             contentElement.innerHTML = renderBlockContent(block);
+        }
+    }
+
+    function refreshAlertBlockContent(blockId) {
+        const block = findBlock(blockId);
+        if (!block || block.type !== 'alert') {
+            return;
+        }
+
+        const blockElement = findRenderedBlockElement(blockId);
+        const contentElement = blockElement ? blockElement.querySelector('.fb-post-block__content') : null;
+        if (contentElement) {
+            contentElement.innerHTML = renderBlockContent(block);
+        }
+
+        const settingsPreview = settingsModalElement
+            ? settingsModalElement.querySelector('[data-alert-settings-preview]')
+            : null;
+        if (settingsPreview) {
+            settingsPreview.innerHTML = renderAlertPreview(block);
         }
     }
 
@@ -1721,11 +1788,19 @@ function initPostEditor() {
                 items: [getDefaultSliderItem()]
             };
         }
+        if (type === 'alert') {
+            return {
+                variant: 'primary',
+                icon: 'ci-bell',
+                title: labels.alertDefaultTitle,
+                text: labels.alertDefaultText
+            };
+        }
         if (type === 'newsletter') {
             return {
-                title: 'Sign up to our newsletter',
-                text: 'Receive our latest updates about our products & promotions',
-                buttonText: 'Subscribe',
+                title: labels.newsletterDefaultTitle,
+                text: labels.newsletterDefaultText,
+                buttonText: labels.newsletterDefaultButton,
                 buttonUrl: '',
                 buttonIcon: 'ci-mail'
             };
@@ -1738,8 +1813,27 @@ function initPostEditor() {
     }
 
     function getAllowedBlockType(type) {
-        const allowedTypes = ['text', 'heading', 'image', 'video', 'html', 'social', 'slider', 'newsletter', 'code'];
+        const allowedTypes = ['text', 'heading', 'image', 'video', 'html', 'social', 'slider', 'alert', 'newsletter', 'code'];
         return allowedTypes.indexOf(String(type || '')) !== -1 ? String(type) : 'text';
+    }
+
+    function getAlertVariantMeta(variant) {
+        return alertVariantOptions.find(function (option) {
+            return option.value === String(variant || '');
+        }) || alertVariantOptions[0];
+    }
+
+    function normalizeAlertData(data) {
+        const source = data && typeof data === 'object' ? data : {};
+        const variantMeta = getAlertVariantMeta(source.variant);
+        const icon = getSafeIconClass(source.icon || variantMeta.icon) || variantMeta.icon;
+
+        return {
+            variant: variantMeta.value,
+            icon: icon,
+            title: String(source.title == null ? labels.alertDefaultTitle : source.title),
+            text: String(source.text == null ? labels.alertDefaultText : source.text)
+        };
     }
 
     function makeId() {
@@ -3039,6 +3133,7 @@ function initPostEditor() {
                     renderAddTypeButton('html', position, labels.addHtml) +
                     renderAddTypeButton('social', position, labels.addSocial) +
                     renderAddTypeButton('slider', position, labels.addSlider) +
+                    renderAddTypeButton('alert', position, labels.addAlert) +
                     renderAddTypeButton('newsletter', position, labels.addNewsletter) +
                     renderAddTypeButton('code', position, labels.addCode) +
                 '</div>' +
@@ -3102,6 +3197,9 @@ function initPostEditor() {
         if (type === 'slider') {
             return labels.sliderBlock;
         }
+        if (type === 'alert') {
+            return labels.alertBlock;
+        }
         if (type === 'newsletter') {
             return labels.newsletterBlock;
         }
@@ -3129,6 +3227,8 @@ function initPostEditor() {
         } else if (block.type === 'slider') {
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(normalizeSliderItems(block.data.items).length)) + '</span>';
             html += '<span class="fb-post-block__chip">' + escapeHtml(String(block.data.aspectRatio || '16x9')) + '</span>';
+        } else if (block.type === 'alert') {
+            html += '<span class="fb-post-block__chip">' + escapeHtml(getAlertVariantMeta(block.data.variant).label) + '</span>';
         } else if (block.type === 'newsletter') {
             html += '<span class="fb-post-block__chip">' + escapeHtml(block.data.buttonText || labels.newsletterButton) + '</span>';
         } else if (block.type === 'code') {
@@ -3170,6 +3270,10 @@ function initPostEditor() {
             return renderSliderPreview(block);
         }
 
+        if (block.type === 'alert') {
+            return renderAlertPreview(block);
+        }
+
         if (block.type === 'newsletter') {
             return renderNewsletterPreview(block);
         }
@@ -3188,6 +3292,7 @@ function initPostEditor() {
         return '' +
             '<div class="fb-post-block__code-wrap">' +
                 '<div class="' + escapeAttr(editorClass) + '" data-code-editor data-code-language="' + escapeAttr(normalizedLanguage) + '">' +
+                    '<pre class="fb-post-block__code-lines" data-code-line-numbers aria-hidden="true">1</pre>' +
                     '<pre class="fb-post-block__code-highlight" aria-hidden="true"><code class="language-' + escapeAttr(normalizedLanguage) + '">' + escapeHtml(value || '') + '</code></pre>' +
                     '<textarea class="' + escapeAttr(textareaClass) + '" data-code-input data-block-field="' + escapeAttr(fieldName) + '" data-block-id="' + escapeAttr(block.id) + '" spellcheck="false" wrap="off" placeholder="' + escapeAttr(placeholder) + '" style="height: 420px;">' + escapeHtml(value || '') + '</textarea>' +
                 '</div>' +
@@ -3299,10 +3404,25 @@ function initPostEditor() {
         }).join('') + '</div>';
     }
 
+    function renderAlertPreview(block) {
+        const data = normalizeAlertData(block.data);
+        const title = String(data.title || '').trim();
+        const text = String(data.text || '').trim();
+
+        return '' +
+            '<div class="alert d-flex alert-' + escapeAttr(data.variant) + ' mb-0" role="alert">' +
+                '<i class="' + escapeAttr(data.icon) + ' fs-lg pe-1 mt-1 me-2" aria-hidden="true"></i>' +
+                '<div class="min-w-0">' +
+                    (title ? '<div class="fw-semibold mb-1">' + escapeHtml(title) + '</div>' : '') +
+                    (text ? '<div>' + escapeHtml(text).replace(/\r?\n/g, '<br>') + '</div>' : '') +
+                '</div>' +
+            '</div>';
+    }
+
     function renderNewsletterPreview(block) {
-        const title = String(block.data.title || '').trim() || 'Sign up to our newsletter';
-        const text = String(block.data.text || '').trim() || 'Receive our latest updates about our products & promotions';
-        const buttonText = String(block.data.buttonText || '').trim() || 'Subscribe';
+        const title = String(block.data.title || '').trim() || labels.newsletterDefaultTitle;
+        const text = String(block.data.text || '').trim() || labels.newsletterDefaultText;
+        const buttonText = String(block.data.buttonText || '').trim() || labels.newsletterDefaultButton;
         const buttonIcon = getSafeIconClass(block.data.buttonIcon || 'ci-mail');
 
         return '' +
@@ -3402,6 +3522,8 @@ function initPostEditor() {
             hint = data.caption || fileNameFromPath(data.src || '');
         } else if (block.type === 'newsletter') {
             hint = data.title || data.text || data.buttonText || '';
+        } else if (block.type === 'alert') {
+            hint = data.title || data.text || '';
         } else if (block.type === 'html') {
             hint = stripHtml(data.html || '');
         } else if (block.type === 'code') {
@@ -3432,6 +3554,8 @@ function initPostEditor() {
             pieces.push(String(block.data.src).split('/').pop());
         } else if (block.type === 'newsletter') {
             pieces.push(block.data.title || block.data.buttonText || labels.newsletterBlock);
+        } else if (block.type === 'alert') {
+            pieces.push(getAlertVariantMeta(block.data.variant).label);
         } else if (block.type === 'code') {
             pieces.push(String(block.data.language || 'html'));
         }
@@ -3605,6 +3729,10 @@ function initPostEditor() {
             return renderSliderSettings(block);
         }
 
+        if (block.type === 'alert') {
+            return renderAlertSettings(block);
+        }
+
         if (block.type === 'newsletter') {
             return renderNewsletterSettings(block);
         }
@@ -3633,6 +3761,27 @@ function initPostEditor() {
                     '<div><label class="form-label">' + escapeHtml(labels.newsletterButton) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.buttonText || '') + '" data-block-field="buttonText" data-block-id="' + escapeAttr(block.id) + '"></div>' +
                     '<div><label class="form-label">' + escapeHtml(labels.newsletterUrl) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.buttonUrl || '') + '" data-block-field="buttonUrl" data-block-id="' + escapeAttr(block.id) + '" placeholder="https://example.com/subscribe"></div>' +
                     '<div><label class="form-label">' + escapeHtml(labels.newsletterIcon) + '</label><input class="form-control" type="text" value="' + escapeAttr(block.data.buttonIcon || 'ci-mail') + '" data-block-field="buttonIcon" data-block-id="' + escapeAttr(block.id) + '" placeholder="ci-mail"></div>' +
+                '</div>' +
+            '</div>';
+    }
+
+    function renderAlertSettings(block) {
+        const data = normalizeAlertData(block.data);
+        const iconOptions = alertVariantOptions.map(function (option) {
+            return {
+                value: option.icon,
+                label: option.label + ' (' + option.icon + ')'
+            };
+        });
+
+        return '' +
+            '<div class="fb-post-settings__section" data-block-id="' + escapeAttr(block.id) + '">' +
+                '<div class="mb-4" data-alert-settings-preview>' + renderAlertPreview(block) + '</div>' +
+                '<div class="fb-post-settings__grid">' +
+                    '<div><label class="form-label">' + escapeHtml(labels.alertVariant) + '</label><select class="form-select" data-block-field="variant" data-block-id="' + escapeAttr(block.id) + '">' + renderOptions(alertVariantOptions, data.variant) + '</select></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.alertIcon) + '</label><select class="form-select" data-block-field="icon" data-block-id="' + escapeAttr(block.id) + '">' + renderOptions(iconOptions, data.icon) + '</select></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.alertTitle) + '</label><input class="form-control" type="text" value="' + escapeAttr(data.title) + '" data-block-field="title" data-block-id="' + escapeAttr(block.id) + '"></div>' +
+                    '<div><label class="form-label">' + escapeHtml(labels.alertText) + '</label><textarea class="form-control" rows="4" data-block-field="text" data-block-id="' + escapeAttr(block.id) + '">' + escapeHtml(data.text) + '</textarea></div>' +
                 '</div>' +
             '</div>';
     }
@@ -3770,6 +3919,79 @@ function initPostEditor() {
         });
     }
 
+    function handleCodeEditorKeydown(event, input) {
+        if (!input || (event.key !== 'Tab' && event.key !== 'Enter')) {
+            return false;
+        }
+
+        const value = String(input.value || '');
+        const start = Number(input.selectionStart || 0);
+        const end = Number(input.selectionEnd || start);
+        const indent = '  ';
+
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+
+            if (start !== end) {
+                const nextLineBreak = value.indexOf('\n', end);
+                const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
+                const selectedLines = value.slice(lineStart, lineEnd);
+                const replacement = event.shiftKey
+                    ? selectedLines.replace(/^(?: {1,2}|\t)/gm, '')
+                    : selectedLines.replace(/^/gm, indent);
+
+                input.value = value.slice(0, lineStart) + replacement + value.slice(lineEnd);
+                input.setSelectionRange(lineStart, lineStart + replacement.length);
+            } else if (event.shiftKey) {
+                const beforeCaret = value.slice(lineStart, start);
+                const removable = beforeCaret.match(/(?: {1,2}|\t)$/);
+                if (removable) {
+                    const removeLength = removable[0].length;
+                    input.value = value.slice(0, start - removeLength) + value.slice(end);
+                    input.setSelectionRange(start - removeLength, start - removeLength);
+                }
+            } else {
+                input.value = value.slice(0, start) + indent + value.slice(end);
+                input.setSelectionRange(start + indent.length, start + indent.length);
+            }
+
+            commitCodeEditorValue(input);
+            return true;
+        }
+
+        event.preventDefault();
+        const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+        const beforeCaret = value.slice(lineStart, start);
+        const baseIndent = (beforeCaret.match(/^\s*/) || [''])[0];
+        const fieldName = String(input.getAttribute('data-block-field') || '');
+        const trimmedBefore = beforeCaret.trim();
+        const opensHtmlTag = fieldName === 'html'
+            && /<([a-z][a-z0-9:-]*)(?:\s[^<>]*)?>$/i.test(trimmedBefore)
+            && !/<\/|\/>$/.test(trimmedBefore);
+        const opensCodeBlock = /[\{\[\(]$/.test(trimmedBefore);
+        const nextIndent = baseIndent + ((opensHtmlTag || opensCodeBlock) ? indent : '');
+        const insertion = '\n' + nextIndent;
+
+        input.value = value.slice(0, start) + insertion + value.slice(end);
+        input.setSelectionRange(start + insertion.length, start + insertion.length);
+        commitCodeEditorValue(input);
+        return true;
+    }
+
+    function commitCodeEditorValue(input) {
+        const blockId = String(input.getAttribute('data-block-id') || '');
+        const fieldName = String(input.getAttribute('data-block-field') || '');
+        const patch = {};
+        patch[fieldName] = input.value;
+        updateBlock(blockId, patch);
+
+        if (fieldName === 'html') {
+            refreshHtmlBlockPreview(input);
+        }
+        refreshCodeEditor(input.closest('[data-code-editor]'));
+    }
+
     function refreshCodeEditor(editor) {
         if (!editor) {
             return;
@@ -3777,6 +3999,7 @@ function initPostEditor() {
 
         const input = editor.querySelector('[data-code-input]');
         const code = editor.querySelector('code');
+        const lineNumbers = editor.querySelector('[data-code-line-numbers]');
         if (!input || !code) {
             return;
         }
@@ -3787,6 +4010,12 @@ function initPostEditor() {
         code.textContent = value === '' ? '\n' : value;
         code.className = 'language-' + language;
         delete code.dataset.highlighted;
+        if (lineNumbers) {
+            const lineCount = Math.max(1, value.split('\n').length);
+            lineNumbers.textContent = Array.from({ length: lineCount }, function (_, index) {
+                return String(index + 1);
+            }).join('\n');
+        }
 
         if (typeof hljs !== 'undefined' && hljs.highlightElement) {
             hljs.highlightElement(code);
@@ -3798,12 +4027,16 @@ function initPostEditor() {
     function syncCodeEditorScroll(input) {
         const editor = input ? input.closest('[data-code-editor]') : null;
         const highlight = editor ? editor.querySelector('[data-code-editor] .fb-post-block__code-highlight, .fb-post-block__code-highlight') : null;
+        const lineNumbers = editor ? editor.querySelector('[data-code-line-numbers]') : null;
         if (!highlight) {
             return;
         }
 
         highlight.scrollTop = input.scrollTop;
         highlight.scrollLeft = input.scrollLeft;
+        if (lineNumbers) {
+            lineNumbers.scrollTop = input.scrollTop;
+        }
     }
 
     function getVideoMimeType(source) {
@@ -3945,6 +4178,10 @@ function initPostEditor() {
                     '</div></div>';
             }
 
+            if (block.type === 'alert') {
+                return serializeAlertBlock(block);
+            }
+
             if (block.type === 'newsletter') {
                 return serializeNewsletterBlock(block);
             }
@@ -3990,22 +4227,40 @@ function initPostEditor() {
         const buttonText = String(block.data.buttonText || '').trim();
         const buttonUrl = String(block.data.buttonUrl || '').trim();
         const buttonIcon = getSafeIconClass(block.data.buttonIcon || 'ci-mail');
-        const resolvedTitle = title || 'Sign up to our newsletter';
-        const resolvedText = text || 'Receive our latest updates about our products & promotions';
-        const resolvedButtonText = buttonText || 'Subscribe';
+        const resolvedTitle = title || labels.newsletterDefaultTitle;
+        const resolvedText = text || labels.newsletterDefaultText;
+        const resolvedButtonText = buttonText || labels.newsletterDefaultButton;
         const iconHtml = buttonIcon ? '<i class="' + escapeAttr(buttonIcon) + ' fs-base ms-n1 me-2"></i>' : '';
         const buttonInner = iconHtml + escapeHtml(resolvedButtonText);
         const buttonHtml = buttonUrl
-            ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" target="_blank" rel="noopener noreferrer">' + buttonInner + '</a>'
-            : '<button type="button" class="btn btn-dark">' + buttonInner + '</button>';
+            ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" target="_blank" rel="noopener noreferrer" data-fb-newsletter-button="1">' + buttonInner + '</a>'
+            : '<span class="btn btn-dark" role="button" aria-disabled="true" data-fb-newsletter-button="1">' + buttonInner + '</span>';
 
         return '' +
-            '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5">' +
+            '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5" data-fb-newsletter-block="1" data-button-text="' + escapeAttr(resolvedButtonText) + '" data-button-url="' + escapeAttr(buttonUrl) + '" data-button-icon="' + escapeAttr(buttonIcon || 'ci-mail') + '">' +
                 '<div class="mb-4 mb-sm-0 me-sm-4">' +
-                    '<h3 class="h5 mb-2">' + escapeHtml(resolvedTitle) + '</h3>' +
-                    '<p class="fs-sm mb-0">' + escapeHtml(resolvedText) + '</p>' +
+                    '<h3 class="h5 mb-2" data-fb-newsletter-title="1">' + escapeHtml(resolvedTitle) + '</h3>' +
+                    '<p class="fs-sm mb-0" data-fb-newsletter-text="1">' + escapeHtml(resolvedText) + '</p>' +
                 '</div>' +
                 buttonHtml +
+            '</div>';
+    }
+
+    function serializeAlertBlock(block) {
+        const data = normalizeAlertData(block.data);
+        const title = String(data.title || '').trim();
+        const text = String(data.text || '').trim();
+        if (!title && !text) {
+            return '';
+        }
+
+        return '' +
+            '<div class="alert d-flex alert-' + escapeAttr(data.variant) + '" role="alert" data-fb-alert-block="1" data-alert-variant="' + escapeAttr(data.variant) + '">' +
+                '<i class="' + escapeAttr(data.icon) + ' fs-lg pe-1 mt-1 me-2" aria-hidden="true"></i>' +
+                '<div class="min-w-0">' +
+                    (title ? '<div class="fw-semibold mb-1" data-fb-alert-title="1">' + escapeHtml(title) + '</div>' : '') +
+                    (text ? '<div data-fb-alert-text="1">' + escapeHtml(text).replace(/\r?\n/g, '<br>') + '</div>' : '') +
+                '</div>' +
             '</div>';
     }
 
@@ -4084,6 +4339,12 @@ function initPostEditor() {
                 return;
             }
 
+            if (isAlertBlockCandidate(node)) {
+                flushTextBuffer();
+                blocks.push(parseAlertBlock(node));
+                return;
+            }
+
             if (node.matches('[data-fb-newsletter-block]') || isNewsletterBlockCandidate(node)) {
                 flushTextBuffer();
                 blocks.push(parseNewsletterBlock(node));
@@ -4137,7 +4398,9 @@ function initPostEditor() {
             id: makeId(),
             type: type,
             hidden: false,
-            data: Object.assign(defaultBlockData(type), cloneData(data))
+            data: type === 'alert'
+                ? normalizeAlertData(data)
+                : Object.assign(defaultBlockData(type), cloneData(data))
         };
     }
 
@@ -4288,6 +4551,48 @@ function initPostEditor() {
         });
     }
 
+    function isAlertBlockCandidate(node) {
+        if (!node || !node.matches || !node.matches('[data-fb-alert-block], .alert')) {
+            return false;
+        }
+
+        return Array.from(node.classList || []).some(function (className) {
+            return /^alert-(primary|secondary|success|danger|warning|info|light|dark)$/.test(className);
+        });
+    }
+
+    function readElementTextWithBreaks(node) {
+        if (!node) {
+            return '';
+        }
+
+        const clone = node.cloneNode(true);
+        clone.querySelectorAll('br').forEach(function (breakNode) {
+            breakNode.replaceWith('\n');
+        });
+        return String(clone.textContent || '').trim();
+    }
+
+    function parseAlertBlock(node) {
+        const variantClass = Array.from(node.classList || []).find(function (className) {
+            return /^alert-(primary|secondary|success|danger|warning|info|light|dark)$/.test(className);
+        });
+        const variant = variantClass ? variantClass.replace(/^alert-/, '') : String(node.getAttribute('data-alert-variant') || 'primary');
+        const variantMeta = getAlertVariantMeta(variant);
+        const iconNode = node.querySelector('i[class*="ci-"]');
+        const iconClass = iconNode ? String(iconNode.className || '').match(/ci-[a-z0-9-]+/i) : null;
+        const titleNode = node.querySelector('[data-fb-alert-title]');
+        const textNode = node.querySelector('[data-fb-alert-text]');
+        const contentNode = textNode || (iconNode ? iconNode.nextElementSibling : node);
+
+        return createImportedBlock('alert', {
+            variant: variantMeta.value,
+            icon: iconClass ? iconClass[0] : variantMeta.icon,
+            title: titleNode ? String(titleNode.textContent || '').trim() : labels.alertDefaultTitle,
+            text: readElementTextWithBreaks(contentNode)
+        });
+    }
+
     function parseNewsletterBlock(node) {
         const titleNode = node.querySelector('[data-fb-newsletter-title], h1, h2, h3, h4, h5, h6');
         const textNode = node.querySelector('[data-fb-newsletter-text], p');
@@ -4299,15 +4604,18 @@ function initPostEditor() {
         const iconClass = iconNode ? String(iconNode.className || '').match(/ci-[a-z0-9-]+/i) : null;
         const buttonUrl = buttonNode && buttonNode.matches('a')
             ? String(buttonNode.getAttribute('href') || '').trim()
-            : String((buttonRoot ? buttonRoot.getAttribute('data-button-url') : '') || '').trim();
-        const buttonText = buttonNode ? String(buttonNode.textContent || '').trim() : '';
+            : String(node.getAttribute('data-button-url') || (buttonRoot ? buttonRoot.getAttribute('data-button-url') : '') || '').trim();
+        const buttonText = buttonNode
+            ? String(buttonNode.textContent || '').trim()
+            : String(node.getAttribute('data-button-text') || '').trim();
+        const storedIcon = String(node.getAttribute('data-button-icon') || (buttonRoot ? buttonRoot.getAttribute('data-button-icon') : '') || 'ci-mail');
 
         return createImportedBlock('newsletter', {
             title: titleNode ? String(titleNode.textContent || '').trim() : '',
             text: textNode ? String(textNode.textContent || '').trim() : '',
             buttonText: buttonText,
             buttonUrl: buttonUrl,
-            buttonIcon: iconClass ? iconClass[0] : String(node.getAttribute('data-button-icon') || 'ci-mail')
+            buttonIcon: iconClass ? iconClass[0] : storedIcon
         });
     }
 
@@ -4318,8 +4626,7 @@ function initPostEditor() {
 
         return node.matches('.d-sm-flex.align-items-center.justify-content-between.bg-body-tertiary.rounded-4')
             && !!node.querySelector('h1, h2, h3, h4, h5, h6')
-            && !!node.querySelector('p')
-            && !!node.querySelector('a.btn, button.btn, [class*="ci-mail"]');
+            && !!node.querySelector('p');
     }
 
     function parseSliderBlock(node) {

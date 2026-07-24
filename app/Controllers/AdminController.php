@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Modules\BlockEditor\BlockEditor;
 use App\Modules\BlockEditor\BlockEditorService;
 use App\Services\AnalyticsService;
+use App\Services\LanguagePackService;
 use App\Services\MailService;
 use App\Services\NotificationService;
 use App\Services\PwaService;
@@ -44,6 +45,7 @@ class AdminController extends BaseController
     protected Support $support;
     protected UpdateCenter $updateCenter;
     protected AnalyticsService $analyticsService;
+    protected LanguagePackService $languagePacks;
 
     /**
      * Инициализирует модели, используемые в административной панели.
@@ -62,6 +64,7 @@ class AdminController extends BaseController
         $this->support = new Support();
         $this->updateCenter = new UpdateCenter($this->siteSettings);
         $this->analyticsService = new AnalyticsService();
+        $this->languagePacks = new LanguagePackService();
     }
 
     /**
@@ -1083,6 +1086,7 @@ class AdminController extends BaseController
     {
         if (request()->isPost()) {
             $previousDefaultLocale = \FBL\Localization::siteLocale();
+            $previousLanguagePack = $this->languagePacks->activeId();
             $data = $this->normalizeSettingsData(request()->getData());
             $errors = $this->validateSettingsData($data);
 
@@ -1093,7 +1097,10 @@ class AdminController extends BaseController
             }
 
             $this->siteSettings->setMany($data);
-            if ($previousDefaultLocale !== $data['default_locale']) {
+            if (
+                $previousDefaultLocale !== $data['default_locale']
+                || $previousLanguagePack !== $data['language_pack']
+            ) {
                 Page::clearPublicCache();
                 Post::clearPublicCache();
                 Menu::clearCache();
@@ -1112,6 +1119,7 @@ class AdminController extends BaseController
         return view('admin/settings', [
             'title' => return_translation('admin_settings_title'),
             'settings' => $this->siteSettings->all(),
+            'language_packs' => $this->languagePacks->all(),
             'published_pages' => $this->pages->getPublishedOptions(),
             'engine_release' => require CONFIG . '/version.php',
             'footer_scripts' => [
@@ -1891,6 +1899,7 @@ class AdminController extends BaseController
             'site_description' => trim((string)($data['site_description'] ?? '')),
             'site_favicon' => trim((string)($data['site_favicon'] ?? '')),
             'default_locale' => \FBL\Localization::normalizeLocale((string)($data['default_locale'] ?? '')) ?: \FBL\Localization::siteLocale(),
+            'language_pack' => $this->languagePacks->normalizeId((string)($data['language_pack'] ?? '')),
             'admin_session_lifetime_hours' => trim((string)($data['admin_session_lifetime_hours'] ?? '12')),
             'social_links' => $this->normalizeSocialLinksSetting($data),
             'social_telegram' => trim((string)($data['social_telegram'] ?? '')),
@@ -2065,6 +2074,9 @@ class AdminController extends BaseController
         }
         if (!array_key_exists((string)($data['default_locale'] ?? ''), LANGS)) {
             $errors['default_locale'][] = return_translation('admin_validation_default_locale_invalid');
+        }
+        if (!$this->languagePacks->has((string)($data['language_pack'] ?? ''))) {
+            $errors['language_pack'][] = return_translation('admin_validation_language_pack_invalid');
         }
         if (
             !ctype_digit((string)$data['admin_session_lifetime_hours'])

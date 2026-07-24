@@ -27,10 +27,28 @@ final class DatabaseMaintenanceService
     ];
 
     private const DANGEROUS_ACTIONS = [
-        'recreate_system_seeds',
-        'recreate_roles',
-        'delete_demo_content',
         'full_reset',
+        'demo_reset',
+    ];
+
+    private const SYSTEM_ROLES = [
+        'creator' => ['id' => 1, 'name' => 'Creator'],
+        'admin' => ['id' => 2, 'name' => 'Admin'],
+        'moderator' => ['id' => 3, 'name' => 'Moderator'],
+    ];
+
+    /**
+     * Логические дочерние таблицы без FOREIGN KEY в сторонних схемах.
+     *
+     * VPN Manager намеренно хранит часть связей без ограничений БД, поэтому
+     * information_schema не может обнаружить их автоматически.
+     */
+    private const RESET_DEPENDENCY_COMPANIONS = [
+        'vpn_v2_subscriptions' => [
+            'vpn_v2_external_sources',
+            'vpn_v2_subscription_items',
+            'vpn_v2_sync_logs',
+        ],
     ];
 
     private CacheCleanupService $cacheCleanup;
@@ -85,10 +103,8 @@ final class DatabaseMaintenanceService
                 'clear_temp_files' => $this->clearTempFiles(),
                 'clear_analytics' => $this->clearAnalytics(),
                 'clear_logs' => $this->clearLogs(),
-                'recreate_system_seeds' => $this->recreateSystemSeeds(),
-                'recreate_roles' => $this->recreateRolesAndPermissions(),
-                'delete_demo_content' => $this->deleteDemoContent(),
                 'full_reset' => $this->fullResetCms($user),
+                'demo_reset' => $this->demoResetCms($user),
                 default => ['message' => 'Unsupported action.'],
             };
 
@@ -153,77 +169,36 @@ final class DatabaseMaintenanceService
         return $this->cacheCleanup->clearLogs();
     }
 
-    private function recreateSystemSeeds(): array
+    private function recreateSystemRoles(array $roleSlugs): void
     {
         $now = date('Y-m-d H:i:s');
         $this->ensureCoreSchemas();
-        $this->recreateRolesAndPermissions();
-        $this->upsertDefaultSettings('FIREBALL CMS', 'FIREBALL CMS system seed.', $now);
-        $this->resetMetrics($now);
+        foreach (array_values(array_unique($roleSlugs)) as $slug) {
+            $role = self::SYSTEM_ROLES[$slug] ?? null;
+            if (!is_array($role)) {
+                continue;
+            }
 
-        return ['message' => 'System seeds recreated.'];
-    }
-
-    private function recreateRolesAndPermissions(): array
-    {
-        $now = date('Y-m-d H:i:s');
-        $this->ensureCoreSchemas();
-
-        db()->query("DELETE FROM user_roles WHERE slug IN ('creator', 'admin', 'moderator', 'user')");
-        db()->query(
-            'INSERT INTO user_roles (id, name, slug, is_system, created_at)
-             VALUES
-                (?, ?, ?, ?, ?),
-                (?, ?, ?, ?, ?),
-                (?, ?, ?, ?, ?),
-                (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE name = VALUES(name), slug = VALUES(slug), is_system = VALUES(is_system)',
-            [
-                1, 'Creator', 'creator', 1, $now,
-                2, 'Admin', 'admin', 1, $now,
-                3, 'Moderator', 'moderator', 1, $now,
-                4, 'User', 'user', 1, $now,
-            ]
-        );
-
-        return ['message' => 'Roles and permissions recreated.'];
-    }
-
-    private function deleteDemoContent(): array
-    {
-        $deletedPosts = 0;
-        $deletedCategories = 0;
-
-        if ($this->tableExists('posts')) {
-            db()->query("DELETE FROM posts WHERE slug IN ('demo-post') OR title LIKE ?", ['%Демо-запись FIREBALL CMS%']);
-            $deletedPosts = db()->rowCount();
-        }
-
-        if ($this->tableExists('post_categories')) {
             db()->query(
-                "DELETE FROM post_categories
-                 WHERE slug IN ('moscow')
-                   AND NOT EXISTS (
-                       SELECT 1 FROM posts WHERE posts.category_id = post_categories.id LIMIT 1
-                   )"
+                'INSERT INTO user_roles (id, name, slug, is_system, created_at)
+                 VALUES (?, ?, ?, 1, ?)
+                 ON DUPLICATE KEY UPDATE name = VALUES(name), slug = VALUES(slug), is_system = VALUES(is_system)',
+                [(int)$role['id'], (string)$role['name'], $slug, $now]
             );
-            $deletedCategories = db()->rowCount();
         }
-
-        if ($this->tableExists('products')) {
-            db()->query("DELETE FROM products WHERE slug LIKE 'demo-%' OR title LIKE 'Demo %'");
-        }
-
-        Post::clearPublicCache();
-
-        return [
-            'message' => 'Demo content deleted.',
-            'deleted_posts' => $deletedPosts,
-            'deleted_categories' => $deletedCategories,
-        ];
     }
 
     private function fullResetCms(array $actor): array
+    {
+        return $this->resetCms($actor, false);
+    }
+
+    private function demoResetCms(array $actor): array
+    {
+        return $this->resetCms($actor, true);
+    }
+
+    private function resetCms(array $actor, bool $withDemoContent): array
     {
         $now = date('Y-m-d H:i:s');
         $this->ensureCoreSchemas();
@@ -238,7 +213,8 @@ final class DatabaseMaintenanceService
             throw new \RuntimeException('Current Creator account could not be preserved.');
         }
 
-        $this->truncateTables([
+        $userDependentTables = $this->findDependentTables('users');
+        $this->truncateTables(array_values(array_unique(array_merge([
             'chat_audit_logs',
             'chat_messages',
             'contact_requests',
@@ -256,25 +232,105 @@ final class DatabaseMaintenanceService
             'database_maintenance_logs',
             'cms_update_logs',
             'update_migrations',
-        ]);
+        ], $userDependentTables))));
         db()->query('DELETE FROM users WHERE id <> ?', [(int)$creator['id']]);
         db()->query("UPDATE users SET role = 'creator' WHERE id = ?", [(int)$creator['id']]);
         db()->query('TRUNCATE TABLE user_roles');
         db()->query('TRUNCATE TABLE site_settings');
-        $this->recreateRolesAndPermissions();
-        $this->upsertDefaultSettings('FIREBALL CMS', 'Clean FIREBALL CMS installation after reset.', $now);
+
+        $roleSlugs = $withDemoContent
+            ? ['creator', 'admin', 'moderator']
+            : ['creator'];
+        $roleProfile = $withDemoContent ? 'demo' : 'creator_only';
+        $description = $withDemoContent
+            ? 'Minimal FIREBALL CMS demo installation.'
+            : 'Clean FIREBALL CMS installation after reset.';
+
+        $this->upsertDefaultSettings('FIREBALL CMS', $description, $now, $roleProfile);
+        $this->recreateSystemRoles($roleSlugs);
         $this->resetMetrics($now);
+
+        $demoContent = null;
+        if ($withDemoContent) {
+            $demoContent = $this->createMinimalDemoContent($creator, $now);
+        }
+
         PostImageService::clearGeneratedCache();
         Post::clearPublicCache();
         Page::clearPublicCache();
 
         return [
-            'message' => 'CMS reset completed. Current Creator account was preserved.',
+            'message' => $withDemoContent
+                ? 'Demo reset completed. Minimal demo content and administrative roles were created.'
+                : 'Full CMS reset completed. Only the current Creator account and role were preserved.',
+            'mode' => $withDemoContent ? 'demo' : 'full',
             'account' => [
                 'id' => (int)$creator['id'],
                 'login' => (string)($creator['login'] ?? ''),
                 'email' => (string)($creator['email'] ?? ''),
             ],
+            'roles' => $roleSlugs,
+            'demo_content' => $demoContent,
+            'cleared_user_dependent_tables' => $userDependentTables,
+        ];
+    }
+
+    private function createMinimalDemoContent(array $creator, string $now): array
+    {
+        db()->query(
+            'INSERT INTO post_categories
+                (name, name_ru, name_en, slug, seo_title, seo_description, seo_keywords, seo_image, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'Демо',
+                'Демо',
+                'Demo',
+                'demo',
+                'Демо FIREBALL CMS',
+                'Минимальная демонстрационная категория FIREBALL CMS.',
+                'fireball cms, demo',
+                '',
+                $now,
+            ]
+        );
+        $categoryId = (int)db()->getInsertId();
+
+        $title = 'Добро пожаловать в FIREBALL CMS';
+        $excerpt = 'Минимальная демонстрационная запись для проверки сайта после сброса.';
+        db()->query(
+            'INSERT INTO posts
+                (title, slug, category, category_id, excerpt, content, image,
+                 seo_title, seo_description, seo_keywords, seo_image,
+                 hide_placeholder_image, show_on_home, priority,
+                 author_id, author_name, author_role, views_count, published_at, is_published)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $title,
+                'welcome-to-fireball-cms',
+                'Демо',
+                $categoryId,
+                $excerpt,
+                '<p>Это минимальный демо-контент FIREBALL CMS. Отредактируйте или удалите запись перед запуском сайта.</p>',
+                '',
+                $title,
+                $excerpt,
+                'fireball cms, demo, welcome',
+                '',
+                0,
+                1,
+                10,
+                (int)$creator['id'],
+                trim((string)($creator['name'] ?? 'Creator')) ?: 'Creator',
+                'creator',
+                0,
+                $now,
+                1,
+            ]
+        );
+
+        return [
+            'category_id' => $categoryId,
+            'post_id' => (int)db()->getInsertId(),
         ];
     }
 
@@ -325,7 +381,12 @@ final class DatabaseMaintenanceService
         );
     }
 
-    private function upsertDefaultSettings(string $title, string $description, string $now): void
+    private function upsertDefaultSettings(
+        string $title,
+        string $description,
+        string $now,
+        string $roleProfile = 'all'
+    ): void
     {
         $settings = [
             'site_title' => $title,
@@ -347,6 +408,8 @@ final class DatabaseMaintenanceService
             'cookie_style' => 'card',
             'cookie_expiration_days' => '365',
             'cookie_consent_categories' => '["necessary"]',
+            'language_pack' => LanguagePackService::DEFAULT_PACK,
+            'system_role_profile' => $roleProfile,
             'updater_github_repository' => '',
             'updater_github_branch' => 'main',
             'updater_github_token' => '',
@@ -366,7 +429,7 @@ final class DatabaseMaintenanceService
             );
         }
 
-        cache()->remove('site_settings:all');
+        SiteSetting::clearPublicCache();
     }
 
     private function resetMetrics(string $now): void
@@ -395,6 +458,75 @@ final class DatabaseMaintenanceService
         } finally {
             db()->query('SET FOREIGN_KEY_CHECKS = 1');
         }
+    }
+
+    /**
+     * Находит все таблицы, прямо или косвенно зависящие от указанной таблицы.
+     *
+     * Это позволяет полному сбросу учитывать активные плагины и не оставлять
+     * строки с удалёнными user_id. Для логических связей без FOREIGN KEY
+     * дополнительно применяются явно зарегистрированные companion-таблицы.
+     */
+    private function findDependentTables(string $rootTable): array
+    {
+        $relations = db()->query(
+            'SELECT TABLE_NAME, REFERENCED_TABLE_NAME
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND REFERENCED_TABLE_SCHEMA = DATABASE()
+               AND REFERENCED_TABLE_NAME IS NOT NULL
+             ORDER BY TABLE_NAME ASC, REFERENCED_TABLE_NAME ASC'
+        )->get() ?: [];
+
+        $childrenByParent = [];
+        foreach ($relations as $relation) {
+            $child = trim((string)($relation['TABLE_NAME'] ?? ''));
+            $parent = trim((string)($relation['REFERENCED_TABLE_NAME'] ?? ''));
+            if (
+                $child === ''
+                || $parent === ''
+                || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $child)
+                || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $parent)
+            ) {
+                continue;
+            }
+
+            $childrenByParent[$parent][$child] = true;
+        }
+
+        $queue = [$rootTable];
+        $visited = [$rootTable => true];
+        $dependentTables = [];
+
+        while ($queue !== []) {
+            $parent = array_shift($queue);
+            foreach (array_keys($childrenByParent[$parent] ?? []) as $child) {
+                if (isset($visited[$child])) {
+                    continue;
+                }
+
+                $visited[$child] = true;
+                $dependentTables[] = $child;
+                $queue[] = $child;
+            }
+        }
+
+        foreach (self::RESET_DEPENDENCY_COMPANIONS as $parent => $companions) {
+            if (!isset($visited[$parent])) {
+                continue;
+            }
+
+            foreach ($companions as $companion) {
+                if (!isset($visited[$companion])) {
+                    $visited[$companion] = true;
+                    $dependentTables[] = $companion;
+                }
+            }
+        }
+
+        sort($dependentTables);
+
+        return $dependentTables;
     }
 
     private function tableExists(string $table): bool

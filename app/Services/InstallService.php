@@ -261,6 +261,8 @@ final class InstallService
             'cookie_expiration_days' => '365',
             'cookie_consent_categories' => '["necessary"]',
             'default_locale' => $locale,
+            'language_pack' => LanguagePackService::DEFAULT_PACK,
+            'system_role_profile' => 'all',
             'site_url' => (string)($site['url'] ?? ''),
             'timezone' => (string)($site['timezone'] ?? 'Europe/Moscow'),
             'cms_version' => (string)((require CONFIG . '/version.php')['version'] ?? ''),

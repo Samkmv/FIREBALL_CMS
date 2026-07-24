@@ -4,6 +4,8 @@ $siteTitle = $formData['site_title'] ?? ($settings['site_title'] ?? SITE_NAME);
 $siteDescription = $formData['site_description'] ?? ($settings['site_description'] ?? '');
 $siteFavicon = $formData['site_favicon'] ?? ($settings['site_favicon'] ?? '');
 $defaultLocale = \FBL\Localization::normalizeLocale((string)($formData['default_locale'] ?? ($settings['default_locale'] ?? DEFAULT_LOCALE))) ?: \FBL\Localization::siteLocale();
+$languagePack = (string)($formData['language_pack'] ?? ($settings['language_pack'] ?? \App\Services\LanguagePackService::DEFAULT_PACK));
+$languagePacks = (array)($language_packs ?? []);
 $adminSessionLifetimeHours = $formData['admin_session_lifetime_hours'] ?? ($settings['admin_session_lifetime_hours'] ?? '12');
 $socialNetworkOptions = site_social_network_options();
 $storedSocialLinks = $formData['social_links'] ?? ($settings['social_links'] ?? '');
@@ -83,6 +85,19 @@ $publishedPages = (array)($published_pages ?? []);
                 </select>
                 <div class="form-text"><?= print_translation('admin_settings_default_locale_hint') ?></div>
                 <?= get_errors('default_locale') ?>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label"><?= print_translation('admin_settings_language_pack') ?></label>
+                <select class="form-select <?= get_validation_class('language_pack') ?>" name="language_pack" required>
+                    <?php foreach ($languagePacks as $packId => $pack): ?>
+                        <option value="<?= htmlSC((string)$packId) ?>" <?= $languagePack === (string)$packId ? 'selected' : '' ?>>
+                            <?= htmlSC((string)($pack['name'] ?? $packId)) ?>
+                            <?= $packId === \App\Services\LanguagePackService::DEFAULT_PACK ? ' — ' . htmlSC(return_translation('admin_settings_language_pack_default')) : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text"><?= print_translation('admin_settings_language_pack_hint') ?></div>
+                <?= get_errors('language_pack') ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label"><?= print_translation('admin_settings_admin_session_lifetime_hours') ?></label>

@@ -919,14 +919,109 @@ function get_image($path): string
     }
 
     $normalizedPath = ltrim($path, '/');
-    $extension = strtolower((string)pathinfo((string)(parse_url($normalizedPath, PHP_URL_PATH) ?: $normalizedPath), PATHINFO_EXTENSION));
+    $localPath = ltrim((string)(parse_url($normalizedPath, PHP_URL_PATH) ?: $normalizedPath), '/');
+    $extension = strtolower((string)pathinfo($localPath, PATHINFO_EXTENSION));
     $isImage = in_array($extension, ['avif', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'svg', 'webp'], true);
 
-    if ($isImage && !is_file(WWW . '/' . $normalizedPath)) {
+    if ($isImage && !is_file(WWW . '/' . $localPath)) {
         return base_url($fallback);
     }
 
     return base_url('/' . $normalizedPath);
+}
+
+/**
+ * Подготавливает изображение для Open Graph и Twitter Card.
+ *
+ * Социальным сетям нужен абсолютный URL, а размеры и MIME-тип помогают
+ * парсерам стабильно построить большую карточку без повторных догадок.
+ */
+function social_image_metadata(string $path, int $width = 0, int $height = 0): array
+{
+    $path = trim($path);
+    if ($path === '') {
+        return [
+            'url' => '',
+            'secure_url' => '',
+            'type' => '',
+            'width' => 0,
+            'height' => 0,
+        ];
+    }
+
+    if (str_starts_with($path, '//')) {
+        $scheme = (string)(parse_url(app_base_url(), PHP_URL_SCHEME) ?: 'https');
+        $url = $scheme . ':' . $path;
+    } elseif (filter_var($path, FILTER_VALIDATE_URL)) {
+        $url = $path;
+    } else {
+        $url = get_image($path);
+    }
+
+    $mimeType = '';
+    $localRelativePath = '';
+    $urlParts = parse_url($url);
+    $baseParts = parse_url(app_base_url());
+    $urlHost = strtolower((string)($urlParts['host'] ?? ''));
+    $baseHost = strtolower((string)($baseParts['host'] ?? ''));
+    $urlPort = (int)($urlParts['port'] ?? 0);
+    $basePort = (int)($baseParts['port'] ?? 0);
+    $isLocalUrl = $urlHost !== '' && $urlHost === $baseHost && $urlPort === $basePort;
+
+    if (!filter_var($path, FILTER_VALIDATE_URL) && !str_starts_with($path, '//')) {
+        $localRelativePath = ltrim((string)(parse_url($path, PHP_URL_PATH) ?: $path), '/');
+    } elseif ($isLocalUrl) {
+        $urlPath = (string)($urlParts['path'] ?? '');
+        $basePath = rtrim((string)($baseParts['path'] ?? ''), '/');
+        if ($basePath === '') {
+            $localRelativePath = ltrim($urlPath, '/');
+        } elseif ($urlPath === $basePath || str_starts_with($urlPath, $basePath . '/')) {
+            $localRelativePath = ltrim(substr($urlPath, strlen($basePath)), '/');
+        }
+    }
+
+    if (
+        $localRelativePath !== ''
+        && !str_contains($localRelativePath, "\0")
+        && !preg_match('~(^|/)\.\.(/|$)~', $localRelativePath)
+    ) {
+        $publicRoot = realpath(WWW);
+        $localPath = realpath(WWW . '/' . $localRelativePath);
+        if (
+            $publicRoot !== false
+            && $localPath !== false
+            && is_file($localPath)
+            && str_starts_with($localPath, $publicRoot . DIRECTORY_SEPARATOR)
+        ) {
+            $dimensions = @getimagesize($localPath);
+            if (is_array($dimensions)) {
+                $width = (int)($dimensions[0] ?? $width);
+                $height = (int)($dimensions[1] ?? $height);
+                $mimeType = trim((string)($dimensions['mime'] ?? ''));
+            }
+        }
+    }
+
+    if ($mimeType === '') {
+        $extension = strtolower((string)pathinfo((string)($urlParts['path'] ?? ''), PATHINFO_EXTENSION));
+        $mimeType = match ($extension) {
+            'avif' => 'image/avif',
+            'gif' => 'image/gif',
+            'jpeg', 'jpg' => 'image/jpeg',
+            'png' => 'image/png',
+            'svg' => 'image/svg+xml',
+            'webp' => 'image/webp',
+            default => '',
+        };
+    }
+
+    return [
+        'url' => $url,
+        'secure_url' => strtolower((string)($urlParts['scheme'] ?? '')) === 'https' ? $url : '',
+        'type' => $mimeType,
+        'width' => max(0, $width),
+        'height' => max(0, $height),
+    ];
 }
 
 function site_favicon_url(): string

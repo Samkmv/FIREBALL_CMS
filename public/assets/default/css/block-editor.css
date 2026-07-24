@@ -2112,6 +2112,7 @@
 
     .fb-post-block__code-editor {
         display: grid;
+        grid-template-columns: 3.25rem minmax(0, 1fr);
         width: 100%;
         min-width: 0;
         max-width: 100%;
@@ -2128,7 +2129,24 @@
 
     .fb-post-block__code-editor .fb-post-block__code,
     .fb-post-block__code-highlight {
+        grid-area: 1 / 2;
+    }
+
+    .fb-post-block__code-lines {
         grid-area: 1 / 1;
+        min-width: 0;
+        height: 100%;
+        margin: 0;
+        padding: .95rem .7rem .95rem .35rem;
+        overflow: hidden;
+        border-right: 1px solid rgba(255, 255, 255, .08);
+        background: #0d1422;
+        color: #6f7b8d;
+        font: 400 .8rem/1.84 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        text-align: right;
+        white-space: pre;
+        user-select: none;
+        pointer-events: none;
     }
 
     .fb-post-block__code-highlight {

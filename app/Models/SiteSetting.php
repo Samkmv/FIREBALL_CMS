@@ -157,6 +157,8 @@ class SiteSetting
             'pwa_push_timeout_seconds' => '3',
             'pwa_cache_version' => '',
             'default_locale' => DEFAULT_LOCALE,
+            'language_pack' => \App\Services\LanguagePackService::DEFAULT_PACK,
+            'system_role_profile' => 'all',
             'timezone' => APP_TIMEZONE,
             'admin_session_lifetime_hours' => '12',
             'active_theme' => 'default',
