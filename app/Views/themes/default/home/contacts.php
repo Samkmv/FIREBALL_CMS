@@ -12,6 +12,7 @@ $contactsHoursWeekdays = site_setting('contacts_hours_weekdays', '');
 $contactsHoursWeekends = site_setting('contacts_hours_weekends', '');
 $contactsSupportTitle = site_setting('contacts_support_title', '');
 $contactsSupportText = site_setting('contacts_support_text', '');
+$privacyPolicyUrl = trim((string)($privacy_policy_url ?? ''));
 $contactSubjects = array_values(array_filter(array_map(
     static fn(mixed $subject): string => trim((string)$subject),
     (array)($contact_subjects ?? [])
@@ -126,6 +127,19 @@ $hasSupportBlock = $contactsSupportTitle !== '' || $contactsSupportText !== '';
                         <textarea class="form-control form-control-lg rounded-6 <?= get_validation_class('message') ?>" id="message" name="message" rows="5" required><?= old('message') ?></textarea>
                         <div class="invalid-tooltip bg-transparent z-0 py-0 ps-3"><?= print_translation('contacts_validation_message') ?></div>
                         <?= get_errors('message') ?>
+                    </div>
+                    <div class="form-check position-relative mb-4">
+                        <input type="checkbox" class="form-check-input <?= get_validation_class('privacy_accepted') ?>" id="contact-privacy-accepted" name="privacy_accepted" value="1" <?= old('privacy_accepted') === '1' ? 'checked' : '' ?> required>
+                        <label for="contact-privacy-accepted" class="form-check-label">
+                            <?= print_translation('contacts_form_privacy_prefix') ?>
+                            <?php if ($privacyPolicyUrl !== ''): ?>
+                                <a class="text-dark-emphasis" href="<?= htmlSC($privacyPolicyUrl) ?>" target="_blank" rel="noopener noreferrer"><?= print_translation('contacts_form_privacy_link') ?></a>
+                            <?php else: ?>
+                                <?= print_translation('contacts_form_privacy_link') ?>
+                            <?php endif; ?>
+                        </label>
+                        <div class="invalid-feedback"><?= print_translation('contacts_validation_privacy_required') ?></div>
+                        <?= get_errors('privacy_accepted') ?>
                     </div>
                     <div class="pt-2">
                         <button type="submit" class="btn btn-lg btn-dark rounded-pill"><?= print_translation('contacts_form_submit') ?></button>

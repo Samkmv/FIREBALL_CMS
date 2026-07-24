@@ -119,7 +119,7 @@ class HomeController extends BaseController
     {
         if (request()->isPost()) {
             $data = $this->normalizeContactData(request()->getData());
-            $errors = $this->validateContactData($data);
+            $errors = $this->validateContactData($data, requirePrivacy: true);
             $rateKey = 'contacts|' . client_ip();
             if (!RateLimiter::attempt($rateKey, 3, 600)) {
                 $errors['message'][] = return_translation('contacts_form_rate_limited');
@@ -143,6 +143,7 @@ class HomeController extends BaseController
         return view('home/contacts', [
             'title' => return_translation('contacts_page_title'),
             'contact_subjects' => $this->getContactSubjectOptions(),
+            'privacy_policy_url' => $this->getPrivacyPolicyUrl(),
             'footer_scripts' => [
                 base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
             ],
@@ -300,13 +301,20 @@ class HomeController extends BaseController
             'phone' => $this->normalizeContactPhone((string)($data['phone'] ?? '')),
             'subject' => trim((string)($data['subject'] ?? '')),
             'message' => trim((string)($data['message'] ?? '')),
+            'privacy_accepted' => (string)($data['privacy_accepted'] ?? '') === '1' ? '1' : '0',
         ];
     }
 
     /**
      * Проверяет обязательные поля и форматы контактов в форме обращения.
      */
-    protected function validateContactData(array $data, ?array $allowedSubjects = null, string $subjectErrorKey = 'contacts_validation_subject', bool $requirePhone = true): array
+    protected function validateContactData(
+        array $data,
+        ?array $allowedSubjects = null,
+        string $subjectErrorKey = 'contacts_validation_subject',
+        bool $requirePhone = true,
+        bool $requirePrivacy = false
+    ): array
     {
         $errors = [];
         $allowedSubjects = $allowedSubjects ?? $this->getContactSubjectOptions();
@@ -341,6 +349,10 @@ class HomeController extends BaseController
             $errors['message'][] = return_translation('contacts_validation_message_length');
         }
 
+        if ($requirePrivacy && ($data['privacy_accepted'] ?? '0') !== '1') {
+            $errors['privacy_accepted'][] = return_translation('contacts_validation_privacy_required');
+        }
+
         return $errors;
     }
 
@@ -364,6 +376,14 @@ class HomeController extends BaseController
     protected function getContactSubjectOptions(): array
     {
         return $this->contactSubjects->getActiveNames();
+    }
+
+    protected function getPrivacyPolicyUrl(): string
+    {
+        $pageId = (int)$this->siteSettings->get('cookie_policy_page_id', '0');
+        $page = $pageId > 0 ? $this->pages->findPublishedById($pageId) : false;
+
+        return $page ? (string)$page['url'] : '';
     }
 
     protected function getSupportSubjectOptions(): array
