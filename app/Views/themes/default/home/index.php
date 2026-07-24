@@ -277,7 +277,7 @@
                                             <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
                                         </h3>
                                         <div class="nav align-items-center gap-2 fs-xs">
-                                            <span class="nav-link text-body-secondary fs-xs fw-normal p-0"><?= htmlSC($post['author_name'] ?? '') ?></span>
+                                            <span class="nav-link text-body-secondary fs-xs fw-normal p-0"><?= htmlSC($post['author_name'] ?? '') ?><?= render_public_verified_badge($post['author_role'] ?? null) ?></span>
                                             <hr class="vr my-1 mx-1">
                                             <span class="text-body-secondary"><?= date('d.m.Y', strtotime($post['published_at'])) ?></span>
                                         </div>

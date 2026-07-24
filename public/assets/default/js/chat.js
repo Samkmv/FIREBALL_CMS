@@ -13,6 +13,7 @@ $(function () {
         ? bootstrap
         : (window.bootstrap || null);
     const currentUserAvatar = String(chatApp.data('current-user-avatar') || '');
+    const verifiedTitle = String(chatApp.data('verified-title') || 'Verified customer');
     const previewUnavailableText = String(chatApp.data('preview-unavailable-text') || 'Preview unavailable.');
     const previewLoadingText = String(chatApp.data('preview-loading-text') || 'Loading...');
     const maxFileSize = 200 * 1024 * 1024;
@@ -179,6 +180,25 @@ $(function () {
             .toggleClass('text-success', isOnline)
             .toggleClass('text-body-secondary', !isOnline)
             .html(renderPresenceBadge(isOnline));
+    };
+
+    const renderVerifiedBadge = (role) => {
+        if (!['creator', 'admin'].includes(String(role || '').trim())) {
+            return '';
+        }
+
+        const title = escapeHtml(verifiedTitle);
+        return `<i class="ci-check-circle text-success align-middle ms-1" data-public-verified-badge="1" data-bs-toggle="tooltip" data-bs-custom-class="tooltip-sm" title="${title}" aria-label="${title}"></i>`;
+    };
+
+    const initializeCurrentNameTooltip = () => {
+        if (!bootstrapApi || !bootstrapApi.Tooltip) {
+            return;
+        }
+
+        currentName.find('[data-public-verified-badge]').each(function () {
+            bootstrapApi.Tooltip.getOrCreateInstance(this);
+        });
     };
 
     const getAttachmentIcon = (kind, previewKind) => {
@@ -865,7 +885,8 @@ $(function () {
         getContactButtons().filter(`[data-user-id="${contactId}"]`).addClass('active');
 
         userIdInput.val(contactId);
-        currentName.text(button.data('user-name'));
+        currentName.html(escapeHtml(button.data('user-name')) + renderVerifiedBadge(button.data('user-role')));
+        initializeCurrentNameTooltip();
         currentAvatar.attr('src', button.data('user-avatar')).attr('alt', button.data('user-name'));
         updateCurrentContactPresence(Number(button.data('user-online')) === 1);
         state.renderedSignature = '';

@@ -22,7 +22,7 @@
                         <div class="small text-uppercase fw-semibold text-body-secondary mb-1" style="letter-spacing: .08em;">
                             <?= print_translation('chat_contacts_title') ?>
                         </div>
-                        <strong class="d-block text-truncate"><?= htmlSC(get_user()['name'] ?? '') ?></strong>
+                        <strong class="d-block text-truncate"><?= htmlSC(get_user()['name'] ?? '') ?><?= render_public_verified_badge(get_user()['role'] ?? null) ?></strong>
                     </div>
                     <img
                         src="<?= get_user_avatar(get_user()['avatar'] ?? null, 'sm') ?>"
@@ -84,7 +84,7 @@
                                         </span>
                                         <span class="min-w-0 flex-grow-1">
                                             <span class="d-flex align-items-start justify-content-between gap-2">
-                                                <span class="d-block text-truncate fw-semibold"><?= htmlSC($contact['name']) ?></span>
+                                                <span class="d-block text-truncate fw-semibold"><?= htmlSC($contact['name']) ?><?= render_public_verified_badge($contact['role'] ?? null) ?></span>
                                                 <span
                                                     class="badge text-bg-danger rounded-pill flex-shrink-0 chat-contact-unread-badge <?= (int)($contact['unread_count'] ?? 0) > 0 ? '' : 'd-none' ?>"
                                                     data-chat-contact-unread="<?= (int)$contact['id'] ?>"
@@ -145,6 +145,7 @@
                 data-clear-url="<?= htmlSC($chat_clear_url) ?>"
                 data-audit-url="<?= htmlSC($chat_audit_url) ?>"
                 data-current-user-avatar="<?= htmlSC(get_user_avatar(get_user()['avatar'] ?? null, 'sm')) ?>"
+                data-verified-title="<?= htmlSC(return_translation('tpl_verified_customer')) ?>"
                 data-empty-text="<?= htmlSC(return_translation('chat_empty_dialog')) ?>"
                 data-new-message-text="<?= htmlSC(return_translation('chat_new_message')) ?>"
                 data-attachment-label="<?= htmlSC(return_translation('chat_attachment_label')) ?>"
@@ -206,7 +207,7 @@
                                             data-chat-current-avatar
                                         >
                                         <div class="min-w-0">
-                                            <strong class="d-block text-truncate fs-5" data-chat-current-name><?= htmlSC($active_contact['name']) ?></strong>
+                                            <strong class="d-block text-truncate fs-5" data-chat-current-name><?= htmlSC($active_contact['name']) ?><?= render_public_verified_badge($active_contact['role'] ?? null) ?></strong>
                                             <div class="small text-body-secondary text-truncate"><?= htmlSC(get_user_role_label((string)($active_contact['role'] ?? 'user'))) ?></div>
                                             <span class="small d-inline-flex align-items-center gap-1 <?= !empty($active_contact['is_online']) ? 'text-success' : 'text-body-secondary' ?>" data-chat-current-status>
                                                 <span class="rounded-circle d-inline-block flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'bg-success' : 'bg-secondary' ?>" style="width: 8px; height: 8px;"></span>

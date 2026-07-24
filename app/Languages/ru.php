@@ -29,6 +29,7 @@ return [
     'tpl_auth_role_admin' => 'Администратор',
     'tpl_auth_role_moderator' => 'Модератор',
     'tpl_auth_role_user' => 'Пользователь',
+    'tpl_verified_customer' => 'Проверенный пользователь',
     'auth_login_email' => 'Email',
     'auth_profile_avatar_required' => 'Выберите изображение для загрузки.',
     'auth_profile_avatar_updated' => 'Аватар успешно обновлен.',

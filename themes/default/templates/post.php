@@ -42,7 +42,7 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                 <hr class="vr my-1 mx-1">
                 <span class="text-body-tertiary fs-xs"><?= date('d.m.Y', strtotime($post['published_at'])) ?></span>
                 <hr class="vr my-1 mx-1">
-                <span class="text-body-tertiary fs-xs"><?= print_translation('posts_show_author') ?> <?= htmlSC($post['author_label']) ?></span>
+                <span class="text-body-tertiary fs-xs"><?= print_translation('posts_show_author') ?> <?= htmlSC($post['author_label']) ?><?= render_public_verified_badge($post['author_role'] ?? null) ?></span>
                 <hr class="vr my-1 mx-1">
                 <span class="text-body-tertiary fs-xs"><?= print_translation('posts_show_views') ?> <?= (int)$post['views_count'] ?></span>
             </div>

@@ -29,6 +29,7 @@ return [
     'tpl_auth_role_admin' => 'Administrator',
     'tpl_auth_role_moderator' => 'Moderator',
     'tpl_auth_role_user' => 'User',
+    'tpl_verified_customer' => 'Verified customer',
     'auth_login_email' => 'Email',
     'auth_profile_avatar_required' => 'Choose an image to upload.',
     'auth_profile_avatar_updated' => 'Avatar updated successfully.',

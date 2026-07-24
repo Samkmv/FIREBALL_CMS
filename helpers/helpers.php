@@ -744,6 +744,25 @@ function get_user_role_label(?string $role = null): string
     return $roleLabels[$role] = ucfirst(str_replace(['-', '_'], ' ', $role));
 }
 
+function has_public_verified_badge(?string $role): bool
+{
+    return in_array(trim((string)$role), ['creator', 'admin'], true);
+}
+
+function render_public_verified_badge(?string $role, ?string $title = null): string
+{
+    if (!has_public_verified_badge($role)) {
+        return '';
+    }
+
+    $title = trim((string)($title ?? return_translation('tpl_verified_customer')));
+    if ($title === '' || $title === 'tpl_verified_customer') {
+        $title = 'Verified customer';
+    }
+
+    return '<i class="ci-check-circle text-success align-middle ms-1" data-public-verified-badge="1" data-bs-toggle="tooltip" data-bs-custom-class="tooltip-sm" title="' . htmlSC($title) . '" aria-label="' . htmlSC($title) . '"></i>';
+}
+
 function site_setting(string $key, string $default = ''): string
 {
     return config_service()->site($key, $default);

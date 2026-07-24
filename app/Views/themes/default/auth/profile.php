@@ -62,7 +62,7 @@ if (is_array($profileMenuItems)) {
                         <div class="d-flex justify-content-center mb-3">
                             <span class="badge <?= $roleBadgeClass ?> rounded-pill px-3"><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
                         </div>
-                        <h2 class="h5 mb-1"><?= htmlSC($user['name']) ?></h2>
+                        <h2 class="h5 mb-1"><?= htmlSC($user['name']) ?><?= render_public_verified_badge($roleSlug) ?></h2>
                         <div class="text-body-secondary">@<?= htmlSC($user['login'] ?? '') ?></div>
                         <div class="d-inline-flex align-items-center gap-2 text-body-secondary small mt-2">
                             <i class="ci-mail"></i>
@@ -362,7 +362,7 @@ if (is_array($profileMenuItems)) {
                             <i class="ci-user"></i>
                             <span><?= print_translation('auth_profile_name') ?></span>
                         </div>
-                        <div class="h6 mb-0 text-break"><?= htmlSC($user['name']) ?></div>
+                        <div class="h6 mb-0 text-break"><?= htmlSC($user['name']) ?><?= render_public_verified_badge($roleSlug) ?></div>
                     </div>
                 </div>
                 <div class="col">

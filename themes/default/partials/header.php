@@ -217,7 +217,7 @@
                                     class="rounded-circle object-fit-cover border"
                                     style="width: 32px; height: 32px;"
                                 >
-                                <div><?= htmlSC($currentUser['name'] ?? '') ?></div>
+                                <div><?= htmlSC($currentUser['name'] ?? '') ?><?= render_public_verified_badge($currentUser['role'] ?? null) ?></div>
                             </div>
                         </li>
                         <li>

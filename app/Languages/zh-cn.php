@@ -29,6 +29,7 @@ return [
     'tpl_auth_role_admin' => '管理员',
     'tpl_auth_role_moderator' => '版主',
     'tpl_auth_role_user' => '用户',
+    'tpl_verified_customer' => '已验证用户',
     'auth_login_email' => '邮箱',
     'auth_profile_avatar_required' => '请选择要上传的图片。',
     'auth_profile_avatar_updated' => '头像已成功更新。',
