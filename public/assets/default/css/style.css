@@ -5913,3 +5913,66 @@ body.is-site-fullscreen .plyr * {
         content: none !important;
     }
 }
+
+/* Dashboard analytics tables must fit inside the two-column overview grid. */
+[data-admin-analytics] .admin-table-card,
+[data-admin-analytics] .admin-table-component__scroll {
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (min-width: 768px) {
+    [data-admin-analytics] .admin-analytics-table--pages,
+    [data-admin-analytics] .admin-analytics-table--latest {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--pages th:last-child,
+    [data-admin-analytics] .admin-analytics-table--pages td:last-child {
+        width: 6.25rem;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest {
+        font-size: .875rem;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest th,
+    [data-admin-analytics] .admin-analytics-table--latest td {
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: normal;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest th:nth-child(1),
+    [data-admin-analytics] .admin-analytics-table--latest td:nth-child(1) {
+        width: 18%;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest th:nth-child(2),
+    [data-admin-analytics] .admin-analytics-table--latest td:nth-child(2) {
+        width: 14%;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest th:nth-child(3),
+    [data-admin-analytics] .admin-analytics-table--latest td:nth-child(3) {
+        width: 22%;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest th:nth-child(4),
+    [data-admin-analytics] .admin-analytics-table--latest td:nth-child(4) {
+        width: 14%;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest th:nth-child(5),
+    [data-admin-analytics] .admin-analytics-table--latest td:nth-child(5) {
+        width: 15%;
+    }
+
+    [data-admin-analytics] .admin-analytics-table--latest th:nth-child(6),
+    [data-admin-analytics] .admin-analytics-table--latest td:nth-child(6) {
+        width: 17%;
+    }
+}

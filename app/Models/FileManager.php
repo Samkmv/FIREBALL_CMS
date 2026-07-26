@@ -191,27 +191,60 @@ class FileManager
      */
     public function deleteMany(array $items): int
     {
-        $deletedCount = 0;
+        $normalizedItems = [];
+        $seenPaths = [];
 
         foreach ($items as $item) {
             if (!is_array($item)) {
                 continue;
             }
 
-            $type = trim((string)($item['type'] ?? ''));
-            $path = trim((string)($item['path'] ?? ''));
+            $type = trim((string)($item['type'] ?? '')) === 'directory' ? 'directory' : 'file';
+            $path = $this->normalizeRelativePath((string)($item['path'] ?? ''));
 
-            if ($path === '') {
+            if ($path === '' || isset($seenPaths[$path])) {
                 continue;
             }
 
             if ($type === 'directory') {
-                $this->deleteDirectory($path);
+                if ($this->isDeletionProtectedPath($path)) {
+                    throw new \RuntimeException(return_translation('admin_files_folder_delete_protected'));
+                }
+
+                if ($this->isProtectedPath($path)) {
+                    throw new \RuntimeException(return_translation('admin_files_protected_path'));
+                }
+
+                if (!is_dir($this->resolveExistingPath($path))) {
+                    throw new \RuntimeException(return_translation('admin_files_folder_delete_error'));
+                }
+
+                $seenPaths[$path] = true;
+                $normalizedItems[] = ['path' => $path, 'type' => 'directory'];
+                continue;
+            }
+
+            if ($this->isProtectedPath($path) || !is_file($this->resolveExistingPath($path))) {
+                throw new \RuntimeException(return_translation('admin_files_delete_error'));
+            }
+
+            $seenPaths[$path] = true;
+            $normalizedItems[] = ['path' => $path, 'type' => 'file'];
+        }
+
+        if ($normalizedItems === []) {
+            throw new \RuntimeException(return_translation('admin_files_selection_required'));
+        }
+
+        $deletedCount = 0;
+        foreach ($normalizedItems as $item) {
+            if ($item['type'] === 'directory') {
+                $this->deleteDirectory($item['path']);
                 $deletedCount++;
                 continue;
             }
 
-            $this->delete($path);
+            $this->delete($item['path']);
             $deletedCount++;
         }
 

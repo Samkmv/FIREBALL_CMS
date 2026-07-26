@@ -146,17 +146,21 @@ class FileManagerController extends BaseController
         $paths = request()->post['selected_paths'] ?? [];
         $types = request()->post['selected_types'] ?? [];
         $items = [];
+        $seenPaths = [];
 
         if (is_array($paths)) {
             foreach ($paths as $index => $path) {
                 $path = trim((string)$path);
-                if ($path === '') {
+                if ($path === '' || isset($seenPaths[$path])) {
                     continue;
                 }
 
+                $seenPaths[$path] = true;
                 $items[] = [
                     'path' => $path,
-                    'type' => is_array($types) ? trim((string)($types[$index] ?? 'file')) : 'file',
+                    'type' => is_array($types) && trim((string)($types[$index] ?? 'file')) === 'directory'
+                        ? 'directory'
+                        : 'file',
                 ];
             }
         }

@@ -32,6 +32,9 @@
         }
 
         [data-file-manager-shell] {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
             background: var(--fm-bg);
             border: 1px solid var(--fm-border);
             border-radius: 32px;
@@ -41,6 +44,9 @@
 
         [data-file-manager-browser] {
             position: relative;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
             min-height: 540px;
             transition: opacity .18s ease, transform .18s ease;
         }
@@ -54,6 +60,9 @@
         [data-file-manager-workspace] {
             display: grid;
             grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
             min-height: 540px;
         }
 
@@ -63,9 +72,12 @@
         }
 
         [data-file-manager-content] {
+            width: 100%;
+            max-width: 100%;
             background: var(--fm-panel);
             backdrop-filter: blur(16px);
             min-width: 0;
+            overflow: hidden;
         }
 
         [data-file-manager-page] .min-w-0 {
@@ -120,6 +132,32 @@
             vertical-align: middle;
         }
 
+        [data-file-manager-table] {
+            width: 100%;
+            min-width: 0;
+            table-layout: fixed;
+        }
+
+        [data-file-manager-table] col:nth-child(1) {
+            width: 3.25rem;
+        }
+
+        [data-file-manager-table] col:nth-child(3) {
+            width: 6.5rem;
+        }
+
+        [data-file-manager-table] col:nth-child(4) {
+            width: 5.5rem;
+        }
+
+        [data-file-manager-table] col:nth-child(5) {
+            width: 9.5rem;
+        }
+
+        [data-file-manager-table] col:nth-child(6) {
+            width: 6rem;
+        }
+
         [data-file-manager-item-link] {
             color: inherit;
         }
@@ -147,6 +185,9 @@
         }
 
         [data-file-manager-table-wrap] {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
             overflow-x: auto;
             overflow-y: visible !important;
             position: relative;
@@ -196,6 +237,10 @@
 
         [data-file-manager-feedback-wrap]:not(:empty) {
             padding-bottom: 0 !important;
+        }
+
+        [data-file-manager-delete-selected].d-none {
+            display: none !important;
         }
 
         [data-fm-pagination] {
@@ -278,14 +323,32 @@
             border-color: rgba(255, 255, 255, .08);
         }
 
-        @media (max-width: 991.98px) {
+        @media (max-width: 1599.98px) {
             [data-file-manager-workspace] {
                 grid-template-columns: 1fr;
             }
 
             [data-file-manager-sidebar] {
+                display: grid;
+                grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+                align-items: start;
+                gap: .75rem 1rem;
                 border-right: 0;
                 border-bottom: 1px solid var(--fm-border);
+            }
+
+            [data-file-manager-sidebar-head] {
+                grid-row: 1 / span 3;
+                margin-bottom: 0 !important;
+            }
+
+            [data-file-manager-sidebar] > .list-group {
+                min-width: 0;
+                margin-bottom: 0 !important;
+            }
+
+            [data-file-manager-sidebar] > .small {
+                margin-bottom: 0 !important;
             }
         }
 
@@ -316,7 +379,7 @@
             [data-file-manager-toolbar-actions] {
                 width: 100%;
                 display: grid;
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 min-width: 0;
                 position: relative;
                 z-index: 1021;
@@ -371,7 +434,7 @@
             }
 
             [data-file-manager-table] {
-                min-width: 620px;
+                min-width: 0;
             }
 
             [data-file-manager-table] th,
@@ -428,6 +491,20 @@
             [data-file-manager-feedback-wrap] {
                 padding-inline: 1rem !important;
                 padding-top: 1rem !important;
+            }
+
+            [data-file-manager-sidebar] {
+                display: block;
+                padding: 1rem !important;
+            }
+
+            [data-file-manager-sidebar-head] {
+                margin-bottom: .75rem !important;
+            }
+
+            [data-file-manager-delete-selected] {
+                width: 100%;
+                justify-content: center;
             }
 
             [data-fm-pagination] {

@@ -479,7 +479,25 @@ $(function () {
     }
 
     function selectedRows() {
-        return $('[data-file-manager-row]:visible [data-file-manager-select]:checked').closest('[data-file-manager-row]');
+        const seenPaths = new Set();
+
+        return $('[data-file-manager-row]:visible [data-file-manager-select]:checked')
+            .closest('[data-file-manager-row]')
+            .filter(function () {
+                const path = String($(this).data('path') || '');
+                if (!path || seenPaths.has(path)) {
+                    return false;
+                }
+
+                seenPaths.add(path);
+                return true;
+            });
+    }
+
+    function syncPathSelection(path, checked) {
+        $('[data-file-manager-select]').filter(function () {
+            return String($(this).val() || '') === path;
+        }).prop('checked', checked);
     }
 
     function downloadRow(row) {
@@ -508,6 +526,9 @@ $(function () {
         const actionToggle = $('[data-file-manager-action-toggle]');
         const countTarget = $('[data-file-manager-selection-count]');
         const toggleAll = $('[data-file-manager-toggle-all]');
+        const deleteSelectedButton = $('[data-file-manager-delete-selected]');
+        const deleteSelectedCount = $('[data-file-manager-delete-selected-count]');
+        const selectedCount = checked.length;
 
         rows.each(function () {
             const row = $(this);
@@ -518,9 +539,16 @@ $(function () {
             row.find('[data-file-manager-select-type]').prop('disabled', !isVisible || !isChecked);
         });
 
-        countTarget.text(String(checked.length));
-        actionToggle.prop('disabled', checked.length === 0);
-        toggleAll.prop('checked', visibleRows.length > 0 && checked.length === visibleRows.length);
+        countTarget.text(String(selectedCount));
+        deleteSelectedCount.text(String(selectedCount));
+        actionToggle.prop('disabled', selectedCount === 0);
+        deleteSelectedButton
+            .prop('disabled', selectedCount === 0)
+            .toggleClass('d-none', selectedCount === 0)
+            .toggleClass('d-inline-flex', selectedCount > 0);
+        toggleAll
+            .prop('checked', visibleRows.length > 0 && selectedCount === visibleRows.length)
+            .prop('indeterminate', selectedCount > 0 && selectedCount < visibleRows.length);
     }
 
     function currentMessages() {
@@ -566,6 +594,32 @@ $(function () {
         });
 
         return blocked;
+    }
+
+    function confirmBulkDelete(rows) {
+        const messages = currentMessages();
+        const form = $('[data-file-manager-bulk-form]')[0];
+
+        if (!rows || !rows.length) {
+            renderFeedback('error', messages.selectionRequired);
+            return false;
+        }
+
+        if (!form) {
+            return false;
+        }
+
+        if (hasProtectedDeleteRows(rows)) {
+            renderFeedback('error', messages.deleteProtected);
+            return false;
+        }
+
+        return openDeleteModal({
+            type: 'bulk',
+            form: form,
+            message: messages.deleteConfirm.replace(':count', String(rows.length)),
+            item: rows.length === 1 ? String(rows.first().data('name') || '') : ''
+        });
     }
 
     function rowsForDrag(row) {
@@ -845,11 +899,14 @@ $(function () {
 
     page.on('change', '[data-file-manager-toggle-all]', function () {
         const checked = $(this).is(':checked');
-        $('[data-file-manager-row]:visible [data-file-manager-select]').prop('checked', checked);
+        $('[data-file-manager-row]:visible [data-file-manager-select]').each(function () {
+            syncPathSelection(String($(this).val() || ''), checked);
+        });
         refreshSelectionState();
     });
 
     page.on('change', '[data-file-manager-select]', function () {
+        syncPathSelection(String($(this).val() || ''), $(this).is(':checked'));
         refreshSelectionState();
     });
 
@@ -1021,26 +1078,7 @@ $(function () {
         }
 
         if (action === 'delete') {
-            const form = $('[data-file-manager-bulk-form]')[0];
-            if (!form) {
-                return;
-            }
-
-            if (hasProtectedDeleteRows(rows)) {
-                renderFeedback('error', messages.deleteProtected);
-                return;
-            }
-
-            const opened = openDeleteModal({
-                type: 'bulk',
-                form: form,
-                message: messages.deleteConfirm.replace(':count', String(rows.length)),
-                item: rows.length === 1 ? String(rows.first().data('name') || '') : ''
-            });
-
-            if (!opened) {
-                return;
-            }
+            confirmBulkDelete(rows);
             return;
         }
 
@@ -1052,6 +1090,10 @@ $(function () {
 
             openTransferModal(action, rows);
         }
+    });
+
+    page.on('click', '[data-file-manager-delete-selected]', function () {
+        confirmBulkDelete(selectedRows());
     });
 
     page.on('click', '[data-file-preview]', function () {
