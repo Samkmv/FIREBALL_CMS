@@ -1273,9 +1273,9 @@ function is_safe_content_url(string $url, bool $allowImageData = false): bool
 function get_user_avatar(?string $path = null, string $size = 'default'): string
 {
     $fallbacks = [
-        'sm' => '/assets/default/img/account/avatar.jpg',
-        'lg' => '/assets/default/img/account/avatar.jpg',
-        'default' => '/assets/default/img/account/avatar.jpg',
+        'sm' => '/assets/img/avatar.jpg',
+        'lg' => '/assets/img/avatar.jpg',
+        'default' => '/assets/img/avatar.jpg',
     ];
 
     $fallback = $fallbacks[$size] ?? $fallbacks['default'];

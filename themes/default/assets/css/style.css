@@ -33,11 +33,22 @@ html {
     }
 
     body.pwa-standalone #navbarNav,
+    body.pwa-standalone #blogSidebar {
+        padding-top: var(--pwa-safe-top);
+        top: 0;
+        bottom: 0;
+        height: auto;
+        max-height: none;
+    }
+
+    body.pwa-standalone #blogSidebar {
+        padding-bottom: var(--pwa-safe-bottom);
+    }
+
     body.pwa-standalone .admin-shell-offcanvas {
         padding-top: var(--pwa-safe-top);
     }
 
-    body.pwa-standalone #navbarNav,
     body.pwa-standalone .admin-shell-offcanvas,
     body.pwa-standalone .admin-shell-offcanvas .offcanvas-body {
         max-height: calc(100dvh - var(--pwa-safe-top));
@@ -121,20 +132,65 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 }
 
 #navbarNav {
-    height: 100dvh;
-    max-height: 100dvh;
+    top: 0;
+    bottom: 0;
+    height: auto;
+    max-height: none;
+    overflow: hidden;
     z-index: 1090;
 }
 
 #navbarNav .offcanvas-body {
+    flex: 1 1 auto;
     min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+}
+
+#navbarNav > .offcanvas-header {
+    flex: 0 0 auto;
 }
 
 #navbarNav > .offcanvas-header:last-child {
     flex: 0 0 auto;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+}
+
+@media (max-width: 991.98px) {
+    #blogSidebar {
+        top: 0;
+        bottom: 0;
+        height: auto;
+        max-height: none;
+        overflow: hidden;
+    }
+
+    #blogSidebar > .offcanvas-header {
+        flex: 0 0 auto;
+        align-items: flex-start;
+    }
+
+    #blogSidebar .offcanvas-title {
+        min-width: 0;
+        padding-right: .75rem;
+        overflow-wrap: anywhere;
+        line-height: 1.25;
+    }
+
+    #blogSidebar .btn-close {
+        flex: 0 0 auto;
+    }
+
+    #blogSidebar .offcanvas-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 @media (max-width: 767.98px) {
