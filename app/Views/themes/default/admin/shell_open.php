@@ -8,9 +8,9 @@ $adminShellMainColClass = (string)($main_col_class ?? 'col-lg-8 col-xl-9');
 ?>
 
 <div class="offcanvas offcanvas-start admin-shell-offcanvas d-lg-none" id="adminSidebar" tabindex="-1" aria-labelledby="adminSidebarLabel">
-    <div class="offcanvas-header py-3">
-        <h5 class="offcanvas-title" id="adminSidebarLabel"><?= print_translation('admin_dashboard_heading') ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas-header admin-shell-offcanvas__header">
+        <h5 class="offcanvas-title admin-shell-offcanvas__title" id="adminSidebarLabel"><?= print_translation('admin_dashboard_heading') ?></h5>
+        <button type="button" class="btn-close admin-shell-offcanvas__close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body pt-0 pb-4">
         <?= view()->renderPartial('admin/sidebar') ?>

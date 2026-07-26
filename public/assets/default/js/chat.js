@@ -12,7 +12,6 @@ $(function () {
     const bootstrapApi = typeof bootstrap !== 'undefined'
         ? bootstrap
         : (window.bootstrap || null);
-    const currentUserAvatar = String(chatApp.data('current-user-avatar') || '');
     const verifiedTitle = String(chatApp.data('verified-title') || 'Verified customer');
     const previewUnavailableText = String(chatApp.data('preview-unavailable-text') || 'Preview unavailable.');
     const previewLoadingText = String(chatApp.data('preview-loading-text') || 'Loading...');
@@ -30,6 +29,7 @@ $(function () {
     const contactSearchEmpty = chatApp.find('[data-chat-search-empty]');
     const messagesBox = chatApp.find('[data-chat-messages]');
     const currentName = chatApp.find('[data-chat-current-name]');
+    const currentRole = chatApp.find('[data-chat-current-role]');
     const currentAvatar = chatApp.find('[data-chat-current-avatar]');
     const currentStatus = chatApp.find('[data-chat-current-status]');
     const messageSearchInput = chatApp.find('[data-chat-message-search]');
@@ -169,6 +169,82 @@ $(function () {
     const isNearBottom = (element, threshold = 24) => (
         (element.scrollHeight - (element.scrollTop + element.clientHeight)) <= threshold
     );
+
+    const parseChatDate = (value) => {
+        const normalized = String(value || '').trim();
+        const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+        if (match) {
+            return new Date(
+                Number(match[1]),
+                Number(match[2]) - 1,
+                Number(match[3]),
+                Number(match[4] || 0),
+                Number(match[5] || 0),
+                Number(match[6] || 0)
+            );
+        }
+
+        const parsed = new Date(normalized);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const getMessageDayKey = (value) => {
+        const parsed = parseChatDate(value);
+        if (!parsed) {
+            return String(value || '').slice(0, 10);
+        }
+
+        return [
+            parsed.getFullYear(),
+            String(parsed.getMonth() + 1).padStart(2, '0'),
+            String(parsed.getDate()).padStart(2, '0'),
+        ].join('-');
+    };
+
+    const formatMessageTime = (value) => {
+        const parsed = parseChatDate(value);
+        if (!parsed) {
+            const match = String(value || '').match(/(\d{2}):(\d{2})/);
+            return match ? `${match[1]}:${match[2]}` : String(value || '');
+        }
+
+        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(parsed);
+    };
+
+    const formatMessageDate = (value) => {
+        const parsed = parseChatDate(value);
+        if (!parsed) {
+            return String(value || '').slice(0, 10);
+        }
+
+        const now = new Date();
+        return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+            day: 'numeric',
+            month: 'long',
+            year: parsed.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+        }).format(parsed);
+    };
+
+    const canGroupMessages = (first, second) => {
+        if (!first || !second || Number(first.sender_id) !== Number(second.sender_id)) {
+            return false;
+        }
+
+        if (getMessageDayKey(first.created_at) !== getMessageDayKey(second.created_at)) {
+            return false;
+        }
+
+        const firstDate = parseChatDate(first.created_at);
+        const secondDate = parseChatDate(second.created_at);
+        if (!firstDate || !secondDate) {
+            return true;
+        }
+
+        return Math.abs(secondDate.getTime() - firstDate.getTime()) <= 5 * 60 * 1000;
+    };
 
     const renderPresenceBadge = (isOnline) => `
         <span class="rounded-circle d-inline-block flex-shrink-0 ${isOnline ? 'bg-success' : 'bg-secondary'}" style="width: 8px; height: 8px;"></span>
@@ -578,7 +654,7 @@ $(function () {
         applyContactFilter();
     };
 
-    const renderAttachment = (attachment) => {
+    const renderAttachment = (attachment, options = {}) => {
         if (!attachment || !attachment.url) {
             return '';
         }
@@ -591,10 +667,11 @@ $(function () {
         const previewKind = escapeHtml(attachment.preview_kind || '');
         const size = attachment.size ? ` <span class="chat-message-meta-text">(${formatBytes(attachment.size)})</span>` : '';
         const icon = getAttachmentIcon(attachment.kind || 'file', attachment.preview_kind || '');
+        const standaloneMedia = Boolean(options.standaloneMedia);
 
         if (attachment.is_image) {
             return `
-                <div class="mt-2">
+                <div class="chat-message-media ${standaloneMedia ? 'chat-message-media--standalone' : 'mt-2'}">
                     <button
                         type="button"
                         class="btn p-0 border-0 bg-transparent chat-message-image-trigger"
@@ -606,7 +683,7 @@ $(function () {
                         data-preview-extension="${extension}"
                         style="cursor: zoom-in;"
                     >
-                        <img class="chat-message-image rounded-3" src="${url}" alt="${name}">
+                        <img class="chat-message-image" src="${url}" alt="${name}">
                     </button>
                 </div>
             `;
@@ -688,33 +765,67 @@ $(function () {
             const emptyText = query
                 ? (chatApp.data('message-search-empty-text') || chatApp.data('empty-text') || 'No messages found.')
                 : (chatApp.data('empty-text') || 'No messages yet.');
-            messagesBox.html(`<p class="text-body-secondary mb-0">${escapeHtml(emptyText)}</p>`);
+            messagesBox.html(`
+                <div class="chat-dialog-empty">
+                    <span class="chat-dialog-empty__icon" aria-hidden="true"><i class="ci-chat"></i></span>
+                    <p class="text-body-secondary mb-0">${escapeHtml(emptyText)}</p>
+                </div>
+            `);
             state.renderedSignature = signature;
             return;
         }
 
         let html = '';
-        filteredMessages.forEach((item) => {
+        filteredMessages.forEach((item, index) => {
+            const previousItem = filteredMessages[index - 1] || null;
+            const nextItem = filteredMessages[index + 1] || null;
             const mine = Number(item.sender_id) === Number(currentUserId);
+            const startsGroup = !canGroupMessages(previousItem, item);
+            const endsGroup = !canGroupMessages(item, nextItem);
+            const dayKey = getMessageDayKey(item.created_at);
+            const previousDayKey = previousItem ? getMessageDayKey(previousItem.created_at) : '';
+            const dayLabel = formatMessageDate(item.created_at);
             const readIcon = Number(item.is_read) === 1
                 ? '<span class="chat-message-checks" aria-hidden="true"><i class="ci-check"></i><i class="ci-check"></i></span>'
                 : '<span class="chat-message-checks" aria-hidden="true"><i class="ci-check"></i></span>';
             const checks = mine ? readIcon : '';
-            const avatar = escapeHtml(mine ? currentUserAvatar : (getContactButtons().filter('.active').first().data('user-avatar') || currentAvatar.attr('src') || ''));
-            const messageText = item.message
-                ? `<div class="chat-message-text small lh-sm">${highlightText(item.message, query)}</div>`
+            const avatar = escapeHtml(getContactButtons().filter('.active').first().data('user-avatar') || currentAvatar.attr('src') || '');
+            const messageValue = String(item.message || '').trim();
+            const hasText = messageValue !== '';
+            const mediaOnly = Boolean(item.attachment && item.attachment.is_image && !hasText);
+            const messageText = hasText
+                ? `<div class="chat-message-text">${highlightText(item.message, query)}</div>`
                 : '';
-            const attachment = renderAttachment(item.attachment);
+            const attachment = renderAttachment(item.attachment, { standaloneMedia: mediaOnly });
             const isSelected = state.selectedIds.has(Number(item.id));
             const canShowActions = state.canModerate && !state.selectionMode;
             const canShowCheckbox = state.selectionMode && state.canBulkDelete;
             const actionDeleteText = escapeHtml(chatApp.data('action-delete-text') || 'Delete');
+            const timestamp = escapeHtml(formatMessageTime(item.created_at));
+            const dateTime = escapeHtml(String(item.created_at || '').replace(' ', 'T'));
+            const avatarHtml = mine
+                ? ''
+                : (endsGroup
+                    ? `<img src="${avatar}" alt="" class="chat-message-avatar rounded-circle border flex-shrink-0">`
+                    : '<span class="chat-message-avatar-spacer" aria-hidden="true"></span>');
+
+            if (dayKey !== previousDayKey && dayLabel !== '') {
+                html += `<div class="chat-message-day"><span>${escapeHtml(dayLabel)}</span></div>`;
+            }
 
             html += `
-                <div class="chat-message-row ${mine ? 'chat-message-row--mine' : 'chat-message-row--theirs'} ${isSelected ? 'is-selected' : ''}" data-chat-message-row data-message-id="${Number(item.id) || 0}">
-                    ${mine ? '' : `<img src="${avatar}" alt="" class="chat-message-avatar rounded-circle border flex-shrink-0">`}
+                <div class="chat-message-row ${mine ? 'chat-message-row--mine' : 'chat-message-row--theirs'} ${startsGroup ? 'is-group-start' : ''} ${endsGroup ? 'is-group-end' : ''} ${isSelected ? 'is-selected' : ''}" data-chat-message-row data-message-id="${Number(item.id) || 0}">
+                    ${avatarHtml}
                     ${canShowCheckbox ? `<input type="checkbox" class="form-check-input chat-message-select" data-chat-message-select value="${Number(item.id) || 0}" ${isSelected ? 'checked' : ''}>` : ''}
-                    <div class="chat-message-bubble rounded-3 px-3 py-2 ${mine ? 'chat-message-bubble--mine' : 'chat-message-bubble--theirs'} ${canShowActions ? 'chat-message-bubble--actions' : ''}">
+                    <div class="chat-message-stack ${canShowActions ? 'has-actions' : ''}">
+                        <div class="chat-message-bubble ${mine ? 'chat-message-bubble--mine' : 'chat-message-bubble--theirs'} ${mediaOnly ? 'chat-message-bubble--media-only' : ''}">
+                            ${messageText}
+                            ${attachment}
+                            <div class="chat-message-meta-text">
+                                <time datetime="${dateTime}" title="${escapeHtml(item.created_at || '')}">${timestamp}</time>
+                                ${checks}
+                            </div>
+                        </div>
                         ${canShowActions ? `
                             <div class="chat-message-actions">
                                 <button type="button" class="chat-message-delete-btn" data-chat-delete-message="${Number(item.id) || 0}" title="${actionDeleteText}" aria-label="${actionDeleteText}">
@@ -722,15 +833,7 @@ $(function () {
                                 </button>
                             </div>
                         ` : ''}
-                        ${messageText}
-                        ${attachment}
-                        <div class="small mt-2 chat-message-meta-text d-flex align-items-center justify-content-end gap-1">
-                            <i class="ci-clock" aria-hidden="true"></i>
-                            <span>${escapeHtml(item.created_at)}</span>
-                            ${checks}
-                        </div>
                     </div>
-                    ${mine ? `<img src="${avatar}" alt="" class="chat-message-avatar rounded-circle border flex-shrink-0">` : ''}
                 </div>
             `;
         });
@@ -886,6 +989,7 @@ $(function () {
 
         userIdInput.val(contactId);
         currentName.html(escapeHtml(button.data('user-name')) + renderVerifiedBadge(button.data('user-role')));
+        currentRole.text(String(button.data('user-role-label') || ''));
         initializeCurrentNameTooltip();
         currentAvatar.attr('src', button.data('user-avatar')).attr('alt', button.data('user-name'));
         updateCurrentContactPresence(Number(button.data('user-online')) === 1);
