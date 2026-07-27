@@ -49,7 +49,8 @@ $(function(){
         }
 
         const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        if (reduceMotion || !('IntersectionObserver' in window)) {
+        const standaloneMode = document.documentElement.classList.contains('pwa-standalone');
+        if (reduceMotion || standaloneMode || !('IntersectionObserver' in window)) {
             revealItems.forEach((item) => item.classList.add('home-reveal--visible'));
             return;
         }

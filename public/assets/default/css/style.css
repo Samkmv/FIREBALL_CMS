@@ -8,6 +8,15 @@
     --pwa-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+html.pwa-standalone {
+    scroll-behavior: auto;
+    overscroll-behavior-y: none;
+}
+
+html.pwa-standalone body {
+    min-height: 100svh;
+}
+
 body,
 button,
 input,
@@ -1625,7 +1634,7 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
     box-shadow: none;
 }
 
-body.pwa-standalone .chat-sidebar-offcanvas {
+html.pwa-standalone body .chat-sidebar-offcanvas {
     padding-top: var(--pwa-safe-top);
     padding-bottom: var(--pwa-safe-bottom);
 }
@@ -2647,12 +2656,14 @@ body.pwa-standalone .chat-sidebar-offcanvas {
 }
 
 @media (max-width: 991.98px) {
-    body.pwa-standalone > header.navbar-sticky {
+    html.pwa-standalone body > header.navbar-sticky {
+        position: relative !important;
+        top: 0 !important;
         padding-top: calc(.25rem + var(--pwa-safe-top)) !important;
     }
 
-    body.pwa-standalone #navbarNav,
-    body.pwa-standalone #blogSidebar {
+    html.pwa-standalone body #navbarNav,
+    html.pwa-standalone body #blogSidebar {
         padding-top: var(--pwa-safe-top);
         top: 0;
         bottom: 0;
@@ -2660,24 +2671,24 @@ body.pwa-standalone .chat-sidebar-offcanvas {
         max-height: none;
     }
 
-    body.pwa-standalone #blogSidebar {
+    html.pwa-standalone body #blogSidebar {
         padding-bottom: var(--pwa-safe-bottom);
     }
 
-    body.pwa-standalone .admin-shell-offcanvas {
+    html.pwa-standalone body .admin-shell-offcanvas {
         top: 0;
         bottom: 0;
-        height: 100dvh;
-        max-height: 100dvh;
+        height: auto;
+        max-height: none;
         padding-top: var(--pwa-safe-top);
     }
 
-    body.pwa-standalone .admin-shell-offcanvas .offcanvas-body {
+    html.pwa-standalone body .admin-shell-offcanvas .offcanvas-body {
         max-height: none;
     }
 }
 
-body.pwa-standalone [data-admin-shell-sidebar] {
+html.pwa-standalone body [data-admin-shell-sidebar] {
     top: calc(7rem + var(--pwa-safe-top)) !important;
 }
 
