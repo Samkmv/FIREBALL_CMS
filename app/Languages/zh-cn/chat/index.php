@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'chat_index_title' => '客户聊天',
+    'chat_index_title' => '聊天',
     'chat_index_heading' => '聊天',
     'chat_index_subtitle' => '消息以加密形式存储。',
     'chat_contacts_title' => '会话',

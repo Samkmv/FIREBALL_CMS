@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'chat_index_title' => 'Client chat',
+    'chat_index_title' => 'Chat',
     'chat_index_heading' => 'Chat',
     'chat_index_subtitle' => 'Messages are stored in encrypted form.',
     'chat_contacts_title' => 'Dialogs',

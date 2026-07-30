@@ -2,29 +2,20 @@
 $normalizeAdminPath = static function (string $path): string {
     $normalizedPath = parse_url($path, PHP_URL_PATH) ?: $path;
     $normalizedPath = '/' . ltrim((string)$normalizedPath, '/');
-
-    if ($normalizedPath === '//') {
-        $normalizedPath = '/';
-    }
-
-    $segments = array_values(array_filter(explode('/', ltrim($normalizedPath, '/')), static function ($segment) {
-        return $segment !== '';
-    }));
+    $segments = array_values(array_filter(explode('/', ltrim($normalizedPath, '/')), static fn($segment): bool => $segment !== ''));
 
     if (isset($segments[0]) && array_key_exists($segments[0], LANGS)) {
         array_shift($segments);
     }
 
-    $result = '/' . implode('/', $segments);
-
-    return $result === '//' ? '/' : (rtrim($result, '/') ?: '/');
+    return rtrim('/' . implode('/', $segments), '/') ?: '/';
 };
 
 $currentPath = $normalizeAdminPath(current_path());
 $supportNewCount = 0;
 try {
     $supportNewCount = (new \App\Models\ContactRequest())->countNew();
-} catch (\Throwable $e) {
+} catch (\Throwable) {
     $supportNewCount = 0;
 }
 
@@ -33,7 +24,7 @@ $menuGroups = [
         'label' => return_translation('admin_nav_group_dashboard'),
         'order' => 10,
         'items' => [
-            ['href' => base_href('/admin'), 'label' => return_translation('admin_nav_dashboard'), 'icon' => 'ci-layout', 'order' => 10],
+            ['href' => base_href('/admin'), 'label' => return_translation('admin_nav_dashboard'), 'icon' => 'ci-home', 'order' => 10],
             ['href' => base_href('/admin/analytics'), 'label' => return_translation('admin_nav_analytics'), 'icon' => 'ci-activity', 'order' => 20],
         ],
     ],
@@ -44,13 +35,13 @@ $menuGroups = [
             ['href' => base_href('/admin/posts'), 'label' => return_translation('admin_nav_posts'), 'icon' => 'ci-file-text', 'order' => 10],
             ['href' => base_href('/admin/pages'), 'label' => return_translation('admin_nav_pages'), 'icon' => 'ci-file', 'order' => 20],
             ['href' => base_href('/admin/categories'), 'label' => return_translation('admin_nav_categories'), 'icon' => 'ci-folder', 'order' => 30],
-            ['href' => base_href('/admin/files'), 'label' => return_translation('admin_nav_files'), 'icon' => 'ci-folder-plus', 'order' => 40],
+            ['href' => base_href('/admin/files'), 'label' => return_translation('admin_nav_files'), 'icon' => 'ci-hard-drive', 'order' => 40],
             [
                 'href' => base_href('/admin/support'),
                 'label' => return_translation('admin_nav_support'),
                 'icon' => 'ci-inbox',
                 'badge' => $supportNewCount > 0 ? (string)$supportNewCount : '',
-                'badge_class' => 'badge rounded-pill text-bg-warning',
+                'badge_class' => 'fb-nav-badge fb-nav-badge-warning',
                 'badge_title' => return_translation('admin_support_new_count'),
                 'order' => 50,
             ],
@@ -68,7 +59,7 @@ $menuGroups = [
         'label' => return_translation('admin_nav_group_appearance'),
         'order' => 40,
         'items' => [
-            ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'badge' => 'Beta', 'order' => 10],
+            ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'order' => 10],
             ['href' => base_href('/admin/plugins'), 'label' => return_translation('admin_nav_plugins'), 'icon' => 'ci-box', 'nav_key' => 'plugins', 'order' => 20],
         ],
     ],
@@ -118,6 +109,7 @@ $normalizeItem = static function (array $item): array {
     $item['label'] = (string)($item['label'] ?? $item['title'] ?? '');
     $item['icon'] = (string)($item['icon'] ?? 'ci-box');
     $item['order'] = (int)($item['order'] ?? 100);
+    $item['children'] = array_values(array_filter((array)($item['children'] ?? []), 'is_array'));
 
     return $item;
 };
@@ -158,59 +150,98 @@ $isActive = static function (array $item) use ($currentPath, $normalizeAdminPath
     if ($routePath === '/admin/support' && $currentPath === '/admin/contact-requests') {
         return true;
     }
-
     if ($routePath === '/admin') {
         return $currentPath === '/admin';
     }
-
     if ($navKey === 'plugins' || $routePath === '/admin/plugins') {
         return $currentPath === '/admin/plugins';
     }
 
-    return $currentPath === $routePath || str_starts_with($currentPath, rtrim($routePath, '/') . '/');
+    return $routePath !== '/' && ($currentPath === $routePath || str_starts_with($currentPath, rtrim($routePath, '/') . '/'));
+};
+
+static $adminNavRenderIndex = 0;
+$adminNavRenderIndex++;
+$instanceId = 'fb-nav-' . $adminNavRenderIndex;
+$variant = (string)($variant ?? 'desktop');
+
+$renderLink = static function (array $item, string $groupLabel, bool $nested = false) use ($isActive): void {
+    $itemHref = (string)$item['href'];
+    $itemLabel = (string)$item['label'];
+    $icon = (string)$item['icon'];
+    if (!str_starts_with($icon, 'ci-')) {
+        $icon = 'ci-' . $icon;
+    }
+    $active = $isActive($item);
+    ?>
+    <a
+        class="fb-nav-link<?= $nested ? ' fb-nav-link-nested' : '' ?><?= $active ? ' active' : '' ?>"
+        href="<?= htmlSC($itemHref) ?>"
+        title="<?= htmlSC($itemLabel) ?>"
+        <?= $active ? 'aria-current="page"' : '' ?>
+        data-fb-command
+        data-fb-command-label="<?= htmlSC($itemLabel) ?>"
+        data-fb-command-category="<?= htmlSC($groupLabel) ?>"
+        data-fb-command-icon="<?= htmlSC($icon) ?>"
+    >
+        <span class="fb-nav-icon"><i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i></span>
+        <span class="fb-nav-label"><?= htmlSC($itemLabel) ?></span>
+        <?php if (!empty($item['badge'])): ?>
+            <span class="<?= htmlSC((string)($item['badge_class'] ?? 'fb-nav-badge')) ?>" title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>">
+                <?= htmlSC((string)$item['badge']) ?>
+            </span>
+        <?php endif; ?>
+    </a>
+    <?php
 };
 ?>
 
-<div class="border rounded-5 p-3 p-xl-4 admin-shell-nav" data-admin-nav>
-    <div class="d-flex align-items-center justify-content-between gap-2 px-2 mb-3">
-        <div>
-            <div class="fw-bold"><?= print_translation('admin_dashboard_heading') ?></div>
-        </div>
-    </div>
+<nav class="fb-nav" data-admin-nav data-fb-nav-variant="<?= htmlSC($variant) ?>">
+    <?php foreach ($menuGroups as $groupKey => $group): ?>
+        <?php if (empty($groupedItems[$groupKey])) { continue; } ?>
+        <?php $groupLabel = (string)($group['label'] ?? $groupKey); ?>
+        <section class="fb-nav-group" aria-labelledby="<?= htmlSC($instanceId . '-' . $groupKey) ?>">
+            <h2 class="fb-nav-group-title" id="<?= htmlSC($instanceId . '-' . $groupKey) ?>"><?= htmlSC($groupLabel) ?></h2>
+            <div class="fb-nav-list">
+                <?php foreach ($groupedItems[$groupKey] as $itemIndex => $item): ?>
+                    <?php
+                    $children = (array)($item['children'] ?? []);
+                    if ($children === []) {
+                        $renderLink($item, $groupLabel);
+                        continue;
+                    }
 
-    <div class="admin-shell-nav-groups">
-        <?php foreach ($menuGroups as $groupKey => $group): ?>
-            <?php if (empty($groupedItems[$groupKey])) { continue; } ?>
-            <div class="admin-shell-nav-group" data-admin-nav-group="<?= htmlSC((string)$groupKey) ?>">
-                <div class="admin-shell-nav-group-title"><?= htmlSC((string)($group['label'] ?? $groupKey)) ?></div>
-                <div class="list-group list-group-flush gap-1">
-                    <?php foreach ($groupedItems[$groupKey] as $item): ?>
-                        <?php
-                        $itemHref = (string)$item['href'];
-                        $itemLabel = (string)$item['label'];
-                        $icon = (string)$item['icon'];
-                        if (!str_starts_with($icon, 'ci-')) {
-                            $icon = 'ci-' . $icon;
+                    $childItems = array_map($normalizeItem, $children);
+                    $childActive = false;
+                    foreach ($childItems as $childItem) {
+                        if ($isActive($childItem)) {
+                            $childActive = true;
+                            break;
                         }
-                        $active = $isActive($item);
-                        ?>
-                        <a
-                            class="list-group-item list-group-item-action d-flex align-items-center gap-3 rounded-4 px-3 py-2 border-0 <?= $active ? 'active shadow-sm' : 'bg-transparent' ?>"
-                            href="<?= htmlSC($itemHref) ?>"
+                    }
+                    $submenuId = $instanceId . '-' . preg_replace('/[^a-z0-9_-]+/i', '-', (string)$groupKey) . '-' . $itemIndex;
+                    ?>
+                    <div class="fb-nav-parent<?= $childActive ? ' is-open' : '' ?>" data-fb-nav-parent>
+                        <button
+                            class="fb-nav-link fb-nav-toggle<?= $childActive ? ' active' : '' ?>"
+                            type="button"
+                            data-fb-nav-toggle
+                            aria-expanded="<?= $childActive ? 'true' : 'false' ?>"
+                            aria-controls="<?= htmlSC($submenuId) ?>"
+                            title="<?= htmlSC((string)$item['label']) ?>"
                         >
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0 admin-shell-nav-icon">
-                                <i class="<?= htmlSC($icon) ?>"></i>
-                            </span>
-                            <span class="fw-medium d-inline-flex align-items-center gap-2 min-w-0 admin-shell-nav-label">
-                                <span class="text-truncate"><?= htmlSC($itemLabel) ?></span>
-                                <?php if (!empty($item['badge'])): ?>
-                                    <span class="<?= htmlSC((string)($item['badge_class'] ?? 'admin-shell-beta-badge')) ?>" title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>"><?= htmlSC($item['badge']) ?></span>
-                                <?php endif; ?>
-                            </span>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
+                            <span class="fb-nav-icon"><i class="<?= htmlSC(str_starts_with((string)$item['icon'], 'ci-') ? (string)$item['icon'] : 'ci-' . (string)$item['icon']) ?>" aria-hidden="true"></i></span>
+                            <span class="fb-nav-label"><?= htmlSC((string)$item['label']) ?></span>
+                            <i class="ci-chevron-down fb-nav-chevron" aria-hidden="true"></i>
+                        </button>
+                        <div class="fb-nav-submenu" id="<?= htmlSC($submenuId) ?>">
+                            <?php foreach ($childItems as $childItem): ?>
+                                <?php $renderLink($childItem, $groupLabel, true); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
-        <?php endforeach; ?>
-    </div>
-</div>
+        </section>
+    <?php endforeach; ?>
+</nav>

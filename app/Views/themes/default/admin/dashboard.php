@@ -1,10 +1,12 @@
 <?php
-$updateCenter = $update_center ?? [];
-$updateLocal = $updateCenter['local'] ?? [];
-$installedVersionLabel = (string)($updateLocal['version'] ?? ($engine_release['version'] ?? '0.0.0'));
-$analytics = $analytics_dashboard ?? [];
-$analyticsCards = $analytics['cards'] ?? [];
-$unknownCountryLabel = return_translation('admin_analytics_country_unknown');
+$currentUser = get_user() ?: [];
+$displayName = trim((string)($currentUser['name'] ?? ''));
+if ($displayName === '') {
+    $displayName = trim((string)($currentUser['login'] ?? ''));
+}
+$welcomeTitle = str_replace(':name', $displayName, return_translation('admin_dashboard_welcome'));
+$analytics = is_array($analytics_dashboard ?? null) ? $analytics_dashboard : [];
+$analyticsCards = is_array($analytics['cards'] ?? null) ? $analytics['cards'] : [];
 $analyticsJson = json_encode($analytics, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 $analyticsI18nJson = json_encode([
     'visits' => return_translation('admin_analytics_chart_visits'),
@@ -16,250 +18,298 @@ $analyticsI18nJson = json_encode([
     'unknown' => return_translation('admin_analytics_country_unknown'),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
+$statCards = [
+    [
+        'label' => return_translation('admin_stat_pages'),
+        'value' => (int)($stats['pages'] ?? 0),
+        'icon' => 'ci-file',
+        'variant' => 'is-blue',
+        'href' => base_href('/admin/pages'),
+        'meta' => return_translation('admin_dashboard_manage_content'),
+    ],
+    [
+        'label' => return_translation('admin_stat_posts'),
+        'value' => (int)($stats['posts'] ?? 0),
+        'icon' => 'ci-file-text',
+        'variant' => 'is-purple',
+        'href' => base_href('/admin/posts'),
+        'meta' => return_translation('admin_dashboard_manage_content'),
+    ],
+    [
+        'label' => return_translation('admin_dashboard_active_plugins'),
+        'value' => (int)($stats['active_plugins'] ?? 0),
+        'icon' => 'ci-box',
+        'variant' => 'is-pink',
+        'href' => base_href('/admin/plugins'),
+        'meta' => return_translation('admin_dashboard_extensions'),
+    ],
+    [
+        'label' => return_translation('admin_stat_users'),
+        'value' => (int)($stats['users'] ?? 0),
+        'icon' => 'ci-user',
+        'variant' => 'is-blue',
+        'href' => base_href('/admin/users'),
+        'meta' => return_translation('admin_dashboard_team'),
+    ],
+    [
+        'label' => return_translation('admin_dashboard_system_health'),
+        'value' => return_translation('admin_dashboard_system_ok'),
+        'icon' => 'ci-check-circle',
+        'variant' => 'is-green',
+        'href' => check_creator() ? base_href('/admin/updates') : base_href('/admin/settings'),
+        'meta' => return_translation('admin_dashboard_all_operational'),
+    ],
+];
+$statCards = apply_filters('admin_dashboard_stat_cards', $statCards, $stats, $currentUser);
+if (!is_array($statCards)) {
+    $statCards = [];
+}
+
+$quickActions = [
+    ['label' => return_translation('admin_dashboard_create_page'), 'href' => base_href('/admin/pages/create'), 'icon' => 'ci-file-plus', 'color' => 'var(--fb-color-info)', 'soft' => 'var(--fb-color-info-soft)'],
+    ['label' => return_translation('admin_dashboard_create_post'), 'href' => base_href('/admin/posts/create'), 'icon' => 'ci-edit-3', 'color' => 'var(--fb-color-purple)', 'soft' => 'var(--fb-color-purple-soft)'],
+    ['label' => return_translation('admin_dashboard_upload_media'), 'href' => base_href('/admin/files'), 'icon' => 'ci-image', 'color' => 'var(--fb-color-success)', 'soft' => 'var(--fb-color-success-soft)'],
+    ['label' => return_translation('admin_dashboard_manage_plugins'), 'href' => base_href('/admin/plugins'), 'icon' => 'ci-box', 'color' => 'var(--fb-color-primary)', 'soft' => 'var(--fb-color-primary-soft)'],
+    ['label' => return_translation('admin_dashboard_manage_theme'), 'href' => base_href('/admin/themes'), 'icon' => 'ci-monitor', 'color' => 'var(--fb-color-purple)', 'soft' => 'var(--fb-color-purple-soft)'],
+    ['label' => return_translation('admin_dashboard_create_user'), 'href' => base_href('/admin/users/create'), 'icon' => 'ci-user-plus', 'color' => 'var(--fb-color-info)', 'soft' => 'var(--fb-color-info-soft)', 'creator_only' => true],
+];
+$quickActions = apply_filters('admin_quick_actions', $quickActions, $currentUser);
+if (!is_array($quickActions)) {
+    $quickActions = [];
+}
+
+$activityItems = apply_filters('admin_dashboard_activity', (array)($recent_activity ?? []), $currentUser);
+if (!is_array($activityItems)) {
+    $activityItems = [];
+}
+
+$pluginWidgets = apply_filters('admin_dashboard_widgets', [], [
+    'stats' => $stats,
+    'user' => $currentUser,
+]);
+if (!is_array($pluginWidgets)) {
+    $pluginWidgets = [];
+}
+
 echo view()->renderPartial('admin/shell_open', [
-    'title' => return_translation('admin_dashboard_heading'),
-    'subtitle' => return_translation('admin_dashboard_subtitle'),
-    'actions' => '',
+    'title' => $welcomeTitle,
+    'subtitle' => return_translation('admin_dashboard_welcome_subtitle'),
 ]);
 ?>
 
-    <?php
-    $overviewCards = [
-        ['label' => return_translation('admin_stat_posts'), 'value' => (int)($stats['posts'] ?? 0), 'icon' => 'ci-file-text'],
-        ['label' => return_translation('admin_stat_pages'), 'value' => (int)($stats['pages'] ?? 0), 'icon' => 'ci-file'],
-        ['label' => return_translation('admin_stat_contacts'), 'value' => (int)($stats['contact_requests'] ?? 0), 'icon' => 'ci-mail'],
-        ['label' => return_translation('admin_stat_new_contacts'), 'value' => (int)($stats['contact_requests_new'] ?? 0), 'icon' => 'ci-inbox'],
-        ['label' => return_translation('admin_stat_categories'), 'value' => (int)($stats['categories'] ?? 0), 'icon' => 'ci-folder'],
-        ['label' => return_translation('admin_stat_users'), 'value' => (int)($stats['users'] ?? 0), 'icon' => 'ci-user'],
-        ['label' => return_translation('admin_stat_visits'), 'value' => (int)($stats['site_visits'] ?? 0), 'icon' => 'ci-activity'],
-        ['label' => return_translation('admin_stat_support_faq'), 'value' => (int)($stats['support_faq'] ?? 0), 'icon' => 'ci-message-square'],
-        ['label' => return_translation('admin_stat_support_kb_articles'), 'value' => (int)($stats['support_kb_articles'] ?? 0), 'icon' => 'ci-book-open'],
-        ['label' => return_translation('admin_stat_support_kb_categories'), 'value' => (int)($stats['support_kb_categories'] ?? 0), 'icon' => 'ci-folder'],
-        ['label' => return_translation('admin_update_current_version'), 'value' => $installedVersionLabel, 'icon' => 'ci-refresh-cw'],
-    ];
-    ?>
-    <div class="row g-3">
-        <?php foreach ($overviewCards as $card): ?>
-            <div class="col-md-6 col-xl-3">
-                <div class="border rounded-5 p-4 h-100 admin-shell-profile-card">
-                    <div class="d-flex align-items-center gap-2 text-body-secondary fs-sm mb-2">
-                        <i class="<?= htmlSC($card['icon']) ?>"></i><?= htmlSC((string)$card['label']) ?>
-                    </div>
-                    <div class="display-6 mb-0"><?= htmlSC((string)$card['value']) ?></div>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
+<section class="fb-stat-grid" aria-label="<?= htmlSC(return_translation('admin_dashboard_overview')) ?>">
+    <?php foreach ($statCards as $card): ?>
+        <?php if (!is_array($card) || !isset($card['value'], $card['label'])) { continue; } ?>
+        <a class="fb-card fb-stat-card <?= htmlSC((string)($card['variant'] ?? '')) ?>" href="<?= htmlSC((string)($card['href'] ?? '#')) ?>">
+            <span class="fb-stat-icon"><i class="<?= htmlSC((string)($card['icon'] ?? 'ci-activity')) ?>" aria-hidden="true"></i></span>
+            <span class="fb-stat-copy">
+                <strong class="fb-stat-value"><?= htmlSC((string)$card['value']) ?></strong>
+                <span class="fb-stat-label"><?= htmlSC((string)$card['label']) ?></span>
+                <?php if (!empty($card['meta'])): ?>
+                    <span class="fb-stat-meta"><i class="ci-arrow-up-right" aria-hidden="true"></i><?= htmlSC((string)$card['meta']) ?></span>
+                <?php endif; ?>
+            </span>
+        </a>
+    <?php endforeach; ?>
+</section>
 
-    <section class="mt-4" data-admin-analytics data-admin-analytics-payload="<?= htmlSC($analyticsJson ?: '{}') ?>" data-admin-analytics-i18n="<?= htmlSC($analyticsI18nJson ?: '{}') ?>">
-        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+<section
+    class="fb-dashboard-grid"
+    data-admin-analytics
+    data-admin-analytics-payload="<?= htmlSC($analyticsJson ?: '{}') ?>"
+    data-admin-analytics-i18n="<?= htmlSC($analyticsI18nJson ?: '{}') ?>"
+>
+    <article class="fb-card fb-dashboard-widget">
+        <header class="fb-card-header">
             <div>
-                <h2 class="h5 mb-1"><?= print_translation('admin_analytics_title') ?></h2>
-                <p class="text-body-secondary mb-0"><?= print_translation('admin_analytics_subtitle') ?></p>
+                <h2 class="fb-card-title"><?= print_translation('admin_analytics_traffic_title') ?></h2>
+                <p class="fb-card-subtitle"><?= print_translation('admin_dashboard_traffic_subtitle') ?></p>
             </div>
-            <a class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin/analytics') ?>">
-                <?= print_translation('admin_analytics_view_all') ?><i class="ci-arrow-right"></i>
-            </a>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <?= print_translation('admin_analytics_range_7') ?>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end">
+                    <?php foreach (['7', '30', '90'] as $range): ?>
+                        <button
+                            class="dropdown-item<?= $range === '7' ? ' active' : '' ?>"
+                            type="button"
+                            data-analytics-range="<?= $range ?>"
+                        ><?= print_translation('admin_analytics_range_' . $range) ?></button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </header>
+        <div class="fb-card-body fb-dashboard-chart">
+            <div data-analytics-chart="traffic" aria-label="<?= htmlSC(return_translation('admin_analytics_traffic_title')) ?>"></div>
         </div>
+    </article>
 
-        <div class="row g-3">
-            <?php
-            $analyticsMetricCards = [
-                ['label' => return_translation('admin_analytics_today_visits'), 'value' => (int)($analyticsCards['today_visits'] ?? 0), 'icon' => 'ci-eye'],
-                ['label' => return_translation('admin_analytics_today_unique'), 'value' => (int)($analyticsCards['today_unique'] ?? 0), 'icon' => 'ci-user'],
-                ['label' => return_translation('admin_analytics_visits_7'), 'value' => (int)($analyticsCards['visits_7'] ?? 0), 'icon' => 'ci-activity'],
-                ['label' => return_translation('admin_analytics_visits_30'), 'value' => (int)($analyticsCards['visits_30'] ?? 0), 'icon' => 'ci-calendar'],
-                ['label' => return_translation('admin_analytics_mobile_percent'), 'value' => (float)($analyticsCards['mobile_percent'] ?? 0) . '%', 'icon' => 'ci-smartphone'],
-                ['label' => return_translation('admin_analytics_desktop_percent'), 'value' => (float)($analyticsCards['desktop_percent'] ?? 0) . '%', 'icon' => 'ci-monitor'],
-            ];
-            ?>
-            <?php foreach ($analyticsMetricCards as $card): ?>
-                <div class="col-md-6 col-xl-2">
-                    <div class="border rounded-5 p-3 h-100 admin-shell-profile-card admin-analytics-card d-flex flex-column">
-                        <div class="d-flex align-items-start gap-2 text-body-secondary fs-sm mb-3 admin-analytics-card__label">
-                            <i class="<?= htmlSC($card['icon']) ?>"></i><?= htmlSC($card['label']) ?>
-                        </div>
-                        <div class="h3 mb-0 lh-1 admin-analytics-card__value"><?= htmlSC((string)$card['value']) ?></div>
+    <article class="fb-card fb-dashboard-widget">
+        <header class="fb-card-header">
+            <h2 class="fb-card-title"><?= print_translation('admin_dashboard_quick_actions') ?></h2>
+        </header>
+        <div class="fb-card-body">
+            <div class="fb-quick-actions">
+                <?php foreach ($quickActions as $action): ?>
+                    <?php
+                    if (!is_array($action) || empty($action['label']) || empty($action['href'])) {
+                        continue;
+                    }
+                    if (!empty($action['creator_only']) && !check_creator()) {
+                        continue;
+                    }
+                    ?>
+                    <a
+                        class="fb-quick-action"
+                        href="<?= htmlSC((string)$action['href']) ?>"
+                        style="--fb-action-color: <?= htmlSC((string)($action['color'] ?? 'var(--fb-color-info)')) ?>; --fb-action-soft: <?= htmlSC((string)($action['soft'] ?? 'var(--fb-color-info-soft)')) ?>;"
+                        data-fb-quick-action
+                        data-fb-quick-action-label="<?= htmlSC((string)$action['label']) ?>"
+                        data-fb-quick-action-category="<?= htmlSC(return_translation('admin_dashboard_quick_actions')) ?>"
+                        data-fb-quick-action-icon="<?= htmlSC((string)($action['icon'] ?? 'ci-arrow-right')) ?>"
+                    >
+                        <span class="fb-quick-action-icon"><i class="<?= htmlSC((string)($action['icon'] ?? 'ci-arrow-right')) ?>" aria-hidden="true"></i></span>
+                        <span><?= htmlSC((string)$action['label']) ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </article>
+
+    <article class="fb-card fb-dashboard-widget">
+        <header class="fb-card-header">
+            <h2 class="fb-card-title"><?= print_translation('admin_dashboard_system_status') ?></h2>
+        </header>
+        <div class="fb-card-body">
+            <ul class="fb-system-list">
+                <?php foreach ((array)($system_status ?? []) as $statusItem): ?>
+                    <?php if (!is_array($statusItem)) { continue; } ?>
+                    <li class="fb-system-row">
+                        <i class="ci-check-circle fb-system-status" aria-hidden="true"></i>
+                        <span class="fb-system-label"><?= htmlSC((string)($statusItem['label'] ?? '')) ?></span>
+                        <strong class="fb-system-value"><?= htmlSC((string)($statusItem['value'] ?? '—')) ?></strong>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </article>
+
+    <article class="fb-card fb-dashboard-widget">
+        <header class="fb-card-header">
+            <h2 class="fb-card-title"><?= print_translation('admin_dashboard_recent_pages') ?></h2>
+            <a class="btn btn-sm btn-link" href="<?= base_href('/admin/pages') ?>"><?= print_translation('admin_dashboard_view_all') ?></a>
+        </header>
+        <div class="fb-card-body pt-3">
+            <?php if (!empty($latest_pages)): ?>
+                <ul class="fb-simple-list">
+                    <?php foreach ((array)$latest_pages as $page): ?>
+                        <li class="fb-simple-list-item">
+                            <span class="fb-simple-list-leading"><i class="ci-file" aria-hidden="true"></i></span>
+                            <div class="fb-simple-list-copy">
+                                <a class="fb-simple-list-title d-block text-decoration-none" href="<?= base_href('/admin/pages/edit/' . (int)($page['id'] ?? 0)) ?>">
+                                    <?= htmlSC((string)($page['title'] ?? '')) ?>
+                                </a>
+                                <div class="fb-simple-list-meta">/<?= htmlSC((string)($page['slug'] ?? '')) ?> · <?= htmlSC(date('d.m.Y', strtotime((string)($page['updated_at'] ?? 'now')) ?: time())) ?></div>
+                            </div>
+                            <span class="fb-list-status"><?= htmlSC(return_translation(!empty($page['is_published']) ? 'admin_dashboard_published' : 'admin_dashboard_draft')) ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <div class="fb-empty-state">
+                    <div>
+                        <span class="fb-empty-state-icon"><i class="ci-file" aria-hidden="true"></i></span>
+                        <p class="mb-0"><?= print_translation('admin_dashboard_no_pages') ?></p>
                     </div>
                 </div>
-            <?php endforeach; ?>
+            <?php endif; ?>
         </div>
+    </article>
 
-        <div class="row g-3 mt-1">
-            <div class="col-xl-8">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                        <div>
-                            <h3 class="h5 mb-1"><?= print_translation('admin_analytics_traffic_title') ?></h3>
-                            <p class="text-body-secondary mb-0"><?= print_translation('admin_analytics_traffic_subtitle') ?></p>
-                        </div>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="<?= htmlSC(return_translation('admin_analytics_range_label')) ?>">
-                            <button class="btn btn-outline-secondary active" type="button" data-analytics-range="7"><?= print_translation('admin_analytics_range_7') ?></button>
-                            <button class="btn btn-outline-secondary" type="button" data-analytics-range="30"><?= print_translation('admin_analytics_range_30') ?></button>
-                            <button class="btn btn-outline-secondary" type="button" data-analytics-range="90"><?= print_translation('admin_analytics_range_90') ?></button>
-                        </div>
-                    </div>
-                    <div style="min-height: 320px" data-analytics-chart="traffic"></div>
-                </div>
-            </div>
-            <div class="col-xl-4">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
-                    <h3 class="h5 mb-1"><?= print_translation('admin_analytics_sources_title') ?></h3>
-                    <p class="text-body-secondary mb-3"><?= print_translation('admin_analytics_sources_subtitle') ?></p>
-                    <div style="min-height: 320px" data-analytics-chart="sources"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-3 mt-1">
-            <div class="col-lg-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
-                    <h3 class="h5 mb-1"><?= print_translation('admin_analytics_geo_title') ?></h3>
-                    <p class="text-body-secondary mb-3"><?= print_translation('admin_analytics_col_visits') ?></p>
-                    <div style="min-height: 300px" data-analytics-chart="countries"></div>
-                    <div class="small text-body-tertiary mt-3">
-                        <a class="text-body-tertiary" href="https://db-ip.com" target="_blank" rel="noopener noreferrer">IP Geolocation by DB-IP</a>
+    <article class="fb-card fb-dashboard-widget">
+        <header class="fb-card-header">
+            <h2 class="fb-card-title"><?= print_translation('admin_dashboard_installed_plugins') ?></h2>
+            <a class="btn btn-sm btn-link" href="<?= base_href('/admin/plugins') ?>"><?= print_translation('admin_dashboard_view_all') ?></a>
+        </header>
+        <div class="fb-card-body pt-3">
+            <?php if (!empty($active_plugins)): ?>
+                <ul class="fb-simple-list">
+                    <?php foreach (array_slice((array)$active_plugins, 0, 5) as $plugin): ?>
+                        <li class="fb-simple-list-item">
+                            <span class="fb-simple-list-leading"><i class="ci-box" aria-hidden="true"></i></span>
+                            <div class="fb-simple-list-copy">
+                                <div class="fb-simple-list-title"><?= htmlSC((string)($plugin['name'] ?? $plugin['slug'] ?? '')) ?></div>
+                                <div class="fb-simple-list-meta"><?= htmlSC((string)($plugin['version'] ?? '')) ?></div>
+                            </div>
+                            <span class="fb-list-status"><?= print_translation('admin_plugins_status_active') ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <div class="fb-empty-state">
+                    <div>
+                        <span class="fb-empty-state-icon"><i class="ci-box" aria-hidden="true"></i></span>
+                        <p class="mb-0"><?= print_translation('admin_dashboard_no_plugins') ?></p>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card">
-                    <h3 class="h5 mb-1"><?= print_translation('admin_analytics_devices_title') ?></h3>
-                    <p class="text-body-secondary mb-3"><?= print_translation('admin_analytics_devices_subtitle') ?></p>
-                    <div style="min-height: 300px" data-analytics-chart="devices"></div>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
+    </article>
 
-        <div class="row g-3 mt-1">
-            <div class="col-xl-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
-                    <h3 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h3>
-                    <?php $pagesMobileCards = []; ?>
-                    <?php ob_start(); ?>
-                        <thead>
-                            <tr><th><?= print_translation('admin_analytics_col_page') ?></th><th class="text-end"><?= print_translation('admin_analytics_col_views') ?></th></tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach (($analytics['pages'] ?? []) as $row): ?>
-                                <?php
-                                $pagesMobileCards[] = [
-                                    'title' => (string)($row['label'] ?? '/'),
-                                    'views' => (int)($row['total'] ?? 0),
-                                    'views_label' => return_translation('admin_analytics_col_views'),
-                                ];
-                                ?>
-                                <tr>
-                                    <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
-                                    <td class="text-end admin-analytics-page-views"><?= (int)($row['total'] ?? 0) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            <?php if (empty($analytics['pages'])): ?>
-                                <tr><td colspan="2" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    <?php $adminTableContent = ob_get_clean(); ?>
-                    <?= view()->renderPartial('admin/partials/table', [
-                        'content' => $adminTableContent,
-                        'table_class' => 'admin-analytics-table admin-analytics-table--pages',
-                        'mobile_cards' => $pagesMobileCards,
-                    ]) ?>
+    <article class="fb-card fb-dashboard-widget">
+        <header class="fb-card-header">
+            <h2 class="fb-card-title"><?= print_translation('admin_dashboard_recent_activity') ?></h2>
+            <a class="btn btn-sm btn-link" href="<?= base_href('/admin/security/logs') ?>"><?= print_translation('admin_dashboard_view_all') ?></a>
+        </header>
+        <div class="fb-card-body pt-3">
+            <?php if ($activityItems !== []): ?>
+                <ul class="fb-activity-list">
+                    <?php foreach (array_slice($activityItems, 0, 6) as $activityItem): ?>
+                        <?php
+                        if (!is_array($activityItem) || empty($activityItem['event'])) {
+                            continue;
+                        }
+                        $event = trim(str_replace(['.', '_', '-'], ' ', (string)$activityItem['event']));
+                        $actor = trim((string)($activityItem['actor_login'] ?? ''));
+                        $createdAt = strtotime((string)($activityItem['created_at'] ?? '')) ?: time();
+                        ?>
+                        <li class="fb-activity-item">
+                            <span class="fb-activity-icon"><i class="ci-activity" aria-hidden="true"></i></span>
+                            <div class="fb-activity-copy">
+                                <div class="fb-activity-title"><?= htmlSC(ucfirst($event)) ?></div>
+                                <div class="fb-activity-meta">
+                                    <?= $actor !== '' ? '@' . htmlSC($actor) . ' · ' : '' ?><?= htmlSC(date('d.m.Y H:i', $createdAt)) ?>
+                                </div>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <div class="fb-empty-state">
+                    <div>
+                        <span class="fb-empty-state-icon"><i class="ci-activity" aria-hidden="true"></i></span>
+                        <p class="mb-0"><?= print_translation('admin_dashboard_no_activity') ?></p>
+                    </div>
                 </div>
-            </div>
-            <div class="col-xl-6">
-                <div class="border rounded-5 p-3 p-md-4 h-100 admin-shell-profile-card admin-table-card" data-admin-table>
-                    <h3 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h3>
-                    <?php $latestMobileCards = []; ?>
-                    <?php ob_start(); ?>
-                        <thead>
-                            <tr>
-                                <th><?= print_translation('admin_analytics_col_time') ?></th>
-                                <th><?= print_translation('admin_analytics_col_country') ?></th>
-                                <th><?= print_translation('admin_analytics_col_device') ?></th>
-                                <th><?= print_translation('admin_analytics_col_browser') ?></th>
-                                <th><?= print_translation('admin_analytics_col_source') ?></th>
-                                <th><?= print_translation('admin_analytics_col_page') ?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach (($analytics['latest'] ?? []) as $row): ?>
-                                <?php
-                                $visitTime = date('d.m H:i', strtotime((string)($row['created_at'] ?? 'now')));
-                                $latestMobileCards[] = [
-                                    'title' => (string)($row['current_page'] ?? '/'),
-                                    'category' => (string)($row['country'] ?? $unknownCountryLabel),
-                                    'category_label' => return_translation('admin_analytics_col_country'),
-                                    'published_at' => $visitTime,
-                                    'published_at_label' => return_translation('admin_analytics_col_time'),
-                                    'extra_fields' => [
-                                        [
-                                            'label' => return_translation('admin_analytics_col_device'),
-                                            'value' => trim((string)($row['device_type'] ?? '') . ' / ' . (string)($row['os'] ?? ''), ' /'),
-                                        ],
-                                        [
-                                            'label' => return_translation('admin_analytics_col_browser'),
-                                            'value' => (string)($row['browser'] ?? ''),
-                                        ],
-                                        [
-                                            'label' => return_translation('admin_analytics_col_source'),
-                                            'value' => (string)($row['source'] ?? ''),
-                                        ],
-                                    ],
-                                ];
-                                ?>
-                                <tr>
-                                    <td class="text-nowrap"><?= htmlSC($visitTime) ?></td>
-                                    <td><?= htmlSC((string)($row['country'] ?? $unknownCountryLabel)) ?></td>
-                                    <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
-                                    <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
-                                    <td><?= htmlSC((string)($row['source'] ?? '')) ?></td>
-                                    <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['current_page'] ?? '/')) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            <?php if (empty($analytics['latest'])): ?>
-                                <tr><td colspan="6" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    <?php $adminTableContent = ob_get_clean(); ?>
-                    <?= view()->renderPartial('admin/partials/table', [
-                        'content' => $adminTableContent,
-                        'table_class' => 'admin-analytics-table admin-analytics-table--latest',
-                        'mobile_cards' => $latestMobileCards,
-                    ]) ?>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
-    </section>
+    </article>
 
-    <div class="row g-3 mt-1">
-        <div class="col-md-6 col-xl-4">
-            <a class="border rounded-5 p-4 h-100 d-flex align-items-start gap-3 text-decoration-none text-reset admin-shell-profile-card admin-shell-action-card" href="<?= base_href('/admin/posts/create') ?>">
-                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-dark text-white flex-shrink-0 admin-shell-action-card__icon" style="width: 3rem; height: 3rem;"><i class="ci-plus"></i></span>
-                <span>
-                    <span class="d-block fw-semibold mb-1"><?= print_translation('admin_posts_create') ?></span>
-                    <span class="d-block text-body-secondary small"><?= print_translation('admin_posts_subtitle') ?></span>
-                </span>
-            </a>
-        </div>
-        <div class="col-md-6 col-xl-4">
-            <a class="border rounded-5 p-4 h-100 d-flex align-items-start gap-3 text-decoration-none text-reset admin-shell-profile-card admin-shell-action-card" href="<?= base_href('/admin/settings') ?>">
-                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary flex-shrink-0 admin-shell-action-card__icon" style="width: 3rem; height: 3rem;"><i class="ci-settings"></i></span>
-                <span>
-                    <span class="d-block fw-semibold mb-1"><?= print_translation('admin_nav_settings') ?></span>
-                    <span class="d-block text-body-secondary small"><?= print_translation('admin_settings_subtitle') ?></span>
-                </span>
-            </a>
-        </div>
-        <?php if (check_creator()): ?>
-        <div class="col-md-6 col-xl-4">
-            <a class="border rounded-5 p-4 h-100 d-flex align-items-start gap-3 text-decoration-none text-reset admin-shell-profile-card admin-shell-action-card" href="<?= base_href('/admin/updates') ?>">
-                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary flex-shrink-0 admin-shell-action-card__icon" style="width: 3rem; height: 3rem;"><i class="ci-refresh-cw"></i></span>
-                <span>
-                    <span class="d-block fw-semibold mb-1"><?= print_translation('admin_nav_updates') ?></span>
-                    <span class="d-block text-body-secondary small"><?= print_translation('admin_update_center_subtitle') ?></span>
-                </span>
-            </a>
-        </div>
-        <?php endif; ?>
-    </div>
-    <?= view()->renderPartial('admin/shell_close') ?>
+    <?php foreach ($pluginWidgets as $pluginWidget): ?>
+        <?php
+        if (!is_array($pluginWidget) || empty($pluginWidget['content'])) {
+            continue;
+        }
+        $span = max(1, min(3, (int)($pluginWidget['span'] ?? 1)));
+        ?>
+        <article class="fb-card fb-dashboard-widget<?= $span > 1 ? ' fb-dashboard-span-' . $span : '' ?>">
+            <?php if (!empty($pluginWidget['title'])): ?>
+                <header class="fb-card-header"><h2 class="fb-card-title"><?= htmlSC((string)$pluginWidget['title']) ?></h2></header>
+            <?php endif; ?>
+            <div class="fb-card-body"><?= (string)$pluginWidget['content'] ?></div>
+        </article>
+    <?php endforeach; ?>
+</section>
+
+<?= view()->renderPartial('admin/shell_close') ?>

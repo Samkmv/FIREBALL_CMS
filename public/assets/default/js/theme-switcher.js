@@ -5,7 +5,10 @@
 ;(() => {
   'use strict'
 
-  const getStoredTheme = () => localStorage.getItem('theme')
+  const getStoredTheme = () => {
+    const theme = localStorage.getItem('theme')
+    return ['light', 'dark', 'auto'].includes(theme) ? theme : null
+  }
   const setStoredTheme = (theme) => localStorage.setItem('theme', theme)
 
   const getPreferredTheme = () => {
@@ -29,6 +32,13 @@
 
   setTheme(getPreferredTheme())
 
+  try {
+    document.documentElement.dataset.fbSidebarCollapsed =
+      localStorage.getItem('fireball.admin.sidebar.collapsed') === '1' ? 'true' : 'false'
+  } catch (error) {
+    document.documentElement.dataset.fbSidebarCollapsed = 'false'
+  }
+
   const showActiveTheme = (theme, focus = false) => {
     const themeSwitcher = document.querySelector('.theme-switcher')
 
@@ -40,6 +50,9 @@
     const btnToActive = document.querySelector(
       `[data-bs-theme-value="${theme}"]`
     )
+    if (!btnToActive || !activeThemeIcon) {
+      return
+    }
     const iconOfActiveBtn = btnToActive.querySelector('.theme-icon i').className
 
     document.querySelectorAll('[data-bs-theme-value]').forEach((element) => {
@@ -50,10 +63,8 @@
     btnToActive.classList.add('active')
     btnToActive.setAttribute('aria-pressed', 'true')
     activeThemeIcon.className = iconOfActiveBtn
-    themeSwitcher.setAttribute(
-      'aria-label',
-      `Toggle theme (${btnToActive.dataset.bsThemeValue})`
-    )
+    const themeLabel = themeSwitcher.dataset.themeLabel || 'Theme'
+    themeSwitcher.setAttribute('aria-label', `${themeLabel}: ${btnToActive.textContent.trim()}`)
 
     if (focus) {
       themeSwitcher.focus()

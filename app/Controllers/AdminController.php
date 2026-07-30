@@ -75,19 +75,74 @@ class AdminController extends BaseController
         $stats = $this->blog->getStats();
         $stats = array_merge($stats, $this->analytics->getStats());
         $stats = array_merge($stats, $this->support->getStats());
-        $stats['pages'] = (int)($this->pages->getPaginated(['per_page' => 1])['total'] ?? 0);
+        $latestPages = $this->pages->getPaginated([
+            'per_page' => 5,
+            'sort' => 'updated_at',
+            'direction' => 'desc',
+        ]);
+        $stats['pages'] = (int)($latestPages['total'] ?? 0);
         $stats['contact_requests'] = $this->contactRequests->countAll();
         $stats['contact_requests_new'] = $this->contactRequests->countNew();
+
+        $plugins = [];
+        try {
+            $plugins = plugin_manager()->all();
+        } catch (\Throwable $exception) {
+            log_error_details('Admin dashboard plugin summary failed', [], $exception);
+        }
+        $activePlugins = array_values(array_filter(
+            $plugins,
+            static fn(array $plugin): bool => (string)($plugin['status'] ?? '') === 'active'
+        ));
+        $stats['active_plugins'] = count($activePlugins);
+
+        $activity = [];
+        try {
+            $activity = (array)($this->securityLogs->getPaginated([
+                'per_page' => 6,
+                'sort' => 'created_at',
+                'direction' => 'desc',
+            ])['items'] ?? []);
+        } catch (\Throwable $exception) {
+            log_error_details('Admin dashboard activity summary failed', [], $exception);
+        }
+
+        $updateCenter = check_creator() ? $this->updateCenter->getDashboardData() : [];
+        $engineRelease = require CONFIG . '/version.php';
+        $freeBytes = @disk_free_space(ROOT);
+        $formatBytes = static function (int|float|false $bytes): string {
+            if ($bytes === false || $bytes < 0) {
+                return '—';
+            }
+
+            $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            $value = (float)$bytes;
+            $unit = 0;
+            while ($value >= 1024 && $unit < count($units) - 1) {
+                $value /= 1024;
+                $unit++;
+            }
+
+            return number_format($value, $unit > 1 ? 1 : 0, '.', ' ') . ' ' . $units[$unit];
+        };
 
         return view('admin/dashboard', [
             'title' => return_translation('admin_dashboard_title'),
             'stats' => $stats,
             'analytics_dashboard' => $this->analyticsService->dashboardData(),
-            'engine_release' => require CONFIG . '/version.php',
-            'update_center' => check_creator() ? $this->updateCenter->getDashboardData() : [],
+            'engine_release' => $engineRelease,
+            'update_center' => $updateCenter,
+            'active_plugins' => $activePlugins,
+            'latest_pages' => (array)($latestPages['items'] ?? []),
+            'recent_activity' => $activity,
+            'system_status' => [
+                ['label' => return_translation('admin_dashboard_system_cms'), 'value' => (string)($engineRelease['version'] ?? '—'), 'status' => 'success'],
+                ['label' => return_translation('admin_dashboard_system_php'), 'value' => PHP_VERSION, 'status' => 'success'],
+                ['label' => return_translation('admin_dashboard_system_database'), 'value' => return_translation('admin_dashboard_connected'), 'status' => 'success'],
+                ['label' => return_translation('admin_dashboard_system_disk'), 'value' => $formatBytes($freeBytes), 'status' => $freeBytes === false ? 'warning' : 'success'],
+            ],
             'footer_scripts' => [
                 base_url('/assets/default/vendor/chart.js/chart.umd.js'),
-                base_url('/assets/default/vendor/apexcharts/apexcharts.min.js?v=' . filemtime(WWW . '/assets/default/vendor/apexcharts/apexcharts.min.js')),
                 base_url('/assets/default/js/admin-analytics.js?v=' . filemtime(WWW . '/assets/default/js/admin-analytics.js')),
             ],
         ]);

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'chat_index_title' => 'Чат с клиентами',
+    'chat_index_title' => 'Чат',
     'chat_index_heading' => 'Чат',
     'chat_index_subtitle' => 'Сообщения хранятся в зашифрованном виде.',
     'chat_contacts_title' => 'Диалоги',

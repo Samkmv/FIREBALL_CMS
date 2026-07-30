@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'chat_index_title' => 'Kundenchat',
+    'chat_index_title' => 'Chat',
     'chat_index_heading' => 'Chat',
     'chat_index_subtitle' => 'Nachrichten werden verschluesselt gespeichert.',
     'chat_contacts_title' => 'Dialoge',

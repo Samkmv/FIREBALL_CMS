@@ -83,6 +83,9 @@ if ($currentUser) {
     \FBL\Auth::touchPresence();
 }
 $isAdmin = check_admin();
+$adminAreaPath = '/' . ltrim((string)uri_without_lang(), '/');
+$adminAreaPath = rtrim($adminAreaPath, '/') ?: '/';
+$isAdminArea = $adminAreaPath === '/admin' || str_starts_with($adminAreaPath, '/admin/');
 $hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="#adminSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
@@ -186,7 +189,20 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?= pwa_head_tags() ?>
 
     <!-- Theme switcher (color modes) -->
-    <script src="<?= base_url('/assets/default/js/theme-switcher.js') ?>"></script>
+    <script src="<?= base_url('/assets/default/js/theme-switcher.js?v=' . filemtime(WWW . '/assets/default/js/theme-switcher.js')) ?>"></script>
+    <?php if ($isAdminArea): ?>
+        <script>
+            (() => {
+                try {
+                    document.documentElement.dataset.fbSidebarCollapsed =
+                        window.localStorage.getItem('fireball.admin.sidebar.collapsed') === '1' ? 'true' : 'false';
+                } catch (error) {
+                    document.documentElement.dataset.fbSidebarCollapsed = 'false';
+                }
+                document.documentElement.dataset.fbAdminHydrated = 'false';
+            })();
+        </script>
+    <?php endif; ?>
 
     <!-- Font icons -->
     <link rel="preload" href="<?= base_url('/assets/default/icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
@@ -213,6 +229,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Customs styles -->
     <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= base_url('/assets/default/css/style.css?v=' . filemtime(WWW . '/assets/default/css/style.css')) ?>">
+    <?php if ($isAdminArea): ?>
+        <link rel="stylesheet" href="<?= base_url('/assets/default/css/admin-ui.css?v=' . filemtime(WWW . '/assets/default/css/admin-ui.css')) ?>">
+    <?php endif; ?>
     <?php if (!$canViewVideoStatus): ?>
         <style id="fb-video-status-privacy">
             .fb-plyr-hls-message--info,
@@ -240,6 +259,8 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
 <!-- Body -->
 <body
+    class="<?= $isAdminArea ? 'fb-admin-body' : '' ?>"
+    data-admin-area="<?= $isAdminArea ? '1' : '0' ?>"
     data-toast-success-title="<?= htmlSC(return_translation('toast_success_title')) ?>"
     data-toast-error-title="<?= htmlSC(return_translation('toast_error_title')) ?>"
     data-toast-info-title="<?= htmlSC(return_translation('toast_info_title')) ?>"
@@ -260,6 +281,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-pwa-safari-hint="<?= htmlSC(return_translation('pwa_safari_install_hint')) ?>"
 >
 
+<?php if (!$isAdminArea): ?>
 <nav class="offcanvas offcanvas-start" id="navbarNav" tabindex="-1" aria-labelledby="navbarNavLabel">
     <div class="offcanvas-header py-3">
         <h5 class="offcanvas-title" id="navbarNavLabel"><?= print_translation('tpl_menu_nav') ?></h5>
@@ -633,12 +655,14 @@ $postCategoryUrl = static function (?string $slug = null): string {
         </div>
     </div>
 </header>
+<?php endif; ?>
 
 <!-- Вызов быстрых flash уведомлений -->
-<?php get_alerts(); ?>
+<?php if (!$isAdminArea) { get_alerts(); } ?>
 
 <?= $this->content; ?>
 
+<?php if (!$isAdminArea): ?>
 <!-- Page footer -->
 <footer class="footer position-relative bg-dark<?= $hasMobileSidebarToggle ? ' mobile-sidebar-layout-footer' : '' ?>">
     <span class="position-absolute top-0 start-0 w-100 h-100 bg-body d-none d-block-dark"></span>
@@ -739,8 +763,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
         </div>
     </div>
 </footer>
+<?php endif; ?>
 
-<?php if ($isAdmin): ?>
+<?php if ($isAdminArea): ?>
     <div class="modal fade" id="adminDeleteModal" tabindex="-1" aria-hidden="true" data-admin-delete-modal>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-5 overflow-hidden">
@@ -769,6 +794,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     </div>
 <?php endif; ?>
 
+<?php if (!$isAdminArea): ?>
 <!-- Back to top button -->
 <div class="floating-buttons position-fixed top-50 end-0 z-sticky me-3 me-xl-4 pb-4">
     <a class="btn-scroll-top btn btn-sm bg-body border-0 rounded-pill shadow animate-slide-end" href="#top">
@@ -780,6 +806,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
         </svg>
     </a>
 </div>
+<?php endif; ?>
 
 <script>
     const baseUrl = '<?= base_url(); ?>';
@@ -894,11 +921,14 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script src="<?= base_url('/assets/default/js/select-init.js?v=' . filemtime(WWW . '/assets/default/js/select-init.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/plyr-init.js?v=' . filemtime(WWW . '/assets/default/js/plyr-init.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/pwa.js?v=' . filemtime(WWW . '/assets/default/js/pwa.js')) ?>"></script>
-<?php if ($isAdmin): ?>
+<?php if ($isAdminArea): ?>
     <script src="<?= base_url('/assets/default/js/admin-delete-modal.js?v=' . filemtime(WWW . '/assets/default/js/admin-delete-modal.js')) ?>"></script>
     <script src="<?= base_url('/assets/default/js/datatable.js?v=' . filemtime(WWW . '/assets/default/js/datatable.js')) ?>"></script>
 <?php endif; ?>
 <script src="<?= base_url('/assets/default/js/main.js?v=' . filemtime(WWW . '/assets/default/js/main.js')) ?>"></script>
+<?php if ($isAdminArea): ?>
+    <script src="<?= base_url('/assets/default/js/admin-ui.js?v=' . filemtime(WWW . '/assets/default/js/admin-ui.js')) ?>"></script>
+<?php endif; ?>
 
 
 </body></html>

@@ -1,53 +1,104 @@
 <?php
 $currentUser = get_user() ?: [];
+$sidebarVariant = (string)($variant ?? 'desktop');
+$isMobileSidebar = $sidebarVariant === 'mobile';
 $roleSlug = (string)($currentUser['role'] ?? 'user');
-$roleBadgeClass = match ($roleSlug) {
-    'creator' => 'text-bg-warning',
-    'admin' => 'text-bg-info',
-    default => 'text-bg-secondary',
-};
 ?>
 
-<div data-admin-sidebar-panel>
-    <div class="border rounded-5 p-4 mb-4 admin-shell-profile-card">
-        <div class="d-flex align-items-center gap-3 mb-3">
-            <img
-                src="<?= get_user_avatar($currentUser['avatar'] ?? null, 'sm') ?>"
-                alt="<?= htmlSC((string)($currentUser['name'] ?? '')) ?>"
-                class="rounded-circle border object-fit-cover flex-shrink-0"
-                style="width: 56px; height: 56px;"
+<div class="fb-sidebar-inner">
+    <div class="fb-sidebar-head">
+        <a class="fb-brand" href="<?= base_href('/admin') ?>" aria-label="<?= htmlSC(return_translation('admin_dashboard_heading')) ?>">
+            <span class="fb-brand-mark" aria-hidden="true"><i class="ci-zap"></i></span>
+            <span class="fb-brand-copy">
+                <strong>FIREBALL</strong>
+                <span>CMS</span>
+            </span>
+        </a>
+
+        <?php if ($isMobileSidebar): ?>
+            <button
+                type="button"
+                class="fb-icon-button fb-sidebar-close"
+                data-bs-dismiss="offcanvas"
+                aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"
             >
-            <div class="min-w-0">
-                <div class="fw-semibold text-truncate"><?= htmlSC((string)($currentUser['name'] ?? '')) ?></div>
-                <div class="small text-body-secondary text-truncate">@<?= htmlSC((string)($currentUser['login'] ?? '')) ?></div>
-            </div>
-        </div>
-        <div class="d-flex align-items-center justify-content-between gap-2">
-            <span class="badge <?= $roleBadgeClass ?> rounded-pill px-3"><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
-            <a class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/profile') ?>">
-                <i class="ci-user"></i>
-                <span><?= print_translation('tpl_auth_profile') ?></span>
-            </a>
-        </div>
+                <i class="ci-close" aria-hidden="true"></i>
+            </button>
+        <?php else: ?>
+            <button
+                type="button"
+                class="fb-icon-button fb-sidebar-collapse"
+                data-fb-sidebar-toggle
+                data-label-collapse="<?= htmlSC(return_translation('admin_ui_sidebar_collapse')) ?>"
+                data-label-expand="<?= htmlSC(return_translation('admin_ui_sidebar_expand')) ?>"
+                aria-expanded="true"
+                aria-label="<?= htmlSC(return_translation('admin_ui_sidebar_collapse')) ?>"
+                title="<?= htmlSC(return_translation('admin_ui_sidebar_collapse')) ?>"
+            >
+                <i class="ci-chevron-left" aria-hidden="true"></i>
+            </button>
+        <?php endif; ?>
     </div>
 
-    <?= view()->renderPartial('admin/nav') ?>
+    <div
+        class="fb-sidebar-scroll"
+        data-fb-sidebar-scroll
+        data-simplebar
+        data-simplebar-auto-hide="false"
+        data-simplebar-force-visible="y"
+        data-simplebar-scrollbar-min-size="44"
+        data-simplebar-scrollbar-max-size="180"
+    >
+        <?= view()->renderPartial('admin/nav', ['variant' => $sidebarVariant]) ?>
+    </div>
 
-    <div class="border rounded-5 p-3 p-xl-4 mt-4 admin-shell-quicklinks">
-        <div class="fw-bold mb-3"><?= print_translation('footer_heading_admin') ?></div>
-        <div class="d-grid gap-2">
-            <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/') ?>">
-                <i class="ci-home"></i>
+    <div class="fb-sidebar-footer">
+        <a
+            class="fb-sidebar-user"
+            href="<?= base_href('/profile') ?>"
+            aria-label="<?= htmlSC(return_translation('tpl_auth_profile')) ?>"
+            title="<?= htmlSC((string)($currentUser['name'] ?? '')) ?>"
+        >
+            <img
+                class="fb-sidebar-user-avatar"
+                src="<?= get_user_avatar($currentUser['avatar'] ?? null, 'sm') ?>"
+                alt=""
+            >
+            <span class="fb-sidebar-user-copy">
+                <strong><?= htmlSC((string)($currentUser['name'] ?? '')) ?></strong>
+                <span><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
+            </span>
+            <i class="ci-chevron-right fb-sidebar-user-arrow" aria-hidden="true"></i>
+        </a>
+
+        <div class="fb-sidebar-footer-actions">
+            <a
+                class="fb-sidebar-footer-link"
+                href="<?= base_href('/') ?>"
+                aria-label="<?= htmlSC(return_translation('tpl_menu_nav_index')) ?>"
+                title="<?= htmlSC(return_translation('tpl_menu_nav_index')) ?>"
+            >
+                <i class="ci-home" aria-hidden="true"></i>
                 <span><?= print_translation('tpl_menu_nav_index') ?></span>
             </a>
-            <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/chat') ?>">
-                <i class="ci-chat"></i>
+            <a
+                class="fb-sidebar-footer-link"
+                href="<?= base_href('/chat') ?>"
+                aria-label="<?= htmlSC(return_translation('tpl_auth_chat')) ?>"
+                title="<?= htmlSC(return_translation('tpl_auth_chat')) ?>"
+            >
+                <i class="ci-chat" aria-hidden="true"></i>
                 <span><?= print_translation('tpl_auth_chat') ?></span>
             </a>
             <form action="<?= base_href('/logout') ?>" method="post">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 w-100" type="submit">
-                    <i class="ci-log-out"></i>
+                <button
+                    class="fb-sidebar-footer-link"
+                    type="submit"
+                    aria-label="<?= htmlSC(return_translation('tpl_auth_logout')) ?>"
+                    title="<?= htmlSC(return_translation('tpl_auth_logout')) ?>"
+                >
+                    <i class="ci-log-out" aria-hidden="true"></i>
                     <span><?= print_translation('tpl_auth_logout') ?></span>
                 </button>
             </form>

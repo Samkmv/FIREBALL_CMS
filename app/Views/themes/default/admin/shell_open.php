@@ -2,51 +2,48 @@
 $adminShellTitle = (string)($title ?? '');
 $adminShellSubtitle = (string)($subtitle ?? '');
 $adminShellActions = (string)($actions ?? '');
-$adminShellContainerClass = (string)($container_class ?? 'container-fluid px-3 px-lg-4 px-xxl-5');
-$adminShellSidebarColClass = (string)($sidebar_col_class ?? 'col-lg-4 col-xl-3');
-$adminShellMainColClass = (string)($main_col_class ?? 'col-lg-8 col-xl-9');
+$adminShellContainerClass = (string)($container_class ?? '');
+$adminShellSidebarColClass = (string)($sidebar_col_class ?? '');
+$adminShellMainColClass = (string)($main_col_class ?? '');
 ?>
 
-<div class="offcanvas offcanvas-start admin-shell-offcanvas d-lg-none" id="adminSidebar" tabindex="-1" aria-labelledby="adminSidebarLabel">
-    <div class="offcanvas-header admin-shell-offcanvas__header">
-        <h5 class="offcanvas-title admin-shell-offcanvas__title" id="adminSidebarLabel"><?= print_translation('admin_dashboard_heading') ?></h5>
-        <button type="button" class="btn-close admin-shell-offcanvas__close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body pt-0 pb-4">
-        <?= view()->renderPartial('admin/sidebar') ?>
-    </div>
-</div>
+<a class="fb-skip-link" href="#fb-admin-content"><?= print_translation('admin_ui_skip_content') ?></a>
 
-<section class="<?= htmlSC($adminShellContainerClass) ?> py-4 py-lg-5" data-admin-shell>
-    <div class="row g-4 g-xl-5 align-items-start">
-        <aside class="<?= htmlSC($adminShellSidebarColClass) ?> d-none d-lg-block">
-            <div class="position-sticky" style="top: 7rem;" data-admin-shell-sidebar>
-                <?= view()->renderPartial('admin/sidebar') ?>
+<div class="fb-admin" data-fb-admin data-admin-shell>
+    <aside class="fb-sidebar d-none d-lg-flex" data-fb-sidebar aria-label="<?= htmlSC(return_translation('admin_mobile_menu_btn')) ?>">
+        <?= view()->renderPartial('admin/sidebar', ['variant' => 'desktop']) ?>
+    </aside>
+
+    <div
+        class="offcanvas offcanvas-start fb-sidebar-drawer d-lg-none"
+        id="adminSidebar"
+        tabindex="-1"
+        aria-labelledby="adminSidebarLabel"
+        data-bs-theme="dark"
+    >
+        <?= view()->renderPartial('admin/sidebar', ['variant' => 'mobile']) ?>
+    </div>
+
+    <div class="fb-admin-main">
+        <?= view()->renderPartial('admin/topbar') ?>
+
+        <main class="fb-content" id="fb-admin-content" tabindex="-1">
+            <div class="fb-alert-root" data-fb-alert-root>
+                <?php get_alerts(); ?>
             </div>
-        </aside>
 
-        <div class="<?= htmlSC($adminShellMainColClass) ?>">
-            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4 mb-lg-5">
-                <div>
-                    <h1 class="h3 mb-1"><?= htmlSC($adminShellTitle) ?></h1>
+            <header class="fb-page-header">
+                <div class="fb-page-heading">
+                    <h1 class="fb-page-title"><?= htmlSC($adminShellTitle) ?></h1>
                     <?php if ($adminShellSubtitle !== ''): ?>
-                        <p class="text-body-secondary mb-0"><?= htmlSC($adminShellSubtitle) ?></p>
+                        <p class="fb-page-subtitle"><?= htmlSC($adminShellSubtitle) ?></p>
                     <?php endif; ?>
                 </div>
                 <?php if ($adminShellActions !== ''): ?>
-                    <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                    <div class="fb-page-actions">
                         <?= $adminShellActions ?>
                     </div>
                 <?php endif; ?>
-            </div>
-            <button
-                type="button"
-                class="fixed-bottom z-sticky w-100 btn btn-lg btn-dark border-0 border-top border-light border-opacity-10 rounded-0 pb-4 d-lg-none admin-shell-mobile-toggle"
-                data-bs-toggle="offcanvas"
-                data-bs-target="#adminSidebar"
-                aria-controls="adminSidebar"
-                data-bs-theme="light"
-            >
-                <i class="ci-sidebar fs-base me-2"></i>
-                <?= print_translation('admin_mobile_menu_btn') ?>
-            </button>
+            </header>
+
+            <div class="fb-page-content <?= htmlSC($adminShellContainerClass) ?>" data-fb-page-content>

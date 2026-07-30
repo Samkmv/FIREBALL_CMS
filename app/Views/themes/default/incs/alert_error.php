@@ -2,8 +2,9 @@
     <div class="d-flex align-items-start">
         <i class="ci-banned text-danger fs-base mt-1 me-2"></i>
         <div class="toast-body me-2">
-            <?= htmlSC($flash_error ?? '') ?>
+            <strong class="d-block mb-1"><?= print_translation('toast_error_title') ?></strong>
+            <span><?= htmlSC($flash_error ?? '') ?></span>
         </div>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"></button>
     </div>
 </div>
