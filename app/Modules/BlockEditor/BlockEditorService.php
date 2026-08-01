@@ -8,17 +8,31 @@ final class BlockEditorService
 
     public static function styleAssets(): array
     {
-        return [
+        $assets = [
             base_url('/assets/default/css/block-editor.css?v=' . filemtime(WWW . '/assets/default/css/block-editor.css')),
         ];
+
+        return array_values((array)apply_filters('fireball_editor_style_assets', $assets));
     }
 
     public static function scriptAssets(): array
     {
-        return [
-            base_url('/assets/default/js/block-editor.js?v=' . filemtime(WWW . '/assets/default/js/block-editor.js')),
-            base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
+        $editorAssets = [
+            '/assets/default/js/editor2/registry.js',
+            '/assets/default/js/editor2/sanitizer.js',
+            '/assets/default/js/editor2/importer.js',
+            '/assets/default/js/editor2/history.js',
+            '/assets/default/js/editor2/editor.js',
         ];
+        $assets = [];
+
+        foreach ($editorAssets as $asset) {
+            $assets[] = base_url($asset . '?v=' . filemtime(WWW . $asset));
+        }
+
+        $assets[] = base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js'));
+
+        return array_values((array)apply_filters('fireball_editor_script_assets', $assets));
     }
 
     public function render(array $options): string
@@ -51,9 +65,13 @@ final class BlockEditorService
     public function buildConfig(string $entityType = 'post', string $defaultDirectory = 'posts'): array
     {
         $entityType = $this->normalizeEntityType($entityType);
+        $currentUser = get_user();
+        $currentUser = is_array($currentUser) ? $currentUser : [];
 
-        return [
+        $config = [
+            'version' => 2,
             'entityType' => $entityType,
+            'userId' => (int)($currentUser['id'] ?? 0),
             'fileManagerUrl' => base_href('/admin/files'),
             'defaultDirectory' => $defaultDirectory,
             'blockTypes' => array_values($this->blockTypes()),
@@ -79,17 +97,57 @@ final class BlockEditorService
                 ['value' => '40px', 'label' => '40px'],
             ],
             'labels' => $this->labels(),
+            'features' => [
+                'smartPaste' => true,
+                'localRecovery' => true,
+                'commandPalette' => true,
+                'documentMode' => true,
+                'structureMode' => true,
+            ],
         ];
+
+        return (array)apply_filters('fireball_editor_config', $config, $entityType);
     }
 
     public function blockTypes(): array
     {
-        return [
+        $types = [
             'text' => $this->blockType('text', 'admin_post_builder_block_text', 'ci-type', ['html' => '']),
             'heading' => $this->blockType('heading', 'admin_post_builder_block_heading', 'ci-hash', ['level' => 'h2', 'html' => '']),
-            'image' => $this->blockType('image', 'admin_post_builder_block_image', 'ci-image', ['src' => '', 'alt' => '', 'caption' => '', 'link' => '']),
-            'video' => $this->blockType('video', 'admin_post_builder_block_video', 'ci-video', ['src' => '', 'poster' => '', 'caption' => '']),
+            'bulletList' => $this->blockType('bulletList', 'editor_block_bullet_list', 'ci-list', ['items' => ['']]),
+            'orderedList' => $this->blockType('orderedList', 'editor_block_ordered_list', 'ci-list-ordered', ['items' => ['']]),
+            'checklist' => $this->blockType('checklist', 'editor_block_checklist', 'ci-check-square', ['items' => [['text' => '', 'checked' => false]]]),
+            'quote' => $this->blockType('quote', 'editor_block_quote', 'ci-quote', ['html' => '', 'cite' => '']),
+            'image' => $this->blockType('image', 'admin_post_builder_block_image', 'ci-image', [
+                'src' => '',
+                'alt' => '',
+                'title' => '',
+                'caption' => '',
+                'link' => '',
+                'lazy' => true,
+                'width' => 0,
+                'height' => 0,
+                'crop' => 'none',
+            ]),
+            'gallery' => $this->blockType('gallery', 'editor_block_gallery', 'ci-grid', ['items' => []]),
+            'video' => $this->blockType('video', 'admin_post_builder_block_video', 'ci-video', [
+                'src' => '',
+                'poster' => '',
+                'caption' => '',
+                'autoplay' => false,
+                'muted' => false,
+                'controls' => true,
+                'loop' => false,
+                'hls' => false,
+                'aspectRatio' => '16:9',
+            ]),
             'audio' => $this->blockType('audio', 'admin_post_builder_block_audio', 'ci-music', ['src' => '', 'caption' => '']),
+            'table' => $this->blockType('table', 'editor_block_table', 'ci-table', [
+                'rows' => [['', ''], ['', '']],
+                'header' => true,
+                'bordered' => true,
+                'responsive' => true,
+            ]),
             'html' => $this->blockType('html', 'admin_post_builder_block_html', 'ci-layout', ['html' => '']),
             'social' => $this->blockType('social', 'admin_post_builder_block_social', 'ci-share-2', ['items' => []]),
             'slider' => $this->blockType('slider', 'admin_post_builder_block_slider', 'ci-sliders', ['items' => []]),
@@ -107,7 +165,15 @@ final class BlockEditorService
                 'buttonIcon' => 'ci-mail',
             ]),
             'code' => $this->blockType('code', 'admin_post_builder_block_code', 'ci-code', ['language' => 'html', 'code' => '']),
+            'divider' => $this->blockType('divider', 'editor_block_divider', 'ci-minus', ['style' => 'solid']),
+            'faq' => $this->blockType('faq', 'editor_block_faq', 'ci-help-circle', ['items' => [['question' => '', 'answer' => '']]]),
+            'button' => $this->blockType('button', 'editor_block_button', 'ci-square', ['text' => 'Button', 'url' => '', 'style' => 'primary', 'align' => 'left']),
+            'embed' => $this->blockType('embed', 'editor_block_embed', 'ci-external-link', ['url' => '', 'caption' => '']),
         ];
+
+        $filtered = apply_filters('fireball_editor_block_types', $types);
+
+        return is_array($filtered) ? $filtered : $types;
     }
 
     public function normalizeEntityType(string $entityType): string
@@ -137,7 +203,11 @@ final class BlockEditorService
         }
 
         foreach ($decoded['blocks'] as $block) {
-            if (!is_array($block) || !$this->isAllowedBlockType((string)($block['type'] ?? ''))) {
+            if (!is_array($block)) {
+                return false;
+            }
+            $type = (string)($block['type'] ?? '');
+            if ($type === '' || !$this->isAllowedBlockType($type)) {
                 return false;
             }
         }
@@ -289,20 +359,137 @@ final class BlockEditorService
         $labels['orderEmpty'] = $this->translateOrFallback('admin_post_builder_order_empty', 'Блоков пока нет.');
         $labels['orderSave'] = $this->translateOrFallback('admin_btn_save', 'Save');
         $labels['close'] = $this->translateOrFallback('admin_btn_close', 'Close');
+        $labels += [
+            'documentMode' => $this->translateOrFallback('editor_mode_document', 'Document'),
+            'structureMode' => $this->translateOrFallback('editor_mode_structure', 'Structure'),
+            'outline' => $this->translateOrFallback('editor_outline', 'Outline'),
+            'blockTab' => $this->translateOrFallback('editor_tab_block', 'Block'),
+            'documentTab' => $this->translateOrFallback('editor_tab_document', 'Document'),
+            'saved' => $this->translateOrFallback('editor_saved', 'Saved'),
+            'saving' => $this->translateOrFallback('editor_saving', 'Saving…'),
+            'saveError' => $this->translateOrFallback('editor_save_error', 'Could not save'),
+            'preview' => $this->translateOrFallback('editor_preview', 'Preview'),
+            'saveDraft' => $this->translateOrFallback('editor_save_draft', 'Save draft'),
+            'publish' => $this->translateOrFallback('editor_publish', 'Publish'),
+            'focusMode' => $this->translateOrFallback('editor_focus_mode', 'Focus mode'),
+            'fullscreen' => $this->translateOrFallback('editor_fullscreen', 'Fullscreen'),
+            'documentSettings' => $this->translateOrFallback('editor_document_settings', 'Document settings'),
+            'commandSearch' => $this->translateOrFallback('editor_command_search', 'Search commands…'),
+            'slashHint' => $this->translateOrFallback('editor_slash_hint', 'Type / for commands'),
+            'searchReplace' => $this->translateOrFallback('editor_search_replace', 'Search and replace'),
+            'wordCount' => $this->translateOrFallback('editor_word_count', 'words'),
+            'blockCountLabel' => $this->translateOrFallback('editor_block_count', 'blocks'),
+            'recoveryTitle' => $this->translateOrFallback('editor_recovery_title', 'Restore local version?'),
+            'recoveryText' => $this->translateOrFallback('editor_recovery_text', 'A newer local version of this document was found.'),
+            'restore' => $this->translateOrFallback('editor_restore', 'Restore'),
+            'discard' => $this->translateOrFallback('editor_discard', 'Discard'),
+            'unsavedConfirm' => $this->translateOrFallback('editor_unsaved_confirm', 'There are unsaved changes. Leave the editor?'),
+            'noBlocks' => $this->translateOrFallback('editor_no_blocks', 'Start writing or press / to add a block.'),
+            'copy' => $this->translateOrFallback('editor_copy', 'Copy'),
+            'cut' => $this->translateOrFallback('editor_cut', 'Cut'),
+            'paste' => $this->translateOrFallback('editor_paste', 'Paste'),
+            'more' => $this->translateOrFallback('editor_more', 'More'),
+            'undo' => $this->translateOrFallback('editor_undo', 'Undo'),
+            'redo' => $this->translateOrFallback('editor_redo', 'Redo'),
+            'strikethrough' => $this->translateOrFallback('editor_strikethrough', 'Strikethrough'),
+            'superscript' => $this->translateOrFallback('editor_superscript', 'Superscript'),
+            'subscript' => $this->translateOrFallback('editor_subscript', 'Subscript'),
+            'inlineCode' => $this->translateOrFallback('editor_inline_code', 'Inline code'),
+            'outdent' => $this->translateOrFallback('editor_outdent', 'Decrease indent'),
+            'indent' => $this->translateOrFallback('editor_indent', 'Increase indent'),
+            'checklist' => $this->translateOrFallback('editor_block_checklist', 'Checklist'),
+            'quotePlaceholder' => $this->translateOrFallback('editor_quote_placeholder', 'Quote'),
+            'authorPlaceholder' => $this->translateOrFallback('editor_author_placeholder', 'Author'),
+            'advanced' => $this->translateOrFallback('editor_advanced', 'Advanced'),
+            'contentWidth' => $this->translateOrFallback('editor_content_width', 'Content width'),
+            'widthDefault' => $this->translateOrFallback('editor_width_default', 'Default'),
+            'widthWide' => $this->translateOrFallback('editor_width_wide', 'Wide'),
+            'widthFull' => $this->translateOrFallback('editor_width_full', 'Full width'),
+            'topSpacing' => $this->translateOrFallback('editor_top_spacing', 'Top spacing'),
+            'bottomSpacing' => $this->translateOrFallback('editor_bottom_spacing', 'Bottom spacing'),
+            'alignment' => $this->translateOrFallback('editor_alignment', 'Alignment'),
+            'alignJustify' => $this->translateOrFallback('editor_align_justify', 'Justify'),
+            'lineHeight' => $this->translateOrFallback('editor_line_height', 'Line height'),
+            'firstLineIndent' => $this->translateOrFallback('editor_first_line_indent', 'First line indent'),
+            'cssClass' => $this->translateOrFallback('editor_css_class', 'CSS class'),
+            'anchor' => $this->translateOrFallback('editor_anchor', 'Anchor'),
+            'hideOnDevices' => $this->translateOrFallback('editor_hide_on_devices', 'Hide on devices'),
+            'desktop' => $this->translateOrFallback('editor_device_desktop', 'Desktop'),
+            'tablet' => $this->translateOrFallback('editor_device_tablet', 'Tablet'),
+            'mobile' => $this->translateOrFallback('editor_device_mobile', 'Mobile'),
+            'caption' => $this->translateOrFallback('editor_caption', 'Caption'),
+            'rows' => $this->translateOrFallback('editor_rows', 'Rows'),
+            'columns' => $this->translateOrFallback('editor_columns', 'Columns'),
+            'headerRow' => $this->translateOrFallback('editor_header_row', 'Header row'),
+            'variant' => $this->translateOrFallback('editor_variant', 'Variant'),
+            'buttonText' => $this->translateOrFallback('editor_button_text', 'Button text'),
+            'contentBlock' => $this->translateOrFallback('editor_content_block', 'Content block'),
+            'noCommands' => $this->translateOrFallback('editor_no_commands', 'No commands found'),
+            'addAbove' => $this->translateOrFallback('editor_add_above', 'Add block above'),
+            'addBelow' => $this->translateOrFallback('editor_add_below', 'Add block below'),
+            'saveTemplate' => $this->translateOrFallback('editor_save_template', 'Save as template'),
+            'templateName' => $this->translateOrFallback('editor_template_name', 'Template name'),
+            'deleteConfirm' => $this->translateOrFallback('editor_delete_confirm', 'Delete selected blocks?'),
+            'insertBlock' => $this->translateOrFallback('editor_insert_block', 'Insert'),
+            'goToBlock' => $this->translateOrFallback('editor_go_to_block', 'Go to block'),
+            'importMarkdown' => $this->translateOrFallback('editor_import_markdown', 'Import Markdown'),
+            'exportMarkdown' => $this->translateOrFallback('editor_export_markdown', 'Export Markdown'),
+            'importMarkdownPrompt' => $this->translateOrFallback('editor_import_markdown_prompt', 'Paste Markdown'),
+            'markdownCopied' => $this->translateOrFallback('editor_markdown_copied', 'Markdown copied'),
+            'previewRight' => $this->translateOrFallback('editor_preview_right', 'Preview on the right'),
+            'previewNew' => $this->translateOrFallback('editor_preview_new', 'Preview in a new tab'),
+            'search' => $this->translateOrFallback('editor_search', 'Search'),
+            'replace' => $this->translateOrFallback('editor_replace', 'Replace'),
+            'replaceAll' => $this->translateOrFallback('editor_replace_all', 'Replace all'),
+            'previous' => $this->translateOrFallback('editor_previous', 'Previous'),
+            'next' => $this->translateOrFallback('editor_next', 'Next'),
+            'matchCase' => $this->translateOrFallback('editor_match_case', 'Match case'),
+            'characterCount' => $this->translateOrFallback('editor_character_count', 'characters'),
+            'readingMinutes' => $this->translateOrFallback('editor_reading_minutes', 'min read'),
+            'lastSaved' => $this->translateOrFallback('editor_last_saved', 'Last saved'),
+            'editorLoadError' => $this->translateOrFallback('editor_load_error', 'The editor could not open this document. The original content is preserved below.'),
+            'imageTitle' => $this->translateOrFallback('editor_image_title', 'Image title'),
+            'lazyLoading' => $this->translateOrFallback('editor_lazy_loading', 'Lazy loading'),
+            'imageWidth' => $this->translateOrFallback('editor_image_width', 'Width'),
+            'imageHeight' => $this->translateOrFallback('editor_image_height', 'Height'),
+            'imageCrop' => $this->translateOrFallback('editor_image_crop', 'Crop'),
+            'videoAutoplay' => $this->translateOrFallback('editor_video_autoplay', 'Autoplay'),
+            'videoMuted' => $this->translateOrFallback('editor_video_muted', 'Muted'),
+            'videoControls' => $this->translateOrFallback('editor_video_controls', 'Show controls'),
+            'videoLoop' => $this->translateOrFallback('editor_video_loop', 'Loop'),
+            'videoHls' => $this->translateOrFallback('editor_video_hls', 'HLS stream'),
+            'aspectRatio' => $this->translateOrFallback('editor_aspect_ratio', 'Aspect ratio'),
+            'tableBordered' => $this->translateOrFallback('editor_table_bordered', 'Borders'),
+            'tableResponsive' => $this->translateOrFallback('editor_table_responsive', 'Responsive'),
+            'moveUp' => $this->translateOrFallback('admin_post_builder_move_up', 'Move up'),
+            'moveDown' => $this->translateOrFallback('admin_post_builder_move_down', 'Move down'),
+            'duplicate' => $this->translateOrFallback('admin_post_builder_duplicate', 'Duplicate'),
+            'remove' => $this->translateOrFallback('admin_post_builder_remove', 'Remove'),
+            'hide' => $this->translateOrFallback('admin_post_builder_hide', 'Hide'),
+            'show' => $this->translateOrFallback('admin_post_builder_show', 'Show'),
+        ];
 
         return $labels;
     }
 
     protected function blockType(string $name, string $titleKey, string $icon, array $defaultContent): array
     {
+        $title = $this->translateOrFallback($titleKey, ucfirst(preg_replace('/(?<!^)[A-Z]/', ' $0', $name) ?? $name));
+
         return [
             'machine_name' => $name,
-            'title' => return_translation($titleKey),
+            'title' => $title,
             'icon' => $icon,
             'template_admin' => $name,
             'template_public' => $name,
             'default_content' => $defaultContent,
             'validation_rules' => [],
+            'supports' => [
+                'anchor' => true,
+                'className' => true,
+                'visibility' => true,
+                'spacing' => true,
+            ],
         ];
     }
 

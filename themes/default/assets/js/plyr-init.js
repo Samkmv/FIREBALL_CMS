@@ -314,10 +314,28 @@
         return message;
     };
 
+    const getBackendWakeTimeoutMs = function () {
+        const config = (window.hlsStreamConfig && typeof window.hlsStreamConfig === 'object')
+            ? window.hlsStreamConfig
+            : {};
+        const numeric = function (value, fallback, min, max) {
+            const number = Number(value);
+            return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
+        };
+        const readyTimeoutMs = numeric(config.readyTimeoutMs, 30000, 1000, 120000);
+        const intervalMs = numeric(config.readyIntervalMs, 1500, 500, 10000);
+        const requestTimeoutMs = numeric(config.httpTimeoutMs, 5000, 1000, 15000);
+
+        // One readiness pass can probe the manifest and its first segment with
+        // HEAD + GET fallbacks. It may start just before readyTimeoutMs expires.
+        return readyTimeoutMs + intervalMs + (requestTimeoutMs * 4) + 2000;
+    };
+
     const wakeBackendStream = async function (element) {
         const streamId = element.dataset.streamId || inferStreamIdFromHlsUrl(element.hlsSource);
 
         if (!streamId) {
+            element.hlsBackendReady = null;
             if (element.hlsSource) {
                 updateVideoDebug(element, {
                     streamId: '',
@@ -334,6 +352,7 @@
             return element.hlsBackendWakePromise;
         }
 
+        element.hlsBackendReady = false;
         updateVideoDebug(element, {
             streamId: streamId,
             backendWake: getBackendWakeDebugText('pending'),
@@ -345,13 +364,14 @@
         element.hlsBackendWakePromise = (async function () {
             let timeoutId = null;
             let timedOut = false;
+            let wakeSucceeded = false;
             const controller = typeof AbortController === 'function' ? new AbortController() : null;
 
             if (controller) {
                 timeoutId = setTimeout(function () {
                     timedOut = true;
                     controller.abort();
-                }, 5000);
+                }, getBackendWakeTimeoutMs());
             }
 
             try {
@@ -375,6 +395,18 @@
                     data = {};
                 }
 
+                wakeSucceeded = Boolean(
+                    response.ok
+                    && data.success !== false
+                    && data.ready === true
+                );
+                element.hlsBackendReady = wakeSucceeded;
+
+                if (wakeSucceeded) {
+                    element.hlsSourcePrewarmed = true;
+                    element.hlsSourcePrewarmedAt = Date.now();
+                }
+
                 updateVideoDebug(element, {
                     streamId: data.stream_id || streamId,
                     backendWake: getBackendWakeDebugText(response.ok && data.success !== false ? 'success' : 'http_error', {
@@ -386,6 +418,7 @@
                 });
             } catch (error) {
                 const isTimeout = timedOut || (error && error.name === 'AbortError');
+                element.hlsBackendReady = false;
                 updateVideoDebug(element, {
                     streamId: streamId,
                     backendWake: getBackendWakeDebugText(isTimeout ? 'timeout' : 'network_error'),
@@ -401,7 +434,7 @@
                 element.hlsBackendWakePromise = null;
             }
 
-            return true;
+            return wakeSucceeded;
         })();
 
         return element.hlsBackendWakePromise;
@@ -1325,6 +1358,10 @@
         }
 
         if (isCrossOriginUrl(element.hlsSource)) {
+            if (inferStreamIdFromHlsUrl(element.hlsSource)) {
+                return Promise.resolve(element.hlsBackendReady === true);
+            }
+
             element.hlsSourcePrewarmed = true;
             element.hlsSourcePrewarmedAt = Date.now();
             return Promise.resolve(true);
@@ -1449,6 +1486,11 @@
             checkedAt: new Date().toLocaleString(),
         });
         resetNativePlaybackState(element);
+
+        const backendReady = await wakeBackendStream(element);
+        if (!backendReady) {
+            return false;
+        }
 
         const isReady = await prepareHlsPlayback(element);
         if (!isReady) {
@@ -1611,9 +1653,13 @@
             element.hlsAutoplayRequested = true;
             element.hlsSourcePrewarmed = false;
             element.hlsSourcePrewarmedAt = 0;
-            const prepare = useNative ? prepareNativeHlsPlayback(element) : prepareHlsPlayback(element);
+            wakeBackendStream(element).then(function (backendReady) {
+                if (!backendReady) {
+                    return false;
+                }
 
-            prepare.then(function (isReady) {
+                return useNative ? prepareNativeHlsPlayback(element) : prepareHlsPlayback(element);
+            }).then(function (isReady) {
                 if (!isReady) {
                     showHlsUnavailable(element, 'reconnect_failed');
                     if (element.hlsEverPlayed) {
@@ -1771,7 +1817,9 @@
                 }
                 resetNativePlaybackState(element);
                 element.hlsAutoplayRequested = true;
-                prepareNativeHlsPlayback(element).then(function (isReady) {
+                wakeBackendStream(element).then(function (backendReady) {
+                    return backendReady ? prepareNativeHlsPlayback(element) : false;
+                }).then(function (isReady) {
                     if (isReady) {
                         attemptDeferredPlay(element);
                     }
@@ -2052,15 +2100,17 @@
         let isReady = false;
 
         try {
-            await wakeBackendStream(element);
+            const backendReady = await wakeBackendStream(element);
 
-            if (shouldUseNativeHls(element)) {
-                isReady = await prepareNativeHlsPlayback(element);
-                if (isReady) {
-                    showHlsSuccess(element, t('native_available'));
+            if (backendReady) {
+                if (shouldUseNativeHls(element)) {
+                    isReady = await prepareNativeHlsPlayback(element);
+                    if (isReady) {
+                        showHlsSuccess(element, t('native_available'));
+                    }
+                } else {
+                    isReady = await prepareHlsPlayback(element);
                 }
-            } else {
-                isReady = await prepareHlsPlayback(element);
             }
         } finally {
             element.hlsWarmupActive = false;
@@ -2542,6 +2592,7 @@
         element.hlsAutoplayRequested = false;
         element.hlsMediaReady = false;
         element.hlsPreparePromise = null;
+        element.hlsBackendReady = false;
         element.hlsSourcePrewarmed = false;
         element.hlsSourcePrewarmedAt = 0;
         element.hlsBackgroundWarmupPromise = null;

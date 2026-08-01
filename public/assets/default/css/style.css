@@ -5921,6 +5921,42 @@ body.is-site-fullscreen .plyr * {
     max-width: 100%;
 }
 
+/* Editor 2.0 public block settings. */
+.fb-content-block {
+    position: relative;
+    min-width: 0;
+}
+
+.fb-content-block--width-wide,
+.fb-content-block--width-full {
+    left: 50%;
+    width: min(1100px, calc(100vw - 2rem));
+    max-width: none;
+    transform: translateX(-50%);
+}
+
+.fb-content-block--width-full {
+    width: 100vw;
+}
+
+@media (min-width: 992px) {
+    .fb-hide-desktop {
+        display: none !important;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .fb-hide-tablet {
+        display: none !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .fb-hide-mobile {
+        display: none !important;
+    }
+}
+
 @media (min-width: 768px) {
     [data-admin-analytics] .admin-analytics-table--pages,
     [data-admin-analytics] .admin-analytics-table--latest {

@@ -335,7 +335,9 @@ class AdminPostController extends BaseController
             $data['published_at'] = (string)$post['published_at'];
         }
 
-        $data['is_published'] = 0;
+        $data['is_published'] = $post === []
+            ? 0
+            : (int)($post['is_published'] ?? 0);
 
         return $data;
     }

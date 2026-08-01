@@ -303,7 +303,9 @@ class AdminPagesController extends BaseController
             $data['slug'] = (string)$page['slug'];
         }
 
-        $data['is_published'] = 0;
+        $data['is_published'] = $page === []
+            ? 0
+            : (int)($page['is_published'] ?? 0);
 
         return $data;
     }
