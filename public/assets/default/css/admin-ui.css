@@ -1837,8 +1837,39 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     color: var(--fb-color-primary);
 }
 
+.fb-mobile-nav-action {
+    position: relative;
+    z-index: 1;
+    overflow: visible;
+}
+
 .fb-mobile-nav-action i {
-    color: var(--fb-color-primary);
+    width: 48px;
+    height: 48px;
+    margin-top: -15px;
+    color: #fff;
+    font-size: 1.35rem;
+    background: linear-gradient(145deg, #ff7455 0%, var(--fb-color-primary) 72%);
+    border-radius: 15px;
+    box-shadow: 0 9px 20px color-mix(in srgb, var(--fb-color-primary) 34%, transparent);
+    transition: transform var(--fb-transition-fast), box-shadow var(--fb-transition-fast);
+}
+
+.fb-mobile-nav-action > span {
+    color: var(--fb-color-text-secondary);
+    font-weight: 650;
+}
+
+.fb-mobile-nav-action:hover,
+.fb-mobile-nav-action:focus-visible {
+    background: transparent;
+}
+
+.fb-mobile-nav-action:hover i,
+.fb-mobile-nav-action:focus-visible i {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px color-mix(in srgb, var(--fb-color-primary) 42%, transparent);
 }
 
 /* Legacy admin compatibility */

@@ -30,6 +30,8 @@ admin_ui_assert($chatPosition !== false, 'Chat is missing from the mobile naviga
 admin_ui_assert($profilePosition !== false && $chatPosition < $profilePosition, 'Chat must appear immediately before the mobile profile item.');
 admin_ui_assert(!str_contains($mobileNavigation, 'data-fb-notifications-open'), 'Notifications must not be duplicated in the mobile bottom navigation.');
 admin_ui_assert(str_contains($styles, 'grid-template-columns: repeat(5, minmax(0, 1fr));'), 'The mobile navigation does not provide five equal columns.');
+admin_ui_assert(str_contains($styles, '.fb-mobile-nav-action i'), 'The highlighted mobile action button is missing.');
+admin_ui_assert(str_contains($styles, 'background: linear-gradient(145deg, #ff7455 0%, var(--fb-color-primary) 72%);'), 'The mobile action button lost its highlighted background.');
 admin_ui_assert(str_contains($styles, '.fb-topbar-action > i'), 'Topbar icons do not share a normalized size.');
 admin_ui_assert(str_contains($topbar, 'fb-icon-button fb-topbar-action theme-icon-active'), 'The theme switcher is not available as a mobile topbar action.');
 admin_ui_assert(str_contains($commandPalette, 'data-fb-command-close'), 'The admin command palette has no explicit close button.');
@@ -48,5 +50,6 @@ echo json_encode([
     'mobile_theme_switcher' => true,
     'command_close_button' => true,
     'normalized_icons' => true,
+    'highlighted_action_button' => true,
     'translations' => ['ru', 'en', 'de', 'zh-cn'],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;
