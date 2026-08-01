@@ -127,9 +127,18 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
             <div class="fb-editor2__dialog-head">
                 <i class="ci-search"></i>
                 <input type="search" data-editor-command-search placeholder="<?= htmlSC($label('commandSearch', 'Search commands…')) ?>" autocomplete="off">
-                <kbd>Esc</kbd>
+                <kbd aria-hidden="true">Esc</kbd>
+                <button
+                    type="button"
+                    class="fb-editor2__dialog-close"
+                    data-editor-command-close
+                    aria-label="<?= htmlSC($label('close', 'Close')) ?>"
+                    title="<?= htmlSC($label('close', 'Close')) ?>"
+                >
+                    <i class="ci-close" aria-hidden="true"></i>
+                </button>
             </div>
-            <div class="fb-editor2__command-list" data-editor-command-list></div>
+            <div class="fb-editor2__command-list" data-editor-command-list role="listbox"></div>
         </form>
     </dialog>
 

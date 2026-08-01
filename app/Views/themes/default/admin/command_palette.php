@@ -79,7 +79,16 @@ if (!is_array($registeredAdminCommands)) {
                 aria-label="<?= htmlSC(return_translation('admin_ui_command_placeholder')) ?>"
                 data-fb-command-input
             >
-            <kbd>Esc</kbd>
+            <kbd aria-hidden="true">Esc</kbd>
+            <button
+                class="fb-command-close"
+                type="button"
+                data-fb-command-close
+                aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"
+                title="<?= htmlSC(return_translation('admin_btn_close')) ?>"
+            >
+                <i class="ci-close" aria-hidden="true"></i>
+            </button>
         </div>
         <div class="fb-command-results" data-fb-command-results role="listbox"></div>
         <footer class="fb-command-footer">

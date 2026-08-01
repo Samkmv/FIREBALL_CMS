@@ -82,16 +82,8 @@ $requiredSummary = $translateOrFallback('admin_form_required_summary', 'Запо
                 </a>
                 <div class="fb-editor-workspace__brand" aria-hidden="true"><i class="ci-edit-3"></i></div>
                 <div class="fb-editor-workspace__identity">
-                    <span><?= htmlSC($workspaceTitle) ?></span>
-                    <input
-                        type="text"
-                        name="title"
-                        value="<?= htmlSC($titleValue) ?>"
-                        placeholder="<?= htmlSC($isPageEditor ? return_translation('admin_page_field_title') : return_translation('admin_posts_col_title')) ?>"
-                        data-editor-document-title
-                        data-slug-source="#post_slug"
-                        required
-                    >
+                    <strong><?= htmlSC($workspaceTitle) ?></strong>
+                    <span><?= htmlSC($translateOrFallback('editor_title_in_document', 'Название — во вкладке «Документ»')) ?></span>
                 </div>
                 <div class="fb-editor-workspace__save-state" data-editor-save-state data-state="saved" aria-live="polite">
                     <span></span>
@@ -212,6 +204,21 @@ $requiredSummary = $translateOrFallback('admin_form_required_summary', 'Запо
                 <div class="fb-editor-workspace__document-settings" data-editor-inspector-tab-panel="document" hidden>
                     <section>
                         <h2><?= htmlSC($translateOrFallback('editor_document_settings', 'Настройки документа')) ?></h2>
+                        <label class="fb-editor-field fb-editor-field--document-title">
+                            <span><?= htmlSC($isPageEditor ? return_translation('admin_page_field_title') : return_translation('admin_posts_col_title')) ?></span>
+                            <input
+                                class="form-control <?= get_validation_class('title') ?>"
+                                type="text"
+                                name="title"
+                                value="<?= htmlSC($titleValue) ?>"
+                                placeholder="<?= htmlSC($isPageEditor ? return_translation('admin_page_field_title') : return_translation('admin_posts_col_title')) ?>"
+                                autocomplete="off"
+                                data-editor-document-title
+                                data-slug-source="#post_slug"
+                                required
+                            >
+                            <?= get_errors('title') ?>
+                        </label>
                         <label class="fb-editor-field">
                             <span><?= htmlSC($isPageEditor ? return_translation('admin_page_field_slug') : 'URL') ?></span>
                             <input class="form-control <?= get_validation_class('slug') ?>" type="text" id="post_slug" name="slug" value="<?= htmlSC($slugValue) ?>" pattern="[a-z0-9-]+" autocomplete="off" data-slug-input required>

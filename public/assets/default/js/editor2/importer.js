@@ -56,14 +56,52 @@
             : {};
     }
 
+    function firstDataValue(data, keys) {
+        const source = data && typeof data === 'object' ? data : {};
+        for (let index = 0; index < keys.length; index += 1) {
+            const value = String(source[keys[index]] == null ? '' : source[keys[index]]).trim();
+            if (value !== '') {
+                return value;
+            }
+        }
+        return '';
+    }
+
+    function normalizeMediaData(type, data, registry) {
+        const source = data && typeof data === 'object'
+            ? data
+            : (typeof data === 'string' ? { src: data } : {});
+        const normalized = Object.assign(defaultData(type, registry), source);
+        const sourceKeys = type === 'video'
+            ? ['src', 'url', 'source', 'video', 'videoUrl', 'video_url', 'file', 'fileUrl', 'file_url', 'hlsSrc', 'hlsUrl', 'hls_url']
+            : ['src', 'url', 'source', 'audio', 'audioUrl', 'audio_url', 'file', 'fileUrl', 'file_url'];
+
+        normalized.src = firstDataValue(source, sourceKeys);
+        normalized.caption = firstDataValue(source, ['caption', 'title', 'description']);
+
+        if (type === 'video') {
+            normalized.poster = firstDataValue(source, ['poster', 'posterUrl', 'poster_url', 'image', 'thumbnail']);
+            if (!Object.prototype.hasOwnProperty.call(source, 'hls')) {
+                normalized.hls = firstDataValue(source, ['hlsSrc', 'hlsUrl', 'hls_url']) !== ''
+                    || /\.m3u8(?:$|[?#])/i.test(normalized.src);
+            }
+        }
+
+        return normalized;
+    }
+
     function normalizeBlock(block, registry) {
         const source = block && typeof block === 'object' ? block : {};
         const type = String(source.type || 'text');
+        const rawData = source.data && typeof source.data === 'object' ? source.data : {};
+        const mediaData = typeof source.data === 'string' ? source.data : rawData;
         return {
             id: String(source.id || blockId()),
             type: type,
             hidden: Boolean(source.hidden),
-            data: Object.assign(defaultData(type, registry), source.data && typeof source.data === 'object' ? source.data : {}),
+            data: type === 'video' || type === 'audio'
+                ? normalizeMediaData(type, mediaData, registry)
+                : Object.assign(defaultData(type, registry), rawData),
             settings: normalizeSettings(source.settings),
             meta: source.meta && typeof source.meta === 'object' ? source.meta : {}
         };
@@ -135,7 +173,9 @@
     }
 
     function mediaBlock(element, type) {
+        const hlsSource = type === 'video' ? element.getAttribute('data-hls-src') || '' : '';
         const source = element.getAttribute('src')
+            || hlsSource
             || (element.querySelector('source') ? element.querySelector('source').getAttribute('src') : '');
         return {
             id: blockId(),
@@ -143,7 +183,8 @@
             data: {
                 src: sanitizer.safeUrl(source || '', false),
                 poster: sanitizer.safeUrl(element.getAttribute('poster') || '', true),
-                caption: ''
+                caption: '',
+                hls: Boolean(hlsSource) || /\.m3u8(?:$|[?#])/i.test(String(source || ''))
             }
         };
     }
@@ -219,6 +260,13 @@
                         link: ''
                     }
                 }];
+            }
+            const media = tag === 'figure' ? element.querySelector('video, audio') : null;
+            if (media) {
+                const block = mediaBlock(media, media.tagName.toLowerCase());
+                const caption = element.querySelector('figcaption');
+                block.data.caption = caption ? String(caption.textContent || '').trim() : '';
+                return [block];
             }
         }
         if (tag === 'table') {

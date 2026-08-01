@@ -560,8 +560,9 @@
         const linkPath = new URL(link.href, window.location.href).pathname.replace(/\/+$/, '') || '/';
         const isDashboard = linkPath.endsWith('/admin') && currentPath === linkPath;
         const isProfile = linkPath.endsWith('/profile') && currentPath === linkPath;
-        link.classList.toggle('active', isDashboard || isProfile);
-        if (isDashboard || isProfile) {
+        const isChat = linkPath.endsWith('/chat') && currentPath === linkPath;
+        link.classList.toggle('active', isDashboard || isProfile || isChat);
+        if (isDashboard || isProfile || isChat) {
             link.setAttribute('aria-current', 'page');
         }
     });

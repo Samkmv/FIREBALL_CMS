@@ -244,6 +244,7 @@
             this.onGlobalKeydown = this.handleGlobalKeydown.bind(this);
             this.onDocumentClick = this.handleDocumentClick.bind(this);
             this.onFormSubmit = this.handleSubmit.bind(this);
+            this.onFormInvalid = this.handleFormInvalid.bind(this);
             this.onExternalSerialize = this.handleExternalSerialize.bind(this);
 
             this.root.addEventListener('click', this.onRootClick);
@@ -269,6 +270,7 @@
             }
             if (this.form) {
                 this.form.addEventListener('submit', this.onFormSubmit);
+                this.form.addEventListener('invalid', this.onFormInvalid, true);
                 this.form.addEventListener('fireball:post-editor-serialize', this.onExternalSerialize);
             }
             window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -734,6 +736,11 @@
             const blockElement = target.closest('[data-editor-block]');
             const blockId = blockElement ? blockElement.getAttribute('data-block-id') : '';
 
+            if (target.closest('[data-editor-command-close]')) {
+                event.preventDefault();
+                this.closeCommandPalette();
+                return;
+            }
             if (target.closest('[data-editor-inline]')) {
                 event.preventDefault();
                 this.applyInline(target.closest('[data-editor-inline]').getAttribute('data-editor-inline'));
@@ -884,6 +891,7 @@
                     this.renderSlashMenu(target.value);
                 }
                 if (target === this.ui.commandSearch) {
+                    this.commandPaletteIndex = 0;
                     this.renderCommandPalette(target.value);
                 }
                 if (target === this.ui.searchInput) {
@@ -1603,6 +1611,31 @@
         }
 
         handleRootKeydown(event) {
+            const commandDialogOpen = this.ui.commandDialog
+                && (this.ui.commandDialog.open || this.ui.commandDialog.hasAttribute('open'));
+            if (commandDialogOpen && event.target.closest('[data-editor-command-dialog]')) {
+                const commandButtons = Array.from(this.ui.commandList.querySelectorAll('[data-editor-run-command]'));
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    const delta = event.key === 'ArrowDown' ? 1 : -1;
+                    this.commandPaletteIndex = commandButtons.length
+                        ? (Number(this.commandPaletteIndex || 0) + delta + commandButtons.length) % commandButtons.length
+                        : -1;
+                    this.syncCommandPaletteSelection();
+                    return;
+                }
+                if (event.key === 'Enter' && event.target === this.ui.commandSearch) {
+                    event.preventDefault();
+                    this.activateCommandPaletteSelection();
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    this.closeCommandPalette();
+                    return;
+                }
+            }
+
             if (this.ui.slashMenu && !this.ui.slashMenu.hidden) {
                 const buttons = Array.from(this.ui.slashList.querySelectorAll('[data-slash-type]'));
                 if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -2629,6 +2662,20 @@
             this.clearLocalDraft();
         }
 
+        handleFormInvalid(event) {
+            const field = event && event.target;
+            if (!field || !field.closest || !field.closest('[data-editor-inspector-tab-panel="document"]')) {
+                return;
+            }
+            this.activateInspectorTab('document');
+            this.openMobilePanels();
+            window.requestAnimationFrame(function () {
+                if (typeof field.focus === 'function') {
+                    field.focus({ preventScroll: false });
+                }
+            });
+        }
+
         scheduleAutosave(immediate) {
             if (!this.form || !this.form.hasAttribute('data-post-autosave')) {
                 return;
@@ -2791,6 +2838,8 @@
             if (!this.ui.commandDialog) {
                 return;
             }
+            this.commandReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            this.commandPaletteIndex = 0;
             this.renderCommandPalette('');
             if (typeof this.ui.commandDialog.showModal === 'function') {
                 this.ui.commandDialog.showModal();
@@ -2803,6 +2852,21 @@
                     this.ui.commandSearch.focus();
                 }.bind(this));
             }
+        }
+
+        closeCommandPalette() {
+            if (!this.ui.commandDialog) {
+                return;
+            }
+            if (typeof this.ui.commandDialog.close === 'function' && this.ui.commandDialog.open) {
+                this.ui.commandDialog.close();
+            } else {
+                this.ui.commandDialog.removeAttribute('open');
+            }
+            if (this.commandReturnFocus instanceof HTMLElement && document.contains(this.commandReturnFocus)) {
+                this.commandReturnFocus.focus({ preventScroll: true });
+            }
+            this.commandReturnFocus = null;
         }
 
         importMarkdown() {
@@ -2960,22 +3024,48 @@
             const commands = this.editorCommands().filter(function (command) {
                 return !needle || (command.label + ' ' + command.keywords).toLowerCase().indexOf(needle) !== -1;
             });
-            this.ui.commandList.innerHTML = commands.map(function (command) {
-                return '<button type="button" data-editor-run-command="' + escapeAttr(command.id) + '"><span><i class="' + iconClass(command.icon) + '"></i></span><div><strong>' + escapeAttr(command.label) + '</strong><small>' + escapeAttr(command.keywords || '') + '</small></div></button>';
-            }).join('') || '<p class="fb-editor2__menu-empty">' + escapeAttr(this.label('noCommands', 'No commands found')) + '</p>';
+            this.commandPaletteCommands = commands;
+            this.commandPaletteIndex = commands.length
+                ? Math.max(0, Math.min(Number(this.commandPaletteIndex || 0), commands.length - 1))
+                : -1;
+            this.ui.commandList.innerHTML = commands.map(function (command, index) {
+                const active = index === this.commandPaletteIndex;
+                return '<button type="button" role="option" aria-selected="' + (active ? 'true' : 'false') + '" class="' + (active ? 'is-active' : '') + '" data-editor-run-command="' + escapeAttr(command.id) + '" data-editor-command-index="' + index + '"><span><i class="' + iconClass(command.icon) + '"></i></span><div><strong>' + escapeAttr(command.label) + '</strong><small>' + escapeAttr(command.keywords || '') + '</small></div></button>';
+            }, this).join('') || '<p class="fb-editor2__menu-empty">' + escapeAttr(this.label('noCommands', 'No commands found')) + '</p>';
             this.ui.commandList.querySelectorAll('[data-editor-run-command]').forEach(function (button) {
+                button.addEventListener('mouseenter', function () {
+                    this.commandPaletteIndex = Number(button.getAttribute('data-editor-command-index'));
+                    this.syncCommandPaletteSelection();
+                }.bind(this));
                 button.addEventListener('click', function () {
-                    const command = commands.find(function (item) {
-                        return item.id === button.getAttribute('data-editor-run-command');
-                    });
-                    if (this.ui.commandDialog.open) {
-                        this.ui.commandDialog.close();
-                    }
-                    if (command) {
-                        command.run();
-                    }
+                    this.commandPaletteIndex = Number(button.getAttribute('data-editor-command-index'));
+                    this.activateCommandPaletteSelection();
                 }.bind(this));
             }, this);
+        }
+
+        syncCommandPaletteSelection() {
+            if (!this.ui.commandList) {
+                return;
+            }
+            this.ui.commandList.querySelectorAll('[data-editor-command-index]').forEach(function (button) {
+                const active = Number(button.getAttribute('data-editor-command-index')) === this.commandPaletteIndex;
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-selected', active ? 'true' : 'false');
+                if (active) {
+                    button.scrollIntoView({ block: 'nearest' });
+                }
+            }, this);
+        }
+
+        activateCommandPaletteSelection() {
+            const commands = Array.isArray(this.commandPaletteCommands) ? this.commandPaletteCommands : [];
+            const command = commands[Number(this.commandPaletteIndex)];
+            if (!command) {
+                return;
+            }
+            this.closeCommandPalette();
+            command.run();
         }
 
         previewDocumentHtml() {
@@ -3308,6 +3398,7 @@
             }
             if (this.form) {
                 this.form.removeEventListener('submit', this.onFormSubmit);
+                this.form.removeEventListener('invalid', this.onFormInvalid, true);
                 this.form.removeEventListener('fireball:post-editor-serialize', this.onExternalSerialize);
             }
             window.removeEventListener('beforeunload', this.onBeforeUnload);

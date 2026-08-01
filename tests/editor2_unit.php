@@ -100,8 +100,11 @@ editor2_assert(str_contains($pluginRendered, 'data-plugin-block="1"'), 'Server p
 
 $editorSource = (string)file_get_contents($root . '/public/assets/default/js/editor2/editor.js');
 $importerSource = (string)file_get_contents($root . '/public/assets/default/js/editor2/importer.js');
+$sanitizerSource = (string)file_get_contents($root . '/public/assets/default/js/editor2/sanitizer.js');
 $registrySource = (string)file_get_contents($root . '/public/assets/default/js/editor2/registry.js');
 $serviceSource = (string)file_get_contents($root . '/app/Modules/BlockEditor/BlockEditorService.php');
+$postFormSource = (string)file_get_contents($root . '/app/Views/themes/default/admin/post_form.php');
+$editorViewSource = (string)file_get_contents($root . '/app/Modules/BlockEditor/views/editor.php');
 
 editor2_assert(!str_contains($editorSource, 'execCommand'), 'Editor 2.0 must not use document.execCommand.');
 editor2_assert(str_contains($editorSource, 'fireball:post-editor-sync'), 'Legacy editor sync event is missing.');
@@ -112,6 +115,15 @@ editor2_assert(str_contains($editorSource, '!isStructuredPlain'), 'Single-line H
 editor2_assert(str_contains($editorSource, 'splitEditableHtmlAtSelection'), 'Smart Paste cannot split a block at the caret.');
 editor2_assert(str_contains($editorSource, "this.commit('list-exit'"), 'Empty list items cannot exit to a text block.');
 editor2_assert(str_contains($editorSource, "this.commit('list-to-text'"), 'Backspace cannot convert an empty list to text.');
+editor2_assert(str_contains($sanitizerSource, "'data-hls-src'"), 'Legacy HLS source attributes are removed before import.');
+editor2_assert(str_contains($importerSource, "getAttribute('data-hls-src')"), 'Legacy HLS video URLs are not imported.');
+editor2_assert(str_contains($importerSource, "'hlsUrl'"), 'Legacy JSON video URL aliases are not normalized.');
+editor2_assert(substr_count($postFormSource, 'data-editor-document-title') === 1, 'The document title field must have a single source of truth.');
+editor2_assert(str_contains($postFormSource, 'fb-editor-field--document-title'), 'The document title was not moved to the Document inspector tab.');
+editor2_assert(str_contains($editorSource, 'handleFormInvalid'), 'Hidden Document-tab validation cannot reveal invalid fields.');
+editor2_assert(str_contains($editorViewSource, 'data-editor-command-close'), 'The editor command palette has no explicit close button.');
+editor2_assert(str_contains($editorSource, 'syncCommandPaletteSelection'), 'The editor command palette cannot synchronize keyboard selection.');
+editor2_assert(str_contains($editorSource, 'activateCommandPaletteSelection'), 'The selected editor command cannot be activated consistently.');
 editor2_assert(str_contains($registrySource, 'registerBlockType'), 'Public Block API is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_block_types'), 'Server block-type extension filter is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_script_assets'), 'Editor asset extension filter is missing.');
@@ -126,5 +138,8 @@ echo json_encode([
     'smart_paste_caret_split' => true,
     'rich_inline_paste' => true,
     'list_keyboard' => true,
+    'legacy_video_url' => true,
+    'document_title_panel' => true,
+    'command_palette_mobile' => true,
     'plugin_api' => true,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;

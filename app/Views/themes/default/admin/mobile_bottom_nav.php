@@ -11,10 +11,10 @@
         <i class="ci-plus" aria-hidden="true"></i>
         <span><?= print_translation('admin_ui_actions') ?></span>
     </button>
-    <button class="fb-mobile-nav-item" type="button" data-fb-notifications-open>
-        <i class="ci-bell" aria-hidden="true"></i>
-        <span><?= print_translation('tpl_notifications') ?></span>
-    </button>
+    <a class="fb-mobile-nav-item" href="<?= base_href('/chat') ?>">
+        <i class="ci-chat" aria-hidden="true"></i>
+        <span><?= print_translation('tpl_auth_chat') ?></span>
+    </a>
     <a class="fb-mobile-nav-item" href="<?= base_href('/profile') ?>">
         <i class="ci-user" aria-hidden="true"></i>
         <span><?= print_translation('tpl_auth_profile') ?></span>

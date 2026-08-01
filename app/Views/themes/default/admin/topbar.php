@@ -1,6 +1,8 @@
 <?php
 $currentUser = get_user() ?: [];
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
+$currentAdminLocale = current_locale();
+$adminLanguageSwitchPath = uri_without_lang() ?: '/';
 ?>
 
 <header class="fb-topbar">
@@ -24,7 +26,7 @@ $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 
     <button
         type="button"
-        class="fb-global-search"
+        class="fb-global-search fb-topbar-action"
         data-fb-command-open
         aria-label="<?= htmlSC(return_translation('admin_ui_search_placeholder')) ?>"
         aria-keyshortcuts="Control+K Meta+K"
@@ -38,7 +40,7 @@ $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
         <div class="dropdown theme-switcher" data-theme-label="<?= htmlSC(return_translation('admin_ui_theme')) ?>">
             <button
                 type="button"
-                class="fb-icon-button theme-icon-active"
+                class="fb-icon-button fb-topbar-action theme-icon-active"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
                 aria-label="<?= htmlSC(return_translation('admin_ui_theme')) ?>"
@@ -61,6 +63,47 @@ $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
             </div>
         </div>
 
+        <?php if (MULTILANGS && count(LANGS) > 1): ?>
+            <div class="dropdown fb-language-switcher">
+                <button
+                    type="button"
+                    class="fb-icon-button fb-topbar-action"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    aria-label="<?= htmlSC(return_translation('admin_ui_language')) ?>"
+                    title="<?= htmlSC(return_translation('admin_ui_language')) ?>"
+                >
+                    <i class="ci-globe" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end fb-dropdown-menu fb-language-menu">
+                    <div class="fb-dropdown-heading fb-language-menu-heading">
+                        <strong><?= print_translation('admin_ui_language') ?></strong>
+                        <span><?= htmlSC(strtoupper($currentAdminLocale)) ?></span>
+                    </div>
+                    <?php foreach (LANGS as $localeCode => $locale): ?>
+                        <?php
+                        $localeCode = (string)$localeCode;
+                        $isCurrentLocale = $localeCode === $currentAdminLocale;
+                        $localeTitle = (string)($locale['title'] ?? strtoupper($localeCode));
+                        ?>
+                        <a
+                            class="dropdown-item d-flex align-items-center gap-2<?= $isCurrentLocale ? ' active' : '' ?>"
+                            href="<?= htmlSC(locale_switch_url($localeCode, $adminLanguageSwitchPath)) ?>"
+                            lang="<?= htmlSC($localeCode) ?>"
+                            hreflang="<?= htmlSC($localeCode) ?>"
+                            <?= $isCurrentLocale ? 'aria-current="true"' : '' ?>
+                        >
+                            <span class="fb-language-code" aria-hidden="true"><?= htmlSC(strtoupper($localeCode)) ?></span>
+                            <span><?= htmlSC($localeTitle) ?></span>
+                            <?php if ($isCurrentLocale): ?>
+                                <i class="ci-check ms-auto" aria-hidden="true"></i>
+                            <?php endif; ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <div
             class="dropdown"
             data-notifications-center
@@ -71,7 +114,7 @@ $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
         >
             <button
                 type="button"
-                class="fb-icon-button position-relative"
+                class="fb-icon-button fb-topbar-action position-relative"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
                 aria-label="<?= htmlSC(return_translation('tpl_notifications')) ?>"
@@ -90,7 +133,7 @@ $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
             </div>
         </div>
 
-        <div class="dropdown">
+        <div class="dropdown fb-profile-dropdown">
             <button
                 type="button"
                 class="fb-profile-trigger"

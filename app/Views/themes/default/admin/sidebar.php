@@ -81,15 +81,6 @@ $roleSlug = (string)($currentUser['role'] ?? 'user');
                 <i class="ci-home" aria-hidden="true"></i>
                 <span><?= print_translation('tpl_menu_nav_index') ?></span>
             </a>
-            <a
-                class="fb-sidebar-footer-link"
-                href="<?= base_href('/chat') ?>"
-                aria-label="<?= htmlSC(return_translation('tpl_auth_chat')) ?>"
-                title="<?= htmlSC(return_translation('tpl_auth_chat')) ?>"
-            >
-                <i class="ci-chat" aria-hidden="true"></i>
-                <span><?= print_translation('tpl_auth_chat') ?></span>
-            </a>
             <form action="<?= base_href('/logout') ?>" method="post">
                 <?= get_csrf_field() ?>
                 <button
