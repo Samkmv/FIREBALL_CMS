@@ -105,6 +105,7 @@ $registrySource = (string)file_get_contents($root . '/public/assets/default/js/e
 $serviceSource = (string)file_get_contents($root . '/app/Modules/BlockEditor/BlockEditorService.php');
 $postFormSource = (string)file_get_contents($root . '/app/Views/themes/default/admin/post_form.php');
 $editorViewSource = (string)file_get_contents($root . '/app/Modules/BlockEditor/views/editor.php');
+$editorStylesSource = (string)file_get_contents($root . '/public/assets/default/css/block-editor.css');
 
 editor2_assert(!str_contains($editorSource, 'execCommand'), 'Editor 2.0 must not use document.execCommand.');
 editor2_assert(str_contains($editorSource, 'fireball:post-editor-sync'), 'Legacy editor sync event is missing.');
@@ -124,6 +125,8 @@ editor2_assert(str_contains($editorSource, 'handleFormInvalid'), 'Hidden Documen
 editor2_assert(str_contains($editorViewSource, 'data-editor-command-close'), 'The editor command palette has no explicit close button.');
 editor2_assert(str_contains($editorSource, 'syncCommandPaletteSelection'), 'The editor command palette cannot synchronize keyboard selection.');
 editor2_assert(str_contains($editorSource, 'activateCommandPaletteSelection'), 'The selected editor command cannot be activated consistently.');
+editor2_assert(str_contains($editorStylesSource, 'Mobile Safari zooms the page'), 'The iOS focus zoom guard is missing.');
+editor2_assert(str_contains($editorStylesSource, 'font-size: 16px !important;'), 'Mobile editor controls can still trigger Safari focus zoom.');
 editor2_assert(str_contains($registrySource, 'registerBlockType'), 'Public Block API is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_block_types'), 'Server block-type extension filter is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_script_assets'), 'Editor asset extension filter is missing.');
@@ -141,5 +144,6 @@ echo json_encode([
     'legacy_video_url' => true,
     'document_title_panel' => true,
     'command_palette_mobile' => true,
+    'ios_focus_zoom_guard' => true,
     'plugin_api' => true,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;
