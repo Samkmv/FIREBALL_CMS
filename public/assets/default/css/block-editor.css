@@ -1229,6 +1229,19 @@ body:has(.fb-editor-workspace) {
     border: 1px solid var(--fb-editor-border);
 }
 
+.fb-editor2-newsletter-live [contenteditable="true"] {
+    border-radius: 4px;
+    outline: 0;
+}
+
+.fb-editor2-newsletter-live [contenteditable="true"]:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--fb-editor-primary) 16%, transparent);
+}
+
+.fb-editor2-newsletter-live .btn {
+    flex: 0 0 auto;
+}
+
 .fb-editor2-faq details {
     padding: 10px 0;
     border-bottom: 1px solid var(--fb-editor-border);

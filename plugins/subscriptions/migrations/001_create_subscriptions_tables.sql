@@ -213,7 +213,7 @@ CREATE TABLE IF NOT EXISTS subscription_content_rules (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     content_type VARCHAR(50) NOT NULL,
     content_id VARCHAR(190) NOT NULL,
-    access_mode VARCHAR(30) NOT NULL DEFAULT 'public',
+    access_mode VARCHAR(30) NOT NULL DEFAULT 'subscribers',
     show_title TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
     show_excerpt TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
     show_image TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,

@@ -23,9 +23,10 @@ final class ContentRuleRepository
 
     public function save(string $type, string|int $contentId, array $data): void
     {
-        $mode = in_array((string)($data['subscription_access_mode'] ?? 'public'), ['public', 'authenticated', 'subscribers', 'plans', 'permission'], true)
-            ? (string)$data['subscription_access_mode']
-            : 'public';
+        $requestedMode = (string)($data['subscription_access_mode'] ?? 'subscribers');
+        $mode = in_array($requestedMode, ['public', 'authenticated', 'subscribers', 'plans', 'permission'], true)
+            ? $requestedMode
+            : 'subscribers';
         $permission = trim((string)($data['subscription_required_permission'] ?? ''));
         if ($mode === 'permission' && preg_match('/^[a-z0-9_.-]{3,120}$/', $permission) !== 1) {
             $permission = 'posts.view_paid';

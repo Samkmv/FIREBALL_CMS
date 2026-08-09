@@ -6,10 +6,17 @@ use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 
 final class AccessService
 {
+    private array $subscriptionCache = [];
+    private array $permissionCache = [];
+    private array $roleCache = [];
+
     public function activeSubscription(int $userId, bool $lock = false): ?array
     {
         if ($userId <= 0) {
             return null;
+        }
+        if (!$lock && array_key_exists($userId, $this->subscriptionCache)) {
+            return $this->subscriptionCache[$userId];
         }
         $now = date('Y-m-d H:i:s');
         $suffix = $lock ? ' FOR UPDATE' : '';
@@ -27,7 +34,12 @@ final class AccessService
             [$userId, $now, $now, $now, $now]
         )->getOne();
 
-        return is_array($row) ? $row : null;
+        $subscription = is_array($row) ? $row : null;
+        if (!$lock) {
+            $this->subscriptionCache[$userId] = $subscription;
+        }
+
+        return $subscription;
     }
 
     public function hasActiveSubscription(int $userId): bool
@@ -64,6 +76,9 @@ final class AccessService
     public function contentDecision(int $userId, string $contentType, string|int $contentId): array
     {
         $rule = (new ContentRuleRepository())->find($contentType, $contentId);
+        if (!$rule && $contentType === 'post') {
+            $rule = $this->defaultPostRule();
+        }
         if (!$rule || (string)$rule['access_mode'] === 'public') {
             return ['allowed' => true, 'reason' => 'public', 'rule' => $rule];
         }
@@ -99,6 +114,9 @@ final class AccessService
 
     public function permissions(int $planId): array
     {
+        if (array_key_exists($planId, $this->permissionCache)) {
+            return $this->permissionCache[$planId];
+        }
         $rows = db()->query(
             'SELECT permission_key, permission_value FROM subscription_plan_permissions WHERE plan_id = ?',
             [$planId]
@@ -111,7 +129,7 @@ final class AccessService
                 : (string)$row['permission_value'];
         }
 
-        return $permissions;
+        return $this->permissionCache[$planId] = $permissions;
     }
 
     private function canUseCameraArchive(int $planId, string $permission, array $permissions, array $context): bool
@@ -170,6 +188,27 @@ final class AccessService
         if ($userId <= 0) {
             return '';
         }
-        return (string)(db()->query('SELECT role FROM users WHERE id = ? LIMIT 1', [$userId])->getColumn() ?: '');
+        if (array_key_exists($userId, $this->roleCache)) {
+            return $this->roleCache[$userId];
+        }
+
+        return $this->roleCache[$userId] = (string)(db()->query(
+            'SELECT role FROM users WHERE id = ? LIMIT 1',
+            [$userId]
+        )->getColumn() ?: '');
+    }
+
+    private function defaultPostRule(): array
+    {
+        return [
+            'access_mode' => 'subscribers',
+            'show_title' => 1,
+            'show_excerpt' => 1,
+            'show_image' => 1,
+            'hide_video' => 1,
+            'required_permission' => 'posts.view_paid',
+            'plan_ids' => [],
+            'is_default' => true,
+        ];
     }
 }

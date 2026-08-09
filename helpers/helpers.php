@@ -1206,7 +1206,7 @@ function sanitize_content_html(string $html): string
         }
     }
 
-    $forbidden = $xpath->query('//script|//object|//embed|//form|//input|//textarea|//select|//option|//button|//base|//meta|//link|//style|//svg|//math');
+    $forbidden = $xpath->query('//script|//object|//embed|//form|//input|//textarea|//select|//option|//base|//meta|//link|//style|//svg|//math');
     if ($forbidden !== false) {
         foreach (iterator_to_array($forbidden) as $node) {
             $node->parentNode?->removeChild($node);
@@ -1216,7 +1216,12 @@ function sanitize_content_html(string $html): string
     $elements = $xpath->query('//*');
     if ($elements !== false) {
         foreach ($elements as $element) {
-            if (!$element instanceof \DOMElement || !$element->hasAttributes()) {
+            if (!$element instanceof \DOMElement) {
+                continue;
+            }
+
+            $isContentButton = strtolower($element->tagName) === 'button';
+            if (!$element->hasAttributes() && !$isContentButton) {
                 continue;
             }
 
@@ -1237,6 +1242,13 @@ function sanitize_content_html(string $html): string
                 if ($name === 'style' && preg_match('/(?:expression\s*\(|(?:java|vb)script\s*:|url\s*\(\s*[\'"]?\s*(?:java|vb)script:)/i', $value)) {
                     $element->removeAttributeNode($attribute);
                 }
+            }
+
+            if ($isContentButton) {
+                foreach (['form', 'formaction', 'formenctype', 'formmethod', 'formnovalidate', 'formtarget', 'name', 'value'] as $attributeName) {
+                    $element->removeAttribute($attributeName);
+                }
+                $element->setAttribute('type', 'button');
             }
         }
     }

@@ -30,6 +30,8 @@ class PostsController extends BaseController
         $currentCategory = request()->get('category');
         $postsData = $this->posts->getPaginatedPosts($currentCategory);
         $sidebarData = $this->posts->getSidebarData();
+        $publicPosts = $this->filterPublicPosts((array)$postsData['posts']);
+        $trendingPosts = $this->filterPublicPosts((array)$sidebarData['trending_posts']);
         $currentCategoryMeta = $postsData['current_category_meta'] ?? null;
         $currentCategoryLabel = $postsData['current_category_label'] ?? null;
         $seoTitle = trim((string)($currentCategoryMeta['seo_title'] ?? ''));
@@ -42,13 +44,13 @@ class PostsController extends BaseController
 
         return Theme::render('posts', [
             'title' => return_translation('posts_index_title'),
-            'posts' => $postsData['posts'],
+            'posts' => $publicPosts,
             'total_posts' => $postsData['total'],
             'pagination' => $postsData['pagination'],
             'current_category' => $postsData['current_category'],
             'current_category_label' => $currentCategoryLabel,
             'categories' => $sidebarData['categories'],
-            'trending_posts' => $sidebarData['trending_posts'],
+            'trending_posts' => $trendingPosts,
             'seo_title' => $seoTitle !== '' ? $seoTitle : ($currentCategoryLabel ?: return_translation('posts_index_title')),
             'seo_description' => $seoDescription,
             'seo_keywords' => $seoKeywords,
@@ -80,7 +82,7 @@ class PostsController extends BaseController
         return Theme::render('category', [
             'title' => $category['name'],
             'category' => $category,
-            'posts' => $postsData['posts'],
+            'posts' => $this->filterPublicPosts((array)$postsData['posts']),
             'pagination' => $postsData['pagination'],
             'total_posts' => $postsData['total'],
             'seo_title' => $category['seo_title'] ?: $category['name'],
@@ -96,7 +98,7 @@ class PostsController extends BaseController
 
         return Theme::render('archive', [
             'title' => return_translation('theme_archive_title'),
-            'posts' => $postsData['posts'],
+            'posts' => $this->filterPublicPosts((array)$postsData['posts']),
             'pagination' => $postsData['pagination'],
             'total_posts' => $postsData['total'],
             'seo_canonical' => base_href('/archive'),
@@ -130,8 +132,8 @@ class PostsController extends BaseController
             'title' => $post['title'],
             'post' => $post,
             'categories' => $sidebarData['categories'],
-            'trending_posts' => $sidebarData['trending_posts'],
-            'popular_posts' => $popularPosts,
+            'trending_posts' => $this->filterPublicPosts((array)$sidebarData['trending_posts']),
+            'popular_posts' => $this->filterPublicPosts($popularPosts),
             'seo_title' => $post['seo_title'] !== '' ? $post['seo_title'] : $post['title'],
             'seo_description' => $post['seo_description'],
             'seo_keywords' => $post['seo_keywords'],
@@ -144,6 +146,13 @@ class PostsController extends BaseController
             'seo_article_section' => (string)($post['category_label'] ?? $post['category'] ?? ''),
             'seo_canonical' => base_href('/posts/' . $post['slug']),
         ]);
+    }
+
+    private function filterPublicPosts(array $posts): array
+    {
+        $filtered = apply_filters('public_posts_before_render', $posts, get_user() ?: []);
+
+        return is_array($filtered) ? array_values($filtered) : [];
     }
 
 }

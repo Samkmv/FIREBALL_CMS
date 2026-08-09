@@ -35,6 +35,17 @@ final class BlockEditorService
         return array_values((array)apply_filters('fireball_editor_script_assets', $assets));
     }
 
+    public static function previewStyleAssets(): array
+    {
+        $assets = [
+            base_url('/assets/default/icons/cartzilla-icons.min.css'),
+            base_url('/assets/default/css/theme.min.css'),
+            base_url('/assets/default/css/style.css?v=' . filemtime(WWW . '/assets/default/css/style.css')),
+        ];
+
+        return array_values((array)apply_filters('fireball_editor_preview_style_assets', $assets));
+    }
+
     public function render(array $options): string
     {
         $entityType = $this->normalizeEntityType((string)($options['entity_type'] ?? 'post'));
@@ -74,6 +85,7 @@ final class BlockEditorService
             'userId' => (int)($currentUser['id'] ?? 0),
             'fileManagerUrl' => base_href('/admin/files'),
             'defaultDirectory' => $defaultDirectory,
+            'previewStyleAssets' => self::previewStyleAssets(),
             'blockTypes' => array_values($this->blockTypes()),
             'fonts' => [
                 ['value' => 'Inter', 'label' => 'Inter'],

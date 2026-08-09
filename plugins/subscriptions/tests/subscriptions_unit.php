@@ -28,6 +28,39 @@ function plugin_setting_set(string $slug, string $key, mixed $value): void
     $settingsStore[$slug][$key] = $value;
 }
 
+final class SubscriptionsUnitDbResult
+{
+    public function getOne(): mixed
+    {
+        return null;
+    }
+
+    public function get(): array
+    {
+        return [];
+    }
+
+    public function getColumn(): mixed
+    {
+        return null;
+    }
+}
+
+final class SubscriptionsUnitDb
+{
+    public function query(string $sql, array $params = []): SubscriptionsUnitDbResult
+    {
+        return new SubscriptionsUnitDbResult();
+    }
+}
+
+function db(): SubscriptionsUnitDb
+{
+    static $database;
+
+    return $database ??= new SubscriptionsUnitDb();
+}
+
 function assertSameValue(mixed $expected, mixed $actual, string $message): void
 {
     if ($expected !== $actual) {
@@ -43,7 +76,10 @@ function assertTrueValue(bool $value, string $message): void
 }
 
 require_once __DIR__ . '/../src/Support/Money.php';
+require_once __DIR__ . '/../src/Support/ProtectedContent.php';
 require_once __DIR__ . '/../src/Support/SecretCipher.php';
+require_once __DIR__ . '/../src/Repositories/ContentRuleRepository.php';
+require_once __DIR__ . '/../src/Services/AccessService.php';
 require_once __DIR__ . '/../src/Services/SettingsService.php';
 require_once __DIR__ . '/../src/Payments/PaymentGatewayInterface.php';
 require_once __DIR__ . '/../src/Payments/RobokassaGateway.php';
@@ -51,13 +87,29 @@ require_once __DIR__ . '/../../../app/Services/SqlFileRunner.php';
 
 use App\Services\SqlFileRunner;
 use Fireball\Subscriptions\Payments\RobokassaGateway;
+use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\SettingsService;
 use Fireball\Subscriptions\Support\Money;
+use Fireball\Subscriptions\Support\ProtectedContent;
 
 assertSameValue(0, Money::toMinor('0'), 'Zero money parsing');
 assertSameValue(10050, Money::toMinor('100,50'), 'Exact money parsing');
 assertSameValue('100.50', Money::decimal(10050), 'Exact money formatting');
 assertSameValue('100,50 RUB', Money::display(10050), 'Display money formatting');
+
+$anonymousPostDecision = (new AccessService())->contentDecision(0, 'post', 42);
+assertTrueValue(!$anonymousPostDecision['allowed'], 'Posts without an explicit rule must be protected');
+assertSameValue('authentication_required', $anonymousPostDecision['reason'], 'Anonymous post denial reason');
+assertSameValue('subscribers', $anonymousPostDecision['rule']['access_mode'] ?? '', 'Default post access mode');
+
+$protectedHtml = ProtectedContent::replaceVideos(
+    '<p>Before</p><video src="/paid.mp4"></video><iframe src="https://www.youtube.com/embed/one"></iframe><iframe src="https://maps.google.com/map"></iframe>',
+    '<div>locked</div>'
+);
+assertTrueValue(!str_contains($protectedHtml, '/paid.mp4'), 'Protected video source must be removed from HTML');
+assertTrueValue(!str_contains($protectedHtml, 'youtube.com'), 'Protected video embed must be removed from HTML');
+assertTrueValue(str_contains($protectedHtml, 'maps.google.com'), 'Non-video embeds must remain available');
+assertSameValue(2, substr_count($protectedHtml, '<div>locked</div>'), 'Each protected video must get a replacement');
 
 $invalidMoneyRejected = false;
 try {
@@ -168,6 +220,17 @@ assertTrueValue(str_contains($snapshotMigration, 'JSON_OBJECT'), 'Existing order
 $profileMigration = (string)file_get_contents(__DIR__ . '/../migrations/004_normalize_optional_profile_fields.sql');
 assertTrueValue(str_contains($profileMigration, "'apartment'"), 'Apartment must remain an optional address field');
 
+$accessMigration = (string)file_get_contents(__DIR__ . '/../migrations/005_default_post_access_to_subscribers.sql');
+assertTrueValue(str_contains($accessMigration, "DEFAULT 'subscribers'"), 'Content rules must default to subscriber access');
+
+$pluginSource = (string)file_get_contents(__DIR__ . '/../Plugin.php');
+assertTrueValue(
+    str_contains($pluginSource, "add_filter('public_posts_before_render'")
+    && str_contains($pluginSource, "add_filter('public_page_before_render'")
+    && str_contains($pluginSource, "add_filter('public_video_access_allowed'"),
+    'Plugin must protect post collections, page videos and direct public video surfaces'
+);
+
 foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields', 'field-form', 'settings'] as $adminView) {
     $adminTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $adminView . '.php');
     assertTrueValue(
@@ -177,5 +240,23 @@ foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields'
         'Admin view must render inside the standard constrained admin shell: ' . $adminView
     );
 }
+
+foreach (['plans', 'subscribers', 'payments', 'fields'] as $tableView) {
+    $tableTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $tableView . '.php');
+    assertTrueValue(
+        str_contains($tableTemplate, "renderPartial('admin/partials/table'")
+        && str_contains($tableTemplate, "'mobile_cards' => \$mobileCards")
+        && str_contains($tableTemplate, 'admin-table-card'),
+        'Admin data list must use the template mobile-card table component: ' . $tableView
+    );
+}
+
+$accountTemplate = (string)file_get_contents(__DIR__ . '/../views/public/account.php');
+assertTrueValue(
+    str_contains($accountTemplate, "renderPartial('admin/partials/table'")
+    && str_contains($accountTemplate, "'mobile_cards' => \$paymentCards")
+    && !str_contains($accountTemplate, '<table'),
+    'Public payment history must use the template mobile-card table component'
+);
 
 fwrite(STDOUT, "subscriptions_unit: ok\n");

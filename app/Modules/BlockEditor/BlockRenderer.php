@@ -397,9 +397,9 @@ final class BlockRenderer
             $buttonIcon = 'ci-mail';
         }
         $buttonInner = '<i class="' . htmlSC($buttonIcon) . ' fs-base ms-n1 me-2"></i>' . htmlSC($buttonText);
-        $buttonHtml = $buttonUrl !== ''
+        $buttonHtml = $buttonUrl !== '' && is_safe_content_url($buttonUrl)
             ? '<a href="' . htmlSC($buttonUrl) . '" class="btn btn-dark" target="_blank" rel="noopener noreferrer" data-fb-newsletter-button="1">' . $buttonInner . '</a>'
-            : '<span class="btn btn-dark" role="button" aria-disabled="true" data-fb-newsletter-button="1">' . $buttonInner . '</span>';
+            : '<button type="button" class="btn btn-dark" data-fb-newsletter-button="1">' . $buttonInner . '</button>';
 
         return '<div class="d-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5" data-fb-newsletter-block="1" data-button-text="' . htmlSC($buttonText) . '" data-button-url="' . htmlSC($buttonUrl) . '" data-button-icon="' . htmlSC($buttonIcon) . '">' .
             '<div class="mb-4 mb-sm-0 me-sm-4">' .

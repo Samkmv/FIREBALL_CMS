@@ -1,5 +1,5 @@
 <?php
-$mode = (string)($form_data['subscription_access_mode'] ?? $rule['access_mode'] ?? 'public');
+$mode = (string)($form_data['subscription_access_mode'] ?? $rule['access_mode'] ?? 'subscribers');
 $selectedPlans = array_map('intval', (array)($form_data['subscription_plan_ids'] ?? $rule['plan_ids'] ?? []));
 ?>
 <div class="subscriptions-post-settings border-top mt-3 pt-3">

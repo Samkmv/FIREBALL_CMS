@@ -17,7 +17,7 @@
                     <?= !empty($post['published_at']) ? date('d.m.Y', strtotime($post['published_at'])) : '' ?>
                 </time>
                 <h2 class="h5 mt-2">
-                    <a href="<?= base_href('/posts/' . $post['slug']) ?>"><?= htmlSC($post['title']) ?></a>
+                    <a href="<?= base_href('/posts/' . $post['slug']) ?>"><?php if (isset($post['subscription_access']) && empty($post['subscription_access']['allowed'])): ?><i class="ci-lock me-1" aria-hidden="true"></i><?php endif; ?><?= htmlSC($post['title']) ?></a>
                 </h2>
                 <p class="mb-0"><?= htmlSC($post['excerpt'] ?? '') ?></p>
             </article>

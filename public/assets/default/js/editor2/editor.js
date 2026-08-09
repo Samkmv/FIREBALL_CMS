@@ -108,6 +108,8 @@
             this.lastSerialized = '';
             this.savedSerialized = '';
             this.filePickerTarget = null;
+            this.contextMenuAnchor = null;
+            this.floatingUiFrame = 0;
             this.history = new API.EditorHistory(this.historyState(), { limit: 120, coalesceMs: 700 });
             this.ui = this.collectUi();
             this.refreshOutlineSoon = debounce(this.refreshOutline.bind(this), 160);
@@ -243,6 +245,7 @@
             this.onStorage = this.handleStorage.bind(this);
             this.onGlobalKeydown = this.handleGlobalKeydown.bind(this);
             this.onDocumentClick = this.handleDocumentClick.bind(this);
+            this.onFloatingUiViewportChange = this.handleFloatingUiViewportChange.bind(this);
             this.onFormSubmit = this.handleSubmit.bind(this);
             this.onFormInvalid = this.handleFormInvalid.bind(this);
             this.onExternalSerialize = this.handleExternalSerialize.bind(this);
@@ -262,6 +265,12 @@
             document.addEventListener('selectionchange', this.onSelectionChange);
             document.addEventListener('keydown', this.onGlobalKeydown, true);
             document.addEventListener('click', this.onDocumentClick);
+            document.addEventListener('scroll', this.onFloatingUiViewportChange, true);
+            window.addEventListener('resize', this.onFloatingUiViewportChange);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', this.onFloatingUiViewportChange);
+                window.visualViewport.addEventListener('scroll', this.onFloatingUiViewportChange);
+            }
 
             if (this.workspace) {
                 this.workspace.addEventListener('click', this.onWorkspaceClick);
@@ -456,7 +465,7 @@
                     : '<div class="fb-editor2-embed-empty"><i class="ci-external-link"></i><span>' + escapeAttr(data.url || 'Paste a supported URL in block settings') + '</span></div>';
             }
             if (block.type === 'newsletter') {
-                return '<div class="fb-editor2-newsletter"><div><strong contenteditable="true" data-editor-plain data-editor-field="data.title">' + escapeAttr(data.title || '') + '</strong><p contenteditable="true" data-editor-plain data-editor-field="data.text">' + escapeAttr(data.text || '') + '</p></div><span class="btn btn-dark">' + escapeAttr(data.buttonText || 'Subscribe') + '</span></div>';
+                return this.renderNewsletterBlock(block, true);
             }
             if (block.type === 'social') {
                 const items = Array.isArray(data.items) ? data.items : [];
@@ -465,6 +474,37 @@
                 }).join('') + '</div>';
             }
             return '<div class="fb-editor2-unknown"><i class="ci-box"></i><div><strong>' + escapeAttr(block.type) + '</strong><p>Plugin block data is preserved.</p></div></div>';
+        }
+
+        renderNewsletterBlock(block, editable) {
+            const data = block && block.data ? block.data : {};
+            const title = String(data.title || '').trim() || this.label('newsletterDefaultTitle', 'Sign up to our newsletter');
+            const text = String(data.text || '').trim() || this.label('newsletterDefaultText', 'Receive our latest updates about our products & promotions');
+            const buttonText = String(data.buttonText || '').trim() || this.label('newsletterDefaultButton', 'Subscribe');
+            const buttonUrl = sanitizer.safeUrl(data.buttonUrl || '', false);
+            const requestedIcon = String(data.buttonIcon || 'ci-mail').trim();
+            const buttonIcon = /^ci-[a-z0-9-]+$/i.test(requestedIcon) ? requestedIcon : 'ci-mail';
+            const titleAttributes = editable
+                ? ' contenteditable="true" spellcheck="true" data-editor-plain data-editor-field="data.title"'
+                : '';
+            const textAttributes = editable
+                ? ' contenteditable="true" spellcheck="true" data-editor-plain data-editor-field="data.text"'
+                : '';
+            const buttonLabel = editable
+                ? '<span contenteditable="true" spellcheck="true" data-editor-plain data-editor-field="data.buttonText">' + escapeAttr(buttonText) + '</span>'
+                : escapeAttr(buttonText);
+            const buttonInner = '<i class="' + escapeAttr(buttonIcon) + ' fs-base ms-n1 me-2" aria-hidden="true"></i>' + buttonLabel;
+            const button = !editable && buttonUrl
+                ? '<a class="btn btn-dark" href="' + escapeAttr(buttonUrl) + '" target="_blank" rel="noopener noreferrer" data-fb-newsletter-button="1">' + buttonInner + '</a>'
+                : '<button type="button" class="btn btn-dark" data-fb-newsletter-button="1">' + buttonInner + '</button>';
+
+            return '<div class="' + (editable ? 'fb-editor2-newsletter-live ' : '') + 'd-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5" data-fb-newsletter-block="1" data-button-text="' + escapeAttr(buttonText) + '" data-button-url="' + escapeAttr(buttonUrl) + '" data-button-icon="' + escapeAttr(buttonIcon) + '">' +
+                '<div class="mb-4 mb-sm-0 me-sm-4">' +
+                    '<h3 class="h5 mb-2" data-fb-newsletter-title="1"' + titleAttributes + '>' + escapeAttr(title) + '</h3>' +
+                    '<p class="fs-sm mb-0" data-fb-newsletter-text="1"' + textAttributes + '>' + escapeAttr(text) + '</p>' +
+                '</div>' +
+                button +
+            '</div>';
         }
 
         renderTableEditor(block) {
@@ -661,6 +701,13 @@
             }
             if (block.type === 'gallery' || block.type === 'slider') {
                 return '<button type="button" class="btn btn-outline-secondary w-100 mb-3" data-editor-pick-media-path="data.items"><i class="ci-plus me-2"></i>' + escapeAttr(this.label('chooseFile', 'Add media')) + '</button>';
+            }
+            if (block.type === 'newsletter') {
+                return this.textField('data.title', this.label('newsletterTitle', 'Title'), data.title || '', '') +
+                    this.textField('data.text', this.label('newsletterText', 'Text'), data.text || '', '') +
+                    this.textField('data.buttonText', this.label('newsletterButton', 'Button text'), data.buttonText || '', '') +
+                    this.textField('data.buttonUrl', this.label('newsletterUrl', 'Button link'), data.buttonUrl || '', 'https://…') +
+                    this.textField('data.buttonIcon', this.label('newsletterIcon', 'Button icon'), data.buttonIcon || 'ci-mail', 'ci-mail');
             }
             return '<p class="fb-editor2-inspector-hint">' + escapeAttr(this.label('inlineSettingsHint', 'Edit this block directly in the document.')) + '</p>';
         }
@@ -1319,10 +1366,13 @@
                     }
                 }.bind(this));
             }, this);
-            const rect = anchor.getBoundingClientRect();
-            this.ui.contextMenu.style.left = Math.min(window.innerWidth - 260, rect.right - 230) + 'px';
-            this.ui.contextMenu.style.top = Math.min(window.innerHeight - 360, rect.bottom + 6) + 'px';
+            this.contextMenuAnchor = anchor;
+            if (this.ui.contextMenu.parentElement !== document.body) {
+                document.body.appendChild(this.ui.contextMenu);
+            }
+            this.ui.contextMenu.style.visibility = 'hidden';
             this.ui.contextMenu.hidden = false;
+            this.positionContextMenu();
         }
 
         contextItem(action, icon, label, shortcut, danger) {
@@ -1332,7 +1382,67 @@
         closeContextMenu() {
             if (this.ui.contextMenu) {
                 this.ui.contextMenu.hidden = true;
+                this.ui.contextMenu.style.visibility = '';
             }
+            this.contextMenuAnchor = null;
+        }
+
+        viewportMetrics() {
+            const viewport = window.visualViewport;
+            return {
+                left: viewport ? viewport.offsetLeft : 0,
+                top: viewport ? viewport.offsetTop : 0,
+                width: viewport ? viewport.width : window.innerWidth,
+                height: viewport ? viewport.height : window.innerHeight
+            };
+        }
+
+        positionContextMenu() {
+            const menu = this.ui.contextMenu;
+            const anchor = this.contextMenuAnchor;
+            if (!menu || menu.hidden || !anchor || !anchor.isConnected) {
+                this.closeContextMenu();
+                return;
+            }
+
+            const viewport = this.viewportMetrics();
+            const anchorRect = anchor.getBoundingClientRect();
+            if (anchorRect.bottom < viewport.top || anchorRect.top > viewport.top + viewport.height ||
+                anchorRect.right < viewport.left || anchorRect.left > viewport.left + viewport.width) {
+                this.closeContextMenu();
+                return;
+            }
+            menu.style.maxHeight = Math.max(120, viewport.height - 24) + 'px';
+            menu.style.overflowY = 'auto';
+            const menuRect = menu.getBoundingClientRect();
+            const margin = 12;
+            const gap = 6;
+            const minLeft = viewport.left + margin;
+            const maxLeft = viewport.left + viewport.width - menuRect.width - margin;
+            const left = Math.max(minLeft, Math.min(anchorRect.right - menuRect.width, maxLeft));
+            const availableBelow = viewport.top + viewport.height - anchorRect.bottom - margin;
+            const availableAbove = anchorRect.top - viewport.top - margin;
+            const openAbove = menuRect.height > availableBelow && availableAbove > availableBelow;
+            const preferredTop = openAbove
+                ? anchorRect.top - menuRect.height - gap
+                : anchorRect.bottom + gap;
+            const minTop = viewport.top + margin;
+            const maxTop = viewport.top + viewport.height - menuRect.height - margin;
+
+            menu.style.left = Math.round(left) + 'px';
+            menu.style.top = Math.round(Math.max(minTop, Math.min(preferredTop, maxTop))) + 'px';
+            menu.style.visibility = '';
+            menu.classList.toggle('is-open-up', openAbove);
+        }
+
+        handleFloatingUiViewportChange() {
+            if (!this.ui.contextMenu || this.ui.contextMenu.hidden || !this.contextMenuAnchor) {
+                return;
+            }
+            window.cancelAnimationFrame(this.floatingUiFrame);
+            this.floatingUiFrame = window.requestAnimationFrame(function () {
+                this.positionContextMenu();
+            }.bind(this));
         }
 
         openBlockMenu(afterId, anchor) {
@@ -2572,11 +2682,7 @@
                 const embed = this.embedUrl(data.url || '');
                 content = embed ? '<figure><div class="ratio ratio-16x9"><iframe src="' + escapeAttr(embed) + '" title="' + escapeAttr(data.caption || 'Embedded content') + '" loading="lazy" allowfullscreen></iframe></div>' + (data.caption ? '<figcaption>' + escapeAttr(data.caption) + '</figcaption>' : '') + '</figure>' : '';
             } else if (block.type === 'newsletter') {
-                const url = sanitizer.safeUrl(data.buttonUrl || '', false);
-                content = '<div data-fb-newsletter-block="1" data-button-text="' + escapeAttr(data.buttonText || '') + '" data-button-url="' + escapeAttr(url) + '" data-button-icon="' + escapeAttr(iconClass(data.buttonIcon || 'ci-mail')) + '">' +
-                    '<div><h3 data-fb-newsletter-title="1">' + escapeAttr(data.title || '') + '</h3><p data-fb-newsletter-text="1">' + escapeAttr(data.text || '') + '</p></div>' +
-                    (url ? '<a class="btn btn-dark" href="' + escapeAttr(url) + '">' + escapeAttr(data.buttonText || 'Subscribe') + '</a>' : '<span class="btn btn-dark">' + escapeAttr(data.buttonText || 'Subscribe') + '</span>') +
-                '</div>';
+                content = this.renderNewsletterBlock(block, false);
             } else if (block.type === 'social') {
                 content = '<div data-fb-social="1">' + (data.items || []).map(function (item) {
                     const url = sanitizer.safeUrl(item.url || '', false);
@@ -3070,9 +3176,15 @@
 
         previewDocumentHtml() {
             const content = this.state.blocks.map(this.serializePublicBlock.bind(this)).join('');
-            return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
-                'body{font:16px/1.65 Inter,system-ui,sans-serif;color:#18202f;max-width:850px;margin:0 auto;padding:40px}img,video{max-width:100%;height:auto}figure{margin:1.5rem 0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d9dee8;padding:.65rem;text-align:left}blockquote{border-left:4px solid #2764e7;margin:1.5rem 0;padding:.6rem 1.25rem;background:#f3f7ff}.alert{border:1px solid #bdd2ff;border-radius:12px;padding:16px}.btn{display:inline-block;padding:.7rem 1rem;border-radius:9px;background:#1769e0;color:white;text-decoration:none}.fb-hide-desktop{display:none}</style></head><body>' +
-                content + '</body></html>';
+            const theme = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+            const styles = Array.isArray(this.config.previewStyleAssets) ? this.config.previewStyleAssets : [];
+            const styleLinks = styles.map(function (href) {
+                return '<link rel="stylesheet" href="' + escapeAttr(href) + '">';
+            }).join('');
+            return '<!doctype html><html lang="' + escapeAttr(document.documentElement.lang || 'en') + '" data-bs-theme="' + theme + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+                styleLinks +
+                '<style>body{max-width:850px;margin:0 auto;padding:40px 24px}img,video{max-width:100%;height:auto}.fb-preview-document>.fb-content-block:last-child{margin-bottom:0!important}@media(max-width:575.98px){body{padding:24px 16px}}</style></head><body><main class="fb-preview-document">' +
+                content + '</main></body></html>';
         }
 
         refreshSplitPreview() {
@@ -3391,6 +3503,17 @@
             document.removeEventListener('selectionchange', this.onSelectionChange);
             document.removeEventListener('keydown', this.onGlobalKeydown, true);
             document.removeEventListener('click', this.onDocumentClick);
+            document.removeEventListener('scroll', this.onFloatingUiViewportChange, true);
+            window.removeEventListener('resize', this.onFloatingUiViewportChange);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', this.onFloatingUiViewportChange);
+                window.visualViewport.removeEventListener('scroll', this.onFloatingUiViewportChange);
+            }
+            window.cancelAnimationFrame(this.floatingUiFrame);
+            this.closeContextMenu();
+            if (this.ui.contextMenu && !this.root.contains(this.ui.contextMenu)) {
+                this.root.appendChild(this.ui.contextMenu);
+            }
             if (this.workspace) {
                 this.workspace.removeEventListener('click', this.onWorkspaceClick);
                 this.workspace.removeEventListener('input', this.onWorkspaceInput);

@@ -65,7 +65,7 @@ class HomeController extends BaseController
      */
     protected function renderDefaultHomepage(): string
     {
-        $featured_posts = $this->posts->getHomeFeaturedPosts(10);
+        $featured_posts = $this->filterPublicPosts($this->posts->getHomeFeaturedPosts(10));
 
         return Theme::render('home', [
             'title' => return_translation('home_index_title'),
@@ -80,6 +80,11 @@ class HomeController extends BaseController
      */
     protected function renderPageHomepage(array $page): string
     {
+        $filteredPage = apply_filters('public_page_before_render', $page, get_user() ?: []);
+        if (is_array($filteredPage)) {
+            $page = $filteredPage;
+        }
+
         return Theme::render('page', [
             'title' => $page['title'],
             'page' => $page,
@@ -100,16 +105,23 @@ class HomeController extends BaseController
 
         return Theme::render('posts', [
             'title' => return_translation('posts_index_title'),
-            'posts' => $posts,
+            'posts' => $this->filterPublicPosts($posts),
             'total_posts' => count($posts),
             'pagination' => null,
             'current_category' => null,
             'current_category_label' => null,
             'categories' => $sidebarData['categories'],
-            'trending_posts' => $sidebarData['trending_posts'],
+            'trending_posts' => $this->filterPublicPosts((array)$sidebarData['trending_posts']),
             'seo_title' => return_translation('posts_index_title'),
             'seo_canonical' => base_href('/'),
         ]);
+    }
+
+    private function filterPublicPosts(array $posts): array
+    {
+        $filtered = apply_filters('public_posts_before_render', $posts, get_user() ?: []);
+
+        return is_array($filtered) ? array_values($filtered) : [];
     }
 
     /**

@@ -22,7 +22,7 @@
                 <div class="card h-100">
                     <div class="card-body">
                         <h2 class="h5">
-                            <a href="<?= base_href('/posts/' . $post['slug']) ?>"><?= htmlSC($post['title']) ?></a>
+                            <a href="<?= base_href('/posts/' . $post['slug']) ?>"><?php if (isset($post['subscription_access']) && empty($post['subscription_access']['allowed'])): ?><i class="ci-lock me-1" aria-hidden="true"></i><?php endif; ?><?= htmlSC($post['title']) ?></a>
                         </h2>
                         <p class="text-body-secondary mb-0"><?= htmlSC($post['excerpt'] ?? '') ?></p>
                     </div>

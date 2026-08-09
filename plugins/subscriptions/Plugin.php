@@ -5,6 +5,7 @@ use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 use Fireball\Subscriptions\Repositories\PlanRepository;
 use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\SettingsService;
+use Fireball\Subscriptions\Support\ProtectedContent;
 use FBL\Plugins\PluginInterface;
 
 spl_autoload_register(static function (string $class): void {
@@ -21,6 +22,8 @@ spl_autoload_register(static function (string $class): void {
 final class FireballPluginSubscriptions implements PluginInterface
 {
     public const SLUG = 'subscriptions';
+
+    private static ?AccessService $accessService = null;
 
     public function install(): void
     {
@@ -86,6 +89,9 @@ final class FireballPluginSubscriptions implements PluginInterface
         add_action('admin_post_saved', [self::class, 'savePostSettings']);
         add_action('admin_post_deleting', static fn(int $postId) => (new ContentRuleRepository())->delete('post', $postId));
         add_filter('public_post_before_render', [self::class, 'filterPublicPost'], 20);
+        add_filter('public_posts_before_render', [self::class, 'filterPublicPosts'], 20);
+        add_filter('public_page_before_render', [self::class, 'filterPublicPage'], 20);
+        add_filter('public_video_access_allowed', [self::class, 'filterPublicVideoAccess'], 20);
         add_filter('subscriptions_access_service', static fn(mixed $service): AccessService => $service instanceof AccessService ? $service : new AccessService());
         add_filter('fireball_scheduled_jobs', static function (array $jobs): array {
             $jobs['subscriptions_maintenance'] = [
@@ -101,7 +107,7 @@ final class FireballPluginSubscriptions implements PluginInterface
     public static function renderPostSettings(array $post, array $formData = []): void
     {
         $rule = (new ContentRuleRepository())->find('post', (int)($post['id'] ?? 0)) ?: [
-            'access_mode' => 'public',
+            'access_mode' => 'subscribers',
             'show_title' => 1,
             'show_excerpt' => 1,
             'show_image' => 1,
@@ -125,8 +131,54 @@ final class FireballPluginSubscriptions implements PluginInterface
 
     public static function filterPublicPost(array $post, array $user = []): array
     {
-        $decision = (new AccessService())->contentDecision((int)($user['id'] ?? 0), 'post', (int)($post['id'] ?? 0));
+        return self::applyPostAccess($post, $user, self::accessService());
+    }
+
+    public static function filterPublicPosts(array $posts, array $user = []): array
+    {
+        $access = self::accessService();
+        $filtered = [];
+        foreach ($posts as $post) {
+            if (is_array($post)) {
+                $filtered[] = self::applyPostAccess($post, $user, $access);
+            }
+        }
+
+        return $filtered;
+    }
+
+    public static function filterPublicPage(array $page, array $user = []): array
+    {
+        if (isset($page['content'])) {
+            $page['content'] = self::filterPublicVideoContent((string)$page['content'], $user);
+        }
+
+        return $page;
+    }
+
+    public static function filterPublicVideoContent(string $html, array $user = []): string
+    {
+        if ($html === '' || preg_match('/<(?:video|iframe)\b/i', $html) !== 1 || self::canViewPaidVideo($user)) {
+            return $html;
+        }
+
+        $replacement = self::videoAccessMessage();
+
+        return ProtectedContent::replaceVideos($html, $replacement);
+    }
+
+    public static function filterPublicVideoAccess(bool $allowed, array $user = []): bool
+    {
+        return self::canViewPaidVideo($user);
+    }
+
+    private static function applyPostAccess(array $post, array $user, AccessService $access): array
+    {
+        $decision = $access->contentDecision((int)($user['id'] ?? 0), 'post', (int)($post['id'] ?? 0));
         if ($decision['allowed']) {
+            if (isset($post['content'])) {
+                $post['content'] = self::filterPublicVideoContent((string)$post['content'], $user);
+            }
             $post['subscription_access'] = $decision;
             return $post;
         }
@@ -147,9 +199,33 @@ final class FireballPluginSubscriptions implements PluginInterface
             . '<p>' . htmlSC(self::t('subscriptions_access_post_message')) . '</p>'
             . '<a class="btn btn-dark rounded-pill" href="' . htmlSC(base_href('/subscriptions/plans')) . '">'
             . htmlSC(self::t('subscriptions_view_plans')) . '</a></div>';
+        $post['seo_description'] = !empty($rule['show_excerpt']) && trim((string)($post['excerpt'] ?? '')) !== ''
+            ? trim((string)$post['excerpt'])
+            : self::t('subscriptions_access_post_message');
         $post['subscription_access'] = $decision;
 
         return $post;
+    }
+
+    private static function videoAccessMessage(): string
+    {
+        return '<div class="border rounded-4 bg-body-tertiary p-4 p-md-5 text-center">'
+            . '<span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body border mb-3" style="width:3rem;height:3rem" aria-hidden="true">'
+            . '<i class="ci-lock fs-4"></i></span>'
+            . '<h3 class="h5">' . htmlSC(self::t('subscriptions_access_video_title')) . '</h3>'
+            . '<p class="text-body-secondary">' . htmlSC(self::t('subscriptions_access_video_message')) . '</p>'
+            . '<a class="btn btn-dark rounded-pill" href="' . htmlSC(base_href('/subscriptions/plans')) . '">'
+            . htmlSC(self::t('subscriptions_view_plans')) . '</a></div>';
+    }
+
+    private static function canViewPaidVideo(array $user): bool
+    {
+        return self::accessService()->can((int)($user['id'] ?? 0), 'videos.view_paid');
+    }
+
+    private static function accessService(): AccessService
+    {
+        return self::$accessService ??= new AccessService();
     }
 
     public static function can(int $userId, string $permission, array $context = []): bool

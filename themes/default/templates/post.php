@@ -120,6 +120,7 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                                 <div class="w-100 pe-3">
                                     <h3 class="h6 lh-base fs-sm mb-1">
                                         <a class="hover-effect-underline stretched-link" href="<?= $postUrl($item) ?>">
+                                            <?php if (isset($item['subscription_access']) && empty($item['subscription_access']['allowed'])): ?><i class="ci-lock me-1" aria-hidden="true"></i><?php endif; ?>
                                             <?= htmlSC($item['title']) ?>
                                         </a>
                                     </h3>
@@ -181,7 +182,8 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                 <div class="swiper-wrapper">
                     <?php foreach ($popular_posts as $item): ?>
                     <article class="swiper-slide">
-                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= $postUrl($item) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
+                        <a class="ratio d-flex hover-effect-scale rounded overflow-hidden position-relative" href="<?= $postUrl($item) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
+                            <?php if (isset($item['subscription_access']) && empty($item['subscription_access']['allowed'])): ?><span class="badge text-bg-dark rounded-pill position-absolute top-0 end-0 z-2 m-3"><i class="ci-lock me-1"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span><?php endif; ?>
                             <img src="<?= htmlSC($item['image_thumb'] ?? get_image($item['image'])) ?>" srcset="<?= htmlSC($item['image_srcset'] ?? '') ?>" sizes="(max-width: 499px) 100vw, (max-width: 899px) 50vw, 33vw" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)($item['image_width'] ?: 416) ?>" height="<?= (int)($item['image_height'] ?: 305) ?>" alt="<?= htmlSC($item['title']) ?>" loading="lazy" decoding="async">
                         </a>
                         <div class="pt-4">

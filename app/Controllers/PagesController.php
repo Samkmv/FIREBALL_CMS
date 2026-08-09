@@ -39,6 +39,11 @@ class PagesController extends BaseController
             response()->redirect(base_href('/'));
         }
 
+        $filteredPage = apply_filters('public_page_before_render', $page, get_user() ?: []);
+        if (is_array($filteredPage)) {
+            $page = $filteredPage;
+        }
+
         return Theme::render('page', [
             'title' => $page['title'],
             'page' => $page,

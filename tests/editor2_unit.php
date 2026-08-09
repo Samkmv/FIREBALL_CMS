@@ -86,6 +86,31 @@ editor2_assert(str_contains($rendered, 'youtube-nocookie.com/embed/dQw4w9WgXcQ')
 editor2_assert(str_contains($rendered, 'fb-content-block--width-wide'), 'Public width setting did not render.');
 editor2_assert(str_contains($rendered, 'fb-hide-mobile'), 'Public visibility setting did not render.');
 
+$newsletterRendered = (new App\Modules\BlockEditor\BlockRenderer())->renderBlock([
+    'id' => 'newsletter',
+    'type' => 'newsletter',
+    'data' => [
+        'title' => 'Sign up to our newsletter',
+        'text' => 'Receive our latest updates about our products & promotions',
+        'buttonText' => 'Subscribe',
+        'buttonIcon' => 'ci-mail',
+    ],
+]);
+editor2_assert(
+    str_contains($newsletterRendered, 'd-sm-flex align-items-center justify-content-between bg-body-tertiary rounded-4 py-5 px-4 px-md-5'),
+    'Newsletter block lost the Cartzilla layout classes.'
+);
+editor2_assert(str_contains($newsletterRendered, '<h3 class="h5 mb-2"'), 'Newsletter title does not use the public template markup.');
+editor2_assert(str_contains($newsletterRendered, '<button type="button" class="btn btn-dark"'), 'Newsletter action does not match the button template.');
+editor2_assert(str_contains($newsletterRendered, 'ci-mail fs-base ms-n1 me-2'), 'Newsletter button icon is missing.');
+$sanitizedNewsletter = sanitize_content_html($newsletterRendered);
+editor2_assert(str_contains($sanitizedNewsletter, 'bg-body-tertiary rounded-4 py-5 px-4 px-md-5'), 'Newsletter template classes were removed by the server sanitizer.');
+editor2_assert(str_contains($sanitizedNewsletter, '<button type="button" class="btn btn-dark"'), 'Newsletter button was removed by the server sanitizer.');
+$sanitizedUnsafeButton = sanitize_content_html('<button type="submit" formaction="https://example.com" formmethod="post" onclick="alert(1)" name="payload" value="secret">Safe label</button>');
+editor2_assert(str_contains($sanitizedUnsafeButton, '<button type="button">Safe label</button>'), 'Content buttons are not normalized to an inert type.');
+editor2_assert(!str_contains($sanitizedUnsafeButton, 'formaction'), 'Content button kept a form action.');
+editor2_assert(!str_contains($sanitizedUnsafeButton, 'onclick'), 'Content button kept an event handler.');
+
 add_filter('fireball_editor_render_block', static function (mixed $html, array $block): mixed {
     return ($block['type'] ?? '') === 'testPlugin'
         ? '<strong data-plugin-block="1">Plugin</strong>'
@@ -130,6 +155,12 @@ editor2_assert(str_contains($editorStylesSource, 'font-size: 16px !important;'),
 editor2_assert(str_contains($registrySource, 'registerBlockType'), 'Public Block API is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_block_types'), 'Server block-type extension filter is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_script_assets'), 'Editor asset extension filter is missing.');
+editor2_assert(str_contains($serviceSource, 'fireball_editor_preview_style_assets'), 'Preview style extension filter is missing.');
+editor2_assert(str_contains($editorSource, 'document.body.appendChild(this.ui.contextMenu)'), 'The block menu is not portaled out of the scrolling editor.');
+editor2_assert(str_contains($editorSource, 'positionContextMenu()'), 'The block menu has no viewport-aware positioning.');
+editor2_assert(str_contains($editorSource, 'this.renderNewsletterBlock(block, true)'), 'The editor does not use the shared newsletter renderer.');
+editor2_assert(str_contains($editorSource, 'this.renderNewsletterBlock(block, false)'), 'The preview serializer does not use the shared newsletter renderer.');
+editor2_assert(str_contains($editorSource, 'this.config.previewStyleAssets'), 'Preview does not load the public theme styles.');
 
 echo json_encode([
     'status' => 'ok',
@@ -146,4 +177,7 @@ echo json_encode([
     'command_palette_mobile' => true,
     'ios_focus_zoom_guard' => true,
     'plugin_api' => true,
+    'anchored_block_menu' => true,
+    'wysiwyg_newsletter' => true,
+    'themed_preview' => true,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;

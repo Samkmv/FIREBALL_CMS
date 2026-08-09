@@ -13,6 +13,7 @@
  */
 
 $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
+$canViewPaidVideos = (bool)apply_filters('public_video_access_allowed', true, get_user() ?: []);
 $heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
 $heroHlsScript = theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js'));
 $homeCityCategories = array_values(array_filter(
@@ -37,6 +38,7 @@ foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
         'image_width' => (int)($post['image_width'] ?: 416),
         'image_height' => (int)($post['image_height'] ?: 305),
         'url' => $postUrl($post),
+        'locked' => isset($post['subscription_access']) && empty($post['subscription_access']['allowed']),
     ];
 }
 
@@ -69,6 +71,7 @@ $featuredCount = count($popularCameras);
 <main class="home-page content-wrapper">
     <section class="home-hero">
         <div class="home-hero__media" aria-hidden="true">
+            <?php if ($canViewPaidVideos): ?>
             <video
                 class="home-hero__video"
                 data-home-hero-video
@@ -79,16 +82,18 @@ $featuredCount = count($popularCameras);
                 preload="auto"
                 crossorigin="anonymous"
             ></video>
+            <?php endif; ?>
         </div>
         <div class="home-hero__overlay" aria-hidden="true"></div>
         <div class="container home-hero__inner">
             <div class="home-hero__content home-reveal">
                 <span class="home-eyebrow"><span class="home-live-dot"></span> <?= print_translation('home_index_eyebrow') ?></span>
+                <?php if (!$canViewPaidVideos): ?><span class="badge text-bg-dark rounded-pill mb-3"><i class="ci-lock me-1"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span><?php endif; ?>
                 <h1 class="home-hero__title"><?= print_translation('home_index_hero_title') ?></h1>
                 <p class="home-hero__lead"><?= print_translation('home_index_hero_lead') ?></p>
                 <p class="home-hero__text"><?= print_translation('home_index_hero_text') ?></p>
                 <div class="home-hero__actions">
-                    <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts') ?>"><?= print_translation('home_index_hero_watch_cameras') ?></a>
+                    <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !$canViewPaidVideos ? base_href('/subscriptions/plans') : (!empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts')) ?>"><?= !$canViewPaidVideos ? htmlSC(return_translation('subscriptions_view_plans')) : print_translation('home_index_hero_watch_cameras') ?></a>
                     <a class="btn btn-outline-secondary rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>
                 </div>
             </div>
@@ -170,10 +175,11 @@ $featuredCount = count($popularCameras);
                                         <article class="col" style="width: 306px; max-width: 72vw;">
                                             <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= htmlSC($camera['url']) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
                                                 <img src="<?= htmlSC($camera['image']) ?>" srcset="<?= htmlSC($camera['image_srcset']) ?>" sizes="(max-width: 767px) 72vw, 306px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)$camera['image_width'] ?>" height="<?= (int)$camera['image_height'] ?>" alt="<?= htmlSC($camera['title']) ?>" loading="lazy" decoding="async">
-                                                <span class="home-online-badge">
-                                                    <span class="home-online-dot" aria-hidden="true"></span>
-                                                    <?= print_translation('home_index_camera_online') ?>
-                                                </span>
+                                                <?php if (!empty($camera['locked'])): ?>
+                                                    <span class="home-online-badge"><i class="ci-lock" aria-hidden="true"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span>
+                                                <?php else: ?>
+                                                    <span class="home-online-badge"><span class="home-online-dot" aria-hidden="true"></span><?= print_translation('home_index_camera_online') ?></span>
+                                                <?php endif; ?>
                                             </a>
                                             <div class="pt-4">
                                                 <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">

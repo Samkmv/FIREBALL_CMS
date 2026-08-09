@@ -1,3 +1,40 @@
+<?php
+
+$subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
+$plans = is_array($plans ?? null) ? $plans : [];
+$rows = [];
+$mobileCards = [];
+
+foreach ($subscriptions as $subscription) {
+    $status = '<span class="badge rounded-pill text-bg-secondary">' . htmlSC((string)$subscription['status']) . '</span>';
+    $user = htmlSC((string)$subscription['user_name'])
+        . '<div class="small text-body-secondary">' . htmlSC((string)$subscription['user_email']) . '</div>';
+    $period = htmlSC((string)$subscription['starts_at']) . '<br>' . htmlSC((string)$subscription['ends_at']);
+
+    $rows[] = [
+        'cells' => [
+            ['value' => '#' . (int)$subscription['id']],
+            ['html' => $user],
+            ['value' => (string)$subscription['plan_name']],
+            ['html' => $status],
+            ['html' => $period],
+        ],
+    ];
+
+    $mobileCards[] = [
+        'id' => (string)(int)$subscription['id'],
+        'title' => (string)$subscription['user_name'],
+        'icon' => 'ci-user',
+        'status' => [['html' => $status]],
+        'extra_fields' => [
+            ['label' => FireballPluginSubscriptions::t('subscriptions_user'), 'value' => (string)$subscription['user_email']],
+            ['label' => FireballPluginSubscriptions::t('subscriptions_plan'), 'value' => (string)$subscription['plan_name']],
+            ['label' => FireballPluginSubscriptions::t('subscriptions_period'), 'html' => $period],
+        ],
+    ];
+}
+?>
+
 <?php require __DIR__ . '/shell-open.php'; ?>
     <details class="border rounded-4 p-4 mb-4">
         <summary class="fw-semibold"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant_title')) ?></summary>
@@ -11,8 +48,19 @@
             <div class="col-12"><button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant')) ?></button></div>
         </form>
     </details>
-    <div class="table-responsive border rounded-4"><table class="table align-middle mb-0"><thead><tr><th>ID</th><th><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_user')) ?></th><th><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan')) ?></th><th><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_status')) ?></th><th><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_period')) ?></th></tr></thead><tbody>
-        <?php foreach ($subscriptions as $subscription): ?><tr><td>#<?= (int)$subscription['id'] ?></td><td><?= htmlSC((string)$subscription['user_name']) ?><div class="small text-body-secondary"><?= htmlSC((string)$subscription['user_email']) ?></div></td><td><?= htmlSC((string)$subscription['plan_name']) ?></td><td><span class="badge text-bg-secondary"><?= htmlSC((string)$subscription['status']) ?></span></td><td><?= htmlSC((string)$subscription['starts_at']) ?><br><?= htmlSC((string)$subscription['ends_at']) ?></td></tr><?php endforeach; ?>
-        <?php if (!$subscriptions): ?><tr><td colspan="5" class="text-center text-body-secondary py-5"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_empty')) ?></td></tr><?php endif; ?>
-    </tbody></table></div>
+
+    <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
+        <?= view()->renderPartial('admin/partials/table', [
+            'columns' => [
+                ['label' => 'ID'],
+                ['label' => FireballPluginSubscriptions::t('subscriptions_user')],
+                ['label' => FireballPluginSubscriptions::t('subscriptions_plan')],
+                ['label' => FireballPluginSubscriptions::t('subscriptions_field_status')],
+                ['label' => FireballPluginSubscriptions::t('subscriptions_period')],
+            ],
+            'rows' => $rows,
+            'mobile_cards' => $mobileCards,
+            'empty_text' => FireballPluginSubscriptions::t('subscriptions_empty'),
+        ]) ?>
+    </div>
 <?php require __DIR__ . '/shell-close.php'; ?>
