@@ -158,9 +158,11 @@ class AdminPostController extends BaseController
                 $this->blog->updatePost($postId, $data);
                 session()->setFlash('success', return_translation('admin_post_updated'));
             } else {
-                $this->blog->createPost($data);
+                $postId = $this->blog->createPost($data);
                 session()->setFlash('success', return_translation('admin_post_created'));
             }
+
+            do_action('admin_post_saved', $postId, request()->getData(), $isEdit);
 
             session()->remove('form_data');
             session()->remove('form_errors');
@@ -210,6 +212,8 @@ class AdminPostController extends BaseController
             $postId = $this->blog->createPost($data);
         }
 
+        do_action('admin_post_saved', $postId, request()->getData(), $post !== false);
+
         response()->json([
             'status' => 'success',
             'id' => $postId,
@@ -227,6 +231,7 @@ class AdminPostController extends BaseController
     {
         $postId = (int)request()->post('id');
         if ($postId > 0) {
+            do_action('admin_post_deleting', $postId);
             $this->blog->deletePost($postId);
             session()->setFlash('success', return_translation('admin_post_deleted'));
         }

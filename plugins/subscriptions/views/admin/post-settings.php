@@ -1,0 +1,11 @@
+<?php
+$mode = (string)($form_data['subscription_access_mode'] ?? $rule['access_mode'] ?? 'public');
+$selectedPlans = array_map('intval', (array)($form_data['subscription_plan_ids'] ?? $rule['plan_ids'] ?? []));
+?>
+<div class="subscriptions-post-settings border-top mt-3 pt-3">
+    <h3 class="h6"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_post_access_title')) ?></h3>
+    <label class="fb-editor-field"><span><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_post_access_mode')) ?></span><select class="form-select" name="subscription_access_mode"><?php foreach (['public', 'authenticated', 'subscribers', 'plans', 'permission'] as $item): ?><option value="<?= $item ?>" <?= $mode === $item ? 'selected' : '' ?>><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_access_mode_' . $item)) ?></option><?php endforeach; ?></select></label>
+    <label class="fb-editor-field"><span><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_allowed_plans')) ?></span><select class="form-select" name="subscription_plan_ids[]" multiple><?php foreach ($plans as $plan): ?><option value="<?= (int)$plan['id'] ?>" <?= in_array((int)$plan['id'], $selectedPlans, true) ? 'selected' : '' ?>><?= htmlSC((string)$plan['name']) ?></option><?php endforeach; ?></select></label>
+    <label class="fb-editor-field"><span><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_required_permission')) ?></span><input class="form-control" name="subscription_required_permission" value="<?= htmlSC((string)($form_data['subscription_required_permission'] ?? $rule['required_permission'] ?? 'posts.view_paid')) ?>"></label>
+    <?php foreach ([['subscription_show_title', 'show_title', 'subscriptions_show_title'], ['subscription_show_excerpt', 'show_excerpt', 'subscriptions_show_excerpt'], ['subscription_show_image', 'show_image', 'subscriptions_show_image'], ['subscription_hide_video', 'hide_video', 'subscriptions_hide_video']] as [$name, $column, $label]): ?><label class="fb-editor-check"><input type="checkbox" name="<?= $name ?>" value="1" <?= !empty($form_data[$name] ?? $rule[$column] ?? true) ? 'checked' : '' ?>><span><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label><?php endforeach; ?>
+</div>

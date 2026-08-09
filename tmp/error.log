@@ -55,3 +55,41 @@ SQL: DELETE FROM users WHERE id <> ?
 Param Count: 1
 Param Keys: ["0"]
 ========================================================================
+[2026-08-09 21:47:34] Subscription checkout failed
+Request URI: /subscriptions/payment/create
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Robokassa credentials are not configured.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Services/SettingsService.php
+Line: 108
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Payments/RobokassaGateway.php(19): Fireball\Subscriptions\Services\SettingsService->assertGatewayReady()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Services/CheckoutService.php(64): Fireball\Subscriptions\Payments\RobokassaGateway->checkoutUrl(Array, Array, Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/PublicController.php(103): Fireball\Subscriptions\Services\CheckoutService->create(1, 1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\PublicController->createPayment()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#7 {main}
+user_id: 1
+plan_id: 1
+========================================================================
+[2026-08-09 22:10:31] Subscription checkout failed
+Request URI: /subscriptions/payment/create
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Robokassa credentials are not configured.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Services/SettingsService.php
+Line: 108
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Payments/RobokassaGateway.php(19): Fireball\Subscriptions\Services\SettingsService->assertGatewayReady()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Services/CheckoutService.php(64): Fireball\Subscriptions\Payments\RobokassaGateway->checkoutUrl(Array, Array, Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/PublicController.php(103): Fireball\Subscriptions\Services\CheckoutService->create(1, 1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\PublicController->createPayment()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#7 {main}
+user_id: 1
+plan_id: 1
+========================================================================

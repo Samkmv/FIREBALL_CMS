@@ -127,6 +127,15 @@ $postCategoryUrl = static function (?string $slug = null): string {
 ?>
 <!DOCTYPE html><html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="light" data-pwa="true" data-video-status="<?= $canViewVideoStatus ? '1' : '0' ?>"><head>
     <meta charset="utf-8">
+    <script>
+        (function () {
+            var standalone = window.matchMedia('(display-mode: standalone)').matches
+                || window.navigator.standalone === true;
+            ['pwa', 'standalone', 'pwa-standalone'].forEach(function (className) {
+                document.documentElement.classList.toggle(className, standalone);
+            });
+        })();
+    </script>
 
     <?= get_csrf_meta() ?>
 

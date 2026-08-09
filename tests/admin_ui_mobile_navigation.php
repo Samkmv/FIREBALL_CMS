@@ -35,6 +35,10 @@ admin_ui_assert(str_contains($styles, 'background: linear-gradient(145deg, #ff74
 admin_ui_assert(str_contains($styles, '.fb-topbar-action > i'), 'Topbar icons do not share a normalized size.');
 admin_ui_assert(str_contains($topbar, 'fb-icon-button fb-topbar-action theme-icon-active'), 'The theme switcher is not available as a mobile topbar action.');
 admin_ui_assert(str_contains($commandPalette, 'data-fb-command-close'), 'The admin command palette has no explicit close button.');
+admin_ui_assert(str_contains($mobileNavigation, 'data-fb-command-mode="actions"'), 'The mobile action button does not open quick actions first.');
+admin_ui_assert(str_contains($commandPalette, 'data-site-suggest-url'), 'The command palette is not connected to site-wide search.');
+admin_ui_assert(str_contains($scripts, 'loadSiteCommands'), 'The command palette cannot load public site results.');
+admin_ui_assert(str_contains($styles, 'html.pwa-standalone .fb-topbar'), 'The PWA admin topbar is not pinned below the safe area.');
 admin_ui_assert(str_contains($scripts, 'const isChat ='), 'The mobile chat item cannot receive its active state.');
 
 foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
@@ -49,6 +53,9 @@ echo json_encode([
     'notifications_topbar_only' => true,
     'mobile_theme_switcher' => true,
     'command_close_button' => true,
+    'quick_actions_mode' => true,
+    'site_wide_search' => true,
+    'pwa_pinned_topbar' => true,
     'normalized_icons' => true,
     'highlighted_action_button' => true,
     'translations' => ['ru', 'en', 'de', 'zh-cn'],

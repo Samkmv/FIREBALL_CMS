@@ -19,7 +19,26 @@
     }
 
     const charts = {};
-    let activeRange = '7';
+    const rangeStorageKey = 'fireball.admin.analytics.range';
+    const availableRanges = Object.keys(payload.traffic || {});
+    let activeRange = readStoredRange();
+
+    function readStoredRange() {
+        try {
+            const storedRange = window.localStorage.getItem(rangeStorageKey) || '7';
+            return availableRanges.includes(storedRange) ? storedRange : '7';
+        } catch (error) {
+            return '7';
+        }
+    }
+
+    function storeRange(range) {
+        try {
+            window.localStorage.setItem(rangeStorageKey, range);
+        } catch (error) {
+            // Analytics preferences remain optional when storage is unavailable.
+        }
+    }
 
     function cssVar(name, fallback) {
         const value = getComputedStyle(root).getPropertyValue(name).trim();
@@ -57,15 +76,45 @@
     }
 
     function renderTraffic(range) {
-        activeRange = String(range || '7');
+        const requestedRange = String(range || '7');
+        activeRange = availableRanges.includes(requestedRange) ? requestedRange : '7';
         const target = root.querySelector('[data-analytics-chart="traffic"]');
         const data = payload.traffic && payload.traffic[activeRange] ? payload.traffic[activeRange] : { labels: [], values: [] };
+        syncRangeUi(data);
         renderChart('traffic', target, {
             type: 'line',
             labels: data.labels || [],
             values: data.values || [],
             label: i18n.visits || 'Visits'
         });
+    }
+
+    function syncRangeUi(data) {
+        const activeButton = root.querySelector(`[data-analytics-range="${activeRange}"]`);
+        root.querySelectorAll('[data-analytics-range]').forEach((button) => {
+            const isActive = button === activeButton;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+
+        const label = activeButton ? activeButton.textContent.trim() : activeRange;
+        const labelTarget = root.querySelector('[data-analytics-range-label]');
+        const toggle = root.querySelector('[data-analytics-range-toggle]');
+        const totalTarget = root.querySelector('[data-analytics-range-total]');
+        const total = (Array.isArray(data.values) ? data.values : [])
+            .reduce((sum, value) => sum + Number(value || 0), 0);
+
+        if (labelTarget) {
+            labelTarget.textContent = label;
+        }
+        if (toggle) {
+            toggle.setAttribute('aria-label', `${i18n.visits || 'Visits'}: ${label}`);
+        }
+        if (totalTarget) {
+            totalTarget.textContent = new Intl.NumberFormat(document.documentElement.lang || undefined).format(total);
+        }
+
+        root.dataset.analyticsActiveRange = activeRange;
     }
 
     function renderSources() {
@@ -337,9 +386,9 @@
 
     root.querySelectorAll('[data-analytics-range]').forEach((button) => {
         button.addEventListener('click', () => {
-            root.querySelectorAll('[data-analytics-range]').forEach((item) => item.classList.remove('active'));
-            button.classList.add('active');
-            renderTraffic(button.getAttribute('data-analytics-range') || '7');
+            const range = button.getAttribute('data-analytics-range') || '7';
+            storeRange(range);
+            renderTraffic(range);
         });
     });
 

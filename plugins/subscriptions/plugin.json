@@ -1,0 +1,25 @@
+{
+  "name": "Subscriptions",
+  "slug": "subscriptions",
+  "class": "FireballPluginSubscriptions",
+  "version": "1.0.0",
+  "description": "Paid subscriptions, Robokassa payments and protected access to publications, video and camera archives.",
+  "author": "FIREBALL CMS",
+  "auto_migrate": true,
+  "requires": {
+    "cms": ">=1.7.0",
+    "php": ">=8.2"
+  },
+  "release_notes_i18n": {
+    "ru": [
+      "Добавлены тарифы, анкета подписчика и личный кабинет.",
+      "Реализована идемпотентная интеграция ResultURL Robokassa.",
+      "Добавлены серверные правила доступа к публикациям и API для видеоархивов."
+    ],
+    "en": [
+      "Added plans, subscriber profiles and the customer account.",
+      "Implemented an idempotent Robokassa ResultURL integration.",
+      "Added server-side post access rules and a media archive access API."
+    ]
+  }
+}

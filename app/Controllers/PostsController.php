@@ -115,6 +115,11 @@ class PostsController extends BaseController
             abort();
         }
 
+        $post = apply_filters('public_post_before_render', $post, get_user() ?: []);
+        if (!is_array($post)) {
+            abort();
+        }
+
         $this->posts->incrementViews((int)$post['id']);
         $post['views_count'] = (int)$post['views_count'] + 1;
 

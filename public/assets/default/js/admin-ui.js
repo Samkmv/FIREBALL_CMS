@@ -221,10 +221,19 @@
         const openers = Array.from(admin.querySelectorAll('[data-fb-command-open]'));
         const emptyLabel = root.dataset.emptyLabel || 'No results';
         const actionsLabel = root.dataset.actionsLabel || 'Actions';
+        const siteLabel = root.dataset.siteLabel || 'Website';
+        const siteAllLabel = root.dataset.siteAllLabel || 'Show all website results';
+        const siteSuggestUrl = root.dataset.siteSuggestUrl || '';
+        const siteSearchUrl = root.dataset.siteSearchUrl || '';
         let commands = [];
+        let siteCommands = [];
         let visibleCommands = [];
         let activeIndex = 0;
         let returnFocus = null;
+        let openMode = 'search';
+        let siteSearchTimer = 0;
+        let siteSearchController = null;
+        let siteSearchSequence = 0;
 
         function clean(value) {
             return String(value || '')
@@ -239,7 +248,10 @@
             const map = new Map();
             document.querySelectorAll('a[data-fb-command][href], a[data-fb-quick-action][href]').forEach((element) => {
                 const href = element.href;
-                if (!href || map.has(href)) {
+                const kind = element.dataset.fbCommandKind
+                    || (element.matches('[data-fb-quick-action]') ? 'action' : 'navigation');
+                const existing = map.get(href);
+                if (!href || (existing && !(existing.kind === 'navigation' && kind === 'action'))) {
                     return;
                 }
 
@@ -260,12 +272,124 @@
                         || element.dataset.fbQuickActionIcon
                         || element.querySelector('i')?.className
                         || 'ci-arrow-right',
+                    kind,
+                    description: '',
                     search: ''
                 };
                 command.search = clean(`${command.label} ${command.category} ${element.dataset.fbCommandKeywords || ''}`);
                 map.set(href, command);
             });
             commands = Array.from(map.values());
+        }
+
+        function iconForSiteType(type) {
+            return {
+                post: 'ci-file-text',
+                page: 'ci-file',
+                product: 'ci-shopping-bag',
+                support: 'ci-life-buoy',
+                faq: 'ci-help-circle'
+            }[String(type || '')] || 'ci-globe';
+        }
+
+        function safeSiteHref(value) {
+            try {
+                const url = new URL(String(value || ''), window.location.origin);
+                return url.origin === window.location.origin ? url.href : '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function siteResultsUrl(query) {
+            if (!siteSearchUrl) {
+                return '';
+            }
+            const url = new URL(siteSearchUrl, window.location.origin);
+            url.searchParams.set('q', query);
+            return url.href;
+        }
+
+        async function loadSiteCommands(query, sequence) {
+            if (!siteSuggestUrl || query.length < 2) {
+                siteCommands = [];
+                render();
+                return;
+            }
+
+            siteSearchController?.abort();
+            siteSearchController = new AbortController();
+
+            try {
+                const url = new URL(siteSuggestUrl, window.location.origin);
+                url.searchParams.set('q', query);
+                const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: siteSearchController.signal
+                });
+                if (!response.ok) {
+                    throw new Error(`Search request failed: ${response.status}`);
+                }
+
+                const payload = await response.json();
+                if (sequence !== siteSearchSequence || clean(input.value) !== clean(query)) {
+                    return;
+                }
+
+                siteCommands = (Array.isArray(payload.items) ? payload.items : [])
+                    .map((item) => {
+                        const href = safeSiteHref(item.url);
+                        const label = String(item.title || '').trim();
+                        const typeLabel = String(item.type_label || '').trim();
+                        const description = [typeLabel, String(item.meta || '').trim()].filter(Boolean).join(' · ');
+                        return {
+                            href,
+                            label,
+                            category: siteLabel,
+                            icon: iconForSiteType(item.type),
+                            kind: 'site',
+                            description,
+                            search: clean(`${label} ${typeLabel} ${description}`)
+                        };
+                    })
+                    .filter((command) => command.href && command.label);
+
+                const allResultsHref = siteResultsUrl(query);
+                if (allResultsHref) {
+                    siteCommands.push({
+                        href: allResultsHref,
+                        label: siteAllLabel,
+                        category: siteLabel,
+                        icon: 'ci-search',
+                        kind: 'site',
+                        description: query,
+                        search: clean(`${siteAllLabel} ${query}`)
+                    });
+                }
+                render();
+            } catch (error) {
+                if (error.name !== 'AbortError' && sequence === siteSearchSequence) {
+                    siteCommands = [];
+                    render();
+                }
+            }
+        }
+
+        function queueSiteSearch(query) {
+            window.clearTimeout(siteSearchTimer);
+            siteSearchController?.abort();
+            siteCommands = [];
+            siteSearchSequence += 1;
+            const sequence = siteSearchSequence;
+
+            if (query.length < 2) {
+                render();
+                return;
+            }
+
+            siteSearchTimer = window.setTimeout(() => loadSiteCommands(query, sequence), 220);
+            render();
         }
 
         function recentRank(href) {
@@ -284,14 +408,26 @@
         function render() {
             const query = clean(input.value);
             visibleCommands = commands
-                .filter((command) => query === '' || command.search.includes(query))
+                .concat(siteCommands)
+                .filter((command) => {
+                    if (query === '' && openMode === 'actions') {
+                        return command.kind === 'action';
+                    }
+                    return query === '' || command.search.includes(query);
+                })
                 .sort((left, right) => {
                     if (query === '') {
-                        return recentRank(left.href) - recentRank(right.href);
+                        const leftKind = openMode === 'actions' && left.kind === 'action' ? 0 : 1;
+                        const rightKind = openMode === 'actions' && right.kind === 'action' ? 0 : 1;
+                        return leftKind - rightKind
+                            || recentRank(left.href) - recentRank(right.href)
+                            || left.label.localeCompare(right.label);
                     }
+                    const leftSite = left.kind === 'site' ? 1 : 0;
+                    const rightSite = right.kind === 'site' ? 1 : 0;
                     const leftStart = clean(left.label).startsWith(query) ? 0 : 1;
                     const rightStart = clean(right.label).startsWith(query) ? 0 : 1;
-                    return leftStart - rightStart || left.label.localeCompare(right.label);
+                    return leftSite - rightSite || leftStart - rightStart || left.label.localeCompare(right.label);
                 });
 
             activeIndex = Math.min(activeIndex, Math.max(visibleCommands.length - 1, 0));
@@ -329,15 +465,24 @@
                 iconGlyph.setAttribute('aria-hidden', 'true');
                 icon.appendChild(iconGlyph);
 
+                const copy = document.createElement('span');
+                copy.className = 'fb-command-item-copy';
                 const label = document.createElement('span');
                 label.className = 'fb-command-item-label';
                 label.textContent = command.label;
+                copy.appendChild(label);
+                if (command.description) {
+                    const description = document.createElement('span');
+                    description.className = 'fb-command-item-description';
+                    description.textContent = command.description;
+                    copy.appendChild(description);
+                }
 
                 const category = document.createElement('span');
                 category.className = 'fb-command-item-category';
                 category.textContent = command.category;
 
-                button.append(icon, label, category);
+                button.append(icon, copy, category);
                 button.addEventListener('mouseenter', () => {
                     activeIndex = index;
                     syncActive();
@@ -375,10 +520,13 @@
         function open(trigger) {
             collect();
             returnFocus = trigger instanceof HTMLElement ? trigger : document.activeElement;
+            openMode = trigger instanceof HTMLElement && trigger.dataset.fbCommandMode === 'actions' ? 'actions' : 'search';
+            root.dataset.commandMode = openMode;
             root.hidden = false;
             root.setAttribute('aria-hidden', 'false');
             document.body.classList.add('fb-command-open');
             input.value = '';
+            siteCommands = [];
             activeIndex = 0;
             render();
             window.requestAnimationFrame(() => input.focus());
@@ -391,6 +539,9 @@
             root.hidden = true;
             root.setAttribute('aria-hidden', 'true');
             document.body.classList.remove('fb-command-open');
+            window.clearTimeout(siteSearchTimer);
+            siteSearchController?.abort();
+            siteCommands = [];
             if (returnFocus instanceof HTMLElement && document.contains(returnFocus)) {
                 returnFocus.focus();
             }
@@ -400,7 +551,7 @@
         root.querySelectorAll('[data-fb-command-close]').forEach((closer) => closer.addEventListener('click', close));
         input.addEventListener('input', () => {
             activeIndex = 0;
-            render();
+            queueSiteSearch(clean(input.value));
         });
 
         root.addEventListener('keydown', (event) => {

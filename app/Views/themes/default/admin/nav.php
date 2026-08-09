@@ -183,6 +183,7 @@ $renderLink = static function (array $item, string $groupLabel, bool $nested = f
         data-fb-command-label="<?= htmlSC($itemLabel) ?>"
         data-fb-command-category="<?= htmlSC($groupLabel) ?>"
         data-fb-command-icon="<?= htmlSC($icon) ?>"
+        data-fb-command-kind="navigation"
     >
         <span class="fb-nav-icon"><i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i></span>
         <span class="fb-nav-label"><?= htmlSC($itemLabel) ?></span>

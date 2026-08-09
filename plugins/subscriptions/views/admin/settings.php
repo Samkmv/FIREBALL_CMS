@@ -1,0 +1,26 @@
+<?php require __DIR__ . '/shell-open.php'; ?>
+    <form class="border rounded-4 p-4 p-lg-5" method="post" autocomplete="off">
+        <?= get_csrf_field() ?>
+        <div class="alert alert-info"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_settings_urls_hint')) ?></div>
+        <div class="row g-3">
+            <div class="col-md-6"><label class="form-label">MerchantLogin</label><input class="form-control" name="merchant_login" value="<?= htmlSC((string)$settings['merchant_login']) ?>"></div>
+            <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_hash_algorithm')) ?></label><select class="form-select" name="hash_algorithm"><?php foreach (['md5', 'ripemd160', 'sha1', 'sha256', 'sha384', 'sha512'] as $algorithm): ?><option value="<?= $algorithm ?>" <?= $settings['hash_algorithm'] === $algorithm ? 'selected' : '' ?>><?= strtoupper($algorithm) ?></option><?php endforeach; ?></select></div>
+            <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_currency')) ?></label><input class="form-control" name="currency" maxlength="3" value="<?= htmlSC((string)$settings['currency']) ?>"></div>
+            <div class="col-md-6"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_password1')) ?></label><input class="form-control" type="password" name="password1" value="" placeholder="<?= $settings['password1_configured'] ? '••••••••' : '' ?>"><div class="form-text"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_secret_hint')) ?></div></div>
+            <div class="col-md-6"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_password2')) ?></label><input class="form-control" type="password" name="password2" value="" placeholder="<?= $settings['password2_configured'] ? '••••••••' : '' ?>"><div class="form-text"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_secret_hint')) ?></div></div>
+            <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payment_timeout')) ?></label><input class="form-control" type="number" name="payment_timeout_minutes" min="5" value="<?= (int)$settings['payment_timeout_minutes'] ?>"></div>
+            <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_media_ttl')) ?></label><input class="form-control" type="number" name="media_token_ttl" min="60" max="1800" value="<?= (int)$settings['media_token_ttl'] ?>"></div>
+        </div>
+        <div class="row g-3 mt-2">
+            <?php foreach ([['test_mode', 'subscriptions_test_mode'], ['recurring_enabled', 'subscriptions_recurring_enabled'], ['receipt_enabled', 'subscriptions_receipt_enabled']] as [$key, $label]): ?><div class="col-md-4"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= !empty($settings[$key]) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div><?php endforeach; ?>
+        </div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_receipt_tax')) ?></label><select class="form-select" name="receipt_tax"><?php foreach (['none', 'vat0', 'vat5', 'vat7', 'vat10', 'vat20'] as $item): ?><option value="<?= $item ?>" <?= $settings['receipt_tax'] === $item ? 'selected' : '' ?>><?= htmlSC($item) ?></option><?php endforeach; ?></select></div>
+            <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_receipt_method')) ?></label><select class="form-select" name="receipt_payment_method"><?php foreach (['full_payment', 'prepayment', 'prepayment_full', 'advance'] as $item): ?><option value="<?= $item ?>" <?= $settings['receipt_payment_method'] === $item ? 'selected' : '' ?>><?= htmlSC($item) ?></option><?php endforeach; ?></select></div>
+            <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_receipt_object')) ?></label><select class="form-select" name="receipt_payment_object"><?php foreach (['service', 'commodity', 'payment', 'another'] as $item): ?><option value="<?= $item ?>" <?= $settings['receipt_payment_object'] === $item ? 'selected' : '' ?>><?= htmlSC($item) ?></option><?php endforeach; ?></select></div>
+        </div>
+        <hr class="my-4">
+        <?php foreach (['result_url', 'success_url', 'fail_url'] as $key): ?><div class="mb-3"><label class="form-label"><?= htmlSC(ucfirst(str_replace('_', ' ', $key))) ?></label><input class="form-control font-monospace" value="<?= htmlSC((string)$settings[$key]) ?>" readonly></div><?php endforeach; ?>
+        <button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button>
+    </form>
+<?php require __DIR__ . '/shell-close.php'; ?>

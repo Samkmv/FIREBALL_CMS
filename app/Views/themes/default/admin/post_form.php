@@ -305,6 +305,7 @@ $requiredSummary = $translateOrFallback('admin_form_required_summary', 'Запо
                                 <input type="checkbox" name="show_on_home" value="1" <?= (int)($formData['show_on_home'] ?? ($entity['show_on_home'] ?? 0)) === 1 ? 'checked' : '' ?>>
                                 <span><?= htmlSC(return_translation('admin_post_show_on_home')) ?></span>
                             </label>
+                            <?php do_action('admin_post_document_settings', $entity, $formData); ?>
                         </section>
                     <?php endif; ?>
 

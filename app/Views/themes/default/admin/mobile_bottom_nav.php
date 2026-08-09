@@ -7,7 +7,7 @@
         <i class="ci-file-text" aria-hidden="true"></i>
         <span><?= print_translation('admin_nav_group_content') ?></span>
     </button>
-    <button class="fb-mobile-nav-item fb-mobile-nav-action" type="button" data-fb-command-open aria-label="<?= htmlSC(return_translation('admin_ui_command_title')) ?>">
+    <button class="fb-mobile-nav-item fb-mobile-nav-action" type="button" data-fb-command-open data-fb-command-mode="actions" aria-label="<?= htmlSC(return_translation('admin_ui_command_title')) ?>">
         <i class="ci-plus" aria-hidden="true"></i>
         <span><?= print_translation('admin_ui_actions') ?></span>
     </button>

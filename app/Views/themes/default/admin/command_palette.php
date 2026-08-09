@@ -25,6 +25,18 @@ $registeredAdminCommands = [
         'icon' => 'ci-user-plus',
         'creator_only' => true,
     ],
+    [
+        'href' => base_href('/admin/plugins'),
+        'label' => return_translation('admin_dashboard_manage_plugins'),
+        'category' => return_translation('admin_ui_command_actions'),
+        'icon' => 'ci-box',
+    ],
+    [
+        'href' => base_href('/admin/themes'),
+        'label' => return_translation('admin_dashboard_manage_theme'),
+        'category' => return_translation('admin_ui_command_actions'),
+        'icon' => 'ci-monitor',
+    ],
 ];
 $registeredAdminCommands = apply_filters('admin_command_palette_commands', $registeredAdminCommands, get_user() ?: []);
 if (!is_array($registeredAdminCommands)) {
@@ -49,6 +61,7 @@ if (!is_array($registeredAdminCommands)) {
             data-fb-command-category="<?= htmlSC((string)($registeredCommand['category'] ?? return_translation('admin_ui_command_actions'))) ?>"
             data-fb-command-icon="<?= htmlSC((string)($registeredCommand['icon'] ?? 'ci-arrow-right')) ?>"
             data-fb-command-keywords="<?= htmlSC((string)($registeredCommand['keywords'] ?? '')) ?>"
+            data-fb-command-kind="action"
         ></a>
     <?php endforeach; ?>
 </div>
@@ -59,6 +72,10 @@ if (!is_array($registeredAdminCommands)) {
     data-empty-label="<?= htmlSC(return_translation('admin_ui_command_empty')) ?>"
     data-navigation-label="<?= htmlSC(return_translation('admin_ui_command_navigation')) ?>"
     data-actions-label="<?= htmlSC(return_translation('admin_ui_command_actions')) ?>"
+    data-site-label="<?= htmlSC(return_translation('admin_ui_command_site')) ?>"
+    data-site-all-label="<?= htmlSC(return_translation('admin_ui_command_site_all')) ?>"
+    data-site-suggest-url="<?= base_href('/search/suggest') ?>"
+    data-site-search-url="<?= base_href('/search') ?>"
     hidden
     aria-hidden="true"
 >
