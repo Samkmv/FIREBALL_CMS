@@ -92,6 +92,45 @@ use Fireball\Subscriptions\Services\SettingsService;
 use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
+$manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
+assertSameValue('1.1.0', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
+assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
+assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
+assertSameValue('plugins/subscriptions', $manifest['update']['path'] ?? '', 'Independent update directory');
+
+$supportedLocales = ['ru', 'en', 'de', 'zh-cn'];
+foreach (['name_i18n', 'description_i18n', 'release_notes_i18n'] as $localizedManifestField) {
+    assertSameValue(
+        $supportedLocales,
+        array_keys((array)($manifest[$localizedManifestField] ?? [])),
+        'Manifest translations must cover every CMS language: ' . $localizedManifestField
+    );
+    foreach ($supportedLocales as $locale) {
+        $localizedValue = $manifest[$localizedManifestField][$locale] ?? '';
+        assertTrueValue(
+            is_array($localizedValue)
+                ? $localizedValue !== [] && count(array_filter($localizedValue, static fn(mixed $item): bool => trim((string)$item) !== '')) === count($localizedValue)
+                : trim((string)$localizedValue) !== '',
+            'Manifest translation must not be empty: ' . $localizedManifestField . '.' . $locale
+        );
+    }
+}
+
+$englishTranslations = require __DIR__ . '/../lang/en.php';
+foreach ($supportedLocales as $locale) {
+    $translations = require __DIR__ . '/../lang/' . $locale . '.php';
+    assertSameValue(
+        array_keys($englishTranslations),
+        array_keys($translations),
+        'Plugin interface translation keys must match English: ' . $locale
+    );
+    assertTrueValue(
+        count(array_filter($translations, static fn(mixed $value): bool => trim((string)$value) === '')) === 0,
+        'Plugin interface translations must not contain empty values: ' . $locale
+    );
+}
+
 assertSameValue(0, Money::toMinor('0'), 'Zero money parsing');
 assertSameValue(10050, Money::toMinor('100,50'), 'Exact money parsing');
 assertSameValue('100.50', Money::decimal(10050), 'Exact money formatting');

@@ -4,6 +4,7 @@ namespace FBL\Plugins;
 
 use App\Services\SqlFileRunner;
 use FBL\Language;
+use FBL\Localization;
 use FBL\Router;
 use Throwable;
 
@@ -64,9 +65,9 @@ final class PluginManager
             $items[$slug] = [
                 'slug' => $slug,
                 'path' => $metadata['path'] ?? '',
-                'name' => (string)($metadata['name'] ?? $slug),
+                'name' => $this->localizedMetadataValue($metadata, 'name', $slug),
                 'version' => (string)($metadata['version'] ?? ''),
-                'description' => (string)($metadata['description'] ?? ''),
+                'description' => $this->localizedMetadataValue($metadata, 'description'),
                 'author' => (string)($metadata['author'] ?? ''),
                 'status' => $row['status'] ?? 'not_installed',
                 'installed' => $row !== null,
@@ -396,6 +397,27 @@ final class PluginManager
         $decoded['path'] = $realPath;
 
         return $decoded;
+    }
+
+    /**
+     * Возвращает локализованное поле манифеста для карточки плагина.
+     * Канонические name/description сохраняются в БД без привязки к языку.
+     */
+    private function localizedMetadataValue(array $metadata, string $field, string $fallback = ''): string
+    {
+        $translations = $metadata[$field . '_i18n'] ?? null;
+        if (is_array($translations)) {
+            foreach (Localization::localeCandidates(null, ['en']) as $locale) {
+                $value = trim((string)($translations[$locale] ?? ''));
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        $value = trim((string)($metadata[$field] ?? ''));
+
+        return $value !== '' ? $value : $fallback;
     }
 
     private function validMetadataBySlug(string $slug): array

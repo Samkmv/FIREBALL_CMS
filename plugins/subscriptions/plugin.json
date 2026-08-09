@@ -2,24 +2,63 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.0.0",
-  "description": "Paid subscriptions, Robokassa payments and protected access to publications, video and camera archives.",
+  "version": "1.1.0",
+  "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
+  "name_i18n": {
+    "ru": "Подписки",
+    "en": "Subscriptions",
+    "de": "Abonnements",
+    "zh-cn": "订阅"
+  },
+  "description_i18n": {
+    "ru": "Полное управление платными подписками: тарифы, анкеты подписчиков, разовые и рекуррентные платежи Robokassa, а также серверная защита записей, видео и архивов камер.",
+    "en": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
+    "de": "Vollständige Verwaltung kostenpflichtiger Abonnements mit Tarifen, Abonnentenprofilen, einmaligen und wiederkehrenden Robokassa-Zahlungen sowie serverseitigem Schutz für Beiträge, Videos und Kameraarchive.",
+    "zh-cn": "完整的付费订阅管理：套餐、订阅者资料、Robokassa 单次及定期付款，以及对文章、视频和摄像头存档的服务端保护。"
+  },
   "author": "FIREBALL CMS",
   "auto_migrate": true,
+  "release_notes": [
+    "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
+    "Completed the interface, plugin description and release-note translations for Russian, English, German and Simplified Chinese.",
+    "Protected posts and videos are now restricted for users without a suitable active subscription.",
+    "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
+  ],
   "requires": {
     "cms": ">=1.7.0",
     "php": ">=8.2"
   },
   "release_notes_i18n": {
     "ru": [
-      "Добавлены тарифы, анкета подписчика и личный кабинет.",
-      "Реализована идемпотентная интеграция ResultURL Robokassa.",
-      "Добавлены серверные правила доступа к публикациям и API для видеоархивов."
+      "Включены независимые обновления плагина из GitHub-репозитория FIREBALL CMS.",
+      "Полностью переведены интерфейс, описание плагина и заметки о выпуске на русский, английский, немецкий и упрощённый китайский языки.",
+      "Записи и видео теперь недоступны пользователям без подходящей активной подписки.",
+      "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
-      "Added plans, subscriber profiles and the customer account.",
-      "Implemented an idempotent Robokassa ResultURL integration.",
-      "Added server-side post access rules and a media archive access API."
+      "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
+      "Completed the interface, plugin description and release-note translations for Russian, English, German and Simplified Chinese.",
+      "Protected posts and videos are now restricted for users without a suitable active subscription.",
+      "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
+    ],
+    "de": [
+      "Unabhängige Plugin-Updates aus dem GitHub-Repository von FIREBALL CMS wurden aktiviert.",
+      "Oberfläche, Plugin-Beschreibung und Versionshinweise sind vollständig auf Russisch, Englisch, Deutsch und vereinfachtem Chinesisch verfügbar.",
+      "Geschützte Beiträge und Videos sind jetzt für Benutzer ohne ein passendes aktives Abonnement gesperrt.",
+      "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
+    ],
+    "zh-cn": [
+      "已启用从 FIREBALL CMS GitHub 仓库独立更新插件的功能。",
+      "界面、插件说明和发行说明现已完整支持俄语、英语、德语和简体中文。",
+      "没有合适有效订阅的用户现在无法访问受保护的文章和视频。",
+      "订阅数据表在移动设备上会以符合 CMS 模板风格的响应式卡片显示。"
     ]
+  },
+  "update": {
+    "enabled": true,
+    "provider": "github_directory",
+    "repository": "Samkmv/FIREBALL_CMS",
+    "branch": "main",
+    "path": "plugins/subscriptions"
   }
 }
