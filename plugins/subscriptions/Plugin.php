@@ -111,7 +111,7 @@ final class FireballPluginSubscriptions implements PluginInterface
             'show_title' => 1,
             'show_excerpt' => 1,
             'show_image' => 1,
-            'hide_video' => 1,
+            'hide_video' => 0,
             'required_permission' => 'posts.view_paid',
             'plan_ids' => [],
         ];
@@ -149,10 +149,6 @@ final class FireballPluginSubscriptions implements PluginInterface
 
     public static function filterPublicPage(array $page, array $user = []): array
     {
-        if (isset($page['content'])) {
-            $page['content'] = self::filterPublicVideoContent((string)$page['content'], $user);
-        }
-
         return $page;
     }
 
@@ -169,7 +165,7 @@ final class FireballPluginSubscriptions implements PluginInterface
 
     public static function filterPublicVideoAccess(bool $allowed, array $user = []): bool
     {
-        return self::canViewPaidVideo($user);
+        return $allowed;
     }
 
     private static function applyPostAccess(array $post, array $user, AccessService $access): array

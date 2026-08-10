@@ -205,7 +205,7 @@ final class AccessService
             'show_title' => 1,
             'show_excerpt' => 1,
             'show_image' => 1,
-            'hide_video' => 1,
+            'hide_video' => 0,
             'required_permission' => 'posts.view_paid',
             'plan_ids' => [],
             'is_default' => true,

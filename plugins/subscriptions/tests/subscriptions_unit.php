@@ -93,7 +93,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.1.1', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.1.2', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -268,12 +268,24 @@ assertTrueValue(
 $publicAccessMigration = (string)file_get_contents(__DIR__ . '/../migrations/006_default_post_access_to_public.sql');
 assertTrueValue(str_contains($publicAccessMigration, "DEFAULT 'public'"), 'Content rules must default to public access unless explicitly protected');
 
+$openExistingContentMigration = (string)file_get_contents(__DIR__ . '/../migrations/007_open_existing_posts_and_videos.sql');
+assertTrueValue(
+    str_contains($openExistingContentMigration, "SET access_mode = 'public'")
+    && str_contains($openExistingContentMigration, 'hide_video = 0'),
+    'Existing posts and videos must be opened when production installs the update'
+);
+
 $pluginSource = (string)file_get_contents(__DIR__ . '/../Plugin.php');
 assertTrueValue(
     str_contains($pluginSource, "add_filter('public_posts_before_render'")
     && str_contains($pluginSource, "add_filter('public_page_before_render'")
     && str_contains($pluginSource, "add_filter('public_video_access_allowed'"),
-    'Plugin must protect post collections, page videos and direct public video surfaces'
+    'Plugin must integrate with public post, page and direct video rendering'
+);
+assertTrueValue(
+    str_contains($pluginSource, 'public static function filterPublicVideoAccess')
+    && str_contains($pluginSource, 'return $allowed;'),
+    'The subscription plugin must not globally close public video by default'
 );
 assertTrueValue(
     str_contains($pluginSource, 'subscriptions-access-message__actions')
