@@ -107,7 +107,7 @@ final class FireballPluginSubscriptions implements PluginInterface
     public static function renderPostSettings(array $post, array $formData = []): void
     {
         $rule = (new ContentRuleRepository())->find('post', (int)($post['id'] ?? 0)) ?: [
-            'access_mode' => 'subscribers',
+            'access_mode' => 'public',
             'show_title' => 1,
             'show_excerpt' => 1,
             'show_image' => 1,
@@ -176,7 +176,10 @@ final class FireballPluginSubscriptions implements PluginInterface
     {
         $decision = $access->contentDecision((int)($user['id'] ?? 0), 'post', (int)($post['id'] ?? 0));
         if ($decision['allowed']) {
-            if (isset($post['content'])) {
+            $allowedRule = (array)($decision['rule'] ?? []);
+            $protectVideo = (string)($allowedRule['access_mode'] ?? 'public') !== 'public'
+                && !empty($allowedRule['hide_video']);
+            if ($protectVideo && isset($post['content'])) {
                 $post['content'] = self::filterPublicVideoContent((string)$post['content'], $user);
             }
             $post['subscription_access'] = $decision;
@@ -194,11 +197,7 @@ final class FireballPluginSubscriptions implements PluginInterface
             $post['show_post_image'] = false;
             $post['seo_image'] = '';
         }
-        $post['content'] = '<div class="alert alert-info subscriptions-access-message">'
-            . '<h2 class="h5">' . htmlSC(self::t('subscriptions_access_post_title')) . '</h2>'
-            . '<p>' . htmlSC(self::t('subscriptions_access_post_message')) . '</p>'
-            . '<a class="btn btn-dark rounded-pill" href="' . htmlSC(base_href('/subscriptions/plans')) . '">'
-            . htmlSC(self::t('subscriptions_view_plans')) . '</a></div>';
+        $post['content'] = self::postAccessMessage($decision, $user);
         $post['seo_description'] = !empty($rule['show_excerpt']) && trim((string)($post['excerpt'] ?? '')) !== ''
             ? trim((string)$post['excerpt'])
             : self::t('subscriptions_access_post_message');
@@ -209,13 +208,52 @@ final class FireballPluginSubscriptions implements PluginInterface
 
     private static function videoAccessMessage(): string
     {
-        return '<div class="border rounded-4 bg-body-tertiary p-4 p-md-5 text-center">'
-            . '<span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body border mb-3" style="width:3rem;height:3rem" aria-hidden="true">'
-            . '<i class="ci-lock fs-4"></i></span>'
-            . '<h3 class="h5">' . htmlSC(self::t('subscriptions_access_video_title')) . '</h3>'
-            . '<p class="text-body-secondary">' . htmlSC(self::t('subscriptions_access_video_message')) . '</p>'
-            . '<a class="btn btn-dark rounded-pill" href="' . htmlSC(base_href('/subscriptions/plans')) . '">'
-            . htmlSC(self::t('subscriptions_view_plans')) . '</a></div>';
+        return '<section class="subscriptions-access-message subscriptions-access-message--compact" role="status">'
+            . '<span class="subscriptions-access-message__icon" aria-hidden="true"><i class="ci-play"></i></span>'
+            . '<div class="subscriptions-access-message__content">'
+            . '<span class="subscriptions-access-message__eyebrow">' . htmlSC(self::t('subscriptions_access_eyebrow')) . '</span>'
+            . '<h3>' . htmlSC(self::t('subscriptions_access_video_title')) . '</h3>'
+            . '<p>' . htmlSC(self::t('subscriptions_access_video_message')) . '</p>'
+            . '<div class="subscriptions-access-message__actions"><a class="btn btn-dark rounded-pill" href="' . htmlSC(base_href('/subscriptions/plans')) . '">'
+            . htmlSC(self::t('subscriptions_view_plans')) . '</a></div></div></section>';
+    }
+
+    private static function postAccessMessage(array $decision, array $user): string
+    {
+        $reason = (string)($decision['reason'] ?? 'subscription_required');
+        $titleKey = 'subscriptions_access_post_title';
+        $messageKey = 'subscriptions_access_post_message';
+        $icon = 'ci-lock';
+
+        if ($reason === 'authentication_required') {
+            $titleKey = 'subscriptions_access_login_title';
+            $messageKey = 'subscriptions_access_login_message';
+            $icon = 'ci-user';
+        } elseif ($reason === 'plan_required') {
+            $titleKey = 'subscriptions_access_plan_title';
+            $messageKey = 'subscriptions_access_plan_message';
+            $icon = 'ci-package';
+        } elseif ($reason === 'permission_required') {
+            $titleKey = 'subscriptions_access_permission_title';
+            $messageKey = 'subscriptions_access_permission_message';
+            $icon = 'ci-shield';
+        }
+
+        $actions = '<a class="btn btn-dark rounded-pill" href="' . htmlSC(base_href('/subscriptions/plans')) . '">'
+            . htmlSC(self::t('subscriptions_view_plans')) . '</a>';
+        if (empty($user['id'])) {
+            $actions .= '<a class="btn btn-outline-secondary rounded-pill" href="' . htmlSC(base_href('/login')) . '">'
+                . htmlSC(self::t('subscriptions_login')) . '</a>';
+        }
+
+        return '<section class="subscriptions-access-message" role="status">'
+            . '<span class="subscriptions-access-message__icon" aria-hidden="true"><i class="' . htmlSC($icon) . '"></i></span>'
+            . '<div class="subscriptions-access-message__content">'
+            . '<span class="subscriptions-access-message__eyebrow">' . htmlSC(self::t('subscriptions_access_eyebrow')) . '</span>'
+            . '<h2>' . htmlSC(self::t($titleKey)) . '</h2>'
+            . '<p>' . htmlSC(self::t($messageKey)) . '</p>'
+            . '<div class="subscriptions-access-message__actions">' . $actions . '</div>'
+            . '</div></section>';
     }
 
     private static function canViewPaidVideo(array $user): bool

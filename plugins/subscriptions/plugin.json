@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Posts without an explicit subscription rule remain public, while protected cards now use a compact access badge and a clear access explanation.",
     "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
     "Completed the interface, plugin description and release-note translations for Russian, English, German and Simplified Chinese.",
     "Protected posts and videos are now restricted for users without a suitable active subscription.",
@@ -30,24 +31,28 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Записи без отдельного правила подписки остаются открытыми, а защищённые карточки получили компактную метку и понятное объяснение причины ограничения.",
       "Включены независимые обновления плагина из GitHub-репозитория FIREBALL CMS.",
       "Полностью переведены интерфейс, описание плагина и заметки о выпуске на русский, английский, немецкий и упрощённый китайский языки.",
       "Записи и видео теперь недоступны пользователям без подходящей активной подписки.",
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Posts without an explicit subscription rule remain public, while protected cards now use a compact access badge and a clear access explanation.",
       "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
       "Completed the interface, plugin description and release-note translations for Russian, English, German and Simplified Chinese.",
       "Protected posts and videos are now restricted for users without a suitable active subscription.",
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Beiträge ohne ausdrückliche Abonnementregel bleiben öffentlich; geschützte Karten zeigen nun eine kompakte Kennzeichnung und eine klare Zugriffsbegründung.",
       "Unabhängige Plugin-Updates aus dem GitHub-Repository von FIREBALL CMS wurden aktiviert.",
       "Oberfläche, Plugin-Beschreibung und Versionshinweise sind vollständig auf Russisch, Englisch, Deutsch und vereinfachtem Chinesisch verfügbar.",
       "Geschützte Beiträge und Videos sind jetzt für Benutzer ohne ein passendes aktives Abonnement gesperrt.",
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "未设置明确订阅规则的文章将保持公开；受保护的卡片现在会显示紧凑标记和清晰的访问限制说明。",
       "已启用从 FIREBALL CMS GitHub 仓库独立更新插件的功能。",
       "界面、插件说明和发行说明现已完整支持俄语、英语、德语和简体中文。",
       "没有合适有效订阅的用户现在无法访问受保护的文章和视频。",

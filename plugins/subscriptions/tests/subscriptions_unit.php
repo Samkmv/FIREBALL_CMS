@@ -93,7 +93,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.1.0', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.1.1', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -137,9 +137,9 @@ assertSameValue('100.50', Money::decimal(10050), 'Exact money formatting');
 assertSameValue('100,50 RUB', Money::display(10050), 'Display money formatting');
 
 $anonymousPostDecision = (new AccessService())->contentDecision(0, 'post', 42);
-assertTrueValue(!$anonymousPostDecision['allowed'], 'Posts without an explicit rule must be protected');
-assertSameValue('authentication_required', $anonymousPostDecision['reason'], 'Anonymous post denial reason');
-assertSameValue('subscribers', $anonymousPostDecision['rule']['access_mode'] ?? '', 'Default post access mode');
+assertTrueValue($anonymousPostDecision['allowed'], 'Posts without an explicit rule must remain public');
+assertSameValue('public', $anonymousPostDecision['reason'], 'Anonymous post access reason');
+assertSameValue('public', $anonymousPostDecision['rule']['access_mode'] ?? '', 'Default post access mode');
 
 $protectedHtml = ProtectedContent::replaceVideos(
     '<p>Before</p><video src="/paid.mp4"></video><iframe src="https://www.youtube.com/embed/one"></iframe><iframe src="https://maps.google.com/map"></iframe>',
@@ -260,7 +260,13 @@ $profileMigration = (string)file_get_contents(__DIR__ . '/../migrations/004_norm
 assertTrueValue(str_contains($profileMigration, "'apartment'"), 'Apartment must remain an optional address field');
 
 $accessMigration = (string)file_get_contents(__DIR__ . '/../migrations/005_default_post_access_to_subscribers.sql');
-assertTrueValue(str_contains($accessMigration, "DEFAULT 'subscribers'"), 'Content rules must default to subscriber access');
+assertTrueValue(
+    str_contains($accessMigration, "DEFAULT 'subscribers'"),
+    'Legacy subscriber-default migration must remain available before the public-default correction'
+);
+
+$publicAccessMigration = (string)file_get_contents(__DIR__ . '/../migrations/006_default_post_access_to_public.sql');
+assertTrueValue(str_contains($publicAccessMigration, "DEFAULT 'public'"), 'Content rules must default to public access unless explicitly protected');
 
 $pluginSource = (string)file_get_contents(__DIR__ . '/../Plugin.php');
 assertTrueValue(
@@ -268,6 +274,11 @@ assertTrueValue(
     && str_contains($pluginSource, "add_filter('public_page_before_render'")
     && str_contains($pluginSource, "add_filter('public_video_access_allowed'"),
     'Plugin must protect post collections, page videos and direct public video surfaces'
+);
+assertTrueValue(
+    str_contains($pluginSource, 'subscriptions-access-message__actions')
+    && str_contains((string)file_get_contents(__DIR__ . '/../../../themes/default/templates/posts.php'), 'subscriptions-lock-badge'),
+    'Protected content must use compact, explanatory subscription notices'
 );
 
 foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields', 'field-form', 'settings'] as $adminView) {

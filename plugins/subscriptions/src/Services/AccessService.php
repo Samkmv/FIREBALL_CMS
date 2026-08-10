@@ -201,7 +201,7 @@ final class AccessService
     private function defaultPostRule(): array
     {
         return [
-            'access_mode' => 'subscribers',
+            'access_mode' => 'public',
             'show_title' => 1,
             'show_excerpt' => 1,
             'show_image' => 1,

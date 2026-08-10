@@ -93,3 +93,45 @@ Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Payme
 user_id: 1
 plan_id: 1
 ========================================================================
+[2026-08-10 07:19:30] Database connection error
+Request URI: -
+Request Method: -
+Remote IP: -
+Exception: PDOException
+Message: SQLSTATE[HY000] [2002] Operation not permitted
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 25
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(25): PDO->__construct('mysql:host=loca...', 'root', Object(SensitiveParameterValue), Array)
+#1 Command line code(1): FBL\Database->__construct()
+#2 {main}
+Driver: mysql
+Host: localhost
+Port: 3306
+Database: fbl
+Username: root
+DSN: mysql:host=localhost;dbname=fbl;charset=utf8mb4;port=3306
+========================================================================
+[2026-08-10 07:19:30] PWA head data error
+Request URI: -
+Request Method: -
+Remote IP: -
+Exception: TypeError
+Message: db(): Return value must be of type FBL\Database, null returned
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php
+Line: 228
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/SiteSetting.php(24): db()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/SiteSetting.php(70): App\Models\SiteSetting->ensureTableExists()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/SiteSetting.php(87): App\Models\SiteSetting->all()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/PwaService.php(1061): App\Models\SiteSetting->get('site_favicon', '')
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/PwaService.php(110): App\Services\PwaService->resolveIconSource()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/PwaService.php(51): App\Services\PwaService->icons()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(1085): App\Services\PwaService->headData()
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(1110): pwa_head_data()
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Views/themes/default/errors/500.php(18): pwa_head_tags()
+#9 /Applications/MAMP/htdocs/FIREBALL_CMS/core/View.php(32): require('/Applications/M...')
+#10 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(234): FBL\View->render('errors/500', Array, false)
+#11 /Applications/MAMP/htdocs/FIREBALL_CMS/helpers/helpers.php(343): view('errors/500', Array, false)
+#12 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(35): abort('Database connec...', 500)
+#13 Command line code(1): FBL\Database->__construct()
+#14 {main}
+========================================================================

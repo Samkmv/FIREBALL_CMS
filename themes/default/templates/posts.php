@@ -48,7 +48,7 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
     ?>
     <article class="col">
         <a class="ratio d-flex hover-effect-scale rounded overflow-hidden position-relative" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-            <?php if ($locked): ?><span class="badge text-bg-dark rounded-pill position-absolute top-0 end-0 z-2 m-3"><i class="ci-lock me-1"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span><?php endif; ?>
+            <?php if ($locked): ?><span class="subscriptions-lock-badge"><i class="ci-lock" aria-hidden="true"></i><span><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span></span><?php endif; ?>
             <img src="<?= htmlSC($post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 575px) 100vw, (max-width: 991px) 50vw, 416px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)($post['image_width'] ?: 416) ?>" height="<?= (int)($post['image_height'] ?: 305) ?>" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async">
         </a>
         <div class="pt-4">
