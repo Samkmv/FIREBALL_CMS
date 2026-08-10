@@ -45,6 +45,7 @@ class CookieConsent
             class="fireball-cookie-consent fireball-cookie-consent--<?= htmlSC($style) ?> fireball-cookie-consent--<?= htmlSC(str_replace('_', '-', $position)) ?>"
             data-fireball-cookie-consent
             data-expiration-days="<?= $expirationDays ?>"
+            hidden
             role="dialog"
             aria-live="polite"
             aria-label="<?= htmlSC(return_translation('cookie_consent_aria_label')) ?>"
@@ -65,6 +66,7 @@ class CookieConsent
         </div>
         <style>
             .fireball-cookie-consent{position:fixed;z-index:2147483000;box-sizing:border-box;color:var(--bs-body-color,#1f2937);font:400 15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+            .fireball-cookie-consent[hidden]{display:none!important}
             .fireball-cookie-consent *{box-sizing:border-box}
             .fireball-cookie-consent--card{width:min(420px,calc(100vw - 32px))}
             .fireball-cookie-consent--bottom-right{right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}
@@ -92,11 +94,60 @@ class CookieConsent
                 var banner = document.querySelector('[data-fireball-cookie-consent]');
                 var button = banner && banner.querySelector('[data-cookie-consent-accept]');
                 if (!banner || !button) return;
+
+                var cookieName = <?= json_encode(self::COOKIE_NAME, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+                var storageKey = cookieName + '_expires';
+
+                function readCookie(name) {
+                    var prefix = name + '=';
+                    var cookies = document.cookie ? document.cookie.split(';') : [];
+                    for (var index = 0; index < cookies.length; index += 1) {
+                        var item = cookies[index].trim();
+                        if (item.indexOf(prefix) === 0) {
+                            try {
+                                return decodeURIComponent(item.substring(prefix.length));
+                            } catch (error) {
+                                return item.substring(prefix.length);
+                            }
+                        }
+                    }
+                    return '';
+                }
+
+                function hasStoredConsent() {
+                    if (readCookie(cookieName) === 'true') return true;
+
+                    try {
+                        var storedUntil = parseInt(window.localStorage.getItem(storageKey) || '0', 10);
+                        if (storedUntil > Date.now()) return true;
+                        if (storedUntil > 0) window.localStorage.removeItem(storageKey);
+                    } catch (error) {
+                        // Cookie remains the primary storage when localStorage is unavailable.
+                    }
+
+                    return false;
+                }
+
+                if (hasStoredConsent()) {
+                    banner.remove();
+                    return;
+                }
+
+                banner.hidden = false;
                 button.addEventListener('click', function () {
                     var days = Math.max(1, parseInt(banner.getAttribute('data-expiration-days') || '365', 10));
-                    var cookie = '<?= self::COOKIE_NAME ?>=true; Path=/; Max-Age=' + (days * 86400) + '; SameSite=Lax';
+                    var expiresAt = Date.now() + (days * 86400000);
+                    var cookie = cookieName + '=true; Path=/; Max-Age=' + (days * 86400)
+                        + '; Expires=' + new Date(expiresAt).toUTCString() + '; SameSite=Lax';
                     if (<?= $secure ?>) cookie += '; Secure';
                     document.cookie = cookie;
+
+                    try {
+                        window.localStorage.setItem(storageKey, String(expiresAt));
+                    } catch (error) {
+                        // Consent still persists in the cookie when localStorage is unavailable.
+                    }
+
                     banner.remove();
                 });
             })();
