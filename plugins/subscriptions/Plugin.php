@@ -95,6 +95,12 @@ final class FireballPluginSubscriptions implements PluginInterface
         add_filter('public_video_access_allowed', [self::class, 'filterPublicVideoAccess'], 20);
         add_filter('fireball_editor_config', [self::class, 'filterEditorConfig'], 20);
         add_filter('fireball_editor_render_block', [self::class, 'filterEditorVideoBlock'], 20);
+        add_filter('fireball_editor_style_assets', static function (array $assets): array {
+            $asset = __DIR__ . '/assets/subscriptions.css';
+            $assets[] = base_href('/plugins/subscriptions/assets/subscriptions.css?v=' . (is_file($asset) ? filemtime($asset) : time()));
+
+            return array_values(array_unique($assets));
+        });
         add_filter('subscriptions_access_service', static fn(mixed $service): AccessService => $service instanceof AccessService ? $service : new AccessService());
         add_filter('fireball_scheduled_jobs', static function (array $jobs): array {
             $jobs['subscriptions_maintenance'] = [

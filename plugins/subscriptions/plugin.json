@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.2.4",
+  "version": "1.2.9",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,7 +19,10 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Fixed checkout redirect to the official Robokassa payment page without weakening CMS redirect protection.",
+    "Simplified new Robokassa requests to the official minimal signature and made the effective test/live mode explicit in settings and payment parameters.",
+    "Fixed subscription-plan checkboxes overflowing the video access inspector on narrow screens.",
+    "Redesigned public plan selection and checkout with responsive cards for one, two, or many subscription plans.",
+    "Added automatic Latin slug generation from subscription plan names while preserving manual edits.",
     "Added subscriber search and pagination, manual and external subscription sources, plan/status management, payment-history clearing, content access tables, and per-video access rules.",
     "Posts and videos are public by default in production; the update also opens existing content rules until protection is explicitly enabled again.",
     "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
@@ -33,7 +36,10 @@
   },
   "release_notes_i18n": {
     "ru": [
-      "Исправлен переход на официальную страницу оплаты Robokassa без ослабления защиты перенаправлений CMS.",
+      "Новые запросы Robokassa переведены на официальную минимальную подпись; фактический тестовый или боевой режим теперь явно показан в настройках и параметрах платежа.",
+      "Исправлено отображение чекбоксов тарифов в настройках доступа к видео на узких экранах.",
+      "Переработаны публичный выбор тарифов и оформление оплаты: адаптивные карточки поддерживают один, два или любое количество тарифов.",
+      "Добавлено автоматическое формирование slug латиницей из названия тарифа с сохранением ручных изменений.",
       "Добавлены поиск и пагинация подписчиков, ручные и внешние источники, управление тарифом и статусом, очистка истории платежей, таблица доступа к контенту и правила для отдельных видео.",
       "Записи и видео по умолчанию открыты в продакшене; обновление также открывает существующие правила контента, пока защита не будет включена явно.",
       "Включены независимые обновления плагина из GitHub-репозитория FIREBALL CMS.",
@@ -42,7 +48,10 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
-      "Fixed checkout redirect to the official Robokassa payment page without weakening CMS redirect protection.",
+      "Simplified new Robokassa requests to the official minimal signature and made the effective test/live mode explicit in settings and payment parameters.",
+      "Fixed subscription-plan checkboxes overflowing the video access inspector on narrow screens.",
+      "Redesigned public plan selection and checkout with responsive cards for one, two, or many subscription plans.",
+      "Added automatic Latin slug generation from subscription plan names while preserving manual edits.",
       "Added subscriber search and pagination, manual and external subscription sources, plan/status management, payment-history clearing, content access tables, and per-video access rules.",
       "Posts and videos are public by default in production; the update also opens existing content rules until protection is explicitly enabled again.",
       "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
@@ -51,7 +60,10 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
-      "Die Weiterleitung zur offiziellen Robokassa-Zahlungsseite wurde korrigiert, ohne den Weiterleitungsschutz des CMS zu schwächen.",
+      "Neue Robokassa-Anfragen verwenden die offizielle minimale Signatur; der aktive Test- oder Live-Modus wird nun in Einstellungen und Zahlungsparametern eindeutig angezeigt.",
+      "Die über den Videozugriffsbereich hinausragenden Tarif-Kontrollkästchen auf schmalen Bildschirmen wurden korrigiert.",
+      "Die öffentliche Tarifauswahl und der Bezahlvorgang wurden mit responsiven Karten für einen, zwei oder beliebig viele Tarife neu gestaltet.",
+      "Die automatische Erstellung des Slugs in lateinischen Zeichen aus dem Tarifnamen wurde ergänzt; manuelle Änderungen bleiben erhalten.",
       "Suche und Seitennavigation fuer Abonnenten, manuelle und externe Quellen, Tarif- und Statusverwaltung, Bereinigung des Zahlungsverlaufs, Inhaltszugriffstabellen und Regeln fuer einzelne Videos wurden hinzugefuegt.",
       "Beiträge und Videos sind in der Produktion standardmäßig öffentlich; das Update öffnet auch bestehende Inhaltsregeln, bis der Schutz ausdrücklich wieder aktiviert wird.",
       "Unabhängige Plugin-Updates aus dem GitHub-Repository von FIREBALL CMS wurden aktiviert.",
@@ -60,7 +72,10 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
-      "修复了跳转到 Robokassa 官方付款页面的问题，同时不降低 CMS 的重定向安全保护。",
+      "新的 Robokassa 请求改用官方最简签名，并在设置和支付参数中明确显示当前测试或正式模式。",
+      "修复了窄屏下视频访问设置中的订阅套餐复选框溢出问题。",
+      "重新设计了公开套餐选择和结账页面，响应式卡片支持一个、两个或任意数量的订阅套餐。",
+      "新增根据订阅套餐名称自动生成拉丁字符 slug 的功能，并保留手动修改。",
       "新增订阅者搜索和分页、手动及外部来源、套餐和状态管理、付款历史清理、内容访问表以及单个视频访问规则。",
       "生产环境中的文章和视频默认公开；此次更新也会开放现有内容规则，直到再次明确启用保护。",
       "已启用从 FIREBALL CMS GitHub 仓库独立更新插件的功能。",

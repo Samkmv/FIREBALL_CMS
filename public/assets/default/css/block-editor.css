@@ -604,8 +604,8 @@ body:has(.fb-editor-workspace) {
 
 .fb-editor-field .form-control,
 .fb-editor-field .form-select,
-.fb-editor2-inspector-field input,
-.fb-editor2-inspector-field select {
+.fb-editor2-inspector-field > input,
+.fb-editor2-inspector-field > select {
     width: 100%;
     min-height: 38px;
     padding: 8px 10px;
@@ -619,7 +619,7 @@ body:has(.fb-editor-workspace) {
 }
 
 .fb-editor-field .form-select,
-.fb-editor2-inspector-field select {
+.fb-editor2-inspector-field > select {
     -webkit-appearance: none;
     appearance: none;
     padding-right: 34px;
@@ -632,7 +632,7 @@ body:has(.fb-editor-workspace) {
 
 @media (hover: hover) {
     .fb-editor-field .form-select:hover:not(:disabled),
-    .fb-editor2-inspector-field select:hover:not(:disabled) {
+    .fb-editor2-inspector-field > select:hover:not(:disabled) {
         background-color: var(--fb-editor-panel);
         border-color: var(--fb-editor-border-strong);
     }
@@ -658,20 +658,20 @@ body:has(.fb-editor-workspace) {
 
 .fb-editor-field .form-control:focus,
 .fb-editor-field .form-select:focus,
-.fb-editor2-inspector-field input:focus,
-.fb-editor2-inspector-field select:focus {
+.fb-editor2-inspector-field > input:focus,
+.fb-editor2-inspector-field > select:focus {
     border-color: var(--fb-editor-primary);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--fb-editor-primary) 15%, transparent);
 }
 
 .fb-editor-field .form-select:disabled,
-.fb-editor2-inspector-field select:disabled {
+.fb-editor2-inspector-field > select:disabled {
     cursor: not-allowed;
     opacity: .58;
 }
 
 .fb-editor-field .form-select option,
-.fb-editor2-inspector-field select option,
+.fb-editor2-inspector-field > select option,
 .fb-editor2__select option {
     color: var(--fb-editor-text);
     background: var(--fb-editor-panel);

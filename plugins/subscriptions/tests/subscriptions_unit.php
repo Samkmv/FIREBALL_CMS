@@ -110,7 +110,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.4', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.9', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -209,9 +209,11 @@ $url = $gateway->checkoutUrl(
     ['email' => 'buyer@example.test']
 );
 parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
-$expectedCheckoutSignature = hash('sha256', 'merchant:100.50:123:secret-one:Shp_order=7:Shp_user=4');
+$expectedCheckoutSignature = hash('sha256', 'merchant:100.50:123:secret-one');
 assertSameValue($expectedCheckoutSignature, $query['SignatureValue'] ?? '', 'Checkout signature');
 assertSameValue('100.50', $query['OutSum'] ?? '', 'Checkout amount');
+assertSameValue('0', $query['IsTest'] ?? '', 'Live checkout mode must be explicit');
+assertTrueValue(!isset($query['Shp_order']) && !isset($query['Shp_user']), 'Checkout must use the minimal Robokassa signature');
 
 $settings->save([
     'merchant_login' => 'merchant',
@@ -231,7 +233,7 @@ $receiptUrl = $gateway->checkoutUrl(
 );
 parse_str((string)parse_url($receiptUrl, PHP_URL_QUERY), $receiptQuery);
 $receipt = (string)($receiptQuery['Receipt'] ?? '');
-$expectedReceiptSignature = hash('sha256', 'merchant:100.50:123:' . rawurlencode($receipt) . ':secret-one:Shp_order=7:Shp_user=4');
+$expectedReceiptSignature = hash('sha256', 'merchant:100.50:123:' . rawurlencode($receipt) . ':secret-one');
 assertTrueValue($receipt !== '' && is_array(json_decode($receipt, true)), 'Receipt must be valid JSON');
 assertSameValue($expectedReceiptSignature, $receiptQuery['SignatureValue'] ?? '', 'Receipt checkout signature');
 
@@ -332,6 +334,15 @@ foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields'
     );
 }
 
+$planFormTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/plan-form.php');
+assertTrueValue(
+    str_contains($planFormTemplate, 'data-slug-source="#subscription_plan_slug"')
+    && str_contains($planFormTemplate, 'id="subscription_plan_slug"')
+    && str_contains($planFormTemplate, 'data-slug-input')
+    && str_contains($planFormTemplate, 'pattern="[a-z0-9-]+"'),
+    'Subscription plan names must automatically generate a validated Latin slug without replacing manual edits'
+);
+
 $settingsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/settings.php');
 $adminControllerSource = (string)file_get_contents(__DIR__ . '/../src/Controllers/AdminController.php');
 $routesSource = (string)file_get_contents(__DIR__ . '/../routes.php');
@@ -344,7 +355,9 @@ assertTrueValue(
 assertTrueValue(
     str_contains($adminControllerSource, 'beginTransaction()')
     && str_contains($adminControllerSource, 'Robokassa settings save failed')
-    && str_contains($settingsTemplate, 'subscriptions_settings_credentials_ready'),
+    && str_contains($settingsTemplate, 'subscriptions_settings_credentials_ready')
+    && str_contains($settingsTemplate, 'subscriptions_payment_mode_live')
+    && str_contains($settingsTemplate, 'IsTest='),
     'Robokassa settings writes must be atomic and safely logged'
 );
 assertTrueValue(
@@ -382,6 +395,45 @@ assertTrueValue(
     && str_contains($accountTemplate, "'mobile_cards' => \$paymentCards")
     && !str_contains($accountTemplate, '<table'),
     'Public payment history must use the template mobile-card table component'
+);
+assertTrueValue(
+    str_contains($accountTemplate, 'subscriptions-account-card')
+    && str_contains($accountTemplate, 'subscriptions_payment_status_')
+    && str_contains($accountTemplate, 'subscriptions_subscription_status_active')
+    && !str_contains($accountTemplate, "htmlSC((string)\$payment['status'])"),
+    'Public subscription cards and payment statuses must be localized and use the redesigned account card'
+);
+
+$plansTemplate = (string)file_get_contents(__DIR__ . '/../views/public/plans.php');
+$checkoutTemplate = (string)file_get_contents(__DIR__ . '/../views/public/checkout.php');
+$publicStyles = (string)file_get_contents(__DIR__ . '/../assets/subscriptions.css');
+assertTrueValue(
+    str_contains($plansTemplate, '$planCount === 1')
+    && str_contains($plansTemplate, '$planCount === 2')
+    && str_contains($plansTemplate, 'subscriptions-plan-card__accent')
+    && str_contains($plansTemplate, 'subscriptions_plan_features')
+    && str_contains($plansTemplate, 'ci-arrow-right'),
+    'Public plan selection must adapt its card grid to one, two, or many plans'
+);
+assertTrueValue(
+    str_contains($checkoutTemplate, 'subscriptions-checkout-summary')
+    && str_contains($checkoutTemplate, 'subscriptions-checkout-panel')
+    && str_contains($checkoutTemplate, 'name="consent_offer"')
+    && str_contains($checkoutTemplate, 'name="consent_privacy"')
+    && str_contains($checkoutTemplate, '/subscriptions/payment/create'),
+    'Checkout redesign must preserve payment submission and required consents'
+);
+assertTrueValue(
+    str_contains($publicStyles, '.subscriptions-plan-card__accent')
+    && str_contains($publicStyles, '.subscriptions-checkout-summary')
+    && str_contains($publicStyles, '@media (max-width: 767.98px)'),
+    'Public subscription cards must include responsive styling'
+);
+assertTrueValue(
+    str_contains($pluginSource, "add_filter('fireball_editor_style_assets'")
+    && str_contains($publicStyles, '.fb-editor2-inspector-field > .fb-editor2-inspector-check input')
+    && str_contains($publicStyles, 'overflow-wrap: anywhere'),
+    'Video access plan checkboxes must stay aligned and wrap safely in the editor inspector'
 );
 
 fwrite(STDOUT, "subscriptions_unit: ok\n");

@@ -19,11 +19,6 @@ final class RobokassaGateway implements PaymentGatewayInterface
         $config = $this->settings->assertGatewayReady();
         $invoiceId = (string)(int)$order['invoice_id'];
         $outSum = Money::decimal((int)$order['amount_minor']);
-        $shp = [
-            'Shp_order' => (string)(int)$order['id'],
-            'Shp_user' => (string)(int)$order['user_id'],
-        ];
-        ksort($shp, SORT_STRING);
 
         $params = [
             'MerchantLogin' => $config['merchant_login'],
@@ -33,6 +28,7 @@ final class RobokassaGateway implements PaymentGatewayInterface
             'Culture' => $this->culture(),
             'Encoding' => 'utf-8',
             'Email' => (string)$profile['email'],
+            'IsTest' => !empty($config['test_mode']) ? '1' : '0',
         ];
 
         $signatureParts = [$config['merchant_login'], $outSum, $invoiceId];
@@ -42,15 +38,8 @@ final class RobokassaGateway implements PaymentGatewayInterface
             $signatureParts[] = rawurlencode($receipt);
         }
         $signatureParts[] = $config['password1'];
-        foreach ($shp as $key => $value) {
-            $signatureParts[] = $key . '=' . $value;
-        }
 
         $params['SignatureValue'] = $this->hash(implode(':', $signatureParts), $config['hash_algorithm']);
-        $params += $shp;
-        if (!empty($config['test_mode'])) {
-            $params['IsTest'] = '1';
-        }
         $consents = json_decode((string)($order['consent_snapshot'] ?? ''), true);
         if (!empty($config['recurring_enabled']) && !empty($plan['is_recurring'])
             && !empty($consents['recurring']) && !empty($consents['auto_renew'])) {
@@ -87,15 +76,7 @@ final class RobokassaGateway implements PaymentGatewayInterface
         }
         $invoiceId = (string)(int)$order['invoice_id'];
         $outSum = Money::decimal((int)$order['amount_minor']);
-        $shp = [
-            'Shp_order' => (string)(int)$order['id'],
-            'Shp_user' => (string)(int)$order['user_id'],
-        ];
-        ksort($shp, SORT_STRING);
         $signatureParts = [$config['merchant_login'], $outSum, $invoiceId, $config['password1']];
-        foreach ($shp as $key => $value) {
-            $signatureParts[] = $key . '=' . $value;
-        }
         $params = [
             'MerchantLogin' => $config['merchant_login'],
             'OutSum' => $outSum,
@@ -103,7 +84,7 @@ final class RobokassaGateway implements PaymentGatewayInterface
             'PreviousInvoiceID' => (string)(int)$parentPayment['invoice_id'],
             'Description' => mb_substr((string)$plan['name'], 0, 100),
             'SignatureValue' => $this->hash(implode(':', $signatureParts), $config['hash_algorithm']),
-        ] + $shp;
+        ];
 
         $body = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
         if (function_exists('curl_init')) {

@@ -1,1 +1,191 @@
-.subscriptions-plan-card{transition:transform .2s ease,box-shadow .2s ease}.subscriptions-plan-card:hover{transform:translateY(-4px);box-shadow:0 1rem 2.5rem rgba(0,0,0,.08)}.subscriptions-admin .table>:not(caption)>*>*{padding:1rem}.subscriptions-access-message{padding:1.5rem}.subscriptions-public code,.subscriptions-admin code{overflow-wrap:anywhere}.subscriptions-inline-editor{min-width:12rem}.subscriptions-inline-editor summary{list-style:none}.subscriptions-inline-editor summary::-webkit-details-marker{display:none}.overflow-x-auto{overflow-x:auto}@media(max-width:767.98px){.subscriptions-public{padding-top:2rem!important}.subscriptions-inline-editor{min-width:0}}
+.subscriptions-plans-hero {
+    max-width: 46rem;
+}
+
+.subscriptions-plans-hero__eyebrow {
+    color: var(--bs-primary);
+    background: var(--bs-primary-bg-subtle);
+    border: 1px solid color-mix(in srgb, var(--bs-primary) 22%, transparent);
+}
+
+.subscriptions-plan-card {
+    position: relative;
+    background: linear-gradient(145deg, var(--bs-body-bg) 0%, var(--bs-tertiary-bg) 135%);
+    box-shadow: 0 .75rem 2.25rem rgba(20, 33, 61, .06);
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+
+.subscriptions-plans-page .subscriptions-plan-card:hover {
+    transform: translateY(-6px);
+    border-color: color-mix(in srgb, var(--bs-primary) 35%, var(--bs-border-color)) !important;
+    box-shadow: 0 1.35rem 3rem rgba(20, 33, 61, .12);
+}
+
+.subscriptions-plan-card__accent {
+    width: 100%;
+    height: .32rem;
+    background: linear-gradient(90deg, var(--bs-primary), var(--bs-info), var(--bs-success));
+}
+
+.subscriptions-plan-card__icon,
+.subscriptions-checkout-panel__icon {
+    width: 3.35rem;
+    height: 3.35rem;
+    flex: 0 0 3.35rem;
+    font-size: 1.35rem;
+    color: var(--bs-primary);
+    background: var(--bs-primary-bg-subtle);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bs-primary) 15%, transparent);
+}
+
+.subscriptions-plan-card__duration {
+    color: var(--bs-body-color);
+    background: color-mix(in srgb, var(--bs-secondary-bg) 82%, transparent);
+    border: 1px solid var(--bs-border-color);
+    font-weight: 500;
+}
+
+.subscriptions-plan-card__price {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -.04em;
+}
+
+.subscriptions-plan-card__features li i {
+    font-size: 1.1rem;
+}
+
+.subscriptions-checkout-summary {
+    box-shadow: 0 .75rem 2.25rem rgba(20, 33, 61, .06);
+}
+
+.subscriptions-checkout-panel {
+    background: color-mix(in srgb, var(--bs-body-bg) 94%, var(--bs-tertiary-bg));
+    box-shadow: 0 .75rem 2.25rem rgba(20, 33, 61, .04);
+}
+
+.subscriptions-checkout-contact > div + div {
+    padding-top: 1rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.subscriptions-checkout-consents {
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+.subscriptions-checkout-consents .form-check {
+    padding-left: 2rem;
+}
+
+.subscriptions-checkout-consents .form-check-input {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-left: -2rem;
+}
+
+.subscriptions-account-card {
+    background: linear-gradient(145deg, var(--bs-body-bg) 0%, var(--bs-tertiary-bg) 100%);
+}
+
+.subscriptions-account-card__icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.35rem;
+    color: var(--bs-success);
+    background: var(--bs-success-bg-subtle);
+}
+
+.subscriptions-account-card__meta,
+.subscriptions-account-card__permissions > li > div {
+    border: 1px solid var(--bs-border-color);
+    background: color-mix(in srgb, var(--bs-body-bg) 86%, transparent);
+}
+
+.subscriptions-admin .table > :not(caption) > * > * {
+    padding: 1rem;
+}
+
+.subscriptions-access-message {
+    padding: 1.5rem;
+}
+
+.subscriptions-public code,
+.subscriptions-admin code {
+    overflow-wrap: anywhere;
+}
+
+.subscriptions-inline-editor {
+    min-width: 12rem;
+}
+
+.subscriptions-inline-editor summary {
+    list-style: none;
+}
+
+.subscriptions-inline-editor summary::-webkit-details-marker {
+    display: none;
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
+.fb-editor2-inspector-field > .fb-editor2-inspector-check {
+    min-width: 0;
+}
+
+.fb-editor2-inspector-field > .fb-editor2-inspector-check input {
+    width: auto;
+    min-width: 1rem;
+    min-height: 1rem;
+    padding: 0;
+    flex: 0 0 auto;
+}
+
+.fb-editor2-inspector-field > .fb-editor2-inspector-check span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 992px) {
+    .subscriptions-checkout-summary {
+        position: sticky;
+        top: 6.5rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .subscriptions-public {
+        padding-top: 2rem !important;
+    }
+
+    .subscriptions-plans-hero {
+        margin-bottom: 2rem !important;
+    }
+
+    .subscriptions-plans-hero .display-5 {
+        font-size: 2rem;
+    }
+
+    .subscriptions-plan-card__icon,
+    .subscriptions-checkout-panel__icon,
+    .subscriptions-account-card__icon {
+        width: 3rem;
+        height: 3rem;
+        flex-basis: 3rem;
+    }
+
+    .subscriptions-plan-card__price {
+        font-size: 2.25rem;
+    }
+
+    .subscriptions-inline-editor {
+        min-width: 0;
+    }
+
+    .subscriptions-account-card .btn {
+        flex: 1 1 auto;
+    }
+}

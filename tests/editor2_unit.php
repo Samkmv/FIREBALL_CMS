@@ -152,6 +152,8 @@ editor2_assert(str_contains($editorSource, 'syncCommandPaletteSelection'), 'The 
 editor2_assert(str_contains($editorSource, 'activateCommandPaletteSelection'), 'The selected editor command cannot be activated consistently.');
 editor2_assert(str_contains($editorStylesSource, 'Mobile Safari zooms the page'), 'The iOS focus zoom guard is missing.');
 editor2_assert(str_contains($editorStylesSource, 'font-size: 16px !important;'), 'Mobile editor controls can still trigger Safari focus zoom.');
+editor2_assert(str_contains($editorStylesSource, '.fb-editor2-inspector-field > input'), 'Nested inspector checkboxes can inherit full-width text-input styles.');
+editor2_assert(str_contains($editorStylesSource, '.fb-editor2-inspector-field > select'), 'Inspector select styles must target direct controls only.');
 editor2_assert(str_contains($registrySource, 'registerBlockType'), 'Public Block API is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_block_types'), 'Server block-type extension filter is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_script_assets'), 'Editor asset extension filter is missing.');

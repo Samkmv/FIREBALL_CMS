@@ -5,6 +5,13 @@
         <?php $gatewayReady = trim((string)$settings['merchant_login']) !== '' && !empty($settings['password1_configured']) && !empty($settings['password2_configured']); ?>
         <div class="alert <?= $gatewayReady ? 'alert-success' : 'alert-danger' ?>" role="status">
             <?= htmlSC(FireballPluginSubscriptions::t($gatewayReady ? 'subscriptions_settings_credentials_ready' : 'subscriptions_settings_credentials_missing')) ?>
+            <?php if ($gatewayReady): ?>
+                <div class="small mt-2">
+                    <?= htmlSC(FireballPluginSubscriptions::t(!empty($settings['test_mode']) ? 'subscriptions_payment_mode_test' : 'subscriptions_payment_mode_live')) ?>
+                    · <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_hash_algorithm')) ?>: <?= htmlSC(strtoupper((string)$settings['hash_algorithm'])) ?>
+                    · IsTest=<?= !empty($settings['test_mode']) ? '1' : '0' ?>
+                </div>
+            <?php endif; ?>
         </div>
         <div class="row g-3">
             <div class="col-md-6"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_merchant_login')) ?></label><input class="form-control" name="merchant_login" value="<?= htmlSC((string)$settings['merchant_login']) ?>" required></div>
