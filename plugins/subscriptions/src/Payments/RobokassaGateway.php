@@ -33,9 +33,9 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
         $signatureParts = [$config['merchant_login'], $outSum, $invoiceId];
         if (!empty($config['receipt_enabled'])) {
-            $receipt = $this->receipt($plan, $order, $config);
+            $receipt = rawurlencode($this->receipt($plan, $order, $config));
             $params['Receipt'] = $receipt;
-            $signatureParts[] = rawurlencode($receipt);
+            $signatureParts[] = $receipt;
         }
         $signatureParts[] = $config['password1'];
 

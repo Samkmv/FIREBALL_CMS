@@ -110,7 +110,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.9', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.10', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -233,8 +233,9 @@ $receiptUrl = $gateway->checkoutUrl(
 );
 parse_str((string)parse_url($receiptUrl, PHP_URL_QUERY), $receiptQuery);
 $receipt = (string)($receiptQuery['Receipt'] ?? '');
-$expectedReceiptSignature = hash('sha256', 'merchant:100.50:123:' . rawurlencode($receipt) . ':secret-one');
-assertTrueValue($receipt !== '' && is_array(json_decode($receipt, true)), 'Receipt must be valid JSON');
+$expectedReceiptSignature = hash('sha256', 'merchant:100.50:123:' . $receipt . ':secret-one');
+assertTrueValue($receipt !== '' && is_array(json_decode(rawurldecode($receipt), true)), 'Receipt must be URL-encoded valid JSON');
+assertTrueValue(str_contains((string)parse_url($receiptUrl, PHP_URL_QUERY), 'Receipt=%25'), 'Encoded Receipt must remain encoded after Robokassa parses the query');
 assertSameValue($expectedReceiptSignature, $receiptQuery['SignatureValue'] ?? '', 'Receipt checkout signature');
 
 $settings->save([

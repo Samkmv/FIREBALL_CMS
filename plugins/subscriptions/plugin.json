@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Fixed Robokassa error 29 when receipt data is enabled by preserving the required URL-encoded Receipt value in both the signature and payment request.",
     "Simplified new Robokassa requests to the official minimal signature and made the effective test/live mode explicit in settings and payment parameters.",
     "Fixed subscription-plan checkboxes overflowing the video access inspector on narrow screens.",
     "Redesigned public plan selection and checkout with responsive cards for one, two, or many subscription plans.",
@@ -36,6 +37,7 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Исправлена ошибка Robokassa 29 при передаче данных чека: URL-кодированное значение Receipt теперь одинаково используется в подписи и платёжном запросе.",
       "Новые запросы Robokassa переведены на официальную минимальную подпись; фактический тестовый или боевой режим теперь явно показан в настройках и параметрах платежа.",
       "Исправлено отображение чекбоксов тарифов в настройках доступа к видео на узких экранах.",
       "Переработаны публичный выбор тарифов и оформление оплаты: адаптивные карточки поддерживают один, два или любое количество тарифов.",
@@ -48,6 +50,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Fixed Robokassa error 29 when receipt data is enabled by preserving the required URL-encoded Receipt value in both the signature and payment request.",
       "Simplified new Robokassa requests to the official minimal signature and made the effective test/live mode explicit in settings and payment parameters.",
       "Fixed subscription-plan checkboxes overflowing the video access inspector on narrow screens.",
       "Redesigned public plan selection and checkout with responsive cards for one, two, or many subscription plans.",
@@ -60,6 +63,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Robokassa-Fehler 29 bei aktivierten Belegdaten wurde behoben: Der URL-kodierte Receipt-Wert wird nun identisch in Signatur und Zahlungsanfrage verwendet.",
       "Neue Robokassa-Anfragen verwenden die offizielle minimale Signatur; der aktive Test- oder Live-Modus wird nun in Einstellungen und Zahlungsparametern eindeutig angezeigt.",
       "Die über den Videozugriffsbereich hinausragenden Tarif-Kontrollkästchen auf schmalen Bildschirmen wurden korrigiert.",
       "Die öffentliche Tarifauswahl und der Bezahlvorgang wurden mit responsiven Karten für einen, zwei oder beliebig viele Tarife neu gestaltet.",
@@ -72,6 +76,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "修复了启用收据数据时出现的 Robokassa 错误 29：URL 编码后的 Receipt 值现在会一致用于签名和支付请求。",
       "新的 Robokassa 请求改用官方最简签名，并在设置和支付参数中明确显示当前测试或正式模式。",
       "修复了窄屏下视频访问设置中的订阅套餐复选框溢出问题。",
       "重新设计了公开套餐选择和结账页面，响应式卡片支持一个、两个或任意数量的订阅套餐。",
