@@ -25,10 +25,12 @@ final class CheckoutService
         $snapshot = $profiles->snapshot($userId, $planId);
         $planSnapshot = (new PlanRepository())->purchaseSnapshot($plan);
         $profile = $profiles->profileForUser($userId, false) ?: [];
-        $settings = (new SettingsService())->current();
+        $settingsService = new SettingsService();
+        $settings = $settingsService->current();
         if ((string)$plan['currency'] !== (string)$settings['currency']) {
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_currency_mismatch'));
         }
+        $settingsService->assertGatewayReady();
         $now = date('Y-m-d H:i:s');
         $expiresAt = date('Y-m-d H:i:s', time() + (int)$settings['payment_timeout_minutes'] * 60);
         $invoiceId = $this->uniqueInvoiceId();

@@ -111,10 +111,14 @@ final class PublicController
             response()->redirect((string)$checkout['url']);
         } catch (\Throwable $exception) {
             log_error_details('Subscription checkout failed', ['user_id' => $userId, 'plan_id' => $planId], $exception);
-            session()->setFlash('error', $exception->getMessage());
             if (str_contains($exception->getMessage(), \FireballPluginSubscriptions::t('subscriptions_error_profile_incomplete'))) {
+                session()->setFlash('error', $exception->getMessage());
                 response()->redirect(base_href('/profile/subscription-details'));
             }
+            $message = $exception->getMessage() === \Fireball\Subscriptions\Services\SettingsService::CREDENTIALS_NOT_CONFIGURED
+                ? \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error')
+                : $exception->getMessage();
+            session()->setFlash('error', $message);
             response()->redirect(base_href('/subscriptions/checkout/' . $planId));
         }
     }

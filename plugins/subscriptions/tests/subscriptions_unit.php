@@ -93,7 +93,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.1', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.2', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -160,6 +160,18 @@ assertTrueValue($invalidMoneyRejected, 'Money with more than two decimal places 
 
 $settings = new SettingsService();
 $settings->ensureDefaults();
+$incompleteCredentialsRejected = false;
+try {
+    $settings->save([
+        'merchant_login' => 'merchant',
+        'hash_algorithm' => 'sha256',
+        'currency' => 'RUB',
+    ]);
+} catch (InvalidArgumentException $exception) {
+    $incompleteCredentialsRejected = $exception->getMessage() === SettingsService::CREDENTIALS_NOT_CONFIGURED;
+}
+assertTrueValue($incompleteCredentialsRejected, 'Settings save must reject incomplete Robokassa credentials');
+assertSameValue('', plugin_setting('subscriptions', 'merchant_login'), 'Rejected settings must not be written');
 $settings->save([
     'merchant_login' => 'merchant',
     'password1' => 'secret-one',
@@ -314,8 +326,14 @@ assertTrueValue(
 );
 assertTrueValue(
     str_contains($adminControllerSource, 'beginTransaction()')
-    && str_contains($adminControllerSource, 'Robokassa settings save failed'),
+    && str_contains($adminControllerSource, 'Robokassa settings save failed')
+    && str_contains($settingsTemplate, 'subscriptions_settings_credentials_ready'),
     'Robokassa settings writes must be atomic and safely logged'
+);
+assertTrueValue(
+    str_contains((string)file_get_contents(__DIR__ . '/../src/Services/CheckoutService.php'), 'assertGatewayReady()')
+    && str_contains((string)file_get_contents(__DIR__ . '/../src/Controllers/PublicController.php'), 'subscriptions_payment_configuration_error'),
+    'Checkout must validate Robokassa before creating an order and hide internal configuration errors from customers'
 );
 
 foreach (['plans', 'subscribers', 'payments', 'fields'] as $tableView) {

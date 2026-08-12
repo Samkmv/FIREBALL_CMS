@@ -2,6 +2,10 @@
     <form class="border rounded-4 p-4 p-lg-5" method="post" action="<?= htmlSC(base_href('/admin/subscriptions/settings/save')) ?>" autocomplete="off" data-subscriptions-settings-form>
         <?= get_csrf_field() ?>
         <div class="alert alert-info"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_settings_urls_hint')) ?></div>
+        <?php $gatewayReady = trim((string)$settings['merchant_login']) !== '' && !empty($settings['password1_configured']) && !empty($settings['password2_configured']); ?>
+        <div class="alert <?= $gatewayReady ? 'alert-success' : 'alert-danger' ?>" role="status">
+            <?= htmlSC(FireballPluginSubscriptions::t($gatewayReady ? 'subscriptions_settings_credentials_ready' : 'subscriptions_settings_credentials_missing')) ?>
+        </div>
         <div class="row g-3">
             <div class="col-md-6"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_merchant_login')) ?></label><input class="form-control" name="merchant_login" value="<?= htmlSC((string)$settings['merchant_login']) ?>"></div>
             <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_hash_algorithm')) ?></label><select class="form-select" name="hash_algorithm"><?php foreach (['md5', 'ripemd160', 'sha1', 'sha256', 'sha384', 'sha512'] as $algorithm): ?><option value="<?= $algorithm ?>" <?= $settings['hash_algorithm'] === $algorithm ? 'selected' : '' ?>><?= strtoupper($algorithm) ?></option><?php endforeach; ?></select></div>

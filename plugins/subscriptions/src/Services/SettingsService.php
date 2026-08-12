@@ -7,6 +7,7 @@ use Fireball\Subscriptions\Support\SecretCipher;
 final class SettingsService
 {
     public const SLUG = 'subscriptions';
+    public const CREDENTIALS_NOT_CONFIGURED = 'Robokassa credentials are not configured.';
     private const SECRET_KEYS = ['password1', 'password2'];
 
     public function defaults(): array
@@ -69,6 +70,13 @@ final class SettingsService
 
     public function save(array $data): void
     {
+        $current = $this->current(true);
+        $password1 = (string)($data['password1'] ?? '') !== ''
+            ? (string)$data['password1']
+            : (string)$current['password1'];
+        $password2 = (string)($data['password2'] ?? '') !== ''
+            ? (string)$data['password2']
+            : (string)$current['password2'];
         $settings = [
             'merchant_login' => mb_substr(trim((string)($data['merchant_login'] ?? '')), 0, 190),
             'hash_algorithm' => $this->algorithm((string)($data['hash_algorithm'] ?? 'sha256')),
@@ -88,6 +96,9 @@ final class SettingsService
         if (preg_match('/^[A-Z]{3}$/', $settings['currency']) !== 1) {
             throw new \InvalidArgumentException('Currency must be a three-letter ISO code.');
         }
+        if ($settings['merchant_login'] === '' || $password1 === '' || $password2 === '') {
+            throw new \InvalidArgumentException(self::CREDENTIALS_NOT_CONFIGURED);
+        }
 
         foreach ($settings as $key => $value) {
             plugin_setting_set(self::SLUG, $key, $value);
@@ -99,13 +110,22 @@ final class SettingsService
                 plugin_setting_set(self::SLUG, $key, SecretCipher::encrypt($plainText));
             }
         }
+
+        $saved = $this->current(true);
+        if (
+            (string)$saved['merchant_login'] !== (string)$settings['merchant_login']
+            || (string)$saved['password1'] !== $password1
+            || (string)$saved['password2'] !== $password2
+        ) {
+            throw new \RuntimeException(self::CREDENTIALS_NOT_CONFIGURED);
+        }
     }
 
     public function assertGatewayReady(): array
     {
         $settings = $this->current(true);
         if ($settings['merchant_login'] === '' || $settings['password1'] === '' || $settings['password2'] === '') {
-            throw new \RuntimeException('Robokassa credentials are not configured.');
+            throw new \RuntimeException(self::CREDENTIALS_NOT_CONFIGURED);
         }
 
         return $settings;
