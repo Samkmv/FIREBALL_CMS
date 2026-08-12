@@ -110,6 +110,8 @@ $app->router->get('/admin/support/requests', [AdminController::class, 'contactRe
 $app->router->post('/admin/support/requests/status', [AdminController::class, 'contactRequestStatus'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/support/requests/bulk', [AdminController::class, 'contactRequestBulk'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/support/requests/delete', [AdminController::class, 'contactRequestDelete'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/support/requests/reply/(?P<id>\d+)/?', [AdminController::class, 'contactRequestReply'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/support/requests/reply/(?P<id>\d+)/?', [AdminController::class, 'contactRequestReply'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/support/faq', [AdminController::class, 'supportFaq'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/support/faq/create', [AdminController::class, 'supportFaqForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/support/faq/create', [AdminController::class, 'supportFaqForm'])->middleware(['auth', 'admin']);

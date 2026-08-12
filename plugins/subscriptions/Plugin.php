@@ -88,10 +88,13 @@ final class FireballPluginSubscriptions implements PluginInterface
         add_action('admin_post_document_settings', [self::class, 'renderPostSettings']);
         add_action('admin_post_saved', [self::class, 'savePostSettings']);
         add_action('admin_post_deleting', static fn(int $postId) => (new ContentRuleRepository())->delete('post', $postId));
+        add_action('admin_user_deleting', [self::class, 'deleteUserData']);
         add_filter('public_post_before_render', [self::class, 'filterPublicPost'], 20);
         add_filter('public_posts_before_render', [self::class, 'filterPublicPosts'], 20);
         add_filter('public_page_before_render', [self::class, 'filterPublicPage'], 20);
         add_filter('public_video_access_allowed', [self::class, 'filterPublicVideoAccess'], 20);
+        add_filter('fireball_editor_config', [self::class, 'filterEditorConfig'], 20);
+        add_filter('fireball_editor_render_block', [self::class, 'filterEditorVideoBlock'], 20);
         add_filter('subscriptions_access_service', static fn(mixed $service): AccessService => $service instanceof AccessService ? $service : new AccessService());
         add_filter('fireball_scheduled_jobs', static function (array $jobs): array {
             $jobs['subscriptions_maintenance'] = [
@@ -125,8 +128,86 @@ final class FireballPluginSubscriptions implements PluginInterface
     public static function savePostSettings(int $postId, array $data): void
     {
         if ($postId > 0) {
-            (new ContentRuleRepository())->save('post', $postId, $data);
+            $repository = new ContentRuleRepository();
+            $repository->save('post', $postId, $data);
+            self::saveVideoRules($repository, (string)($data['content'] ?? ''));
         }
+    }
+
+    public static function filterEditorConfig(array $config): array
+    {
+        $config['subscriptionVideoAccess'] = [
+            'plans' => array_map(static fn(array $plan): array => [
+                'id' => (int)$plan['id'],
+                'name' => (string)$plan['name'],
+            ], (new PlanRepository())->all()),
+            'labels' => [
+                'title' => self::t('subscriptions_video_access_title'),
+                'public' => self::t('subscriptions_access_mode_public'),
+                'subscribers' => self::t('subscriptions_access_mode_subscribers'),
+                'plans' => self::t('subscriptions_access_mode_plans'),
+                'allowedPlans' => self::t('subscriptions_allowed_plans'),
+            ],
+        ];
+
+        return $config;
+    }
+
+    public static function filterEditorVideoBlock(mixed $html, array $block): mixed
+    {
+        if ((string)($block['type'] ?? '') !== 'video') {
+            return $html;
+        }
+        $blockId = trim((string)($block['id'] ?? ''));
+        if ($blockId === '') {
+            return $html;
+        }
+        $decision = self::accessService()->contentDecision((int)(get_user()['id'] ?? 0), 'video', $blockId);
+        if (!empty($decision['allowed'])) {
+            return $html;
+        }
+
+        return self::videoAccessMessage();
+    }
+
+    private static function saveVideoRules(ContentRuleRepository $repository, string $content): void
+    {
+        $document = json_decode(trim($content), true);
+        if (!is_array($document) || !is_array($document['blocks'] ?? null)) {
+            return;
+        }
+        foreach ($document['blocks'] as $block) {
+            if (!is_array($block) || (string)($block['type'] ?? '') !== 'video' || trim((string)($block['id'] ?? '')) === '') {
+                continue;
+            }
+            $blockData = is_array($block['data'] ?? null) ? $block['data'] : [];
+            $repository->save('video', (string)$block['id'], [
+                'subscription_access_mode' => (string)($blockData['subscriptionAccessMode'] ?? 'public'),
+                'subscription_plan_ids' => (array)($blockData['subscriptionPlanIds'] ?? []),
+                'subscription_show_title' => '1',
+                'subscription_show_excerpt' => '1',
+                'subscription_show_image' => '1',
+                'subscription_hide_video' => '1',
+                'subscription_required_permission' => 'videos.view_paid',
+            ]);
+        }
+    }
+
+    public static function deleteUserData(int $userId): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+
+        db()->query(
+            'UPDATE subscription_payments SET parent_payment_id = NULL WHERE parent_payment_id IN (SELECT id FROM (SELECT id FROM subscription_payments WHERE user_id = ?) AS user_payments)',
+            [$userId]
+        );
+        db()->query('UPDATE subscriptions SET parent_payment_id = NULL WHERE user_id = ?', [$userId]);
+        db()->query('DELETE FROM subscription_payments WHERE user_id = ?', [$userId]);
+        db()->query('DELETE FROM subscription_orders WHERE user_id = ?', [$userId]);
+        db()->query('DELETE FROM subscriptions WHERE user_id = ?', [$userId]);
+        db()->query('DELETE FROM subscription_profiles WHERE user_id = ?', [$userId]);
     }
 
     public static function filterPublicPost(array $post, array $user = []): array
@@ -279,6 +360,7 @@ final class FireballPluginSubscriptions implements PluginInterface
             'plans' => ['subscriptions_admin_plans', '/admin/subscriptions/plans', 'ci-package'],
             'subscribers' => ['subscriptions_admin_subscribers', '/admin/subscriptions/subscribers', 'ci-users'],
             'payments' => ['subscriptions_admin_payments', '/admin/subscriptions/payments', 'ci-credit-card'],
+            'content' => ['subscriptions_admin_content', '/admin/subscriptions/content', 'ci-file-text'],
             'fields' => ['subscriptions_admin_profile_fields', '/admin/subscriptions/profile-fields', 'ci-list'],
             'settings' => ['subscriptions_admin_settings', '/admin/subscriptions/settings', 'ci-settings'],
         ];

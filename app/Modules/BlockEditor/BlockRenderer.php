@@ -473,6 +473,9 @@ final class BlockRenderer
                 continue;
             }
             $url = trim((string)($item['url'] ?? ''));
+            if ((string)($item['network'] ?? '') === 'phone') {
+                $url = normalize_phone_href($url);
+            }
             if ($url === '' || !is_safe_content_url($url)) {
                 continue;
             }

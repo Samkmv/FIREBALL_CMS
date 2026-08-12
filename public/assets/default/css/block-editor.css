@@ -504,6 +504,10 @@ body:has(.fb-editor-workspace) {
     border-bottom: 2px solid transparent;
 }
 
+.fb-editor-workspace__inspector-tabs > button:last-child {
+    margin-left: auto;
+}
+
 .fb-editor-workspace__inspector-tabs > button.is-active {
     color: var(--fb-editor-primary);
     border-bottom-color: var(--fb-editor-primary);
@@ -521,6 +525,23 @@ body:has(.fb-editor-workspace) {
 .fb-editor2-inspector-section {
     padding: 17px 16px;
     border-bottom: 1px solid var(--fb-editor-border);
+}
+
+.fb-editor2-social-item {
+    margin: 0 0 14px;
+    padding: 12px;
+    border: 1px solid var(--fb-editor-border);
+    border-radius: 12px;
+}
+
+.fb-editor2-social-item legend {
+    float: none;
+    width: auto;
+    margin: 0 0 10px;
+    padding: 0 4px;
+    color: var(--fb-editor-muted);
+    font-size: 11px;
+    font-weight: 700;
 }
 
 .fb-editor2-inspector-heading {
@@ -1386,6 +1407,10 @@ body:has(.fb-editor-workspace) {
     border-radius: 50%;
 }
 
+.fb-editor2-block__insert small {
+    display: none;
+}
+
 .fb-editor2-block__insert:hover,
 [data-editor-mode="structure"] .fb-editor2-block__insert {
     opacity: 1;
@@ -2096,6 +2121,33 @@ body:has(.fb-editor-workspace) {
     .fb-editor2-block__toolbar {
         top: -35px;
         right: 0;
+    }
+
+    .fb-editor2-block__insert {
+        bottom: calc(var(--fb-block-margin-bottom) / -2 - 20px);
+        left: 24px;
+        width: calc(100% - 24px);
+        height: 40px;
+        opacity: 1;
+    }
+
+    .fb-editor2-block__insert span {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+        box-shadow: 0 3px 12px color-mix(in srgb, var(--fb-editor-primary) 28%, transparent);
+    }
+
+    .fb-editor2-block__insert small {
+        display: inline-flex;
+        min-height: 30px;
+        align-items: center;
+        margin-right: 6px;
+        padding: 0 10px 0 4px;
+        color: var(--fb-editor-primary);
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
     }
 
     .fb-editor2-block h1 { font-size: 1.7rem; }

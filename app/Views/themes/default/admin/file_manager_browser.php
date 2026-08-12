@@ -260,16 +260,6 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                         <span class="badge rounded-pill px-3 py-2 fw-medium" data-file-manager-selection-badge>
                             <?= print_translation('admin_files_selected_count') ?>: <span data-file-manager-selection-count>0</span>
                         </span>
-                        <button
-                            class="btn btn-sm btn-outline-danger rounded-pill d-none align-items-center gap-2"
-                            type="button"
-                            data-file-manager-delete-selected
-                            disabled
-                        >
-                            <i class="ci-trash"></i>
-                            <span><?= print_translation('admin_files_delete_selected') ?></span>
-                            <span class="badge rounded-pill text-bg-danger" data-file-manager-delete-selected-count>0</span>
-                        </button>
                         <span class="small text-body-secondary"><?= str_replace(':size', (string)\App\Services\UploadSettings::maxFileSizeMb(), return_translation('admin_files_upload_limit_hint')) ?></span>
                     </div>
 

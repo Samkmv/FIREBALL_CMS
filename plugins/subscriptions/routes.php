@@ -42,7 +42,11 @@ $router->post('/admin/subscriptions/plans/edit/(?P<id>\d+)/?', [SubscriptionsAdm
 $router->post('/admin/subscriptions/plans/action', [SubscriptionsAdminController::class, 'planAction'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/subscribers', [SubscriptionsAdminController::class, 'subscribers'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/subscribers/grant', [SubscriptionsAdminController::class, 'grant'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/subscribers/update', [SubscriptionsAdminController::class, 'updateSubscriber'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/payments', [SubscriptionsAdminController::class, 'payments'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/payments/clear', [SubscriptionsAdminController::class, 'clearPayments'])->middleware(['auth', 'admin']);
+$router->get('/admin/subscriptions/content', [SubscriptionsAdminController::class, 'contentAccess'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/content', [SubscriptionsAdminController::class, 'saveContentAccess'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/profile-fields', [SubscriptionsAdminController::class, 'fields'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/profile-fields/create', [SubscriptionsAdminController::class, 'fieldForm'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/profile-fields/create', [SubscriptionsAdminController::class, 'fieldForm'])->middleware(['auth', 'admin']);

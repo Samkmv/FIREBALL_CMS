@@ -171,6 +171,18 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
         </form>
     </dialog>
 
+    <dialog class="fb-editor2__dialog fb-editor2__recovery-dialog" data-editor-delete-dialog>
+        <form method="dialog" class="fb-editor2__recovery-card">
+            <span class="fb-editor2__dialog-icon"><i class="ci-trash"></i></span>
+            <h2><?= htmlSC((string)($delete_title ?? $label('deleteModalTitle', 'Remove block?'))) ?></h2>
+            <p><?= htmlSC((string)($delete_text ?? $label('deleteModalText', 'This action cannot be undone.'))) ?></p>
+            <div>
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-editor-delete-cancel><?= htmlSC($label('close', 'Close')) ?></button>
+                <button type="button" class="btn btn-danger rounded-pill" data-editor-delete-confirm><?= htmlSC($label('remove', 'Remove')) ?></button>
+            </div>
+        </form>
+    </dialog>
+
     <div class="fb-editor2__search-panel" data-editor-search-panel hidden>
         <label>
             <span><?= htmlSC($label('search', 'Search')) ?></span>

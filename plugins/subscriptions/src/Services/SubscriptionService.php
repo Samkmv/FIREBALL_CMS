@@ -49,7 +49,7 @@ final class SubscriptionService
             $subscriptionId = (int)$current['id'];
             $oldStatus = (string)$current['status'];
             db()->query(
-                "UPDATE subscriptions SET status = 'active', ends_at = ?, grace_ends_at = NULL, auto_renew = ?, next_billing_at = ?, parent_payment_id = COALESCE(parent_payment_id, ?), updated_at = ? WHERE id = ?",
+                "UPDATE subscriptions SET status = 'active', source = 'robokassa', ends_at = ?, grace_ends_at = NULL, auto_renew = ?, next_billing_at = ?, parent_payment_id = COALESCE(parent_payment_id, ?), updated_at = ? WHERE id = ?",
                 [
                     $endsAt->format('Y-m-d H:i:s'), $autoRenew ? 1 : 0,
                     $autoRenew ? $endsAt->format('Y-m-d H:i:s') : null,
@@ -66,11 +66,11 @@ final class SubscriptionService
             $status = $futureStart > $now ? 'pending' : 'active';
             $oldStatus = null;
             db()->query(
-                'INSERT INTO subscriptions (user_id, plan_id, status, starts_at, ends_at, auto_renew, next_billing_at, parent_payment_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO subscriptions (user_id, plan_id, status, starts_at, ends_at, auto_renew, next_billing_at, parent_payment_id, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $userId, $planId, $status, $startsAt->format('Y-m-d H:i:s'), $endsAt->format('Y-m-d H:i:s'),
                     $autoRenew ? 1 : 0, $autoRenew ? $endsAt->format('Y-m-d H:i:s') : null,
-                    $paymentId, $now->format('Y-m-d H:i:s'), $now->format('Y-m-d H:i:s'),
+                    $paymentId, 'robokassa', $now->format('Y-m-d H:i:s'), $now->format('Y-m-d H:i:s'),
                 ]
             );
             $subscriptionId = (int)db()->getInsertId();
@@ -124,7 +124,7 @@ final class SubscriptionService
         );
     }
 
-    public function grant(int $userId, int $planId, int $durationValue, string $durationUnit, int $actorId, string $comment = ''): int
+    public function grant(int $userId, int $planId, int $durationValue, string $durationUnit, int $actorId, string $comment = '', string $source = 'manual'): int
     {
         $plan = db()->query('SELECT id FROM subscription_plans WHERE id = ?', [$planId])->getOne();
         if (!$plan || !db()->query('SELECT id FROM users WHERE id = ?', [$userId])->getOne()) {
@@ -132,14 +132,39 @@ final class SubscriptionService
         }
         $now = new \DateTimeImmutable('now');
         $endsAt = $now->add($this->durationInterval($durationUnit, max(1, $durationValue)));
+        $source = in_array($source, ['manual', 'external'], true) ? $source : 'manual';
         db()->query(
-            "INSERT INTO subscriptions (user_id, plan_id, status, starts_at, ends_at, auto_renew, admin_comment, created_at, updated_at) VALUES (?, ?, 'active', ?, ?, 0, ?, ?, ?)",
-            [$userId, $planId, $now->format('Y-m-d H:i:s'), $endsAt->format('Y-m-d H:i:s'), trim($comment), $now->format('Y-m-d H:i:s'), $now->format('Y-m-d H:i:s')]
+            "INSERT INTO subscriptions (user_id, plan_id, status, starts_at, ends_at, auto_renew, admin_comment, source, created_at, updated_at) VALUES (?, ?, 'active', ?, ?, 0, ?, ?, ?, ?)",
+            [$userId, $planId, $now->format('Y-m-d H:i:s'), $endsAt->format('Y-m-d H:i:s'), trim($comment), $source, $now->format('Y-m-d H:i:s'), $now->format('Y-m-d H:i:s')]
         );
         $id = (int)db()->getInsertId();
-        $this->event('subscription.granted_by_admin', $id, null, $userId, null, 'active', ['comment' => $comment], $actorId);
+        $this->event('subscription.granted_by_admin', $id, null, $userId, null, 'active', ['comment' => $comment, 'source' => $source], $actorId);
 
         return $id;
+    }
+
+    public function updateManaged(int $subscriptionId, int $planId, string $status, string $endsAt, int $actorId): void
+    {
+        $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1', [$subscriptionId])->getOne();
+        if (!$subscription || !db()->query('SELECT id FROM subscription_plans WHERE id = ? LIMIT 1', [$planId])->getOne()) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+        }
+        $status = in_array($status, ['active', 'disabled'], true) ? $status : 'disabled';
+        try {
+            $end = new \DateTimeImmutable($endsAt);
+        } catch (\Throwable) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_end_date'));
+        }
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            'UPDATE subscriptions SET plan_id = ?, status = ?, ends_at = ?, auto_renew = IF(? = \'active\', auto_renew, 0), next_billing_at = IF(? = \'active\', next_billing_at, NULL), updated_at = ? WHERE id = ?',
+            [$planId, $status, $end->format('Y-m-d H:i:s'), $status, $status, $now, $subscriptionId]
+        );
+        $this->event('subscription.updated_by_admin', $subscriptionId, null, (int)$subscription['user_id'], (string)$subscription['status'], $status, [
+            'old_plan_id' => (int)$subscription['plan_id'],
+            'plan_id' => $planId,
+            'ends_at' => $end->format(DATE_ATOM),
+        ], $actorId);
     }
 
     public function event(string $key, ?int $subscriptionId, ?int $paymentId, ?int $userId, ?string $oldStatus, ?string $newStatus, array $metadata = [], ?int $actorId = null): void

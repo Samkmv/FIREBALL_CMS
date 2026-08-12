@@ -209,6 +209,66 @@ class AdminController extends BaseController
         response()->redirect(base_href('/admin/support/requests'));
     }
 
+    public function contactRequestReply()
+    {
+        $requestId = (int)get_route_param('id', 0);
+        $contactRequest = $this->contactRequests->findById($requestId);
+        if (!$contactRequest) {
+            abort();
+        }
+
+        if (request()->isPost()) {
+            $subject = mb_substr(trim((string)request()->post('subject', '')), 0, 190);
+            $message = trim((string)request()->post('message', ''));
+            $errors = [];
+            if ($subject === '') {
+                $errors['subject'][] = return_translation('admin_support_reply_subject_required');
+            }
+            if ($message === '') {
+                $errors['message'][] = return_translation('admin_support_reply_message_required');
+            } elseif (mb_strlen($message) > 20000) {
+                $errors['message'][] = return_translation('admin_support_reply_message_too_long');
+            }
+            $mail = new MailService($this->siteSettings, $this->mailLogs);
+            if (!$mail->isEnabled()) {
+                $errors['message'][] = return_translation('admin_support_reply_mail_not_configured');
+            }
+
+            if ($errors) {
+                session()->set('form_data', ['subject' => $subject, 'message' => $message]);
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/support/requests/reply/' . $requestId));
+            }
+
+            $sent = $mail->send(
+                [(string)$contactRequest['email']],
+                $subject,
+                '<div style="font-family:Arial,sans-serif;line-height:1.6">' . nl2br(htmlSC($message)) . '</div>',
+                $message
+            );
+            if (!$sent) {
+                session()->set('form_data', ['subject' => $subject, 'message' => $message]);
+                session()->setFlash('error', return_translation('admin_support_reply_failed'));
+                response()->redirect(base_href('/admin/support/requests/reply/' . $requestId));
+            }
+
+            $this->contactRequests->updateStatus($requestId, 'in_work');
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_support_reply_sent'));
+            response()->redirect(base_href('/admin/support/requests'));
+        }
+
+        $formData = (array)session()->get('form_data', []);
+        session()->remove('form_data');
+
+        return view('admin/contact_request_reply', [
+            'title' => return_translation('admin_support_reply_title'),
+            'contact_request' => $contactRequest,
+            'form_data' => $formData,
+        ]);
+    }
+
     public function supportFaq()
     {
         $params = $this->getTableParams('sort_order', 'asc');
@@ -742,6 +802,7 @@ class AdminController extends BaseController
                 'protected' => return_translation('admin_users_creator_protected'),
                 'self' => return_translation('admin_users_delete_self_blocked'),
                 'last_admin' => return_translation('admin_users_delete_last_admin_blocked'),
+                'related_data' => return_translation('admin_users_delete_related_data_blocked'),
                 default => return_translation('admin_users_not_found'),
             };
 
@@ -1982,6 +2043,9 @@ class AdminController extends BaseController
             'seo_robots' => trim((string)($data['seo_robots'] ?? 'index,follow')),
             'seo_og_image' => trim((string)($data['seo_og_image'] ?? '')),
             'seo_twitter_card' => trim((string)($data['seo_twitter_card'] ?? 'summary_large_image')),
+            'yandex_metrika_enabled' => !empty($data['yandex_metrika_enabled']) ? '1' : '0',
+            'yandex_metrika_id' => trim((string)($data['yandex_metrika_id'] ?? '')),
+            'yandex_metrika_code' => trim((string)($data['yandex_metrika_code'] ?? '')),
             'homepage_type' => $this->normalizeHomepageType((string)($data['homepage_type'] ?? 'default')),
             'homepage_page_id' => (string)max(0, (int)($data['homepage_page_id'] ?? 0)),
             'posts_per_page' => (string)max(1, min(100, (int)($data['posts_per_page'] ?? 10))),
@@ -2179,6 +2243,14 @@ class AdminController extends BaseController
         }
         if ($data['seo_og_image'] !== '' && !$this->isValidSeoImage($data['seo_og_image'])) {
             $errors['seo_og_image'][] = return_translation('admin_validation_seo_image_invalid');
+        }
+        if ($data['yandex_metrika_enabled'] === '1' && preg_match('/^\d{1,20}$/', $data['yandex_metrika_id']) !== 1) {
+            $errors['yandex_metrika_id'][] = return_translation('admin_validation_yandex_metrika_id_invalid');
+        }
+        if (mb_strlen($data['yandex_metrika_code']) > 20000
+            || str_contains($data['yandex_metrika_code'], '<?')
+            || str_contains($data['yandex_metrika_code'], '?>')) {
+            $errors['yandex_metrika_code'][] = return_translation('admin_validation_yandex_metrika_code_invalid');
         }
 
         return $errors;

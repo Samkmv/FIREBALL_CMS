@@ -93,6 +93,22 @@ class ContactRequest
         )->get() ?: [];
     }
 
+    public function findById(int $id): ?array
+    {
+        $this->ensureTableExists();
+        if ($id <= 0) {
+            return null;
+        }
+
+        $row = db()->query(
+            "SELECT id, name, email, phone, subject, message, is_viewed, status, created_at
+             FROM {$this->table} WHERE id = ? LIMIT 1",
+            [$id]
+        )->getOne();
+
+        return is_array($row) ? $row : null;
+    }
+
     /**
      * Возвращает список заявок с поиском, сортировкой и пагинацией.
      */

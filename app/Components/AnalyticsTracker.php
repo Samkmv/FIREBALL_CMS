@@ -13,7 +13,7 @@ final class AnalyticsTracker
 
         $endpoint = json_encode(base_href('/api/analytics/track'), JSON_UNESCAPED_SLASHES);
 
-        return <<<HTML
+        $internalTracker = <<<HTML
 <script>
 (function () {
     var params = new URLSearchParams(window.location.search);
@@ -52,5 +52,36 @@ final class AnalyticsTracker
 })();
 </script>
 HTML;
+
+        return $internalTracker . $this->renderYandexMetrika();
+    }
+
+    private function renderYandexMetrika(): string
+    {
+        if (site_setting('yandex_metrika_enabled', '0') !== '1') {
+            return '';
+        }
+        $counterId = trim(site_setting('yandex_metrika_id', ''));
+        if (preg_match('/^\d{1,20}$/', $counterId) !== 1) {
+            return '';
+        }
+        $id = (int)$counterId;
+        $imageUrl = 'https://mc.yandex.ru/watch/' . rawurlencode($counterId);
+        $additionalCode = trim(site_setting('yandex_metrika_code', ''));
+
+        $tracker = <<<HTML
+<!-- Yandex.Metrika counter -->
+<script>
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+ym({$id},"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});
+</script>
+<noscript><div><img src="{$imageUrl}" style="position:absolute;left:-9999px" alt=""></div></noscript>
+<!-- /Yandex.Metrika counter -->
+HTML;
+
+        return $tracker . ($additionalCode !== '' ? "\n" . $additionalCode : '');
     }
 }

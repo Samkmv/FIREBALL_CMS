@@ -1157,6 +1157,20 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     order: 10;
 }
 
+.fb-dashboard-analytics-table {
+    max-height: 540px;
+}
+
+.fb-dashboard-analytics-table th {
+    color: var(--fb-color-text-muted);
+    font-size: .75rem;
+    white-space: nowrap;
+}
+
+.fb-dashboard-analytics-table td {
+    font-size: .8125rem;
+}
+
 .fb-dashboard-traffic-card {
     order: 1;
 }
@@ -2432,14 +2446,14 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     }
 
     .fb-command-palette {
-        align-items: end;
-        padding: 8px;
+        align-items: start;
+        padding: calc(var(--fb-topbar-height) + 8px) 8px 8px;
     }
 
     .fb-command-dialog {
         width: 100%;
-        max-height: calc(100vh - 16px);
-        max-height: calc(100dvh - 16px);
+        max-height: calc(100vh - var(--fb-topbar-height) - 16px);
+        max-height: calc(100dvh - var(--fb-topbar-height) - 16px);
         border-radius: var(--fb-radius-xl);
     }
 

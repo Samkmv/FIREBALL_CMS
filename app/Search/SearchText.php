@@ -21,18 +21,29 @@ final class SearchText
         }
 
         $value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $value = preg_replace(
+            '~(?:https?|ftp|rtsp|rtmp)://[^\s<>]+|(?:data|blob|file):[^\s<>]+|\b[^\s<>]+\.(?:m3u8|mpd)(?:\?[^\s<>]*)?~iu',
+            ' ',
+            $value
+        ) ?? $value;
 
         return trim(preg_replace('/\s+/u', ' ', $value) ?? '');
     }
 
-    public static function excerpt(string $value, int $length = 220): string
+    public static function excerpt(string $value, int $length = 180): string
     {
         $plain = self::plainText($value);
         if (mb_strlen($plain, 'UTF-8') <= $length) {
             return $plain;
         }
 
-        return rtrim(mb_substr($plain, 0, $length - 1, 'UTF-8')) . '…';
+        $excerpt = rtrim(mb_substr($plain, 0, $length - 1, 'UTF-8'));
+        $lastSpace = mb_strrpos($excerpt, ' ', 0, 'UTF-8');
+        if ($lastSpace !== false && $lastSpace >= (int)floor($length * .65)) {
+            $excerpt = rtrim(mb_substr($excerpt, 0, $lastSpace, 'UTF-8'));
+        }
+
+        return $excerpt . '…';
     }
 
     private static function collectStrings(array $value, array &$parts): void
@@ -45,10 +56,18 @@ final class SearchText
             if (!is_string($item) || trim($item) === '') {
                 continue;
             }
-            if (is_string($key) && preg_match('/(?:^|_)(?:id|type|style|class|url|href|src)$/i', $key)) {
+            if (is_string($key) && preg_match(
+                '/(?:^|_)(?:id|type|style|class|url|uri|href|src|source|poster|stream|token|key|secret|password|hash|signature|provider_payload|config)$/i',
+                $key
+            )) {
                 continue;
             }
-            $parts[] = $item;
+            $clean = trim($item);
+            if (preg_match('~^(?:(?:https?|ftp|rtsp|rtmp)://|(?:data|blob|file):)~i', $clean) === 1
+                || preg_match('/^[A-Za-z0-9+\/_=-]{40,}$/', $clean) === 1) {
+                continue;
+            }
+            $parts[] = $clean;
         }
     }
 }

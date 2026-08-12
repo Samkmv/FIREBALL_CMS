@@ -817,6 +817,7 @@ class User
             );
 
             $chatAttachmentPaths = $this->collectUserChatAttachmentPaths($id);
+            do_action('admin_user_deleting', $id, $user);
             $this->deleteUserRelatedData($id);
 
             $database->query("DELETE FROM {$this->usersTable} WHERE id = ?", [$id]);
@@ -826,12 +827,17 @@ class User
                 $database->rollBack();
             } catch (\Throwable) {
             }
+            if ($exception instanceof \PDOException
+                && str_starts_with((string)$exception->getCode(), '23')) {
+                return 'related_data';
+            }
             throw $exception;
         }
 
         $this->removeStoredAvatar($avatarPath);
         $this->removeStoredFiles($chatAttachmentPaths);
         Post::clearPublicCache();
+        do_action('admin_user_deleted', $id, $user);
 
         return null;
     }

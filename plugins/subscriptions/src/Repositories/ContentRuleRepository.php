@@ -4,6 +4,41 @@ namespace Fireball\Subscriptions\Repositories;
 
 final class ContentRuleRepository
 {
+    public function paginatedPosts(string $search = '', string $accessMode = '', int $perPage = 20): array
+    {
+        $where = [];
+        $params = [];
+        if ($search !== '') {
+            $where[] = '(p.title LIKE ? OR p.slug LIKE ?)';
+            $like = '%' . $search . '%';
+            $params[] = $like;
+            $params[] = $like;
+        }
+        if (in_array($accessMode, ['public', 'authenticated', 'subscribers', 'plans', 'permission'], true)) {
+            $where[] = 'COALESCE(r.access_mode, \'public\') = ?';
+            $params[] = $accessMode;
+        }
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $total = (int)db()->query("SELECT COUNT(*) FROM posts p LEFT JOIN subscription_content_rules r ON r.content_type = 'post' AND CAST(r.content_id AS UNSIGNED) = p.id {$whereSql}", $params)->getColumn();
+        $pagination = new \FBL\Pagination($total, $perPage);
+        $offset = $pagination->getOffset();
+        $items = db()->query(
+            "SELECT p.id, p.title, p.slug, p.is_published, COALESCE(r.access_mode, 'public') AS access_mode,
+                    r.show_title, r.show_excerpt, r.show_image, r.hide_video, r.required_permission,
+                    (SELECT GROUP_CONCAT(cp.plan_id ORDER BY cp.plan_id) FROM subscription_content_plans cp WHERE cp.content_rule_id = r.id) AS plan_ids_csv
+             FROM posts p
+             LEFT JOIN subscription_content_rules r ON r.content_type = 'post' AND CAST(r.content_id AS UNSIGNED) = p.id
+             {$whereSql}
+             ORDER BY p.id DESC LIMIT {$offset}, {$perPage}",
+            $params
+        )->get() ?: [];
+        foreach ($items as &$item) {
+            $item['plan_ids'] = array_values(array_filter(array_map('intval', explode(',', (string)($item['plan_ids_csv'] ?? '')))));
+        }
+        unset($item);
+
+        return ['items' => $items, 'total' => $total, 'pagination' => $pagination];
+    }
     public function find(string $type, string|int $id): ?array
     {
         $rule = db()->query(

@@ -5186,3 +5186,10 @@ body.is-site-fullscreen .plyr * {
         width: 100%;
     }
 }
+/* Keep indexed excerpts readable even when legacy content contains long tokens. */
+.fb-search-result,
+.fb-search-result__excerpt {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}

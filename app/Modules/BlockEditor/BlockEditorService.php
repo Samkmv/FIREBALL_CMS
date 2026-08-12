@@ -87,6 +87,16 @@ final class BlockEditorService
             'defaultDirectory' => $defaultDirectory,
             'previewStyleAssets' => self::previewStyleAssets(),
             'blockTypes' => array_values($this->blockTypes()),
+            'socialNetworks' => array_map(
+                static fn(array $option, string $network): array => [
+                    'value' => $network,
+                    'label' => (string)($option['label'] ?? $network),
+                    'icon' => (string)($option['icon'] ?? 'ci-globe'),
+                    'placeholder' => (string)($option['placeholder'] ?? ''),
+                ],
+                site_social_network_options(),
+                array_keys(site_social_network_options())
+            ),
             'fonts' => [
                 ['value' => 'Inter', 'label' => 'Inter'],
                 ['value' => 'Arial', 'label' => 'Arial'],

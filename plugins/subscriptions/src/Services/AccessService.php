@@ -105,7 +105,8 @@ final class AccessService
                 return ['allowed' => false, 'reason' => 'permission_required', 'rule' => $rule];
             }
         }
-        if ((string)$rule['access_mode'] === 'subscribers' && !$this->can($userId, 'posts.view_paid')) {
+        $subscriberPermission = $contentType === 'video' ? 'videos.view_paid' : 'posts.view_paid';
+        if ((string)$rule['access_mode'] === 'subscribers' && !$this->can($userId, $subscriberPermission)) {
             return ['allowed' => false, 'reason' => 'permission_required', 'rule' => $rule];
         }
 

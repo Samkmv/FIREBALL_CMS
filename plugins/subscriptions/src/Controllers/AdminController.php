@@ -4,6 +4,7 @@ namespace Fireball\Subscriptions\Controllers;
 
 use Fireball\Subscriptions\Repositories\PlanRepository;
 use Fireball\Subscriptions\Repositories\ProfileRepository;
+use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 use Fireball\Subscriptions\Services\SettingsService;
 use Fireball\Subscriptions\Services\SubscriptionService;
 
@@ -88,16 +89,41 @@ final class AdminController
 
     public function subscribers(): string
     {
+        $search = trim((string)request()->get('q', ''));
+        $status = trim((string)request()->get('status', ''));
+        $where = [];
+        $params = [];
+        if ($search !== '') {
+            $where[] = '(u.name LIKE ? OR u.email LIKE ?)';
+            $like = '%' . $search . '%';
+            $params = [$like, $like];
+        }
+        if (in_array($status, ['active', 'disabled', 'pending', 'cancelled', 'grace_period', 'past_due', 'expired'], true)) {
+            $where[] = 's.status = ?';
+            $params[] = $status;
+        } else {
+            $status = '';
+        }
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $total = (int)db()->query("SELECT COUNT(*) FROM subscriptions s INNER JOIN users u ON u.id = s.user_id {$whereSql}", $params)->getColumn();
+        $pagination = new \FBL\Pagination($total, 20);
+        $offset = $pagination->getOffset();
         $rows = db()->query(
             "SELECT s.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name
              FROM subscriptions s INNER JOIN users u ON u.id = s.user_id INNER JOIN subscription_plans p ON p.id = s.plan_id
-             ORDER BY s.created_at DESC LIMIT 300"
+             {$whereSql} ORDER BY s.created_at DESC LIMIT {$offset}, 20",
+            $params
         )->get() ?: [];
 
         return $this->view('admin/subscribers', 'subscribers', [
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_subscribers'),
             'subscriptions' => $rows,
             'plans' => (new PlanRepository())->all(),
+            'users' => db()->query('SELECT id, name, email FROM users ORDER BY name, email LIMIT 1000')->get() ?: [],
+            'pagination' => $pagination,
+            'total' => $total,
+            'search' => $search,
+            'status_filter' => $status,
         ]);
     }
 
@@ -107,7 +133,7 @@ final class AdminController
             (new SubscriptionService())->grant(
                 (int)request()->post('user_id'), (int)request()->post('plan_id'),
                 max(1, (int)request()->post('duration_value', 30)), (string)request()->post('duration_unit', 'days'),
-                (int)(get_user()['id'] ?? 0), (string)request()->post('comment', '')
+                (int)(get_user()['id'] ?? 0), (string)request()->post('comment', ''), (string)request()->post('source', 'manual')
             );
             session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_grant_saved'));
         } catch (\Throwable $exception) {
@@ -116,16 +142,98 @@ final class AdminController
         response()->redirect(base_href('/admin/subscriptions/subscribers'));
     }
 
+    public function updateSubscriber(): never
+    {
+        try {
+            (new SubscriptionService())->updateManaged(
+                (int)request()->post('id'),
+                (int)request()->post('plan_id'),
+                (string)request()->post('status', 'disabled'),
+                (string)request()->post('ends_at', ''),
+                (int)(get_user()['id'] ?? 0)
+            );
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_subscriber_saved'));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        }
+        response()->redirect(base_href('/admin/subscriptions/subscribers'));
+    }
+
     public function payments(): string
     {
+        $search = trim((string)request()->get('q', ''));
+        $where = ['sp.cleared_at IS NULL'];
+        $params = [];
+        if ($search !== '') {
+            $where[] = '(u.name LIKE ? OR u.email LIKE ? OR CAST(sp.invoice_id AS CHAR) LIKE ?)';
+            $like = '%' . $search . '%';
+            $params = [$like, $like, $like];
+        }
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
+        $total = (int)db()->query("SELECT COUNT(*) FROM subscription_payments sp INNER JOIN users u ON u.id = sp.user_id {$whereSql}", $params)->getColumn();
+        $pagination = new \FBL\Pagination($total, 25);
+        $offset = $pagination->getOffset();
         $rows = db()->query(
-            'SELECT sp.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name FROM subscription_payments sp INNER JOIN users u ON u.id = sp.user_id INNER JOIN subscription_plans p ON p.id = sp.plan_id ORDER BY sp.created_at DESC LIMIT 500'
+            "SELECT sp.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name FROM subscription_payments sp INNER JOIN users u ON u.id = sp.user_id INNER JOIN subscription_plans p ON p.id = sp.plan_id {$whereSql} ORDER BY sp.created_at DESC LIMIT {$offset}, 25",
+            $params
         )->get() ?: [];
 
         return $this->view('admin/payments', 'payments', [
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_payments'),
             'payments' => $rows,
+            'pagination' => $pagination,
+            'total' => $total,
+            'search' => $search,
         ]);
+    }
+
+    public function clearPayments(): never
+    {
+        db()->query('UPDATE subscription_payments SET cleared_at = ?, updated_at = ? WHERE cleared_at IS NULL', [date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
+        session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_payments_cleared'));
+        response()->redirect(base_href('/admin/subscriptions/payments'));
+    }
+
+    public function contentAccess(): string
+    {
+        $search = trim((string)request()->get('q', ''));
+        $access = trim((string)request()->get('access', ''));
+        $result = (new ContentRuleRepository())->paginatedPosts($search, $access);
+
+        return $this->view('admin/content', 'content', [
+            'title' => \FireballPluginSubscriptions::t('subscriptions_admin_content'),
+            'posts' => $result['items'],
+            'total' => $result['total'],
+            'pagination' => $result['pagination'],
+            'plans' => (new PlanRepository())->all(),
+            'search' => $search,
+            'access_filter' => $access,
+        ]);
+    }
+
+    public function saveContentAccess(): never
+    {
+        $postId = (int)request()->post('id');
+        try {
+            $repository = new ContentRuleRepository();
+            $current = $repository->find('post', $postId) ?: [
+                'show_title' => 1, 'show_excerpt' => 1, 'show_image' => 1,
+                'hide_video' => 0, 'required_permission' => 'posts.view_paid',
+            ];
+            $repository->save('post', $postId, [
+                'subscription_access_mode' => request()->post('subscription_access_mode', 'public'),
+                'subscription_plan_ids' => (array)request()->post('subscription_plan_ids', []),
+                'subscription_show_title' => !empty($current['show_title']) ? '1' : '',
+                'subscription_show_excerpt' => !empty($current['show_excerpt']) ? '1' : '',
+                'subscription_show_image' => !empty($current['show_image']) ? '1' : '',
+                'subscription_hide_video' => !empty($current['hide_video']) ? '1' : '',
+                'subscription_required_permission' => (string)($current['required_permission'] ?? 'posts.view_paid'),
+            ]);
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_content_saved'));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        }
+        response()->redirect(base_href('/admin/subscriptions/content'));
     }
 
     public function fields(): string

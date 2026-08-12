@@ -128,7 +128,7 @@ if (!is_array($activityItems)) {
     $activityItems = [];
 }
 
-$pluginWidgets = apply_filters('admin_dashboard_widgets', [], [
+$pluginWidgets = apply_filters_safe('admin_dashboard_widgets', [], [
     'stats' => $stats,
     'user' => $currentUser,
 ]);
@@ -260,43 +260,46 @@ echo view()->renderPartial('admin/shell_open', [
         </header>
         <div class="fb-card-body pt-3">
             <?php if ($analyticsPages !== []): ?>
-                <ul class="fb-simple-list">
-                    <?php foreach (array_slice($analyticsPages, 0, 5) as $page): ?>
-                        <li class="fb-simple-list-item">
-                            <span class="fb-simple-list-leading"><i class="ci-bar-chart" aria-hidden="true"></i></span>
-                            <div class="fb-simple-list-copy">
-                                <div class="fb-simple-list-title"><?= htmlSC((string)($page['label'] ?? '/')) ?></div>
-                                <div class="fb-simple-list-meta"><?= print_translation('admin_analytics_col_views') ?></div>
-                            </div>
-                            <strong class="fb-list-value"><?= (int)($page['views'] ?? $page['total'] ?? 0) ?></strong>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
+                <div class="table-responsive fb-dashboard-analytics-table">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th><?= print_translation('admin_analytics_col_page') ?></th><th class="text-end"><?= print_translation('admin_analytics_col_views') ?></th></tr></thead>
+                        <tbody>
+                            <?php foreach (array_slice($analyticsPages, 0, 15) as $page): ?>
+                                <tr><td class="text-break"><?= htmlSC((string)($page['label'] ?? '/')) ?></td><td class="text-end fw-semibold"><?= (int)($page['views'] ?? $page['total'] ?? 0) ?></td></tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php else: ?>
                 <div class="fb-empty-state"><div><span class="fb-empty-state-icon"><i class="ci-bar-chart" aria-hidden="true"></i></span><p class="mb-0"><?= print_translation('admin_analytics_empty') ?></p></div></div>
             <?php endif; ?>
         </div>
     </article>
 
-    <article class="fb-card fb-dashboard-widget">
+    <article class="fb-card fb-dashboard-widget fb-dashboard-span-2 fb-dashboard-latest-visits">
         <header class="fb-card-header">
             <h2 class="fb-card-title"><?= print_translation('admin_analytics_latest_title') ?></h2>
             <a class="btn btn-sm btn-link" href="<?= base_href('/admin/analytics') ?>"><?= print_translation('admin_dashboard_view_all') ?></a>
         </header>
         <div class="fb-card-body pt-3">
             <?php if ($analyticsLatest !== []): ?>
-                <ul class="fb-simple-list">
-                    <?php foreach (array_slice($analyticsLatest, 0, 5) as $visit): ?>
-                        <?php $visitTime = strtotime((string)($visit['created_at'] ?? '')) ?: time(); ?>
-                        <li class="fb-simple-list-item">
-                            <span class="fb-simple-list-leading"><i class="ci-globe" aria-hidden="true"></i></span>
-                            <div class="fb-simple-list-copy">
-                                <div class="fb-simple-list-title"><?= htmlSC((string)($visit['current_page'] ?? '/')) ?></div>
-                                <div class="fb-simple-list-meta"><?= htmlSC((string)($visit['country'] ?? return_translation('admin_analytics_country_unknown'))) ?> · <?= htmlSC((string)($visit['device_type'] ?? '')) ?> · <?= htmlSC(date('d.m H:i', $visitTime)) ?></div>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
+                <div class="table-responsive fb-dashboard-analytics-table">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th><?= print_translation('admin_analytics_col_time') ?></th><th><?= print_translation('admin_analytics_col_country') ?></th><th><?= print_translation('admin_analytics_col_device') ?></th><th><?= print_translation('admin_analytics_col_browser') ?></th><th><?= print_translation('admin_analytics_col_page') ?></th></tr></thead>
+                        <tbody>
+                            <?php foreach (array_slice($analyticsLatest, 0, 15) as $visit): ?>
+                                <?php $visitTime = strtotime((string)($visit['created_at'] ?? '')) ?: time(); ?>
+                                <tr>
+                                    <td class="text-nowrap"><?= htmlSC(date('d.m H:i', $visitTime)) ?></td>
+                                    <td><?= htmlSC((string)($visit['country'] ?? return_translation('admin_analytics_country_unknown'))) ?></td>
+                                    <td><?= htmlSC((string)($visit['device_type'] ?? '')) ?></td>
+                                    <td><?= htmlSC((string)($visit['browser'] ?? '')) ?></td>
+                                    <td class="text-break"><?= htmlSC((string)($visit['current_page'] ?? '/')) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php else: ?>
                 <div class="fb-empty-state"><div><span class="fb-empty-state-icon"><i class="ci-globe" aria-hidden="true"></i></span><p class="mb-0"><?= print_translation('admin_analytics_empty') ?></p></div></div>
             <?php endif; ?>

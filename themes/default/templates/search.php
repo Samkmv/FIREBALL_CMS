@@ -36,7 +36,7 @@ $total = (int)($total ?? count($results));
             <?php if ($results): ?>
                 <section class="d-flex flex-column gap-3" aria-label="<?= htmlSC(return_translation('search_index_found')) ?>">
                     <?php foreach ($results as $result): ?>
-                        <article class="border rounded-5 p-4 p-md-5">
+                        <article class="fb-search-result border rounded-5 p-4 p-md-5">
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                                 <span class="badge rounded-pill text-body-emphasis bg-body-tertiary border">
                                     <?= htmlSC((string)($result['type_label'] ?? $result['type'] ?? '')) ?>
@@ -53,7 +53,7 @@ $total = (int)($total ?? count($results));
                             </h2>
 
                             <?php if (trim((string)($result['excerpt'] ?? '')) !== ''): ?>
-                                <p class="text-body-secondary mb-3">
+                                <p class="fb-search-result__excerpt text-body-secondary mb-3">
                                     <?= $result['highlighted_excerpt'] ?? htmlSC((string)$result['excerpt']) ?>
                                 </p>
                             <?php endif; ?>

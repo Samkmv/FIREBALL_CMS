@@ -34,6 +34,10 @@ $renderActions = static function (array $request, string $requestStatus) use ($s
             <i class="ci-more-vertical"></i>
         </button>
         <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/support/requests/reply/' . (int)$request['id']) ?>">
+                <i class="ci-mail"></i><span><?= print_translation('admin_support_reply_action') ?></span>
+            </a>
+            <div class="dropdown-divider"></div>
             <h6 class="dropdown-header"><?= print_translation('admin_support_bulk_change_status') ?></h6>
             <?php foreach ((array)$statuses as $statusKey): ?>
                 <form action="<?= base_href('/admin/support/requests/status') ?>" method="post">

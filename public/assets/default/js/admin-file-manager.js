@@ -526,8 +526,6 @@ $(function () {
         const actionToggle = $('[data-file-manager-action-toggle]');
         const countTarget = $('[data-file-manager-selection-count]');
         const toggleAll = $('[data-file-manager-toggle-all]');
-        const deleteSelectedButton = $('[data-file-manager-delete-selected]');
-        const deleteSelectedCount = $('[data-file-manager-delete-selected-count]');
         const selectedCount = checked.length;
 
         rows.each(function () {
@@ -540,12 +538,7 @@ $(function () {
         });
 
         countTarget.text(String(selectedCount));
-        deleteSelectedCount.text(String(selectedCount));
         actionToggle.prop('disabled', selectedCount === 0);
-        deleteSelectedButton
-            .prop('disabled', selectedCount === 0)
-            .toggleClass('d-none', selectedCount === 0)
-            .toggleClass('d-inline-flex', selectedCount > 0);
         toggleAll
             .prop('checked', visibleRows.length > 0 && selectedCount === visibleRows.length)
             .prop('indeterminate', selectedCount > 0 && selectedCount < visibleRows.length);
@@ -1090,10 +1083,6 @@ $(function () {
 
             openTransferModal(action, rows);
         }
-    });
-
-    page.on('click', '[data-file-manager-delete-selected]', function () {
-        confirmBulkDelete(selectedRows());
     });
 
     page.on('click', '[data-file-preview]', function () {

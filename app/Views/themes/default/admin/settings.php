@@ -46,6 +46,9 @@ $seoMetaAuthor = $formData['seo_meta_author'] ?? ($settings['seo_meta_author'] ?
 $seoRobots = $formData['seo_robots'] ?? ($settings['seo_robots'] ?? 'index,follow');
 $seoOgImage = $formData['seo_og_image'] ?? ($settings['seo_og_image'] ?? '');
 $seoTwitterCard = $formData['seo_twitter_card'] ?? ($settings['seo_twitter_card'] ?? 'summary_large_image');
+$yandexMetrikaEnabled = (string)($formData['yandex_metrika_enabled'] ?? ($settings['yandex_metrika_enabled'] ?? '0')) === '1';
+$yandexMetrikaId = $formData['yandex_metrika_id'] ?? ($settings['yandex_metrika_id'] ?? '');
+$yandexMetrikaCode = $formData['yandex_metrika_code'] ?? ($settings['yandex_metrika_code'] ?? '');
 $homepageType = $formData['homepage_type'] ?? ($settings['homepage_type'] ?? 'default');
 if (!in_array($homepageType, ['default', 'page', 'posts'], true)) {
     $homepageType = 'default';
@@ -304,6 +307,35 @@ $publishedPages = (array)($published_pages ?? []);
                             <label class="form-label"><?= print_translation('admin_settings_contacts_support_text') ?></label>
                             <textarea class="form-control" name="contacts_support_text" rows="3"><?= htmlSC($contactsSupportText) ?></textarea>
                             <div class="form-text"><?= print_translation('admin_settings_contacts_support_text_hint') ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 pt-2">
+                <div class="border rounded-4 p-3 p-md-4">
+                    <div class="mb-3">
+                        <h2 class="h5 mb-1"><?= print_translation('admin_settings_yandex_metrika_heading') ?></h2>
+                        <p class="text-body-secondary mb-0"><?= print_translation('admin_settings_yandex_metrika_subtitle') ?></p>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <input type="hidden" name="yandex_metrika_enabled" value="0">
+                            <label class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="yandex_metrika_enabled" value="1" <?= $yandexMetrikaEnabled ? 'checked' : '' ?>>
+                                <span class="form-check-label"><?= print_translation('admin_settings_yandex_metrika_enabled') ?></span>
+                            </label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"><?= print_translation('admin_settings_yandex_metrika_id') ?></label>
+                            <input class="form-control <?= get_validation_class('yandex_metrika_id') ?>" type="text" name="yandex_metrika_id" value="<?= htmlSC((string)$yandexMetrikaId) ?>" inputmode="numeric" pattern="[0-9]{1,20}" maxlength="20">
+                            <div class="form-text"><?= print_translation('admin_settings_yandex_metrika_id_hint') ?></div>
+                            <?= get_errors('yandex_metrika_id') ?>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label"><?= print_translation('admin_settings_yandex_metrika_code') ?></label>
+                            <textarea class="form-control font-monospace <?= get_validation_class('yandex_metrika_code') ?>" name="yandex_metrika_code" rows="5" maxlength="20000"><?= htmlSC((string)$yandexMetrikaCode) ?></textarea>
+                            <div class="form-text"><?= print_translation('admin_settings_yandex_metrika_code_hint') ?></div>
+                            <?= get_errors('yandex_metrika_code') ?>
                         </div>
                     </div>
                 </div>

@@ -109,6 +109,7 @@
             this.savedSerialized = '';
             this.filePickerTarget = null;
             this.contextMenuAnchor = null;
+            this.pendingDeleteIds = [];
             this.floatingUiFrame = 0;
             this.history = new API.EditorHistory(this.historyState(), { limit: 120, coalesceMs: 700 });
             this.ui = this.collectUi();
@@ -182,6 +183,7 @@
                 splitPreview: workspace.querySelector('[data-editor-split-preview]'),
                 splitPreviewFrame: workspace.querySelector('[data-editor-split-preview-frame]'),
                 recoveryDialog: this.root.querySelector('[data-editor-recovery-dialog]'),
+                deleteDialog: this.root.querySelector('[data-editor-delete-dialog]'),
                 searchPanel: this.root.querySelector('[data-editor-search-panel]'),
                 searchInput: this.root.querySelector('[data-editor-search-input]'),
                 replaceInput: this.root.querySelector('[data-editor-replace-input]'),
@@ -357,7 +359,7 @@
                         '<button type="button" data-block-action="more" aria-label="' + escapeAttr(this.label('more', 'More')) + '"><i class="ci-more-horizontal"></i></button>' +
                     '</div>' +
                 '</div>' +
-                '<button type="button" class="fb-editor2-block__insert" data-editor-insert-after="' + escapeAttr(block.id) + '" aria-label="' + escapeAttr(this.label('addBlock', 'Add block')) + '"><span><i class="ci-plus"></i></span></button>' +
+                '<button type="button" class="fb-editor2-block__insert" data-editor-insert-after="' + escapeAttr(block.id) + '" aria-label="' + escapeAttr(this.label('addBlock', 'Add block')) + '"><span><i class="ci-plus"></i></span><small>' + escapeAttr(this.label('addBlock', 'Add block')) + '</small></button>' +
             '</article>';
         }
 
@@ -652,6 +654,7 @@
                     ]);
             }
             if (block.type === 'video' || block.type === 'audio') {
+                const subscriptionAccess = block.type === 'video' ? this.renderVideoSubscriptionAccess(data) : '';
                 return this.textField('data.src', this.label('sourceLink', 'Media URL'), data.src || '', 'https://…') +
                     '<button type="button" class="btn btn-outline-secondary w-100 mb-3" data-editor-pick-media-path="data.src"><i class="ci-folder me-2"></i>' + escapeAttr(this.label('chooseFile', 'Media library')) + '</button>' +
                     (block.type === 'video' ? this.textField('data.poster', this.label('videoPoster', 'Poster'), data.poster || '', 'https://…') : '') +
@@ -664,7 +667,7 @@
                             this.checkField('data.hls', this.label('videoHls', 'HLS stream'), Boolean(data.hls)) +
                             this.selectField('data.aspectRatio', this.label('aspectRatio', 'Aspect ratio'), data.aspectRatio || '16:9', [
                                 ['16:9', '16:9'], ['4:3', '4:3'], ['1:1', '1:1'], ['9:16', '9:16']
-                            ])
+                            ]) + subscriptionAccess
                         : '');
             }
             if (block.type === 'embed') {
@@ -709,7 +712,59 @@
                     this.textField('data.buttonUrl', this.label('newsletterUrl', 'Button link'), data.buttonUrl || '', 'https://…') +
                     this.textField('data.buttonIcon', this.label('newsletterIcon', 'Button icon'), data.buttonIcon || 'ci-mail', 'ci-mail');
             }
+            if (block.type === 'social') {
+                return this.renderSocialInspector(data);
+            }
             return '<p class="fb-editor2-inspector-hint">' + escapeAttr(this.label('inlineSettingsHint', 'Edit this block directly in the document.')) + '</p>';
+        }
+
+        renderSocialInspector(data) {
+            const networks = Array.isArray(this.config.socialNetworks) && this.config.socialNetworks.length
+                ? this.config.socialNetworks
+                : [{ value: 'website', label: this.label('socialExternalLink', 'Website'), icon: 'ci-globe', placeholder: 'https://…' }];
+            const items = Array.isArray(data.items) ? data.items : [];
+            const fields = items.map(function (item, index) {
+                const selected = networks.find(function (network) {
+                    return String(network.value) === String(item.network || '');
+                }) || networks[0];
+                const options = networks.map(function (network) {
+                    return '<option value="' + escapeAttr(network.value) + '" ' + (String(selected.value) === String(network.value) ? 'selected' : '') + '>' + escapeAttr(network.label) + '</option>';
+                }).join('');
+
+                return '<fieldset class="fb-editor2-social-item">' +
+                    '<legend>' + escapeAttr(this.label('socialNetwork', 'Social network')) + ' ' + (index + 1) + '</legend>' +
+                    '<label class="fb-editor2-inspector-field"><span>' + escapeAttr(this.label('socialNetwork', 'Social network')) + '</span><select data-editor-setting="data.items.' + index + '.network" data-editor-social-network="' + index + '">' + options + '</select></label>' +
+                    this.textField('data.items.' + index + '.icon', this.label('socialIcon', 'Icon'), item.icon || selected.icon || 'ci-globe', 'ci-globe') +
+                    this.textField('data.items.' + index + '.label', this.label('socialLabel', 'Label'), item.label || selected.label || '', '') +
+                    this.textField('data.items.' + index + '.url', selected.value === 'phone' ? this.label('socialPhone', 'Phone') : this.label('socialUrl', 'Link'), item.url || '', selected.placeholder || 'https://…') +
+                    '<button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-editor-social-remove="' + index + '"><i class="ci-trash me-2"></i>' + escapeAttr(this.label('socialRemoveItem', 'Remove')) + '</button>' +
+                '</fieldset>';
+            }, this).join('');
+
+            return '<p class="fb-editor2-inspector-hint">' + escapeAttr(this.label('socialItemsHint', 'Add links and choose their icons.')) + '</p>' +
+                fields +
+                '<button type="button" class="btn btn-outline-secondary w-100" data-editor-social-add><i class="ci-plus me-2"></i>' + escapeAttr(this.label('socialAddItem', 'Add link')) + '</button>';
+        }
+
+        renderVideoSubscriptionAccess(data) {
+            const config = this.config.subscriptionVideoAccess;
+            if (!config || !Array.isArray(config.plans)) {
+                return '';
+            }
+            const labels = config.labels || {};
+            const selectedPlans = Array.isArray(data.subscriptionPlanIds) ? data.subscriptionPlanIds.map(Number) : [];
+            const planFields = config.plans.map(function (plan) {
+                return '<label class="fb-editor2-inspector-check"><input type="checkbox" value="' + Number(plan.id) + '" data-editor-video-plan ' + (selectedPlans.indexOf(Number(plan.id)) !== -1 ? 'checked' : '') + '><span>' + escapeAttr(plan.name) + '</span></label>';
+            }).join('');
+
+            return '<fieldset class="fb-editor2-social-item"><legend>' + escapeAttr(labels.title || 'Video access') + '</legend>' +
+                this.selectField('data.subscriptionAccessMode', labels.title || 'Video access', data.subscriptionAccessMode || 'public', [
+                    ['public', labels.public || 'Everyone'],
+                    ['subscribers', labels.subscribers || 'Subscribers'],
+                    ['plans', labels.plans || 'Selected plans']
+                ]) +
+                (planFields ? '<div class="fb-editor2-inspector-field"><span>' + escapeAttr(labels.allowedPlans || 'Allowed plans') + '</span>' + planFields + '</div>' : '') +
+            '</fieldset>';
         }
 
         textField(path, label, value, placeholder) {
@@ -897,6 +952,42 @@
                 this.openBlockMenu(this.state.blocks.length ? this.state.blocks[this.state.blocks.length - 1].id : '', target.closest('[data-editor-add-block]'));
                 return;
             }
+            if (target.closest('[data-editor-delete-cancel]')) {
+                this.pendingDeleteIds = [];
+                if (this.ui.deleteDialog) {
+                    this.ui.deleteDialog.close();
+                }
+                return;
+            }
+            if (target.closest('[data-editor-delete-confirm]')) {
+                const ids = this.pendingDeleteIds.slice();
+                this.pendingDeleteIds = [];
+                if (this.ui.deleteDialog) {
+                    this.ui.deleteDialog.close();
+                }
+                this.removeBlocks(ids);
+                return;
+            }
+            if (target.closest('[data-editor-social-add]')) {
+                const block = this.activeBlock();
+                if (block && block.type === 'social') {
+                    const network = (this.config.socialNetworks || [])[0] || { value: 'website', label: '', icon: 'ci-globe' };
+                    block.data.items = Array.isArray(block.data.items) ? block.data.items : [];
+                    block.data.items.push({ network: network.value, icon: network.icon, label: network.label, url: '' });
+                    this.commit('social-add', true, true);
+                }
+                return;
+            }
+            const socialRemove = target.closest('[data-editor-social-remove]');
+            if (socialRemove) {
+                const block = this.activeBlock();
+                const index = Number(socialRemove.getAttribute('data-editor-social-remove'));
+                if (block && block.type === 'social' && Array.isArray(block.data.items) && index >= 0) {
+                    block.data.items.splice(index, 1);
+                    this.commit('social-remove', true, true);
+                }
+                return;
+            }
             const outlineButton = target.closest('[data-editor-outline-block]');
             if (outlineButton) {
                 const id = outlineButton.getAttribute('data-editor-outline-block');
@@ -1080,6 +1171,14 @@
             if (!block) {
                 return;
             }
+            if (target.hasAttribute('data-editor-video-plan')) {
+                const planId = Number(target.value);
+                const values = new Set((block.data.subscriptionPlanIds || []).map(Number));
+                target.checked ? values.add(planId) : values.delete(planId);
+                block.data.subscriptionPlanIds = Array.from(values);
+                this.commit('video-access', true, true);
+                return;
+            }
             if (target.hasAttribute('data-editor-device')) {
                 const device = target.getAttribute('data-editor-device');
                 const values = new Set(block.settings.hiddenOn || []);
@@ -1093,6 +1192,16 @@
                     value = Number(value);
                 }
                 setPath(block, setting, value);
+                if (target.hasAttribute('data-editor-social-network')) {
+                    const index = Number(target.getAttribute('data-editor-social-network'));
+                    const network = (this.config.socialNetworks || []).find(function (option) {
+                        return String(option.value) === String(value);
+                    });
+                    if (network && block.data.items && block.data.items[index]) {
+                        block.data.items[index].icon = network.icon;
+                        block.data.items[index].label = network.label;
+                    }
+                }
             }
             this.commit('settings', true, true);
         }
@@ -1257,10 +1366,14 @@
             if (!blockIds.length) {
                 return;
             }
-            const message = this.label('deleteConfirm', 'Delete selected blocks?');
-            if (window.confirm(message)) {
-                this.removeBlocks(blockIds);
+            if (!this.ui.deleteDialog || typeof this.ui.deleteDialog.showModal !== 'function') {
+                if (window.confirm(this.label('deleteConfirm', 'Delete selected blocks?'))) {
+                    this.removeBlocks(blockIds);
+                }
+                return;
             }
+            this.pendingDeleteIds = blockIds;
+            this.ui.deleteDialog.showModal();
         }
 
         addBlock(type, afterId, data) {
@@ -2685,7 +2798,10 @@
                 content = this.renderNewsletterBlock(block, false);
             } else if (block.type === 'social') {
                 content = '<div data-fb-social="1">' + (data.items || []).map(function (item) {
-                    const url = sanitizer.safeUrl(item.url || '', false);
+                    const rawUrl = item.network === 'phone' && item.url && !/^tel:/i.test(item.url)
+                        ? 'tel:' + String(item.url).replace(/[^\d+]/g, '')
+                        : item.url;
+                    const url = sanitizer.safeUrl(rawUrl || '', false);
                     return url ? '<a href="' + escapeAttr(url) + '" rel="noopener noreferrer"><i class="' + iconClass(item.icon || 'ci-globe') + '"></i>' + escapeAttr(item.label || '') + '</a>' : '';
                 }).join('') + '</div>';
             } else {

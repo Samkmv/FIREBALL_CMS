@@ -167,6 +167,11 @@ function apply_filters(string $hook, mixed $value, mixed ...$args): mixed
     return app()->hooks->applyFilters($hook, $value, ...$args);
 }
 
+function apply_filters_safe(string $hook, mixed $value, mixed ...$args): mixed
+{
+    return app()->hooks->applyFiltersSafely($hook, $value, ...$args);
+}
+
 function fireball_event(string $eventName, mixed $payload = null): void
 {
     app()->events->fire($eventName, $payload);
