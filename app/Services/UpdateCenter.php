@@ -177,7 +177,8 @@ class UpdateCenter
                     $repository,
                     $branch,
                     $remoteVersionFile,
-                    (string)($branchState['remote_commit_hash'] ?? '')
+                    (string)($branchState['remote_commit_hash'] ?? ''),
+                    (string)($settings['updater_github_token'] ?? '')
                 );
                 $remoteVersion = trim((string)($remoteVersionFile['version'] ?? ''));
                 $comparison = $this->compareVersions(
@@ -560,7 +561,8 @@ class UpdateCenter
                 $repository,
                 $branch,
                 $this->fetchRemoteVersionMetadata($repository, $branch, $token),
-                $remoteCommit
+                $remoteCommit,
+                $token
             );
 
             if ($storedCommit !== '' && ($branchState['status'] ?? '') === 'identical') {
@@ -1010,6 +1012,25 @@ class UpdateCenter
      */
     protected function fetchRemoteVersionMetadata(string $repository, string $branch, string $token = ''): array
     {
+        if (trim($token) === '') {
+            $response = $this->httpGet(
+                $this->buildGithubRawUrl($repository, $branch, 'config/version.php'),
+                [
+                    'Accept: text/plain',
+                    'User-Agent: FIREBALL_CMS-Updater',
+                ]
+            );
+
+            if ($response['status_code'] === 404) {
+                throw new RuntimeException(return_translation('admin_update_repository_not_found'));
+            }
+            if ($response['status_code'] < 200 || $response['status_code'] >= 300) {
+                throw new RuntimeException(return_translation('admin_update_release_fetch_failed'));
+            }
+
+            return $this->parseVersionPhpPayload((string)$response['body']);
+        }
+
         $response = $this->httpGet(
             $this->buildGithubApiUrl($repository, '/contents/config/version.php?ref=' . rawurlencode($branch)),
             $this->buildGithubHeaders($token)
@@ -1120,7 +1141,13 @@ class UpdateCenter
     /**
      * Собирает псевдо-release для обновления напрямую из ветки репозитория.
      */
-    protected function buildBranchRelease(string $repository, string $branch, array $versionFile, string $remoteCommitHash = ''): array
+    protected function buildBranchRelease(
+        string $repository,
+        string $branch,
+        array $versionFile,
+        string $remoteCommitHash = '',
+        string $token = ''
+    ): array
     {
         $changes = array_values(array_filter(array_map('trim', is_array($versionFile['changes'] ?? null) ? $versionFile['changes'] : [])));
         $body = implode("\n", $changes);
@@ -1142,7 +1169,9 @@ class UpdateCenter
             'published_at' => trim((string)($versionFile['released_at'] ?? '')),
             'body' => $body,
             'excerpt' => $excerpt,
-            'zipball_url' => $this->buildGithubApiUrl($repository, '/zipball/' . rawurlencode($branch)),
+            'zipball_url' => trim($token) !== ''
+                ? $this->buildGithubApiUrl($repository, '/zipball/' . rawurlencode($branch))
+                : $this->buildGithubCodeloadUrl($repository, $branch),
             'assets' => [],
         ];
     }
@@ -1152,6 +1181,13 @@ class UpdateCenter
      */
     protected function fetchBranchState(string $repository, string $branch, string $localCommitHash, string $token = ''): array
     {
+        if (trim($token) === '') {
+            $remoteCommitHash = $this->fetchPublicBranchHead($repository, $branch);
+            if ($remoteCommitHash !== '') {
+                return $this->buildArchiveBranchState($localCommitHash, $remoteCommitHash);
+            }
+        }
+
         $headers = $this->buildGithubHeaders($token);
         $branchResponse = $this->httpGet(
             $this->buildGithubApiUrl($repository, '/commits/' . rawurlencode($branch)),
@@ -1164,6 +1200,13 @@ class UpdateCenter
         }
 
         if ($branchResponse['status_code'] < 200 || $branchResponse['status_code'] >= 300 || !is_array($branchPayload)) {
+            if ($this->isGithubRateLimitResponse($branchResponse['status_code'], $branchPayload)) {
+                return [
+                    'status' => 'unknown',
+                    'remote_commit_hash' => '',
+                ];
+            }
+
             $message = is_array($branchPayload) ? (string)($branchPayload['message'] ?? '') : '';
             throw new RuntimeException(trim(return_translation('admin_update_branch_fetch_failed') . ' ' . $message));
         }
@@ -1204,6 +1247,74 @@ class UpdateCenter
             'status' => 'unknown',
             'remote_commit_hash' => $remoteCommitHash,
         ];
+    }
+
+    /**
+     * Получает head публичной ветки без GitHub REST API и его общего IP-лимита.
+     */
+    protected function fetchPublicBranchHead(string $repository, string $branch): string
+    {
+        try {
+            $response = $this->httpGet(
+                'https://github.com/' . $repository . '.git/info/refs?service=git-upload-pack',
+                [
+                    'Accept: application/x-git-upload-pack-advertisement',
+                    'User-Agent: FIREBALL_CMS-Updater',
+                ]
+            );
+        } catch (\Throwable) {
+            return '';
+        }
+
+        if ($response['status_code'] < 200 || $response['status_code'] >= 300) {
+            return '';
+        }
+
+        $ref = 'refs/heads/' . $branch;
+        if (preg_match(
+            '~([a-f0-9]{40})\s+' . preg_quote($ref, '~') . '(?:\x00|[\r\n])~i',
+            (string)$response['body'],
+            $matches
+        ) !== 1) {
+            return '';
+        }
+
+        return mb_strtolower((string)$matches[1]);
+    }
+
+    /**
+     * Для ZIP-установки отличие от сохранённого commit означает новую ревизию ветки.
+     */
+    protected function buildArchiveBranchState(string $localCommitHash, string $remoteCommitHash): array
+    {
+        $localCommitHash = mb_strtolower(trim($localCommitHash));
+        $remoteCommitHash = mb_strtolower(trim($remoteCommitHash));
+
+        if ($localCommitHash === '') {
+            return [
+                'status' => 'no_local_commit',
+                'remote_commit_hash' => $remoteCommitHash,
+            ];
+        }
+
+        return [
+            'status' => hash_equals($localCommitHash, $remoteCommitHash) ? 'identical' : 'behind',
+            'remote_commit_hash' => $remoteCommitHash,
+        ];
+    }
+
+    /**
+     * Отличает исчерпание квоты GitHub от ошибок репозитория и ветки.
+     */
+    protected function isGithubRateLimitResponse(int $statusCode, mixed $payload): bool
+    {
+        if (!in_array($statusCode, [403, 429], true)) {
+            return false;
+        }
+
+        $message = is_array($payload) ? mb_strtolower((string)($payload['message'] ?? '')) : '';
+
+        return str_contains($message, 'rate limit');
     }
 
     /**
@@ -1363,11 +1474,14 @@ class UpdateCenter
         $zipballUrl = trim((string)($release['zipball_url'] ?? ''));
         if ($allowZipball && $zipballUrl !== '') {
             $tagName = trim((string)($release['tag_name'] ?? 'release'));
+            $downloadMode = str_starts_with($zipballUrl, 'https://api.github.com/')
+                ? 'repository_zipball_api'
+                : 'direct';
 
             return [
                 'name' => $tagName . '.zip',
                 'download_url' => $zipballUrl,
-                'download_mode' => 'repository_zipball_api',
+                'download_mode' => $downloadMode,
             ];
         }
 
@@ -2833,6 +2947,38 @@ class UpdateCenter
     protected function buildGithubApiUrl(string $repository, string $path): string
     {
         return 'https://api.github.com/repos/' . str_replace('%2F', '/', rawurlencode($repository)) . $path;
+    }
+
+    /**
+     * Собирает URL текстового файла публичной ветки без обращения к GitHub REST API.
+     */
+    protected function buildGithubRawUrl(string $repository, string $branch, string $path): string
+    {
+        return 'https://raw.githubusercontent.com/'
+            . str_replace('%2F', '/', rawurlencode($repository))
+            . '/refs/heads/'
+            . $this->encodeGithubPath($branch)
+            . '/'
+            . $this->encodeGithubPath($path);
+    }
+
+    /**
+     * Собирает прямой URL ZIP-архива публичной ветки без квоты GitHub REST API.
+     */
+    protected function buildGithubCodeloadUrl(string $repository, string $branch): string
+    {
+        return 'https://codeload.github.com/'
+            . str_replace('%2F', '/', rawurlencode($repository))
+            . '/zip/refs/heads/'
+            . $this->encodeGithubPath($branch);
+    }
+
+    /**
+     * Кодирует отдельные сегменты пути, сохраняя разделители веток и файлов.
+     */
+    protected function encodeGithubPath(string $path): string
+    {
+        return implode('/', array_map('rawurlencode', explode('/', trim($path, '/'))));
     }
 
     /**
