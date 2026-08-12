@@ -110,7 +110,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.10', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.11', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -324,6 +324,13 @@ assertTrueValue(
     && str_contains((string)file_get_contents(__DIR__ . '/../../../themes/default/templates/posts.php'), 'subscriptions-lock-badge'),
     'Protected content must use compact, explanatory subscription notices'
 );
+assertTrueValue(
+    str_contains($pluginSource, "array_key_exists('subscriptionAccessMode', \$blockData)")
+    && str_contains($pluginSource, 'private static function canViewEmbeddedVideo')
+    && str_contains($pluginSource, "return \$access->can(\$userId, 'videos.view_paid')")
+    && str_contains($pluginSource, "in_array((int)\$subscription['plan_id'], \$allowedPlans, true)"),
+    'Each embedded video must enforce its own subscription rule independently from the public post rule'
+);
 
 foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields', 'field-form', 'settings'] as $adminView) {
     $adminTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $adminView . '.php');
@@ -408,6 +415,7 @@ assertTrueValue(
 $plansTemplate = (string)file_get_contents(__DIR__ . '/../views/public/plans.php');
 $checkoutTemplate = (string)file_get_contents(__DIR__ . '/../views/public/checkout.php');
 $publicStyles = (string)file_get_contents(__DIR__ . '/../assets/subscriptions.css');
+$editorAsset = (string)file_get_contents(__DIR__ . '/../assets/editor.js');
 assertTrueValue(
     str_contains($plansTemplate, '$planCount === 1')
     && str_contains($plansTemplate, '$planCount === 2')
@@ -435,6 +443,13 @@ assertTrueValue(
     && str_contains($publicStyles, '.fb-editor2-inspector-field > .fb-editor2-inspector-check input')
     && str_contains($publicStyles, 'overflow-wrap: anywhere'),
     'Video access plan checkboxes must stay aligned and wrap safely in the editor inspector'
+);
+assertTrueValue(
+    str_contains($pluginSource, "add_filter('fireball_editor_script_assets'")
+    && str_contains($editorAsset, "target.hasAttribute('data-editor-video-plan')")
+    && str_contains($editorAsset, 'block.data.subscriptionPlanIds = Array.from(values)')
+    && str_contains($editorAsset, "plans.hidden = select.value !== 'plans'"),
+    'The plugin update must save selected video plans and hide them for non-plan access without requiring a CMS core update'
 );
 
 fwrite(STDOUT, "subscriptions_unit: ok\n");

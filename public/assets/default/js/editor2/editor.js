@@ -753,17 +753,18 @@
             }
             const labels = config.labels || {};
             const selectedPlans = Array.isArray(data.subscriptionPlanIds) ? data.subscriptionPlanIds.map(Number) : [];
+            const accessMode = data.subscriptionAccessMode || 'public';
             const planFields = config.plans.map(function (plan) {
                 return '<label class="fb-editor2-inspector-check"><input type="checkbox" value="' + Number(plan.id) + '" data-editor-video-plan ' + (selectedPlans.indexOf(Number(plan.id)) !== -1 ? 'checked' : '') + '><span>' + escapeAttr(plan.name) + '</span></label>';
             }).join('');
 
             return '<fieldset class="fb-editor2-social-item"><legend>' + escapeAttr(labels.title || 'Video access') + '</legend>' +
-                this.selectField('data.subscriptionAccessMode', labels.title || 'Video access', data.subscriptionAccessMode || 'public', [
+                this.selectField('data.subscriptionAccessMode', labels.title || 'Video access', accessMode, [
                     ['public', labels.public || 'Everyone'],
                     ['subscribers', labels.subscribers || 'Subscribers'],
                     ['plans', labels.plans || 'Selected plans']
                 ]) +
-                (planFields ? '<div class="fb-editor2-inspector-field"><span>' + escapeAttr(labels.allowedPlans || 'Allowed plans') + '</span>' + planFields + '</div>' : '') +
+                (planFields ? '<div class="fb-editor2-inspector-field" data-editor-video-plans ' + (accessMode === 'plans' ? '' : 'hidden') + '><span>' + escapeAttr(labels.allowedPlans || 'Allowed plans') + '</span>' + planFields + '</div>' : '') +
             '</fieldset>';
         }
 
@@ -1159,6 +1160,18 @@
                 this.saveLocalDraftSoon();
                 return;
             }
+            if (target.hasAttribute('data-editor-video-plan')) {
+                const block = this.activeBlock();
+                if (!block) {
+                    return;
+                }
+                const planId = Number(target.value);
+                const values = new Set((block.data.subscriptionPlanIds || []).map(Number));
+                target.checked ? values.add(planId) : values.delete(planId);
+                block.data.subscriptionPlanIds = Array.from(values);
+                this.commit('video-access', true, true);
+                return;
+            }
             const setting = target.getAttribute('data-editor-setting');
             if (!setting) {
                 if (this.form && this.form.contains(target) && target.name && target.type !== 'hidden') {
@@ -1169,14 +1182,6 @@
             }
             const block = this.activeBlock();
             if (!block) {
-                return;
-            }
-            if (target.hasAttribute('data-editor-video-plan')) {
-                const planId = Number(target.value);
-                const values = new Set((block.data.subscriptionPlanIds || []).map(Number));
-                target.checked ? values.add(planId) : values.delete(planId);
-                block.data.subscriptionPlanIds = Array.from(values);
-                this.commit('video-access', true, true);
                 return;
             }
             if (target.hasAttribute('data-editor-device')) {

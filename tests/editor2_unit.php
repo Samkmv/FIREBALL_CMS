@@ -163,6 +163,12 @@ editor2_assert(str_contains($editorSource, 'positionContextMenu()'), 'The block 
 editor2_assert(str_contains($editorSource, 'this.renderNewsletterBlock(block, true)'), 'The editor does not use the shared newsletter renderer.');
 editor2_assert(str_contains($editorSource, 'this.renderNewsletterBlock(block, false)'), 'The preview serializer does not use the shared newsletter renderer.');
 editor2_assert(str_contains($editorSource, 'this.config.previewStyleAssets'), 'Preview does not load the public theme styles.');
+$videoPlanHandlerPosition = strpos($editorSource, "if (target.hasAttribute('data-editor-video-plan'))");
+$settingReadPosition = $videoPlanHandlerPosition === false
+    ? false
+    : strpos($editorSource, "const setting = target.getAttribute('data-editor-setting');", $videoPlanHandlerPosition);
+editor2_assert($videoPlanHandlerPosition !== false && $settingReadPosition !== false && $videoPlanHandlerPosition < $settingReadPosition, 'Video plan checkboxes are ignored before their values can be saved.');
+editor2_assert(str_contains($editorSource, 'data-editor-video-plans') && str_contains($editorSource, "accessMode === 'plans'"), 'Allowed video plans must only be shown for selected-plan access.');
 
 echo json_encode([
     'status' => 'ok',

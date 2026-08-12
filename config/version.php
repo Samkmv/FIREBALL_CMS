@@ -2,7 +2,7 @@
 
 return [
     'name' => 'FIREBALL_CMS',
-    'version' => '1.8.1',
+    'version' => '1.8.2',
     'released_at' => '2026-08-12',
     'summary' => 'Стабильный релиз FIREBALL CMS',
     'changes' => [

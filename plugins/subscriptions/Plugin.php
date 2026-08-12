@@ -101,6 +101,12 @@ final class FireballPluginSubscriptions implements PluginInterface
 
             return array_values(array_unique($assets));
         });
+        add_filter('fireball_editor_script_assets', static function (array $assets): array {
+            $asset = __DIR__ . '/assets/editor.js';
+            $assets[] = base_href('/plugins/subscriptions/assets/editor.js?v=' . (is_file($asset) ? filemtime($asset) : time()));
+
+            return array_values(array_unique($assets));
+        });
         add_filter('subscriptions_access_service', static fn(mixed $service): AccessService => $service instanceof AccessService ? $service : new AccessService());
         add_filter('fireball_scheduled_jobs', static function (array $jobs): array {
             $jobs['subscriptions_maintenance'] = [
@@ -164,6 +170,15 @@ final class FireballPluginSubscriptions implements PluginInterface
         if ((string)($block['type'] ?? '') !== 'video') {
             return $html;
         }
+        $blockData = is_array($block['data'] ?? null) ? $block['data'] : [];
+        if (array_key_exists('subscriptionAccessMode', $blockData)) {
+            $user = get_user();
+            if (self::canViewEmbeddedVideo($blockData, is_array($user) ? $user : [], self::accessService())) {
+                return $html;
+            }
+
+            return self::videoAccessMessage();
+        }
         $blockId = trim((string)($block['id'] ?? ''));
         if ($blockId === '') {
             return $html;
@@ -174,6 +189,33 @@ final class FireballPluginSubscriptions implements PluginInterface
         }
 
         return self::videoAccessMessage();
+    }
+
+    private static function canViewEmbeddedVideo(array $blockData, array $user, AccessService $access): bool
+    {
+        $mode = (string)($blockData['subscriptionAccessMode'] ?? 'public');
+        if (!in_array($mode, ['public', 'authenticated', 'subscribers', 'plans'], true) || $mode === 'public') {
+            return true;
+        }
+
+        $userId = (int)($user['id'] ?? 0);
+        if (in_array((string)($user['role'] ?? ''), ['creator', 'admin'], true)) {
+            return true;
+        }
+        if ($userId <= 0) {
+            return false;
+        }
+        if ($mode === 'authenticated') {
+            return true;
+        }
+        if ($mode === 'subscribers') {
+            return $access->can($userId, 'videos.view_paid');
+        }
+
+        $allowedPlans = array_values(array_unique(array_filter(array_map('intval', (array)($blockData['subscriptionPlanIds'] ?? [])))));
+        $subscription = $access->activeSubscription($userId);
+
+        return $subscription !== null && in_array((int)$subscription['plan_id'], $allowedPlans, true);
     }
 
     private static function saveVideoRules(ContentRuleRepository $repository, string $content): void
