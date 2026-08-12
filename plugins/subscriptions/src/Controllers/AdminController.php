@@ -291,20 +291,37 @@ final class AdminController
     public function settings(): string
     {
         $settings = new SettingsService();
-        if (request()->isPost()) {
-            try {
-                $settings->save(request()->getData());
-                session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_settings_saved'));
-            } catch (\Throwable $exception) {
-                session()->setFlash('error', $exception->getMessage());
-            }
-            response()->redirect(base_href('/admin/subscriptions/settings'));
-        }
 
         return $this->view('admin/settings', 'settings', [
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_settings'),
             'settings' => $settings->current(),
         ]);
+    }
+
+    public function saveSettings(): never
+    {
+        $data = request()->getData();
+        $database = db();
+
+        try {
+            $database->beginTransaction();
+            (new SettingsService())->save($data);
+            $database->commit();
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_settings_saved'));
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            log_error_details('Robokassa settings save failed', [
+                'Submitted keys' => array_values(array_diff(array_keys($data), ['password1', 'password2', 'needCSRFToken'])),
+                'Merchant login provided' => trim((string)($data['merchant_login'] ?? '')) !== '',
+                'Password 1 provided' => (string)($data['password1'] ?? '') !== '',
+                'Password 2 provided' => (string)($data['password2'] ?? '') !== '',
+            ], $exception);
+            session()->setFlash('error', \FireballPluginSubscriptions::t('subscriptions_settings_save_failed'));
+        }
+
+        response()->redirect(base_href('/admin/subscriptions/settings'));
     }
 
     private function view(string $view, string $tab, array $data): string

@@ -117,6 +117,7 @@ return array_replace($en, [
     'subscriptions_receipt_object' => 'Предмет расчёта',
     'subscriptions_settings_urls_hint' => 'Скопируйте указанные ниже ResultURL, SuccessURL и FailURL в технические настройки магазина Robokassa.',
     'subscriptions_settings_saved' => 'Настройки сохранены.',
+    'subscriptions_settings_save_failed' => 'Не удалось сохранить настройки Robokassa. Подробности записаны в журнал ошибок.',
     'subscriptions_post_access_title' => 'Доступ по подписке',
     'subscriptions_post_access_mode' => 'Режим доступа',
     'subscriptions_post_access_hint' => 'Выберите «Всем», чтобы публикация была полностью открыта. Уведомление о подписке показывается только для закрытых режимов.',

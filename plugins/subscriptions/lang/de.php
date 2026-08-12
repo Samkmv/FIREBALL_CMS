@@ -182,6 +182,7 @@ return array_replace($en, [
     'subscriptions_retry' => 'Zahlung wiederholen',
     'subscriptions_secret_hint' => 'Leer lassen, um das gespeicherte verschlüsselte Geheimnis beizubehalten.',
     'subscriptions_settings_saved' => 'Einstellungen gespeichert.',
+    'subscriptions_settings_save_failed' => 'Die Robokassa-Einstellungen konnten nicht gespeichert werden. Details wurden im Fehlerprotokoll gespeichert.',
     'subscriptions_settings_urls_hint' => 'Übertragen Sie die unten angezeigten ResultURL, SuccessURL und FailURL in die Robokassa-Händlereinstellungen.',
     'subscriptions_show_excerpt' => 'Auszug ohne Zugriff anzeigen',
     'subscriptions_show_image' => 'Bild ohne Zugriff anzeigen',

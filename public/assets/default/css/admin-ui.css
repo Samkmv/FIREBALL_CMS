@@ -1158,7 +1158,7 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
 }
 
 .fb-dashboard-analytics-table {
-    max-height: 540px;
+    max-height: none;
 }
 
 .fb-dashboard-analytics-table th {
@@ -1323,6 +1323,24 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     font-size: .74rem;
     font-weight: 600;
     text-align: right;
+}
+
+.fb-dashboard-status-pages-row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .32fr);
+    gap: var(--fb-space-4);
+    order: 10;
+}
+
+.fb-dashboard-system-card {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.fb-dashboard-recent-pages {
+    grid-column: 1;
+    grid-row: 1;
 }
 
 .fb-activity-icon {
@@ -2204,6 +2222,10 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
         grid-template-columns: minmax(0, 1.6fr) minmax(250px, .8fr);
     }
 
+    .fb-dashboard-status-pages-row {
+        grid-template-columns: minmax(0, 1.6fr) minmax(250px, .8fr);
+    }
+
     .fb-traffic-stat-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -2402,6 +2424,17 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     .fb-dashboard-span-3,
     .fb-dashboard-grid > .fb-dashboard-widget {
         grid-column: auto;
+    }
+
+    .fb-dashboard-status-pages-row {
+        grid-template-columns: 1fr;
+        gap: var(--fb-space-3);
+    }
+
+    .fb-dashboard-system-card,
+    .fb-dashboard-recent-pages {
+        grid-column: auto;
+        grid-row: auto;
     }
 
     .fb-card-header {

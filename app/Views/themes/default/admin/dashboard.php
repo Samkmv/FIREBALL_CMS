@@ -339,6 +339,7 @@ echo view()->renderPartial('admin/shell_open', [
         </div>
     </article>
 
+    <div class="fb-dashboard-status-pages-row">
     <article class="fb-card fb-dashboard-widget fb-dashboard-system-card">
         <header class="fb-card-header">
             <h2 class="fb-card-title"><?= print_translation('admin_dashboard_system_status') ?></h2>
@@ -357,7 +358,7 @@ echo view()->renderPartial('admin/shell_open', [
         </div>
     </article>
 
-    <article class="fb-card fb-dashboard-widget">
+    <article class="fb-card fb-dashboard-widget fb-dashboard-recent-pages">
         <header class="fb-card-header">
             <h2 class="fb-card-title"><?= print_translation('admin_dashboard_recent_pages') ?></h2>
             <a class="btn btn-sm btn-link" href="<?= base_href('/admin/pages') ?>"><?= print_translation('admin_dashboard_view_all') ?></a>
@@ -388,6 +389,7 @@ echo view()->renderPartial('admin/shell_open', [
             <?php endif; ?>
         </div>
     </article>
+    </div>
 
     <article class="fb-card fb-dashboard-widget">
         <header class="fb-card-header">

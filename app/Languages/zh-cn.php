@@ -624,6 +624,8 @@ return [
     'admin_users_delete_last_admin_blocked' => '您不能删除最后一位管理员。',
     'admin_users_delete_self_blocked' => '您不能在管理面板中删除自己的账户。',
     'admin_users_delete_related_data_blocked' => '活动插件仍有关联记录时无法删除此用户。请先停用或删除这些记录，然后重试。',
+    'admin_users_delete_related_data_vpn_manager_v2' => 'VPN Manager V2 阻止了删除。请打开“VPN Manager V2 → 订阅”并删除该用户的 VPN 订阅。如果插件已停用，请先启用插件以清理其数据。',
+    'admin_users_delete_related_data_subscriptions' => '“订阅”插件阻止了删除。请打开“订阅 → 订阅用户”并删除该用户的关联订阅。如果插件已停用，请先启用插件以清理其数据。',
     'admin_users_not_found' => '未找到用户。',
     'admin_roles_title' => '用户角色',
     'admin_roles_heading' => '用户角色',

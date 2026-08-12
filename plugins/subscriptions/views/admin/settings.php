@@ -1,5 +1,5 @@
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <form class="border rounded-4 p-4 p-lg-5" method="post" autocomplete="off">
+    <form class="border rounded-4 p-4 p-lg-5" method="post" action="<?= htmlSC(base_href('/admin/subscriptions/settings/save')) ?>" autocomplete="off" data-subscriptions-settings-form>
         <?= get_csrf_field() ?>
         <div class="alert alert-info"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_settings_urls_hint')) ?></div>
         <div class="row g-3">
@@ -24,6 +24,6 @@
         </div>
         <hr class="my-4">
         <?php foreach (['result_url' => 'subscriptions_result_url', 'success_url' => 'subscriptions_success_url', 'fail_url' => 'subscriptions_fail_url'] as $key => $label): ?><div class="mb-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></label><input class="form-control font-monospace" value="<?= htmlSC((string)$settings[$key]) ?>" readonly></div><?php endforeach; ?>
-        <button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button>
+        <button class="btn btn-dark rounded-pill" type="submit" name="save_robokassa_settings" value="1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button>
     </form>
 <?php require __DIR__ . '/shell-close.php'; ?>

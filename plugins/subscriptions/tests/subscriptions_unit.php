@@ -93,7 +93,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.0', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.1', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -302,6 +302,21 @@ foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields'
         'Admin view must render inside the standard constrained admin shell: ' . $adminView
     );
 }
+
+$settingsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/settings.php');
+$adminControllerSource = (string)file_get_contents(__DIR__ . '/../src/Controllers/AdminController.php');
+$routesSource = (string)file_get_contents(__DIR__ . '/../routes.php');
+assertTrueValue(
+    str_contains($settingsTemplate, "/admin/subscriptions/settings/save")
+    && str_contains($routesSource, "/admin/subscriptions/settings/save")
+    && str_contains($adminControllerSource, 'public function saveSettings(): never'),
+    'Robokassa settings must use an explicit save endpoint'
+);
+assertTrueValue(
+    str_contains($adminControllerSource, 'beginTransaction()')
+    && str_contains($adminControllerSource, 'Robokassa settings save failed'),
+    'Robokassa settings writes must be atomic and safely logged'
+);
 
 foreach (['plans', 'subscribers', 'payments', 'fields'] as $tableView) {
     $tableTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $tableView . '.php');

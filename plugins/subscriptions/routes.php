@@ -54,4 +54,5 @@ $router->get('/admin/subscriptions/profile-fields/edit/(?P<id>\d+)/?', [Subscrip
 $router->post('/admin/subscriptions/profile-fields/edit/(?P<id>\d+)/?', [SubscriptionsAdminController::class, 'fieldForm'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/profile-fields/delete', [SubscriptionsAdminController::class, 'deleteField'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/settings', [SubscriptionsAdminController::class, 'settings'])->middleware(['auth', 'admin']);
-$router->post('/admin/subscriptions/settings', [SubscriptionsAdminController::class, 'settings'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/settings', [SubscriptionsAdminController::class, 'saveSettings'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/settings/save', [SubscriptionsAdminController::class, 'saveSettings'])->middleware(['auth', 'admin']);

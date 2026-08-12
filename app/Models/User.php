@@ -802,6 +802,13 @@ class User
             return 'last_admin';
         }
 
+        $deleteBlocker = $this->firstUserDeleteBlockerCode(
+            apply_filters('admin_user_delete_blockers', [], $id, $user)
+        );
+        if ($deleteBlocker !== null) {
+            return 'related_data:' . $deleteBlocker;
+        }
+
         $database = db();
         $avatarPath = (string)($user['avatar'] ?? '');
         $chatAttachmentPaths = [];
@@ -829,7 +836,7 @@ class User
             }
             if ($exception instanceof \PDOException
                 && str_starts_with((string)$exception->getCode(), '23')) {
-                return 'related_data';
+                return 'related_data:' . $this->relatedDataSourceCode($exception);
             }
             throw $exception;
         }
@@ -840,6 +847,49 @@ class User
         do_action('admin_user_deleted', $id, $user);
 
         return null;
+    }
+
+    /**
+     * Возвращает безопасный код первого плагина, который блокирует удаление пользователя.
+     */
+    protected function firstUserDeleteBlockerCode(mixed $blockers): ?string
+    {
+        if (!is_array($blockers)) {
+            return null;
+        }
+
+        foreach ($blockers as $blocker) {
+            $code = is_array($blocker) ? (string)($blocker['code'] ?? '') : (string)$blocker;
+            $code = strtolower(trim($code));
+            $code = preg_replace('/[^a-z0-9_-]+/', '', $code) ?: '';
+            if ($code !== '') {
+                return $code;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Определяет плагин по имени таблицы или ограничения в ошибке внешнего ключа.
+     */
+    protected function relatedDataSourceCode(\PDOException $exception): string
+    {
+        $message = strtolower($exception->getMessage());
+        $table = '';
+        if (preg_match('/foreign key constraint fails \(`[^`]+`\.`([^`]+)`/i', $exception->getMessage(), $matches)) {
+            $table = strtolower((string)($matches[1] ?? ''));
+        }
+
+        if (str_starts_with($table, 'vpn_v2_') || str_contains($message, 'fk_v2_')) {
+            return 'vpn-manager-v2';
+        }
+        if ($table === 'subscriptions' || str_starts_with($table, 'subscription_')
+            || str_contains($message, 'fk_subscription')) {
+            return 'subscriptions';
+        }
+
+        return 'database';
     }
 
     /**

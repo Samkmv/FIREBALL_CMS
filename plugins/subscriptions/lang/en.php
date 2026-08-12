@@ -115,6 +115,7 @@ return [
     'subscriptions_receipt_object' => 'Payment object',
     'subscriptions_settings_urls_hint' => 'Copy the ResultURL, SuccessURL and FailURL shown below into the Robokassa merchant settings.',
     'subscriptions_settings_saved' => 'Settings saved.',
+    'subscriptions_settings_save_failed' => 'Robokassa settings could not be saved. Details were written to the error log.',
     'subscriptions_post_access_title' => 'Subscription access',
     'subscriptions_post_access_mode' => 'Access mode',
     'subscriptions_post_access_hint' => 'Choose “Everyone” to keep the publication fully public. A subscription notice appears only for protected access modes.',

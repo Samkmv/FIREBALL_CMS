@@ -1,26 +1,26 @@
 {
   "name": "VPN Manager V2",
   "slug": "vpn-manager-v2",
-  "version": "0.19.5",
+  "version": "0.19.6",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Fixed merged subscriptions so external sources can only append configurations and can never replace the primary connection, including after a cached response from an older plugin version."
+    "Added safe CMS user deletion: active VPN subscriptions now identify VPN Manager V2 as the blocker, while records from already deleted subscriptions are cleaned up automatically."
   ],
   "release_notes_i18n": {
     "ru": [
-      "Исправлена объединённая подписка: внешние источники теперь могут только добавлять конфигурации и никогда не заменяют основное подключение, в том числе после кэшированного ответа старой версии плагина."
+      "Добавлено безопасное удаление пользователей CMS: активные VPN-подписки теперь явно указывают VPN Manager V2 как причину блокировки, а записи уже удалённых подписок очищаются автоматически."
     ],
     "en": [
-      "Fixed merged subscriptions so external sources can only append configurations and can never replace the primary connection, including after a cached response from an older plugin version."
+      "Added safe CMS user deletion: active VPN subscriptions now identify VPN Manager V2 as the blocker, while records from already deleted subscriptions are cleaned up automatically."
     ],
     "de": [
-      "Zusammengeführte Abonnements wurden korrigiert: Externe Quellen können Konfigurationen nur noch ergänzen und niemals die primäre Verbindung ersetzen, auch nicht nach einer zwischengespeicherten Antwort einer älteren Plugin-Version."
+      "Das sichere Löschen von CMS-Benutzern wurde ergänzt: Aktive VPN-Abonnements nennen nun VPN Manager V2 als Sperrgrund, während Datensätze bereits gelöschter Abonnements automatisch bereinigt werden."
     ],
     "zh-cn": [
-      "修复了合并订阅：外部来源现在只能追加配置，绝不会替换主要连接，包括旧版插件响应已被缓存的情况。"
+      "新增安全删除 CMS 用户：活动 VPN 订阅现在会明确指出 VPN Manager V2 是阻止原因，已删除订阅的记录则会自动清理。"
     ]
   },
   "update": {

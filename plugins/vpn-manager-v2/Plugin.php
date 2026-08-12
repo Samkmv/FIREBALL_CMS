@@ -63,6 +63,9 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
     {
         (new VpnV2SchemaUpgradeService())->ensureCurrent();
 
+        add_filter('admin_user_delete_blockers', [self::class, 'userDeleteBlockers']);
+        add_action('admin_user_deleting', [self::class, 'deleteUserData']);
+
         add_filter('admin_menu', static function (array $menu): array {
             $menu[] = [
                 'group' => 'applications',
@@ -111,6 +114,77 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
     public static function t(string $key): string
     {
         return return_translation($key);
+    }
+
+    public static function userDeleteBlockers(array $blockers, int $userId, array $user = []): array
+    {
+        if ($userId <= 0) {
+            return $blockers;
+        }
+
+        $activeSubscriptions = (int)db()->query(
+            "SELECT COUNT(*) FROM vpn_v2_subscriptions
+             WHERE user_id = ? AND status <> 'deleted'",
+            [$userId]
+        )->getColumn();
+
+        if ($activeSubscriptions > 0) {
+            $blockers[] = ['code' => self::SLUG];
+        }
+
+        return $blockers;
+    }
+
+    /**
+     * Очищает только уже удалённые VPN-подписки и обезличивает аудит.
+     * Активные подключения предварительно блокируются userDeleteBlockers().
+     */
+    public static function deleteUserData(int $userId, array $user = []): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+
+        $activeSubscriptions = (int)db()->query(
+            "SELECT COUNT(*) FROM vpn_v2_subscriptions
+             WHERE user_id = ? AND status <> 'deleted'",
+            [$userId]
+        )->getColumn();
+        if ($activeSubscriptions > 0) {
+            return;
+        }
+
+        db()->query(
+            'DELETE FROM vpn_v2_subscription_items
+             WHERE parent_subscription_id IN (SELECT id FROM vpn_v2_subscriptions WHERE user_id = ?)
+                OR child_subscription_id IN (SELECT id FROM vpn_v2_subscriptions WHERE user_id = ?)
+                OR connection_id IN (
+                    SELECT n.id FROM vpn_v2_subscription_nodes n
+                    INNER JOIN vpn_v2_subscriptions s ON s.id = n.subscription_id
+                    WHERE s.user_id = ?
+                )',
+            [$userId, $userId, $userId]
+        );
+        db()->query(
+            'DELETE FROM vpn_v2_external_sources
+             WHERE parent_subscription_id IN (SELECT id FROM vpn_v2_subscriptions WHERE user_id = ?)',
+            [$userId]
+        );
+        db()->query('UPDATE vpn_v2_external_sources SET created_by = NULL WHERE created_by = ?', [$userId]);
+        db()->query('UPDATE vpn_v2_sync_logs SET user_id = NULL WHERE user_id = ?', [$userId]);
+        db()->query('DELETE FROM vpn_v2_notifications WHERE user_id = ?', [$userId]);
+        db()->query('DELETE FROM vpn_v2_subscriptions WHERE user_id = ?', [$userId]);
+
+        $currentUser = get_user();
+        $replacementUserId = is_array($currentUser) ? (int)($currentUser['id'] ?? 0) : 0;
+        if ($replacementUserId > 0 && $replacementUserId !== $userId) {
+            db()->query(
+                'UPDATE vpn_v2_subscriptions SET created_by = ? WHERE created_by = ?',
+                [$replacementUserId, $userId]
+            );
+        }
+
+        db()->query('DELETE FROM vpn_v2_profiles WHERE cms_user_id = ?', [$userId]);
     }
 
     public static function permissions(): array

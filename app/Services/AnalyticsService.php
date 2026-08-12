@@ -6,6 +6,7 @@ use App\Repositories\AnalyticsRepository;
 
 final class AnalyticsService
 {
+    private const DASHBOARD_TABLE_LIMIT = 15;
     private AnalyticsRepository $repository;
     private int $cacheTtl = 120;
     private const GEOIP_DOWNLOAD_MAX_BYTES = 33554432;
@@ -122,8 +123,8 @@ final class AnalyticsService
             'sources' => $this->compactSources($this->repository->topGrouped('source', $last30, 20)),
             'countries' => $this->normalizeCountryRows($this->repository->topGrouped('country', $last30, 10)),
             'devices' => $this->repository->topGrouped('os', $last30, 10),
-            'pages' => $this->repository->popularPages($last30, 20),
-            'latest' => $this->normalizeVisitRows($this->repository->latest(20)),
+            'pages' => $this->repository->popularPages($last30, self::DASHBOARD_TABLE_LIMIT),
+            'latest' => $this->normalizeVisitRows($this->repository->latest(self::DASHBOARD_TABLE_LIMIT)),
         ];
 
         cache()->set($cacheKey, $data, $this->cacheTtl);

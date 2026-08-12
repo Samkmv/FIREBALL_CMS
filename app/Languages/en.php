@@ -631,6 +631,8 @@ return [
     'admin_users_delete_last_admin_blocked' => 'You cannot delete the last administrator.',
     'admin_users_delete_self_blocked' => 'You cannot delete your own account from the admin panel.',
     'admin_users_delete_related_data_blocked' => 'This user cannot be deleted while an active plugin still has related records. Disable or remove those records and try again.',
+    'admin_users_delete_related_data_vpn_manager_v2' => 'Deletion is blocked by VPN Manager V2. Open VPN Manager V2 → Subscriptions and delete the user’s VPN subscriptions. If the plugin is disabled, activate it first so it can clean up its data.',
+    'admin_users_delete_related_data_subscriptions' => 'Deletion is blocked by the Subscriptions plugin. Open Subscriptions → Subscribers and remove the user’s subscriptions. If the plugin is disabled, activate it first so it can clean up its data.',
     'admin_users_not_found' => 'User not found.',
     'admin_roles_title' => 'User roles',
     'admin_roles_heading' => 'User roles',

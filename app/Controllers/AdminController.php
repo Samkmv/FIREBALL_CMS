@@ -798,13 +798,22 @@ class AdminController extends BaseController
 
         $error = $this->users->deleteUser($userId, (int)(get_user()['id'] ?? 0));
         if ($error !== null) {
-            $message = match ($error) {
-                'protected' => return_translation('admin_users_creator_protected'),
-                'self' => return_translation('admin_users_delete_self_blocked'),
-                'last_admin' => return_translation('admin_users_delete_last_admin_blocked'),
-                'related_data' => return_translation('admin_users_delete_related_data_blocked'),
-                default => return_translation('admin_users_not_found'),
-            };
+            if (str_starts_with($error, 'related_data:')) {
+                $source = substr($error, strlen('related_data:'));
+                $message = return_translation(match ($source) {
+                    'vpn-manager-v2' => 'admin_users_delete_related_data_vpn_manager_v2',
+                    'subscriptions' => 'admin_users_delete_related_data_subscriptions',
+                    default => 'admin_users_delete_related_data_blocked',
+                });
+            } else {
+                $message = match ($error) {
+                    'protected' => return_translation('admin_users_creator_protected'),
+                    'self' => return_translation('admin_users_delete_self_blocked'),
+                    'last_admin' => return_translation('admin_users_delete_last_admin_blocked'),
+                    'related_data' => return_translation('admin_users_delete_related_data_blocked'),
+                    default => return_translation('admin_users_not_found'),
+                };
+            }
 
             session()->setFlash('error', $message);
             response()->redirect(base_href('/admin/users'));

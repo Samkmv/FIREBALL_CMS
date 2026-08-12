@@ -182,6 +182,7 @@ return array_replace($en, [
     'subscriptions_retry' => '重试付款',
     'subscriptions_secret_hint' => '留空可保留已保存的加密密钥。',
     'subscriptions_settings_saved' => '设置已保存。',
+    'subscriptions_settings_save_failed' => '无法保存 Robokassa 设置。详细信息已写入错误日志。',
     'subscriptions_settings_urls_hint' => '请将下方的 ResultURL、SuccessURL 和 FailURL 复制到 Robokassa 商户设置中。',
     'subscriptions_show_excerpt' => '无权限时显示摘要',
     'subscriptions_show_image' => '无权限时显示图片',

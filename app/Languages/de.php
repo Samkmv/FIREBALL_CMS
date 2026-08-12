@@ -624,6 +624,8 @@ return [
     'admin_users_delete_last_admin_blocked' => 'Der letzte Administrator kann nicht geloescht werden.',
     'admin_users_delete_self_blocked' => 'Sie koennen Ihr eigenes Konto im Adminbereich nicht loeschen.',
     'admin_users_delete_related_data_blocked' => 'Dieser Benutzer kann nicht geloescht werden, solange ein aktives Plugin verknuepfte Datensaetze enthaelt. Entfernen Sie diese Datensaetze und versuchen Sie es erneut.',
+    'admin_users_delete_related_data_vpn_manager_v2' => 'Das Löschen wird von VPN Manager V2 blockiert. Öffnen Sie VPN Manager V2 → Abonnements und löschen Sie die VPN-Abonnements des Benutzers. Ist das Plugin deaktiviert, aktivieren Sie es zuerst zur Datenbereinigung.',
+    'admin_users_delete_related_data_subscriptions' => 'Das Löschen wird vom Abonnements-Plugin blockiert. Öffnen Sie Abonnements → Abonnenten und entfernen Sie die Abonnements des Benutzers. Ist das Plugin deaktiviert, aktivieren Sie es zuerst zur Datenbereinigung.',
     'admin_users_not_found' => 'Benutzer nicht gefunden.',
     'admin_roles_title' => 'Benutzerrollen',
     'admin_roles_heading' => 'Benutzerrollen',
