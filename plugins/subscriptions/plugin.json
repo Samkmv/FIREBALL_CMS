@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,7 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Fixed Robokassa credential validation with verified saves, a clear readiness indicator, and safe checkout errors.",
+    "Fixed Robokassa credential persistence on installations containing stale duplicate plugin-setting rows.",
     "Added subscriber search and pagination, manual and external subscription sources, plan/status management, payment-history clearing, content access tables, and per-video access rules.",
     "Posts and videos are public by default in production; the update also opens existing content rules until protection is explicitly enabled again.",
     "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
@@ -33,7 +33,7 @@
   },
   "release_notes_i18n": {
     "ru": [
-      "Исправлена проверка реквизитов Robokassa: сохранение подтверждается проверкой, добавлен индикатор готовности и безопасные ошибки оплаты.",
+      "Исправлено сохранение реквизитов Robokassa на установках с устаревшими дублирующимися строками настроек плагина.",
       "Добавлены поиск и пагинация подписчиков, ручные и внешние источники, управление тарифом и статусом, очистка истории платежей, таблица доступа к контенту и правила для отдельных видео.",
       "Записи и видео по умолчанию открыты в продакшене; обновление также открывает существующие правила контента, пока защита не будет включена явно.",
       "Включены независимые обновления плагина из GitHub-репозитория FIREBALL CMS.",
@@ -42,7 +42,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
-      "Fixed Robokassa credential validation with verified saves, a clear readiness indicator, and safe checkout errors.",
+      "Fixed Robokassa credential persistence on installations containing stale duplicate plugin-setting rows.",
       "Added subscriber search and pagination, manual and external subscription sources, plan/status management, payment-history clearing, content access tables, and per-video access rules.",
       "Posts and videos are public by default in production; the update also opens existing content rules until protection is explicitly enabled again.",
       "Enabled independent plugin updates from the FIREBALL CMS GitHub repository.",
@@ -51,7 +51,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
-      "Die Prüfung der Robokassa-Zugangsdaten wurde mit verifiziertem Speichern, einer klaren Bereitschaftsanzeige und sicheren Zahlungsfehlern korrigiert.",
+      "Das Speichern der Robokassa-Zugangsdaten wurde für Installationen mit veralteten doppelten Plugin-Einstellungszeilen korrigiert.",
       "Suche und Seitennavigation fuer Abonnenten, manuelle und externe Quellen, Tarif- und Statusverwaltung, Bereinigung des Zahlungsverlaufs, Inhaltszugriffstabellen und Regeln fuer einzelne Videos wurden hinzugefuegt.",
       "Beiträge und Videos sind in der Produktion standardmäßig öffentlich; das Update öffnet auch bestehende Inhaltsregeln, bis der Schutz ausdrücklich wieder aktiviert wird.",
       "Unabhängige Plugin-Updates aus dem GitHub-Repository von FIREBALL CMS wurden aktiviert.",
@@ -60,7 +60,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
-      "修复了 Robokassa 凭据验证：保存后会进行校验，并新增清晰的就绪状态和安全的付款错误提示。",
+      "修复了存在旧版重复插件设置记录时 Robokassa 凭据无法持久保存的问题。",
       "新增订阅者搜索和分页、手动及外部来源、套餐和状态管理、付款历史清理、内容访问表以及单个视频访问规则。",
       "生产环境中的文章和视频默认公开；此次更新也会开放现有内容规则，直到再次明确启用保护。",
       "已启用从 FIREBALL CMS GitHub 仓库独立更新插件的功能。",

@@ -30,9 +30,13 @@ function plugin_setting_set(string $slug, string $key, mixed $value): void
 
 final class SubscriptionsUnitDbResult
 {
+    public function __construct(private readonly mixed $one = null)
+    {
+    }
+
     public function getOne(): mixed
     {
-        return null;
+        return $this->one;
     }
 
     public function get(): array
@@ -50,6 +54,19 @@ final class SubscriptionsUnitDb
 {
     public function query(string $sql, array $params = []): SubscriptionsUnitDbResult
     {
+        global $settingsStore;
+        if (str_starts_with($sql, 'SELECT id FROM plugin_settings')) {
+            $exists = array_key_exists((string)($params[1] ?? ''), $settingsStore[(string)($params[0] ?? '')] ?? []);
+
+            return new SubscriptionsUnitDbResult($exists ? ['id' => 1] : null);
+        }
+        if (str_starts_with($sql, 'UPDATE plugin_settings SET setting_value')) {
+            $decoded = json_decode((string)($params[0] ?? ''), true);
+            $settingsStore[(string)($params[2] ?? '')][(string)($params[3] ?? '')] = json_last_error() === JSON_ERROR_NONE
+                ? $decoded
+                : (string)($params[0] ?? '');
+        }
+
         return new SubscriptionsUnitDbResult();
     }
 }
@@ -93,7 +110,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.2', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.3', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -329,6 +346,11 @@ assertTrueValue(
     && str_contains($adminControllerSource, 'Robokassa settings save failed')
     && str_contains($settingsTemplate, 'subscriptions_settings_credentials_ready'),
     'Robokassa settings writes must be atomic and safely logged'
+);
+assertTrueValue(
+    str_contains((string)file_get_contents(__DIR__ . '/../src/Services/SettingsService.php'), 'UPDATE plugin_settings SET setting_value = ?')
+    && str_contains($settingsTemplate, 'subscriptions_secret_required_hint'),
+    'Robokassa settings must repair stale duplicate rows and visibly require missing secrets'
 );
 assertTrueValue(
     str_contains((string)file_get_contents(__DIR__ . '/../src/Services/CheckoutService.php'), 'assertGatewayReady()')

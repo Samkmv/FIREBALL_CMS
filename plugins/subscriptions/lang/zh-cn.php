@@ -181,6 +181,7 @@ return array_replace($en, [
     'subscriptions_required_permission' => '所需权限',
     'subscriptions_retry' => '重试付款',
     'subscriptions_secret_hint' => '留空可保留已保存的加密密钥。',
+    'subscriptions_secret_required_hint' => '必填。请输入 Robokassa 技术设置中对应的密码。',
     'subscriptions_settings_saved' => '设置已保存。',
     'subscriptions_settings_save_failed' => '无法保存 Robokassa 设置。详细信息已写入错误日志。',
     'subscriptions_settings_credentials_ready' => 'Robokassa 已配置：Merchant Login 和两个密码均已保存，服务器可以正常读取。',

@@ -105,6 +105,7 @@ return [
     'subscriptions_password1' => 'Password #1',
     'subscriptions_password2' => 'Password #2',
     'subscriptions_secret_hint' => 'Leave blank to keep the saved encrypted secret.',
+    'subscriptions_secret_required_hint' => 'Required. Enter the corresponding password from the Robokassa technical settings.',
     'subscriptions_payment_timeout' => 'Payment timeout, minutes',
     'subscriptions_media_ttl' => 'Media token lifetime, seconds',
     'subscriptions_test_mode' => 'Test mode',

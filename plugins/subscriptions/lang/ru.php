@@ -107,6 +107,7 @@ return array_replace($en, [
     'subscriptions_password1' => 'Пароль №1',
     'subscriptions_password2' => 'Пароль №2',
     'subscriptions_secret_hint' => 'Оставьте пустым, чтобы сохранить текущий зашифрованный секрет.',
+    'subscriptions_secret_required_hint' => 'Обязательное поле. Введите соответствующий пароль из технических настроек Robokassa.',
     'subscriptions_payment_timeout' => 'Ожидание оплаты, минут',
     'subscriptions_media_ttl' => 'Срок медиатокена, секунд',
     'subscriptions_test_mode' => 'Тестовый режим',

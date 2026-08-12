@@ -101,23 +101,20 @@ final class SettingsService
         }
 
         foreach ($settings as $key => $value) {
-            plugin_setting_set(self::SLUG, $key, $value);
+            $this->persist($key, $value);
         }
-
-        foreach (self::SECRET_KEYS as $key) {
-            $plainText = (string)($data[$key] ?? '');
-            if ($plainText !== '') {
-                plugin_setting_set(self::SLUG, $key, SecretCipher::encrypt($plainText));
-            }
-        }
+        $this->persist('password1', SecretCipher::encrypt($password1));
+        $this->persist('password2', SecretCipher::encrypt($password2));
 
         $saved = $this->current(true);
-        if (
-            (string)$saved['merchant_login'] !== (string)$settings['merchant_login']
-            || (string)$saved['password1'] !== $password1
-            || (string)$saved['password2'] !== $password2
-        ) {
-            throw new \RuntimeException(self::CREDENTIALS_NOT_CONFIGURED);
+        $mismatches = [];
+        foreach (['merchant_login' => $settings['merchant_login'], 'password1' => $password1, 'password2' => $password2] as $key => $expected) {
+            if ((string)$saved[$key] !== (string)$expected) {
+                $mismatches[] = $key;
+            }
+        }
+        if ($mismatches !== []) {
+            throw new \RuntimeException(self::CREDENTIALS_NOT_CONFIGURED . ' Verification failed: ' . implode(', ', $mismatches));
         }
     }
 
@@ -141,5 +138,26 @@ final class SettingsService
     private function choice(string $value, array $allowed, string $fallback): string
     {
         return in_array($value, $allowed, true) ? $value : $fallback;
+    }
+
+    private function persist(string $key, mixed $value): void
+    {
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $storedValue = $encoded !== false ? $encoded : 'null';
+        $existing = db()->query(
+            'SELECT id FROM plugin_settings WHERE plugin_slug = ? AND setting_key = ? LIMIT 1',
+            [self::SLUG, $key]
+        )->getOne();
+
+        if ($existing) {
+            db()->query(
+                'UPDATE plugin_settings SET setting_value = ?, updated_at = ? WHERE plugin_slug = ? AND setting_key = ?',
+                [$storedValue, date('Y-m-d H:i:s'), self::SLUG, $key]
+            );
+
+            return;
+        }
+
+        plugin_setting_set(self::SLUG, $key, $value);
     }
 }

@@ -181,6 +181,7 @@ return array_replace($en, [
     'subscriptions_required_permission' => 'Erforderliche Berechtigung',
     'subscriptions_retry' => 'Zahlung wiederholen',
     'subscriptions_secret_hint' => 'Leer lassen, um das gespeicherte verschlüsselte Geheimnis beizubehalten.',
+    'subscriptions_secret_required_hint' => 'Pflichtfeld. Geben Sie das entsprechende Passwort aus den technischen Robokassa-Einstellungen ein.',
     'subscriptions_settings_saved' => 'Einstellungen gespeichert.',
     'subscriptions_settings_save_failed' => 'Die Robokassa-Einstellungen konnten nicht gespeichert werden. Details wurden im Fehlerprotokoll gespeichert.',
     'subscriptions_settings_credentials_ready' => 'Robokassa ist eingerichtet: Merchant Login und beide Passwörter sind gespeichert und für den Server lesbar.',

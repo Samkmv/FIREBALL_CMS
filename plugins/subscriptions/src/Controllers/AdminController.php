@@ -318,7 +318,7 @@ final class AdminController
                 'Password 1 provided' => (string)($data['password1'] ?? '') !== '',
                 'Password 2 provided' => (string)($data['password2'] ?? '') !== '',
             ], $exception);
-            $messageKey = $exception->getMessage() === SettingsService::CREDENTIALS_NOT_CONFIGURED
+            $messageKey = str_starts_with($exception->getMessage(), SettingsService::CREDENTIALS_NOT_CONFIGURED)
                 ? 'subscriptions_settings_credentials_missing'
                 : 'subscriptions_settings_save_failed';
             session()->setFlash('error', \FireballPluginSubscriptions::t($messageKey));
