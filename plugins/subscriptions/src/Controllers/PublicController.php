@@ -108,7 +108,7 @@ final class PublicController
                 'accepted_at' => date(DATE_ATOM),
                 'ip_hash' => hash('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? '') . '|' . $userId),
             ]);
-            response()->redirect((string)$checkout['url']);
+            $this->redirectToRobokassa((string)$checkout['url']);
         } catch (\Throwable $exception) {
             log_error_details('Subscription checkout failed', ['user_id' => $userId, 'plan_id' => $planId], $exception);
             if (str_contains($exception->getMessage(), \FireballPluginSubscriptions::t('subscriptions_error_profile_incomplete'))) {
@@ -243,5 +243,23 @@ final class PublicController
         }
 
         return $id;
+    }
+
+    private function redirectToRobokassa(string $url): never
+    {
+        $url = trim(str_replace(["\r", "\n"], '', $url));
+        $parts = parse_url($url);
+        if (
+            !is_array($parts)
+            || strtolower((string)($parts['scheme'] ?? '')) !== 'https'
+            || strtolower((string)($parts['host'] ?? '')) !== 'auth.robokassa.ru'
+            || isset($parts['user'])
+            || isset($parts['pass'])
+        ) {
+            throw new \RuntimeException('Invalid Robokassa payment URL.');
+        }
+
+        header('Location: ' . $url, true, 303);
+        exit;
     }
 }

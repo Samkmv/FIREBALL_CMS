@@ -110,7 +110,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.3', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.4', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -356,6 +356,14 @@ assertTrueValue(
     str_contains((string)file_get_contents(__DIR__ . '/../src/Services/CheckoutService.php'), 'assertGatewayReady()')
     && str_contains((string)file_get_contents(__DIR__ . '/../src/Controllers/PublicController.php'), 'subscriptions_payment_configuration_error'),
     'Checkout must validate Robokassa before creating an order and hide internal configuration errors from customers'
+);
+$publicControllerSource = (string)file_get_contents(__DIR__ . '/../src/Controllers/PublicController.php');
+assertTrueValue(
+    str_contains($publicControllerSource, '$this->redirectToRobokassa')
+    && str_contains($publicControllerSource, "'auth.robokassa.ru'")
+    && str_contains($publicControllerSource, "header('Location: ' . \$url, true, 303)")
+    && !str_contains($publicControllerSource, "response()->redirect((string)\$checkout['url'])"),
+    'Checkout must use a narrowly allowlisted external redirect to the official Robokassa host'
 );
 
 foreach (['plans', 'subscribers', 'payments', 'fields'] as $tableView) {
