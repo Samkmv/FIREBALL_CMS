@@ -32,6 +32,7 @@ admin_ui_assert(str_contains($topbar, "return_translation('admin_ui_language')")
 admin_ui_assert(!str_contains($sidebar, "base_href('/chat')"), 'Chat must not remain in the admin sidebar.');
 admin_ui_assert(str_contains($adminNavigation, 'getLastCheckPayload'), 'The CMS update indicator is not connected to the stored update state.');
 admin_ui_assert(str_contains($adminNavigation, 'getStoredUpdateSummary'), 'The plugin update indicator is not connected to stored plugin states.');
+admin_ui_assert(str_contains($adminNavigation, "['source_older']") && str_contains($adminNavigation, '$pluginUpdatesAvailable + $pluginSourcesOlder'), 'The plugin menu badge does not include outdated update sources.');
 admin_ui_assert(str_contains($adminNavigation, 'fb-nav-badge-update'), 'Update badges are missing from the admin navigation.');
 admin_ui_assert(str_contains($pluginUpdateService, 'public function getStoredUpdateSummary'), 'Plugin updates have no network-free menu summary.');
 admin_ui_assert(str_contains($styles, '.fb-nav-badge-update'), 'The admin update badge has no visual style.');
@@ -71,6 +72,7 @@ foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
     admin_ui_assert(str_contains($translations, "'notification_clear_all' =>"), 'Missing notification clear label for ' . $locale . '.');
     admin_ui_assert(str_contains($translations, "'admin_nav_core_update_available' =>"), 'Missing CMS update menu label for ' . $locale . '.');
     admin_ui_assert(str_contains($translations, "'admin_nav_plugin_updates_available' =>"), 'Missing plugin update menu label for ' . $locale . '.');
+    admin_ui_assert(str_contains($translations, "'admin_nav_plugin_sources_older' =>") && str_contains($translations, "'admin_nav_plugin_updates_attention' =>"), 'Missing plugin update attention labels for ' . $locale . '.');
     admin_ui_assert(str_contains($translations, "'admin_plugins_details' =>"), 'Missing plugin details label for ' . $locale . '.');
 }
 

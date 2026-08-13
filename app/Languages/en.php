@@ -143,6 +143,8 @@ return [
     'admin_nav_updates' => 'Updates',
     'admin_nav_core_update_available' => 'A CMS update is available',
     'admin_nav_plugin_updates_available' => 'Plugin updates available: :count',
+    'admin_nav_plugin_sources_older' => 'Plugin update sources are behind: :count',
+    'admin_nav_plugin_updates_attention' => 'Plugins requiring attention: :count',
     'admin_nav_database_maintenance' => 'Database maintenance',
     'admin_nav_docs' => 'Documentation',
     'admin_nav_group_dashboard' => 'Dashboard',

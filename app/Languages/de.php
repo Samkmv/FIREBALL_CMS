@@ -143,6 +143,8 @@ return [
     'admin_nav_updates' => 'Updates',
     'admin_nav_core_update_available' => 'Ein CMS-Update ist verfügbar',
     'admin_nav_plugin_updates_available' => 'Verfügbare Plugin-Updates: :count',
+    'admin_nav_plugin_sources_older' => 'Veraltete Plugin-Update-Quellen: :count',
+    'admin_nav_plugin_updates_attention' => 'Plugins erfordern Aufmerksamkeit: :count',
     'admin_nav_database_maintenance' => 'Datenbankwartung',
     'admin_nav_docs' => 'Dokumentation',
     'admin_nav_group_dashboard' => 'Dashboard',

@@ -32,17 +32,26 @@ if (check_creator()) {
 }
 
 $pluginUpdateCount = 0;
+$pluginUpdatesAvailable = 0;
+$pluginSourcesOlder = 0;
 try {
     $pluginUpdateSummary = (new \App\Services\PluginUpdateService())->getStoredUpdateSummary();
-    $pluginUpdateCount = max(0, (int)($pluginUpdateSummary['available'] ?? 0));
+    $pluginUpdatesAvailable = max(0, (int)($pluginUpdateSummary['available'] ?? 0));
+    $pluginSourcesOlder = max(0, (int)($pluginUpdateSummary['source_older'] ?? 0));
+    $pluginUpdateCount = $pluginUpdatesAvailable + $pluginSourcesOlder;
 } catch (\Throwable) {
     $pluginUpdateCount = 0;
 }
 
+$pluginUpdateBadgeLabel = $pluginUpdatesAvailable > 0 && $pluginSourcesOlder > 0
+    ? 'admin_nav_plugin_updates_attention'
+    : ($pluginUpdatesAvailable > 0
+        ? 'admin_nav_plugin_updates_available'
+        : 'admin_nav_plugin_sources_older');
 $pluginUpdateBadgeTitle = str_replace(
     ':count',
     (string)$pluginUpdateCount,
-    return_translation('admin_nav_plugin_updates_available')
+    return_translation($pluginUpdateBadgeLabel)
 );
 
 $menuGroups = [

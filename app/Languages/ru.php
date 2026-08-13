@@ -143,6 +143,8 @@ return [
     'admin_nav_updates' => 'Обновления',
     'admin_nav_core_update_available' => 'Доступно обновление CMS',
     'admin_nav_plugin_updates_available' => 'Доступно обновлений плагинов: :count',
+    'admin_nav_plugin_sources_older' => 'Источники обновлений плагинов отстают: :count',
+    'admin_nav_plugin_updates_attention' => 'Плагины требуют внимания: :count',
     'admin_nav_database_maintenance' => 'Обслуживание БД',
     'admin_nav_docs' => 'Документация',
     'admin_nav_group_dashboard' => 'Панель управления',

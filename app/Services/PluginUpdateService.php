@@ -95,6 +95,7 @@ final class PluginUpdateService extends UpdateCenter
             'configured' => 0,
             'checked' => 0,
             'available' => 0,
+            'source_older' => 0,
         ];
 
         foreach ($this->pluginManager->all() as $plugin) {
@@ -123,6 +124,9 @@ final class PluginUpdateService extends UpdateCenter
 
                 if (($state['status'] ?? '') !== 'error' && $comparison !== null && $comparison < 0) {
                     $summary['available']++;
+                }
+                if (($state['status'] ?? '') !== 'error' && $comparison !== null && $comparison > 0) {
+                    $summary['source_older']++;
                 }
             } catch (Throwable) {
                 // Повреждённая конфигурация одного плагина не должна ломать меню админки.

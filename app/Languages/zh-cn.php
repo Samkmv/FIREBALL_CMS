@@ -143,6 +143,8 @@ return [
     'admin_nav_updates' => '更新',
     'admin_nav_core_update_available' => '有可用的 CMS 更新',
     'admin_nav_plugin_updates_available' => '可用插件更新：:count',
+    'admin_nav_plugin_sources_older' => '插件更新源版本落后：:count',
+    'admin_nav_plugin_updates_attention' => '需要关注的插件：:count',
     'admin_nav_database_maintenance' => '数据库维护',
     'admin_nav_docs' => '文档',
     'admin_nav_group_dashboard' => '控制面板',
