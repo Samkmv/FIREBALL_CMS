@@ -36,7 +36,7 @@ class NotificationCenter
         $chatUnreadCount = $this->chatMessages->getUnreadCountForUser($userId);
         $contactUnreadCount = $isAdmin ? $this->contactRequests->countUnread() : 0;
         $notificationUnreadCount = $this->notifications->unreadCountForUser($userId);
-        $updateItem = $isAdmin && check_creator() ? $this->getUpdateNotificationItem() : null;
+        $updateItem = $isAdmin && check_creator() ? $this->getUpdateNotificationItem($userId) : null;
         $updateUnreadCount = $updateItem !== null ? 1 : 0;
 
         $chatItems = $this->chatMessages->getUnreadNotificationItemsForUser($userId, $limit);
@@ -55,6 +55,11 @@ class NotificationCenter
             ], $exception);
             $pluginItems = [];
         }
+
+        $pluginItems = array_values(array_filter(
+            $pluginItems,
+            fn(mixed $item): bool => is_array($item) && !$this->notifications->isFeedItemDismissed($userId, $item)
+        ));
 
         $items = array_merge($notificationItems, $chatItems, $contactItems, $pluginItems);
         if ($updateItem !== null) {
@@ -84,9 +89,50 @@ class NotificationCenter
     }
 
     /**
+     * Очищает счётчики центра уведомлений, не удаляя чаты и заявки.
+     */
+    public function clearForUser(int $userId, bool $isAdmin): int
+    {
+        if ($userId <= 0) {
+            return 0;
+        }
+
+        $feed = $this->getFeedForUser($userId, $isAdmin, 20);
+        $generatedItems = array_values(array_filter(
+            (array)($feed['items'] ?? []),
+            static function (mixed $item): bool {
+                if (!is_array($item) || !empty($item['notification_id'])) {
+                    return false;
+                }
+
+                return !in_array((string)($item['type'] ?? ''), ['chat', 'contact_request'], true);
+            }
+        ));
+
+        $cleared = $this->notifications->markAllRead($userId);
+        $cleared += $this->chatMessages->markAllAsReadForUser($userId);
+        if ($isAdmin) {
+            $cleared += $this->contactRequests->countUnread();
+            $this->contactRequests->markAllViewed();
+        }
+        $cleared += $this->notifications->dismissFeedItems($userId, $generatedItems);
+
+        try {
+            do_action('notification_feed_cleared', $userId, $isAdmin, $generatedItems);
+        } catch (\Throwable $exception) {
+            log_error_details('Notification feed clear hook failed', [
+                'user_id' => $userId,
+                'is_admin' => $isAdmin ? '1' : '0',
+            ], $exception);
+        }
+
+        return $cleared;
+    }
+
+    /**
      * Добавляет уведомление о новой версии, если авто-проверка нашла обновление.
      */
-    protected function getUpdateNotificationItem(): ?array
+    protected function getUpdateNotificationItem(int $userId): ?array
     {
         $payload = $this->updateCenter->checkForUpdatesIfStale();
         if (!is_array($payload) || ($payload['status'] ?? '') !== 'ok' || empty($payload['update_available'])) {
@@ -101,14 +147,17 @@ class NotificationCenter
             ? str_replace(':version', $version, return_translation('notification_update_available'))
             : return_translation('notification_update_available_generic');
 
-        return [
+        $item = [
             'type' => 'update',
             'title' => $title,
             'text' => $text,
             'url' => base_href('/admin/updates'),
             'created_at' => (string)($payload['checked_at'] ?? date('Y-m-d H:i:s')),
             'sort_id' => PHP_INT_MAX,
+            'dismiss_key' => 'update:' . ($version !== '' ? $version : hash('sha256', $title . '|' . $text)),
         ];
+
+        return $this->notifications->isFeedItemDismissed($userId, $item) ? null : $item;
     }
 
 }

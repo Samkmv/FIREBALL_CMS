@@ -157,6 +157,7 @@ return array_replace($en, [
     'subscriptions_field_validation' => '验证规则',
     'subscriptions_fragment_minutes' => '最大片段时长（分钟）',
     'subscriptions_grant' => '授予订阅',
+    'subscriptions_grant_hint' => '选择用户、套餐和访问期限。',
     'subscriptions_grant_saved' => '订阅已授予。',
     'subscriptions_grant_title' => '手动授予',
     'subscriptions_hash_algorithm' => '签名算法',

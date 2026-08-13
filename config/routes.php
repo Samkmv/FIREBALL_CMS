@@ -82,6 +82,7 @@ $app->router->post('/chat/conversation/clear', [ChatController::class, 'clearCon
 $app->router->get('/chat/conversation/audit', [ChatController::class, 'audit'])->middleware(['auth']);
 $app->router->get('/notifications/feed', [NotificationController::class, 'feed'])->middleware(['auth']);
 $app->router->post('/notifications/read', [NotificationController::class, 'markRead'])->middleware(['auth']);
+$app->router->post('/notifications/clear', [NotificationController::class, 'clear'])->middleware(['auth']);
 $app->router->post('/logout', [AuthController::class, 'logout'])->middleware(['auth']);
 $app->router->get('/search/suggest', [SearchController::class, 'suggest']);
 $app->router->get('/search', [SearchController::class, 'index']);

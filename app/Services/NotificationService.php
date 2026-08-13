@@ -177,6 +177,83 @@ class NotificationService
         return db()->rowCount() > 0;
     }
 
+    /**
+     * Помечает все сохранённые уведомления пользователя как прочитанные.
+     */
+    public function markAllRead(int $userId): int
+    {
+        if ($userId <= 0) {
+            return 0;
+        }
+
+        $this->ensureTables();
+        db()->query(
+            'UPDATE notifications
+             SET is_read = 1, read_at = COALESCE(read_at, ?)
+             WHERE user_id = ? AND is_read = 0',
+            [date('Y-m-d H:i:s'), $userId]
+        );
+
+        return db()->rowCount();
+    }
+
+    /**
+     * Скрывает вычисляемые элементы ленты (например, уведомление об обновлении)
+     * без удаления связанных с ними данных.
+     */
+    public function dismissFeedItems(int $userId, array $items): int
+    {
+        if ($userId <= 0 || $items === []) {
+            return 0;
+        }
+
+        $this->ensureTables();
+        $dismissed = 0;
+        $now = date('Y-m-d H:i:s');
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $itemKey = $this->feedItemKey($item);
+            if ($itemKey === '') {
+                continue;
+            }
+
+            db()->query(
+                'INSERT IGNORE INTO notification_feed_dismissals (user_id, item_key, created_at)
+                 VALUES (?, ?, ?)',
+                [$userId, $itemKey, $now]
+            );
+            $dismissed += db()->rowCount() > 0 ? 1 : 0;
+        }
+
+        return $dismissed;
+    }
+
+    /**
+     * Проверяет, скрывал ли пользователь вычисляемый элемент ленты.
+     */
+    public function isFeedItemDismissed(int $userId, array $item): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+
+        $itemKey = $this->feedItemKey($item);
+        if ($itemKey === '') {
+            return false;
+        }
+
+        $this->ensureTables();
+
+        return (bool)db()->query(
+            'SELECT 1 FROM notification_feed_dismissals WHERE user_id = ? AND item_key = ? LIMIT 1',
+            [$userId, $itemKey]
+        )->getColumn();
+    }
+
     public function ensureTables(): void
     {
         if ($this->schemaReady) {
@@ -215,6 +292,16 @@ class NotificationService
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
 
+        db()->query(
+            "CREATE TABLE IF NOT EXISTS notification_feed_dismissals (
+                user_id INT(10) UNSIGNED NOT NULL,
+                item_key CHAR(64) NOT NULL,
+                created_at DATETIME NOT NULL,
+                PRIMARY KEY (user_id, item_key),
+                KEY created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+
         $this->addColumnIfMissing('notifications', 'action_url', 'VARCHAR(500) NULL AFTER type');
         $this->addColumnIfMissing('notifications', 'icon', 'VARCHAR(500) NULL AFTER action_url');
         $this->addColumnIfMissing('notifications', 'source', 'VARCHAR(120) NULL AFTER icon');
@@ -224,6 +311,26 @@ class NotificationService
         $this->addColumnIfMissing('notifications', 'read_at', 'DATETIME NULL AFTER is_read');
 
         $this->schemaReady = true;
+    }
+
+    /**
+     * Формирует стабильный ключ для элемента, который не хранится в notifications.
+     */
+    protected function feedItemKey(array $item): string
+    {
+        $explicitKey = trim((string)($item['dismiss_key'] ?? ''));
+        $identity = $explicitKey !== '' ? ['dismiss_key' => $explicitKey] : [
+            'type' => (string)($item['type'] ?? ''),
+            'source' => (string)($item['source'] ?? ''),
+            'id' => (string)($item['id'] ?? $item['sort_id'] ?? ''),
+            'url' => (string)($item['url'] ?? ''),
+            'title' => (string)($item['title'] ?? ''),
+            'created_at' => (string)($item['created_at'] ?? ''),
+        ];
+
+        $encoded = json_encode($identity, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return is_string($encoded) && $encoded !== '' ? hash('sha256', $encoded) : '';
     }
 
     protected function normalizeNotification(array $payload): array

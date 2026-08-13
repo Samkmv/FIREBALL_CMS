@@ -9,6 +9,7 @@ $(function(){
     const notificationCenter = $('[data-notifications-center]').first();
     const notificationBadges = $('[data-notifications-badge]');
     const notificationList = notificationCenter.find('[data-notifications-list]');
+    const notificationClearButton = notificationCenter.find('[data-notifications-clear]');
     const autoDismissAlerts = $('[data-auto-dismiss-alert]');
     const originalTitle = document.title;
     const bodyDataset = document.body ? document.body.dataset : {};
@@ -929,6 +930,8 @@ $(function(){
 
         updateUnreadBadges(response.chat_unread_count || 0);
         updateNotificationBadges(response.total_unread_count || 0);
+        notificationClearButton.toggleClass('d-none', Number(response.total_unread_count || 0) <= 0);
+        notificationClearButton.prop('disabled', false);
         renderNotificationItems(response.items || []);
         notifyNotificationItems(response.items || []);
     };
@@ -941,6 +944,50 @@ $(function(){
             return url;
         }
     };
+
+    notificationClearButton.on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const clearUrl = notificationCenter.data('clear-url');
+        const confirmText = notificationCenter.data('clear-confirm') || 'Mark all notifications as viewed?';
+        if (!clearUrl || !window.confirm(confirmText)) {
+            return;
+        }
+
+        notificationClearButton.prop('disabled', true);
+        $.ajax({
+            url: sameOriginUrl(clearUrl),
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                needCSRFToken: getCsrfToken(),
+            },
+            headers: {
+                'X-CSRF-Token': getCsrfToken(),
+            },
+            success: function (response) {
+                if (!response || !response.status) {
+                    return;
+                }
+
+                updateUnreadBadges(0);
+                updateNotificationBadges(0);
+                renderNotificationItems([]);
+                notificationClearButton.addClass('d-none');
+                seenNotificationKeys.clear();
+
+                const message = notificationCenter.data('clear-success') || '';
+                if (message && window.toastr && typeof window.toastr.success === 'function') {
+                    window.toastr.success(message);
+                }
+            },
+            complete: function () {
+                notificationClearButton.prop('disabled', false);
+                setTimeout(pollNotificationFeed, 250);
+            },
+        });
+    });
 
     notificationList.on('click', '[data-notification-id]', function (event) {
         const readUrl = notificationCenter.data('read-url');

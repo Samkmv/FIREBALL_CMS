@@ -19,6 +19,32 @@ try {
     $supportNewCount = 0;
 }
 
+$coreUpdateAvailable = false;
+if (check_creator()) {
+    try {
+        $coreUpdateState = (new \App\Services\UpdateCenter())->getLastCheckPayload();
+        $coreUpdateAvailable = is_array($coreUpdateState)
+            && ($coreUpdateState['status'] ?? '') === 'ok'
+            && !empty($coreUpdateState['update_available']);
+    } catch (\Throwable) {
+        $coreUpdateAvailable = false;
+    }
+}
+
+$pluginUpdateCount = 0;
+try {
+    $pluginUpdateSummary = (new \App\Services\PluginUpdateService())->getStoredUpdateSummary();
+    $pluginUpdateCount = max(0, (int)($pluginUpdateSummary['available'] ?? 0));
+} catch (\Throwable) {
+    $pluginUpdateCount = 0;
+}
+
+$pluginUpdateBadgeTitle = str_replace(
+    ':count',
+    (string)$pluginUpdateCount,
+    return_translation('admin_nav_plugin_updates_available')
+);
+
 $menuGroups = [
     'dashboard' => [
         'label' => return_translation('admin_nav_group_dashboard'),
@@ -60,7 +86,16 @@ $menuGroups = [
         'order' => 40,
         'items' => [
             ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'order' => 10],
-            ['href' => base_href('/admin/plugins'), 'label' => return_translation('admin_nav_plugins'), 'icon' => 'ci-box', 'nav_key' => 'plugins', 'order' => 20],
+            [
+                'href' => base_href('/admin/plugins'),
+                'label' => return_translation('admin_nav_plugins'),
+                'icon' => 'ci-box',
+                'nav_key' => 'plugins',
+                'badge' => $pluginUpdateCount > 0 ? (string)$pluginUpdateCount : '',
+                'badge_class' => 'fb-nav-badge fb-nav-badge-update',
+                'badge_title' => $pluginUpdateBadgeTitle,
+                'order' => 20,
+            ],
         ],
     ],
     'applications' => [
@@ -72,7 +107,16 @@ $menuGroups = [
         'label' => return_translation('admin_nav_group_system'),
         'order' => 60,
         'items' => [
-            ['href' => base_href('/admin/updates'), 'label' => return_translation('admin_nav_updates'), 'icon' => 'ci-refresh-cw', 'creator_only' => true, 'order' => 10],
+            [
+                'href' => base_href('/admin/updates'),
+                'label' => return_translation('admin_nav_updates'),
+                'icon' => 'ci-refresh-cw',
+                'creator_only' => true,
+                'badge' => $coreUpdateAvailable ? '1' : '',
+                'badge_class' => 'fb-nav-badge fb-nav-badge-update',
+                'badge_title' => return_translation('admin_nav_core_update_available'),
+                'order' => 10,
+            ],
             ['href' => base_href('/admin/settings'), 'label' => return_translation('admin_nav_settings'), 'icon' => 'ci-settings', 'order' => 20],
             ['href' => base_href('/admin/security/logs'), 'label' => return_translation('admin_nav_security_logs'), 'icon' => 'ci-shield', 'order' => 30],
             ['href' => base_href('/admin/system/database-maintenance'), 'label' => return_translation('admin_nav_database_maintenance'), 'icon' => 'ci-database', 'creator_only' => true, 'order' => 40],
@@ -188,7 +232,11 @@ $renderLink = static function (array $item, string $groupLabel, bool $nested = f
         <span class="fb-nav-icon"><i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i></span>
         <span class="fb-nav-label"><?= htmlSC($itemLabel) ?></span>
         <?php if (!empty($item['badge'])): ?>
-            <span class="<?= htmlSC((string)($item['badge_class'] ?? 'fb-nav-badge')) ?>" title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>">
+            <span
+                class="<?= htmlSC((string)($item['badge_class'] ?? 'fb-nav-badge')) ?>"
+                title="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>"
+                aria-label="<?= htmlSC((string)($item['badge_title'] ?? '')) ?>"
+            >
                 <?= htmlSC((string)$item['badge']) ?>
             </span>
         <?php endif; ?>

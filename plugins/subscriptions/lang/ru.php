@@ -103,6 +103,7 @@ return array_replace($en, [
     'subscriptions_user_id' => 'ID пользователя',
     'subscriptions_comment' => 'Комментарий',
     'subscriptions_grant' => 'Выдать подписку',
+    'subscriptions_grant_hint' => 'Выберите пользователя, тариф и срок доступа.',
     'subscriptions_grant_title' => 'Выдать вручную',
     'subscriptions_grant_saved' => 'Подписка выдана.',
     'subscriptions_period' => 'Период',

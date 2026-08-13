@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Modules\BlockEditor\BlockRenderer;
+use App\Services\DefaultKnowledgeBaseSeeder;
 use FBL\Pagination;
 
 /**
@@ -110,6 +111,8 @@ class Support
                 KEY article_id (article_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
+
+        (new DefaultKnowledgeBaseSeeder())->seed();
 
         self::$schemaReady = true;
     }

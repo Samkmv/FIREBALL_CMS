@@ -145,5 +145,10 @@ foreach ($payments as $payment) {
             'mobile_cards' => $paymentCards,
             'empty_text' => FireballPluginSubscriptions::t('subscriptions_empty'),
         ]) ?>
+        <?= view()->renderPartial('admin/partials/table_footer', [
+            'visible' => count($paymentRows),
+            'total' => (int)($payments_total ?? count($paymentRows)),
+            'pagination' => $payments_pagination ?? null,
+        ]) ?>
     </div>
 </section>

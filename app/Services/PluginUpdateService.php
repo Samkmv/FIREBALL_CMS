@@ -85,6 +85,53 @@ final class PluginUpdateService extends UpdateCenter
         return $plugins;
     }
 
+    /**
+     * Возвращает сводку последней сохранённой проверки без сетевых запросов.
+     * Используется для индикатора обновлений в навигации админки.
+     */
+    public function getStoredUpdateSummary(): array
+    {
+        $summary = [
+            'configured' => 0,
+            'checked' => 0,
+            'available' => 0,
+        ];
+
+        foreach ($this->pluginManager->all() as $plugin) {
+            if (empty($plugin['installed']) || empty($plugin['valid'])) {
+                continue;
+            }
+
+            $slug = (string)($plugin['slug'] ?? '');
+            try {
+                $metadata = $this->pluginManager->metadata($slug);
+                if ($this->normalizeUpdateConfig($metadata) === null) {
+                    continue;
+                }
+
+                $summary['configured']++;
+                $state = $this->storedState($slug);
+                if (trim((string)($state['checked_at'] ?? '')) !== '') {
+                    $summary['checked']++;
+                }
+
+                $remoteVersion = trim((string)($state['remote_version'] ?? ''));
+                $localVersion = trim((string)($metadata['version'] ?? $plugin['version'] ?? '0.0.0'));
+                $comparison = $remoteVersion !== ''
+                    ? $this->compareVersions($localVersion, $remoteVersion)
+                    : null;
+
+                if (($state['status'] ?? '') !== 'error' && $comparison !== null && $comparison < 0) {
+                    $summary['available']++;
+                }
+            } catch (Throwable) {
+                // Повреждённая конфигурация одного плагина не должна ломать меню админки.
+            }
+        }
+
+        return $summary;
+    }
+
     public function check(string $slug): array
     {
         $plugin = $this->installedPlugin($slug);

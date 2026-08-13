@@ -109,6 +109,9 @@ $adminLanguageSwitchPath = uri_without_lang() ?: '/';
             data-notifications-center
             data-feed-url="<?= base_href('/notifications/feed') ?>"
             data-read-url="<?= base_href('/notifications/read') ?>"
+            data-clear-url="<?= base_href('/notifications/clear') ?>"
+            data-clear-confirm="<?= htmlSC(return_translation('notification_clear_confirm')) ?>"
+            data-clear-success="<?= htmlSC(return_translation('notification_cleared')) ?>"
             data-empty-text="<?= htmlSC(return_translation('notification_empty')) ?>"
             data-chat-source-label="<?= htmlSC(return_translation('notification_source_chat')) ?>"
         >
@@ -124,8 +127,12 @@ $adminLanguageSwitchPath = uri_without_lang() ?: '/';
                 <span class="fb-notification-badge d-none" data-notifications-badge>0</span>
             </button>
             <div class="dropdown-menu dropdown-menu-end fb-notifications-menu">
-                <div class="fb-dropdown-heading">
+                <div class="fb-dropdown-heading fb-notifications-heading">
                     <strong><?= print_translation('tpl_notifications') ?></strong>
+                    <button type="button" class="fb-notifications-clear d-none" data-notifications-clear>
+                        <i class="ci-trash" aria-hidden="true"></i>
+                        <span><?= print_translation('notification_clear_all') ?></span>
+                    </button>
                 </div>
                 <div class="list-group list-group-flush" data-notifications-list>
                     <div class="px-3 py-3 text-body-secondary small"><?= print_translation('notification_loading') ?></div>

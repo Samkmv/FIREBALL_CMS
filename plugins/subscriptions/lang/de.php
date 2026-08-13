@@ -157,6 +157,7 @@ return array_replace($en, [
     'subscriptions_field_validation' => 'Validierungsregeln',
     'subscriptions_fragment_minutes' => 'Maximale Fragmentlänge, Minuten',
     'subscriptions_grant' => 'Abonnement vergeben',
+    'subscriptions_grant_hint' => 'Wählen Sie Benutzer, Tarif und Zugriffszeitraum aus.',
     'subscriptions_grant_saved' => 'Abonnement wurde vergeben.',
     'subscriptions_grant_title' => 'Manuell vergeben',
     'subscriptions_hash_algorithm' => 'Signaturalgorithmus',

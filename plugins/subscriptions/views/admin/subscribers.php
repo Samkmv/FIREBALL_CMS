@@ -94,17 +94,47 @@ foreach ($subscriptions as $subscription) {
 ?>
 
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <details class="border rounded-4 p-4 mb-4">
-        <summary class="fw-semibold"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant_title')) ?></summary>
-        <form class="row g-3 mt-2" action="<?= base_href('/admin/subscriptions/subscribers/grant') ?>" method="post">
+    <details class="subscriptions-grant-panel mb-4" data-subscriptions-grant-panel>
+        <summary class="subscriptions-grant-summary">
+            <span class="subscriptions-grant-summary__icon" aria-hidden="true"><i class="ci-user-plus"></i></span>
+            <span class="subscriptions-grant-summary__copy">
+                <strong><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant_title')) ?></strong>
+                <small><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant_hint')) ?></small>
+            </span>
+            <span class="subscriptions-grant-summary__toggle" aria-hidden="true"><i class="ci-chevron-down"></i></span>
+        </summary>
+        <form class="subscriptions-grant-form" action="<?= base_href('/admin/subscriptions/subscribers/grant') ?>" method="post">
             <?= get_csrf_field() ?>
-            <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_user')) ?></label><select class="form-select" name="user_id" required><option value=""><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_choose_user')) ?></option><?php foreach ($users as $userOption): ?><option value="<?= (int)$userOption['id'] ?>"><?= htmlSC((string)$userOption['name']) ?> — <?= htmlSC((string)$userOption['email']) ?></option><?php endforeach; ?></select></div>
-            <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan')) ?></label><select class="form-select" name="plan_id" required><?php foreach ($plans as $plan): ?><option value="<?= (int)$plan['id'] ?>"><?= htmlSC((string)$plan['name']) ?></option><?php endforeach; ?></select></div>
-            <div class="col-md-2"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_duration')) ?></label><input class="form-control" type="number" name="duration_value" value="30" min="1"></div>
-            <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_unit')) ?></label><select class="form-select" name="duration_unit"><option value="days"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_duration_days')) ?></option><option value="months"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_duration_months')) ?></option></select></div>
-            <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_source')) ?></label><select class="form-select" name="source"><option value="manual"><?= htmlSC($sourceLabels['manual']) ?></option><option value="external"><?= htmlSC($sourceLabels['external']) ?></option></select></div>
-            <div class="col-md-9"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_comment')) ?></label><input class="form-control" name="comment"></div>
-            <div class="col-12"><button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant')) ?></button></div>
+            <div class="subscriptions-grant-field subscriptions-grant-field--user">
+                <label class="form-label" for="subscriptionsGrantUser"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_user')) ?></label>
+                <select class="form-select" id="subscriptionsGrantUser" name="user_id" required>
+                    <option value=""><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_choose_user')) ?></option>
+                    <?php foreach ($users as $userOption): ?><option value="<?= (int)$userOption['id'] ?>"><?= htmlSC((string)$userOption['name']) ?> — <?= htmlSC((string)$userOption['email']) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+            <div class="subscriptions-grant-field subscriptions-grant-field--plan">
+                <label class="form-label" for="subscriptionsGrantPlan"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan')) ?></label>
+                <select class="form-select" id="subscriptionsGrantPlan" name="plan_id" required><?php foreach ($plans as $plan): ?><option value="<?= (int)$plan['id'] ?>"><?= htmlSC((string)$plan['name']) ?></option><?php endforeach; ?></select>
+            </div>
+            <div class="subscriptions-grant-field subscriptions-grant-field--duration">
+                <label class="form-label" for="subscriptionsGrantDuration"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_duration')) ?></label>
+                <input class="form-control" id="subscriptionsGrantDuration" type="number" name="duration_value" value="30" min="1">
+            </div>
+            <div class="subscriptions-grant-field subscriptions-grant-field--unit">
+                <label class="form-label" for="subscriptionsGrantUnit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_unit')) ?></label>
+                <select class="form-select" id="subscriptionsGrantUnit" name="duration_unit"><option value="days"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_duration_days')) ?></option><option value="months"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_duration_months')) ?></option></select>
+            </div>
+            <div class="subscriptions-grant-field subscriptions-grant-field--source">
+                <label class="form-label" for="subscriptionsGrantSource"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_source')) ?></label>
+                <select class="form-select" id="subscriptionsGrantSource" name="source"><option value="manual"><?= htmlSC($sourceLabels['manual']) ?></option><option value="external"><?= htmlSC($sourceLabels['external']) ?></option></select>
+            </div>
+            <div class="subscriptions-grant-field subscriptions-grant-field--comment">
+                <label class="form-label" for="subscriptionsGrantComment"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_comment')) ?></label>
+                <input class="form-control" id="subscriptionsGrantComment" name="comment">
+            </div>
+            <div class="subscriptions-grant-field subscriptions-grant-field--actions">
+                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center justify-content-center gap-2" type="submit"><i class="ci-user-plus" aria-hidden="true"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant')) ?></button>
+            </div>
         </form>
     </details>
 

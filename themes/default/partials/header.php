@@ -163,6 +163,10 @@
                     class="dropdown"
                     data-notifications-center
                     data-feed-url="<?= base_href('/notifications/feed') ?>"
+                    data-read-url="<?= base_href('/notifications/read') ?>"
+                    data-clear-url="<?= base_href('/notifications/clear') ?>"
+                    data-clear-confirm="<?= htmlSC(return_translation('notification_clear_confirm')) ?>"
+                    data-clear-success="<?= htmlSC(return_translation('notification_cleared')) ?>"
                     data-empty-text="<?= htmlSC(return_translation('notification_empty')) ?>"
                     data-chat-source-label="<?= htmlSC(return_translation('notification_source_chat')) ?>"
                 >
@@ -181,8 +185,11 @@
                         >0</span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end p-0 overflow-hidden" style="--cz-dropdown-min-width: 24rem; max-width: min(24rem, calc(100vw - 2rem));">
-                        <div class="px-3 py-3 border-bottom bg-body">
+                        <div class="px-3 py-3 border-bottom bg-body d-flex align-items-center justify-content-between gap-3">
                             <strong class="d-block"><?= print_translation('tpl_notifications') ?></strong>
+                            <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 d-none" data-notifications-clear>
+                                <i class="ci-trash me-1" aria-hidden="true"></i><?= print_translation('notification_clear_all') ?>
+                            </button>
                         </div>
                         <div class="list-group list-group-flush" data-notifications-list>
                             <div class="px-3 py-3 text-body-secondary small"><?= print_translation('notification_loading') ?></div>

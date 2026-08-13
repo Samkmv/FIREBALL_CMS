@@ -10,6 +10,7 @@ use Fireball\Subscriptions\Services\CheckoutService;
 use Fireball\Subscriptions\Services\MediaTokenService;
 use Fireball\Subscriptions\Services\PaymentService;
 use Fireball\Subscriptions\Services\SubscriptionService;
+use FBL\Pagination;
 
 final class PublicController
 {
@@ -25,8 +26,23 @@ final class PublicController
     {
         $userId = $this->userId();
         $subscription = (new AccessService())->activeSubscription($userId);
+        $paymentsPerPage = 15;
+        $paymentsTotal = (int)db()->query(
+            'SELECT COUNT(*)
+             FROM subscription_payments sp
+             INNER JOIN subscription_plans p ON p.id = sp.plan_id
+             WHERE sp.user_id = ?',
+            [$userId]
+        )->getColumn();
+        $paymentsPagination = new Pagination($paymentsTotal, $paymentsPerPage);
+        $paymentsOffset = $paymentsPagination->getOffset();
         $payments = db()->query(
-            'SELECT sp.*, p.name AS plan_name FROM subscription_payments sp INNER JOIN subscription_plans p ON p.id = sp.plan_id WHERE sp.user_id = ? ORDER BY sp.created_at DESC LIMIT 100',
+            "SELECT sp.*, p.name AS plan_name
+             FROM subscription_payments sp
+             INNER JOIN subscription_plans p ON p.id = sp.plan_id
+             WHERE sp.user_id = ?
+             ORDER BY sp.created_at DESC, sp.id DESC
+             LIMIT {$paymentsOffset}, {$paymentsPerPage}",
             [$userId]
         )->get() ?: [];
 
@@ -34,6 +50,8 @@ final class PublicController
             'title' => \FireballPluginSubscriptions::t('subscriptions_account_title'),
             'subscription' => $subscription,
             'payments' => $payments,
+            'payments_total' => $paymentsTotal,
+            'payments_pagination' => $paymentsPagination,
             'permissions' => $subscription ? (new AccessService())->permissions((int)$subscription['plan_id']) : [],
         ]));
     }

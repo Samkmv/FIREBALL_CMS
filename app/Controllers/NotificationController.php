@@ -117,4 +117,18 @@ class NotificationController extends BaseController
         response()->json(['status' => $ok]);
     }
 
+    /**
+     * Помечает все текущие элементы центра уведомлений просмотренными.
+     */
+    public function clear(): void
+    {
+        $userId = (int)(get_user()['id'] ?? 0);
+        $cleared = $this->notifications->clearForUser($userId, check_admin());
+
+        response()->json([
+            'status' => true,
+            'cleared' => $cleared,
+        ]);
+    }
+
 }

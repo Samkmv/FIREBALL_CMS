@@ -101,6 +101,7 @@ return [
     'subscriptions_user_id' => 'User ID',
     'subscriptions_comment' => 'Comment',
     'subscriptions_grant' => 'Grant subscription',
+    'subscriptions_grant_hint' => 'Choose a user, plan, and access period.',
     'subscriptions_grant_title' => 'Grant manually',
     'subscriptions_grant_saved' => 'Subscription granted.',
     'subscriptions_period' => 'Period',

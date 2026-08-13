@@ -30,6 +30,17 @@ releaseAssert(!str_contains($snippet, 'internal-provider-data'), 'provider data 
 releaseAssert(!str_contains($snippet, '0123456789'), 'a token leaked into the search snippet');
 releaseAssert(str_ends_with(SearchText::excerpt(str_repeat('readable phrase ', 30)), '…'), 'long excerpts must end with an ellipsis');
 
+$editorSnapshot = base64_encode((string)json_encode([
+    'version' => 2,
+    'blocks' => [['type' => 'video', 'data' => ['src' => '/uploads/private-video.mp4']]],
+], JSON_UNESCAPED_SLASHES));
+$editorHtml = '<div data-fb-block="text"><p>Подъезд № 4</p></div>'
+    . '<template data-fb-editor-state="2">' . $editorSnapshot . '</template>';
+$editorSnippet = SearchText::plainText($editorHtml);
+releaseAssert($editorSnippet === 'Подъезд № 4', 'the hidden editor snapshot leaked into the search snippet');
+$staleIndexedSnippet = SearchText::plainText('Подъезд № 4' . $editorSnapshot);
+releaseAssert($staleIndexedSnippet === 'Подъезд № 4', 'an already indexed editor snapshot leaked into search results');
+
 $hooks = new HookManager();
 $hooks->addFilter('release_test', static fn(int $value): int => $value + 1);
 $hooks->addFilter('release_test', static function (): never { throw new RuntimeException('plugin failure'); });

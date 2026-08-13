@@ -186,6 +186,28 @@ class ChatMessage
     }
 
     /**
+     * Помечает все входящие сообщения пользователя как прочитанные.
+     */
+    public function markAllAsReadForUser(int $userId): int
+    {
+        if ($userId <= 0) {
+            return 0;
+        }
+
+        $this->ensureTableExists();
+        db()->query(
+            "UPDATE {$this->table}
+             SET is_read = 1
+             WHERE receiver_id = :user_id
+               AND is_read = 0
+               AND deleted_at IS NULL",
+            ['user_id' => $userId]
+        );
+
+        return db()->rowCount();
+    }
+
+    /**
      * Возвращает общее количество непрочитанных сообщений пользователя.
      */
     public function getUnreadCountForUser(int $userId): int

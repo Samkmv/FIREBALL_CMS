@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.2.20",
+  "version": "1.2.22",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,8 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Redesigned the manual subscription grant panel and removed mobile horizontal overflow with a responsive grid.",
+    "Added CMS-style server-side pagination to the public payment history with responsive rows and mobile cards.",
     "Fixed per-video subscription protection for the editor's HTML-plus-snapshot format and applied access checks after shared post caching.",
     "Replaced per-row content-access saves with one atomic page-wide action shared by desktop and mobile layouts.",
     "Replaced content-access plan multi-selects with contextual checkbox cards and removed redundant mobile table framing.",
@@ -47,6 +49,8 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Переработана панель ручной выдачи подписки и устранён горизонтальный скролл на телефонах с помощью адаптивной сетки.",
+      "В публичной истории платежей добавлена серверная пагинация в стиле CMS с адаптивными строками и мобильными карточками.",
       "Исправлена защита отдельных видео для формата редактора HTML со снимком состояния; проверка доступа теперь выполняется после общего кэша записи.",
       "Отдельные кнопки сохранения доступа в каждой строке заменены одной общей атомарной операцией для компьютерной и мобильной версий страницы.",
       "В доступе к контенту системный множественный список тарифов заменён понятными карточками с чекбоксами, а лишняя рамка мобильной таблицы убрана.",
@@ -70,6 +74,8 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Redesigned the manual subscription grant panel and removed mobile horizontal overflow with a responsive grid.",
+      "Added CMS-style server-side pagination to the public payment history with responsive rows and mobile cards.",
       "Fixed per-video subscription protection for the editor's HTML-plus-snapshot format and applied access checks after shared post caching.",
       "Replaced per-row content-access saves with one atomic page-wide action shared by desktop and mobile layouts.",
       "Replaced content-access plan multi-selects with contextual checkbox cards and removed redundant mobile table framing.",
@@ -93,6 +99,8 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Die manuelle Abonnementvergabe wurde neu gestaltet und horizontales Überlaufen auf Mobilgeräten durch ein responsives Raster behoben.",
+      "Der öffentliche Zahlungsverlauf verwendet nun eine serverseitige Seitennavigation im CMS-Stil mit responsiven Zeilen und mobilen Karten.",
       "Der Schutz einzelner Videos wurde für das HTML-plus-Snapshot-Format des Editors korrigiert; die Zugriffsprüfung erfolgt nun nach dem gemeinsamen Beitrags-Cache.",
       "Die einzelnen Speicherschaltflächen pro Zeile wurden durch eine gemeinsame atomare Aktion für die Desktop- und Mobilansicht ersetzt.",
       "Die Mehrfachauswahl der Tarife beim Inhaltszugriff wurde durch kontextabhängige Kontrollkästchen-Karten ersetzt und der überflüssige mobile Tabellenrahmen entfernt.",
@@ -116,6 +124,8 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "重新设计了手动授予订阅面板，并通过响应式网格消除了移动端横向溢出。",
+      "公开付款历史现已采用 CMS 风格的服务端分页，并支持响应式行和移动端卡片。",
       "修复了编辑器 HTML 加状态快照格式中的单个视频订阅保护；访问检查现在会在共享文章缓存之后执行。",
       "每行单独保存内容访问设置的按钮已替换为桌面端和移动端共用的一次性原子保存操作。",
       "内容访问中的套餐多选列表已替换为按需显示的复选框卡片，并移除了多余的移动端表格边框。",

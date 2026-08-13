@@ -2205,6 +2205,12 @@ class User
         $this->deletePasswordResetTokensForUser($userId);
         $this->deleteTwoFactorRecoveryTokensForUser($userId);
 
+        foreach (['notifications', 'notification_settings', 'notification_feed_dismissals'] as $notificationTable) {
+            if ($this->tableExists($notificationTable)) {
+                db()->query("DELETE FROM {$notificationTable} WHERE user_id = ?", [$userId]);
+            }
+        }
+
         if ($this->tableExists('chat_audit_logs')) {
             if ($this->tableExists('chat_messages')) {
                 db()->query(

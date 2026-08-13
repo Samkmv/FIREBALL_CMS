@@ -38,35 +38,35 @@ $pageActions .= '</div>';
     'actions' => $pageActions,
 ]) ?>
 
-    <div class="alert alert-info rounded-4 mb-4" role="alert">
-        <div class="d-flex align-items-start gap-3">
-            <i class="ci-refresh-cw fs-4" aria-hidden="true"></i>
+    <section class="fb-plugin-overview mb-4" aria-label="<?= htmlSC(return_translation('admin_plugin_updates_independent_title')) ?>">
+        <div class="fb-plugin-overview-copy">
+            <span class="fb-plugin-overview-icon" aria-hidden="true"><i class="ci-refresh-cw"></i></span>
             <div>
-                <div class="fw-semibold"><?= print_translation('admin_plugin_updates_independent_title') ?></div>
-                <div class="small mt-1"><?= print_translation('admin_plugin_updates_independent_text') ?></div>
-                <?php if ($configuredUpdateCount > 0): ?>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                        <span class="badge rounded-pill text-bg-light">
-                            <?= print_translation('admin_plugin_updates_configured_count') ?>:
-                            <?= htmlSC((string)$configuredUpdateCount) ?>
-                        </span>
-                        <?php if ($availableUpdateCount > 0): ?>
-                            <span class="badge rounded-pill text-bg-warning">
-                                <?= print_translation('admin_plugin_updates_available_count') ?>:
-                                <?= htmlSC((string)$availableUpdateCount) ?>
-                            </span>
-                        <?php endif; ?>
-                        <?php if ($olderSourceCount > 0): ?>
-                            <span class="badge rounded-pill text-bg-warning">
-                                <?= print_translation('admin_plugin_updates_source_older_count') ?>:
-                                <?= htmlSC((string)$olderSourceCount) ?>
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
+                <h2><?= print_translation('admin_plugin_updates_independent_title') ?></h2>
+                <p><?= print_translation('admin_plugin_updates_independent_text') ?></p>
             </div>
         </div>
-    </div>
+        <?php if ($configuredUpdateCount > 0): ?>
+            <div class="fb-plugin-overview-stats">
+                <span class="fb-plugin-stat">
+                    <strong><?= htmlSC((string)$configuredUpdateCount) ?></strong>
+                    <span><?= print_translation('admin_plugin_updates_configured_count') ?></span>
+                </span>
+                <?php if ($availableUpdateCount > 0): ?>
+                    <span class="fb-plugin-stat is-update">
+                        <strong><?= htmlSC((string)$availableUpdateCount) ?></strong>
+                        <span><?= print_translation('admin_plugin_updates_available_count') ?></span>
+                    </span>
+                <?php endif; ?>
+                <?php if ($olderSourceCount > 0): ?>
+                    <span class="fb-plugin-stat is-warning">
+                        <strong><?= htmlSC((string)$olderSourceCount) ?></strong>
+                        <span><?= print_translation('admin_plugin_updates_source_older_count') ?></span>
+                    </span>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </section>
 
     <?php if (empty($plugins)): ?>
         <div class="border rounded-5 p-4 p-md-5 text-center">
@@ -75,9 +75,11 @@ $pageActions .= '</div>';
             <p class="text-body-secondary mb-0"><?= print_translation('admin_plugins_empty_text_before') ?> <code>/plugins</code><?= print_translation('admin_plugins_empty_text_after') ?></p>
         </div>
     <?php else: ?>
-        <div class="row g-4">
+        <div class="row g-4 align-items-start fb-plugin-grid">
             <?php foreach ($plugins as $plugin): ?>
                 <?php
+                $pluginSlug = (string)($plugin['slug'] ?? '');
+                $pluginDescription = trim((string)($plugin['description'] ?? ''));
                 $status = (string)($plugin['status'] ?? 'not_installed');
                 $statusData = $statusLabels[$status] ?? [$status, 'text-body bg-body-tertiary'];
                 $isValid = !empty($plugin['valid']);
@@ -109,77 +111,57 @@ $pageActions .= '</div>';
                     : (($updateAvailable || $sourceOlder)
                         ? 'warning'
                         : ($updateStatus === 'ok' || $updateStatus === 'updated' ? 'success' : 'secondary'));
+                $updateIcon = $updateStatus === 'error'
+                    ? 'ci-alert-triangle'
+                    : ($updateAvailable
+                        ? 'ci-download'
+                        : ($sourceOlder
+                            ? 'ci-alert-triangle'
+                            : ($updateStatus === 'ok' || $updateStatus === 'updated'
+                                ? 'ci-check-circle'
+                                : 'ci-clock')));
+                $detailsId = 'plugin-details-' . (preg_replace('/[^a-z0-9_-]+/i', '-', $pluginSlug) ?: 'plugin');
                 ?>
                 <div class="col-md-6 col-xl-4">
-                    <article id="plugin-<?= htmlSC((string)$plugin['slug']) ?>" class="card h-100 rounded-5 border <?= $isActive ? 'border-success shadow-sm' : '' ?>">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
-                                <div>
-                                    <h2 class="h5 mb-1"><?= htmlSC((string)$plugin['name']) ?></h2>
-                                    <code class="small"><?= htmlSC((string)$plugin['slug']) ?></code>
+                    <article id="plugin-<?= htmlSC($pluginSlug) ?>" class="card rounded-5 fb-plugin-card<?= $isActive ? ' is-active' : '' ?>">
+                        <div class="card-body fb-plugin-card-body">
+                            <div class="fb-plugin-card-header">
+                                <span class="fb-plugin-card-icon" aria-hidden="true"><i class="ci-package"></i></span>
+                                <div class="fb-plugin-card-heading">
+                                    <h2><?= htmlSC((string)$plugin['name']) ?></h2>
+                                    <code><?= htmlSC($pluginSlug) ?></code>
                                 </div>
                                 <span class="badge rounded-pill <?= htmlSC($statusData[1]) ?>"><?= htmlSC($statusData[0]) ?></span>
                             </div>
 
-                            <p class="text-body-secondary mb-3"><?= htmlSC((string)$plugin['description']) ?></p>
+                            <?php if ($pluginDescription !== ''): ?>
+                                <p class="fb-plugin-card-description" title="<?= htmlSC($pluginDescription) ?>"><?= htmlSC($pluginDescription) ?></p>
+                            <?php endif; ?>
 
-                            <dl class="row small gy-2 mb-0">
-                                <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugins_version') ?></dt>
-                                <dd class="col-7 mb-0 text-end"><?= htmlSC((string)$plugin['version']) ?></dd>
-                                <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugins_author') ?></dt>
-                                <dd class="col-7 mb-0 text-end"><?= htmlSC((string)$plugin['author']) ?></dd>
+                            <div class="fb-plugin-version-strip">
+                                <span>
+                                    <small><?= print_translation('admin_plugin_updates_installed_version') ?></small>
+                                    <strong><?= htmlSC((string)$plugin['version']) ?></strong>
+                                </span>
                                 <?php if ($isInstalled && $updateConfigured): ?>
-                                    <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugin_updates_latest_version') ?></dt>
-                                    <dd class="col-7 mb-0 text-end"><?= htmlSC($remoteVersion !== '' ? $remoteVersion : '—') ?></dd>
-                                    <dt class="col-5 text-body-secondary fw-normal"><?= print_translation('admin_plugin_updates_checked_at') ?></dt>
-                                    <dd class="col-7 mb-0 text-end"><?= htmlSC((string)(($update['checked_at'] ?? '') !== '' ? $update['checked_at'] : '—')) ?></dd>
+                                    <i class="ci-arrow-right" aria-hidden="true"></i>
+                                    <span>
+                                        <small><?= print_translation('admin_plugin_updates_source_version') ?></small>
+                                        <strong><?= htmlSC($remoteVersion !== '' ? $remoteVersion : '—') ?></strong>
+                                    </span>
                                 <?php endif; ?>
-                            </dl>
+                            </div>
 
                             <?php if ($isInstalled): ?>
                                 <?php if ($updateConfigured): ?>
-                                    <div class="alert alert-<?= htmlSC($updateAlert) ?> small mt-3 mb-0" role="status">
-                                        <div class="fw-semibold">
-                                            <?= htmlSC($updateMessage) ?>
-                                        </div>
-                                        <?php if ($updateAvailable || $sourceOlder): ?>
-                                            <div class="mt-1">
-                                                <?= print_translation('admin_plugin_updates_installed_version') ?>:
-                                                <strong><?= htmlSC((string)$plugin['version']) ?></strong>
-                                                <span class="mx-1" aria-hidden="true">·</span>
-                                                <?= print_translation('admin_plugin_updates_source_version') ?>:
-                                                <strong><?= htmlSC($remoteVersion) ?></strong>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($storedUpdateMessage !== '' && $storedUpdateMessage !== $updateMessage): ?>
-                                            <div class="mt-1"><?= htmlSC($storedUpdateMessage) ?></div>
-                                        <?php endif; ?>
-                                        <?php if (($update['last_updated_at'] ?? '') !== ''): ?>
-                                            <div class="mt-1 text-body-secondary">
-                                                <?= print_translation('admin_plugin_updates_updated_at') ?>:
-                                                <?= htmlSC((string)$update['last_updated_at']) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($backupFile !== ''): ?>
-                                            <div class="mt-1 text-body-secondary">
-                                                <?= print_translation('admin_plugin_updates_backup') ?>:
-                                                <code><?= htmlSC($backupFile) ?></code>
-                                            </div>
-                                        <?php endif; ?>
+                                    <div class="fb-plugin-update-state is-<?= htmlSC($updateAlert) ?>" role="status">
+                                        <i class="<?= htmlSC($updateIcon) ?>" aria-hidden="true"></i>
+                                        <span><?= htmlSC($updateMessage) ?></span>
                                     </div>
-                                    <?php if ($releaseNotes !== []): ?>
-                                        <div class="border rounded-4 p-3 small mt-3">
-                                            <div class="fw-semibold mb-2"><?= print_translation('admin_plugin_updates_release_notes') ?></div>
-                                            <ul class="mb-0 ps-3">
-                                                <?php foreach ($releaseNotes as $note): ?>
-                                                    <li><?= htmlSC($note) ?></li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        </div>
-                                    <?php endif; ?>
                                 <?php else: ?>
-                                    <div class="alert alert-secondary small mt-3 mb-0" role="status">
-                                        <?= print_translation('admin_plugin_updates_not_configured') ?>
+                                    <div class="fb-plugin-update-state is-secondary" role="status">
+                                        <i class="ci-info" aria-hidden="true"></i>
+                                        <span><?= print_translation('admin_plugin_updates_not_configured') ?></span>
                                     </div>
                                 <?php endif; ?>
                             <?php endif; ?>
@@ -189,57 +171,106 @@ $pageActions .= '</div>';
                                     <?= htmlSC((string)($plugin['error'] ?: $plugin['load_error'])) ?>
                                 </div>
                             <?php endif; ?>
+
+                            <details class="fb-plugin-details" id="<?= htmlSC($detailsId) ?>">
+                                <summary>
+                                    <span><i class="ci-info" aria-hidden="true"></i><?= print_translation('admin_plugins_details') ?></span>
+                                    <i class="ci-chevron-down" aria-hidden="true"></i>
+                                </summary>
+                                <div class="fb-plugin-details-body">
+                                    <dl>
+                                        <div>
+                                            <dt><?= print_translation('admin_plugins_author') ?></dt>
+                                            <dd><?= htmlSC((string)$plugin['author']) ?></dd>
+                                        </div>
+                                        <?php if ($isInstalled && $updateConfigured): ?>
+                                            <div>
+                                                <dt><?= print_translation('admin_plugin_updates_checked_at') ?></dt>
+                                                <dd><?= htmlSC((string)(($update['checked_at'] ?? '') !== '' ? $update['checked_at'] : '—')) ?></dd>
+                                            </div>
+                                            <?php if (($update['last_updated_at'] ?? '') !== ''): ?>
+                                                <div>
+                                                    <dt><?= print_translation('admin_plugin_updates_updated_at') ?></dt>
+                                                    <dd><?= htmlSC((string)$update['last_updated_at']) ?></dd>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if ($backupFile !== ''): ?>
+                                                <div>
+                                                    <dt><?= print_translation('admin_plugin_updates_backup') ?></dt>
+                                                    <dd><code><?= htmlSC($backupFile) ?></code></dd>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </dl>
+
+                                    <?php if ($storedUpdateMessage !== '' && $storedUpdateMessage !== $updateMessage): ?>
+                                        <p class="fb-plugin-details-message"><?= htmlSC($storedUpdateMessage) ?></p>
+                                    <?php endif; ?>
+
+                                    <?php if ($releaseNotes !== []): ?>
+                                        <div class="fb-plugin-release-notes">
+                                            <strong><?= print_translation('admin_plugin_updates_release_notes') ?></strong>
+                                            <ul>
+                                                <?php foreach ($releaseNotes as $note): ?>
+                                                    <li><?= htmlSC($note) ?></li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </details>
                         </div>
-                        <div class="card-footer bg-transparent border-0 p-4 pt-0">
-                            <div class="d-grid gap-2">
+                        <div class="card-footer fb-plugin-card-footer">
+                            <div class="fb-plugin-card-actions">
+                                <?php if ($canUpdatePlugins && $isInstalled && $isValid && $updateConfigured && $updateAvailable): ?>
+                                    <form
+                                        class="fb-plugin-action-primary"
+                                        action="<?= base_href('/admin/plugins/update') ?>"
+                                        method="post"
+                                        data-admin-delete-form
+                                        data-delete-message="<?= htmlSC(return_translation('admin_plugin_updates_confirm')) ?>"
+                                        data-delete-item="<?= htmlSC((string)$plugin['name']) ?>"
+                                        data-delete-confirm-label="<?= htmlSC(return_translation('admin_plugin_updates_install')) ?>"
+                                    >
+                                        <?= get_csrf_field() ?>
+                                        <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">
+                                        <button class="btn btn-warning rounded-pill w-100 d-inline-flex align-items-center justify-content-center gap-2" type="submit">
+                                            <i class="ci-download" aria-hidden="true"></i>
+                                            <?= print_translation('admin_plugin_updates_install') ?>
+                                            <?= htmlSC($remoteVersion) ?>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
                                 <?php if ($canUpdatePlugins && $isInstalled && $isValid && $updateConfigured): ?>
                                     <form action="<?= base_href('/admin/plugins/check-update') ?>" method="post">
                                         <?= get_csrf_field() ?>
-                                        <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
+                                        <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">
                                         <button class="btn btn-outline-dark rounded-pill w-100 d-inline-flex align-items-center justify-content-center gap-2" type="submit">
                                             <i class="ci-refresh-cw" aria-hidden="true"></i>
                                             <?= print_translation('admin_plugin_updates_check') ?>
                                         </button>
                                     </form>
-                                    <?php if ($updateAvailable): ?>
-                                        <form
-                                            action="<?= base_href('/admin/plugins/update') ?>"
-                                            method="post"
-                                            data-admin-delete-form
-                                            data-delete-message="<?= htmlSC(return_translation('admin_plugin_updates_confirm')) ?>"
-                                            data-delete-item="<?= htmlSC((string)$plugin['name']) ?>"
-                                            data-delete-confirm-label="<?= htmlSC(return_translation('admin_plugin_updates_install')) ?>"
-                                        >
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
-                                            <button class="btn btn-warning rounded-pill w-100 d-inline-flex align-items-center justify-content-center gap-2" type="submit">
-                                                <i class="ci-download" aria-hidden="true"></i>
-                                                <?= print_translation('admin_plugin_updates_install') ?>
-                                                <?= htmlSC($remoteVersion) ?>
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
                                 <?php endif; ?>
                                 <?php if (!$isInstalled): ?>
-                                    <form action="<?= base_href('/admin/plugins/install') ?>" method="post">
+                                    <form class="fb-plugin-action-primary" action="<?= base_href('/admin/plugins/install') ?>" method="post">
                                         <?= get_csrf_field() ?>
-                                        <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
+                                        <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">
                                         <button class="btn btn-dark rounded-pill w-100" type="submit" <?= $isValid ? '' : 'disabled' ?>>
                                             <?= print_translation('admin_plugins_install') ?>
                                         </button>
                                     </form>
                                 <?php elseif (!$isActive): ?>
-                                    <form action="<?= base_href('/admin/plugins/activate') ?>" method="post">
+                                    <form class="<?= $updateConfigured ? '' : 'fb-plugin-action-primary' ?>" action="<?= base_href('/admin/plugins/activate') ?>" method="post">
                                         <?= get_csrf_field() ?>
-                                        <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
+                                        <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">
                                         <button class="btn btn-dark rounded-pill w-100" type="submit" <?= $isValid ? '' : 'disabled' ?>>
                                             <?= print_translation('admin_plugins_activate') ?>
                                         </button>
                                     </form>
                                 <?php else: ?>
-                                    <form action="<?= base_href('/admin/plugins/deactivate') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_plugins_deactivate_confirm')) ?>" data-delete-item="<?= htmlSC((string)$plugin['name']) ?>">
+                                    <form class="<?= $updateConfigured ? '' : 'fb-plugin-action-primary' ?>" action="<?= base_href('/admin/plugins/deactivate') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(return_translation('admin_plugins_deactivate_confirm')) ?>" data-delete-item="<?= htmlSC((string)$plugin['name']) ?>">
                                         <?= get_csrf_field() ?>
-                                        <input type="hidden" name="slug" value="<?= htmlSC((string)$plugin['slug']) ?>">
+                                        <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">
                                         <button class="btn btn-outline-secondary rounded-pill w-100" type="submit">
                                             <?= print_translation('admin_plugins_deactivate') ?>
                                         </button>

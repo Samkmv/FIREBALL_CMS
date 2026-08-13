@@ -139,7 +139,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.20', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.22', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -571,6 +571,22 @@ assertTrueValue(
     'Subscriber actions must use the standard ellipsis menu and edit in a modal without resizing mobile cards'
 );
 
+assertTrueValue(
+    str_contains($subscribersTemplate, 'subscriptions-grant-panel')
+    && str_contains($subscribersTemplate, 'subscriptions-grant-summary')
+    && str_contains($subscribersTemplate, 'subscriptions-grant-form')
+    && str_contains($subscribersTemplate, "t('subscriptions_grant_hint')")
+    && !str_contains($subscribersTemplate, 'class="row g-3 mt-2"'),
+    'Manual subscription grants must use the responsive disclosure panel instead of a negative-margin Bootstrap row'
+);
+assertTrueValue(
+    str_contains($subscriptionStyles, '.subscriptions-grant-panel')
+    && str_contains($subscriptionStyles, '.subscriptions-grant-form')
+    && str_contains($subscriptionStyles, '@keyframes subscriptionsGrantReveal')
+    && preg_match('/@media \(max-width: 767\.98px\).*?\.subscriptions-admin\s*\{[^}]*overflow-x:\s*hidden/s', $subscriptionStyles),
+    'Manual subscription grants must stay within the mobile viewport while retaining their responsive reveal treatment'
+);
+
 $contentTableTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/content.php');
 assertTrueValue(
     str_contains($contentTableTemplate, 'subscriptions-content-cards d-md-none')
@@ -601,9 +617,17 @@ assertTrueValue(
 $accountTemplate = (string)file_get_contents(__DIR__ . '/../views/public/account.php');
 assertTrueValue(
     str_contains($accountTemplate, "renderPartial('admin/partials/table'")
+    && str_contains($accountTemplate, "renderPartial('admin/partials/table_footer'")
     && str_contains($accountTemplate, "'mobile_cards' => \$paymentCards")
     && !str_contains($accountTemplate, '<table'),
     'Public payment history must use the template mobile-card table component'
+);
+assertTrueValue(
+    str_contains($publicControllerSource, 'new Pagination($paymentsTotal, $paymentsPerPage)')
+    && str_contains($publicControllerSource, 'LIMIT {$paymentsOffset}, {$paymentsPerPage}')
+    && str_contains($publicControllerSource, "'payments_pagination' => \$paymentsPagination")
+    && !str_contains($publicControllerSource, 'LIMIT 100'),
+    'Public payment history must use the standard CMS server-side pagination'
 );
 assertTrueValue(
     str_contains($accountTemplate, 'subscriptions-account-card')

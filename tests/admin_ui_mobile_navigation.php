@@ -14,15 +14,35 @@ function admin_ui_assert(bool $condition, string $message): void
 
 $topbar = (string)file_get_contents($root . '/app/Views/themes/default/admin/topbar.php');
 $sidebar = (string)file_get_contents($root . '/app/Views/themes/default/admin/sidebar.php');
+$adminNavigation = (string)file_get_contents($root . '/app/Views/themes/default/admin/nav.php');
+$pluginUpdateService = (string)file_get_contents($root . '/app/Services/PluginUpdateService.php');
+$pluginsPage = (string)file_get_contents($root . '/app/Views/themes/default/admin/plugins.php');
 $mobileNavigation = (string)file_get_contents($root . '/app/Views/themes/default/admin/mobile_bottom_nav.php');
 $commandPalette = (string)file_get_contents($root . '/app/Views/themes/default/admin/command_palette.php');
 $styles = (string)file_get_contents($root . '/public/assets/default/css/admin-ui.css');
 $scripts = (string)file_get_contents($root . '/public/assets/default/js/admin-ui.js');
+$mainScripts = (string)file_get_contents($root . '/public/assets/default/js/main.js');
+$routes = (string)file_get_contents($root . '/config/routes.php');
+$notificationController = (string)file_get_contents($root . '/app/Controllers/NotificationController.php');
+$notificationCenter = (string)file_get_contents($root . '/app/Models/NotificationCenter.php');
 
 admin_ui_assert(str_contains($topbar, 'fb-language-switcher'), 'The admin language switcher is missing.');
 admin_ui_assert(str_contains($topbar, 'ci-globe'), 'The admin language switcher has no globe icon.');
 admin_ui_assert(str_contains($topbar, "return_translation('admin_ui_language')"), 'The language switcher label is not localized.');
 admin_ui_assert(!str_contains($sidebar, "base_href('/chat')"), 'Chat must not remain in the admin sidebar.');
+admin_ui_assert(str_contains($adminNavigation, 'getLastCheckPayload'), 'The CMS update indicator is not connected to the stored update state.');
+admin_ui_assert(str_contains($adminNavigation, 'getStoredUpdateSummary'), 'The plugin update indicator is not connected to stored plugin states.');
+admin_ui_assert(str_contains($adminNavigation, 'fb-nav-badge-update'), 'Update badges are missing from the admin navigation.');
+admin_ui_assert(str_contains($pluginUpdateService, 'public function getStoredUpdateSummary'), 'Plugin updates have no network-free menu summary.');
+admin_ui_assert(str_contains($styles, '.fb-nav-badge-update'), 'The admin update badge has no visual style.');
+admin_ui_assert(str_contains($styles, '.fb-nav-badge-update {') && str_contains($styles, 'font-size: 0;'), 'Collapsed admin navigation does not retain an update dot.');
+admin_ui_assert(str_contains($pluginsPage, 'fb-plugin-overview'), 'The plugins page has no compact update overview.');
+admin_ui_assert(str_contains($pluginsPage, '<details class="fb-plugin-details"'), 'Long plugin information is not collapsible.');
+admin_ui_assert(!str_contains($pluginsPage, 'card h-100 rounded-5'), 'Plugin cards still stretch to the tallest item.');
+admin_ui_assert(str_contains($styles, '.fb-plugin-release-notes ul') && str_contains($styles, 'max-height: 230px;'), 'Long plugin release notes are not height-limited.');
+admin_ui_assert(str_contains($styles, '.fb-plugin-card-description {') && str_contains($styles, 'overflow-wrap: anywhere;'), 'Plugin descriptions cannot grow to fit their text.');
+admin_ui_assert(!str_contains($styles, '-webkit-line-clamp: 3;'), 'Plugin descriptions are still forcibly truncated.');
+admin_ui_assert(str_contains($styles, '@container (max-width: 430px)') && str_contains($styles, 'container-type: inline-size;'), 'Plugin card actions do not adapt to narrow cards.');
 
 $chatPosition = strpos($mobileNavigation, "base_href('/chat')");
 $profilePosition = strpos($mobileNavigation, "base_href('/profile')");
@@ -40,10 +60,18 @@ admin_ui_assert(str_contains($commandPalette, 'data-site-suggest-url'), 'The com
 admin_ui_assert(str_contains($scripts, 'loadSiteCommands'), 'The command palette cannot load public site results.');
 admin_ui_assert(str_contains($styles, 'html.pwa-standalone .fb-topbar'), 'The PWA admin topbar is not pinned below the safe area.');
 admin_ui_assert(str_contains($scripts, 'const isChat ='), 'The mobile chat item cannot receive its active state.');
+admin_ui_assert(str_contains($topbar, 'data-notifications-clear') && str_contains($topbar, "notification_clear_all"), 'The notification center has no clear action.');
+admin_ui_assert(str_contains($routes, "post('/notifications/clear'") && str_contains($notificationController, 'clearForUser'), 'The notification clear endpoint is not connected.');
+admin_ui_assert(str_contains($notificationCenter, 'markAllAsReadForUser') && str_contains($notificationCenter, 'markAllViewed'), 'Notification clearing must preserve chats and requests by marking them viewed.');
+admin_ui_assert(str_contains($mainScripts, "notificationCenter.data('clear-url')") && str_contains($mainScripts, 'data-notifications-clear'), 'The notification clear action has no client handler.');
 
 foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
     $translations = (string)file_get_contents($root . '/app/Languages/' . $locale . '.php');
     admin_ui_assert(str_contains($translations, "'admin_ui_language' =>"), 'Missing admin language label for ' . $locale . '.');
+    admin_ui_assert(str_contains($translations, "'notification_clear_all' =>"), 'Missing notification clear label for ' . $locale . '.');
+    admin_ui_assert(str_contains($translations, "'admin_nav_core_update_available' =>"), 'Missing CMS update menu label for ' . $locale . '.');
+    admin_ui_assert(str_contains($translations, "'admin_nav_plugin_updates_available' =>"), 'Missing plugin update menu label for ' . $locale . '.');
+    admin_ui_assert(str_contains($translations, "'admin_plugins_details' =>"), 'Missing plugin details label for ' . $locale . '.');
 }
 
 echo json_encode([
@@ -51,6 +79,9 @@ echo json_encode([
     'language_switcher' => true,
     'chat_mobile_navigation' => true,
     'notifications_topbar_only' => true,
+    'notifications_clear' => true,
+    'update_menu_badges' => true,
+    'compact_plugin_cards' => true,
     'mobile_theme_switcher' => true,
     'command_close_button' => true,
     'quick_actions_mode' => true,

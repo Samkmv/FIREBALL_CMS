@@ -18,11 +18,29 @@ final class SearchText
                 self::collectStrings($decoded, $parts);
                 $value = implode(' ', $parts);
             }
+        } else {
+            // The block editor stores its base64 state snapshot inside a hidden
+            // template next to the readable HTML. strip_tags() removes the tag
+            // itself but keeps that payload as visible text, so discard hidden
+            // technical elements before extracting the public search text.
+            $value = preg_replace(
+                '~<(script|style|template|noscript)\b[^>]*>.*?</\1\s*>~isu',
+                ' ',
+                $value
+            ) ?? $value;
+            $value = preg_replace('/<!--.*?-->/su', ' ', $value) ?? $value;
         }
 
         $value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $value = preg_replace(
             '~(?:https?|ftp|rtsp|rtmp)://[^\s<>]+|(?:data|blob|file):[^\s<>]+|\b[^\s<>]+\.(?:m3u8|mpd)(?:\?[^\s<>]*)?~iu',
+            ' ',
+            $value
+        ) ?? $value;
+        // Also clean already indexed editor snapshots. This makes the fix
+        // effective immediately, before the periodic search reindex runs.
+        $value = preg_replace(
+            '/(?:eyJ|W3si|Wzsi)[A-Za-z0-9+\/_=-]{36,}/',
             ' ',
             $value
         ) ?? $value;

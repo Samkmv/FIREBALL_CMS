@@ -88,6 +88,14 @@ CREATE TABLE IF NOT EXISTS notification_settings (
     PRIMARY KEY (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS notification_feed_dismissals (
+    user_id INT(10) UNSIGNED NOT NULL,
+    item_key CHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (user_id, item_key),
+    KEY created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS pwa_subscriptions (
     id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id INT(10) UNSIGNED NULL,
