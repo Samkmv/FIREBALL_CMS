@@ -22,6 +22,8 @@ $commandPalette = (string)file_get_contents($root . '/app/Views/themes/default/a
 $styles = (string)file_get_contents($root . '/public/assets/default/css/admin-ui.css');
 $scripts = (string)file_get_contents($root . '/public/assets/default/js/admin-ui.js');
 $mainScripts = (string)file_get_contents($root . '/public/assets/default/js/main.js');
+$deleteModalScripts = (string)file_get_contents($root . '/public/assets/default/js/admin-delete-modal.js');
+$defaultLayout = (string)file_get_contents($root . '/app/Views/layouts/default.php');
 $routes = (string)file_get_contents($root . '/config/routes.php');
 $notificationController = (string)file_get_contents($root . '/app/Controllers/NotificationController.php');
 $notificationCenter = (string)file_get_contents($root . '/app/Models/NotificationCenter.php');
@@ -32,7 +34,7 @@ admin_ui_assert(str_contains($topbar, "return_translation('admin_ui_language')")
 admin_ui_assert(!str_contains($sidebar, "base_href('/chat')"), 'Chat must not remain in the admin sidebar.');
 admin_ui_assert(str_contains($adminNavigation, 'getLastCheckPayload'), 'The CMS update indicator is not connected to the stored update state.');
 admin_ui_assert(str_contains($adminNavigation, 'getStoredUpdateSummary'), 'The plugin update indicator is not connected to stored plugin states.');
-admin_ui_assert(str_contains($adminNavigation, "['source_older']") && str_contains($adminNavigation, '$pluginUpdatesAvailable + $pluginSourcesOlder'), 'The plugin menu badge does not include outdated update sources.');
+admin_ui_assert(str_contains($adminNavigation, '$pluginUpdateCount = $pluginUpdatesAvailable;') && !str_contains($adminNavigation, '$pluginUpdatesAvailable + $pluginSourcesOlder'), 'The plugin menu badge must count only real available updates.');
 admin_ui_assert(str_contains($adminNavigation, 'fb-nav-badge-update'), 'Update badges are missing from the admin navigation.');
 admin_ui_assert(str_contains($pluginUpdateService, 'public function getStoredUpdateSummary'), 'Plugin updates have no network-free menu summary.');
 admin_ui_assert(str_contains($styles, '.fb-nav-badge-update'), 'The admin update badge has no visual style.');
@@ -44,6 +46,9 @@ admin_ui_assert(str_contains($styles, '.fb-plugin-release-notes ul') && str_cont
 admin_ui_assert(str_contains($styles, '.fb-plugin-card-description {') && str_contains($styles, 'overflow-wrap: anywhere;'), 'Plugin descriptions cannot grow to fit their text.');
 admin_ui_assert(!str_contains($styles, '-webkit-line-clamp: 3;'), 'Plugin descriptions are still forcibly truncated.');
 admin_ui_assert(str_contains($styles, '@container (max-width: 430px)') && str_contains($styles, 'container-type: inline-size;'), 'Plugin card actions do not adapt to narrow cards.');
+admin_ui_assert(str_contains($pluginsPage, 'data-confirm-title=') && str_contains($pluginsPage, 'data-confirm-variant="warning"') && str_contains($pluginsPage, 'data-confirm-icon="ci-download"'), 'Plugin updates still use the destructive delete confirmation appearance.');
+admin_ui_assert(str_contains($defaultLayout, 'data-admin-delete-modal-title') && str_contains($defaultLayout, 'data-admin-delete-modal-item-label') && str_contains($defaultLayout, 'data-admin-delete-modal-hint'), 'The shared confirmation modal has no dynamic content hooks.');
+admin_ui_assert(str_contains($deleteModalScripts, "formValue(form, 'data-confirm-title'") && str_contains($deleteModalScripts, "applyVariant(variant, icon)"), 'The shared confirmation modal cannot switch from delete to update mode.');
 
 $chatPosition = strpos($mobileNavigation, "base_href('/chat')");
 $profilePosition = strpos($mobileNavigation, "base_href('/profile')");
@@ -74,6 +79,7 @@ foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
     admin_ui_assert(str_contains($translations, "'admin_nav_plugin_updates_available' =>"), 'Missing plugin update menu label for ' . $locale . '.');
     admin_ui_assert(str_contains($translations, "'admin_nav_plugin_sources_older' =>") && str_contains($translations, "'admin_nav_plugin_updates_attention' =>"), 'Missing plugin update attention labels for ' . $locale . '.');
     admin_ui_assert(str_contains($translations, "'admin_plugins_details' =>"), 'Missing plugin details label for ' . $locale . '.');
+    admin_ui_assert(str_contains($translations, "'admin_plugin_updates_modal_title' =>") && str_contains($translations, "'admin_plugin_updates_modal_hint' =>"), 'Missing plugin update confirmation labels for ' . $locale . '.');
 }
 
 echo json_encode([

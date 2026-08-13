@@ -231,6 +231,11 @@ $pageActions .= '</div>';
                                         data-delete-message="<?= htmlSC(return_translation('admin_plugin_updates_confirm')) ?>"
                                         data-delete-item="<?= htmlSC((string)$plugin['name']) ?>"
                                         data-delete-confirm-label="<?= htmlSC(return_translation('admin_plugin_updates_install')) ?>"
+                                        data-confirm-title="<?= htmlSC(return_translation('admin_plugin_updates_modal_title')) ?>"
+                                        data-confirm-item-label="<?= htmlSC(return_translation('admin_plugin_updates_modal_item_label')) ?>"
+                                        data-confirm-hint="<?= htmlSC(return_translation('admin_plugin_updates_modal_hint')) ?>"
+                                        data-confirm-icon="ci-download"
+                                        data-confirm-variant="warning"
                                     >
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">

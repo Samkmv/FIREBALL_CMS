@@ -276,23 +276,23 @@ $postCategoryUrl = static function (?string $slug = null): string {
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-5 overflow-hidden">
                 <div class="modal-body p-4 p-md-5 text-center">
-                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-4" style="width: 72px; height: 72px;">
-                        <i class="ci-trash fs-2"></i>
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-4" style="width: 72px; height: 72px;" data-admin-delete-modal-icon-wrap>
+                        <i class="ci-trash fs-2" data-admin-delete-modal-icon></i>
                     </div>
-                    <h2 class="h4 mb-2"><?= print_translation('admin_delete_modal_title') ?></h2>
+                    <h2 class="h4 mb-2" data-admin-delete-modal-title><?= print_translation('admin_delete_modal_title') ?></h2>
                     <p class="text-body-secondary mb-3" data-admin-delete-modal-message><?= print_translation('admin_delete_modal_default_message') ?></p>
                     <div class="rounded-4 bg-body-tertiary px-3 py-3 mb-3 d-none" data-admin-delete-modal-item-wrap>
-                        <div class="text-uppercase small fw-semibold text-body-tertiary mb-1" style="letter-spacing: .08em;"><?= print_translation('admin_delete_modal_item_label') ?></div>
+                        <div class="text-uppercase small fw-semibold text-body-tertiary mb-1" style="letter-spacing: .08em;" data-admin-delete-modal-item-label><?= print_translation('admin_delete_modal_item_label') ?></div>
                         <div class="fw-semibold text-break" data-admin-delete-modal-item></div>
                     </div>
-                    <p class="small text-body-secondary mb-0"><?= print_translation('admin_delete_modal_hint') ?></p>
+                    <p class="small text-body-secondary mb-0" data-admin-delete-modal-hint><?= print_translation('admin_delete_modal_hint') ?></p>
                 </div>
                 <div class="modal-footer border-0 justify-content-center gap-2 px-4 pb-4 pt-0">
                     <button type="button" class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" data-bs-dismiss="modal">
                         <i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?>
                     </button>
                     <button type="button" class="btn btn-danger rounded-pill d-inline-flex align-items-center gap-2" data-admin-delete-modal-confirm>
-                        <i class="ci-trash"></i><span data-admin-delete-modal-confirm-label><?= print_translation('admin_btn_delete') ?></span>
+                        <i class="ci-trash" data-admin-delete-modal-confirm-icon></i><span data-admin-delete-modal-confirm-label><?= print_translation('admin_btn_delete') ?></span>
                     </button>
                 </div>
             </div>
