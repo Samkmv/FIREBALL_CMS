@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.2.11",
+  "version": "1.2.19",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,14 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Replaced per-row content-access saves with one atomic page-wide action shared by desktop and mobile layouts.",
+    "Replaced content-access plan multi-selects with contextual checkbox cards and removed redundant mobile table framing.",
+    "Moved subscriber editing into a modal opened from the standard ellipsis action menu, so responsive cards no longer shift or resize.",
+    "Kept subscription admin tabs in a single horizontally scrollable row with a slim scrollbar and scroll snapping on mobile.",
+    "Reworked subscription admin navigation on mobile into a two-column grid without clipped tabs or a visible horizontal scrollbar.",
+    "Replaced the ambiguous multi-select plan field with clearly highlighted checkbox cards and context-aware access settings.",
+    "Separated publication access from video-block access: public posts stay fully visible while only protected videos are replaced by a subscription notice.",
+    "Completed responsive mobile layouts for subscription tables, including editable content-access cards and stacked filters and values.",
     "Made subscription access independent for every embedded video: public posts can mix open videos with protected videos that show a subscription notice.",
     "Fixed Robokassa error 29 when receipt data is enabled by preserving the required URL-encoded Receipt value in both the signature and payment request.",
     "Simplified new Robokassa requests to the official minimal signature and made the effective test/live mode explicit in settings and payment parameters.",
@@ -38,6 +46,14 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Отдельные кнопки сохранения доступа в каждой строке заменены одной общей атомарной операцией для компьютерной и мобильной версий страницы.",
+      "В доступе к контенту системный множественный список тарифов заменён понятными карточками с чекбоксами, а лишняя рамка мобильной таблицы убрана.",
+      "Редактирование подписчика перенесено в модальное окно из стандартного меню с троеточием, поэтому адаптивные карточки больше не сдвигаются и не меняют высоту.",
+      "Вкладки раздела подписок оставлены в одной горизонтально прокручиваемой строке; на мобильных добавлены тонкий скроллбар и фиксация прокрутки по вкладкам.",
+      "Навигация раздела подписок на мобильных устройствах переработана в сетку из двух колонок без обрезанных вкладок и горизонтальной полосы прокрутки.",
+      "Неочевидный список тарифов заменён карточками с чекбоксами и явной подсветкой выбора; зависимые настройки показываются только для нужного режима доступа.",
+      "Доступ к записи отделён от доступа к видеоблокам: публичная запись остаётся полностью видимой, а уведомлением о подписке заменяются только защищённые видео.",
+      "Завершена мобильная адаптация таблиц подписок: доступ к контенту редактируется в карточках, а фильтры и длинные значения больше не выходят за экран.",
       "Доступ по подписке теперь задаётся независимо для каждого видеоблока: в публичной записи можно сочетать открытые видео и защищённые видео с уведомлением о подписке.",
       "Исправлена ошибка Robokassa 29 при передаче данных чека: URL-кодированное значение Receipt теперь одинаково используется в подписи и платёжном запросе.",
       "Новые запросы Robokassa переведены на официальную минимальную подпись; фактический тестовый или боевой режим теперь явно показан в настройках и параметрах платежа.",
@@ -52,6 +68,14 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Replaced per-row content-access saves with one atomic page-wide action shared by desktop and mobile layouts.",
+      "Replaced content-access plan multi-selects with contextual checkbox cards and removed redundant mobile table framing.",
+      "Moved subscriber editing into a modal opened from the standard ellipsis action menu, so responsive cards no longer shift or resize.",
+      "Kept subscription admin tabs in a single horizontally scrollable row with a slim scrollbar and scroll snapping on mobile.",
+      "Reworked subscription admin navigation on mobile into a two-column grid without clipped tabs or a visible horizontal scrollbar.",
+      "Replaced the ambiguous multi-select plan field with clearly highlighted checkbox cards and context-aware access settings.",
+      "Separated publication access from video-block access: public posts stay fully visible while only protected videos are replaced by a subscription notice.",
+      "Completed responsive mobile layouts for subscription tables, including editable content-access cards and stacked filters and values.",
       "Made subscription access independent for every embedded video: public posts can mix open videos with protected videos that show a subscription notice.",
       "Fixed Robokassa error 29 when receipt data is enabled by preserving the required URL-encoded Receipt value in both the signature and payment request.",
       "Simplified new Robokassa requests to the official minimal signature and made the effective test/live mode explicit in settings and payment parameters.",
@@ -66,6 +90,14 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Die einzelnen Speicherschaltflächen pro Zeile wurden durch eine gemeinsame atomare Aktion für die Desktop- und Mobilansicht ersetzt.",
+      "Die Mehrfachauswahl der Tarife beim Inhaltszugriff wurde durch kontextabhängige Kontrollkästchen-Karten ersetzt und der überflüssige mobile Tabellenrahmen entfernt.",
+      "Die Bearbeitung von Abonnenten wurde in ein Modal über das standardmäßige Drei-Punkte-Aktionsmenü verschoben, sodass responsive Karten nicht mehr verrutschen oder ihre Höhe ändern.",
+      "Die Registerkarten der Abonnementverwaltung bleiben in einer horizontal scrollbareren Zeile; mobil wurden eine schmale Bildlaufleiste und Einrasten an den Registerkarten ergänzt.",
+      "Die Navigation der Abonnementverwaltung wurde mobil als zweispaltiges Raster ohne abgeschnittene Registerkarten und sichtbare horizontale Bildlaufleiste umgesetzt.",
+      "Die unübersichtliche Mehrfachauswahl der Tarife wurde durch deutlich hervorgehobene Kontrollkästchen-Karten ersetzt; abhängige Einstellungen erscheinen nur im passenden Zugriffsmodus.",
+      "Der Zugriff auf Beiträge und Videoblöcke wurde getrennt: Öffentliche Beiträge bleiben vollständig sichtbar, nur geschützte Videos werden durch einen Abonnementhinweis ersetzt.",
+      "Die mobile Darstellung der Abonnementtabellen wurde vervollständigt: Der Inhaltszugriff lässt sich in Karten bearbeiten, Filter und lange Werte ragen nicht mehr über den Bildschirm hinaus.",
       "Der Abonnementzugriff wird nun für jeden eingebetteten Videoblock unabhängig festgelegt: Öffentliche Beiträge können freie und geschützte Videos mit Abonnementhinweis kombinieren.",
       "Robokassa-Fehler 29 bei aktivierten Belegdaten wurde behoben: Der URL-kodierte Receipt-Wert wird nun identisch in Signatur und Zahlungsanfrage verwendet.",
       "Neue Robokassa-Anfragen verwenden die offizielle minimale Signatur; der aktive Test- oder Live-Modus wird nun in Einstellungen und Zahlungsparametern eindeutig angezeigt.",
@@ -80,6 +112,14 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "每行单独保存内容访问设置的按钮已替换为桌面端和移动端共用的一次性原子保存操作。",
+      "内容访问中的套餐多选列表已替换为按需显示的复选框卡片，并移除了多余的移动端表格边框。",
+      "订阅者编辑已移至由标准三点操作菜单打开的模态窗口，响应式卡片不再移动或改变高度。",
+      "订阅管理标签保留为单行横向滚动；移动端增加了细滚动条和标签滚动吸附。",
+      "订阅管理导航在移动端改为双列网格，不再出现标签被裁切或可见的横向滚动条。",
+      "将不直观的套餐多选列表替换为带复选框和清晰选中高亮的卡片；相关设置仅在对应访问模式下显示。",
+      "文章访问权限与视频块访问权限现已分离：公开文章保持完整可见，只有受保护的视频会替换为订阅提示。",
+      "完成了订阅数据表的移动端适配：内容访问权限可在卡片中编辑，筛选器和长文本不再溢出屏幕。",
       "现在可为每个嵌入视频单独设置订阅访问权限：公开文章可以同时包含公开视频和显示订阅提示的受保护视频。",
       "修复了启用收据数据时出现的 Robokassa 错误 29：URL 编码后的 Receipt 值现在会一致用于签名和支付请求。",
       "新的 Robokassa 请求改用官方最简签名，并在设置和支付参数中明确显示当前测试或正式模式。",

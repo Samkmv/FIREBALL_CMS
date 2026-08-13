@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 $settingsStore = [];
+$contentRule = null;
+$currentTestUser = [];
 
 define('CHAT_ENCRYPTION_KEY', str_repeat('unit-test-key-', 4));
 
@@ -14,6 +16,28 @@ function base_url(string $path = ''): string
 function current_locale(): string
 {
     return 'en';
+}
+
+function base_href(string $path = ''): string
+{
+    return 'https://example.test' . $path;
+}
+
+function htmlSC(mixed $value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function return_translation(string $key): string
+{
+    return $key;
+}
+
+function get_user(): array
+{
+    global $currentTestUser;
+
+    return $currentTestUser;
 }
 
 function plugin_setting(string $slug, string $key, mixed $default = null): mixed
@@ -54,7 +78,10 @@ final class SubscriptionsUnitDb
 {
     public function query(string $sql, array $params = []): SubscriptionsUnitDbResult
     {
-        global $settingsStore;
+        global $settingsStore, $contentRule;
+        if (str_starts_with($sql, 'SELECT * FROM subscription_content_rules')) {
+            return new SubscriptionsUnitDbResult($contentRule);
+        }
         if (str_starts_with($sql, 'SELECT id FROM plugin_settings')) {
             $exists = array_key_exists((string)($params[1] ?? ''), $settingsStore[(string)($params[0] ?? '')] ?? []);
 
@@ -101,6 +128,8 @@ require_once __DIR__ . '/../src/Services/SettingsService.php';
 require_once __DIR__ . '/../src/Payments/PaymentGatewayInterface.php';
 require_once __DIR__ . '/../src/Payments/RobokassaGateway.php';
 require_once __DIR__ . '/../../../app/Services/SqlFileRunner.php';
+require_once __DIR__ . '/../../../core/Plugins/PluginInterface.php';
+require_once __DIR__ . '/../Plugin.php';
 
 use App\Services\SqlFileRunner;
 use Fireball\Subscriptions\Payments\RobokassaGateway;
@@ -110,7 +139,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.11', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.19', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -166,6 +195,61 @@ assertTrueValue(!str_contains($protectedHtml, '/paid.mp4'), 'Protected video sou
 assertTrueValue(!str_contains($protectedHtml, 'youtube.com'), 'Protected video embed must be removed from HTML');
 assertTrueValue(str_contains($protectedHtml, 'maps.google.com'), 'Non-video embeds must remain available');
 assertSameValue(2, substr_count($protectedHtml, '<div>locked</div>'), 'Each protected video must get a replacement');
+
+$publicVideo = FireballPluginSubscriptions::filterEditorVideoBlock('<video src="/public.mp4"></video>', [
+    'id' => 'public-video',
+    'type' => 'video',
+    'data' => ['subscriptionAccessMode' => 'public'],
+]);
+assertSameValue('<video src="/public.mp4"></video>', $publicVideo, 'A public video block must remain visible to every visitor');
+
+$subscriberVideo = FireballPluginSubscriptions::filterEditorVideoBlock('<video src="/private.mp4"></video>', [
+    'id' => 'subscriber-video',
+    'type' => 'video',
+    'data' => ['subscriptionAccessMode' => 'subscribers'],
+]);
+assertTrueValue(
+    is_string($subscriberVideo)
+    && !str_contains($subscriberVideo, '/private.mp4')
+    && str_contains($subscriberVideo, 'subscriptions_access_video_title'),
+    'A protected video block must be replaced by its own subscription notice'
+);
+
+$contentRule = null;
+$publicPost = FireballPluginSubscriptions::filterPublicPost([
+    'id' => 42,
+    'title' => 'Public post',
+    'content' => '<p>Public text</p>' . $subscriberVideo,
+], []);
+assertTrueValue(
+    str_contains((string)$publicPost['content'], 'Public text')
+    && str_contains((string)$publicPost['content'], 'subscriptions_access_video_title'),
+    'A public post must keep its text and only the protected video notice'
+);
+
+$contentRule = [
+    'id' => 7,
+    'content_type' => 'post',
+    'content_id' => '42',
+    'access_mode' => 'subscribers',
+    'show_title' => 1,
+    'show_excerpt' => 1,
+    'show_image' => 1,
+    'hide_video' => 0,
+    'required_permission' => 'posts.view_paid',
+];
+$closedPost = FireballPluginSubscriptions::filterPublicPost([
+    'id' => 42,
+    'title' => 'Closed post',
+    'content' => '<p>Secret publication body</p>',
+], []);
+assertTrueValue(
+    !str_contains((string)$closedPost['content'], 'Secret publication body')
+    && str_contains((string)$closedPost['content'], 'subscriptions-access-message')
+    && str_contains((string)$closedPost['content'], 'subscriptions_access_login_title'),
+    'Only an explicitly protected post must replace the full publication body'
+);
+$contentRule = null;
 
 $invalidMoneyRejected = false;
 try {
@@ -328,11 +412,32 @@ assertTrueValue(
     str_contains($pluginSource, "array_key_exists('subscriptionAccessMode', \$blockData)")
     && str_contains($pluginSource, 'private static function canViewEmbeddedVideo')
     && str_contains($pluginSource, "return \$access->can(\$userId, 'videos.view_paid')")
-    && str_contains($pluginSource, "in_array((int)\$subscription['plan_id'], \$allowedPlans, true)"),
+    && str_contains($pluginSource, "in_array((int)\$subscription['plan_id'], \$allowedPlans, true)")
+    && !str_contains($pluginSource, 'ProtectedContent::replaceVideos')
+    && !str_contains($pluginSource, '$protectVideo'),
     'Each embedded video must enforce its own subscription rule independently from the public post rule'
 );
+assertTrueValue(
+    str_contains($pluginSource, "\$post['content'] = self::postAccessMessage")
+    && str_contains($pluginSource, "if (\$decision['allowed'])")
+    && str_contains($pluginSource, "\$post['subscription_access'] = \$decision;"),
+    'Only an explicitly protected post may replace the whole publication with an access notice'
+);
 
-foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields', 'field-form', 'settings'] as $adminView) {
+$postSettingsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/post-settings.php');
+assertTrueValue(
+    str_contains($postSettingsTemplate, 'subscriptions_video_access_independent_hint')
+    && !str_contains($postSettingsTemplate, "'subscriptions_hide_video'")
+    && !str_contains($postSettingsTemplate, "['subscription_hide_video'")
+    && str_contains($postSettingsTemplate, 'subscriptions-plan-choice')
+    && str_contains($postSettingsTemplate, 'type="checkbox" name="subscription_plan_ids[]"')
+    && str_contains($postSettingsTemplate, 'data-subscriptions-post-plans')
+    && str_contains($postSettingsTemplate, 'data-subscriptions-post-permission')
+    && !str_contains($postSettingsTemplate, 'name="subscription_plan_ids[]" multiple'),
+    'Post settings must explain block-level video access and must not offer a blanket hide-all-videos switch'
+);
+
+foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'content', 'fields', 'field-form', 'settings'] as $adminView) {
     $adminTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $adminView . '.php');
     assertTrueValue(
         str_contains($adminTemplate, "require __DIR__ . '/shell-open.php'")
@@ -341,6 +446,18 @@ foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'fields'
         'Admin view must render inside the standard constrained admin shell: ' . $adminView
     );
 }
+
+$tabsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/tabs.php');
+$subscriptionStyles = (string)file_get_contents(__DIR__ . '/../assets/subscriptions.css');
+assertTrueValue(
+    str_contains($tabsTemplate, 'subscriptions-admin-tabs')
+    && str_contains($tabsTemplate, 'aria-current="page"')
+    && str_contains($subscriptionStyles, 'scroll-snap-type: x proximity')
+    && str_contains($subscriptionStyles, 'overflow-x: auto')
+    && str_contains($subscriptionStyles, '.subscriptions-admin-tabs::-webkit-scrollbar-thumb')
+    && !preg_match('/\.subscriptions-admin-tabs\s*\{[^}]*grid-template-columns/s', $subscriptionStyles),
+    'Subscription admin tabs must remain in one horizontally scrollable mobile row with a slim scrollbar'
+);
 
 $planFormTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/plan-form.php');
 assertTrueValue(
@@ -397,6 +514,44 @@ foreach (['plans', 'subscribers', 'payments', 'fields'] as $tableView) {
     );
 }
 
+$subscribersTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/subscribers.php');
+assertTrueValue(
+    str_contains($subscribersTemplate, "'actions' => \$mobileActions")
+    && str_contains($subscribersTemplate, 'ci-more-vertical')
+    && str_contains($subscribersTemplate, 'data-subscriptions-subscriber-edit')
+    && str_contains($subscribersTemplate, 'id="subscriptionsSubscriberEditModal"')
+    && str_contains($subscribersTemplate, "modal.addEventListener('show.bs.modal'")
+    && !str_contains($subscribersTemplate, 'subscriptions-inline-editor'),
+    'Subscriber actions must use the standard ellipsis menu and edit in a modal without resizing mobile cards'
+);
+
+$contentTableTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/content.php');
+assertTrueValue(
+    str_contains($contentTableTemplate, 'subscriptions-content-cards d-md-none')
+    && str_contains($contentTableTemplate, 'table-responsive d-none d-md-block')
+    && str_contains($contentTableTemplate, 'subscriptions-content-access-form--mobile')
+    && str_contains($contentTableTemplate, 'data-subscriptions-content-batch-form')
+    && str_contains($contentTableTemplate, 'data-subscriptions-content-layout')
+    && str_contains($contentTableTemplate, 'data-subscriptions-content-mode')
+    && str_contains($contentTableTemplate, 'data-subscriptions-content-plans')
+    && str_contains($contentTableTemplate, 'subscriptions-plan-choice')
+    && str_contains($contentTableTemplate, '][subscription_plan_ids][]')
+    && str_contains($contentTableTemplate, "plans.hidden = mode.value !== 'plans'")
+    && str_contains($contentTableTemplate, "window.matchMedia('(max-width: 767.98px)')")
+    && !str_contains($contentTableTemplate, 'name="subscription_plan_ids[]" multiple')
+    && substr_count($contentTableTemplate, '$renderAccessFields(') >= 2
+    && substr_count($contentTableTemplate, "t('subscriptions_save')") === 1,
+    'Content access must use compact cards, contextual plan checkboxes, and one shared save action on desktop and mobile'
+);
+assertTrueValue(
+    str_contains($adminControllerSource, "request()->post('content', null)")
+    && str_contains($adminControllerSource, 'foreach ($entries as $postId => $entry)')
+    && str_contains($adminControllerSource, '$database->beginTransaction()')
+    && str_contains($adminControllerSource, '$database->commit()')
+    && str_contains($adminControllerSource, '$database->rollBack()'),
+    'Content access batch updates must save every visible entry atomically'
+);
+
 $accountTemplate = (string)file_get_contents(__DIR__ . '/../views/public/account.php');
 assertTrueValue(
     str_contains($accountTemplate, "renderPartial('admin/partials/table'")
@@ -435,7 +590,11 @@ assertTrueValue(
 assertTrueValue(
     str_contains($publicStyles, '.subscriptions-plan-card__accent')
     && str_contains($publicStyles, '.subscriptions-checkout-summary')
-    && str_contains($publicStyles, '@media (max-width: 767.98px)'),
+    && str_contains($publicStyles, '@media (max-width: 767.98px)')
+    && str_contains($publicStyles, '.subscriptions-content-access-form--mobile')
+    && str_contains($publicStyles, '.subscriptions-content-table')
+    && str_contains($publicStyles, '.subscriptions-plan-picker__options--compact')
+    && str_contains($publicStyles, '.subscriptions-table-search'),
     'Public subscription cards must include responsive styling'
 );
 assertTrueValue(
@@ -448,7 +607,9 @@ assertTrueValue(
     str_contains($pluginSource, "add_filter('fireball_editor_script_assets'")
     && str_contains($editorAsset, "target.hasAttribute('data-editor-video-plan')")
     && str_contains($editorAsset, 'block.data.subscriptionPlanIds = Array.from(values)')
-    && str_contains($editorAsset, "plans.hidden = select.value !== 'plans'"),
+    && str_contains($editorAsset, "plans.hidden = select.value !== 'plans'")
+    && str_contains($editorAsset, 'syncPostAccessVisibility')
+    && str_contains($editorAsset, "permission.hidden = select.value !== 'permission'"),
     'The plugin update must save selected video plans and hide them for non-plan access without requiring a CMS core update'
 );
 

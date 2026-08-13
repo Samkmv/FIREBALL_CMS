@@ -213,24 +213,47 @@ final class AdminController
 
     public function saveContentAccess(): never
     {
-        $postId = (int)request()->post('id');
+        $entries = request()->post('content', null);
+        if (!is_array($entries)) {
+            $legacyPostId = (int)request()->post('id');
+            $entries = $legacyPostId > 0 ? [
+                $legacyPostId => [
+                    'subscription_access_mode' => request()->post('subscription_access_mode', 'public'),
+                    'subscription_plan_ids' => (array)request()->post('subscription_plan_ids', []),
+                ],
+            ] : [];
+        }
+
+        $database = db();
         try {
             $repository = new ContentRuleRepository();
-            $current = $repository->find('post', $postId) ?: [
-                'show_title' => 1, 'show_excerpt' => 1, 'show_image' => 1,
-                'hide_video' => 0, 'required_permission' => 'posts.view_paid',
-            ];
-            $repository->save('post', $postId, [
-                'subscription_access_mode' => request()->post('subscription_access_mode', 'public'),
-                'subscription_plan_ids' => (array)request()->post('subscription_plan_ids', []),
-                'subscription_show_title' => !empty($current['show_title']) ? '1' : '',
-                'subscription_show_excerpt' => !empty($current['show_excerpt']) ? '1' : '',
-                'subscription_show_image' => !empty($current['show_image']) ? '1' : '',
-                'subscription_hide_video' => !empty($current['hide_video']) ? '1' : '',
-                'subscription_required_permission' => (string)($current['required_permission'] ?? 'posts.view_paid'),
-            ]);
+            $database->beginTransaction();
+            foreach ($entries as $postId => $entry) {
+                $postId = (int)$postId;
+                if ($postId <= 0 || !is_array($entry)) {
+                    continue;
+                }
+
+                $current = $repository->find('post', $postId) ?: [
+                    'show_title' => 1, 'show_excerpt' => 1, 'show_image' => 1,
+                    'hide_video' => 0, 'required_permission' => 'posts.view_paid',
+                ];
+                $repository->save('post', $postId, [
+                    'subscription_access_mode' => (string)($entry['subscription_access_mode'] ?? 'public'),
+                    'subscription_plan_ids' => (array)($entry['subscription_plan_ids'] ?? []),
+                    'subscription_show_title' => !empty($current['show_title']) ? '1' : '',
+                    'subscription_show_excerpt' => !empty($current['show_excerpt']) ? '1' : '',
+                    'subscription_show_image' => !empty($current['show_image']) ? '1' : '',
+                    'subscription_hide_video' => !empty($current['hide_video']) ? '1' : '',
+                    'subscription_required_permission' => (string)($current['required_permission'] ?? 'posts.view_paid'),
+                ]);
+            }
+            $database->commit();
             session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_content_saved'));
         } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
             session()->setFlash('error', $exception->getMessage());
         }
         response()->redirect(base_href('/admin/subscriptions/content'));

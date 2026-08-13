@@ -27,8 +27,8 @@ foreach ($payments as $payment) {
 ?>
 
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <div class="d-flex flex-wrap justify-content-between gap-3 mb-3">
-        <form class="d-flex gap-2" method="get"><input class="form-control" type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>" placeholder="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_search')) ?>"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_apply')) ?></button></form>
+    <div class="d-flex flex-wrap justify-content-between gap-3 mb-3 subscriptions-table-toolbar">
+        <form class="d-flex gap-2 subscriptions-table-search" method="get"><input class="form-control" type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>" placeholder="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_search')) ?>"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_apply')) ?></button></form>
         <?php if ($payments): ?><form method="post" action="<?= base_href('/admin/subscriptions/payments/clear') ?>" data-admin-delete-form data-delete-message="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payments_clear_confirm')) ?>" data-delete-confirm-label="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payments_clear')) ?>"><?= get_csrf_field() ?><button class="btn btn-outline-danger rounded-pill" type="submit"><i class="ci-trash me-2"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payments_clear')) ?></button></form><?php endif; ?>
     </div>
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>

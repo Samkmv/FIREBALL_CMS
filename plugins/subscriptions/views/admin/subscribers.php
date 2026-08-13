@@ -18,27 +18,63 @@ $sourceLabels = [
 ];
 $rows = [];
 $mobileCards = [];
+$renderAttributes = static function (array $attributes): string {
+    $html = '';
+
+    foreach ($attributes as $name => $value) {
+        if ($value === false || $value === null) {
+            continue;
+        }
+
+        $html .= ' ' . htmlSC((string)$name);
+        if ($value !== true) {
+            $html .= '="' . htmlSC((string)$value) . '"';
+        }
+    }
+
+    return $html;
+};
+$renderActions = static function (array $attributes) use ($renderAttributes): string {
+    ob_start();
+    ?>
+    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+        <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_actions')) ?>">
+            <i class="ci-more-vertical"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <button class="dropdown-item d-flex align-items-center gap-2" type="button"<?= $renderAttributes($attributes) ?>>
+                <i class="ci-edit"></i>
+                <span><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_edit')) ?></span>
+            </button>
+        </div>
+    </div>
+    <?php
+
+    return trim((string)ob_get_clean());
+};
 
 foreach ($subscriptions as $subscription) {
     $statusKey = (string)($subscription['status'] ?? '');
     $status = '<span class="badge rounded-pill ' . ($statusKey === 'active' ? 'text-bg-success' : 'text-bg-secondary') . '">' . htmlSC($statusLabels[$statusKey] ?? $statusKey) . '</span>';
     $user = htmlSC((string)$subscription['user_name']) . '<div class="small text-body-secondary">' . htmlSC((string)$subscription['user_email']) . '</div>';
     $period = htmlSC((string)$subscription['starts_at']) . '<br>' . htmlSC((string)$subscription['ends_at']);
-    ob_start();
-    ?>
-    <details class="subscriptions-inline-editor">
-        <summary class="btn btn-sm btn-outline-secondary rounded-pill"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_edit')) ?></summary>
-        <form class="mt-2 d-grid gap-2" method="post" action="<?= base_href('/admin/subscriptions/subscribers/update') ?>">
-            <?= get_csrf_field() ?>
-            <input type="hidden" name="id" value="<?= (int)$subscription['id'] ?>">
-            <select class="form-select form-select-sm" name="plan_id"><?php foreach ($plans as $plan): ?><option value="<?= (int)$plan['id'] ?>" <?= (int)$plan['id'] === (int)$subscription['plan_id'] ? 'selected' : '' ?>><?= htmlSC((string)$plan['name']) ?></option><?php endforeach; ?></select>
-            <select class="form-select form-select-sm" name="status"><option value="active" <?= $statusKey === 'active' ? 'selected' : '' ?>><?= htmlSC($statusLabels['active']) ?></option><option value="disabled" <?= $statusKey === 'disabled' ? 'selected' : '' ?>><?= htmlSC($statusLabels['disabled']) ?></option></select>
-            <input class="form-control form-control-sm" type="datetime-local" name="ends_at" value="<?= htmlSC(date('Y-m-d\TH:i', strtotime((string)$subscription['ends_at']) ?: time())) ?>" required>
-            <button class="btn btn-sm btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button>
-        </form>
-    </details>
-    <?php
-    $actions = trim((string)ob_get_clean());
+    $editAttributes = [
+        'data-bs-toggle' => 'modal',
+        'data-bs-target' => '#subscriptionsSubscriberEditModal',
+        'data-subscriptions-subscriber-edit' => true,
+        'data-subscription-id' => (int)$subscription['id'],
+        'data-subscription-user' => (string)$subscription['user_name'],
+        'data-subscription-plan-id' => (int)$subscription['plan_id'],
+        'data-subscription-status' => $statusKey,
+        'data-subscription-ends-at' => date('Y-m-d\TH:i', strtotime((string)$subscription['ends_at']) ?: time()),
+    ];
+    $actions = $renderActions($editAttributes);
+    $mobileActions = [[
+        'label' => FireballPluginSubscriptions::t('subscriptions_edit'),
+        'icon' => 'ci-edit',
+        'type' => 'button',
+        'attributes' => $editAttributes,
+    ]];
     $source = $sourceLabels[(string)($subscription['source'] ?? '')] ?? (string)($subscription['source'] ?? '');
     $rows[] = ['cells' => [
         ['value' => '#' . (int)$subscription['id']], ['html' => $user], ['value' => (string)$subscription['plan_name']],
@@ -46,7 +82,7 @@ foreach ($subscriptions as $subscription) {
     ]];
     $mobileCards[] = [
         'id' => (string)(int)$subscription['id'], 'title' => (string)$subscription['user_name'], 'icon' => 'ci-user',
-        'status' => [['html' => $status]], 'actions' => $actions,
+        'status' => [['html' => $status]], 'actions' => $mobileActions,
         'extra_fields' => [
             ['label' => FireballPluginSubscriptions::t('subscriptions_user'), 'value' => (string)$subscription['user_email']],
             ['label' => FireballPluginSubscriptions::t('subscriptions_plan'), 'value' => (string)$subscription['plan_name']],
@@ -72,7 +108,7 @@ foreach ($subscriptions as $subscription) {
         </form>
     </details>
 
-    <form class="row g-2 align-items-end mb-3" method="get">
+    <form class="row g-2 align-items-end mb-3 subscriptions-filter-form" method="get">
         <div class="col-md-5"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_search')) ?></label><input class="form-control" type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>"></div>
         <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_status')) ?></label><select class="form-select" name="status"><option value=""><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_filter_all')) ?></option><?php foreach ($statusLabels as $key => $label): ?><option value="<?= htmlSC($key) ?>" <?= (string)($status_filter ?? '') === $key ? 'selected' : '' ?>><?= htmlSC($label) ?></option><?php endforeach; ?></select></div>
         <div class="col-md-auto"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_apply')) ?></button></div>
@@ -85,4 +121,78 @@ foreach ($subscriptions as $subscription) {
         ]) ?>
         <?= view()->renderPartial('admin/partials/table_footer', ['visible' => count($subscriptions), 'total' => (int)($total ?? 0), 'pagination' => $pagination ?? null, 'show_results_label' => false]) ?>
     </div>
+
+    <div class="modal fade" id="subscriptionsSubscriberEditModal" tabindex="-1" aria-labelledby="subscriptionsSubscriberEditModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-5">
+                <form method="post" action="<?= base_href('/admin/subscriptions/subscribers/update') ?>" data-subscriptions-subscriber-edit-form>
+                    <?= get_csrf_field() ?>
+                    <input type="hidden" name="id" value="">
+                    <div class="modal-header border-0 pb-0">
+                        <div>
+                            <h2 class="modal-title h5 mb-1" id="subscriptionsSubscriberEditModalLabel"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_edit')) ?></h2>
+                            <div class="small text-body-secondary" data-subscriptions-subscriber-edit-user></div>
+                        </div>
+                        <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel')) ?>"></button>
+                    </div>
+                    <div class="modal-body d-grid gap-3">
+                        <div>
+                            <label class="form-label" for="subscriptionsSubscriberEditPlan"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan')) ?></label>
+                            <select class="form-select" id="subscriptionsSubscriberEditPlan" name="plan_id" required>
+                                <?php foreach ($plans as $plan): ?>
+                                    <option value="<?= (int)$plan['id'] ?>"><?= htmlSC((string)$plan['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" for="subscriptionsSubscriberEditStatus"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_status')) ?></label>
+                            <select class="form-select" id="subscriptionsSubscriberEditStatus" name="status" required>
+                                <option value="active"><?= htmlSC($statusLabels['active']) ?></option>
+                                <option value="disabled"><?= htmlSC($statusLabels['disabled']) ?></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" for="subscriptionsSubscriberEditEndsAt"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_ends_at')) ?></label>
+                            <input class="form-control" id="subscriptionsSubscriberEditEndsAt" type="datetime-local" name="ends_at" value="" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-dismiss="modal"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel')) ?></button>
+                        <button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const modal = document.getElementById('subscriptionsSubscriberEditModal');
+            if (!modal) {
+                return;
+            }
+
+            modal.addEventListener('show.bs.modal', (event) => {
+                const trigger = event.relatedTarget;
+                if (!(trigger instanceof HTMLElement) || !trigger.matches('[data-subscriptions-subscriber-edit]')) {
+                    return;
+                }
+
+                const form = modal.querySelector('[data-subscriptions-subscriber-edit-form]');
+                if (!(form instanceof HTMLFormElement)) {
+                    return;
+                }
+
+                form.elements.id.value = trigger.dataset.subscriptionId || '';
+                form.elements.plan_id.value = trigger.dataset.subscriptionPlanId || '';
+                form.elements.status.value = trigger.dataset.subscriptionStatus === 'disabled' ? 'disabled' : 'active';
+                form.elements.ends_at.value = trigger.dataset.subscriptionEndsAt || '';
+
+                const user = modal.querySelector('[data-subscriptions-subscriber-edit-user]');
+                if (user) {
+                    user.textContent = trigger.dataset.subscriptionUser || '';
+                }
+            });
+        })();
+    </script>
 <?php require __DIR__ . '/shell-close.php'; ?>

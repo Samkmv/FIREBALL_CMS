@@ -15,11 +15,30 @@
         });
     }
 
+    function syncPostAccessVisibility(scope) {
+        (scope || document).querySelectorAll('[data-subscriptions-post-access-mode]').forEach(function (select) {
+            const container = select.closest('.subscriptions-post-settings') || document;
+            const plans = container.querySelector('[data-subscriptions-post-plans]');
+            const permission = container.querySelector('[data-subscriptions-post-permission]');
+            if (plans) {
+                plans.hidden = select.value !== 'plans';
+            }
+            if (permission) {
+                permission.hidden = select.value !== 'permission';
+            }
+        });
+    }
+
+    function syncAccessVisibility(scope) {
+        syncPlanVisibility(scope);
+        syncPostAccessVisibility(scope);
+    }
+
     document.addEventListener('change', function (event) {
         const target = event.target;
         if (!(target instanceof HTMLInputElement) || !target.hasAttribute('data-editor-video-plan')) {
             window.requestAnimationFrame(function () {
-                syncPlanVisibility(document);
+                syncAccessVisibility(document);
             });
             return;
         }
@@ -40,11 +59,11 @@
     }, true);
 
     const observer = new MutationObserver(function () {
-        syncPlanVisibility(document);
+        syncAccessVisibility(document);
     });
 
     function start() {
-        syncPlanVisibility(document);
+        syncAccessVisibility(document);
         if (document.body) {
             observer.observe(document.body, { childList: true, subtree: true });
         }

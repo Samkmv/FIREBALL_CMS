@@ -5,7 +5,6 @@ use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 use Fireball\Subscriptions\Repositories\PlanRepository;
 use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\SettingsService;
-use Fireball\Subscriptions\Support\ProtectedContent;
 use FBL\Plugins\PluginInterface;
 
 spl_autoload_register(static function (string $class): void {
@@ -235,7 +234,7 @@ final class FireballPluginSubscriptions implements PluginInterface
                 'subscription_show_title' => '1',
                 'subscription_show_excerpt' => '1',
                 'subscription_show_image' => '1',
-                'subscription_hide_video' => '1',
+                'subscription_hide_video' => '',
                 'subscription_required_permission' => 'videos.view_paid',
             ]);
         }
@@ -281,32 +280,19 @@ final class FireballPluginSubscriptions implements PluginInterface
         return $page;
     }
 
-    public static function filterPublicVideoContent(string $html, array $user = []): string
-    {
-        if ($html === '' || preg_match('/<(?:video|iframe)\b/i', $html) !== 1 || self::canViewPaidVideo($user)) {
-            return $html;
-        }
-
-        $replacement = self::videoAccessMessage();
-
-        return ProtectedContent::replaceVideos($html, $replacement);
-    }
-
     public static function filterPublicVideoAccess(bool $allowed, array $user = []): bool
     {
         return $allowed;
     }
 
+    /**
+     * Доступ к записи и доступ к её видеоблокам независимы:
+     * закрытая запись заменяется целиком, а открытая сохраняет уже обработанные блоки.
+     */
     private static function applyPostAccess(array $post, array $user, AccessService $access): array
     {
         $decision = $access->contentDecision((int)($user['id'] ?? 0), 'post', (int)($post['id'] ?? 0));
         if ($decision['allowed']) {
-            $allowedRule = (array)($decision['rule'] ?? []);
-            $protectVideo = (string)($allowedRule['access_mode'] ?? 'public') !== 'public'
-                && !empty($allowedRule['hide_video']);
-            if ($protectVideo && isset($post['content'])) {
-                $post['content'] = self::filterPublicVideoContent((string)$post['content'], $user);
-            }
             $post['subscription_access'] = $decision;
             return $post;
         }
@@ -379,11 +365,6 @@ final class FireballPluginSubscriptions implements PluginInterface
             . '<p>' . htmlSC(self::t($messageKey)) . '</p>'
             . '<div class="subscriptions-access-message__actions">' . $actions . '</div>'
             . '</div></section>';
-    }
-
-    private static function canViewPaidVideo(array $user): bool
-    {
-        return self::accessService()->can((int)($user['id'] ?? 0), 'videos.view_paid');
     }
 
     private static function accessService(): AccessService
