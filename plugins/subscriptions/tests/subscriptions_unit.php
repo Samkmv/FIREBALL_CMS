@@ -139,7 +139,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.19', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.20', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -225,6 +225,50 @@ assertTrueValue(
     str_contains((string)$publicPost['content'], 'Public text')
     && str_contains((string)$publicPost['content'], 'subscriptions_access_video_title'),
     'A public post must keep its text and only the protected video notice'
+);
+
+$editorState = [
+    'version' => 2,
+    'blocks' => [
+        [
+            'id' => 'open-video-block',
+            'type' => 'video',
+            'data' => ['src' => '/open-video.mp4', 'subscriptionAccessMode' => 'public'],
+        ],
+        [
+            'id' => 'paid-video-block',
+            'type' => 'video',
+            'data' => ['src' => '/paid-video.mp4', 'subscriptionAccessMode' => 'subscribers'],
+        ],
+    ],
+];
+$editorSnapshot = base64_encode((string)json_encode($editorState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+$currentEditorContent = '<p>Visible article text</p>'
+    . '<div data-fb-block="video" data-fb-block-id="open-video-block"><video src="/open-video.mp4"></video></div>'
+    . '<div data-fb-block="video" data-fb-block-id="paid-video-block"><video src="/paid-video.mp4"></video></div>'
+    . '<template data-fb-editor-state="2">' . $editorSnapshot . '</template>';
+$filteredEditorPost = FireballPluginSubscriptions::filterPublicPost([
+    'id' => 43,
+    'title' => 'Mixed videos',
+    'content' => $currentEditorContent,
+], []);
+assertTrueValue(
+    str_contains((string)$filteredEditorPost['content'], 'Visible article text')
+    && str_contains((string)$filteredEditorPost['content'], '/open-video.mp4')
+    && !str_contains((string)$filteredEditorPost['content'], '/paid-video.mp4')
+    && str_contains((string)$filteredEditorPost['content'], 'subscriptions_access_video_title')
+    && !str_contains((string)$filteredEditorPost['content'], 'data-fb-editor-state'),
+    'Current HTML-plus-snapshot editor content must protect only the selected video and must not leak its source in public HTML'
+);
+$creatorEditorPost = FireballPluginSubscriptions::filterPublicPost([
+    'id' => 43,
+    'title' => 'Mixed videos',
+    'content' => $currentEditorContent,
+], ['id' => 1, 'role' => 'creator']);
+assertTrueValue(
+    str_contains((string)$creatorEditorPost['content'], '/open-video.mp4')
+    && str_contains((string)$creatorEditorPost['content'], '/paid-video.mp4'),
+    'Creators must retain access to protected video blocks'
 );
 
 $contentRule = [
@@ -411,9 +455,11 @@ assertTrueValue(
 assertTrueValue(
     str_contains($pluginSource, "array_key_exists('subscriptionAccessMode', \$blockData)")
     && str_contains($pluginSource, 'private static function canViewEmbeddedVideo')
+    && str_contains($pluginSource, 'private static function filterEmbeddedVideosInContent')
+    && str_contains($pluginSource, 'private static function editorBlocksFromContent')
+    && str_contains($pluginSource, "data-fb-editor-state")
     && str_contains($pluginSource, "return \$access->can(\$userId, 'videos.view_paid')")
     && str_contains($pluginSource, "in_array((int)\$subscription['plan_id'], \$allowedPlans, true)")
-    && !str_contains($pluginSource, 'ProtectedContent::replaceVideos')
     && !str_contains($pluginSource, '$protectVideo'),
     'Each embedded video must enforce its own subscription rule independently from the public post rule'
 );

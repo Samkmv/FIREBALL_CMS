@@ -5,6 +5,7 @@ use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 use Fireball\Subscriptions\Repositories\PlanRepository;
 use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\SettingsService;
+use Fireball\Subscriptions\Support\ProtectedContent;
 use FBL\Plugins\PluginInterface;
 
 spl_autoload_register(static function (string $class): void {
@@ -217,13 +218,170 @@ final class FireballPluginSubscriptions implements PluginInterface
         return $subscription !== null && in_array((int)$subscription['plan_id'], $allowedPlans, true);
     }
 
-    private static function saveVideoRules(ContentRuleRepository $repository, string $content): void
+    /**
+     * The current editor stores public HTML followed by a base64 state snapshot.
+     * Access checks must therefore run after the shared post cache, not only while
+     * the legacy JSON document is rendered by BlockRenderer.
+     */
+    private static function filterEmbeddedVideosInContent(string $content, array $user, AccessService $access): string
     {
-        $document = json_decode(trim($content), true);
-        if (!is_array($document) || !is_array($document['blocks'] ?? null)) {
+        $videoBlocks = array_values(array_filter(
+            self::editorBlocksFromContent($content),
+            static fn(mixed $block): bool => is_array($block) && (string)($block['type'] ?? '') === 'video'
+        ));
+        if ($videoBlocks === []) {
+            return $content;
+        }
+
+        $decisions = [];
+        $denied = false;
+        foreach ($videoBlocks as $index => $block) {
+            $blockData = is_array($block['data'] ?? null) ? $block['data'] : [];
+            $blockId = trim((string)($block['id'] ?? ''));
+            if (array_key_exists('subscriptionAccessMode', $blockData)) {
+                $allowed = self::canViewEmbeddedVideo($blockData, $user, $access);
+            } elseif ($blockId !== '') {
+                $allowed = !empty($access->contentDecision((int)($user['id'] ?? 0), 'video', $blockId)['allowed']);
+            } else {
+                $allowed = true;
+            }
+
+            $decisions[$index] = $allowed;
+            if ($blockId !== '') {
+                $decisions[$blockId] = $allowed;
+            }
+            $denied = $denied || !$allowed;
+        }
+
+        if (!$denied) {
+            return $content;
+        }
+
+        // DOM is available on supported production installations. Fail closed on
+        // very limited PHP builds so a protected source is never returned intact.
+        if (!class_exists(\DOMDocument::class)) {
+            return self::stripEditorSnapshot(ProtectedContent::replaceVideos($content, self::videoAccessMessage()));
+        }
+
+        $document = new \DOMDocument('1.0', 'UTF-8');
+        $previousErrors = libxml_use_internal_errors(true);
+        $loaded = $document->loadHTML(
+            '<?xml encoding="UTF-8"><div id="subscriptions-public-content-root">' . $content . '</div>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrors);
+        if (!$loaded) {
+            return self::stripEditorSnapshot(ProtectedContent::replaceVideos($content, self::videoAccessMessage()));
+        }
+
+        $xpath = new \DOMXPath($document);
+        $nodes = $xpath->query('//*[@data-fb-block="video"]');
+        if ($nodes !== false) {
+            foreach (array_values(iterator_to_array($nodes)) as $index => $node) {
+                if (!$node instanceof \DOMElement) {
+                    continue;
+                }
+                $blockId = trim($node->getAttribute('data-fb-block-id'));
+                $allowed = $blockId !== '' && array_key_exists($blockId, $decisions)
+                    ? $decisions[$blockId]
+                    : ($decisions[$index] ?? true);
+                if (!$allowed) {
+                    self::replaceDomNodeWithHtml($document, $node, self::videoAccessMessage());
+                }
+            }
+        }
+
+        // The snapshot contains the original media URL. It is editor metadata and
+        // must not be exposed in the public response when any video is protected.
+        $snapshots = $xpath->query('//template[@data-fb-editor-state]');
+        if ($snapshots !== false) {
+            foreach (iterator_to_array($snapshots) as $snapshot) {
+                $snapshot->parentNode?->removeChild($snapshot);
+            }
+        }
+
+        $root = $document->getElementById('subscriptions-public-content-root');
+        if (!$root) {
+            return '';
+        }
+        $output = '';
+        foreach ($root->childNodes as $child) {
+            $output .= $document->saveHTML($child);
+        }
+
+        return trim($output);
+    }
+
+    private static function editorBlocksFromContent(string $content): array
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return [];
+        }
+
+        if ($content[0] === '{') {
+            $document = json_decode($content, true);
+
+            return is_array($document) && is_array($document['blocks'] ?? null)
+                ? array_values($document['blocks'])
+                : [];
+        }
+
+        if (!preg_match('~<template\b[^>]*data-fb-editor-state[^>]*>([^<]+)</template>~is', $content, $matches)) {
+            return [];
+        }
+        $encoded = html_entity_decode(trim((string)$matches[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $json = base64_decode($encoded, true);
+        if ($json === false) {
+            return [];
+        }
+        $document = json_decode($json, true);
+
+        return is_array($document) && is_array($document['blocks'] ?? null)
+            ? array_values($document['blocks'])
+            : [];
+    }
+
+    private static function replaceDomNodeWithHtml(\DOMDocument $document, \DOMNode $node, string $html): void
+    {
+        $parent = $node->parentNode;
+        if (!$parent) {
             return;
         }
-        foreach ($document['blocks'] as $block) {
+
+        $fragmentDocument = new \DOMDocument('1.0', 'UTF-8');
+        $previousErrors = libxml_use_internal_errors(true);
+        $loaded = $fragmentDocument->loadHTML(
+            '<?xml encoding="UTF-8"><div id="subscriptions-replacement-root">' . $html . '</div>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrors);
+        $replacementRoot = $loaded ? $fragmentDocument->getElementById('subscriptions-replacement-root') : null;
+        if (!$replacementRoot) {
+            $parent->removeChild($node);
+            return;
+        }
+
+        foreach (iterator_to_array($replacementRoot->childNodes) as $replacement) {
+            $parent->insertBefore($document->importNode($replacement, true), $node);
+        }
+        $parent->removeChild($node);
+    }
+
+    private static function stripEditorSnapshot(string $content): string
+    {
+        return trim((string)preg_replace(
+            '~<template\b[^>]*data-fb-editor-state[^>]*>.*?</template>~is',
+            '',
+            $content
+        ));
+    }
+
+    private static function saveVideoRules(ContentRuleRepository $repository, string $content): void
+    {
+        foreach (self::editorBlocksFromContent($content) as $block) {
             if (!is_array($block) || (string)($block['type'] ?? '') !== 'video' || trim((string)($block['id'] ?? '')) === '') {
                 continue;
             }
@@ -293,6 +451,9 @@ final class FireballPluginSubscriptions implements PluginInterface
     {
         $decision = $access->contentDecision((int)($user['id'] ?? 0), 'post', (int)($post['id'] ?? 0));
         if ($decision['allowed']) {
+            if (is_string($post['content'] ?? null) && $post['content'] !== '') {
+                $post['content'] = self::filterEmbeddedVideosInContent($post['content'], $user, $access);
+            }
             $post['subscription_access'] = $decision;
             return $post;
         }
