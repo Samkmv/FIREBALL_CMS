@@ -84,6 +84,7 @@ final class RobokassaGateway implements PaymentGatewayInterface
             'PreviousInvoiceID' => (string)(int)$parentPayment['invoice_id'],
             'Description' => mb_substr((string)$plan['name'], 0, 100),
             'SignatureValue' => $this->hash(implode(':', $signatureParts), $config['hash_algorithm']),
+            'IsTest' => !empty($config['test_mode']) ? '1' : '0',
         ];
 
         $body = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
