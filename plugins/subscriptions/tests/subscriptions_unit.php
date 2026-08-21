@@ -139,7 +139,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.22', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.26', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -404,6 +404,7 @@ $statements = (new SqlFileRunner())->split($migration);
 assertTrueValue(count($statements) >= 12, 'Migration must contain all subscription tables');
 assertTrueValue(str_contains($migration, 'uq_subscription_payment_invoice'), 'Payment invoice idempotency index');
 assertTrueValue(str_contains($migration, 'uq_subscription_webhook_hash'), 'Webhook idempotency index');
+assertTrueValue(str_contains($migration, 'is_popular TINYINT(1)'), 'Fresh installs must support a manually selected popular plan');
 
 $upgradeMigration = (string)file_get_contents(__DIR__ . '/../migrations/002_finalize_recurring_schema.sql');
 $upgradeStatements = (new SqlFileRunner())->split($upgradeMigration);
@@ -435,7 +436,21 @@ assertTrueValue(
     'Existing posts and videos must be opened when production installs the update'
 );
 
+$popularPlanMigration = (string)file_get_contents(__DIR__ . '/../migrations/009_add_popular_plan_flag.sql');
+$popularPlanStatements = (new SqlFileRunner())->split($popularPlanMigration);
+assertTrueValue(
+    count($popularPlanStatements) >= 5
+    && str_contains($popularPlanMigration, "COLUMN_NAME = 'is_popular'")
+    && str_contains($popularPlanMigration, 'ADD COLUMN `is_popular`'),
+    'Popular plan flag migration must be idempotent'
+);
+
 $pluginSource = (string)file_get_contents(__DIR__ . '/../Plugin.php');
+assertTrueValue(
+    substr_count($pluginSource, "'icon' => 'ci-award'") >= 3
+    && !str_contains($pluginSource, "'icon' => 'ci-repeat'"),
+    'Subscription navigation and dashboard surfaces must use the award identity icon'
+);
 assertTrueValue(
     str_contains($pluginSource, "add_filter('public_posts_before_render'")
     && str_contains($pluginSource, "add_filter('public_page_before_render'")
@@ -506,12 +521,24 @@ assertTrueValue(
 );
 
 $planFormTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/plan-form.php');
+$planRepositorySource = (string)file_get_contents(__DIR__ . '/../src/Repositories/PlanRepository.php');
 assertTrueValue(
     str_contains($planFormTemplate, 'data-slug-source="#subscription_plan_slug"')
     && str_contains($planFormTemplate, 'id="subscription_plan_slug"')
     && str_contains($planFormTemplate, 'data-slug-input')
     && str_contains($planFormTemplate, 'pattern="[a-z0-9-]+"'),
     'Subscription plan names must automatically generate a validated Latin slug without replacing manual edits'
+);
+assertTrueValue(
+    str_contains($planFormTemplate, 'name="is_popular"')
+    && str_contains($planFormTemplate, 'subscriptions_plan_popular_hint'),
+    'Subscription plans must expose a manual popular-plan switch in the admin editor'
+);
+assertTrueValue(
+    str_contains($planRepositorySource, 'is_popular = 0, updated_at = ? WHERE id <> ? AND is_popular = 1')
+    && str_contains($planRepositorySource, "\$copy['is_popular'] = 0")
+    && str_contains($planRepositorySource, "'is_recurring', 'is_active', 'is_public', 'is_popular'"),
+    'Only one manually selected popular plan may remain active and cloned plans must not inherit the flag'
 );
 
 $settingsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/settings.php');
@@ -644,8 +671,14 @@ $editorAsset = (string)file_get_contents(__DIR__ . '/../assets/editor.js');
 assertTrueValue(
     str_contains($plansTemplate, '$planCount === 1')
     && str_contains($plansTemplate, '$planCount === 2')
+    && str_contains($plansTemplate, "!empty(\$plan['is_popular'])")
+    && !str_contains($plansTemplate, '$recommendedIndex')
+    && str_contains($plansTemplate, 'subscriptions-plan-card--recommended')
+    && str_contains($plansTemplate, 'subscriptions_plan_popular')
     && str_contains($plansTemplate, 'subscriptions-plan-card__accent')
     && str_contains($plansTemplate, 'subscriptions_plan_features')
+    && str_contains($plansTemplate, "\$planIcons = ['ci-repeat', 'ci-star-filled', 'ci-briefcase']")
+    && !str_contains($plansTemplate, 'ci-send')
     && str_contains($plansTemplate, 'ci-arrow-right'),
     'Public plan selection must adapt its card grid to one, two, or many plans'
 );
@@ -659,6 +692,11 @@ assertTrueValue(
 );
 assertTrueValue(
     str_contains($publicStyles, '.subscriptions-plan-card__accent')
+    && str_contains($publicStyles, '.subscriptions-plans-hero .subscriptions-plans-hero__eyebrow')
+    && str_contains($publicStyles, '--cz-badge-color: #c92542')
+    && str_contains($publicStyles, '[data-bs-theme="dark"] .subscriptions-plans-hero')
+    && str_contains($publicStyles, '.subscriptions-plan-card__popular')
+    && str_contains($publicStyles, '.subscriptions-plan-card--recommended')
     && str_contains($publicStyles, '.subscriptions-checkout-summary')
     && str_contains($publicStyles, '@media (max-width: 767.98px)')
     && str_contains($publicStyles, '.subscriptions-content-access-form--mobile')

@@ -27,6 +27,40 @@
         return /^ci-[a-z0-9-]+$/i.test(icon) ? icon : 'ci-square';
     }
 
+    const socialIconSupport = new Map();
+
+    function hasThemeSocialIcon(value) {
+        const icon = String(value || '').trim();
+        if (!/^ci-[a-z0-9-]+$/i.test(icon)) {
+            return false;
+        }
+        if (socialIconSupport.has(icon)) {
+            return socialIconSupport.get(icon);
+        }
+        const probe = document.createElement('i');
+        probe.className = icon;
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = 'position:absolute;left:-9999px;visibility:hidden';
+        (document.body || document.documentElement).appendChild(probe);
+        const content = window.getComputedStyle(probe, '::before').content;
+        probe.remove();
+        const supported = Boolean(content && content !== 'none' && content !== 'normal' && content !== '""');
+        socialIconSupport.set(icon, supported);
+        return supported;
+    }
+
+    function socialIconMarkup(value) {
+        const icon = String(value || '').trim();
+        return hasThemeSocialIcon(icon)
+            ? '<i class="fb-social-buttons__icon ' + escapeAttr(icon) + '" aria-hidden="true"></i>'
+            : '<span class="fb-social-buttons__icon fb-social-buttons__icon--svg" aria-hidden="true"></span>';
+    }
+
+    function socialIconValue(value) {
+        const icon = String(value || '').trim();
+        return hasThemeSocialIcon(icon) ? icon : 'fb-social-vector';
+    }
+
     function debounce(callback, delay) {
         let timer = 0;
         return function () {
@@ -319,6 +353,23 @@
             this.ui.canvas.innerHTML = blocks || '<div class="fb-editor2__empty">' + escapeAttr(this.label('noBlocks', 'Start writing or press / to add a block.')) + '</div>';
         }
 
+        refreshBlock(blockId) {
+            if (!this.ui.canvas || !blockId) {
+                return;
+            }
+            const index = this.blockIndex(blockId);
+            const current = this.ui.canvas.querySelector('[data-block-id="' + blockId + '"]');
+            if (index < 0 || !current) {
+                return;
+            }
+            const template = document.createElement('template');
+            template.innerHTML = this.renderBlock(this.state.blocks[index], index).trim();
+            const next = template.content.firstElementChild;
+            if (next) {
+                current.replaceWith(next);
+            }
+        }
+
         renderBlock(block, index) {
             const definition = API.getBlockType(block.type) || {};
             const title = definition.title || block.type;
@@ -442,7 +493,7 @@
                 return '<div class="fb-editor2-code"><span>' + escapeAttr(data.language || 'text') + '</span><textarea spellcheck="false" data-editor-field="data.code">' + escapeAttr(data.code || '') + '</textarea></div>';
             }
             if (block.type === 'html') {
-                return '<div class="fb-editor2-html"><textarea spellcheck="false" data-editor-field="data.html" placeholder="<div>…</div>">' + escapeAttr(data.html || '') + '</textarea><div class="fb-editor2-html__preview">' + sanitizer.sanitizeHtml(data.html || '') + '</div></div>';
+                return '<div class="fb-editor2-html"><textarea spellcheck="false" data-editor-field="data.html" placeholder="<div>…</div>">' + escapeAttr(data.html || '') + '</textarea><div class="fb-editor2-html__preview">' + sanitizer.sanitizeHtmlBlock(data.html || '') + '</div></div>';
             }
             if (block.type === 'divider') {
                 return '<div class="fb-editor2-divider"><span></span><small>***</small><span></span></div>';
@@ -463,16 +514,16 @@
             if (block.type === 'embed') {
                 const embed = this.embedUrl(data.url || '');
                 return embed
-                    ? '<div class="fb-editor2-embed"><iframe src="' + escapeAttr(embed) + '" title="' + escapeAttr(data.caption || 'Embedded content') + '" loading="lazy"></iframe></div>'
-                    : '<div class="fb-editor2-embed-empty"><i class="ci-external-link"></i><span>' + escapeAttr(data.url || 'Paste a supported URL in block settings') + '</span></div>';
+                    ? '<div class="fb-editor2-embed"><iframe src="' + escapeAttr(embed) + '" title="' + escapeAttr(data.caption || this.label('embedTitle', 'Embedded content')) + '" loading="lazy"></iframe></div>'
+                    : '<div class="fb-editor2-embed-empty"><i class="ci-external-link"></i><span>' + escapeAttr(data.url || this.label('embedUrlHint', 'Paste a supported URL in block settings')) + '</span></div>';
             }
             if (block.type === 'newsletter') {
                 return this.renderNewsletterBlock(block, true);
             }
             if (block.type === 'social') {
                 const items = Array.isArray(data.items) ? data.items : [];
-                return '<div class="fb-editor2-social">' + items.map(function (item) {
-                    return '<span><i class="' + iconClass(item.icon || 'ci-globe') + '"></i>' + escapeAttr(item.label || item.url || '') + '</span>';
+                return '<div class="fb-editor2-social fb-social-buttons">' + items.map(function (item) {
+                    return '<span class="fb-social-buttons__item">' + socialIconMarkup(item.icon) + '<span class="fb-social-buttons__label">' + escapeAttr(item.label || item.url || '') + '</span></span>';
                 }).join('') + '</div>';
             }
             return '<div class="fb-editor2-unknown"><i class="ci-box"></i><div><strong>' + escapeAttr(block.type) + '</strong><p>Plugin block data is preserved.</p></div></div>';
@@ -626,6 +677,9 @@
                         this.checkField('settings.hiddenOn.tablet', this.label('tablet', 'Tablet'), hiddenOn.indexOf('tablet') !== -1, 'tablet') +
                         this.checkField('settings.hiddenOn.mobile', this.label('mobile', 'Mobile'), hiddenOn.indexOf('mobile') !== -1, 'mobile') +
                     '</fieldset>' +
+                '</section>' +
+                '<section class="fb-editor2-inspector-section fb-editor2-inspector-actions">' +
+                    '<button type="button" data-editor-remove-active><i class="ci-trash"></i>' + escapeAttr(this.label('remove', 'Remove block')) + '</button>' +
                 '</section>';
         }
 
@@ -953,6 +1007,10 @@
                 this.openBlockMenu(this.state.blocks.length ? this.state.blocks[this.state.blocks.length - 1].id : '', target.closest('[data-editor-add-block]'));
                 return;
             }
+            if (target.closest('[data-editor-remove-active]')) {
+                this.confirmRemoveBlocks(this.activeId ? [this.activeId] : []);
+                return;
+            }
             if (target.closest('[data-editor-delete-cancel]')) {
                 this.pendingDeleteIds = [];
                 if (this.ui.deleteDialog) {
@@ -976,6 +1034,14 @@
                     block.data.items = Array.isArray(block.data.items) ? block.data.items : [];
                     block.data.items.push({ network: network.value, icon: network.icon, label: network.label, url: '' });
                     this.commit('social-add', true, true);
+                    const index = block.data.items.length - 1;
+                    window.requestAnimationFrame(function () {
+                        const urlInput = this.ui.inspector.querySelector('[data-editor-setting="data.items.' + index + '.url"]');
+                        if (urlInput) {
+                            urlInput.scrollIntoView({ block: 'center' });
+                            urlInput.focus({ preventScroll: true });
+                        }
+                    }.bind(this));
                 }
                 return;
             }
@@ -1045,6 +1111,12 @@
             const field = target.getAttribute('data-editor-field');
             if (field) {
                 setPath(block, field, target.matches('[contenteditable]') ? target.innerHTML : target.value);
+            }
+            if (block.type === 'html' && target.matches('textarea[data-editor-field="data.html"]')) {
+                const preview = blockElement.querySelector('.fb-editor2-html__preview');
+                if (preview) {
+                    preview.innerHTML = sanitizer.sanitizeHtmlBlock(target.value);
+                }
             }
             if (target.hasAttribute('data-editor-list-item')) {
                 const index = Number(target.getAttribute('data-editor-list-item'));
@@ -1169,7 +1241,8 @@
                 const values = new Set((block.data.subscriptionPlanIds || []).map(Number));
                 target.checked ? values.add(planId) : values.delete(planId);
                 block.data.subscriptionPlanIds = Array.from(values);
-                this.commit('video-access', true, true);
+                this.commit('video-access', event.type === 'change', false);
+                this.refreshBlock(block.id);
                 return;
             }
             const setting = target.getAttribute('data-editor-setting');
@@ -1205,10 +1278,37 @@
                     if (network && block.data.items && block.data.items[index]) {
                         block.data.items[index].icon = network.icon;
                         block.data.items[index].label = network.label;
+                        const iconInput = this.ui.inspector.querySelector('[data-editor-setting="data.items.' + index + '.icon"]');
+                        const labelInput = this.ui.inspector.querySelector('[data-editor-setting="data.items.' + index + '.label"]');
+                        const urlInput = this.ui.inspector.querySelector('[data-editor-setting="data.items.' + index + '.url"]');
+                        if (iconInput) {
+                            iconInput.value = network.icon;
+                        }
+                        if (labelInput) {
+                            labelInput.value = network.label;
+                        }
+                        if (urlInput) {
+                            urlInput.placeholder = network.placeholder || 'https://…';
+                            const urlLabel = urlInput.closest('label');
+                            const urlLabelText = urlLabel ? urlLabel.querySelector('span') : null;
+                            if (urlLabelText) {
+                                urlLabelText.textContent = network.value === 'phone'
+                                    ? this.label('socialPhone', 'Phone')
+                                    : this.label('socialUrl', 'Link');
+                            }
+                        }
                     }
                 }
             }
-            this.commit('settings', true, true);
+            if (setting === 'data.subscriptionAccessMode') {
+                const plans = this.ui.inspector.querySelector('[data-editor-video-plans]');
+                if (plans) {
+                    plans.hidden = String(target.value) !== 'plans';
+                }
+            }
+            this.commit('settings', event.type === 'change', false);
+            this.refreshBlock(block.id);
+            this.refreshOutlineSoon();
         }
 
         resizeTable(block, requestedRows, requestedColumns) {
@@ -1230,6 +1330,7 @@
             if (!id) {
                 return;
             }
+            const previousActiveId = this.activeId;
             if (event && event.shiftKey && this.selectionAnchorId) {
                 const anchorIndex = this.blockIndex(this.selectionAnchorId);
                 const targetIndex = this.blockIndex(id);
@@ -1258,6 +1359,15 @@
             }, this);
             this.refreshOutline();
             this.renderInspector();
+            if (previousActiveId !== id) {
+                this.activateInspectorTab('block');
+                const inspectorPanel = this.ui.inspector
+                    ? this.ui.inspector.closest('.fb-editor-workspace__inspector')
+                    : null;
+                if (inspectorPanel) {
+                    inspectorPanel.scrollTop = 0;
+                }
+            }
             this.refreshStatus();
             if (!preserveCaret) {
                 const blockElement = this.ui.canvas.querySelector('[data-block-id="' + id + '"]');
@@ -1390,9 +1500,18 @@
             this.selectedIds = new Set([block.id]);
             this.closeSlashMenu();
             this.commit('insert', true, true);
+            this.activateInspectorTab('block');
+            const inspectorPanel = this.ui.inspector
+                ? this.ui.inspector.closest('.fb-editor-workspace__inspector')
+                : null;
+            if (inspectorPanel) {
+                inspectorPanel.scrollTop = 0;
+            }
             window.requestAnimationFrame(function () {
-                this.focusBlock(block.id, 'start');
                 this.scrollToBlock(block.id);
+                window.requestAnimationFrame(function () {
+                    this.focusBlock(block.id, 'start');
+                }.bind(this));
             }.bind(this));
             return block;
         }
@@ -1566,7 +1685,11 @@
         openBlockMenu(afterId, anchor) {
             this.insertionAfter = afterId || '';
             this.slashBlockId = '';
-            this.positionMenu(this.ui.slashMenu, anchor);
+            this.ui.slashMenu.classList.add('is-centered-picker');
+            this.ui.slashMenu.setAttribute('role', 'dialog');
+            this.ui.slashMenu.setAttribute('aria-modal', 'true');
+            this.ui.slashMenu.style.left = '';
+            this.ui.slashMenu.style.top = '';
             this.renderSlashMenu('');
             this.ui.slashMenu.hidden = false;
             if (this.ui.slashSearch) {
@@ -1578,6 +1701,9 @@
         openSlashForBlock(blockId, editable, query) {
             this.insertionAfter = blockId;
             this.slashBlockId = blockId;
+            this.ui.slashMenu.classList.remove('is-centered-picker');
+            this.ui.slashMenu.removeAttribute('role');
+            this.ui.slashMenu.removeAttribute('aria-modal');
             this.renderSlashMenu(query || '');
             this.ui.slashMenu.hidden = false;
             const selection = window.getSelection();
@@ -1632,6 +1758,9 @@
         closeSlashMenu() {
             if (this.ui.slashMenu) {
                 this.ui.slashMenu.hidden = true;
+                this.ui.slashMenu.classList.remove('is-centered-picker');
+                this.ui.slashMenu.removeAttribute('role');
+                this.ui.slashMenu.removeAttribute('aria-modal');
             }
             this.slashBlockId = '';
         }
@@ -2253,6 +2382,9 @@
             if (!block) {
                 return;
             }
+            if ((block.type === 'html' || block.type === 'code') && event.target.matches('textarea[data-editor-field]')) {
+                return;
+            }
             const internal = event.clipboardData.getData(INTERNAL_MIME);
             const html = String(event.clipboardData.getData('text/html') || '');
             const plain = String(event.clipboardData.getData('text/plain') || '');
@@ -2776,7 +2908,7 @@
             } else if (block.type === 'code') {
                 content = '<pre><code data-language="' + escapeAttr(data.language || 'text') + '">' + escapeAttr(data.code || '') + '</code></pre>';
             } else if (block.type === 'html') {
-                content = sanitizer.sanitizeHtml(data.html || '');
+                content = sanitizer.sanitizeHtmlBlock(data.html || '');
             } else if (block.type === 'divider') {
                 content = '<hr>';
             } else if (block.type === 'alert') {
@@ -2798,16 +2930,17 @@
                     : '<span class="btn btn-' + escapeAttr(data.style || 'primary') + '">' + label + '</span>') + '</div>';
             } else if (block.type === 'embed') {
                 const embed = this.embedUrl(data.url || '');
-                content = embed ? '<figure><div class="ratio ratio-16x9"><iframe src="' + escapeAttr(embed) + '" title="' + escapeAttr(data.caption || 'Embedded content') + '" loading="lazy" allowfullscreen></iframe></div>' + (data.caption ? '<figcaption>' + escapeAttr(data.caption) + '</figcaption>' : '') + '</figure>' : '';
+                content = embed ? '<figure><div class="ratio ratio-16x9"><iframe src="' + escapeAttr(embed) + '" title="' + escapeAttr(data.caption || this.label('embedTitle', 'Embedded content')) + '" loading="lazy" allowfullscreen></iframe></div>' + (data.caption ? '<figcaption>' + escapeAttr(data.caption) + '</figcaption>' : '') + '</figure>' : '';
             } else if (block.type === 'newsletter') {
                 content = this.renderNewsletterBlock(block, false);
             } else if (block.type === 'social') {
-                content = '<div data-fb-social="1">' + (data.items || []).map(function (item) {
+                content = '<div class="fb-social-buttons" data-fb-social="1" data-fb-social-buttons="1">' + (data.items || []).map(function (item) {
                     const rawUrl = item.network === 'phone' && item.url && !/^tel:/i.test(item.url)
                         ? 'tel:' + String(item.url).replace(/[^\d+]/g, '')
                         : item.url;
                     const url = sanitizer.safeUrl(rawUrl || '', false);
-                    return url ? '<a href="' + escapeAttr(url) + '" rel="noopener noreferrer"><i class="' + iconClass(item.icon || 'ci-globe') + '"></i>' + escapeAttr(item.label || '') + '</a>' : '';
+                    const external = item.network === 'phone' ? '' : ' target="_blank" rel="noopener noreferrer"';
+                    return url ? '<a class="fb-social-buttons__item" href="' + escapeAttr(url) + '"' + external + ' data-network="' + escapeAttr(item.network || 'custom') + '" data-icon="' + escapeAttr(socialIconValue(item.icon)) + '">' + socialIconMarkup(item.icon) + '<span class="fb-social-buttons__label">' + escapeAttr(item.label || '') + '</span></a>' : '';
                 }).join('') + '</div>';
             } else {
                 content = sanitizer.sanitizeHtml(data.html || '');
@@ -3257,7 +3390,7 @@
                 : -1;
             this.ui.commandList.innerHTML = commands.map(function (command, index) {
                 const active = index === this.commandPaletteIndex;
-                return '<button type="button" role="option" aria-selected="' + (active ? 'true' : 'false') + '" class="' + (active ? 'is-active' : '') + '" data-editor-run-command="' + escapeAttr(command.id) + '" data-editor-command-index="' + index + '"><span><i class="' + iconClass(command.icon) + '"></i></span><div><strong>' + escapeAttr(command.label) + '</strong><small>' + escapeAttr(command.keywords || '') + '</small></div></button>';
+                return '<button type="button" role="option" aria-selected="' + (active ? 'true' : 'false') + '" class="' + (active ? 'is-active' : '') + '" data-editor-run-command="' + escapeAttr(command.id) + '" data-editor-command-index="' + index + '"><span><i class="' + iconClass(command.icon) + '"></i></span><div><strong>' + escapeAttr(command.label) + '</strong></div></button>';
             }, this).join('') || '<p class="fb-editor2__menu-empty">' + escapeAttr(this.label('noCommands', 'No commands found')) + '</p>';
             this.ui.commandList.querySelectorAll('[data-editor-run-command]').forEach(function (button) {
                 button.addEventListener('mouseenter', function () {

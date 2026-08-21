@@ -31,6 +31,48 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+.site-brand {
+    display: inline-flex;
+    min-width: 0;
+    max-width: min(19rem, 46vw);
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .65rem;
+}
+
+.site-brand__mark {
+    display: block;
+    width: 2.5rem;
+    height: 2.5rem;
+    max-width: none;
+    aspect-ratio: 1;
+    flex: 0 0 2.5rem;
+    object-fit: contain;
+}
+
+.site-brand__title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    .site-brand {
+        max-width: min(11.5rem, 48vw);
+    }
+
+    .site-brand__mark {
+        width: 2.25rem;
+        height: 2.25rem;
+        flex-basis: 2.25rem;
+    }
+
+    .site-brand__title {
+        max-width: min(9rem, 32vw);
+    }
+}
+
 html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -331,6 +373,15 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 .fb-social-buttons__icon {
     font-size: 1rem;
     flex: 0 0 auto;
+}
+
+.fb-social-buttons__icon--svg {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-color: currentColor;
+    -webkit-mask: url("../icons/social-link.svg") center / contain no-repeat;
+    mask: url("../icons/social-link.svg") center / contain no-repeat;
 }
 
 .fb-social-buttons__label {

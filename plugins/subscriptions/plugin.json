@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.2.22",
+  "version": "1.2.26",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,10 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Switched the subscription identity icon to the award symbol across admin navigation, account navigation, and dashboard widgets.",
+    "Fixed the subscription-access badge contrast so its text changes correctly between light and dark themes.",
+    "Replaced the paper-plane and generic payment icons with a clear recurring-subscription symbol across plans, navigation, profiles, and dashboard widgets.",
+    "Added a manual Popular plan switch to the plan editor; selecting a new popular plan automatically clears the previous selection.",
     "Redesigned the manual subscription grant panel and removed mobile horizontal overflow with a responsive grid.",
     "Added CMS-style server-side pagination to the public payment history with responsive rows and mobile cards.",
     "Fixed per-video subscription protection for the editor's HTML-plus-snapshot format and applied access checks after shared post caching.",
@@ -49,6 +53,10 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Основная иконка подписок заменена на знак награды в навигации админки, меню аккаунта и виджетах обзора.",
+      "Исправлен контраст плашки «Доступ по подписке»: цвет текста теперь корректно меняется между светлой и тёмной темами.",
+      "Бумажный самолётик и общая платёжная иконка заменены понятным знаком регулярной подписки в тарифах, навигации, профиле и виджетах обзора.",
+      "В редактор тарифов добавлен ручной переключатель «Популярный выбор»; при выборе нового популярного тарифа отметка автоматически снимается с предыдущего.",
       "Переработана панель ручной выдачи подписки и устранён горизонтальный скролл на телефонах с помощью адаптивной сетки.",
       "В публичной истории платежей добавлена серверная пагинация в стиле CMS с адаптивными строками и мобильными карточками.",
       "Исправлена защита отдельных видео для формата редактора HTML со снимком состояния; проверка доступа теперь выполняется после общего кэша записи.",
@@ -74,6 +82,10 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Switched the subscription identity icon to the award symbol across admin navigation, account navigation, and dashboard widgets.",
+      "Fixed the subscription-access badge contrast so its text changes correctly between light and dark themes.",
+      "Replaced the paper-plane and generic payment icons with a clear recurring-subscription symbol across plans, navigation, profiles, and dashboard widgets.",
+      "Added a manual Popular plan switch to the plan editor; selecting a new popular plan automatically clears the previous selection.",
       "Redesigned the manual subscription grant panel and removed mobile horizontal overflow with a responsive grid.",
       "Added CMS-style server-side pagination to the public payment history with responsive rows and mobile cards.",
       "Fixed per-video subscription protection for the editor's HTML-plus-snapshot format and applied access checks after shared post caching.",
@@ -99,6 +111,10 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Das Abonnement-Symbol wurde in der Admin-Navigation, der Kontonavigation und den Übersichts-Widgets durch das Auszeichnungssymbol ersetzt.",
+      "Der Kontrast des Abonnementzugangs-Badges wurde korrigiert; die Textfarbe wechselt nun korrekt zwischen hellem und dunklem Design.",
+      "Papierflieger und allgemeines Zahlungssymbol wurden in Tarifen, Navigation, Profil und Übersichts-Widgets durch ein eindeutiges Symbol für wiederkehrende Abonnements ersetzt.",
+      "Im Tarifeditor wurde ein manueller Schalter „Am beliebtesten“ ergänzt; bei Auswahl eines neuen beliebten Tarifs wird die vorherige Markierung automatisch entfernt.",
       "Die manuelle Abonnementvergabe wurde neu gestaltet und horizontales Überlaufen auf Mobilgeräten durch ein responsives Raster behoben.",
       "Der öffentliche Zahlungsverlauf verwendet nun eine serverseitige Seitennavigation im CMS-Stil mit responsiven Zeilen und mobilen Karten.",
       "Der Schutz einzelner Videos wurde für das HTML-plus-Snapshot-Format des Editors korrigiert; die Zugriffsprüfung erfolgt nun nach dem gemeinsamen Beitrags-Cache.",
@@ -124,6 +140,10 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "管理导航、账户导航和概览小组件中的订阅主图标已改为奖章图标。",
+      "修复了订阅访问徽章的对比度，文字颜色现在会在浅色和深色主题之间正确切换。",
+      "套餐、导航、个人资料和概览小组件中的纸飞机及通用付款图标已替换为清晰的周期订阅图标。",
+      "套餐编辑器新增手动“最受欢迎”开关；选择新的热门套餐时会自动取消之前的标记。",
       "重新设计了手动授予订阅面板，并通过响应式网格消除了移动端横向溢出。",
       "公开付款历史现已采用 CMS 风格的服务端分页，并支持响应式行和移动端卡片。",
       "修复了编辑器 HTML 加状态快照格式中的单个视频订阅保护；访问检查现在会在共享文章缓存之后执行。",

@@ -59,13 +59,13 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
             </select>
 
             <span class="fb-editor2__tool-group">
-                <button type="button" class="fb-editor2__tool" data-editor-inline="strong" aria-label="<?= htmlSC($label('bold', 'Bold')) ?>" title="<?= htmlSC($label('bold', 'Bold')) ?>"><strong>B</strong></button>
-                <button type="button" class="fb-editor2__tool" data-editor-inline="em" aria-label="<?= htmlSC($label('italic', 'Italic')) ?>" title="<?= htmlSC($label('italic', 'Italic')) ?>"><em>I</em></button>
-                <button type="button" class="fb-editor2__tool" data-editor-inline="u" aria-label="<?= htmlSC($label('underline', 'Underline')) ?>" title="<?= htmlSC($label('underline', 'Underline')) ?>"><u>U</u></button>
-                <button type="button" class="fb-editor2__tool" data-editor-inline="s" aria-label="<?= htmlSC($label('strikethrough', 'Strikethrough')) ?>" title="<?= htmlSC($label('strikethrough', 'Strikethrough')) ?>"><s>S</s></button>
-                <button type="button" class="fb-editor2__tool" data-editor-inline="sup" aria-label="<?= htmlSC($label('superscript', 'Superscript')) ?>" title="<?= htmlSC($label('superscript', 'Superscript')) ?>">x<sup>2</sup></button>
-                <button type="button" class="fb-editor2__tool" data-editor-inline="sub" aria-label="<?= htmlSC($label('subscript', 'Subscript')) ?>" title="<?= htmlSC($label('subscript', 'Subscript')) ?>">x<sub>2</sub></button>
-                <button type="button" class="fb-editor2__tool" data-editor-inline="code" aria-label="<?= htmlSC($label('inlineCode', 'Inline code')) ?>" title="<?= htmlSC($label('inlineCode', 'Inline code')) ?>"><i class="ci-code"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-inline="strong" aria-label="<?= htmlSC($label('bold', 'Bold')) ?>" title="<?= htmlSC($label('bold', 'Bold')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--bold" aria-hidden="true"></span></button>
+                <button type="button" class="fb-editor2__tool" data-editor-inline="em" aria-label="<?= htmlSC($label('italic', 'Italic')) ?>" title="<?= htmlSC($label('italic', 'Italic')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--italic" aria-hidden="true"></span></button>
+                <button type="button" class="fb-editor2__tool" data-editor-inline="u" aria-label="<?= htmlSC($label('underline', 'Underline')) ?>" title="<?= htmlSC($label('underline', 'Underline')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--underline" aria-hidden="true"></span></button>
+                <button type="button" class="fb-editor2__tool" data-editor-inline="s" aria-label="<?= htmlSC($label('strikethrough', 'Strikethrough')) ?>" title="<?= htmlSC($label('strikethrough', 'Strikethrough')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--strikethrough" aria-hidden="true"></span></button>
+                <button type="button" class="fb-editor2__tool" data-editor-inline="sup" aria-label="<?= htmlSC($label('superscript', 'Superscript')) ?>" title="<?= htmlSC($label('superscript', 'Superscript')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--superscript" aria-hidden="true"></span></button>
+                <button type="button" class="fb-editor2__tool" data-editor-inline="sub" aria-label="<?= htmlSC($label('subscript', 'Subscript')) ?>" title="<?= htmlSC($label('subscript', 'Subscript')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--subscript" aria-hidden="true"></span></button>
+                <button type="button" class="fb-editor2__tool" data-editor-inline="code" aria-label="<?= htmlSC($label('inlineCode', 'Inline code')) ?>" title="<?= htmlSC($label('inlineCode', 'Inline code')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--inline-code" aria-hidden="true"></span></button>
             </span>
 
             <span class="fb-editor2__tool-group">
@@ -81,33 +81,33 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
             </span>
 
             <span class="fb-editor2__tool-group">
-                <button type="button" class="fb-editor2__tool" data-editor-align="left" aria-label="<?= htmlSC($label('alignLeft', 'Align left')) ?>"><i class="ci-align-left"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-align="center" aria-label="<?= htmlSC($label('alignCenter', 'Align center')) ?>"><i class="ci-align-center"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-align="right" aria-label="<?= htmlSC($label('alignRight', 'Align right')) ?>"><i class="ci-align-right"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-command="outdent" aria-label="<?= htmlSC($label('outdent', 'Decrease indent')) ?>"><i class="ci-arrow-left"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-command="indent" aria-label="<?= htmlSC($label('indent', 'Increase indent')) ?>"><i class="ci-arrow-right"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-align="left" aria-label="<?= htmlSC($label('alignLeft', 'Align left')) ?>" title="<?= htmlSC($label('alignLeft', 'Align left')) ?>"><i class="ci-align-left"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-align="center" aria-label="<?= htmlSC($label('alignCenter', 'Align center')) ?>" title="<?= htmlSC($label('alignCenter', 'Align center')) ?>"><i class="ci-align-center"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-align="right" aria-label="<?= htmlSC($label('alignRight', 'Align right')) ?>" title="<?= htmlSC($label('alignRight', 'Align right')) ?>"><i class="ci-align-right"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-command="outdent" aria-label="<?= htmlSC($label('outdent', 'Decrease indent')) ?>" title="<?= htmlSC($label('outdent', 'Decrease indent')) ?>"><i class="ci-arrow-left"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-command="indent" aria-label="<?= htmlSC($label('indent', 'Increase indent')) ?>" title="<?= htmlSC($label('indent', 'Increase indent')) ?>"><i class="ci-arrow-right"></i></button>
             </span>
 
             <span class="fb-editor2__tool-group">
-                <button type="button" class="fb-editor2__tool" data-editor-convert="bulletList" aria-label="<?= htmlSC($label('bulletList', 'Bullet list')) ?>"><i class="ci-list"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-convert="orderedList" aria-label="<?= htmlSC($label('orderedList', 'Numbered list')) ?>"><i class="ci-list-ordered"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-convert="checklist" aria-label="<?= htmlSC($label('checklist', 'Checklist')) ?>"><i class="ci-check-square"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-convert="quote" aria-label="<?= htmlSC($label('quote', 'Quote')) ?>"><i class="ci-quote"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-convert="bulletList" aria-label="<?= htmlSC($label('bulletList', 'Bullet list')) ?>" title="<?= htmlSC($label('bulletList', 'Bullet list')) ?>"><i class="ci-list"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-convert="orderedList" aria-label="<?= htmlSC($label('orderedList', 'Numbered list')) ?>" title="<?= htmlSC($label('orderedList', 'Numbered list')) ?>"><i class="ci-list-ordered"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-convert="checklist" aria-label="<?= htmlSC($label('checklist', 'Checklist')) ?>" title="<?= htmlSC($label('checklist', 'Checklist')) ?>"><i class="ci-check-square"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-convert="quote" aria-label="<?= htmlSC($label('quote', 'Quote')) ?>" title="<?= htmlSC($label('quote', 'Quote')) ?>"><i class="ci-quote"></i></button>
             </span>
 
             <span class="fb-editor2__tool-group">
-                <button type="button" class="fb-editor2__tool" data-editor-command="search" aria-label="<?= htmlSC($label('searchReplace', 'Search and replace')) ?>"><i class="ci-search"></i></button>
-                <button type="button" class="fb-editor2__tool" data-editor-command="commandPalette" aria-label="<?= htmlSC($label('commandSearch', 'Commands')) ?>"><i class="ci-command"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-command="search" aria-label="<?= htmlSC($label('searchReplace', 'Search and replace')) ?>" title="<?= htmlSC($label('searchReplace', 'Search and replace')) ?>"><i class="ci-search"></i></button>
+                <button type="button" class="fb-editor2__tool" data-editor-command="commandPalette" aria-label="<?= htmlSC($label('commandSearch', 'Commands')) ?>" title="<?= htmlSC($label('commandSearch', 'Commands')) ?>"><i class="ci-command"></i></button>
             </span>
         </div>
     </div>
 
     <div class="fb-editor2__selection-toolbar" data-editor-selection-toolbar hidden>
-        <button type="button" data-editor-inline="strong"><strong>B</strong></button>
-        <button type="button" data-editor-inline="em"><em>I</em></button>
-        <button type="button" data-editor-inline="u"><u>U</u></button>
-        <button type="button" data-editor-command="link"><i class="ci-link"></i></button>
-        <button type="button" data-editor-inline="code"><i class="ci-code"></i></button>
+        <button type="button" data-editor-inline="strong" aria-label="<?= htmlSC($label('bold', 'Bold')) ?>" title="<?= htmlSC($label('bold', 'Bold')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--bold" aria-hidden="true"></span></button>
+        <button type="button" data-editor-inline="em" aria-label="<?= htmlSC($label('italic', 'Italic')) ?>" title="<?= htmlSC($label('italic', 'Italic')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--italic" aria-hidden="true"></span></button>
+        <button type="button" data-editor-inline="u" aria-label="<?= htmlSC($label('underline', 'Underline')) ?>" title="<?= htmlSC($label('underline', 'Underline')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--underline" aria-hidden="true"></span></button>
+        <button type="button" data-editor-command="link" aria-label="<?= htmlSC($label('link', 'Link')) ?>" title="<?= htmlSC($label('link', 'Link')) ?>"><i class="ci-link"></i></button>
+        <button type="button" data-editor-inline="code" aria-label="<?= htmlSC($label('inlineCode', 'Inline code')) ?>" title="<?= htmlSC($label('inlineCode', 'Inline code')) ?>"><span class="fb-editor2__tool-icon fb-editor2__tool-icon--inline-code" aria-hidden="true"></span></button>
     </div>
 
     <div class="fb-editor2__canvas" data-editor-canvas aria-live="polite"></div>

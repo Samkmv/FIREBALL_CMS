@@ -456,9 +456,12 @@ final class BlockRenderer
             return '';
         }
         $caption = trim((string)($data['caption'] ?? ''));
+        $accessibleTitle = $caption !== ''
+            ? $caption
+            : $this->translateOrFallback('editor_block_embed', 'Embedded content');
 
         return '<figure><div class="ratio ratio-16x9"><iframe src="' . htmlSC($url) . '" title="' .
-            htmlSC($caption !== '' ? $caption : 'Embedded content') .
+            htmlSC($accessibleTitle) .
             '" loading="lazy" allowfullscreen></iframe></div>' .
             ($caption !== '' ? '<figcaption>' . htmlSC($caption) . '</figcaption>' : '') .
             '</figure>';
@@ -480,15 +483,38 @@ final class BlockRenderer
                 continue;
             }
             $icon = trim((string)($item['icon'] ?? 'ci-globe'));
-            if (!preg_match('/^ci-[a-z0-9-]+$/i', $icon)) {
-                $icon = 'ci-globe';
-            }
-            $html .= '<a href="' . htmlSC($url) . '" rel="noopener noreferrer"><i class="' . htmlSC($icon) . '"></i>' .
-                htmlSC((string)($item['label'] ?? '')) .
+            $hasThemeIcon = $this->themeIconExists($icon);
+            $storedIcon = $hasThemeIcon ? $icon : 'fb-social-vector';
+            $iconHtml = $hasThemeIcon
+                ? '<i class="fb-social-buttons__icon ' . htmlSC($icon) . '" aria-hidden="true"></i>'
+                : '<span class="fb-social-buttons__icon fb-social-buttons__icon--svg" aria-hidden="true"></span>';
+            $network = trim((string)($item['network'] ?? 'custom'));
+            $externalAttributes = $network === 'phone' ? '' : ' target="_blank" rel="noopener noreferrer"';
+            $html .= '<a class="fb-social-buttons__item" href="' . htmlSC($url) . '"' . $externalAttributes .
+                ' data-network="' . htmlSC($network !== '' ? $network : 'custom') . '" data-icon="' . htmlSC($storedIcon) . '">' .
+                $iconHtml .
+                '<span class="fb-social-buttons__label">' . htmlSC((string)($item['label'] ?? '')) . '</span>' .
                 '</a>';
         }
 
-        return $html !== '' ? '<div data-fb-social="1">' . $html . '</div>' : '';
+        return $html !== '' ? '<div class="fb-social-buttons" data-fb-social="1" data-fb-social-buttons="1">' . $html . '</div>' : '';
+    }
+
+    private function themeIconExists(string $icon): bool
+    {
+        if (!preg_match('/^ci-[a-z0-9-]+$/i', $icon)) {
+            return false;
+        }
+
+        static $iconCss = null;
+        static $iconCssLoaded = false;
+        if (!$iconCssLoaded) {
+            $iconCssLoaded = true;
+            $iconPath = dirname(__DIR__, 3) . '/public/assets/default/icons/cartzilla-icons.min.css';
+            $iconCss = is_file($iconPath) ? file_get_contents($iconPath) : false;
+        }
+
+        return !is_string($iconCss) || str_contains($iconCss, '.' . $icon . ':before{');
     }
 
     private function trustedEmbedUrl(string $url): string

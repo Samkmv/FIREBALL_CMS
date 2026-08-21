@@ -47,6 +47,10 @@ foreach ($plans as $plan) {
             ? 'subscriptions_status_active'
             : 'subscriptions_status_disabled'))
         . '</span>';
+    $popularBadge = !empty($plan['is_popular'])
+        ? ' <span class="badge rounded-pill text-primary bg-primary-subtle"><i class="ci-star-filled me-1"></i>'
+            . htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_popular')) . '</span>'
+        : '';
 
     ob_start();
     ?>
@@ -66,7 +70,7 @@ foreach ($plans as $plan) {
 
     $rows[] = [
         'cells' => [
-            ['html' => '<strong>' . htmlSC((string)$plan['name']) . '</strong><div class="small text-body-secondary">' . htmlSC((string)$plan['slug']) . '</div>'],
+            ['html' => '<div class="d-flex align-items-center flex-wrap gap-2"><strong>' . htmlSC((string)$plan['name']) . '</strong>' . $popularBadge . '</div><div class="small text-body-secondary">' . htmlSC((string)$plan['slug']) . '</div>'],
             ['value' => (string)$plan['price_display']],
             ['value' => $duration],
             ['html' => $status],
@@ -79,7 +83,10 @@ foreach ($plans as $plan) {
         'title' => (string)$plan['name'],
         'icon' => 'ci-package',
         'slug' => (string)$plan['slug'],
-        'status' => [['html' => $status]],
+        'status' => array_values(array_filter([
+            ['html' => $status],
+            $popularBadge !== '' ? ['html' => $popularBadge] : null,
+        ])),
         'actions' => $planActions($plan),
         'extra_fields' => [
             ['label' => FireballPluginSubscriptions::t('subscriptions_field_price'), 'value' => (string)$plan['price_display']],

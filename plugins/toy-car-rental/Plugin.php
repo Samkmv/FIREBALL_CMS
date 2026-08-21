@@ -56,6 +56,31 @@ final class FireballPluginToyCarRental implements PluginInterface
         });
 
         add_filter('notification_feed_items', [self::class, 'notificationFeedItems'], 10);
+        add_filter('admin_dashboard_widgets', [self::class, 'dashboardWidgets'], 10);
+    }
+
+    public static function dashboardWidgets(array $widgets, array $context = []): array
+    {
+        try {
+            $stats = self::todayStats();
+            $settings = self::settings();
+            $widgets[] = [
+                'plugin' => self::SLUG,
+                'title' => self::t('toy_rental_dashboard_title'),
+                'subtitle' => self::t('toy_rental_stats_subtitle'),
+                'icon' => 'ci-ticket',
+                'href' => base_href('/admin/toy-rental'),
+                'metrics' => [
+                    ['label' => self::t('toy_rental_stat_rides_today'), 'value' => (int)$stats['rides_total'], 'tone' => 'info'],
+                    ['label' => self::t('toy_rental_stat_active'), 'value' => (int)$stats['active'] + (int)$stats['overdue'], 'tone' => (int)$stats['overdue'] > 0 ? 'warning' : 'success'],
+                    ['label' => self::t('toy_rental_stat_revenue'), 'value' => number_format((float)$stats['revenue_total'], 0, '.', ' ') . ' ' . (string)$settings['currency'], 'tone' => 'success'],
+                ],
+            ];
+        } catch (Throwable $exception) {
+            log_error_details('Toy rental dashboard widget failed', [], $exception);
+        }
+
+        return $widgets;
     }
 
     public static function defaultSettings(): array

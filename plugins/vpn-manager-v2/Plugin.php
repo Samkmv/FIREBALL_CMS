@@ -1,6 +1,7 @@
 <?php
 
 use FBL\Plugins\PluginInterface;
+use Fireball\VpnManagerV2\Repositories\OverviewRepository;
 use Fireball\VpnManagerV2\Repositories\ProfileVpnRepository;
 use Fireball\VpnManagerV2\Jobs\VpnV2CheckExpirationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2CheckTrafficLimitsJob;
@@ -87,6 +88,8 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
             return array_replace($jobs, self::jobs());
         });
 
+        add_filter('admin_dashboard_widgets', [self::class, 'dashboardWidgets'], 10);
+
         add_filter('profile_menu', static function (array $items, array $user = []): array {
             $userId = (int)($user['id'] ?? 0);
             try {
@@ -109,6 +112,46 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
 
             return $items;
         }, 10);
+    }
+
+    public static function dashboardWidgets(array $widgets, array $context = []): array
+    {
+        try {
+            $overview = (new OverviewRepository())->diagnostics();
+            $data = is_array($overview['data'] ?? null) ? $overview['data'] : [];
+            $servers = is_array($data['servers'] ?? null) ? $data['servers'] : [];
+            $subscriptions = is_array($data['subscriptions'] ?? null) ? $data['subscriptions'] : [];
+            $errors = (int)($servers['errors'] ?? 0) + (int)($subscriptions['errors'] ?? 0);
+
+            $widgets[] = [
+                'plugin' => self::SLUG,
+                'title' => self::t('vpn_manager_v2_overview_title'),
+                'subtitle' => self::t('vpn_manager_v2_overview_subtitle'),
+                'icon' => 'ci-server',
+                'href' => base_href('/admin/plugins/vpn-manager-v2'),
+                'metrics' => [
+                    [
+                        'label' => self::t('vpn_manager_v2_overview_servers'),
+                        'value' => (int)($servers['active'] ?? 0) . ' / ' . (int)($servers['total'] ?? 0),
+                        'tone' => (int)($servers['errors'] ?? 0) > 0 ? 'warning' : 'success',
+                    ],
+                    [
+                        'label' => self::t('vpn_manager_v2_overview_subscriptions'),
+                        'value' => (int)($subscriptions['active'] ?? 0) . ' / ' . (int)($subscriptions['total'] ?? 0),
+                        'tone' => 'info',
+                    ],
+                    [
+                        'label' => self::t('vpn_manager_v2_overview_errors'),
+                        'value' => $errors,
+                        'tone' => $errors > 0 ? 'danger' : 'success',
+                    ],
+                ],
+            ];
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 dashboard widget failed', [], $exception);
+        }
+
+        return $widgets;
     }
 
     public static function t(string $key): string

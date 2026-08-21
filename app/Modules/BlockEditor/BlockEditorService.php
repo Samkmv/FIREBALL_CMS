@@ -189,7 +189,7 @@ final class BlockEditorService
             'code' => $this->blockType('code', 'admin_post_builder_block_code', 'ci-code', ['language' => 'html', 'code' => '']),
             'divider' => $this->blockType('divider', 'editor_block_divider', 'ci-minus', ['style' => 'solid']),
             'faq' => $this->blockType('faq', 'editor_block_faq', 'ci-help-circle', ['items' => [['question' => '', 'answer' => '']]]),
-            'button' => $this->blockType('button', 'editor_block_button', 'ci-square', ['text' => 'Button', 'url' => '', 'style' => 'primary', 'align' => 'left']),
+            'button' => $this->blockType('button', 'editor_block_button', 'ci-button', ['text' => 'Button', 'url' => '', 'style' => 'primary', 'align' => 'left']),
             'embed' => $this->blockType('embed', 'editor_block_embed', 'ci-external-link', ['url' => '', 'caption' => '']),
         ];
 
@@ -440,6 +440,8 @@ final class BlockEditorService
             'tablet' => $this->translateOrFallback('editor_device_tablet', 'Tablet'),
             'mobile' => $this->translateOrFallback('editor_device_mobile', 'Mobile'),
             'caption' => $this->translateOrFallback('editor_caption', 'Caption'),
+            'embedTitle' => $this->translateOrFallback('editor_block_embed', 'Embedded content'),
+            'embedUrlHint' => $this->translateOrFallback('editor_embed_url_hint', 'Paste a supported URL in block settings'),
             'rows' => $this->translateOrFallback('editor_rows', 'Rows'),
             'columns' => $this->translateOrFallback('editor_columns', 'Columns'),
             'headerRow' => $this->translateOrFallback('editor_header_row', 'Header row'),

@@ -19,47 +19,60 @@ $analyticsI18nJson = json_encode([
     'empty' => return_translation('admin_table_empty'),
     'unknown' => return_translation('admin_analytics_country_unknown'),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+$requestSummary = is_array($request_summary ?? null) ? $request_summary : [];
+$requestItems = is_array($requestSummary['items'] ?? null) ? $requestSummary['items'] : [];
+$requestStatusLabels = [
+    'new' => return_translation('admin_support_status_new'),
+    'in_work' => return_translation('admin_support_status_in_work'),
+    'closed' => return_translation('admin_support_status_closed'),
+    'spam' => return_translation('admin_support_status_spam'),
+];
+$releaseData = is_array($engine_release ?? null) ? $engine_release : [];
+$updateData = is_array($update_center ?? null) ? $update_center : [];
+$lastUpdateCheck = is_array($updateData['last_check'] ?? null) ? $updateData['last_check'] : [];
+$installedVersion = (string)($releaseData['version'] ?? $updateData['local']['version'] ?? '—');
+$remoteVersion = trim((string)($lastUpdateCheck['remote_version'] ?? ''));
+$hasUpdate = !empty($lastUpdateCheck['update_available']);
+if ($hasUpdate && $remoteVersion !== '') {
+    $versionMeta = str_replace(':version', $remoteVersion, return_translation('admin_dashboard_update_available_version'));
+} elseif ($lastUpdateCheck !== [] && (string)($lastUpdateCheck['status'] ?? '') === 'ok') {
+    $versionMeta = return_translation('admin_dashboard_version_current');
+} else {
+    $versionMeta = return_translation('admin_dashboard_check_updates');
+}
 
 $statCards = [
     [
-        'label' => return_translation('admin_stat_pages'),
-        'value' => (int)($stats['pages'] ?? 0),
-        'icon' => 'ci-file',
+        'label' => return_translation('admin_stat_new_contacts'),
+        'value' => (int)($stats['contact_requests_new'] ?? 0),
+        'icon' => 'ci-bell',
+        'variant' => 'is-primary',
+        'href' => base_href('/admin/support/requests?status=new'),
+        'meta' => return_translation('admin_dashboard_requires_attention'),
+    ],
+    [
+        'label' => return_translation('admin_stat_contacts'),
+        'value' => (int)($stats['contact_requests'] ?? 0),
+        'icon' => 'ci-inbox',
         'variant' => 'is-blue',
-        'href' => base_href('/admin/pages'),
-        'meta' => return_translation('admin_dashboard_manage_content'),
-    ],
-    [
-        'label' => return_translation('admin_stat_posts'),
-        'value' => (int)($stats['posts'] ?? 0),
-        'icon' => 'ci-file-text',
-        'variant' => 'is-purple',
-        'href' => base_href('/admin/posts'),
-        'meta' => return_translation('admin_dashboard_manage_content'),
-    ],
-    [
-        'label' => return_translation('admin_dashboard_active_plugins'),
-        'value' => (int)($stats['active_plugins'] ?? 0),
-        'icon' => 'ci-box',
-        'variant' => 'is-pink',
-        'href' => base_href('/admin/plugins'),
-        'meta' => return_translation('admin_dashboard_extensions'),
+        'href' => base_href('/admin/support/requests'),
+        'meta' => return_translation('admin_dashboard_all_requests'),
     ],
     [
         'label' => return_translation('admin_stat_users'),
         'value' => (int)($stats['users'] ?? 0),
         'icon' => 'ci-user',
-        'variant' => 'is-blue',
+        'variant' => 'is-pink',
         'href' => base_href('/admin/users'),
         'meta' => return_translation('admin_dashboard_team'),
     ],
     [
-        'label' => return_translation('admin_dashboard_system_health'),
-        'value' => return_translation('admin_dashboard_system_ok'),
-        'icon' => 'ci-check-circle',
-        'variant' => 'is-green',
+        'label' => return_translation('admin_dashboard_update_version'),
+        'value' => $installedVersion,
+        'icon' => $hasUpdate ? 'ci-download' : 'ci-refresh-cw',
+        'variant' => $hasUpdate ? 'is-primary' : 'is-green',
         'href' => check_creator() ? base_href('/admin/updates') : base_href('/admin/settings'),
-        'meta' => return_translation('admin_dashboard_all_operational'),
+        'meta' => $versionMeta,
     ],
 ];
 $statCards = apply_filters('admin_dashboard_stat_cards', $statCards, $stats, $currentUser);
@@ -131,6 +144,7 @@ if (!is_array($activityItems)) {
 $pluginWidgets = apply_filters_safe('admin_dashboard_widgets', [], [
     'stats' => $stats,
     'user' => $currentUser,
+    'plugins' => (array)($active_plugins ?? []),
 ]);
 if (!is_array($pluginWidgets)) {
     $pluginWidgets = [];
@@ -157,6 +171,141 @@ echo view()->renderPartial('admin/shell_open', [
         </a>
     <?php endforeach; ?>
 </section>
+
+<header class="fb-dashboard-section-heading">
+    <div>
+        <h2><?= print_translation('admin_dashboard_work_summary') ?></h2>
+        <p><?= print_translation('admin_dashboard_work_summary_subtitle') ?></p>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/support/requests') ?>">
+        <?= print_translation('admin_dashboard_all_requests') ?>
+    </a>
+</header>
+
+<section class="fb-dashboard-focus-grid" aria-label="<?= htmlSC(return_translation('admin_dashboard_work_summary')) ?>">
+    <article class="fb-card fb-dashboard-widget fb-dashboard-requests-card">
+        <header class="fb-card-header">
+            <div>
+                <h2 class="fb-card-title"><?= print_translation('admin_dashboard_recent_requests') ?></h2>
+                <p class="fb-card-subtitle"><?= print_translation('admin_dashboard_recent_requests_subtitle') ?></p>
+            </div>
+            <span class="fb-dashboard-count-badge"><?= (int)($requestSummary['new'] ?? 0) ?> <?= print_translation('admin_support_status_new') ?></span>
+        </header>
+        <div class="fb-card-body pt-3">
+            <div class="fb-request-status-grid" aria-label="<?= htmlSC(return_translation('admin_contacts_col_status')) ?>">
+                <?php foreach (['new', 'in_work', 'closed'] as $requestStatus): ?>
+                    <a class="fb-request-status fb-request-status--<?= htmlSC($requestStatus) ?>" href="<?= base_href('/admin/support/requests?status=' . $requestStatus) ?>">
+                        <strong><?= (int)($requestSummary[$requestStatus] ?? 0) ?></strong>
+                        <span><?= htmlSC((string)($requestStatusLabels[$requestStatus] ?? $requestStatus)) ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if ($requestItems !== []): ?>
+                <ul class="fb-request-list">
+                    <?php foreach ($requestItems as $requestItem): ?>
+                        <?php
+                        if (!is_array($requestItem)) { continue; }
+                        $requestId = (int)($requestItem['id'] ?? 0);
+                        $requestStatus = (string)($requestItem['status'] ?? 'new');
+                        if (!isset($requestStatusLabels[$requestStatus])) { $requestStatus = 'new'; }
+                        $requestDate = strtotime((string)($requestItem['created_at'] ?? '')) ?: time();
+                        ?>
+                        <li class="fb-request-item">
+                            <span class="fb-request-avatar" aria-hidden="true"><?= htmlSC(mb_strtoupper(mb_substr(trim((string)($requestItem['name'] ?? '?')), 0, 1))) ?></span>
+                            <div class="fb-request-copy">
+                                <a class="fb-request-title" href="<?= base_href('/admin/support/requests/reply/' . $requestId) ?>"><?= htmlSC((string)($requestItem['subject'] ?? '')) ?></a>
+                                <span class="fb-request-meta"><?= htmlSC((string)($requestItem['name'] ?? '')) ?> · <?= htmlSC(date('d.m.Y H:i', $requestDate)) ?></span>
+                            </div>
+                            <span class="fb-request-badge is-<?= htmlSC($requestStatus) ?>"><?= htmlSC((string)$requestStatusLabels[$requestStatus]) ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <div class="fb-empty-state fb-empty-state--compact">
+                    <div><span class="fb-empty-state-icon"><i class="ci-inbox" aria-hidden="true"></i></span><p class="mb-0"><?= print_translation('admin_contacts_empty') ?></p></div>
+                </div>
+            <?php endif; ?>
+        </div>
+    </article>
+
+    <article class="fb-card fb-dashboard-widget fb-dashboard-content-card">
+        <header class="fb-card-header">
+            <div>
+                <h2 class="fb-card-title"><?= print_translation('admin_dashboard_content_summary') ?></h2>
+                <p class="fb-card-subtitle"><?= print_translation('admin_dashboard_content_summary_subtitle') ?></p>
+            </div>
+        </header>
+        <div class="fb-card-body">
+            <div class="fb-content-summary-list">
+                <?php foreach ([
+                    [return_translation('admin_stat_posts'), (int)($stats['posts'] ?? 0), 'ci-file-text', '/admin/posts'],
+                    [return_translation('admin_stat_pages'), (int)($stats['pages'] ?? 0), 'ci-file', '/admin/pages'],
+                    [return_translation('admin_stat_categories'), (int)($stats['categories'] ?? 0), 'ci-folder', '/admin/categories'],
+                    [return_translation('admin_stat_support_kb_articles'), (int)($stats['support_kb_articles'] ?? 0), 'ci-book-open', '/admin/support/knowledge-base'],
+                    [return_translation('admin_stat_support_faq'), (int)($stats['support_faq'] ?? 0), 'ci-help-circle', '/admin/support/faq'],
+                ] as $contentItem): ?>
+                    <a class="fb-content-summary-item" href="<?= base_href((string)$contentItem[3]) ?>">
+                        <span class="fb-content-summary-icon"><i class="<?= htmlSC((string)$contentItem[2]) ?>" aria-hidden="true"></i></span>
+                        <span><?= htmlSC((string)$contentItem[0]) ?></span>
+                        <strong><?= (int)$contentItem[1] ?></strong>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </article>
+</section>
+
+<?php if ($pluginWidgets !== []): ?>
+    <header class="fb-dashboard-section-heading">
+        <div>
+            <h2><?= print_translation('admin_dashboard_plugin_widgets') ?></h2>
+            <p><?= print_translation('admin_dashboard_plugin_widgets_subtitle') ?></p>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/plugins') ?>"><?= print_translation('admin_dashboard_manage_plugins') ?></a>
+    </header>
+
+    <section class="fb-dashboard-plugin-grid" aria-label="<?= htmlSC(return_translation('admin_dashboard_plugin_widgets')) ?>">
+        <?php foreach ($pluginWidgets as $pluginWidget): ?>
+            <?php
+            if (!is_array($pluginWidget)) { continue; }
+            $pluginMetrics = is_array($pluginWidget['metrics'] ?? null) ? $pluginWidget['metrics'] : [];
+            $pluginContent = (string)($pluginWidget['content'] ?? '');
+            if ($pluginMetrics === [] && $pluginContent === '') { continue; }
+            $span = max(1, min(3, (int)($pluginWidget['span'] ?? 1)));
+            ?>
+            <article class="fb-card fb-dashboard-widget fb-plugin-widget<?= $span > 1 ? ' fb-dashboard-span-' . $span : '' ?>">
+                <header class="fb-card-header">
+                    <div class="fb-plugin-widget-heading">
+                        <span class="fb-plugin-widget-icon"><i class="<?= htmlSC((string)($pluginWidget['icon'] ?? 'ci-box')) ?>" aria-hidden="true"></i></span>
+                        <div>
+                            <?php if (!empty($pluginWidget['title'])): ?><h2 class="fb-card-title"><?= htmlSC((string)$pluginWidget['title']) ?></h2><?php endif; ?>
+                            <?php if (!empty($pluginWidget['subtitle'])): ?><p class="fb-card-subtitle"><?= htmlSC((string)$pluginWidget['subtitle']) ?></p><?php endif; ?>
+                        </div>
+                    </div>
+                    <?php if (!empty($pluginWidget['href'])): ?>
+                        <a class="btn btn-sm btn-link" href="<?= htmlSC((string)$pluginWidget['href']) ?>" aria-label="<?= htmlSC(return_translation('admin_dashboard_open_widget')) ?>"><i class="ci-arrow-up-right" aria-hidden="true"></i></a>
+                    <?php endif; ?>
+                </header>
+                <div class="fb-card-body">
+                    <?php if ($pluginMetrics !== []): ?>
+                        <div class="fb-plugin-metric-grid">
+                            <?php foreach ($pluginMetrics as $pluginMetric): ?>
+                                <?php if (!is_array($pluginMetric) || !array_key_exists('value', $pluginMetric)) { continue; } ?>
+                                <?php $metricTone = in_array((string)($pluginMetric['tone'] ?? ''), ['success', 'warning', 'danger', 'info'], true) ? (string)$pluginMetric['tone'] : 'neutral'; ?>
+                                <div class="fb-plugin-metric is-<?= htmlSC($metricTone) ?>">
+                                    <strong><?= htmlSC((string)$pluginMetric['value']) ?></strong>
+                                    <span><?= htmlSC((string)($pluginMetric['label'] ?? '')) ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($pluginContent !== ''): ?><?= $pluginContent ?><?php endif; ?>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </section>
+<?php endif; ?>
 
 <header class="fb-dashboard-section-heading">
     <div>
@@ -460,20 +609,6 @@ echo view()->renderPartial('admin/shell_open', [
         </div>
     </article>
 
-    <?php foreach ($pluginWidgets as $pluginWidget): ?>
-        <?php
-        if (!is_array($pluginWidget) || empty($pluginWidget['content'])) {
-            continue;
-        }
-        $span = max(1, min(3, (int)($pluginWidget['span'] ?? 1)));
-        ?>
-        <article class="fb-card fb-dashboard-widget<?= $span > 1 ? ' fb-dashboard-span-' . $span : '' ?>">
-            <?php if (!empty($pluginWidget['title'])): ?>
-                <header class="fb-card-header"><h2 class="fb-card-title"><?= htmlSC((string)$pluginWidget['title']) ?></h2></header>
-            <?php endif; ?>
-            <div class="fb-card-body"><?= (string)$pluginWidget['content'] ?></div>
-        </article>
-    <?php endforeach; ?>
 </section>
 
 <?= view()->renderPartial('admin/shell_close') ?>

@@ -221,6 +221,43 @@ class ContactRequest
     }
 
     /**
+     * Возвращает компактную сводку и последние заявки для главной страницы админки.
+     */
+    public function getDashboardSummary(int $limit = 6): array
+    {
+        $this->ensureTableExists();
+        $limit = max(1, min(12, $limit));
+
+        $counts = db()->query(
+            "SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(status = 'new'), 0) AS new_count,
+                COALESCE(SUM(status = 'in_work'), 0) AS in_work_count,
+                COALESCE(SUM(status = 'closed'), 0) AS closed_count,
+                COALESCE(SUM(status = 'spam'), 0) AS spam_count,
+                COALESCE(SUM(is_viewed = 0), 0) AS unread_count
+             FROM {$this->table}"
+        )->getOne() ?: [];
+
+        $items = db()->query(
+            "SELECT id, name, email, phone, subject, status, is_viewed, created_at
+             FROM {$this->table}
+             ORDER BY created_at DESC, id DESC
+             LIMIT {$limit}"
+        )->get() ?: [];
+
+        return [
+            'total' => (int)($counts['total'] ?? 0),
+            'new' => (int)($counts['new_count'] ?? 0),
+            'in_work' => (int)($counts['in_work_count'] ?? 0),
+            'closed' => (int)($counts['closed_count'] ?? 0),
+            'spam' => (int)($counts['spam_count'] ?? 0),
+            'unread' => (int)($counts['unread_count'] ?? 0),
+            'items' => array_values(array_filter($items, 'is_array')),
+        ];
+    }
+
+    /**
      * Возвращает последние непросмотренные заявки в формате для уведомлений.
      */
     public function getUnreadNotificationItems(int $limit = 8): array

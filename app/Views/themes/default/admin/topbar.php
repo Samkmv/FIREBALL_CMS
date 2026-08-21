@@ -19,7 +19,7 @@ $adminLanguageSwitchPath = uri_without_lang() ?: '/';
         </button>
 
         <a class="fb-topbar-brand d-lg-none" href="<?= base_href('/admin') ?>">
-            <span class="fb-brand-mark" aria-hidden="true"><i class="ci-zap"></i></span>
+            <span class="fb-brand-mark" aria-hidden="true"><img src="<?= base_url('/assets/default/icons/fireball-cms.svg') ?>" alt=""></span>
             <span>FIREBALL</span>
         </a>
     </div>

@@ -24,11 +24,24 @@ $scripts = (string)file_get_contents($root . '/public/assets/default/js/admin-ui
 $mainScripts = (string)file_get_contents($root . '/public/assets/default/js/main.js');
 $deleteModalScripts = (string)file_get_contents($root . '/public/assets/default/js/admin-delete-modal.js');
 $defaultLayout = (string)file_get_contents($root . '/app/Views/layouts/default.php');
+$themeHeader = (string)file_get_contents($root . '/themes/default/partials/header.php');
+$publicStyles = (string)file_get_contents($root . '/public/assets/default/css/style.css');
+$themeStyles = (string)file_get_contents($root . '/themes/default/assets/css/style.css');
+$pwaService = (string)file_get_contents($root . '/app/Services/PwaService.php');
 $routes = (string)file_get_contents($root . '/config/routes.php');
 $notificationController = (string)file_get_contents($root . '/app/Controllers/NotificationController.php');
 $notificationCenter = (string)file_get_contents($root . '/app/Models/NotificationCenter.php');
+$brandIconPath = $root . '/public/assets/default/icons/fireball-cms.svg';
+$brandIcon = (string)file_get_contents($brandIconPath);
 
 admin_ui_assert(str_contains($topbar, 'fb-language-switcher'), 'The admin language switcher is missing.');
+admin_ui_assert(is_file($brandIconPath) && str_contains($brandIcon, '<svg') && str_contains($brandIcon, 'fireballSurface'), 'The FIREBALL vector brand icon is missing or invalid.');
+admin_ui_assert(str_contains($topbar, '/assets/default/icons/fireball-cms.svg') && str_contains($sidebar, '/assets/default/icons/fireball-cms.svg'), 'The admin shell does not use the shared FIREBALL vector icon.');
+admin_ui_assert(str_contains($defaultLayout, 'site-brand__mark') && str_contains($defaultLayout, '/assets/default/icons/fireball-cms.svg'), 'The public shell does not use the shared FIREBALL vector icon.');
+admin_ui_assert(str_contains($themeHeader, 'site-brand__mark') && str_contains($themeHeader, '/assets/default/icons/fireball-cms.svg'), 'The active public theme does not use the shared FIREBALL vector icon.');
+admin_ui_assert(str_contains($publicStyles, '.site-brand__mark') && str_contains($themeStyles, '.site-brand__mark'), 'The public FIREBALL vector icon has no responsive style.');
+admin_ui_assert(str_contains($publicStyles, 'flex: 0 0 auto;') && str_contains($publicStyles, 'max-width: none;'), 'The public FIREBALL logo can still be squeezed by the navigation layout.');
+admin_ui_assert(str_contains($pwaService, "WWW . '/assets/default/icons/fireball-cms.svg'") && str_contains($pwaService, "'type' => \$useDefaultVector ? 'image/svg+xml' : 'image/png'"), 'The default FIREBALL SVG is not connected to the site favicon.');
 admin_ui_assert(str_contains($topbar, 'ci-globe'), 'The admin language switcher has no globe icon.');
 admin_ui_assert(str_contains($topbar, "return_translation('admin_ui_language')"), 'The language switcher label is not localized.');
 admin_ui_assert(!str_contains($sidebar, "base_href('/chat')"), 'Chat must not remain in the admin sidebar.');

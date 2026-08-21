@@ -32,8 +32,12 @@ $value = static fn(string $key, mixed $default = ''): mixed => $values[$key] ?? 
         <hr class="my-4">
         <div class="row g-3">
             <?php foreach ([['is_active', 'subscriptions_field_active', true], ['is_public', 'subscriptions_field_public', true], ['is_recurring', 'subscriptions_field_recurring', false]] as [$key, $label, $default]): ?>
-                <div class="col-md-4"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= $value($key, $default) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div>
+                <div class="col-md-6 col-xl-3"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= $value($key, $default) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div>
             <?php endforeach; ?>
+            <div class="col-md-6 col-xl-3">
+                <label class="form-check"><input class="form-check-input" type="checkbox" name="is_popular" value="1" <?= $value('is_popular', false) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_popular')) ?></span></label>
+                <div class="form-text"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_popular_hint')) ?></div>
+            </div>
         </div>
         <div class="d-flex gap-2 mt-4"><button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button><a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/subscriptions/plans') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel')) ?></a></div>
     </form>

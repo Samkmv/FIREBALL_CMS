@@ -27,7 +27,9 @@
         </button>
 
         <!-- Navbar brand (Logo) -->
-        <a class="navbar-brand fs-2 p-0 pe-lg-2 pe-xxl-0 me-0 me-sm-3 me-md-4 me-xxl-5" href="<?= base_href('/')?>"><?= htmlSC($siteTitle) ?></a>
+        <a class="navbar-brand site-brand fs-2 p-0 pe-lg-2 pe-xxl-0 me-0 me-sm-3 me-md-4 me-xxl-5" href="<?= base_href('/')?>">
+            <span class="site-brand__title"><?= htmlSC($siteTitle) ?></span>
+        </a>
 
         <!-- Categories dropdown visible on screens > 991px wide (lg breakpoint) -->
         <div class="dropdown d-none d-lg-block w-100 me-4" style="max-width: 240px">

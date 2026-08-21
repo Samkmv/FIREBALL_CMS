@@ -142,11 +142,16 @@ class PwaService
             }
         }
 
+        $defaultVectorPath = WWW . '/assets/default/icons/fireball-cms.svg';
+        $useDefaultVector = ($source['kind'] ?? 'default') === 'default' && is_file($defaultVectorPath);
+
         return [
             'source' => $source,
             'favicon' => [
-                'src' => $this->withVersion(base_url($publicDir . '/favicon-32x32.png'), $targetDir . '/favicon-32x32.png'),
-                'type' => 'image/png',
+                'src' => $useDefaultVector
+                    ? $this->withVersion(base_url('/assets/default/icons/fireball-cms.svg'), $defaultVectorPath)
+                    : $this->withVersion(base_url($publicDir . '/favicon-32x32.png'), $targetDir . '/favicon-32x32.png'),
+                'type' => $useDefaultVector ? 'image/svg+xml' : 'image/png',
             ],
             'apple' => [
                 'src' => $this->withVersion(base_url($publicDir . '/apple-touch-icon.png'), $targetDir . '/apple-touch-icon.png'),
@@ -156,7 +161,9 @@ class PwaService
             'maskable' => is_file($targetDir . '/icon-maskable-512.png')
                 ? $this->withVersion(base_url($publicDir . '/icon-maskable-512.png'), $targetDir . '/icon-maskable-512.png')
                 : '',
-            'svg' => '',
+            'svg' => $useDefaultVector
+                ? $this->withVersion(base_url('/assets/default/icons/fireball-cms.svg'), $defaultVectorPath)
+                : '',
         ];
     }
 

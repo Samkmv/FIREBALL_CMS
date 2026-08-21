@@ -5,7 +5,7 @@
     const allowedTags = new Set([
         'a', 'abbr', 'b', 'blockquote', 'br', 'caption', 'code', 'col', 'colgroup',
         'del', 'div', 'em', 'figcaption', 'figure', 'h1', 'h2', 'h3', 'h4', 'h5',
-        'h6', 'hr', 'i', 'iframe', 'img', 'ins', 'kbd', 'li', 'mark', 'ol', 'p', 'pre',
+        'button', 'h6', 'hr', 'i', 'iframe', 'img', 'ins', 'kbd', 'li', 'mark', 'ol', 'p', 'pre',
         'q', 's', 'small', 'span', 'strong', 'sub', 'sup', 'table', 'tbody',
         'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul', 'video', 'audio', 'source'
     ]);
@@ -111,7 +111,8 @@
         }
     }
 
-    function sanitizeHtml(html, skipFilters) {
+    function sanitizeHtml(html, skipFilters, options) {
+        const settings = Object.assign({ htmlBlock: false }, options || {});
         const parser = new DOMParser();
         const parsed = parser.parseFromString('<div data-sanitize-root>' + String(html || '') + '</div>', 'text/html');
         const root = parsed.querySelector('[data-sanitize-root]');
@@ -122,7 +123,7 @@
         normalizeOfficeMarkup(root);
         Array.from(root.querySelectorAll('*')).forEach(function (element) {
             const tag = element.tagName.toLowerCase();
-            if (dropWithContent.has(tag)) {
+            if (dropWithContent.has(tag) && !(settings.htmlBlock && tag === 'button')) {
                 element.remove();
                 return;
             }
@@ -151,7 +152,13 @@
             Array.from(element.attributes).forEach(function (attribute) {
                 const name = attribute.name.toLowerCase();
                 let value = String(attribute.value || '');
-                if (name.indexOf('on') === 0 || !allowedAttributes.has(name)) {
+                const htmlBlockAttribute = settings.htmlBlock && (
+                    name === 'class' ||
+                    name === 'id' ||
+                    name.indexOf('data-') === 0 ||
+                    name.indexOf('aria-') === 0
+                );
+                if (name.indexOf('on') === 0 || (!allowedAttributes.has(name) && !htmlBlockAttribute)) {
                     element.removeAttribute(attribute.name);
                     return;
                 }
@@ -175,20 +182,31 @@
                     element.setAttribute('rel', 'noopener noreferrer');
                 }
             });
+            if (settings.htmlBlock && tag === 'button') {
+                ['form', 'formaction', 'formenctype', 'formmethod', 'formnovalidate', 'formtarget', 'name', 'value'].forEach(function (attributeName) {
+                    element.removeAttribute(attributeName);
+                });
+                element.setAttribute('type', 'button');
+            }
         });
 
         const output = root.innerHTML.trim();
         if (!skipFilters && typeof api.applyFilters === 'function') {
-            const filtered = String(api.applyFilters('sanitize:html', output, { original: html }) || '');
-            return filtered === output ? output : sanitizeHtml(filtered, true);
+            const filtered = String(api.applyFilters('sanitize:html', output, { original: html, htmlBlock: settings.htmlBlock }) || '');
+            return filtered === output ? output : sanitizeHtml(filtered, true, settings);
         }
         return output;
+    }
+
+    function sanitizeHtmlBlock(html) {
+        return sanitizeHtml(html, false, { htmlBlock: true });
     }
 
     api.sanitizer = {
         escapeHtml: escapeHtml,
         safeUrl: safeUrl,
         sanitizeStyle: sanitizeStyle,
-        sanitizeHtml: sanitizeHtml
+        sanitizeHtml: sanitizeHtml,
+        sanitizeHtmlBlock: sanitizeHtmlBlock
     };
 })(window);

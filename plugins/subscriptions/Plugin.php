@@ -108,6 +108,7 @@ final class FireballPluginSubscriptions implements PluginInterface
             return array_values(array_unique($assets));
         });
         add_filter('subscriptions_access_service', static fn(mixed $service): AccessService => $service instanceof AccessService ? $service : new AccessService());
+        add_filter('admin_dashboard_widgets', [self::class, 'dashboardWidgets'], 10);
         add_filter('fireball_scheduled_jobs', static function (array $jobs): array {
             $jobs['subscriptions_maintenance'] = [
                 'class' => SubscriptionsMaintenanceJob::class,
@@ -117,6 +118,42 @@ final class FireballPluginSubscriptions implements PluginInterface
 
             return $jobs;
         });
+    }
+
+    public static function dashboardWidgets(array $widgets, array $context = []): array
+    {
+        try {
+            $active = (int)db()->query(
+                "SELECT COUNT(*) FROM subscriptions
+                 WHERE status IN ('active', 'grace_period', 'cancelled')
+                   AND starts_at <= NOW() AND COALESCE(grace_ends_at, ends_at) > NOW()"
+            )->getColumn();
+            $expiring = (int)db()->query(
+                "SELECT COUNT(*) FROM subscriptions
+                 WHERE status IN ('active', 'cancelled')
+                   AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)"
+            )->getColumn();
+            $failed = (int)db()->query(
+                "SELECT COUNT(*) FROM subscription_payments WHERE status = 'failed'"
+            )->getColumn();
+
+            $widgets[] = [
+                'plugin' => self::SLUG,
+                'title' => self::t('subscriptions_admin_title'),
+                'subtitle' => self::t('subscriptions_admin_subtitle'),
+                'icon' => 'ci-award',
+                'href' => base_href('/admin/subscriptions'),
+                'metrics' => [
+                    ['label' => self::t('subscriptions_stat_active'), 'value' => $active, 'tone' => 'success'],
+                    ['label' => self::t('subscriptions_stat_expiring'), 'value' => $expiring, 'tone' => $expiring > 0 ? 'warning' : 'neutral'],
+                    ['label' => self::t('subscriptions_stat_failed'), 'value' => $failed, 'tone' => $failed > 0 ? 'danger' : 'neutral'],
+                ],
+            ];
+        } catch (\Throwable $exception) {
+            log_error_details('Subscriptions dashboard widget failed', [], $exception);
+        }
+
+        return $widgets;
     }
 
     public static function renderPostSettings(array $post, array $formData = []): void

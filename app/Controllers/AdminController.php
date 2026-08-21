@@ -81,8 +81,9 @@ class AdminController extends BaseController
             'direction' => 'desc',
         ]);
         $stats['pages'] = (int)($latestPages['total'] ?? 0);
-        $stats['contact_requests'] = $this->contactRequests->countAll();
-        $stats['contact_requests_new'] = $this->contactRequests->countNew();
+        $requestSummary = $this->contactRequests->getDashboardSummary(6);
+        $stats['contact_requests'] = (int)($requestSummary['total'] ?? 0);
+        $stats['contact_requests_new'] = (int)($requestSummary['new'] ?? 0);
 
         $plugins = [];
         try {
@@ -133,6 +134,7 @@ class AdminController extends BaseController
             'engine_release' => $engineRelease,
             'update_center' => $updateCenter,
             'active_plugins' => $activePlugins,
+            'request_summary' => $requestSummary,
             'latest_pages' => (array)($latestPages['items'] ?? []),
             'recent_activity' => $activity,
             'system_status' => [

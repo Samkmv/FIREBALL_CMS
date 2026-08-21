@@ -51,11 +51,26 @@ $workspaceTitle = $isPageEditor
 $requiredSummary = $translateOrFallback('admin_form_required_summary', 'Заполните обязательные поля:');
 ?>
 
-<div
-    class="fb-editor-workspace"
-    data-editor-workspace
-    data-editor-unsaved-confirm="<?= htmlSC($translateOrFallback('editor_unsaved_confirm', 'Есть несохранённые изменения. Покинуть редактор?')) ?>"
->
+<div class="fb-admin fb-editor-admin" data-fb-admin data-admin-shell>
+    <aside class="fb-sidebar d-none d-lg-flex" data-fb-sidebar aria-label="<?= htmlSC(return_translation('admin_mobile_menu_btn')) ?>">
+        <?= view()->renderPartial('admin/sidebar', ['variant' => 'desktop']) ?>
+    </aside>
+
+    <div
+        class="offcanvas offcanvas-start fb-sidebar-drawer d-lg-none"
+        id="adminSidebar"
+        tabindex="-1"
+        aria-labelledby="adminSidebarLabel"
+        data-bs-theme="dark"
+    >
+        <?= view()->renderPartial('admin/sidebar', ['variant' => 'mobile']) ?>
+    </div>
+
+    <div
+        class="fb-editor-workspace"
+        data-editor-workspace
+        data-editor-unsaved-confirm="<?= htmlSC($translateOrFallback('editor_unsaved_confirm', 'Есть несохранённые изменения. Покинуть редактор?')) ?>"
+    >
     <form
         class="fb-editor-workspace__form"
         action="<?= htmlSC($formAction) ?>"
@@ -77,10 +92,19 @@ $requiredSummary = $translateOrFallback('admin_form_required_summary', 'Запо
 
         <header class="fb-editor-workspace__topbar">
             <div class="fb-editor-workspace__topbar-start">
+                <button
+                    type="button"
+                    class="fb-editor-workspace__icon-button fb-editor-workspace__admin-menu"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#adminSidebar"
+                    aria-controls="adminSidebar"
+                    aria-label="<?= htmlSC(return_translation('admin_mobile_menu_btn')) ?>"
+                >
+                    <i class="ci-menu"></i>
+                </button>
                 <a class="fb-editor-workspace__icon-button" href="<?= htmlSC($listUrl) ?>" data-editor-back aria-label="<?= htmlSC(return_translation('admin_btn_back')) ?>">
                     <i class="ci-arrow-left"></i>
                 </a>
-                <div class="fb-editor-workspace__brand" aria-hidden="true"><i class="ci-edit-3"></i></div>
                 <div class="fb-editor-workspace__identity">
                     <strong><?= htmlSC($workspaceTitle) ?></strong>
                     <span><?= htmlSC($translateOrFallback('editor_title_in_document', 'Название — во вкладке «Документ»')) ?></span>
@@ -343,4 +367,5 @@ $requiredSummary = $translateOrFallback('admin_form_required_summary', 'Запо
             <span class="ms-auto" data-editor-status-saved-at><?= htmlSC($translateOrFallback('editor_last_saved', 'Последнее сохранение')) ?>: —</span>
         </footer>
     </form>
+    </div>
 </div>

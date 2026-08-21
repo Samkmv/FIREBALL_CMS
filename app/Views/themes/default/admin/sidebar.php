@@ -8,7 +8,7 @@ $roleSlug = (string)($currentUser['role'] ?? 'user');
 <div class="fb-sidebar-inner">
     <div class="fb-sidebar-head">
         <a class="fb-brand" href="<?= base_href('/admin') ?>" aria-label="<?= htmlSC(return_translation('admin_dashboard_heading')) ?>">
-            <span class="fb-brand-mark" aria-hidden="true"><i class="ci-zap"></i></span>
+            <span class="fb-brand-mark" aria-hidden="true"><img src="<?= base_url('/assets/default/icons/fireball-cms.svg') ?>" alt=""></span>
             <span class="fb-brand-copy">
                 <strong>FIREBALL</strong>
                 <span>CMS</span>

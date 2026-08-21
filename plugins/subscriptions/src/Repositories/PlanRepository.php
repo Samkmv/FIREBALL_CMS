@@ -44,6 +44,7 @@ final class PlanRepository
             throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_plan_required'));
         }
 
+        $isPopular = !empty($data['is_popular']);
         $values = [
             $slug,
             $name,
@@ -56,6 +57,7 @@ final class PlanRepository
             !empty($data['is_recurring']) ? 1 : 0,
             !empty($data['is_active']) ? 1 : 0,
             !empty($data['is_public']) ? 1 : 0,
+            $isPopular ? 1 : 0,
             max(0, (int)($data['sort_order'] ?? 0)),
         ];
         $now = date('Y-m-d H:i:s');
@@ -67,15 +69,22 @@ final class PlanRepository
                     throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_plan_not_found'));
                 }
                 db()->query(
-                    'UPDATE subscription_plans SET slug = ?, name = ?, description = ?, price_minor = ?, currency = ?, duration_unit = ?, duration_value = ?, grace_period_days = ?, is_recurring = ?, is_active = ?, is_public = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+                    'UPDATE subscription_plans SET slug = ?, name = ?, description = ?, price_minor = ?, currency = ?, duration_unit = ?, duration_value = ?, grace_period_days = ?, is_recurring = ?, is_active = ?, is_public = ?, is_popular = ?, sort_order = ?, updated_at = ? WHERE id = ?',
                     [...$values, $now, $id]
                 );
             } else {
                 db()->query(
-                    'INSERT INTO subscription_plans (slug, name, description, price_minor, currency, duration_unit, duration_value, grace_period_days, is_recurring, is_active, is_public, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    'INSERT INTO subscription_plans (slug, name, description, price_minor, currency, duration_unit, duration_value, grace_period_days, is_recurring, is_active, is_public, is_popular, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [...$values, $now, $now]
                 );
                 $id = (int)db()->getInsertId();
+            }
+
+            if ($isPopular) {
+                db()->query(
+                    'UPDATE subscription_plans SET is_popular = 0, updated_at = ? WHERE id <> ? AND is_popular = 1',
+                    [$now, $id]
+                );
             }
 
             $this->savePermissions($id, $data);
@@ -102,6 +111,7 @@ final class PlanRepository
         $copy['slug'] .= '-copy-' . time();
         $copy['price'] = Money::decimal((int)$plan['price_minor']);
         $copy['is_active'] = 0;
+        $copy['is_popular'] = 0;
         foreach ($plan['permissions'] as $key => $value) {
             $copy['permissions'][$key] = $value;
         }
@@ -210,7 +220,7 @@ final class PlanRepository
         foreach (['id', 'price_minor', 'duration_value', 'grace_period_days', 'sort_order'] as $field) {
             $plan[$field] = (int)$plan[$field];
         }
-        foreach (['is_recurring', 'is_active', 'is_public'] as $field) {
+        foreach (['is_recurring', 'is_active', 'is_public', 'is_popular'] as $field) {
             $plan[$field] = (bool)$plan[$field];
         }
         $plan['permissions'] = $this->permissionRows((int)$plan['id']);
