@@ -3,6 +3,7 @@
 namespace Fireball\VpnManagerV2\Services;
 
 use Fireball\VpnManagerV2\Repositories\ProfileVpnRepository;
+use Fireball\VpnManagerV2\Repositories\VpnAccessRequestRepository;
 use Fireball\VpnManagerV2\Support\ProfileVpnFormatter;
 use Fireball\VpnManagerV2\Support\ProfileVpnInstructions;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
@@ -16,6 +17,7 @@ final class ProfileVpnService
         private readonly ?SettingsService $settings = null,
         private readonly ?CountryFlagService $flags = null,
         private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
+        private readonly ?VpnAccessRequestRepository $accessRequests = null,
     ) {
     }
 
@@ -30,6 +32,14 @@ final class ProfileVpnService
         $settings = ($this->settings ?? new SettingsService())->current();
         $flags = $this->flags ?? new CountryFlagService();
         $subscriptions = array_map([$this, 'presentSubscription'], $repository->subscriptionsForUser($userId));
+        $hasActiveSubscription = array_filter(
+            $subscriptions,
+            static fn(array $subscription): bool => in_array(
+                (string)($subscription['effective_status'] ?? ''),
+                ['active', 'partial_sync', 'sync_error'],
+                true
+            )
+        ) !== [];
         $selected = null;
         $requestedFound = true;
         if ($selectedId !== null) {
@@ -124,6 +134,10 @@ final class ProfileVpnService
 
         return [
             'subscriptions' => $subscriptions,
+            'hasActiveSubscription' => $hasActiveSubscription,
+            'pendingAccessRequest' => $hasActiveSubscription
+                ? null
+                : ($this->accessRequests ?? new VpnAccessRequestRepository())->pendingForUser($userId),
             'selectedSubscription' => $selected,
             'requestedSubscriptionFound' => $requestedFound,
             'servers' => $servers,

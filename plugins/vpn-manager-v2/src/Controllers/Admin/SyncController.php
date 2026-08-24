@@ -75,13 +75,39 @@ final class SyncController
 
     public function logs(): string
     {
-        Permissions::authorize(Permissions::VIEW);
+        Permissions::authorize(Permissions::VIEW_EVENTS);
+
+        $repository = new SyncAuditRepository();
 
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/sync-logs', \FireballPluginVpnManagerV2::viewData('sync-logs', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_logs_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_logs_subtitle'),
-            'logs' => (new SyncAuditRepository())->recent(),
+            'logs' => $repository->recent(),
+            'logCounts' => $repository->counts(),
         ]));
+    }
+
+    public function clearLogs(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SETTINGS);
+        if (!hash_equals('clear_all_vpn_logs', trim((string)request()->post('confirmation', '')))) {
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_clear_logs_confirmation'));
+            response()->redirect(base_href('/admin/plugins/vpn-manager-v2/sync-logs'));
+            return;
+        }
+
+        try {
+            $counts = (new SyncAuditRepository())->clearAllLogs();
+            session()->setFlash('success', sprintf(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_logs_cleared'),
+                (int)$counts['total']
+            ));
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 clear logs failed', [], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_clear_logs'));
+        }
+
+        response()->redirect(base_href('/admin/plugins/vpn-manager-v2/sync-logs'));
     }
 
     public function server(): never

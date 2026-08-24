@@ -16,6 +16,7 @@ use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
 use Fireball\VpnManagerV2\DTO\ThreeXuiHttpResponse;
 use Fireball\VpnManagerV2\DTO\ThreeXuiServerConfig;
 use Fireball\VpnManagerV2\Services\RemoteClientNameGenerator;
+use Fireball\VpnManagerV2\Services\ServerMetricsService;
 
 $assert = static function (bool $condition, string $message): void {
     if (!$condition) {
@@ -82,6 +83,23 @@ $modernTransport = static function (
     if (str_ends_with($path, '/panel/api/inbounds/list')) {
         return $json(['success' => true, 'obj' => []]);
     }
+    if (str_ends_with($path, '/panel/api/server/status')) {
+        return $json(['success' => true, 'obj' => [
+            'cpu' => 12.5,
+            'cpuCores' => 4,
+            'cpuSpeedMhz' => 2400,
+            'mem' => ['current' => 2147483648, 'total' => 8589934592],
+            'swap' => ['current' => 536870912, 'total' => 4294967296],
+            'disk' => ['current' => 10737418240, 'total' => 107374182400],
+            'loads' => [0.25, 0.5, 0.75],
+            'uptime' => 90061,
+            'netIO' => ['up' => 1024, 'down' => 2048],
+            'netTraffic' => ['sent' => 4096, 'recv' => 8192],
+            'tcpCount' => 21,
+            'udpCount' => 8,
+            'xray' => ['state' => 'running', 'version' => '25.8.3'],
+        ]]);
+    }
     if (str_ends_with($path, '/panel/api/clients/get/shared-client')) {
         return $json(['success' => true, 'obj' => ['inboundIds' => [11, 12]]]);
     }
@@ -104,6 +122,7 @@ $modern = new ThreeXuiClient($config('token'), $modernTransport);
 $modern->deleteClient(11, 'shared-id', 'shared-client');
 $modern->deleteClient(11, 'single-id', 'single-client');
 $modern->resetClientTraffic(11, 'single-client');
+$serverMetrics = (new ServerMetricsService())->normalize($modern->serverStatus());
 $sharedDetach = array_values(array_filter(
     $modernCalls,
     static fn(array $call): bool => str_ends_with(
@@ -131,6 +150,25 @@ $assert(count(array_filter(
         '/panel/api/clients/resetTraffic/single-client'
     )
 )) === 1, 'The current client traffic-reset endpoint was not used.');
+$assert(($serverMetrics['cpu']['percent'] ?? null) === 12.5
+    && ($serverMetrics['memory']['percent'] ?? null) === 25.0
+    && ($serverMetrics['swap']['percent'] ?? null) === 12.5
+    && ($serverMetrics['disk']['percent'] ?? null) === 10.0
+    && ($serverMetrics['load']['fifteen'] ?? null) === 0.75
+    && ($serverMetrics['uptime_seconds'] ?? null) === 90061
+    && ($serverMetrics['connections']['tcp'] ?? null) === 21
+    && ($serverMetrics['xray']['state'] ?? null) === 'running',
+    'The 3x-ui server status response was not normalized for the overview.');
+$statusCalls = array_values(array_filter(
+    $modernCalls,
+    static fn(array $call): bool => str_ends_with(
+        (string)parse_url($call['url'], PHP_URL_PATH),
+        '/panel/api/server/status'
+    )
+));
+$assert(count($statusCalls) === 1
+    && in_array('Authorization: Bearer admin-token', $statusCalls[0]['headers'] ?? [], true),
+    'The server metrics request did not use the configured 3x-ui token.');
 
 $legacyCalls = [];
 $legacyTransport = static function (
@@ -177,6 +215,7 @@ echo json_encode([
         'modern_shared_client_detach',
         'modern_single_client_delete',
         'modern_traffic_reset',
+        'server_status_metrics',
         'legacy_delete_reset_fallbacks',
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;

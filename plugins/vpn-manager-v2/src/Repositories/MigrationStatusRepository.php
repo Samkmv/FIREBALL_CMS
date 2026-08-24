@@ -15,6 +15,7 @@ final class MigrationStatusRepository
         'vpn_v2_external_sources',
         'vpn_v2_events',
         'vpn_v2_notifications',
+        'vpn_v2_access_requests',
         'vpn_v2_reconcile_operations',
         'vpn_v2_profiles',
         'vpn_v2_operations',

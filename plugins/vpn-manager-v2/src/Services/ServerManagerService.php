@@ -65,6 +65,44 @@ final class ServerManagerService
         return $enabled;
     }
 
+    public function delete(int $id): string
+    {
+        $repository = $this->repository();
+        $database = db();
+        $ownsTransaction = !$database->inTransaction();
+        if ($ownsTransaction) {
+            $database->beginTransaction();
+        }
+
+        try {
+            $server = $repository->findForUpdate($id);
+            if (!$server) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_not_found'));
+            }
+            $dependencies = $repository->dependencies($id);
+            if ((int)$dependencies['plan_nodes'] > 0 || (int)$dependencies['subscription_nodes'] > 0) {
+                throw new ValidationException(sprintf(
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_delete_in_use'),
+                    (int)$dependencies['plan_nodes'],
+                    (int)$dependencies['subscription_nodes']
+                ));
+            }
+            if (!$repository->delete($id, $server)) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_not_found'));
+            }
+            if ($ownsTransaction) {
+                $database->commit();
+            }
+
+            return (string)$server['name'];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
     private function validateRequiredSecrets(
         array $input,
         array $existing,

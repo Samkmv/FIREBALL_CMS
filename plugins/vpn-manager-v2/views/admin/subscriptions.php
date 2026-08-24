@@ -6,6 +6,7 @@ use Fireball\VpnManagerV2\Support\AdminTableState;
 use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 
 $subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
+$accessRequests = is_array($accessRequests ?? null) ? $accessRequests : [];
 $returnQuery = AdminTableState::sanitize($returnQuery ?? '');
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/create');
 $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
@@ -105,6 +106,35 @@ foreach ($subscriptions as $subscription) {
 ]) ?>
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
+
+<?php if ($accessRequests !== []): ?>
+    <section class="border rounded-5 p-3 p-md-4 mb-4" aria-labelledby="vpnV2AccessRequestsTitle">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div>
+                <h2 class="h5 mb-1" id="vpnV2AccessRequestsTitle"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_requests_title')) ?></h2>
+                <p class="small text-body-secondary mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_requests_help')) ?></p>
+            </div>
+            <span class="badge rounded-pill text-bg-warning"><?= count($accessRequests) ?></span>
+        </div>
+        <div class="vstack gap-2">
+            <?php foreach ($accessRequests as $accessRequest): ?>
+                <div class="bg-body-tertiary rounded-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div>
+                        <div class="fw-semibold"><?= htmlSC((string)($accessRequest['user_name'] ?? '')) ?></div>
+                        <div class="small text-body-secondary">
+                            <?= htmlSC((string)($accessRequest['user_login'] ?? '')) ?> ·
+                            <?= htmlSC((string)($accessRequest['user_email'] ?? '')) ?> ·
+                            <?= htmlSC((string)($accessRequest['requested_at'] ?? '')) ?>
+                        </div>
+                    </div>
+                    <a class="btn btn-sm btn-dark rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/create?user_id=' . (int)$accessRequest['user_id'] . '&request_id=' . (int)$accessRequest['id'])) ?>">
+                        <i class="ci-plus me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_create_subscription')) ?>
+                    </a>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+<?php endif; ?>
 
 <div class="border rounded-5 p-3 p-md-4">
     <?= view()->renderPartial('admin/partials/table', [

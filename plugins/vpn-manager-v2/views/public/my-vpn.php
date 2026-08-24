@@ -16,6 +16,8 @@ $supportName = trim((string)($supportName ?? ''));
 $supportUrl = trim((string)($supportUrl ?? ''));
 $profileInfoText = trim((string)($profileInfoText ?? ''));
 $showQrInProfile = !empty($showQrInProfile);
+$hasActiveSubscription = !empty($hasActiveSubscription);
+$pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccessRequest : null;
 ?>
 
 <section class="container py-4 py-md-5" data-vpn-v2-profile>
@@ -40,15 +42,44 @@ $showQrInProfile = !empty($showQrInProfile);
                 </a>
             </div>
 
-            <?php if ($subscriptions === [] || $selected === null): ?>
-                <div class="border rounded-5 p-4 p-md-5 text-center" data-vpn-v2-profile-empty>
+            <?php if (!$hasActiveSubscription): ?>
+                <section class="border rounded-5 p-4 p-md-5 mb-4 text-center" data-vpn-v2-access-request>
                     <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary mb-3 p-3">
                         <i class="ci-server fs-3" aria-hidden="true"></i>
                     </div>
-                    <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_empty_title')) ?></h2>
-                    <p class="text-body-secondary mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_empty_text')) ?></p>
-                </div>
-            <?php else: ?>
+                    <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t(
+                        $subscriptions === []
+                            ? 'vpn_manager_v2_profile_empty_title'
+                            : 'vpn_manager_v2_access_request_inactive_title'
+                    )) ?></h2>
+                    <p class="text-body-secondary mx-auto mb-4" style="max-width:42rem">
+                        <?= htmlSC(FireballPluginVpnManagerV2::t(
+                            $subscriptions === []
+                                ? 'vpn_manager_v2_profile_empty_text'
+                                : 'vpn_manager_v2_access_request_inactive_text'
+                        )) ?>
+                    </p>
+                    <?php if ($pendingAccessRequest !== null): ?>
+                        <div class="alert alert-info rounded-4 d-inline-flex align-items-center gap-2 mb-0" role="status">
+                            <i class="ci-clock" aria-hidden="true"></i>
+                            <span><?= htmlSC(sprintf(
+                                FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_pending'),
+                                (string)($pendingAccessRequest['requested_at'] ?? '')
+                            )) ?></span>
+                        </div>
+                    <?php else: ?>
+                        <form action="<?= htmlSC(base_href('/profile/vpn-v2/request')) ?>" method="post">
+                            <?= get_csrf_field() ?>
+                            <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                                <i class="ci-send" aria-hidden="true"></i>
+                                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_action')) ?></span>
+                            </button>
+                        </form>
+                    <?php endif; ?>
+                </section>
+            <?php endif; ?>
+
+            <?php if ($subscriptions !== [] && $selected !== null): ?>
                 <?php if (count($subscriptions) > 1): ?>
                     <div class="border rounded-5 p-3 mb-4" data-vpn-v2-subscription-selector>
                         <div class="small fw-semibold text-body-secondary px-2 mb-2">

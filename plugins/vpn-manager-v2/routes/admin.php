@@ -27,7 +27,11 @@ $router->post('/admin/plugins/vpn-manager-v2/servers/edit/(?P<id>\d+)/?', [Serve
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/servers/test', [ServerController::class, 'test'])
     ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/metrics/?', [ServerController::class, 'metrics'])
+    ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/servers/toggle', [ServerController::class, 'toggle'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/delete', [ServerController::class, 'delete'])
     ->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2/inbounds', [InboundController::class, 'index'])
@@ -121,6 +125,8 @@ $router->get('/admin/plugins/vpn-manager-v2/conflicts', [SyncController::class, 
 $router->post('/admin/plugins/vpn-manager-v2/conflicts/link', [SyncController::class, 'linkRemoteClient'])
     ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/sync-logs', [SyncController::class, 'logs'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/sync-logs/clear', [SyncController::class, 'clearLogs'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/sync/server/(?P<id>\d+)/?', [SyncController::class, 'server'])
     ->middleware(['auth', 'admin']);

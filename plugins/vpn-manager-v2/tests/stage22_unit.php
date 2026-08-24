@@ -177,6 +177,7 @@ $requiredTables = [
     'vpn_v2_sync_conflicts',
     'vpn_v2_sync_logs',
     'vpn_v2_remote_clients',
+    'vpn_v2_access_requests',
 ];
 $GLOBALS['schema_recovery_db'] = new SchemaRecoveryFakeDatabase($migrationNames, $requiredTables);
 (new VpnV2SchemaUpgradeService())->ensureCurrent();

@@ -33,6 +33,42 @@ final class ServerRepository
         return is_array($row) ? $row : null;
     }
 
+    public function findForUpdate(int $id): ?array
+    {
+        $row = db()->query(
+            'SELECT ' . self::PUBLIC_COLUMNS . ' FROM vpn_v2_servers WHERE id = ? LIMIT 1 FOR UPDATE',
+            [$id]
+        )->getOne();
+
+        return is_array($row) ? $row : null;
+    }
+
+    public function dependencies(int $id): array
+    {
+        $row = db()->query(
+            'SELECT
+                (SELECT COUNT(*) FROM vpn_v2_plan_nodes WHERE server_id = ?) AS plan_nodes,
+                (SELECT COUNT(*) FROM vpn_v2_subscription_nodes WHERE server_id = ?) AS subscription_nodes',
+            [$id, $id]
+        )->getOne();
+
+        return [
+            'plan_nodes' => (int)($row['plan_nodes'] ?? 0),
+            'subscription_nodes' => (int)($row['subscription_nodes'] ?? 0),
+        ];
+    }
+
+    public function delete(int $id, array $server): bool
+    {
+        $this->logEvent('server.deleted', $id, [
+            'name' => mb_substr(trim((string)($server['name'] ?? '')), 0, 255),
+            'code' => mb_substr(trim((string)($server['code'] ?? '')), 0, 80),
+        ]);
+        db()->query('DELETE FROM vpn_v2_servers WHERE id = ?', [$id]);
+
+        return db()->rowCount() > 0;
+    }
+
     public function findWithSecrets(int $id): ?array
     {
         $row = db()->query(

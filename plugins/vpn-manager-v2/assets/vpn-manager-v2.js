@@ -298,10 +298,18 @@
             if (!form) {
                 return;
             }
-            event.preventDefault();
-            var confirmation = form.getAttribute('data-vpn-v2-confirm') || '';
-            if (confirmation && !window.confirm(confirmation)) {
+            var usesAdminConfirmation = form.hasAttribute('data-admin-delete-form');
+            if (usesAdminConfirmation && form.dataset.deleteConfirmed !== '1') {
+                event.preventDefault();
                 return;
+            }
+            event.preventDefault();
+            if (usesAdminConfirmation) {
+                var modalElement = document.querySelector('[data-admin-delete-modal]');
+                var bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : (window.bootstrap || null);
+                if (modalElement && bootstrapApi && bootstrapApi.Modal) {
+                    bootstrapApi.Modal.getOrCreateInstance(modalElement).hide();
+                }
             }
             var button = form.querySelector('button[type="submit"]');
             var container = operationAlert(form);
@@ -414,10 +422,177 @@
         updateButtons();
     }
 
+    function formatMetricBytes(value) {
+        if (value === null || value === undefined || value === '') {
+            return '—';
+        }
+        var bytes = Number(value);
+        if (!Number.isFinite(bytes) || bytes < 0) {
+            return '—';
+        }
+        var units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        var index = 0;
+        while (bytes >= 1024 && index < units.length - 1) {
+            bytes /= 1024;
+            index++;
+        }
+        var precision = index === 0 || bytes >= 100 ? 0 : (bytes >= 10 ? 1 : 2);
+
+        return bytes.toFixed(precision) + ' ' + units[index];
+    }
+
+    function formatUptime(value, labels) {
+        if (value === null || value === undefined || value === '') {
+            return '—';
+        }
+        var seconds = Math.max(0, Number(value));
+        if (!Number.isFinite(seconds)) {
+            return '—';
+        }
+        var days = Math.floor(seconds / 86400);
+        var hours = Math.floor((seconds % 86400) / 3600);
+        var minutes = Math.floor((seconds % 3600) / 60);
+
+        return (days > 0 ? days + ' ' + labels.days + ' ' : '')
+            + hours + ' ' + labels.hours + ' ' + minutes + ' ' + labels.minutes;
+    }
+
+    function setupServerMetrics(container) {
+        var cards = Array.prototype.slice.call(container.querySelectorAll('[data-vpn-v2-server-metric-card]'));
+        var refresh = container.querySelector('[data-vpn-v2-refresh-metrics]');
+        var loadingLabel = container.getAttribute('data-loading-label') || 'Loading…';
+        var errorLabel = container.getAttribute('data-error-label') || 'Metrics unavailable';
+        var disabledLabel = container.getAttribute('data-disabled-label') || 'Server disabled';
+        var uptimeLabels = {
+            days: container.getAttribute('data-days-label') || 'd',
+            hours: container.getAttribute('data-hours-label') || 'h',
+            minutes: container.getAttribute('data-minutes-label') || 'm'
+        };
+        var coresLabel = container.getAttribute('data-cores-label') || 'cores';
+
+        function node(card, name) {
+            return card.querySelector('[data-vpn-v2-metric="' + name + '"]');
+        }
+
+        function text(card, name, value) {
+            var target = node(card, name);
+            if (target) {
+                target.textContent = value;
+            }
+        }
+
+        function usage(card, key, data) {
+            data = data || {};
+            var percent = Number(data.percent);
+            var valid = Number.isFinite(percent);
+            var shown = valid ? Math.max(0, Math.min(100, percent)) : 0;
+            text(card, key + '-value', valid ? shown.toFixed(1).replace('.0', '') + '%' : '—');
+            text(card, key + '-details', data.current !== null && data.total !== null
+                ? formatMetricBytes(data.current) + ' / ' + formatMetricBytes(data.total)
+                : '—');
+            var bar = node(card, key + '-bar');
+            if (bar) {
+                bar.style.width = shown + '%';
+                bar.className = 'progress-bar' + (shown >= 90 ? ' bg-danger' : (shown >= 75 ? ' bg-warning' : ''));
+                bar.parentElement.setAttribute('aria-valuenow', String(Math.round(shown)));
+            }
+        }
+
+        function render(card, data) {
+            var cpu = data.cpu || {};
+            usage(card, 'cpu', {percent: cpu.percent, current: null, total: null});
+            var cpuDetails = [];
+            if (cpu.cores !== null && cpu.cores !== undefined) {
+                cpuDetails.push(String(cpu.cores) + ' ' + coresLabel);
+            }
+            if (cpu.speed_mhz !== null && cpu.speed_mhz !== undefined) {
+                cpuDetails.push(String(cpu.speed_mhz) + ' MHz');
+            }
+            text(card, 'cpu-details', cpuDetails.length ? cpuDetails.join(' · ') : '—');
+            usage(card, 'memory', data.memory);
+            usage(card, 'swap', data.swap);
+            usage(card, 'disk', data.disk);
+
+            var load = data.load || {};
+            var loadValues = [load.one, load.five, load.fifteen].map(function (value) {
+                return value === null || value === undefined ? '—' : Number(value).toFixed(2);
+            });
+            text(card, 'load', loadValues.join(' / '));
+            text(card, 'uptime', formatUptime(data.uptime_seconds, uptimeLabels));
+
+            var network = data.network || {};
+            var sent = network.up !== null && network.up !== undefined ? network.up : network.sent;
+            var received = network.down !== null && network.down !== undefined ? network.down : network.received;
+            text(card, 'network', '↑ ' + formatMetricBytes(sent) + ' · ↓ ' + formatMetricBytes(received));
+            var connections = data.connections || {};
+            text(card, 'connections', (connections.tcp === null || connections.tcp === undefined ? '—' : connections.tcp)
+                + ' / ' + (connections.udp === null || connections.udp === undefined ? '—' : connections.udp));
+            var xray = data.xray || {};
+            text(card, 'xray', (xray.state || 'unknown') + (xray.version ? ' · ' + xray.version : ''));
+
+            var state = card.querySelector('[data-vpn-v2-metric-state]');
+            if (state) {
+                state.className = 'small text-success mb-3';
+                state.textContent = data.checked_at || '';
+            }
+        }
+
+        function load(card) {
+            var state = card.querySelector('[data-vpn-v2-metric-state]');
+            if (card.getAttribute('data-enabled') !== '1') {
+                if (state) {
+                    state.textContent = disabledLabel;
+                }
+                return Promise.resolve();
+            }
+            if (state) {
+                state.className = 'small text-body-secondary mb-3';
+                state.textContent = loadingLabel;
+            }
+
+            return fetch(card.getAttribute('data-url') || '', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'}
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) {
+                        throw new Error(data.error || errorLabel);
+                    }
+                    return data;
+                });
+            }).then(function (data) {
+                render(card, data);
+            }).catch(function (error) {
+                if (state) {
+                    state.className = 'small text-danger mb-3';
+                    state.textContent = error.message || errorLabel;
+                }
+            });
+        }
+
+        function loadAll() {
+            if (refresh) {
+                refresh.disabled = true;
+            }
+            Promise.all(cards.map(load)).finally(function () {
+                if (refresh) {
+                    refresh.disabled = false;
+                }
+            });
+        }
+
+        if (refresh) {
+            refresh.addEventListener('click', loadAll);
+        }
+        loadAll();
+    }
+
     ready(function () {
         document.querySelectorAll('[data-vpn-v2-plan-nodes]').forEach(setupPlanNodes);
         document.querySelectorAll('[data-vpn-v2-connection-order]').forEach(setupConnectionOrder);
         setupProfileCopy();
         setupAsyncOperations();
+        document.querySelectorAll('[data-vpn-v2-server-metrics]').forEach(setupServerMetrics);
     });
 }());

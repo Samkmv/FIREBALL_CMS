@@ -1,56 +1,77 @@
 {
-  "name": "VPN Manager V2",
+  "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "0.21.0",
+  "version": "0.24.1",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
+  "name_i18n": {
+    "ru": "Управление VPN",
+    "en": "VPN Management",
+    "de": "VPN-Verwaltung",
+    "zh-cn": "VPN 管理"
+  },
   "auto_migrate": true,
   "release_notes": [
+    "Moved server removal, log clearing, and traffic reset confirmations to the standard administrator modal.",
+    "Renamed the plugin to VPN Management, moved quick actions to the top, added safe server removal, and introduced persistent VPN access requests with administrator notifications.",
+    "Reworked the VPN control center with simplified navigation, live 3x-ui server load metrics, and confirmed clearing of all VPN technical logs.",
+    "Fixed expired-subscription renewal: a future expiration reactivates 3x-ui clients, and failed reconciliation can no longer be reported as a successful update.",
     "Added detailed traffic usage and remaining allowance to the customer profile, plus expiration and traffic metadata for VPN clients.",
     "Fixed expiration notifications for shared scheduling and partially synced subscriptions; added a safe CLI cron and SMTP diagnostics.",
     "Added current 3x-ui session CSRF support while retaining compatibility with legacy panels.",
     "Made client deletion attachment-aware and added current traffic-reset API support.",
     "Scoped new remote client names per inbound so multiple connections on one current 3x-ui panel remain independent.",
-    "Prevented expired subscriptions from exposing a profile link or QR code.",
-    "Added safe CMS user deletion: active VPN subscriptions now identify VPN Manager V2 as the blocker, while records from already deleted subscriptions are cleaned up automatically."
+    "Prevented expired subscriptions from exposing a profile link or QR code."
   ],
   "release_notes_i18n": {
     "ru": [
+      "Удаление серверов, очистка журналов и сброс трафика теперь подтверждаются в стандартном модальном окне админки.",
+      "Плагин переименован в «Управление VPN», быстрые действия перенесены вверх, добавлено безопасное удаление серверов и заявки на VPN с уведомлением создателя и администраторов.",
+      "Переработан центр управления VPN: упрощена навигация, добавлены живые показатели нагрузки серверов 3x-ui и подтверждаемая очистка всех технических журналов VPN.",
+      "Исправлено продление истёкшей подписки: будущая дата повторно активирует клиентов 3x-ui, а ошибка повторного создания больше не показывается как успешное обновление.",
       "В кабинете показаны расход и остаток трафика; VPN-клиенты получают срок действия и данные трафика в метаданных подписки.",
       "Исправлены уведомления об окончании, включая частично синхронизированные подписки; добавлены безопасный CLI cron и диагностика SMTP.",
       "Добавлена CSRF-авторизация сессий для актуальных 3x-ui с сохранением совместимости со старыми панелями.",
       "Удаление клиента теперь учитывает его привязки к inbound, также поддержан актуальный API сброса трафика.",
       "Имена новых удалённых клиентов теперь разделены по inbound, чтобы несколько подключений на одной актуальной панели 3x-ui оставались независимыми.",
-      "Истёкшие подписки больше не показывают ссылку или QR-код в личном кабинете.",
-      "Добавлено безопасное удаление пользователей CMS: активные VPN-подписки теперь явно указывают VPN Manager V2 как причину блокировки, а записи уже удалённых подписок очищаются автоматически."
+      "Истёкшие подписки больше не показывают ссылку или QR-код в личном кабинете."
     ],
     "en": [
+      "Moved server removal, log clearing, and traffic reset confirmations to the standard administrator modal.",
+      "Renamed the plugin to VPN Management, moved quick actions to the top, added safe server removal, and introduced persistent VPN access requests with administrator notifications.",
+      "Reworked the VPN control center with simplified navigation, live 3x-ui server load metrics, and confirmed clearing of all VPN technical logs.",
+      "Fixed expired-subscription renewal: a future expiration reactivates 3x-ui clients, and failed reconciliation can no longer be reported as a successful update.",
       "Added detailed traffic usage and remaining allowance to the customer profile, plus expiration and traffic metadata for VPN clients.",
       "Fixed expiration notifications for shared scheduling and partially synced subscriptions; added a safe CLI cron and SMTP diagnostics.",
       "Added current 3x-ui session CSRF support while retaining compatibility with legacy panels.",
       "Made client deletion attachment-aware and added current traffic-reset API support.",
       "Scoped new remote client names per inbound so multiple connections on one current 3x-ui panel remain independent.",
-      "Prevented expired subscriptions from exposing a profile link or QR code.",
-      "Added safe CMS user deletion: active VPN subscriptions now identify VPN Manager V2 as the blocker, while records from already deleted subscriptions are cleaned up automatically."
+      "Prevented expired subscriptions from exposing a profile link or QR code."
     ],
     "de": [
+      "Bestätigungen für Serverlöschung, Protokollbereinigung und Traffic-Zurücksetzung verwenden jetzt den standardmäßigen Administrator-Dialog.",
+      "Das Plugin heißt jetzt VPN-Verwaltung; Schnellaktionen wurden nach oben verschoben, sicheres Löschen von Servern und dauerhafte VPN-Anfragen mit Administratorbenachrichtigungen wurden ergänzt.",
+      "Die VPN-Steuerzentrale wurde mit vereinfachter Navigation, aktuellen 3x-ui-Serverkennzahlen und bestätigtem Leeren aller technischen VPN-Protokolle überarbeitet.",
+      "Die Verlängerung abgelaufener Abonnements wurde korrigiert: Ein zukünftiges Datum reaktiviert 3x-ui-Clients und fehlgeschlagene Wiederherstellungen werden nicht mehr als Erfolg gemeldet.",
       "Im Kundenkonto werden Verbrauch und Restvolumen angezeigt; VPN-Clients erhalten Laufzeit- und Verkehrsdaten als Abo-Metadaten.",
       "Ablaufmeldungen für den gemeinsamen Planer und teilweise synchronisierte Abos wurden korrigiert; CLI-Cron und SMTP-Diagnose ergänzt.",
       "CSRF-Unterstützung für Sitzungen aktueller 3x-ui-Versionen wurde bei Erhalt der Kompatibilität mit älteren Panels ergänzt.",
       "Das Löschen von Clients berücksichtigt nun Inbound-Zuordnungen; außerdem wird die aktuelle API zum Zurücksetzen des Datenverkehrs unterstützt.",
       "Neue Remote-Clientnamen werden je Inbound getrennt, damit mehrere Verbindungen auf einem aktuellen 3x-ui-Panel unabhängig bleiben.",
-      "Abgelaufene Abonnements zeigen im Kundenkonto keinen Link und keinen QR-Code mehr.",
-      "Das sichere Löschen von CMS-Benutzern wurde ergänzt: Aktive VPN-Abonnements nennen nun VPN Manager V2 als Sperrgrund, während Datensätze bereits gelöschter Abonnements automatisch bereinigt werden."
+      "Abgelaufene Abonnements zeigen im Kundenkonto keinen Link und keinen QR-Code mehr."
     ],
     "zh-cn": [
+      "删除服务器、清空日志和重置流量现在使用标准管理员确认对话框。",
+      "插件已更名为 VPN 管理；快捷操作移至顶部，并新增安全删除服务器和向创建者及管理员发送通知的 VPN 申请功能。",
+      "重新设计 VPN 控制中心：简化导航，新增实时 3x-ui 服务器负载指标，并支持经确认后清空所有 VPN 技术日志。",
+      "修复已到期订阅的续期：未来日期会重新激活 3x-ui 客户端，重新创建失败也不会再显示为更新成功。",
       "用户中心现显示已用和剩余流量，VPN 客户端也会收到订阅有效期和流量元数据。",
       "修复共享调度和部分同步订阅的到期通知，并新增安全的 CLI cron 入口及 SMTP 诊断。",
       "新增当前 3x-ui 会话 CSRF 支持，同时保留与旧版面板的兼容性。",
       "删除客户端时现在会考虑其 inbound 绑定，并支持当前的流量重置 API。",
       "新的远程客户端名称现在按 inbound 区分，使同一当前 3x-ui 面板上的多个连接保持独立。",
-      "已过期的订阅不再在用户中心显示链接或二维码。",
-      "新增安全删除 CMS 用户：活动 VPN 订阅现在会明确指出 VPN Manager V2 是阻止原因，已删除订阅的记录则会自动清理。"
+      "已过期的订阅不再在用户中心显示链接或二维码。"
     ]
   },
   "update": {
@@ -61,7 +82,7 @@
     "path": "plugins/vpn-manager-v2"
   },
   "admin_menu": {
-    "title": "VPN V2",
+    "title": "Управление VPN",
     "icon": "ci-server",
     "route": "/admin/plugins/vpn-manager-v2",
     "position": 81

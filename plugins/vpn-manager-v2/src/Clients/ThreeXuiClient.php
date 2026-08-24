@@ -87,6 +87,18 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         );
     }
 
+    public function serverStatus(): array
+    {
+        $this->authenticate();
+        $decoded = $this->requestJson('GET', $this->config->endpoint('/panel/api/server/status'));
+        $status = $decoded['obj'] ?? $decoded;
+        if (!is_array($status) || array_is_list($status)) {
+            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_server_metrics_response'));
+        }
+
+        return $status;
+    }
+
     public function listInbounds(): array
     {
         $this->authenticate();

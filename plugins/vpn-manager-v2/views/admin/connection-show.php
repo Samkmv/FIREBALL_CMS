@@ -49,7 +49,14 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
         </form>
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/connection/' . $id . '/reset-traffic')) ?>"
               data-vpn-v2-async-operation
-              data-vpn-v2-confirm="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_reset_traffic')) ?>">
+              data-admin-delete-form
+              data-confirm-title="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reset_traffic')) ?>"
+              data-delete-message="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_reset_traffic')) ?>"
+              data-delete-item="#<?= $id ?> · <?= htmlSC((string)($connection['client_email'] ?? '')) ?>"
+              data-confirm-item-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_modal_client_label')) ?>"
+              data-delete-confirm-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reset_traffic')) ?>"
+              data-confirm-variant="warning"
+              data-confirm-icon="ci-rotate-ccw">
             <?= get_csrf_field() ?>
             <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                 <i class="ci-rotate-ccw" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reset_traffic')) ?>

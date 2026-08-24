@@ -52,6 +52,33 @@ final class SyncAuditRepository
         )->get() ?: [];
     }
 
+    public function counts(): array
+    {
+        $syncLogs = (int)db()->query('SELECT COUNT(*) FROM vpn_v2_sync_logs')->getColumn();
+        $events = (int)db()->query('SELECT COUNT(*) FROM vpn_v2_events')->getColumn();
+
+        return ['sync_logs' => $syncLogs, 'events' => $events, 'total' => $syncLogs + $events];
+    }
+
+    public function clearAllLogs(): array
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $counts = $this->counts();
+            $database->query('DELETE FROM vpn_v2_sync_logs');
+            $database->query('DELETE FROM vpn_v2_events');
+            $database->commit();
+
+            return $counts;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
     public function conflicts(int $limit = 200): array
     {
         $limit = max(1, min(500, $limit));

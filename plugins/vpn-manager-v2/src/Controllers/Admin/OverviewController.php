@@ -3,6 +3,7 @@
 namespace Fireball\VpnManagerV2\Controllers\Admin;
 
 use Fireball\VpnManagerV2\Repositories\OverviewRepository;
+use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Services\MigrationStatusService;
 use Fireball\VpnManagerV2\Support\Permissions;
 
@@ -24,6 +25,7 @@ final class OverviewController
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_subtitle'),
             'migrationStatus' => $migrationStatus->toArray(),
             'overview' => $overview,
+            'servers' => (new ServerRepository())->all(),
             'permissions' => \FireballPluginVpnManagerV2::permissions(),
         ]));
     }

@@ -88,6 +88,7 @@ $tables = [
     'vpn_v2_external_sources',
     'vpn_v2_events',
     'vpn_v2_notifications',
+    'vpn_v2_access_requests',
 ];
 $columns = [
     'vpn_v2_servers.auth_type',

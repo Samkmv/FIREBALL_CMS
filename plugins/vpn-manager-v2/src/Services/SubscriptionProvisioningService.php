@@ -11,6 +11,7 @@ use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
+use Fireball\VpnManagerV2\Repositories\VpnAccessRequestRepository;
 use Fireball\VpnManagerV2\Support\SubscriptionToken;
 use Fireball\VpnManagerV2\Validators\SubscriptionValidator;
 
@@ -74,6 +75,15 @@ final class SubscriptionProvisioningService
             'subscription_token' => $this->uniqueToken($repository),
             'created_by' => $adminId,
         ], $localNodes);
+
+        try {
+            (new VpnAccessRequestRepository())->fulfillForUser((int)$user['id'], $adminId, $subscriptionId);
+        } catch (\Throwable $exception) {
+            log_error_details('VPN access request fulfillment failed', [
+                'User' => (int)$user['id'],
+                'Subscription' => $subscriptionId,
+            ], $exception);
+        }
 
         // The local subscription and every local node are committed before this method performs HTTP.
         return $this->provision($subscriptionId);

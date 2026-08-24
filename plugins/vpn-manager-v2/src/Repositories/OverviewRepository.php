@@ -15,6 +15,7 @@ final class OverviewRepository
         'vpn_v2_external_sources',
         'vpn_v2_events',
         'vpn_v2_notifications',
+        'vpn_v2_access_requests',
     ];
 
     private const REQUIRED_COLUMNS = [
@@ -94,11 +95,12 @@ final class OverviewRepository
 
     private function presentTables(): array
     {
+        $placeholders = implode(', ', array_fill(0, count(self::TABLES), '?'));
         $rows = db()->query(
             'SELECT TABLE_NAME
              FROM information_schema.TABLES
              WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+               AND TABLE_NAME IN (' . $placeholders . ')',
             self::TABLES
         )->get() ?: [];
         $tables = array_values(array_filter(array_map(
@@ -112,11 +114,12 @@ final class OverviewRepository
 
     private function presentColumns(): array
     {
+        $placeholders = implode(', ', array_fill(0, count(self::TABLES), '?'));
         $rows = db()->query(
             'SELECT TABLE_NAME, COLUMN_NAME
              FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+               AND TABLE_NAME IN (' . $placeholders . ')',
             self::TABLES
         )->get() ?: [];
         $columns = [];

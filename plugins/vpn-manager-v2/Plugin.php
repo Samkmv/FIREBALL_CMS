@@ -2,7 +2,6 @@
 
 use FBL\Plugins\PluginInterface;
 use Fireball\VpnManagerV2\Repositories\OverviewRepository;
-use Fireball\VpnManagerV2\Repositories\ProfileVpnRepository;
 use Fireball\VpnManagerV2\Jobs\VpnV2CheckExpirationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2CheckTrafficLimitsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2RetryFailedOperationsJob;
@@ -95,8 +94,7 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
             $userId = (int)($user['id'] ?? 0);
             try {
                 $settings = (new SettingsService())->current();
-                if ($userId <= 0 || empty($settings['public_account_enabled'])
-                    || !(new ProfileVpnRepository())->hasSubscriptionsForUser($userId)) {
+                if ($userId <= 0 || empty($settings['public_account_enabled'])) {
                     return $items;
                 }
                 $items[] = [

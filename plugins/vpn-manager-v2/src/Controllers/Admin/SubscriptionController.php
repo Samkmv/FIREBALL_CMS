@@ -8,6 +8,7 @@ use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionItemRepository;
+use Fireball\VpnManagerV2\Repositories\VpnAccessRequestRepository;
 use Fireball\VpnManagerV2\Services\QrCodeService;
 use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
 use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
@@ -30,6 +31,7 @@ final class SubscriptionController
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_subtitle'),
             'subscriptions' => (new SubscriptionRepository())->all(),
+            'accessRequests' => (new VpnAccessRequestRepository())->pending(),
             'returnQuery' => AdminTableState::capture(),
         ]));
     }
@@ -45,6 +47,7 @@ final class SubscriptionController
             'users' => $repository->usersForForm(),
             'plans' => $repository->activePlansForForm(),
             'defaultStartsAt' => date('Y-m-d\\TH:i'),
+            'preselectedUserId' => max(0, (int)request()->get('user_id', 0)),
         ]));
     }
 

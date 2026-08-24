@@ -16,6 +16,8 @@ final class SubscriptionEditingService
         private readonly ?RemoteClientSyncService $remoteSync = null,
         private readonly ?VpnSubscriptionRevisionService $revisionService = null,
         private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
+        private readonly ?SubscriptionRenewalPolicy $renewalPolicy = null,
+        private readonly ?VpnPlanSubscriptionReconciler $planReconciler = null,
     ) {
     }
 
@@ -26,7 +28,9 @@ final class SubscriptionEditingService
         if (!$current) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_not_found'));
         }
-        $edit = ($this->validator ?? new SubscriptionEditValidator())->validate($input);
+        $validatedEdit = ($this->validator ?? new SubscriptionEditValidator())->validate($input);
+        $edit = ($this->renewalPolicy ?? new SubscriptionRenewalPolicy())->normalize($current, $validatedEdit);
+        $autoReactivated = $validatedEdit->status !== $edit->status;
         $desired = array_replace($current, $edit->toArray());
         $configChanged = $this->different($current['expires_at'] ?? null, $edit->expiresAt)
             || $this->differentLimit($current['traffic_limit_bytes'] ?? null, $edit->trafficLimitBytes)
@@ -97,25 +101,20 @@ final class SubscriptionEditingService
 
         $repository->updateSubscriptionConfirmed($subscriptionId, $edit->toArray(), $firstError);
         $revision = ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
-        $repository->logEvent(
-            $failed > 0 ? 'subscription.update_partial' : 'subscription.update_confirmed',
-            $subscriptionId,
-            null,
-            null,
-            (int)$current['user_id'],
-            $adminId,
-            ['synced' => $synced, 'failed' => $failed, 'revision' => $revision]
-        );
-
         // Renewal/reactivation must pick up plan connections that were skipped while expired.
         if ($edit->status === 'active'
             && ($edit->expiresAt === null || strtotime($edit->expiresAt) === false || strtotime($edit->expiresAt) > time())) {
             try {
-                (new VpnPlanSubscriptionReconciler())->reconcileSubscription($subscriptionId, [
+                $reconcileResult = ($this->planReconciler ?? new VpnPlanSubscriptionReconciler())->reconcileSubscription($subscriptionId, [
                     'initiated_by' => $adminId,
                     'authorized' => true,
+                    'sync_flow' => false,
                 ]);
+                $synced += $reconcileResult->created + $reconcileResult->reused;
+                $failed += $reconcileResult->failed + $reconcileResult->syncErrors;
             } catch (\Throwable $exception) {
+                $failed++;
+                $firstError ??= $this->safeError($exception);
                 $repository->logEvent('plan_reconcile_failed', $subscriptionId, null, null,
                     (int)$current['user_id'], $adminId, ['safe_error_code' => $this->errorType($exception)]);
             }
@@ -133,6 +132,25 @@ final class SubscriptionEditingService
             );
         $synced += (int)($dependencyResult['synced'] ?? 0);
         $failed += (int)($dependencyResult['failed'] ?? 0);
+
+        if ($edit->status === 'active' && $failed > 0) {
+            $repository->markSubscriptionPartialSync($subscriptionId, $firstError);
+        }
+
+        $repository->logEvent(
+            $failed > 0 ? 'subscription.update_partial' : 'subscription.update_confirmed',
+            $subscriptionId,
+            null,
+            null,
+            (int)$current['user_id'],
+            $adminId,
+            [
+                'synced' => $synced,
+                'failed' => $failed,
+                'revision' => $revision,
+                'auto_reactivated' => $autoReactivated,
+            ]
+        );
 
         return new SyncResult($subscriptionId, $synced, $failed, $revision, true, true);
     }

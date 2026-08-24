@@ -553,6 +553,20 @@ final class SubscriptionRepository
         );
     }
 
+    public function markSubscriptionPartialSync(int $id, ?string $safeError = null): void
+    {
+        db()->query(
+            "UPDATE vpn_v2_subscriptions
+             SET status = 'partial_sync', last_error = COALESCE(?, last_error), updated_at = ?
+             WHERE id = ?",
+            [
+                $safeError !== null ? mb_substr(trim($safeError), 0, 1000) : null,
+                date('Y-m-d H:i:s'),
+                $id,
+            ]
+        );
+    }
+
     public function updateInternalComment(int $id, ?string $comment): void
     {
         db()->query(

@@ -5,6 +5,8 @@ $id = (int)($subscription['id'] ?? 0);
 $trafficInput = is_array($trafficInput ?? null) ? $trafficInput : ['value' => '0', 'unit' => 'gb'];
 $expiresAt = trim((string)($subscription['expires_at'] ?? ''));
 $expiresInput = $expiresAt !== '' && strtotime($expiresAt) !== false ? date('Y-m-d\TH:i', strtotime($expiresAt)) : '';
+$storedStatus = (string)($subscription['status'] ?? 'active');
+$formStatus = in_array($storedStatus, ['active', 'suspended'], true) ? $storedStatus : 'active';
 $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQuery ?? '');
 ?>
 
@@ -18,6 +20,9 @@ $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQ
 
     <div class="alert alert-info rounded-4">
         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_edit_sync_note')) ?>
+        <?php if ($storedStatus === 'expired'): ?>
+            <div class="mt-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_renewal_note')) ?></div>
+        <?php endif; ?>
     </div>
 
     <div class="row g-3">
@@ -30,7 +35,7 @@ $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQ
             <label class="form-label" for="vpnV2SubscriptionStatus"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_status')) ?></label>
             <select class="form-select" id="vpnV2SubscriptionStatus" name="status" required>
                 <?php foreach (['active', 'suspended', 'expired'] as $status): ?>
-                    <option value="<?= htmlSC($status) ?>" <?= (string)$subscription['status'] === $status ? 'selected' : '' ?>>
+                    <option value="<?= htmlSC($status) ?>" <?= $formStatus === $status ? 'selected' : '' ?>>
                         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_provisioning_status_' . $status)) ?>
                     </option>
                 <?php endforeach; ?>

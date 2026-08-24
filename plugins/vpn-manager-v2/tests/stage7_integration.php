@@ -16,7 +16,9 @@ use Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException;
 use Fireball\VpnManagerV2\Services\ConnectionEditingService;
 use Fireball\VpnManagerV2\Services\RemoteClientSyncService;
 use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
+use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
 use Fireball\VpnManagerV2\Services\VpnFlowResolver;
+use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionEndpointService;
 
 final class Stage7Panel
@@ -216,9 +218,11 @@ try {
     db()->query(
         'INSERT INTO vpn_v2_subscriptions
             (user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes, device_limit,
-             subscription_token, revision, config_updated_at, created_by, internal_comment, last_error, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 2, ?, 1, ?, ?, NULL, NULL, ?, ?)',
-        [$userId, $planId, 'active', $now, $expires, 10 * (1024 ** 3), $token, $now, $adminId, $now, $now]
+             subscription_token, subscription_token_hash, revision, config_updated_at, created_by,
+             internal_comment, last_error, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 2, ?, ?, 1, ?, ?, NULL, NULL, ?, ?)',
+        [$userId, $planId, 'active', $now, $expires, 10 * (1024 ** 3), $token, hash('sha256', $token),
+            $now, $adminId, $now, $now]
     );
     $subscriptionId = (int)db()->getInsertId();
     foreach ([0, 1] as $index) {
@@ -324,6 +328,34 @@ try {
     $assert($reenabled->revision > $suspended->revision, 'Revision did not increase after reactivation.');
     $results['disable_enable'] = true;
 
+    $pastExpiry = date('Y-m-d\TH:i', time() - 3600);
+    $expiredEdit = $subscriptions->update($subscriptionId, [
+        'expires_at' => $pastExpiry,
+        'traffic_limit_value' => 20,
+        'traffic_unit' => 'gb',
+        'status' => 'active',
+        'internal_comment' => '',
+    ], $adminId);
+    foreach ($panels as $panel) {
+        $assert(reset($panel->clients)['enable'] === false, 'Expiration did not disable a client.');
+    }
+    $renewedEdit = $subscriptions->update($subscriptionId, [
+        'expires_at' => $newExpires,
+        'traffic_limit_value' => 20,
+        'traffic_unit' => 'gb',
+        'status' => 'expired',
+        'internal_comment' => '',
+    ], $adminId);
+    $renewedStatus = db()->query(
+        'SELECT status FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]
+    )->getColumn();
+    foreach ($panels as $panel) {
+        $assert(reset($panel->clients)['enable'] === true, 'Renewal did not enable a client.');
+    }
+    $assert($expiredEdit->successful() && $renewedEdit->successful() && $renewedStatus === 'active',
+        'Expired subscription renewal was not confirmed as active.');
+    $results['expired_renewal'] = true;
+
     $beforeNodeUpdates = [$panels[0]->updateCount, $panels[1]->updateCount];
     $nodeResult = $connections->update($nodeIds[0], [
         'flow' => VpnFlowResolver::VISION,
@@ -405,6 +437,42 @@ try {
     $results['identity_preserved'] = true;
     $results['no_recreation'] = true;
     $results['traffic_preserved'] = true;
+
+    $missingUuid = array_key_first($panels[1]->clients);
+    unset($panels[1]->clients[$missingUuid]);
+    $panels[1]->failUpdates = false;
+    db()->query(
+        "UPDATE vpn_v2_subscription_nodes
+         SET status = 'create_failed', sync_status = 'pending', desired_enabled = 1,
+             last_error = 'simulated retry failure' WHERE id = ?",
+        [$nodeIds[1]]
+    );
+    $failureAwareSubscriptions = new SubscriptionEditingService(
+        remoteSync: $remote,
+        planReconciler: new VpnPlanSubscriptionReconciler(
+            provisioning: new SubscriptionProvisioningService(clientFactory: $factory)
+        )
+    );
+    $failedRetry = $failureAwareSubscriptions->update($subscriptionId, [
+        'expires_at' => date('Y-m-d\TH:i', time() + 60 * 86400),
+        'traffic_limit_value' => 15,
+        'traffic_unit' => 'gb',
+        'status' => 'active',
+        'internal_comment' => 'Stage 7 CMS-only comment',
+    ], $adminId);
+    $failedRetryStatus = db()->query(
+        'SELECT status FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]
+    )->getColumn();
+    $assert($failedRetry->synced === 1 && $failedRetry->failed === 1
+        && $failedRetryStatus === 'partial_sync',
+        sprintf(
+            'Failed create retry result mismatch (synced=%d, failed=%d, status=%s, addCount=%d).',
+            $failedRetry->synced,
+            $failedRetry->failed,
+            (string)$failedRetryStatus,
+            $panels[1]->addCount
+        ));
+    $results['reconcile_failure_reported'] = true;
 
     echo json_encode(['status' => 'ok', 'results' => $results, 'fixtures_cleaned' => true], JSON_UNESCAPED_SLASHES) . PHP_EOL;
 } finally {

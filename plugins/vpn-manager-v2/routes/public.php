@@ -12,6 +12,8 @@ $router->get(
 
 $router->get('/profile/vpn-v2', [ProfileVpnController::class, 'index'])
     ->middleware(['auth']);
+$router->post('/profile/vpn-v2/request', [ProfileVpnController::class, 'requestAccess'])
+    ->middleware(['auth']);
 $router->get(
     '/profile/vpn-v2/instructions/(?P<platform>ios|android|windows|macos)/?',
     [ProfileVpnController::class, 'instructions']

@@ -4,6 +4,7 @@ use Fireball\VpnManagerV2\Support\TrafficFormatter;
 
 $users = is_array($users ?? null) ? $users : [];
 $plans = is_array($plans ?? null) ? $plans : [];
+$preselectedUserId = max(0, (int)($preselectedUserId ?? 0));
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -26,7 +27,7 @@ $plans = is_array($plans ?? null) ? $plans : [];
             <select class="form-select" id="vpnV2SubscriptionUser" name="user_id" required>
                 <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_select_user')) ?></option>
                 <?php foreach ($users as $user): ?>
-                    <option value="<?= (int)$user['id'] ?>">
+                    <option value="<?= (int)$user['id'] ?>" <?= (int)$user['id'] === $preselectedUserId ? 'selected' : '' ?>>
                         #<?= (int)$user['id'] ?> · <?= htmlSC((string)$user['name']) ?> · <?= htmlSC((string)$user['email']) ?>
                     </option>
                 <?php endforeach; ?>

@@ -14,6 +14,7 @@ use Fireball\VpnManagerV2\Exceptions\ClientVerificationException;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Services\ClientPayloadFactory;
 use Fireball\VpnManagerV2\Services\ClientVerifier;
+use Fireball\VpnManagerV2\Services\SubscriptionRenewalPolicy;
 use Fireball\VpnManagerV2\Services\VpnFlowResolver;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionEndpointService;
 use Fireball\VpnManagerV2\Validators\ConnectionEditValidator;
@@ -42,6 +43,28 @@ $expired = (new SubscriptionEditValidator())->validate([
     'status' => 'active',
 ]);
 $assert($expired->status === 'expired', 'Past expiration did not force expired status.');
+
+$renewed = (new SubscriptionRenewalPolicy())->normalize([
+    'status' => 'expired',
+    'expires_at' => date('Y-m-d H:i:s', time() - 3600),
+], new \Fireball\VpnManagerV2\DTO\SubscriptionEditData(
+    date('Y-m-d H:i:s', time() + 86400),
+    null,
+    'expired',
+    null,
+));
+$assert($renewed->status === 'active', 'A renewed expired subscription was not reactivated.');
+
+$stillExpired = (new SubscriptionRenewalPolicy())->normalize([
+    'status' => 'expired',
+    'expires_at' => date('Y-m-d H:i:s', time() - 7200),
+], new \Fireball\VpnManagerV2\DTO\SubscriptionEditData(
+    date('Y-m-d H:i:s', time() - 3600),
+    null,
+    'expired',
+    null,
+));
+$assert($stillExpired->status === 'expired', 'A past renewal date incorrectly activated the subscription.');
 
 $tcpReality = ['protocol' => 'vless', 'network' => 'tcp', 'security' => 'reality'];
 $connectionEdit = (new ConnectionEditValidator())->validate([

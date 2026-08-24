@@ -63,6 +63,24 @@ $serverActions = static function (array $server): array {
             'hidden' => ['id' => $id],
             'icon' => 'ci-power',
         ],
+        ['type' => 'divider'],
+        [
+            'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_delete_server'),
+            'type' => 'form',
+            'action' => base_href('/admin/plugins/vpn-manager-v2/servers/delete'),
+            'hidden' => ['id' => $id, 'confirmation' => 'delete_vpn_server_' . $id],
+            'icon' => 'ci-trash',
+            'class' => 'text-danger',
+            'form_attributes' => [
+                'data-admin-delete-form' => true,
+                'data-delete-message' => sprintf(
+                    FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_delete_server'),
+                    (string)($server['name'] ?? '')
+                ),
+                'data-delete-item' => (string)($server['name'] ?? ''),
+                'data-delete-confirm-label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_delete_server'),
+            ],
+        ],
     ];
 };
 

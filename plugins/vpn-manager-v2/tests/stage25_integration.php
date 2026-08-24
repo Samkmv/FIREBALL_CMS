@@ -12,7 +12,11 @@ FBL\Language::registerPluginLanguage('vpn-manager-v2', dirname(__DIR__) . '/lang
 
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\DTO\ConnectionTestResult;
+use Fireball\VpnManagerV2\Exceptions\ValidationException;
+use Fireball\VpnManagerV2\Services\ServerManagerService;
 use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
+use Fireball\VpnManagerV2\Services\VpnAccessRequestService;
+use Fireball\VpnManagerV2\Services\VpnV2SchemaUpgradeService;
 
 final class Stage25Panel
 {
@@ -119,6 +123,8 @@ $inboundIds = [];
 $planId = 0;
 $subscriptionId = 0;
 
+(new VpnV2SchemaUpgradeService())->ensureCurrent();
+
 try {
     db()->query(
         'INSERT INTO users (name, login, email, password, role, created_at)
@@ -127,6 +133,23 @@ try {
             password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT), 'user', $now]
     );
     $userId = (int)db()->getInsertId();
+    $accessNotifications = [];
+    $accessEmails = [];
+    $accessService = new VpnAccessRequestService(
+        notificationDispatcher: static function (array $payload) use (&$accessNotifications): void {
+            $accessNotifications[] = $payload;
+        },
+        mailDispatcher: static function (array $recipients, string $subject, string $html, string $text) use (&$accessEmails): void {
+            $accessEmails[] = compact('recipients', 'subject');
+        }
+    );
+    $accessRequest = $accessService->requestForUser($userId);
+    $duplicateAccessRequest = $accessService->requestForUser($userId);
+    $assert(!empty($accessRequest['created'])
+        && empty($duplicateAccessRequest['created'])
+        && count($accessNotifications) === 1
+        && count($accessEmails) === 1,
+        'VPN access requests are not persisted, deduplicated, or delivered to administrators.');
     db()->query(
         'INSERT INTO vpn_v2_servers
             (name, code, panel_url, panel_path, auth_type, country_code, country_name, city,
@@ -175,6 +198,10 @@ try {
         'starts_at' => date('Y-m-d\TH:i'),
     ], (int)$admin['id']);
     $subscriptionId = $result->subscriptionId;
+    $fulfilledRequest = db()->query(
+        'SELECT status, subscription_id FROM vpn_v2_access_requests WHERE user_id = ? ORDER BY id DESC LIMIT 1',
+        [$userId]
+    )->getOne();
     $emails = db()->query(
         'SELECT client_email FROM vpn_v2_subscription_nodes WHERE subscription_id = ? ORDER BY id',
         [$subscriptionId]
@@ -184,10 +211,30 @@ try {
         && count($names) === 2 && count(array_unique($names)) === 2
         && count($panel->globalClients) === 2,
         'Two inbounds on one current 3x-ui panel did not receive independent clients.');
+    $assert(is_array($fulfilledRequest)
+        && (string)$fulfilledRequest['status'] === 'fulfilled'
+        && (int)$fulfilledRequest['subscription_id'] === $subscriptionId,
+        'Creating a subscription did not fulfill the pending VPN access request.');
+    $serverDeletionBlocked = false;
+    try {
+        (new ServerManagerService())->delete($serverId);
+    } catch (ValidationException) {
+        $serverDeletionBlocked = true;
+    }
+    $assert($serverDeletionBlocked
+        && is_array(db()->query('SELECT id FROM vpn_v2_servers WHERE id = ?', [$serverId])->getOne()),
+        'A server linked to a plan or subscription was deleted.');
 
     echo json_encode([
         'status' => 'ok',
-        'cases' => ['same_panel_multi_inbound_provisioning', 'global_email_uniqueness'],
+        'cases' => [
+            'same_panel_multi_inbound_provisioning',
+            'global_email_uniqueness',
+            'access_request_deduplication',
+            'access_request_administrator_delivery',
+            'access_request_fulfillment',
+            'server_deletion_dependency_guard',
+        ],
         'fixtures_cleaned' => true,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
 } finally {
@@ -207,6 +254,7 @@ try {
         db()->query('DELETE FROM vpn_v2_servers WHERE id = ?', [$serverId]);
     }
     if ($userId > 0) {
+        db()->query('DELETE FROM vpn_v2_access_requests WHERE user_id = ?', [$userId]);
         db()->query('DELETE FROM vpn_v2_profiles WHERE cms_user_id = ?', [$userId]);
         db()->query('DELETE FROM users WHERE id = ?', [$userId]);
     }
