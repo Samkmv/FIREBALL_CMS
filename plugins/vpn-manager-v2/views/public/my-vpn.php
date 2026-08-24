@@ -14,6 +14,7 @@ $serviceName = trim((string)($serviceName ?? 'VPN V2')) ?: 'VPN V2';
 $logo = trim((string)($logo ?? ''));
 $supportName = trim((string)($supportName ?? ''));
 $supportUrl = trim((string)($supportUrl ?? ''));
+$profileInfoText = trim((string)($profileInfoText ?? ''));
 $showQrInProfile = !empty($showQrInProfile);
 ?>
 
@@ -83,30 +84,19 @@ $showQrInProfile = !empty($showQrInProfile);
                     </div>
 
                     <div class="row g-3 mb-4">
-                        <div class="col-12 col-sm-6 col-lg-3">
+                        <div class="col-12 col-md-4">
                             <div class="bg-body-tertiary rounded-4 p-3 h-100">
                                 <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_starts_at')) ?></div>
                                 <div class="fw-semibold"><?= htmlSC((string)$selected['starts_at_display']) ?></div>
                             </div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3">
+                        <div class="col-12 col-md-4">
                             <div class="bg-body-tertiary rounded-4 p-3 h-100">
                                 <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_expires_at')) ?></div>
                                 <div class="fw-semibold"><?= htmlSC((string)$selected['expires_at_display']) ?></div>
                             </div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3">
-                            <div class="bg-body-tertiary rounded-4 p-3 h-100">
-                                <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic')) ?></div>
-                                <div class="fw-semibold"><?= htmlSC((string)$selected['traffic_usage_display']) ?></div>
-                                <?php if ((int)($selected['traffic_limit_bytes'] ?? 0) > 0): ?>
-                                    <div class="progress mt-2" role="progressbar" aria-valuenow="<?= (int)$selected['traffic_percent'] ?>" aria-valuemin="0" aria-valuemax="100">
-                                        <div class="progress-bar" style="width: <?= (int)$selected['traffic_percent'] ?>%"></div>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="col-12 col-sm-6 col-lg-3">
+                        <div class="col-12 col-md-4">
                             <div class="bg-body-tertiary rounded-4 p-3 h-100">
                                 <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_connections')) ?></div>
                                 <div class="fw-semibold"><?= (int)$selected['connection_count'] ?></div>
@@ -117,6 +107,56 @@ $showQrInProfile = !empty($showQrInProfile);
                             </div>
                         </div>
                     </div>
+
+                    <section class="bg-body-tertiary rounded-4 p-3 p-md-4 mb-4" data-vpn-v2-traffic>
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <h3 class="h6 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_title')) ?></h3>
+                            <?php if ((string)($selected['traffic_synced_at_display'] ?? '') !== ''): ?>
+                                <span class="small text-body-secondary"><?= htmlSC(sprintf(
+                                    FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_updated'),
+                                    (string)$selected['traffic_synced_at_display']
+                                )) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-sm-4">
+                                <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_used')) ?></div>
+                                <div class="fs-5 fw-semibold" data-vpn-v2-traffic-used><?= htmlSC((string)$selected['traffic_used_display']) ?></div>
+                                <div class="small text-body-secondary mt-1">
+                                    ↑ <?= htmlSC((string)$selected['upload_display']) ?> · ↓ <?= htmlSC((string)$selected['download_display']) ?>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_remaining')) ?></div>
+                                <div class="fs-5 fw-semibold" data-vpn-v2-traffic-remaining><?= htmlSC((string)$selected['traffic_remaining_display']) ?></div>
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_limit')) ?></div>
+                                <div class="fs-5 fw-semibold"><?= htmlSC((string)$selected['traffic_limit_display']) ?></div>
+                            </div>
+                        </div>
+                        <?php if ((int)($selected['traffic_limit_bytes'] ?? 0) > 0): ?>
+                            <div class="progress mt-3" role="progressbar"
+                                 aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_title')) ?>"
+                                 aria-valuenow="<?= (int)$selected['traffic_percent'] ?>" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar" style="width: <?= (int)$selected['traffic_percent'] ?>%"></div>
+                            </div>
+                            <div class="small text-body-secondary mt-2"><?= htmlSC(sprintf(
+                                FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_percent_used'),
+                                (int)$selected['traffic_percent']
+                            )) ?></div>
+                        <?php endif; ?>
+                    </section>
+
+                    <?php if ($profileInfoText !== ''): ?>
+                        <div class="alert alert-info rounded-4 d-flex align-items-start gap-3 mb-4" data-vpn-v2-profile-info>
+                            <i class="ci-info fs-5 mt-1" aria-hidden="true"></i>
+                            <div>
+                                <div class="fw-semibold mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_info_title')) ?></div>
+                                <div><?= nl2br(htmlSC($profileInfoText)) ?></div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="border-top pt-4">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">

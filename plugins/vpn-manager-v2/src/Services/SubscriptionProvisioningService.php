@@ -357,10 +357,9 @@ final class SubscriptionProvisioningService
             }
 
             $protocol = strtolower(trim((string)$planNode['protocol']));
-            $identity = ($this->identityService ?? new RemoteClientIdentityService())->forUser(
+            $identity = ($this->identityService ?? new RemoteClientIdentityService())->forTarget(
                 $user,
-                (string)($planNode['country_code'] ?? ''),
-                $protocol
+                array_replace($planNode, ['protocol' => $protocol])
             );
             $nodes[] = [
                 'plan_node_id' => (int)$planNode['plan_node_id'],

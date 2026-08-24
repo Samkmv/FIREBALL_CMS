@@ -14,6 +14,7 @@ final class VpnSubscriptionEndpointService
         private readonly ?VpnSubscriptionCache $subscriptionCache = null,
         private readonly ?SettingsService $settings = null,
         private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
+        private readonly ?VpnSubscriptionMetadataService $metadata = null,
     ) {
     }
 
@@ -54,10 +55,15 @@ final class VpnSubscriptionEndpointService
         }
 
         $settings = ($this->settings ?? new SettingsService())->current();
-        $subscriptionName = trim((string)($settings['subscription_name'] ?? 'VPN V2'));
+        $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();
+        $subscriptionName = $metadata->profileTitle($subscription, $settings);
         if ($subscriptionName !== '') {
             $headers['profile-title'] = 'base64:' . base64_encode($subscriptionName);
         }
+        $headers = array_replace(
+            $headers,
+            $metadata->headers($subscription, $settings, $repository->trafficBreakdown((int)$subscription['id']))
+        );
         $revision = max(1, (int)$subscription['revision']);
         $etag = $this->etag($token, $revision, $format);
         $modifiedTimestamp = $this->modifiedTimestamp($subscription);

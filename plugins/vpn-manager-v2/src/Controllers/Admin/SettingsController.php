@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Controllers\Admin;
 
+use App\Services\MailService;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Services\SettingsService;
 use Fireball\VpnManagerV2\Support\Permissions;
@@ -13,6 +14,11 @@ final class SettingsController
     {
         Permissions::authorize(Permissions::MANAGE_SETTINGS);
         $settings = (new SettingsService())->current();
+        try {
+            $mailEnabled = (new MailService())->isEnabled();
+        } catch (\Throwable) {
+            $mailEnabled = false;
+        }
 
         return plugin_view(
             \FireballPluginVpnManagerV2::SLUG,
@@ -21,6 +27,7 @@ final class SettingsController
                 'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_title'),
                 'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_subtitle'),
                 'settings' => $settings,
+                'mailEnabled' => $mailEnabled,
                 'templateVariables' => SettingsValidator::TEMPLATE_VARIABLES,
             ])
         );

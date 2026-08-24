@@ -31,6 +31,17 @@ final class RemoteClientNameGenerator
         return mb_substr($name . '-' . $login . '-' . $countryCode, 0, 190);
     }
 
+    public function forConnection(string $baseName, int $serverId, int $inboundId): string
+    {
+        $baseName = trim($baseName, '-_');
+        if ($baseName === '' || $serverId <= 0 || $inboundId <= 0) {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_identity_required'));
+        }
+        $suffix = '-s' . $serverId . '-i' . $inboundId;
+
+        return rtrim(mb_substr($baseName, 0, 190 - strlen($suffix)), '-_') . $suffix;
+    }
+
     public function normalize(string $value): string
     {
         $value = trim(mb_strtolower($value));

@@ -35,7 +35,13 @@ final class ProfileVpnRepository
                         AND pi.server_id = pn.server_id AND pi.is_enabled = 1 AND pi.status = \'active\'
                      WHERE pn.plan_id = sub.plan_id AND pn.is_enabled = 1) AS plan_connection_count,
                     COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
-                        THEN n.traffic_used_bytes ELSE 0 END), 0) AS traffic_used_bytes
+                        THEN n.traffic_used_bytes ELSE 0 END), 0) AS traffic_used_bytes,
+                    COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.upload_bytes ELSE 0 END), 0) AS upload_bytes,
+                    COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.download_bytes ELSE 0 END), 0) AS download_bytes,
+                    MAX(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.traffic_synced_at ELSE NULL END) AS traffic_synced_at
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
@@ -67,7 +73,13 @@ final class ProfileVpnRepository
                         AND pi.server_id = pn.server_id AND pi.is_enabled = 1 AND pi.status = \'active\'
                      WHERE pn.plan_id = sub.plan_id AND pn.is_enabled = 1) AS plan_connection_count,
                     COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
-                        THEN n.traffic_used_bytes ELSE 0 END), 0) AS traffic_used_bytes
+                        THEN n.traffic_used_bytes ELSE 0 END), 0) AS traffic_used_bytes,
+                    COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.upload_bytes ELSE 0 END), 0) AS upload_bytes,
+                    COALESCE(SUM(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.download_bytes ELSE 0 END), 0) AS download_bytes,
+                    MAX(CASE WHEN n.status IN (\'active\', \'disabled\')
+                        THEN n.traffic_synced_at ELSE NULL END) AS traffic_synced_at
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id

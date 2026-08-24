@@ -2,7 +2,7 @@
 
 FIREBALL CMS currently uses small job classes as the cron integration contract. Each V2 job exposes a public `handle(): array` method and must be invoked only after the normal CMS bootstrap has loaded the active plugins, database, translations, cache and services.
 
-Registered jobs are available through `FireballPluginVpnManagerV2::jobs()` and the `vpn_manager_v2_jobs` filter:
+Registered jobs are available through `FireballPluginVpnManagerV2::jobs()`, the CMS-wide `fireball_scheduled_jobs` filter and the backwards-compatible `vpn_manager_v2_jobs` filter:
 
 - every 10 minutes: `Fireball\VpnManagerV2\Jobs\VpnV2SyncConfigurationJob` (poll inbounds and clients, validate snapshots, enqueue policy corrections);
 - every 10 minutes: `Fireball\VpnManagerV2\Jobs\VpnV2SyncTrafficJob`;
@@ -24,9 +24,13 @@ Do not invoke jobs during an ordinary page render. Traffic sync and remote statu
 
 The CMS installation must provide the scheduler/worker that calls these registered contracts after the normal bootstrap. A deployment that only executes web requests will retain queued rows but will not process them. Run a single worker invocation at a time per job schedule; row claims, leases and idempotency make retries safe after a crashed worker.
 
+For installations without a shared CMS scheduler, `plugins/vpn-manager-v2/cron.php` is a CLI-only expiration-notification entry point. It is safe to run every 30 minutes because the notification outbox deduplicates each subscription, event and channel. Its process lock prevents overlapping runs.
+
 `VpnV2SyncConfigurationJob` and `VpnV2ProvisionMissingClientsJob` are the frequent incremental path. `VpnV2FullReconcileJob` is the slower safety pass. An explicit manual synchronization POST enqueues and immediately claims its exact operation, so an installation without a running cron does not leave administrator actions permanently pending. The operation status endpoint returns both the stable technical code and its localized display label. The operations page also provides an explicit recovery action that processes a bounded batch of older due rows. Scheduled workers remain the fallback for retries and unattended work.
 
 Notification deduplication is persisted in `vpn_v2_notifications`. The unique key consists of subscription, notification type, occurrence and channel. Profile notifications use the CMS `NotificationService`; it dispatches push only for users who enabled push in the CMS. Email is sent through the CMS `MailService` only when enabled in VPN V2 settings.
+
+Expiration enforcement and reminders include every subscription state that can still deliver access: `active`, `partial_sync`, and `sync_error`. A partially synchronized subscription therefore cannot silently miss its reminder or remain usable after its expiration time.
 
 Traffic counters are monotonic locally: a temporary API error or a smaller remote counter never replaces a larger confirmed local value. Traffic is never reset by ordinary synchronization.
 

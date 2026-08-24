@@ -1,25 +1,55 @@
 {
   "name": "VPN Manager V2",
   "slug": "vpn-manager-v2",
-  "version": "0.19.6",
+  "version": "0.21.0",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Added detailed traffic usage and remaining allowance to the customer profile, plus expiration and traffic metadata for VPN clients.",
+    "Fixed expiration notifications for shared scheduling and partially synced subscriptions; added a safe CLI cron and SMTP diagnostics.",
+    "Added current 3x-ui session CSRF support while retaining compatibility with legacy panels.",
+    "Made client deletion attachment-aware and added current traffic-reset API support.",
+    "Scoped new remote client names per inbound so multiple connections on one current 3x-ui panel remain independent.",
+    "Prevented expired subscriptions from exposing a profile link or QR code.",
     "Added safe CMS user deletion: active VPN subscriptions now identify VPN Manager V2 as the blocker, while records from already deleted subscriptions are cleaned up automatically."
   ],
   "release_notes_i18n": {
     "ru": [
+      "В кабинете показаны расход и остаток трафика; VPN-клиенты получают срок действия и данные трафика в метаданных подписки.",
+      "Исправлены уведомления об окончании, включая частично синхронизированные подписки; добавлены безопасный CLI cron и диагностика SMTP.",
+      "Добавлена CSRF-авторизация сессий для актуальных 3x-ui с сохранением совместимости со старыми панелями.",
+      "Удаление клиента теперь учитывает его привязки к inbound, также поддержан актуальный API сброса трафика.",
+      "Имена новых удалённых клиентов теперь разделены по inbound, чтобы несколько подключений на одной актуальной панели 3x-ui оставались независимыми.",
+      "Истёкшие подписки больше не показывают ссылку или QR-код в личном кабинете.",
       "Добавлено безопасное удаление пользователей CMS: активные VPN-подписки теперь явно указывают VPN Manager V2 как причину блокировки, а записи уже удалённых подписок очищаются автоматически."
     ],
     "en": [
+      "Added detailed traffic usage and remaining allowance to the customer profile, plus expiration and traffic metadata for VPN clients.",
+      "Fixed expiration notifications for shared scheduling and partially synced subscriptions; added a safe CLI cron and SMTP diagnostics.",
+      "Added current 3x-ui session CSRF support while retaining compatibility with legacy panels.",
+      "Made client deletion attachment-aware and added current traffic-reset API support.",
+      "Scoped new remote client names per inbound so multiple connections on one current 3x-ui panel remain independent.",
+      "Prevented expired subscriptions from exposing a profile link or QR code.",
       "Added safe CMS user deletion: active VPN subscriptions now identify VPN Manager V2 as the blocker, while records from already deleted subscriptions are cleaned up automatically."
     ],
     "de": [
+      "Im Kundenkonto werden Verbrauch und Restvolumen angezeigt; VPN-Clients erhalten Laufzeit- und Verkehrsdaten als Abo-Metadaten.",
+      "Ablaufmeldungen für den gemeinsamen Planer und teilweise synchronisierte Abos wurden korrigiert; CLI-Cron und SMTP-Diagnose ergänzt.",
+      "CSRF-Unterstützung für Sitzungen aktueller 3x-ui-Versionen wurde bei Erhalt der Kompatibilität mit älteren Panels ergänzt.",
+      "Das Löschen von Clients berücksichtigt nun Inbound-Zuordnungen; außerdem wird die aktuelle API zum Zurücksetzen des Datenverkehrs unterstützt.",
+      "Neue Remote-Clientnamen werden je Inbound getrennt, damit mehrere Verbindungen auf einem aktuellen 3x-ui-Panel unabhängig bleiben.",
+      "Abgelaufene Abonnements zeigen im Kundenkonto keinen Link und keinen QR-Code mehr.",
       "Das sichere Löschen von CMS-Benutzern wurde ergänzt: Aktive VPN-Abonnements nennen nun VPN Manager V2 als Sperrgrund, während Datensätze bereits gelöschter Abonnements automatisch bereinigt werden."
     ],
     "zh-cn": [
+      "用户中心现显示已用和剩余流量，VPN 客户端也会收到订阅有效期和流量元数据。",
+      "修复共享调度和部分同步订阅的到期通知，并新增安全的 CLI cron 入口及 SMTP 诊断。",
+      "新增当前 3x-ui 会话 CSRF 支持，同时保留与旧版面板的兼容性。",
+      "删除客户端时现在会考虑其 inbound 绑定，并支持当前的流量重置 API。",
+      "新的远程客户端名称现在按 inbound 区分，使同一当前 3x-ui 面板上的多个连接保持独立。",
+      "已过期的订阅不再在用户中心显示链接或二维码。",
       "新增安全删除 CMS 用户：活动 VPN 订阅现在会明确指出 VPN Manager V2 是阻止原因，已删除订阅的记录则会自动清理。"
     ]
   },

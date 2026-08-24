@@ -2,6 +2,7 @@
 
 $settings = is_array($settings ?? null) ? $settings : [];
 $templateVariables = is_array($templateVariables ?? null) ? $templateVariables : [];
+$mailEnabled = !empty($mailEnabled);
 $checked = static fn(string $key): string => !empty($settings[$key]) ? ' checked' : '';
 $switch = static function (string $key, string $label, string $help = '') use ($checked): string {
     return '<div class="form-check form-switch">'
@@ -67,6 +68,16 @@ $switch = static function (string $key, string $label, string $help = '') use ($
             <h2 class="h5 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_notifications')) ?></h2>
         </div>
         <div class="row g-3">
+            <?php if (!$mailEnabled): ?>
+                <div class="col-12">
+                    <div class="alert alert-warning rounded-4 mb-0 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                        <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_notifications_mail_unavailable')) ?></span>
+                        <a class="btn btn-sm btn-outline-warning rounded-pill flex-shrink-0" href="<?= base_href('/admin/settings/mail') ?>">
+                            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_notifications_configure_mail')) ?>
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
             <div class="col-12 col-lg-6"><?= $switch(
                 'notifications_profile_enabled',
                 FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notifications_profile'),
@@ -74,7 +85,8 @@ $switch = static function (string $key, string $label, string $help = '') use ($
             ) ?></div>
             <div class="col-12 col-lg-6"><?= $switch(
                 'notifications_email_enabled',
-                FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notifications_email')
+                FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notifications_email'),
+                FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notifications_email_help')
             ) ?></div>
             <div class="col-12 col-md-6"><?= $switch('notify_expiration_3_days', FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notify_expiration_3_days')) ?></div>
             <div class="col-12 col-md-6"><?= $switch('notify_expiration_day', FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notify_expiration_day')) ?></div>
@@ -174,6 +186,12 @@ $switch = static function (string $key, string $label, string $help = '') use ($
                 <label class="form-label" for="vpnV2SupportUrl"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_support_url')) ?></label>
                 <input class="form-control" id="vpnV2SupportUrl" type="url" name="support_url" maxlength="255" placeholder="https://support.example.com"
                        value="<?= htmlSC((string)($settings['support_url'] ?? '')) ?>">
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="vpnV2ProfileInfoText"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_profile_info_text')) ?></label>
+                <textarea class="form-control" id="vpnV2ProfileInfoText" name="profile_info_text" maxlength="500" rows="3"
+                          placeholder="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_info_default')) ?>"><?= htmlSC((string)($settings['profile_info_text'] ?? '')) ?></textarea>
+                <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_profile_info_text_help')) ?></div>
             </div>
         </div>
     </section>

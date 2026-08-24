@@ -11,6 +11,7 @@ require dirname(__DIR__) . '/Plugin.php';
 FBL\Language::registerPluginLanguage('vpn-manager-v2', dirname(__DIR__) . '/lang');
 
 use Fireball\VpnManagerV2\Services\VpnSubscriptionUrlService;
+use Fireball\VpnManagerV2\Services\VpnSubscriptionMetadataService;
 use Fireball\VpnManagerV2\Support\ProfileVpnFormatter;
 use Fireball\VpnManagerV2\Support\ProfileVpnInstructions;
 
@@ -36,6 +37,29 @@ $assert(ProfileVpnFormatter::bytes(0) === '0 B' && ProfileVpnFormatter::bytes(50
 $assert(str_contains(ProfileVpnFormatter::remaining('2026-07-17 14:00:00', $now), '2'),
     'Remaining time was not calculated.');
 
+$metadata = new VpnSubscriptionMetadataService();
+$metadataHeaders = $metadata->headers([
+    'expires_at' => '2026-07-17 14:00:00',
+    'traffic_limit_bytes' => 10 * (1024 ** 3),
+    'traffic_used_bytes' => 3 * (1024 ** 3),
+], [
+    'subscription_name' => 'Fireball VPN',
+    'sync_interval_minutes' => 15,
+    'support_url' => 'https://support.example.com',
+], [
+    'upload_bytes' => 1 * (1024 ** 3),
+    'download_bytes' => 2 * (1024 ** 3),
+    'traffic_used_bytes' => 3 * (1024 ** 3),
+]);
+$assert($metadataHeaders['subscription-userinfo'] === 'upload=1073741824; download=2147483648; total=10737418240; expire=' . strtotime('2026-07-17 14:00:00')
+    && $metadataHeaders['profile-update-interval'] === '1'
+    && $metadataHeaders['support-url'] === 'https://support.example.com',
+    'Subscription traffic or expiration metadata is incorrect.');
+$assert(str_contains($metadata->profileTitle([
+    'expires_at' => '2026-07-17 14:00:00',
+], ['subscription_name' => 'Fireball VPN']), '17.07.2026'),
+    'Subscription profile title does not show its expiration date.');
+
 $instructions = ProfileVpnInstructions::all('android');
 $assert(count($instructions) === 4 && count($instructions[0]['steps']) === 4,
     'All four platform instruction sets are required.');
@@ -60,6 +84,8 @@ echo json_encode([
         'future_subscription_not_active',
         'traffic_formatting',
         'remaining_time',
+        'subscription_traffic_metadata',
+        'subscription_expiration_title',
         'four_platform_instructions',
         'v2_subscription_url',
         'iphone_clipboard_fallback',

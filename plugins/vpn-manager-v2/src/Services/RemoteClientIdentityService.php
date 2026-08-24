@@ -52,14 +52,26 @@ final class RemoteClientIdentityService
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_user_not_found'));
         }
 
+        $identity = $this->forTarget($user, $target);
+        ($this->subscriptions ?? new SubscriptionRepository())->assignProfile(
+            (int)($subscription['id'] ?? 0),
+            (int)$identity['profile_id']
+        );
+
+        return $identity;
+    }
+
+    public function forTarget(array $user, array $target): array
+    {
         $identity = $this->forUser(
             $user,
             (string)($target['country_code'] ?? ''),
             (string)($target['protocol'] ?? '')
         );
-        ($this->subscriptions ?? new SubscriptionRepository())->assignProfile(
-            (int)($subscription['id'] ?? 0),
-            (int)$identity['profile_id']
+        $identity['remote_client_name'] = ($this->names ?? new RemoteClientNameGenerator())->forConnection(
+            (string)$identity['remote_client_name'],
+            (int)($target['server_id'] ?? 0),
+            (int)($target['inbound_id'] ?? 0)
         );
 
         return $identity;

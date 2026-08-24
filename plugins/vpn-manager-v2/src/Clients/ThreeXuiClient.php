@@ -16,11 +16,14 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
     private const MAX_RESPONSE_BYTES = 8388608;
 
     private ?string $cookieFile = null;
+    private ?string $csrfToken = null;
     private bool $authenticated = false;
     private ?array $cachedInbounds = null;
 
-    public function __construct(private readonly ThreeXuiServerConfig $config)
-    {
+    public function __construct(
+        private readonly ThreeXuiServerConfig $config,
+        private readonly ?\Closure $transport = null,
+    ) {
     }
 
     public function __destruct()
@@ -57,9 +60,11 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         }
 
         $this->ensureCookieFile();
+        $this->prepareSessionCsrfToken();
         $response = $this->request('POST', $this->config->endpoint('/login'), [
             'username' => $this->config->username,
             'password' => $this->config->password,
+            'twoFactorCode' => '',
         ]);
         $decoded = $this->decodeJsonResponse($response, true);
         if (($decoded['success'] ?? null) !== true) {
@@ -205,7 +210,36 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
 
         if ($email !== '') {
             try {
-                return $this->requestJson('POST', $this->config->endpoint('/panel/api/clients/del/' . rawurlencode($email)), [], 'json');
+                $inboundIds = $this->modernClientInboundIds($email);
+            } catch (ThreeXuiHttpException $exception) {
+                if (!$this->isEndpointFallbackStatus($exception)) {
+                    throw $exception;
+                }
+                $inboundIds = $this->clientInboundIdsFromList($clientId, $email);
+            }
+            if ($inboundIds === []) {
+                // The caller has already confirmed the client in this inbound.
+                // Treat an empty attachment list as a stale projection, never
+                // as permission to delete an unrelated global client.
+                $inboundIds = [$remoteInboundId];
+            }
+
+            try {
+                if (count(array_unique($inboundIds)) > 1) {
+                    return $this->requestJson(
+                        'POST',
+                        $this->config->endpoint('/panel/api/clients/' . rawurlencode($email) . '/detach'),
+                        ['inboundIds' => [$remoteInboundId]],
+                        'json'
+                    );
+                }
+
+                return $this->requestJson(
+                    'POST',
+                    $this->config->endpoint('/panel/api/clients/del/' . rawurlencode($email)) . '?keepTraffic=0',
+                    [],
+                    'json'
+                );
             } catch (ThreeXuiHttpException $exception) {
                 if (!$this->isEndpointFallbackStatus($exception)) {
                     throw $exception;
@@ -228,11 +262,21 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         }
         $this->authenticate();
 
-        return $this->requestJson(
-            'POST',
-            $this->config->endpoint('/panel/api/inbounds/' . $remoteInboundId
-                . '/resetClientTraffic/' . rawurlencode($clientEmail))
-        );
+        try {
+            return $this->requestJson(
+                'POST',
+                $this->config->endpoint('/panel/api/clients/resetTraffic/' . rawurlencode($clientEmail)),
+                [],
+                'json'
+            );
+        } catch (ThreeXuiHttpException $exception) {
+            if (!$this->isEndpointFallbackStatus($exception)) {
+                throw $exception;
+            }
+        }
+
+        return $this->requestJson('POST', $this->config->endpoint('/panel/api/inbounds/'
+            . $remoteInboundId . '/resetClientTraffic/' . rawurlencode($clientEmail)));
     }
 
     private function fetchInbounds(): array
@@ -267,8 +311,14 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
 
     private function decodeJsonResponse(ThreeXuiHttpResponse $response, bool $authenticationStage = false): array
     {
-        if ($response->status === 401 || $response->status === 403) {
+        if ($response->status === 401) {
             throw new ThreeXuiAuthenticationException($this->message('vpn_manager_v2_error_authentication_failed'));
+        }
+        if ($response->status === 403) {
+            $key = $this->config->authType === 'token'
+                ? 'vpn_manager_v2_error_api_token_scope'
+                : 'vpn_manager_v2_error_authentication_failed';
+            throw new ThreeXuiAuthenticationException($this->message($key));
         }
         if ($response->status < 200 || $response->status >= 300) {
             throw new ThreeXuiHttpException(
@@ -305,14 +355,6 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
 
     private function request(string $method, string $url, array $payload = [], string $encoding = 'form'): ThreeXuiHttpResponse
     {
-        if (!function_exists('curl_init')) {
-            throw new ThreeXuiTransportException($this->message('vpn_manager_v2_error_curl_required'));
-        }
-        $addresses = (new NetworkTargetGuard())->validatedRequestAddresses(
-            $url,
-            $this->config->allowPrivateNetwork
-        );
-
         // Current 3x-ui deliberately masks an unauthenticated API request as
         // HTTP 404 unless it is marked as XMLHttpRequest. Send the header so
         // an expired or replaced token is reported correctly as HTTP 401.
@@ -324,6 +366,30 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         if ($encoding === 'json') {
             $headers[] = 'Content-Type: application/json';
         }
+        if ($this->csrfToken !== null
+            && !in_array(strtoupper($method), ['GET', 'HEAD', 'OPTIONS', 'TRACE'], true)) {
+            $headers[] = 'X-CSRF-Token: ' . $this->csrfToken;
+        }
+
+        if ($this->transport !== null) {
+            $response = ($this->transport)($method, $url, $payload, $encoding, $headers);
+            if (!$response instanceof ThreeXuiHttpResponse) {
+                throw new ThreeXuiTransportException($this->message('vpn_manager_v2_error_transport'));
+            }
+            if (strlen($response->body) > self::MAX_RESPONSE_BYTES) {
+                throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_response_too_large'));
+            }
+
+            return $response;
+        }
+
+        if (!function_exists('curl_init')) {
+            throw new ThreeXuiTransportException($this->message('vpn_manager_v2_error_curl_required'));
+        }
+        $addresses = (new NetworkTargetGuard())->validatedRequestAddresses(
+            $url,
+            $this->config->allowPrivateNetwork
+        );
 
         $handle = curl_init($url);
         curl_setopt_array($handle, [
@@ -336,7 +402,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => $this->config->verifySsl,
             CURLOPT_SSL_VERIFYHOST => $this->config->verifySsl ? 2 : 0,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.19.6',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.20.0',
         ]);
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
             curl_setopt($handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
@@ -398,6 +464,71 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             @unlink($this->cookieFile);
         }
         $this->cookieFile = null;
+        $this->csrfToken = null;
+    }
+
+    private function prepareSessionCsrfToken(): void
+    {
+        try {
+            $decoded = $this->decodeJsonResponse(
+                $this->request('GET', $this->config->endpoint('/csrf-token'))
+            );
+            $token = trim((string)($decoded['obj'] ?? ''));
+            $this->csrfToken = $token !== '' ? $token : null;
+        } catch (ThreeXuiHttpException $exception) {
+            if (!$this->isEndpointFallbackStatus($exception)) {
+                throw $exception;
+            }
+
+            // Older 3x-ui releases do not expose /csrf-token and accept the
+            // historical cookie-session requests without the header.
+            $this->csrfToken = null;
+        }
+    }
+
+    private function modernClientInboundIds(string $email): array
+    {
+        $decoded = $this->requestJson(
+            'GET',
+            $this->config->endpoint('/panel/api/clients/get/' . rawurlencode($email))
+        );
+        $payload = $decoded['obj'] ?? [];
+        if (!is_array($payload)) {
+            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_client_response'));
+        }
+        $ids = $payload['inboundIds'] ?? $payload['inbound_ids'] ?? [];
+        if (!is_array($ids)) {
+            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_client_response'));
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', $ids),
+            static fn(int $id): bool => $id > 0
+        )));
+    }
+
+    private function clientInboundIdsFromList(string $clientId, string $email): array
+    {
+        $ids = [];
+        $mapper = new ThreeXuiResponseMapper();
+        foreach ($this->fetchInbounds() as $inbound) {
+            $inboundId = (int)($inbound['id'] ?? 0);
+            if ($inboundId <= 0) {
+                continue;
+            }
+            foreach ($mapper->clients($inbound) as $candidate) {
+                $remoteId = trim((string)($candidate['id'] ?? $candidate['uuid']
+                    ?? $candidate['password'] ?? ''));
+                $remoteEmail = trim((string)($candidate['email'] ?? ''));
+                if (($clientId !== '' && $remoteId !== '' && hash_equals($clientId, $remoteId))
+                    || ($email !== '' && $remoteEmail !== '' && hash_equals($email, $remoteEmail))) {
+                    $ids[$inboundId] = true;
+                    break;
+                }
+            }
+        }
+
+        return array_keys($ids);
     }
 
     private function encodeJson(array $payload): string

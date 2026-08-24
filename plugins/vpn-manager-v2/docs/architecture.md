@@ -1,6 +1,15 @@
 # VPN Manager V2
 
-Current implementation: version 0.19, bidirectional CMS/3x-ui reconciliation, dependent subscriptions and editable ordering for native and external configurations. The historical stage notes below remain as an implementation record.
+Current implementation: version 0.21, bidirectional CMS/3x-ui reconciliation, dependent subscriptions and editable ordering for native and external configurations. The historical stage notes below remain as an implementation record.
+
+Version 0.20 supports both the current first-class `/panel/api/clients/*` API and
+the historical inbound-scoped client API. Password sessions obtain the panel's
+CSRF token before login and send it on every unsafe request; Bearer tokens do not
+need CSRF and must have the `admin` scope because verified synchronization reads
+full inbound and client details. If a modern client belongs to several inbounds,
+removing one CMS connection detaches only that inbound. A client with only that
+inbound is deleted globally. Legacy panels continue to use their inbound-scoped
+delete and traffic-reset endpoints after a 404/405 capability fallback.
 
 Stage 12 adds cron-compatible job entry points, monotonic traffic synchronization, expiration and traffic-limit enforcement, a persistent notification outbox and bounded retries. It does not migrate data from VPN Manager V1.
 
@@ -147,7 +156,7 @@ Database schema changes must be delivered only as new ordered SQL files in `migr
 
 The CMS is authoritative for user identity, plan membership, activation, expiration, device limits and traffic limits. 3x-ui is authoritative for the technical inbound snapshot and for remote client state observed during a successful poll. A successful reconciliation imports technical changes, but policy differences are pushed back through a queued, verified read/update/read operation.
 
-One `vpn_v2_profiles` row represents a logical VPN identity for a CMS user. A new profile reuses that user's oldest confirmed legacy UUID when one exists; otherwise it creates a UUID once. Password protocols use a separate profile password. Existing remote credentials are not mass-replaced. New compatible nodes use the corresponding profile credential and a deterministic ASCII client name in the form `{normalized_name}-{normalized_login}-{COUNTRY}`.
+One `vpn_v2_profiles` row represents a logical VPN identity for a CMS user. A new profile reuses that user's oldest confirmed legacy UUID when one exists; otherwise it creates a UUID once. Password protocols use a separate profile password. Existing remote credentials are not mass-replaced. New compatible nodes use the corresponding profile credential and a deterministic, connection-scoped ASCII client name in the form `{normalized_name}-{normalized_login}-{COUNTRY}-s{server_id}-i{inbound_id}`. The suffix keeps clients distinct on current 3x-ui releases where e-mail is globally unique across a panel, while legacy stored names remain unchanged.
 
 Because one profile credential maps to one remote client per inbound, the create workflow rejects overlapping effective subscriptions for the same CMS user. Historical overlaps are retained for compatibility, but if two local connections resolve to one remote client the reconciler records `remote_already_bound` and does not merge or overwrite either subscription automatically.
 
@@ -159,7 +168,9 @@ Every accepted remote configuration is canonicalized, validated, hashed and vers
 
 Each local subscription connection has its own `sort_order`. Administrators can reorder the complete non-deleted connection list from the subscription page by drag-and-drop or accessible up/down buttons. Saving the order is transactional, bumps the subscription revision, and changes only the URI sequence; it never recreates a 3x-ui client or rotates the permanent token. New plan connections are appended after the existing custom sequence.
 
-The persistent `subscription_name` setting is independent from `service_name` and the server-name template. Successful public responses expose it through the standard base64-encoded `profile-title` header, including conditional responses. Changing it bumps active subscription revisions so clients and caches observe the new profile metadata.
+The persistent `subscription_name` setting is independent from `service_name` and the server-name template. Successful public responses expose it together with the expiration date through the standard base64-encoded `profile-title` header, including conditional responses. The `subscription-userinfo` header exposes confirmed upload, download, total allowance and Unix expiration time; `profile-update-interval` and an optional `support-url` complete the client metadata. Headers are rebuilt on every request, including cached-body responses.
+
+The customer profile presents traffic as separate used, remaining and limit values, includes directional upload/download counters and their last synchronization time, and shows a localized or administrator-defined `profile_info_text` notice. Unlimited subscriptions never fabricate a finite remainder.
 
 Confirmed VLESS, VMess and Trojan nodes are rendered in their native subscription URI formats. Reality is accepted only for VLESS; TLS and non-TLS branches remain isolated. Unsupported or incomplete protocol/security combinations fail snapshot validation and never enter the public response.
 

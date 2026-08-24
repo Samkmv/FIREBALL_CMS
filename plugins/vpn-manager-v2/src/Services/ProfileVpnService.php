@@ -135,6 +135,8 @@ final class ProfileVpnService
             'logo' => (string)$settings['logo'],
             'supportName' => (string)$settings['support_name'],
             'supportUrl' => (string)$settings['support_url'],
+            'profileInfoText' => trim((string)($settings['profile_info_text'] ?? ''))
+                ?: \FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_info_default'),
             'showQrInProfile' => !empty($settings['show_qr_in_profile']),
             'instructions' => ProfileVpnInstructions::all($platform),
         ];
@@ -149,7 +151,7 @@ final class ProfileVpnService
                 $subscription['effective_status'] = 'inactive';
                 $subscription['inactive_reason'] = 'parent_subscription_required';
             } else {
-                $subscription['effective_status'] = (string)$effective['effective_status'];
+                $subscription['effective_status'] = $this->presentationStatus($subscription, $effective);
                 $subscription['inactive_reason'] = $effective['inactive_reason'];
             }
         } catch (\Throwable) {
@@ -159,18 +161,47 @@ final class ProfileVpnService
         $subscription['starts_at_display'] = ProfileVpnFormatter::date($subscription['starts_at'] ?? null);
         $subscription['expires_at_display'] = ProfileVpnFormatter::date($subscription['expires_at'] ?? null);
         $subscription['remaining_display'] = ProfileVpnFormatter::remaining($subscription['expires_at'] ?? null);
-        $subscription['traffic_used_display'] = ProfileVpnFormatter::bytes($subscription['traffic_used_bytes'] ?? 0);
-        $subscription['traffic_limit_display'] = TrafficFormatter::limit(
-            isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null
-        );
         $limit = max(0, (int)($subscription['traffic_limit_bytes'] ?? 0));
         $used = max(0, (int)($subscription['traffic_used_bytes'] ?? 0));
+        $upload = max(0, (int)($subscription['upload_bytes'] ?? 0));
+        $download = max(0, (int)($subscription['download_bytes'] ?? 0));
+        if (($upload + $download) < $used) {
+            $download += $used - ($upload + $download);
+        }
         $subscription['traffic_used_display'] = TrafficFormatter::bytes($used);
         $subscription['traffic_limit_display'] = TrafficFormatter::localizedLimit($limit > 0 ? $limit : null);
         $subscription['traffic_usage_display'] = TrafficFormatter::usage($used, $limit > 0 ? $limit : null);
         $subscription['traffic_percent'] = $limit > 0 ? min(100, (int)round(($used / $limit) * 100)) : 0;
+        $remaining = $limit > 0 ? max(0, $limit - $used) : null;
+        $subscription['traffic_remaining_bytes'] = $remaining;
+        $subscription['traffic_remaining_display'] = $remaining !== null
+            ? TrafficFormatter::bytes($remaining)
+            : \FireballPluginVpnManagerV2::t('vpn_manager_v2_unlimited');
+        $subscription['upload_display'] = TrafficFormatter::bytes($upload);
+        $subscription['download_display'] = TrafficFormatter::bytes($download);
+        $subscription['traffic_synced_at_display'] = trim((string)($subscription['traffic_synced_at'] ?? '')) !== ''
+            ? ProfileVpnFormatter::date($subscription['traffic_synced_at'])
+            : '';
 
         return $subscription;
+    }
+
+    private function presentationStatus(array $subscription, array $effective): string
+    {
+        if (($effective['effective_status'] ?? '') === 'active') {
+            $status = strtolower(trim((string)($subscription['status'] ?? 'active')));
+
+            return in_array($status, ['active', 'partial_sync', 'sync_error'], true) ? $status : 'active';
+        }
+
+        return match ((string)($effective['inactive_reason'] ?? '')) {
+            'subscription_expired' => 'expired',
+            'subscription_not_started' => 'provisioning',
+            'subscription_limit_exceeded' => 'traffic_exceeded',
+            'subscription_suspended' => 'suspended',
+            'subscription_deleted' => 'deleted',
+            default => ProfileVpnFormatter::effectiveStatus($subscription),
+        };
     }
 
     private function isLocalOnlyUrl(string $url): bool

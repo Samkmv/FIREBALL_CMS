@@ -141,7 +141,12 @@ final class ConfigurationSyncService
 
                 $identity = ($this->identities ?? new RemoteClientIdentityService())->forSubscription(
                     ['id' => (int)$node['subscription_id'], 'user_id' => (int)$node['user_id']],
-                    ['country_code' => (string)$server['country_code'], 'protocol' => (string)$node['protocol']]
+                    [
+                        'server_id' => $serverId,
+                        'inbound_id' => (int)$node['inbound_id'],
+                        'country_code' => (string)$server['country_code'],
+                        'protocol' => (string)$node['protocol'],
+                    ]
                 );
                 $credentials = new RemoteClientCredentialService();
                 if ($credentials->usesPassword((string)$node['protocol'])) {
@@ -149,7 +154,13 @@ final class ConfigurationSyncService
                     // the factual remote password is encrypted separately below.
                     $node['client_uuid'] = (string)$identity['client_uuid'];
                 }
-                $expectedName = (string)$identity['remote_client_name'];
+                // Existing remote names are durable identities. Connection-scoped
+                // names apply to newly provisioned rows without renaming legacy
+                // clients during an ordinary configuration poll.
+                $expectedName = trim((string)($node['remote_client_name'] ?? ''));
+                $expectedName = $expectedName !== ''
+                    ? $expectedName
+                    : (string)$identity['remote_client_name'];
                 $remoteName = trim((string)($remote['client']['email'] ?? ''));
                 if ($remoteName !== $expectedName) {
                     $repository->setExpectedRemoteName((int)$node['id'], $expectedName, (string)$server['country_code']);

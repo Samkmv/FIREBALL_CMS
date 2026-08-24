@@ -75,6 +75,7 @@ final class SettingsValidator
             $this->boolean($data['global_show_flags'] ?? false),
             $this->text($data['support_name'] ?? '', 120, false, 'vpn_manager_v2_error_settings_support_name', $strict),
             $this->supportUrl((string)($data['support_url'] ?? ''), $strict),
+            $this->paragraph($data['profile_info_text'] ?? '', 500, 'vpn_manager_v2_error_settings_profile_info', $strict),
             $this->logo((string)($data['logo'] ?? ''), $strict),
             $this->choice(
                 (string)($data['expired_subscription_behavior'] ?? 'gone'),
@@ -167,6 +168,17 @@ final class SettingsValidator
         if (($required && $value === '') || mb_strlen($value) > $maxLength
             || preg_match('/[\x00-\x1F\x7F]/u', $value) === 1) {
             return $this->invalid($strict, $errorKey, $required ? 'VPN V2' : '');
+        }
+
+        return $value;
+    }
+
+    private function paragraph(mixed $value, int $maxLength, string $errorKey, bool $strict): string
+    {
+        $value = trim(str_replace(["\r\n", "\r"], "\n", (string)$value));
+        if (mb_strlen($value) > $maxLength
+            || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', $value) === 1) {
+            return $this->invalid($strict, $errorKey, '');
         }
 
         return $value;

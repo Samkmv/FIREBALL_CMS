@@ -42,6 +42,11 @@ $data = $validator->validate(array_replace($defaults, [
 ]), $defaults)->toArray();
 $assert($data['service_name'] === 'Fireball Secure' && $data['global_show_flags'] === false,
     'Service name or checkbox=false normalization failed.');
+$info = $validator->validate(array_replace($defaults, [
+    'profile_info_text' => "Refresh the profile.\nContact support if needed.",
+]), $defaults)->toArray();
+$assert($info['profile_info_text'] === "Refresh the profile.\nContact support if needed.",
+    'Customer profile information text was not normalized.');
 
 $renderer = new VpnServerNameRenderer($flags);
 $node = [
@@ -100,6 +105,7 @@ echo json_encode([
         'global_and_server_flags',
         'all_template_variables',
         'checkbox_false',
+        'profile_info_text',
         'identities_excluded',
         'invalid_template_rejected',
         'cache_bounds',

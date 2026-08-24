@@ -126,7 +126,10 @@ try {
 
     $active = $service->dashboard($userIds['owner'], $activeId, 'ios');
     $assert($active['requestedSubscriptionFound'] && count($active['subscriptions']) === 2
-        && $active['linkReady'] && count($active['servers']) === 1, 'Owner dashboard data is incomplete.');
+        && $active['linkReady'] && count($active['servers']) === 1
+        && $active['selectedSubscription']['traffic_used_display'] === '2 ГБ'
+        && $active['selectedSubscription']['traffic_remaining_display'] === '8 ГБ',
+        'Owner dashboard data or traffic remainder is incomplete.');
     $results['multiple_subscriptions'] = true;
 
     $foreign = $service->dashboard($userIds['owner'], $foreignId);
@@ -150,6 +153,9 @@ try {
         && str_contains($html, 'data-vpn-v2-copy-input') && str_contains($html, '<svg')
         && str_contains($html, '🇩🇪') && str_contains($html, 'iPhone / iPad')
         && str_contains($html, 'Android') && str_contains($html, 'Windows') && str_contains($html, 'macOS')
+        && str_contains($html, 'data-vpn-v2-traffic-used')
+        && str_contains($html, 'data-vpn-v2-traffic-remaining')
+        && str_contains($html, 'data-vpn-v2-profile-info')
         && str_contains($html, 'После изменения параметров обновите подписку в VPN-приложении.'),
         'Safe customer cabinet content is incomplete.');
     foreach ([$panelMarker, (string)$remoteInboundId, $internalJsonMarker, $uuidMarker,

@@ -84,9 +84,10 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
             return array_replace($permissions, Permissions::definitions());
         });
 
-        add_filter('vpn_manager_v2_jobs', static function (array $jobs): array {
-            return array_replace($jobs, self::jobs());
-        });
+        // Keep the plugin-specific hook for backwards compatibility and also
+        // publish every job to the CMS-wide scheduler contract.
+        add_filter('vpn_manager_v2_jobs', [self::class, 'registerJobs']);
+        add_filter('fireball_scheduled_jobs', [self::class, 'registerJobs']);
 
         add_filter('admin_dashboard_widgets', [self::class, 'dashboardWidgets'], 10);
 
@@ -241,40 +242,54 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
             'vpn_v2_sync_configuration' => [
                 'class' => VpnV2SyncConfigurationJob::class,
                 'schedule' => '*/10 * * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_sync_traffic' => [
                 'class' => VpnV2SyncTrafficJob::class,
                 'schedule' => '*/10 * * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_check_traffic_limits' => [
                 'class' => VpnV2CheckTrafficLimitsJob::class,
                 'schedule' => '5-59/10 * * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_check_expirations' => [
                 'class' => VpnV2CheckExpirationsJob::class,
                 'schedule' => '15 * * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_send_expiration_notifications' => [
                 'class' => VpnV2SendExpirationNotificationsJob::class,
                 'schedule' => '10 9 * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_retry_failed_operations' => [
                 'class' => VpnV2RetryFailedOperationsJob::class,
                 'schedule' => '*/10 * * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_reconcile_plan_subscriptions' => [
                 'class' => VpnV2ReconcilePlanSubscriptionsJob::class,
                 'schedule' => '* * * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_provision_missing_clients' => [
                 'class' => VpnV2ProvisionMissingClientsJob::class,
                 'schedule' => '5-59/10 * * * *',
+                'plugin' => self::SLUG,
             ],
             'vpn_v2_full_reconcile' => [
                 'class' => VpnV2FullReconcileJob::class,
                 'schedule' => '25 3 * * *',
+                'plugin' => self::SLUG,
             ],
         ];
+    }
+
+    public static function registerJobs(array $jobs): array
+    {
+        return array_replace($jobs, self::jobs());
     }
 
     public static function tabs(string $active): array

@@ -27,6 +27,28 @@ final class SubscriptionConfigRepository
         return $this->activeNodesForSubscriptions([$subscriptionId]);
     }
 
+    public function trafficBreakdown(int $subscriptionId): array
+    {
+        if ($subscriptionId <= 0) {
+            return ['upload_bytes' => 0, 'download_bytes' => 0, 'traffic_used_bytes' => 0];
+        }
+
+        $row = db()->query(
+            "SELECT COALESCE(SUM(upload_bytes), 0) AS upload_bytes,
+                    COALESCE(SUM(download_bytes), 0) AS download_bytes,
+                    COALESCE(SUM(traffic_used_bytes), 0) AS traffic_used_bytes
+             FROM vpn_v2_subscription_nodes
+             WHERE subscription_id = ? AND status <> 'deleted'",
+            [$subscriptionId]
+        )->getOne();
+
+        return [
+            'upload_bytes' => max(0, (int)($row['upload_bytes'] ?? 0)),
+            'download_bytes' => max(0, (int)($row['download_bytes'] ?? 0)),
+            'traffic_used_bytes' => max(0, (int)($row['traffic_used_bytes'] ?? 0)),
+        ];
+    }
+
     public function activeNodesForSubscriptions(array $subscriptionIds): array
     {
         $subscriptionIds = array_values(array_unique(array_filter(array_map('intval', $subscriptionIds))));

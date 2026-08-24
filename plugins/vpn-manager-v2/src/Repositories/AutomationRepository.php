@@ -4,6 +4,8 @@ namespace Fireball\VpnManagerV2\Repositories;
 
 final class AutomationRepository
 {
+    public const ACCESSIBLE_SUBSCRIPTION_STATUSES = ['active', 'partial_sync', 'sync_error'];
+
     public function activeNodesForTrafficSync(int $limit = 500, int $afterId = 0): array
     {
         $limit = max(1, min(2000, $limit));
@@ -159,7 +161,8 @@ final class AutomationRepository
             "SELECT id, user_id, status, starts_at, expires_at, traffic_limit_bytes,
                     traffic_used_bytes, device_limit, revision, created_by, internal_comment
              FROM vpn_v2_subscriptions
-             WHERE status = 'active' AND expires_at IS NOT NULL AND expires_at <= NOW()
+             WHERE status IN ('active', 'partial_sync', 'sync_error')
+               AND expires_at IS NOT NULL AND expires_at <= NOW()
              ORDER BY expires_at ASC, id ASC
              LIMIT {$limit}"
         )->get() ?: [];
@@ -249,8 +252,10 @@ final class AutomationRepository
              FROM vpn_v2_subscriptions
              WHERE expires_at IS NOT NULL
                AND (
-                    (status = 'active' AND DATE(expires_at) = DATE_ADD(CURDATE(), INTERVAL 3 DAY))
-                    OR (status IN ('active', 'expired') AND DATE(expires_at) = CURDATE())
+                    (status IN ('active', 'partial_sync', 'sync_error')
+                        AND DATE(expires_at) = DATE_ADD(CURDATE(), INTERVAL 3 DAY))
+                    OR (status IN ('active', 'partial_sync', 'sync_error', 'expired')
+                        AND DATE(expires_at) = CURDATE())
                )
              ORDER BY id ASC
              LIMIT 1000"

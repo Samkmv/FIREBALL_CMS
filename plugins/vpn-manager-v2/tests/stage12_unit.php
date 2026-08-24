@@ -28,6 +28,7 @@ use Fireball\VpnManagerV2\Jobs\VpnV2CheckTrafficLimitsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2RetryFailedOperationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SendExpirationNotificationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SyncTrafficJob;
+use Fireball\VpnManagerV2\Repositories\AutomationRepository;
 use Fireball\VpnManagerV2\Services\ClientPayloadFactory;
 use Fireball\VpnManagerV2\Services\SettingsService;
 use Fireball\VpnManagerV2\Services\TrafficSyncService;
@@ -103,6 +104,16 @@ foreach ([
 ] as $class) {
     $assert(in_array($class, $classes, true) && method_exists($class, 'handle'), 'Job is not registered: ' . $class);
 }
+$scheduled = FireballPluginVpnManagerV2::registerJobs([
+    'existing_job' => ['class' => stdClass::class, 'schedule' => '* * * * *'],
+]);
+$assert(isset($scheduled['existing_job'], $scheduled['vpn_v2_send_expiration_notifications'])
+    && count(array_filter($jobs, static fn(array $job): bool =>
+        ($job['plugin'] ?? '') === FireballPluginVpnManagerV2::SLUG
+    )) === count($jobs),
+    'VPN jobs are not compatible with the shared CMS scheduler.');
+$assert(AutomationRepository::ACCESSIBLE_SUBSCRIPTION_STATUSES === ['active', 'partial_sync', 'sync_error'],
+    'Expiration automation omits an accessible subscription state.');
 
 echo json_encode([
     'status' => 'ok',
@@ -114,5 +125,7 @@ echo json_encode([
         'traffic_limit_disables_without_reset',
         'automation_settings',
         'five_jobs_registered',
+        'shared_scheduler_registration',
+        'accessible_subscription_expiration',
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), PHP_EOL;

@@ -9,7 +9,14 @@ use Fireball\VpnManagerV2\Validators\SettingsValidator;
 
 final class SettingsService
 {
-    private const CONFIG_KEYS = ['subscription_name', 'service_name', 'server_name_template', 'global_show_flags'];
+    private const CONFIG_KEYS = [
+        'subscription_name',
+        'service_name',
+        'server_name_template',
+        'global_show_flags',
+        'profile_info_text',
+        'support_url',
+    ];
     private const SECRET_MARKERS = ['password', 'secret', 'token', 'cookie', 'authorization'];
 
     public function __construct(
@@ -31,6 +38,7 @@ final class SettingsService
             'global_show_flags' => true,
             'support_name' => '',
             'support_url' => '',
+            'profile_info_text' => '',
             'logo' => '',
             'expired_subscription_behavior' => 'gone',
             'subscription_cache_ttl_seconds' => 300,
