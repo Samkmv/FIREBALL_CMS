@@ -156,6 +156,7 @@
                 data-attachment-label="<?= htmlSC(return_translation('chat_attachment_label')) ?>"
                 data-file-too-large-text="<?= htmlSC(return_translation('chat_file_size_error')) ?>"
                 data-file-type-error-text="<?= htmlSC(return_translation('chat_file_type_error')) ?>"
+                data-max-file-size="<?= (int)($chat_max_file_size ?? 0) ?>"
                 data-message-required-text="<?= htmlSC(return_translation('chat_message_required')) ?>"
                 data-download-image-text="<?= htmlSC(return_translation('chat_download_image')) ?>"
                 data-image-modal-title="<?= htmlSC(return_translation('chat_image_modal_title')) ?>"
@@ -171,6 +172,18 @@
                 data-offline-text="<?= htmlSC(return_translation('chat_status_offline')) ?>"
                 data-attachment-remove-text="<?= htmlSC(return_translation('chat_attachment_remove')) ?>"
                 data-attachment-ready-text="<?= htmlSC(return_translation('chat_attachment_ready')) ?>"
+                data-voice-record-text="<?= htmlSC(return_translation('chat_voice_record')) ?>"
+                data-voice-recording-text="<?= htmlSC(return_translation('chat_voice_recording')) ?>"
+                data-voice-stop-text="<?= htmlSC(return_translation('chat_voice_stop')) ?>"
+                data-voice-cancel-text="<?= htmlSC(return_translation('chat_voice_cancel')) ?>"
+                data-voice-ready-text="<?= htmlSC(return_translation('chat_voice_ready')) ?>"
+                data-voice-message-text="<?= htmlSC(return_translation('chat_attachment_voice')) ?>"
+                data-voice-play-text="<?= htmlSC(return_translation('chat_voice_play')) ?>"
+                data-voice-pause-text="<?= htmlSC(return_translation('chat_voice_pause')) ?>"
+                data-voice-seek-text="<?= htmlSC(return_translation('chat_voice_seek')) ?>"
+                data-voice-unsupported-text="<?= htmlSC(return_translation('chat_voice_unsupported')) ?>"
+                data-voice-permission-error-text="<?= htmlSC(return_translation('chat_voice_permission_error')) ?>"
+                data-voice-max-duration-text="<?= htmlSC(return_translation('chat_voice_max_duration')) ?>"
                 data-drop-title-text="<?= htmlSC(return_translation('chat_attachment_drop_title')) ?>"
                 data-drop-subtitle-text="<?= htmlSC(return_translation('chat_attachment_drop_subtitle')) ?>"
                 data-delete-message-text="<?= htmlSC(return_translation('chat_message_deleted')) ?>"
@@ -188,6 +201,11 @@
                 data-audit-device-text="<?= htmlSC(return_translation('chat_audit_label_device')) ?>"
                 data-audit-reason-text="<?= htmlSC(return_translation('chat_audit_label_reason')) ?>"
                 data-audit-attachment-text="<?= htmlSC(return_translation('chat_audit_label_attachment')) ?>"
+                data-audit-deleted-count-text="<?= htmlSC(return_translation('chat_audit_label_deleted_count')) ?>"
+                data-audit-attachment-count-text="<?= htmlSC(return_translation('chat_audit_label_attachment_count')) ?>"
+                data-audit-load-error-text="<?= htmlSC(return_translation('chat_audit_load_error')) ?>"
+                data-confirm-reason-label="<?= htmlSC(return_translation('chat_confirm_reason_label')) ?>"
+                data-confirm-reason-placeholder="<?= htmlSC(return_translation('chat_confirm_reason_placeholder')) ?>"
                 data-selection-count-text="<?= htmlSC(return_translation('chat_selection_count')) ?>"
                 data-can-moderate="<?= !empty($chatPermissions['can_moderate']) ? '1' : '0' ?>"
                 data-can-bulk-delete="<?= !empty($chatPermissions['can_bulk_delete']) ? '1' : '0' ?>"
@@ -310,10 +328,37 @@
                                                     <i class="ci-paperclip"></i>
                                                     <input class="chat-file-input" type="file" id="chatFileInput" name="attachment[]" multiple data-chat-attachment accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.rtf,.odt,.ods,.odp,.ppt,.pptx,.zip,.rar,.7z,.json,.xml,.md">
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    class="chat-composer__attach btn btn-outline-secondary rounded-circle d-none d-md-inline-flex"
+                                                    title="<?= htmlSC(return_translation('chat_attachment_gallery')) ?>"
+                                                    aria-label="<?= htmlSC(return_translation('chat_attachment_gallery')) ?>"
+                                                    data-chat-pick-gallery
+                                                >
+                                                    <i class="ci-image" aria-hidden="true"></i>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="chat-composer__attach btn btn-outline-secondary rounded-circle d-none d-lg-inline-flex"
+                                                    title="<?= htmlSC(return_translation('chat_attachment_camera')) ?>"
+                                                    aria-label="<?= htmlSC(return_translation('chat_attachment_camera')) ?>"
+                                                    data-chat-pick-camera
+                                                >
+                                                    <i class="ci-camera" aria-hidden="true"></i>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="chat-composer__attach chat-composer__record btn btn-outline-secondary rounded-circle"
+                                                    title="<?= htmlSC(return_translation('chat_voice_record')) ?>"
+                                                    aria-label="<?= htmlSC(return_translation('chat_voice_record')) ?>"
+                                                    data-chat-record-voice
+                                                >
+                                                    <i class="ci-mic" aria-hidden="true"></i>
+                                                </button>
                                                 <?php if (!empty($chat_file_manager_enabled) && !empty($chat_file_manager_url)): ?>
                                                     <button
                                                         type="button"
-                                                        class="chat-composer__attach btn btn-outline-secondary rounded-circle"
+                                                        class="chat-composer__attach btn btn-outline-secondary rounded-circle d-none d-md-inline-flex"
                                                         title="<?= htmlSC(return_translation('admin_btn_choose_file')) ?>"
                                                         data-file-manager-open
                                                         data-file-manager-input="chatSiteFileSelection"
@@ -325,7 +370,14 @@
                                                 <?php endif; ?>
 
                                             </div>
-                                            <input type="text" class="form-control border-0 shadow-none bg-transparent" name="message" maxlength="2000" placeholder="<?= print_translation('chat_message_placeholder') ?>">
+                                            <textarea
+                                                class="form-control border-0 shadow-none bg-transparent chat-composer__message"
+                                                name="message"
+                                                rows="1"
+                                                maxlength="2000"
+                                                placeholder="<?= print_translation('chat_message_placeholder') ?>"
+                                                data-chat-message-input
+                                            ></textarea>
                                             <button
                                                 class="chat-composer__submit btn btn-primary rounded-circle"
                                                 type="submit"
@@ -335,6 +387,23 @@
                                                 <i class="ci-send" aria-hidden="true"></i>
                                                 <span class="visually-hidden"><?= print_translation('chat_send_btn') ?></span>
                                             </button>
+                                        </div>
+
+                                        <div class="chat-voice-recorder d-none" data-chat-voice-recorder role="status" aria-live="polite">
+                                            <div class="chat-voice-recorder__status min-w-0">
+                                                <span class="chat-voice-recorder__dot" aria-hidden="true"></span>
+                                                <span class="fw-semibold text-truncate" data-chat-recording-label><?= print_translation('chat_voice_recording') ?></span>
+                                                <time class="chat-voice-recorder__timer" data-chat-recording-timer>00:00</time>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <button type="button" class="btn btn-danger rounded-pill" data-chat-record-stop>
+                                                    <i class="ci-stop-circle me-1" aria-hidden="true"></i>
+                                                    <?= print_translation('chat_voice_stop') ?>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary rounded-pill" data-chat-record-cancel>
+                                                    <?= print_translation('chat_voice_cancel') ?>
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div class="chat-composer__meta chat-composer__hint d-flex align-items-center justify-content-between gap-3 flex-wrap">
@@ -417,6 +486,17 @@
                             </div>
                             <h2 class="h4 mb-2"><?= print_translation('admin_delete_modal_title') ?></h2>
                             <p class="text-body-secondary mb-0" data-chat-confirm-message><?= print_translation('chat_confirm_delete_message') ?></p>
+                            <div class="text-start mt-4 d-none" data-chat-confirm-reason-wrap>
+                                <label class="form-label" for="chatConfirmReason"><?= print_translation('chat_confirm_reason_label') ?></label>
+                                <textarea
+                                    class="form-control"
+                                    id="chatConfirmReason"
+                                    rows="2"
+                                    maxlength="255"
+                                    placeholder="<?= htmlSC(return_translation('chat_confirm_reason_placeholder')) ?>"
+                                    data-chat-confirm-reason
+                                ></textarea>
+                            </div>
                         </div>
                         <div class="modal-footer border-0 justify-content-center gap-2 px-4 pb-4 pt-0">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">

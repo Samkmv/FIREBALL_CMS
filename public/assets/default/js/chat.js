@@ -15,7 +15,7 @@ $(function () {
     const verifiedTitle = String(chatApp.data('verified-title') || 'Verified customer');
     const previewUnavailableText = String(chatApp.data('preview-unavailable-text') || 'Preview unavailable.');
     const previewLoadingText = String(chatApp.data('preview-loading-text') || 'Loading...');
-    const maxFileSize = 200 * 1024 * 1024;
+    const maxFileSize = Number(chatApp.data('max-file-size')) || (200 * 1024 * 1024);
     const blockedExtensions = ['exe', 'bat', 'cmd', 'sh', 'apk', 'js'];
     const allowedExtensions = String(chatApp.find('[data-chat-attachment]').attr('accept') || '')
         .split(',')
@@ -36,11 +36,16 @@ $(function () {
     const messageSearchResults = chatApp.find('[data-chat-message-search-results]');
     const form = chatApp.find('[data-chat-form]');
     const userIdInput = form.find('[data-chat-user-id]');
-    const messageInput = form.find('input[name="message"]');
+    const messageInput = form.find('[data-chat-message-input]');
     const attachmentInput = form.find('[data-chat-attachment]');
     const siteFileInput = form.find('[data-chat-site-file-input]');
     const cameraInput = form.find('[data-chat-camera-input]');
     const galleryInput = form.find('[data-chat-gallery-input]');
+    const recordVoiceButton = form.find('[data-chat-record-voice]');
+    const voiceRecorderPanel = form.find('[data-chat-voice-recorder]');
+    const voiceRecordingTimer = form.find('[data-chat-recording-timer]');
+    const voiceStopButton = form.find('[data-chat-record-stop]');
+    const voiceCancelButton = form.find('[data-chat-record-cancel]');
     const sendButton = form.find('button[type="submit"]');
     const dropzone = form.find('[data-chat-dropzone]');
     const dropzoneOverlay = form.find('[data-chat-dropzone-overlay]');
@@ -59,6 +64,8 @@ $(function () {
     const auditList = auditModalElement.find('[data-chat-audit-list]');
     const confirmModalElement = $('[data-chat-confirm-modal]').first();
     const confirmModalMessage = confirmModalElement.find('[data-chat-confirm-message]');
+    const confirmModalReasonWrap = confirmModalElement.find('[data-chat-confirm-reason-wrap]');
+    const confirmModalReason = confirmModalElement.find('[data-chat-confirm-reason]');
     const confirmModalSubmit = confirmModalElement.find('[data-chat-confirm-submit]');
     const selectionToggleButton = chatApp.find('[data-chat-selection-toggle]');
     const selectionCancelButton = chatApp.find('[data-chat-selection-cancel]');
@@ -80,6 +87,8 @@ $(function () {
     const state = {
         messages: [],
         renderedSignature: '',
+        messagesRequestId: 0,
+        auditRequestId: 0,
         previewRequestId: 0,
         pendingFiles: [],
         pendingSiteAttachments: [],
@@ -88,6 +97,14 @@ $(function () {
         selectionMode: false,
         selectedIds: new Set(),
         confirmAction: null,
+        moderationRequestPending: false,
+        voiceRecorder: null,
+        voiceStream: null,
+        voiceChunks: [],
+        voiceStartedAt: 0,
+        voiceTimerId: null,
+        discardVoiceRecording: false,
+        voiceRequestId: 0,
         canModerate: String(chatApp.data('can-moderate')) === '1',
         canBulkDelete: String(chatApp.data('can-bulk-delete')) === '1',
         canClearChat: String(chatApp.data('can-clear-chat')) === '1',
@@ -104,6 +121,20 @@ $(function () {
     const getGroupKey = (value) => String(value || 'clients');
     const currentSearchQuery = () => String(messageSearchInput.val() || '').trim();
     const canUseShowPicker = (input) => input && typeof input.showPicker === 'function';
+
+    const resizeMessageInput = () => {
+        const input = messageInput[0];
+        if (!input) {
+            return;
+        }
+
+        input.style.height = 'auto';
+        const computedStyle = window.getComputedStyle(input);
+        const maxHeight = Number.parseFloat(computedStyle.maxHeight) || 132;
+        const nextHeight = Math.min(input.scrollHeight, maxHeight);
+        input.style.height = `${nextHeight}px`;
+        input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    };
 
     const openNativeFilePicker = (input) => {
         if (!input || input.disabled) {
@@ -133,6 +164,130 @@ $(function () {
             return `${Math.ceil(size / 1024)} KB`;
         }
         return `${size} B`;
+    };
+
+    const formatVoiceTime = (seconds) => {
+        const totalSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+        const minutes = Math.floor(totalSeconds / 60);
+        const remainingSeconds = String(totalSeconds % 60).padStart(2, '0');
+        return `${minutes}:${remainingSeconds}`;
+    };
+
+    const voiceWaveHeights = [34, 58, 82, 48, 70, 94, 62, 42, 78, 56, 88, 66, 38, 74, 98, 54, 84, 46, 68, 92, 60, 36, 76, 52, 86, 64, 44, 80, 58, 90, 50, 72];
+    const renderVoiceWaveBars = () => voiceWaveHeights
+        .map((height) => `<span data-chat-voice-bar aria-hidden="true" style="--voice-bar-height: ${height}%"></span>`)
+        .join('');
+
+    const renderVoicePlayerMarkup = (sourceUrl, fileName, fileSize = 0, extraClass = 'mt-2') => {
+        const url = escapeHtml(sourceUrl);
+        const name = escapeHtml(fileName || chatApp.data('voice-message-text') || 'Voice message');
+        const playText = escapeHtml(chatApp.data('voice-play-text') || 'Play voice message');
+        const seekText = escapeHtml(chatApp.data('voice-seek-text') || 'Seek voice message');
+        const voiceText = escapeHtml(chatApp.data('voice-message-text') || 'Voice message');
+        const downloadText = escapeHtml(chatApp.data('download-file-text') || 'Download file');
+        const voiceSize = Number(fileSize) > 0 ? ` · ${escapeHtml(formatBytes(fileSize))}` : '';
+
+        return `
+            <div class="chat-message-voice ${extraClass}" data-chat-voice-player>
+                <audio class="chat-message-voice__audio" preload="metadata" src="${url}" data-chat-voice-audio></audio>
+                <button class="chat-message-voice__toggle" type="button" data-chat-voice-toggle aria-label="${playText}" title="${playText}">
+                    <i class="ci-play" aria-hidden="true"></i>
+                </button>
+                <div class="chat-message-voice__main">
+                    <div class="chat-message-voice__wave">
+                        ${renderVoiceWaveBars()}
+                        <input
+                            class="chat-message-voice__progress"
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value="0"
+                            aria-label="${seekText}"
+                            data-chat-voice-progress
+                        >
+                    </div>
+                    <div class="chat-message-voice__info">
+                        <time data-chat-voice-time>0:00</time>
+                        <span>${voiceText}${voiceSize}</span>
+                    </div>
+                </div>
+                <a class="chat-message-voice__download" href="${url}" download="${name}" aria-label="${downloadText}" title="${downloadText}">
+                    <i class="ci-download" aria-hidden="true"></i>
+                </a>
+            </div>
+        `;
+    };
+
+    const setVoicePlayerState = (player, isPlaying) => {
+        const button = player.find('[data-chat-voice-toggle]');
+        const label = String(chatApp.data(isPlaying ? 'voice-pause-text' : 'voice-play-text') || (isPlaying ? 'Pause voice message' : 'Play voice message'));
+
+        player.toggleClass('is-playing', isPlaying);
+        button.attr({ 'aria-label': label, title: label });
+        button.find('i').attr('class', isPlaying ? 'ci-pause' : 'ci-play');
+    };
+
+    const syncVoicePlayer = (playerElement) => {
+        const player = $(playerElement);
+        const audio = player.find('[data-chat-voice-audio]')[0];
+        if (!audio) {
+            return;
+        }
+
+        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        const currentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+        const progressValue = duration > 0 ? Math.max(0, Math.min(100, (currentTime / duration) * 100)) : 0;
+        const currentLabel = formatVoiceTime(currentTime);
+        const durationLabel = formatVoiceTime(duration);
+        const progress = player.find('[data-chat-voice-progress]');
+        const bars = player.find('[data-chat-voice-bar]');
+        const activeBars = Math.round((progressValue / 100) * bars.length);
+
+        progress
+            .val(progressValue)
+            .attr('aria-valuetext', duration > 0 ? `${currentLabel} / ${durationLabel}` : currentLabel);
+        player.find('[data-chat-voice-time]').text(duration > 0 ? `${currentLabel} / ${durationLabel}` : currentLabel);
+        bars.each(function (index) {
+            $(this).toggleClass('is-active', index < activeBars);
+        });
+    };
+
+    const initializeVoicePlayers = (scope = messagesBox) => {
+        $(scope).find('[data-chat-voice-player]').each(function () {
+            const playerElement = this;
+            const player = $(playerElement);
+            const audio = player.find('[data-chat-voice-audio]')[0];
+            if (!audio || player.data('chat-voice-ready')) {
+                return;
+            }
+
+            player.data('chat-voice-ready', true);
+            ['loadedmetadata', 'durationchange', 'timeupdate'].forEach((eventName) => {
+                audio.addEventListener(eventName, () => syncVoicePlayer(playerElement));
+            });
+            audio.addEventListener('play', () => {
+                chatApp.find('[data-chat-voice-audio]').each(function () {
+                    if (this !== audio && !this.paused) {
+                        this.pause();
+                    }
+                });
+                setVoicePlayerState(player, true);
+            });
+            audio.addEventListener('pause', () => setVoicePlayerState(player, false));
+            audio.addEventListener('ended', () => {
+                audio.currentTime = 0;
+                setVoicePlayerState(player, false);
+                syncVoicePlayer(playerElement);
+            });
+            audio.addEventListener('error', () => {
+                player.addClass('is-error');
+                setVoicePlayerState(player, false);
+            });
+
+            setVoicePlayerState(player, false);
+            syncVoicePlayer(playerElement);
+        });
     };
 
     const highlightText = (value, query) => {
@@ -436,7 +591,7 @@ $(function () {
         state.pendingFiles.forEach((file) => {
             totalSize += Number(file.size) || 0;
             const kind = getPendingFileKind(file);
-            const previewUrl = (kind === 'image' || kind === 'video') ? URL.createObjectURL(file) : '';
+            const previewUrl = ['image', 'video', 'audio'].includes(kind) ? URL.createObjectURL(file) : '';
             if (previewUrl) {
                 state.pendingObjectUrls.push(previewUrl);
             }
@@ -446,11 +601,13 @@ $(function () {
                 previewHtml = `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(file.name)}">`;
             } else if (kind === 'video') {
                 previewHtml = `<video src="${escapeHtml(previewUrl)}" muted></video>`;
+            } else if (kind === 'audio') {
+                previewHtml = renderVoicePlayerMarkup(previewUrl, file.name, file.size, 'chat-message-voice--pending');
             }
 
             html += `
-                <div class="chat-pending-attachment__item">
-                    <div class="chat-pending-attachment__preview">${previewHtml}</div>
+                <div class="chat-pending-attachment__item ${kind === 'audio' ? 'is-audio' : ''}">
+                    <div class="chat-pending-attachment__preview ${kind === 'audio' ? 'chat-pending-attachment__preview--audio' : ''}">${previewHtml}</div>
                     <div class="min-w-0 flex-grow-1">
                         <div class="fw-medium text-truncate">${escapeHtml(file.name)}</div>
                         <div class="small text-body-secondary mt-1">${escapeHtml(formatBytes(file.size))}</div>
@@ -468,11 +625,13 @@ $(function () {
                 previewHtml = `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(item.name)}">`;
             } else if (kind === 'video') {
                 previewHtml = `<video src="${escapeHtml(previewUrl)}" muted></video>`;
+            } else if (kind === 'audio') {
+                previewHtml = renderVoicePlayerMarkup(previewUrl, item.name, 0, 'chat-message-voice--pending');
             }
 
             html += `
-                <div class="chat-pending-attachment__item">
-                    <div class="chat-pending-attachment__preview">${previewHtml}</div>
+                <div class="chat-pending-attachment__item ${kind === 'audio' ? 'is-audio' : ''}">
+                    <div class="chat-pending-attachment__preview ${kind === 'audio' ? 'chat-pending-attachment__preview--audio' : ''}">${previewHtml}</div>
                     <div class="min-w-0 flex-grow-1">
                         <div class="fw-medium text-truncate">${escapeHtml(item.name)}</div>
                         <div class="small text-body-secondary mt-1">${escapeHtml(item.path)}</div>
@@ -482,6 +641,7 @@ $(function () {
         });
 
         pendingList.html(html);
+        initializeVoicePlayers(pendingList);
         const metaParts = [`${totalItems}`, `${chatApp.data('attachment-ready-text') || ''}`];
         if (totalSize > 0) {
             metaParts.splice(1, 0, formatBytes(totalSize));
@@ -520,6 +680,171 @@ $(function () {
 
         state.pendingFiles = state.pendingFiles.concat(preparedFiles);
         renderPendingAttachment();
+    };
+
+    const formatRecordingTime = (milliseconds) => {
+        const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+        const seconds = String(totalSeconds % 60).padStart(2, '0');
+        return `${minutes}:${seconds}`;
+    };
+
+    const stopVoiceTracks = () => {
+        if (state.voiceStream) {
+            state.voiceStream.getTracks().forEach((track) => track.stop());
+        }
+        state.voiceStream = null;
+    };
+
+    const resetVoiceRecorderUi = () => {
+        if (state.voiceTimerId) {
+            window.clearInterval(state.voiceTimerId);
+        }
+        state.voiceTimerId = null;
+        state.voiceStartedAt = 0;
+        voiceRecordingTimer.text('00:00');
+        voiceRecorderPanel.addClass('d-none');
+        const voiceSupported = Boolean(navigator.mediaDevices
+            && typeof navigator.mediaDevices.getUserMedia === 'function'
+            && typeof window.MediaRecorder !== 'undefined');
+        recordVoiceButton.removeClass('is-recording').prop('disabled', !voiceSupported);
+        sendButton.prop('disabled', false);
+        stopVoiceTracks();
+    };
+
+    const finishVoiceRecording = () => {
+        const recorder = state.voiceRecorder;
+        const chunks = state.voiceChunks.slice();
+        const shouldDiscard = state.discardVoiceRecording;
+        const mimeType = String((recorder && recorder.mimeType) || (chunks[0] && chunks[0].type) || 'audio/webm');
+
+        state.voiceRecorder = null;
+        state.voiceChunks = [];
+        state.discardVoiceRecording = false;
+        resetVoiceRecorderUi();
+
+        if (shouldDiscard || !chunks.length) {
+            return;
+        }
+
+        const blob = new Blob(chunks, { type: mimeType });
+        if (!blob.size) {
+            return;
+        }
+
+        const extension = mimeType.includes('ogg') ? 'ogg' : (mimeType.includes('mp4') ? 'm4a' : 'webm');
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const voiceFile = new File([blob], `voice-${stamp}.${extension}`, {
+            type: mimeType.startsWith('audio/') ? mimeType : `audio/${extension === 'm4a' ? 'mp4' : extension}`,
+            lastModified: Date.now(),
+        });
+
+        setPendingFiles([voiceFile]);
+        toastr.success(chatApp.data('voice-ready-text') || 'Voice message is ready.');
+    };
+
+    const stopVoiceRecording = (keepRecording) => {
+        state.voiceRequestId += 1;
+        if (state.voiceTimerId) {
+            window.clearInterval(state.voiceTimerId);
+            state.voiceTimerId = null;
+        }
+        const recorder = state.voiceRecorder;
+        if (!recorder) {
+            resetVoiceRecorderUi();
+            return;
+        }
+
+        state.discardVoiceRecording = !keepRecording;
+        if (recorder.state !== 'inactive') {
+            recorder.stop();
+            return;
+        }
+
+        finishVoiceRecording();
+    };
+
+    const getSupportedVoiceMimeType = () => {
+        if (typeof window.MediaRecorder === 'undefined') {
+            return '';
+        }
+
+        const candidates = [
+            'audio/webm;codecs=opus',
+            'audio/ogg;codecs=opus',
+            'audio/mp4',
+            'audio/webm',
+        ];
+
+        return candidates.find((type) => (
+            typeof window.MediaRecorder.isTypeSupported !== 'function'
+            || window.MediaRecorder.isTypeSupported(type)
+        )) || '';
+    };
+
+    const startVoiceRecording = async () => {
+        if (state.voiceRecorder) {
+            return;
+        }
+
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function' || typeof window.MediaRecorder === 'undefined') {
+            toastr.error(chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.');
+            return;
+        }
+
+        const requestId = ++state.voiceRequestId;
+        const contactId = activeContactId();
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+                video: false,
+            });
+            if (requestId !== state.voiceRequestId || contactId !== activeContactId()) {
+                stream.getTracks().forEach((track) => track.stop());
+                return;
+            }
+            const mimeType = getSupportedVoiceMimeType();
+            const options = mimeType ? { mimeType: mimeType, audioBitsPerSecond: 64000 } : { audioBitsPerSecond: 64000 };
+            const recorder = new window.MediaRecorder(stream, options);
+
+            state.voiceStream = stream;
+            state.voiceRecorder = recorder;
+            state.voiceChunks = [];
+            state.discardVoiceRecording = false;
+            recorder.addEventListener('dataavailable', (event) => {
+                if (event.data && event.data.size > 0) {
+                    state.voiceChunks.push(event.data);
+                }
+            });
+            recorder.addEventListener('stop', finishVoiceRecording, { once: true });
+            recorder.addEventListener('error', () => stopVoiceRecording(false), { once: true });
+            recorder.start(250);
+
+            state.voiceStartedAt = Date.now();
+            voiceRecorderPanel.removeClass('d-none');
+            recordVoiceButton.addClass('is-recording').prop('disabled', true);
+            sendButton.prop('disabled', true);
+            state.voiceTimerId = window.setInterval(() => {
+                const elapsed = Date.now() - state.voiceStartedAt;
+                voiceRecordingTimer.text(formatRecordingTime(elapsed));
+                if (elapsed >= 5 * 60 * 1000) {
+                    toastr.info(chatApp.data('voice-max-duration-text') || 'Maximum recording duration reached.');
+                    stopVoiceRecording(true);
+                }
+            }, 250);
+        } catch (error) {
+            stopVoiceTracks();
+            resetVoiceRecorderUi();
+            const permissionDenied = error && ['NotAllowedError', 'SecurityError'].includes(String(error.name || ''));
+            toastr.error(permissionDenied
+                ? (chatApp.data('voice-permission-error-text') || 'Microphone permission was denied.')
+                : (chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.'));
+        }
     };
 
     const addPendingSiteAttachment = (value) => {
@@ -689,6 +1014,14 @@ $(function () {
             `;
         }
 
+        if (attachment.kind === 'audio') {
+            return renderVoicePlayerMarkup(
+                attachment.url,
+                attachment.name || chatApp.data('voice-message-text') || 'Voice message',
+                attachment.size
+            );
+        }
+
         if (attachment.is_previewable) {
             return `
                 <button
@@ -839,6 +1172,7 @@ $(function () {
         });
 
         messagesBox.html(html);
+        initializeVoicePlayers();
         state.renderedSignature = signature;
 
         if (!box) {
@@ -967,16 +1301,22 @@ $(function () {
     };
 
     const loadMessages = (options = {}) => {
-        if (!activeContactId()) {
+        const contactId = activeContactId();
+        if (!contactId) {
             return;
         }
+
+        const requestId = ++state.messagesRequestId;
 
         $.ajax({
             url: fetchUrl,
             method: 'GET',
             dataType: 'json',
-            data: { user_id: activeContactId() },
+            data: { user_id: contactId },
             success: function (response) {
+                if (requestId !== state.messagesRequestId || contactId !== activeContactId()) {
+                    return;
+                }
                 applyPayload(response, options);
             }
         });
@@ -993,12 +1333,16 @@ $(function () {
         initializeCurrentNameTooltip();
         currentAvatar.attr('src', button.data('user-avatar')).attr('alt', button.data('user-name'));
         updateCurrentContactPresence(Number(button.data('user-online')) === 1);
+        state.messagesRequestId += 1;
+        state.auditRequestId += 1;
         state.renderedSignature = '';
         state.selectionMode = false;
         state.selectedIds.clear();
         syncSelectionControls();
         messageInput.val('');
+        resizeMessageInput();
         messageSearchInput.val('');
+        stopVoiceRecording(false);
         clearPendingAttachment();
         window.__chatAppState = { activeContactId: activeContactId() };
         $(document).trigger('chat:active-contact-changed', [activeContactId()]);
@@ -1011,6 +1355,11 @@ $(function () {
     };
 
     const sendMessage = () => {
+        if (sendButton.prop('disabled')) {
+            return;
+        }
+
+        const contactId = activeContactId();
         const text = String(messageInput.val() || '').trim();
         if (text === '' && !state.pendingFiles.length && !state.pendingSiteAttachments.length) {
             toastr.error(chatApp.data('message-required-text') || 'Message is required.');
@@ -1062,8 +1411,15 @@ $(function () {
                     return;
                 }
 
+                if (contactId !== activeContactId()) {
+                    loadMessages({ force: true });
+                    return;
+                }
+
                 messageInput.val('');
+                resizeMessageInput();
                 clearPendingAttachment();
+                state.messagesRequestId += 1;
                 applyPayload(response, { force: true, stickToBottom: true });
             },
             error: function (request) {
@@ -1080,10 +1436,12 @@ $(function () {
         });
     };
 
-    const runDeleteMessages = (messageIds) => {
-        if (!messageIds.length) {
+    const runDeleteMessages = (messageIds, reason = '') => {
+        if (!messageIds.length || state.moderationRequestPending) {
             return;
         }
+
+        const contactId = activeContactId();
 
         $.ajax({
             url: deleteUrl,
@@ -1091,8 +1449,13 @@ $(function () {
             dataType: 'json',
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: activeContactId(),
+                user_id: contactId,
                 message_ids: messageIds,
+                reason: String(reason || '').trim(),
+            },
+            beforeSend: function () {
+                state.moderationRequestPending = true;
+                confirmModalSubmit.prop('disabled', true);
             },
             success: function (response) {
                 if (!response.status) {
@@ -1100,25 +1463,45 @@ $(function () {
                     return;
                 }
 
-                state.selectedIds.clear();
-                applyPayload(response, { force: true });
-                syncSelectionControls();
+                if (contactId === activeContactId()) {
+                    state.selectedIds.clear();
+                    state.messagesRequestId += 1;
+                    applyPayload(response, { force: true });
+                    syncSelectionControls();
+                } else {
+                    loadMessages({ force: true });
+                }
                 toastr.success(response.message || chatApp.data('delete-message-text') || '');
             },
             error: function (request) {
                 toastr.error(request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
-            }
+            },
+            complete: function () {
+                state.moderationRequestPending = false;
+                confirmModalSubmit.prop('disabled', false);
+            },
         });
     };
 
-    const runClearConversation = () => {
+    const runClearConversation = (reason = '') => {
+        if (state.moderationRequestPending) {
+            return;
+        }
+
+        const contactId = activeContactId();
+
         $.ajax({
             url: clearUrl,
             method: 'POST',
             dataType: 'json',
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: activeContactId(),
+                user_id: contactId,
+                reason: String(reason || '').trim(),
+            },
+            beforeSend: function () {
+                state.moderationRequestPending = true;
+                confirmModalSubmit.prop('disabled', true);
             },
             success: function (response) {
                 if (!response.status) {
@@ -1126,26 +1509,41 @@ $(function () {
                     return;
                 }
 
-                state.selectedIds.clear();
-                state.selectionMode = false;
-                syncSelectionControls();
-                applyPayload(response, { force: true });
+                if (contactId === activeContactId()) {
+                    state.selectedIds.clear();
+                    state.selectionMode = false;
+                    syncSelectionControls();
+                    state.messagesRequestId += 1;
+                    applyPayload(response, { force: true });
+                } else {
+                    loadMessages({ force: true });
+                }
                 toastr.success(response.message || chatApp.data('clear-chat-text') || '');
             },
             error: function (request) {
                 toastr.error(request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
-            }
+            },
+            complete: function () {
+                state.moderationRequestPending = false;
+                confirmModalSubmit.prop('disabled', false);
+            },
         });
     };
 
-    const showConfirm = (message, callback) => {
+    const showConfirm = (message, callback, options = {}) => {
+        const collectReason = Boolean(options.collectReason);
         if (!confirmModal) {
-            callback();
+            callback('');
             return;
         }
 
         state.confirmAction = callback;
         confirmModalMessage.text(message);
+        confirmModalReasonWrap.toggleClass('d-none', !collectReason);
+        confirmModalReason
+            .val('')
+            .attr('placeholder', chatApp.data('confirm-reason-placeholder') || '')
+            .attr('aria-label', chatApp.data('confirm-reason-label') || '');
         confirmModal.show();
     };
 
@@ -1173,6 +1571,12 @@ $(function () {
             if (details.attachment && details.attachment.name) {
                 metaRows.push(`<div><span class="text-body-secondary">${escapeHtml(chatApp.data('audit-attachment-text') || '')}:</span> ${escapeHtml(details.attachment.name)}</div>`);
             }
+            if (Object.prototype.hasOwnProperty.call(details, 'deleted_count')) {
+                metaRows.push(`<div><span class="text-body-secondary">${escapeHtml(chatApp.data('audit-deleted-count-text') || '')}:</span> ${Number(details.deleted_count) || 0}</div>`);
+            }
+            if (Object.prototype.hasOwnProperty.call(details, 'attachment_count')) {
+                metaRows.push(`<div><span class="text-body-secondary">${escapeHtml(chatApp.data('audit-attachment-count-text') || '')}:</span> ${Number(details.attachment_count) || 0}</div>`);
+            }
             if (item.ip_address) {
                 metaRows.push(`<div><span class="text-body-secondary">${escapeHtml(chatApp.data('audit-ip-text') || '')}:</span> ${escapeHtml(item.ip_address)}</div>`);
             }
@@ -1180,12 +1584,16 @@ $(function () {
                 metaRows.push(`<div><span class="text-body-secondary">${escapeHtml(chatApp.data('audit-device-text') || '')}:</span> ${escapeHtml(item.user_agent)}</div>`);
             }
 
+            const isClearAction = item.action === 'clear_conversation';
             html += `
-                <div class="border rounded-4 p-3">
+                <div class="chat-audit-entry ${isClearAction ? 'chat-audit-entry--clear' : ''} border rounded-4 p-3">
                     <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
-                        <div>
-                            <div class="fw-semibold">${escapeHtml(actionLabel)}</div>
-                            <div class="small text-body-secondary">${escapeHtml(item.actor_name || '')} • ${escapeHtml(item.created_at || '')}</div>
+                        <div class="d-flex align-items-start gap-2 min-w-0">
+                            <span class="chat-audit-entry__icon" aria-hidden="true"><i class="${isClearAction ? 'ci-trash' : 'ci-file-text'}"></i></span>
+                            <div class="min-w-0">
+                                <div class="fw-semibold">${escapeHtml(actionLabel)}</div>
+                                <div class="small text-body-secondary">${escapeHtml(item.actor_name || '')} • ${escapeHtml(item.created_at || '')}</div>
+                            </div>
                         </div>
                         <span class="badge rounded-pill text-body-emphasis bg-body-tertiary">${escapeHtml(item.actor_role || '')}</span>
                     </div>
@@ -1203,6 +1611,8 @@ $(function () {
             return;
         }
 
+        const contactId = activeContactId();
+        const requestId = ++state.auditRequestId;
         auditModal.show();
         auditList.html(`<p class="text-body-secondary mb-0">${escapeHtml(chatApp.data('preview-loading-text') || '')}</p>`);
 
@@ -1210,17 +1620,25 @@ $(function () {
             url: auditUrl,
             method: 'GET',
             dataType: 'json',
-            data: { user_id: activeContactId() },
+            data: { user_id: contactId },
             success: function (response) {
+                if (requestId !== state.auditRequestId || contactId !== activeContactId()) {
+                    return;
+                }
                 if (!response.status) {
                     toastr.error(response.message || '');
+                    auditList.html(`<p class="text-danger mb-0">${escapeHtml(response.message || chatApp.data('audit-load-error-text') || '')}</p>`);
                     return;
                 }
 
                 renderAuditItems(response.items || []);
             },
             error: function (request) {
-                toastr.error(request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
+                const message = request.responseJSON && request.responseJSON.message
+                    ? request.responseJSON.message
+                    : (chatApp.data('audit-load-error-text') || '');
+                toastr.error(message);
+                auditList.html(`<p class="text-danger mb-0">${escapeHtml(message)}</p>`);
             }
         });
     };
@@ -1235,9 +1653,9 @@ $(function () {
             return;
         }
 
-        showConfirm(chatApp.data('confirm-delete-message-text') || '', function () {
-            runDeleteMessages([messageId]);
-        });
+        showConfirm(chatApp.data('confirm-delete-message-text') || '', function (reason) {
+            runDeleteMessages([messageId], reason);
+        }, { collectReason: true });
     });
 
     chatApp.on('change', '[data-chat-message-select]', function () {
@@ -1297,6 +1715,18 @@ $(function () {
         setPendingFiles(this.files || []);
     });
 
+    recordVoiceButton.on('click', function () {
+        startVoiceRecording();
+    });
+
+    voiceStopButton.on('click', function () {
+        stopVoiceRecording(true);
+    });
+
+    voiceCancelButton.on('click', function () {
+        stopVoiceRecording(false);
+    });
+
     form.find('[data-chat-remove-attachment]').on('click', function () {
         clearPendingAttachment();
     });
@@ -1336,6 +1766,50 @@ $(function () {
         sendMessage();
     });
 
+    messageInput.on('input', function () {
+        resizeMessageInput();
+    });
+
+    messageInput.on('keydown', function (event) {
+        const originalEvent = event.originalEvent || event;
+        if (event.key !== 'Enter' || event.shiftKey || originalEvent.isComposing) {
+            return;
+        }
+
+        event.preventDefault();
+        sendMessage();
+    });
+
+    chatApp.on('click', '[data-chat-voice-toggle]', function () {
+        const player = $(this).closest('[data-chat-voice-player]');
+        const audio = player.find('[data-chat-voice-audio]')[0];
+        if (!audio) {
+            return;
+        }
+
+        if (audio.paused) {
+            const playRequest = audio.play();
+            if (playRequest && typeof playRequest.catch === 'function') {
+                playRequest.catch(() => setVoicePlayerState(player, false));
+            }
+            return;
+        }
+
+        audio.pause();
+    });
+
+    chatApp.on('input change', '[data-chat-voice-progress]', function () {
+        const player = $(this).closest('[data-chat-voice-player]');
+        const audio = player.find('[data-chat-voice-audio]')[0];
+        if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+            return;
+        }
+
+        const progressValue = Math.max(0, Math.min(100, Number($(this).val()) || 0));
+        audio.currentTime = (progressValue / 100) * audio.duration;
+        syncVoicePlayer(player[0]);
+    });
+
     contactSearchInput.on('input', function () {
         const value = $(this).val();
         contactSearchInput.val(value);
@@ -1358,14 +1832,17 @@ $(function () {
     confirmModalSubmit.on('click', function () {
         if (typeof state.confirmAction === 'function') {
             const action = state.confirmAction;
+            const reason = String(confirmModalReason.val() || '').trim();
             state.confirmAction = null;
             confirmModal.hide();
-            action();
+            action(reason);
         }
     });
 
     confirmModalElement.on('hidden.bs.modal', function () {
         state.confirmAction = null;
+        confirmModalReason.val('');
+        confirmModalReasonWrap.addClass('d-none');
     });
 
     selectionToggleButton.on('click', function () {
@@ -1390,15 +1867,15 @@ $(function () {
             return;
         }
 
-        showConfirm(chatApp.data('confirm-delete-messages-text') || '', function () {
-            runDeleteMessages(messageIds);
-        });
+        showConfirm(chatApp.data('confirm-delete-messages-text') || '', function (reason) {
+            runDeleteMessages(messageIds, reason);
+        }, { collectReason: true });
     });
 
     chatApp.find('[data-chat-clear-conversation]').on('click', function () {
-        showConfirm(chatApp.data('confirm-clear-chat-text') || '', function () {
-            runClearConversation();
-        });
+        showConfirm(chatApp.data('confirm-clear-chat-text') || '', function (reason) {
+            runClearConversation(reason);
+        }, { collectReason: true });
     });
 
     chatApp.find('[data-chat-open-audit]').on('click', function () {
@@ -1411,7 +1888,21 @@ $(function () {
     loadMessages({ stickToBottom: true });
     applyContactFilter();
     syncSelectionControls();
+    resizeMessageInput();
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function' || typeof window.MediaRecorder === 'undefined') {
+        recordVoiceButton.prop('disabled', true).attr('title', chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.');
+    }
+    window.addEventListener('pagehide', function () {
+        stopVoiceRecording(false);
+    });
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            loadMessages();
+        }
+    });
     setInterval(function () {
-        loadMessages();
+        if (document.visibilityState === 'visible') {
+            loadMessages();
+        }
     }, 4000);
 });

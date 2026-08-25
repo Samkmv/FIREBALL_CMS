@@ -75,6 +75,7 @@ $app->router->get('/profile', [AuthController::class, 'profile'])->middleware(['
 $app->router->post('/profile', [AuthController::class, 'profile'])->middleware(['auth']);
 $app->router->get('/chat', [ChatController::class, 'index'])->middleware(['auth']);
 $app->router->get('/chat/messages', [ChatController::class, 'messages'])->middleware(['auth']);
+$app->router->get('/chat/media/(?P<id>\d+)/?', [ChatController::class, 'media'])->middleware(['auth']);
 $app->router->get('/chat/unread-count', [ChatController::class, 'unreadCount'])->middleware(['auth']);
 $app->router->post('/chat/send', [ChatController::class, 'send'])->middleware(['auth']);
 $app->router->post('/chat/messages/delete', [ChatController::class, 'deleteMessages'])->middleware(['auth']);

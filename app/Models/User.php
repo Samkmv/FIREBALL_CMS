@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\TwoFactorService;
+use App\Services\ChatMediaStorage;
 use FBL\File;
 use FBL\Localization;
 use FBL\Pagination;
@@ -2315,6 +2316,10 @@ class User
     protected function removeStoredFiles(array $paths): void
     {
         foreach ($paths as $path) {
+            if (ChatMediaStorage::isProtectedPath((string)$path)) {
+                (new ChatMediaStorage())->delete((string)$path);
+                continue;
+            }
             $this->removeStoredAvatar((string)$path);
         }
     }

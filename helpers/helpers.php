@@ -693,7 +693,7 @@ function can_manage_chat_cleanup(): bool
 
 function can_view_chat_audit(): bool
 {
-    return has_role_level('creator');
+    return has_role_level('admin');
 }
 
 function can_view_video_diagnostics(): bool

@@ -1,0 +1,330 @@
+[2026-08-25 19:03:48] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:05:28] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:06:37] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:06:37] Unhandled application exception
+Request URI: /chat/messages?user_id=1
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:06:41] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:06:44] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:06:49] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:06:52] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:06:57] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:07:00] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:07:04] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:07:08] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:07:12] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:07:16] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:07:20] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:07:24] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:08:12] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:08:16] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:08:20] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:08:24] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:08:28] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-25 19:08:32] Unhandled application exception
+Request URI: /chat/messages?user_id=40
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: Undefined variable $message
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php
+Line: 78
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(78): Whoops\Run->handleError(2, 'Undefined varia...', '/Applications/M...', 78)
+#1 [internal function]: App\Controllers\ChatController->messages()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================

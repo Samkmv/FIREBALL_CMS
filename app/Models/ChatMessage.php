@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\ChatCipher;
+use App\Services\ChatMediaStorage;
 
 /**
  * Хранит сообщения чата, вложения, аудит и производные данные для списков диалогов.
@@ -12,12 +13,17 @@ class ChatMessage
 
     protected string $table = 'chat_messages';
     protected string $auditTable = 'chat_audit_logs';
+    protected static bool $schemaReady = false;
 
     /**
      * Создаёт таблицу сообщений и недостающие совместимые поля.
      */
     public function ensureTableExists(): void
     {
+        if (self::$schemaReady) {
+            return;
+        }
+
         db()->query(
             "CREATE TABLE IF NOT EXISTS {$this->table} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -64,6 +70,7 @@ class ChatMessage
         }
 
         $this->ensureAuditTableExists();
+        self::$schemaReady = true;
     }
 
     /**
@@ -133,6 +140,45 @@ class ChatMessage
                 'created_at' => (string)$message['created_at'],
             ];
         }, $messages);
+    }
+
+    /**
+     * Возвращает вложение, только если пользователь является участником диалога.
+     */
+    public function getAttachmentForUser(int $messageId, int $userId): ?array
+    {
+        if ($messageId <= 0 || $userId <= 0) {
+            return null;
+        }
+
+        $this->ensureTableExists();
+        $message = db()->query(
+            "SELECT id, attachment_path, attachment_name, attachment_type, attachment_size
+             FROM {$this->table}
+             WHERE id = :message_id
+               AND deleted_at IS NULL
+               AND attachment_path IS NOT NULL
+               AND attachment_path != ''
+               AND (sender_id = :sender_user_id OR receiver_id = :receiver_user_id)
+             LIMIT 1",
+            [
+                'message_id' => $messageId,
+                'sender_user_id' => $userId,
+                'receiver_user_id' => $userId,
+            ]
+        )->getOne();
+
+        if (!$message) {
+            return null;
+        }
+
+        return [
+            'id' => (int)$message['id'],
+            'path' => (string)($message['attachment_path'] ?? ''),
+            'name' => (string)($message['attachment_name'] ?? 'file'),
+            'type' => (string)($message['attachment_type'] ?? 'application/octet-stream'),
+            'size' => (int)($message['attachment_size'] ?? 0),
+        ];
     }
 
     /**
@@ -301,7 +347,7 @@ class ChatMessage
             'can_moderate' => $rank >= get_role_rank('moderator'),
             'can_bulk_delete' => $rank >= get_role_rank('admin'),
             'can_clear_chat' => $rank >= get_role_rank('admin'),
-            'can_view_audit' => $rank >= get_role_rank('creator'),
+            'can_view_audit' => $rank >= get_role_rank('admin'),
             'is_creator' => $role === 'creator',
         ];
     }
@@ -318,6 +364,7 @@ class ChatMessage
             return [
                 'deleted_count' => 0,
                 'contacts' => [],
+                'media_paths' => [],
             ];
         }
 
@@ -331,75 +378,164 @@ class ChatMessage
             throw new \RuntimeException(return_translation('chat_permission_denied'));
         }
 
+        $conversationUserIds = array_values(array_unique(array_filter(array_map(
+            'intval',
+            is_array($options['conversation_user_ids'] ?? null) ? $options['conversation_user_ids'] : []
+        ))));
+        $hasConversationConstraint = count($conversationUserIds) === 2;
         $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
+        $queryParams = $messageIds;
+        $conversationConstraint = '';
+        if ($hasConversationConstraint) {
+            [$firstConversationUserId, $secondConversationUserId] = $conversationUserIds;
+            $conversationConstraint = "
+               AND (
+                    (sender_id = ? AND receiver_id = ?)
+                    OR (sender_id = ? AND receiver_id = ?)
+               )";
+            array_push(
+                $queryParams,
+                $firstConversationUserId,
+                $secondConversationUserId,
+                $secondConversationUserId,
+                $firstConversationUserId
+            );
+        }
+
         $messages = db()->query(
             "SELECT id, sender_id, receiver_id, message_ciphertext, attachment_path, attachment_name, attachment_type, attachment_size, sender_ip, sender_user_agent
              FROM {$this->table}
              WHERE deleted_at IS NULL
-               AND id IN ({$placeholders})",
-            $messageIds
+               AND id IN ({$placeholders}){$conversationConstraint}",
+            $queryParams
         )->get() ?: [];
+
+        if ($hasConversationConstraint && count($messages) !== count($messageIds)) {
+            throw new \RuntimeException(return_translation('chat_access_denied'));
+        }
 
         if (empty($messages)) {
             return [
                 'deleted_count' => 0,
                 'contacts' => [],
+                'media_paths' => [],
             ];
         }
 
         $now = date('Y-m-d H:i:s');
         $reason = mb_substr(trim((string)($options['reason'] ?? '')), 0, 255);
         $removeMedia = !array_key_exists('remove_media', $options) || (bool)$options['remove_media'];
+        $suppressAudit = !empty($options['suppress_audit']);
+        $deferMediaCleanup = !empty($options['defer_media_cleanup']);
         $contactIds = [];
+        $mediaPaths = [];
+        $auditMessages = [];
+        $database = db();
+        $ownsTransaction = !$database->inTransaction();
 
-        foreach ($messages as $message) {
-            $contactIds[] = (int)$message['sender_id'];
-            $contactIds[] = (int)$message['receiver_id'];
-
-            $attachmentMeta = self::normalizeAttachment($message);
-            if ($removeMedia && $attachmentMeta) {
-                $this->deleteAttachmentFile((string)($message['attachment_path'] ?? ''));
+        try {
+            if ($ownsTransaction) {
+                $database->beginTransaction();
             }
 
-            db()->query(
-                "UPDATE {$this->table}
-                 SET deleted_at = ?,
-                     deleted_by = ?,
-                     deleted_reason = ?,
-                     attachment_path = NULL,
-                     attachment_name = NULL,
-                     attachment_type = NULL,
-                     attachment_size = NULL
-                 WHERE id = ?",
-                [$now, $actorUserId, $reason !== '' ? $reason : null, (int)$message['id']]
-            );
+            foreach ($messages as $message) {
+                $contactIds[] = (int)$message['sender_id'];
+                $contactIds[] = (int)$message['receiver_id'];
 
-            $this->logAudit([
-                'action' => count($messageIds) > 1 ? 'bulk_delete' : 'delete_message',
-                'actor_user_id' => $actorUserId,
-                'message_id' => (int)$message['id'],
-                'conversation_first_user_id' => (int)$message['sender_id'],
-                'conversation_second_user_id' => (int)$message['receiver_id'],
-                'details' => [
-                    'reason' => $reason,
-                    'remove_media' => $removeMedia,
+                $attachmentMeta = self::normalizeAttachment($message);
+                $attachmentPath = (string)($message['attachment_path'] ?? '');
+                if ($removeMedia && $attachmentMeta && $attachmentPath !== '') {
+                    $mediaPaths[] = $attachmentPath;
+                }
+
+                $update = db()->query(
+                    "UPDATE {$this->table}
+                     SET deleted_at = ?,
+                         deleted_by = ?,
+                         deleted_reason = ?,
+                         attachment_path = NULL,
+                         attachment_name = NULL,
+                         attachment_type = NULL,
+                         attachment_size = NULL
+                     WHERE id = ? AND deleted_at IS NULL",
+                    [$now, $actorUserId, $reason !== '' ? $reason : null, (int)$message['id']]
+                );
+                if ($update->rowCount() !== 1) {
+                    throw new \RuntimeException(return_translation('chat_access_denied'));
+                }
+
+                $auditMessages[] = [
+                    'id' => (int)$message['id'],
+                    'sender_id' => (int)$message['sender_id'],
+                    'receiver_id' => (int)$message['receiver_id'],
                     'message_preview' => $this->buildMessagePreview(
                         trim(ChatCipher::decrypt((string)($message['message_ciphertext'] ?? ''))),
-                        (string)($message['attachment_path'] ?? ''),
+                        $attachmentPath,
                         (string)($message['attachment_type'] ?? '')
                     ),
                     'attachment' => $attachmentMeta,
                     'sender_ip' => trim((string)($message['sender_ip'] ?? '')),
                     'sender_user_agent' => trim((string)($message['sender_user_agent'] ?? '')),
-                ],
-                'ip_address' => (string)($options['ip'] ?? ''),
-                'user_agent' => (string)($options['user_agent'] ?? ''),
-            ]);
+                ];
+            }
+
+            if (!$suppressAudit) {
+                $firstMessage = $auditMessages[0];
+                $isBulkDelete = count($auditMessages) > 1;
+                $details = [
+                    'reason' => $reason,
+                    'remove_media' => $removeMedia,
+                    'deleted_count' => count($auditMessages),
+                ];
+
+                if ($isBulkDelete) {
+                    $details['message_ids'] = array_column($auditMessages, 'id');
+                    $details['attachment_count'] = count(array_filter(array_column($auditMessages, 'attachment')));
+                } else {
+                    $details = array_merge($details, [
+                        'message_preview' => $firstMessage['message_preview'],
+                        'attachment' => $firstMessage['attachment'],
+                        'sender_ip' => $firstMessage['sender_ip'],
+                        'sender_user_agent' => $firstMessage['sender_user_agent'],
+                    ]);
+                }
+
+                $this->logAudit([
+                    'action' => $isBulkDelete ? 'bulk_delete' : 'delete_message',
+                    'actor_user_id' => $actorUserId,
+                    'message_id' => $isBulkDelete ? null : $firstMessage['id'],
+                    'conversation_first_user_id' => $hasConversationConstraint
+                        ? $conversationUserIds[0]
+                        : $firstMessage['sender_id'],
+                    'conversation_second_user_id' => $hasConversationConstraint
+                        ? $conversationUserIds[1]
+                        : $firstMessage['receiver_id'],
+                    'details' => $details,
+                    'ip_address' => (string)($options['ip'] ?? ''),
+                    'user_agent' => (string)($options['user_agent'] ?? ''),
+                ]);
+            }
+
+            if ($ownsTransaction) {
+                $database->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+
+        if (!$deferMediaCleanup) {
+            foreach (array_values(array_unique($mediaPaths)) as $mediaPath) {
+                $this->deleteAttachmentFile($mediaPath);
+            }
         }
 
         return [
             'deleted_count' => count($messages),
             'contacts' => array_values(array_unique(array_filter($contactIds, static fn ($id) => (int)$id > 0))),
+            'media_paths' => array_values(array_unique($mediaPaths)),
         ];
     }
 
@@ -416,41 +552,73 @@ class ChatMessage
             throw new \RuntimeException(return_translation('chat_permission_denied'));
         }
 
-        $messageIds = db()->query(
-            "SELECT id
-             FROM {$this->table}
-             WHERE deleted_at IS NULL
-               AND (
-                    (sender_id = :actor_id AND receiver_id = :contact_id)
-                    OR (sender_id = :contact_id AND receiver_id = :actor_id)
-               )",
-            [
-                'actor_id' => $actorUserId,
-                'contact_id' => $contactId,
-            ]
-        )->get() ?: [];
+        $database = db();
+        $ownsTransaction = !$database->inTransaction();
+        $result = ['deleted_count' => 0, 'contacts' => [], 'media_paths' => []];
 
-        $ids = array_map(static fn (array $item): int => (int)$item['id'], $messageIds);
-        $result = $this->softDeleteMessages($ids, $actorUserId, [
-            'allow_bulk' => true,
-            'remove_media' => true,
-            'reason' => (string)($options['reason'] ?? ''),
-            'ip' => (string)($options['ip'] ?? ''),
-            'user_agent' => (string)($options['user_agent'] ?? ''),
-        ]);
+        try {
+            if ($ownsTransaction) {
+                $database->beginTransaction();
+            }
 
-        $this->logAudit([
-            'action' => 'clear_conversation',
-            'actor_user_id' => $actorUserId,
-            'conversation_first_user_id' => $actorUserId,
-            'conversation_second_user_id' => $contactId,
-            'details' => [
-                'reason' => trim((string)($options['reason'] ?? '')),
-                'deleted_count' => (int)($result['deleted_count'] ?? 0),
-            ],
-            'ip_address' => (string)($options['ip'] ?? ''),
-            'user_agent' => (string)($options['user_agent'] ?? ''),
-        ]);
+            $messageIds = db()->query(
+                "SELECT id
+                 FROM {$this->table}
+                 WHERE deleted_at IS NULL
+                   AND (
+                        (sender_id = :actor_id AND receiver_id = :contact_id)
+                        OR (sender_id = :contact_id AND receiver_id = :actor_id)
+                   )
+                 FOR UPDATE",
+                [
+                    'actor_id' => $actorUserId,
+                    'contact_id' => $contactId,
+                ]
+            )->get() ?: [];
+
+            $ids = array_map(static fn (array $item): int => (int)$item['id'], $messageIds);
+            if (!empty($ids)) {
+                $result = $this->softDeleteMessages($ids, $actorUserId, [
+                    'allow_bulk' => true,
+                    'remove_media' => true,
+                    'suppress_audit' => true,
+                    'defer_media_cleanup' => true,
+                    'conversation_user_ids' => [$actorUserId, $contactId],
+                    'reason' => (string)($options['reason'] ?? ''),
+                    'ip' => (string)($options['ip'] ?? ''),
+                    'user_agent' => (string)($options['user_agent'] ?? ''),
+                ]);
+            }
+
+            $this->logAudit([
+                'action' => 'clear_conversation',
+                'actor_user_id' => $actorUserId,
+                'conversation_first_user_id' => $actorUserId,
+                'conversation_second_user_id' => $contactId,
+                'details' => [
+                    'reason' => mb_substr(trim((string)($options['reason'] ?? '')), 0, 255),
+                    'deleted_count' => (int)($result['deleted_count'] ?? 0),
+                ],
+                'ip_address' => (string)($options['ip'] ?? ''),
+                'user_agent' => (string)($options['user_agent'] ?? ''),
+            ]);
+
+            if ($ownsTransaction) {
+                $database->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+
+        if ($ownsTransaction) {
+            foreach ($result['media_paths'] ?? [] as $mediaPath) {
+                $this->deleteAttachmentFile((string)$mediaPath);
+            }
+            $result['media_paths'] = [];
+        }
 
         return $result;
     }
@@ -538,14 +706,18 @@ class ChatMessage
         }
 
         $type = trim((string)($message['attachment_type'] ?? ''));
-        $extension = strtolower((string)pathinfo($path, PATHINFO_EXTENSION));
+        $name = trim((string)($message['attachment_name'] ?? basename($path)));
+        $extension = strtolower((string)pathinfo($name, PATHINFO_EXTENSION));
         $previewKind = self::detectAttachmentPreviewKind($type, $extension);
         $kind = self::detectAttachmentKind($type, $extension);
+        $isProtected = ChatMediaStorage::isProtectedPath($path);
 
         return [
             'path' => ltrim($path, '/'),
-            'url' => base_url('/' . ltrim($path, '/')),
-            'name' => trim((string)($message['attachment_name'] ?? basename($path))),
+            'url' => $isProtected
+                ? base_url('/chat/media/' . (int)($message['id'] ?? 0))
+                : base_url('/' . ltrim($path, '/')),
+            'name' => $name,
             'type' => $type,
             'size' => (int)($message['attachment_size'] ?? 0),
             'extension' => $extension,
@@ -553,6 +725,7 @@ class ChatMessage
             'preview_kind' => $previewKind,
             'is_previewable' => $previewKind !== null,
             'is_image' => $previewKind === 'image',
+            'is_protected' => $isProtected,
         ];
     }
 
@@ -681,9 +854,16 @@ class ChatMessage
         $attachmentPath = trim($attachmentPath);
         $attachmentType = trim($attachmentType);
         if ($attachmentPath !== '' || $attachmentType !== '') {
-            return str_starts_with($attachmentType, 'image/') || $this->isImageAttachmentPath($attachmentPath)
-                ? return_translation('chat_attachment_image')
-                : return_translation('chat_attachment_file');
+            if (str_starts_with($attachmentType, 'image/') || $this->isImageAttachmentPath($attachmentPath)) {
+                return return_translation('chat_attachment_image');
+            }
+            if (str_starts_with($attachmentType, 'audio/')) {
+                return return_translation('chat_attachment_voice');
+            }
+            if (str_starts_with($attachmentType, 'video/')) {
+                return return_translation('chat_attachment_video');
+            }
+            return return_translation('chat_attachment_file');
         }
 
         return '';
@@ -721,6 +901,11 @@ class ChatMessage
     protected function deleteAttachmentFile(string $path): void
     {
         $path = ltrim(trim($path), '/');
+        if (ChatMediaStorage::isProtectedPath($path)) {
+            (new ChatMediaStorage())->delete($path);
+            return;
+        }
+
         if ($path === '' || !str_starts_with($path, 'uploads/')) {
             return;
         }

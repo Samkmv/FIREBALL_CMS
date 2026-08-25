@@ -42,7 +42,7 @@ final class SafeUploadService
         'flac' => ['audio/flac', 'audio/x-flac'],
         'aac' => ['audio/aac', 'audio/x-aac'],
         'mp4' => ['video/mp4'],
-        'webm' => ['video/webm'],
+        'webm' => ['video/webm', 'audio/webm'],
         'mov' => ['video/quicktime'],
         'avi' => ['video/x-msvideo', 'video/avi'],
         'mkv' => ['video/x-matroska'],

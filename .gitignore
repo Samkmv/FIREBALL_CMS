@@ -26,3 +26,4 @@ storage/plugin-updates/*
 storage/logs/*
 !storage/logs/.gitkeep
 !storage/logs/.htaccess
+storage/chat-media/*

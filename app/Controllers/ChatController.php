@@ -4,9 +4,12 @@ namespace App\Controllers;
 
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\Services\ChatMediaStorage;
 use App\Services\NotificationService;
+use App\Services\SafeUploadService;
 use App\Services\UploadSettings;
 use FBL\File;
+use FBL\Language;
 
 /**
  * Обрабатывает интерфейс личных сообщений, загрузку вложений и счётчики непрочитанных сообщений.
@@ -23,6 +26,7 @@ class ChatController extends BaseController
     public function __construct()
     {
         parent::__construct();
+        Language::load([self::class, 'index']);
         $this->chatMessages = new ChatMessage();
         $this->users = new User();
     }
@@ -56,6 +60,7 @@ class ChatController extends BaseController
             'chat_audit_url' => base_href('/chat/conversation/audit'),
             'chat_file_manager_enabled' => check_admin(),
             'chat_file_manager_url' => base_href('/admin/files'),
+            'chat_max_file_size' => UploadSettings::maxFileSizeBytes(),
             'chat_permissions' => $this->chatMessages->getPermissionsForRole((string)($currentUser['role'] ?? 'user')),
             'footer_scripts' => $footerScripts,
         ]);
@@ -70,6 +75,13 @@ class ChatController extends BaseController
         $contactId = (int)request()->get('user_id');
         $this->users->touchPresence($currentUserId);
 
+        if (mb_strlen($message) > 2000) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_message_too_long'),
+            ], 422);
+        }
+
         if (!$this->isAllowedContact($currentUserId, $contactId)) {
             response()->json([
                 'status' => false,
@@ -79,6 +91,35 @@ class ChatController extends BaseController
 
         $this->chatMessages->markConversationAsRead($currentUserId, $contactId);
         response()->json($this->buildConversationPayload($currentUserId, $contactId));
+    }
+
+    /**
+     * Выдаёт зашифрованное вложение только участнику соответствующего диалога.
+     */
+    public function media()
+    {
+        $messageId = (int)get_route_param('id', 0);
+        $currentUserId = (int)get_user()['id'];
+        $attachment = $this->chatMessages->getAttachmentForUser($messageId, $currentUserId);
+
+        if (!$attachment || !ChatMediaStorage::isProtectedPath((string)($attachment['path'] ?? ''))) {
+            response()->text('', 404);
+        }
+
+        try {
+            (new ChatMediaStorage())->stream(
+                (string)$attachment['path'],
+                (string)$attachment['name'],
+                (string)$attachment['type'],
+                (int)$attachment['size']
+            );
+        } catch (\Throwable $exception) {
+            log_error_details('Protected chat media delivery failed', [
+                'message_id' => $messageId,
+                'user_id' => $currentUserId,
+            ], $exception);
+            response()->text('', 404);
+        }
     }
 
     /**
@@ -118,25 +159,54 @@ class ChatController extends BaseController
             ], 403);
         }
 
-        $attachments = $this->storeAttachments($files);
-        if (count($attachments) !== count($files)) {
+        $attachments = [];
+        $database = db();
+        $ownsTransaction = !$database->inTransaction();
+
+        try {
+            $attachments = $this->storeAttachments($files);
+            $attachments = array_merge($attachments, $this->buildSiteAttachments($siteAttachmentPaths));
+
+            if (count($attachments) !== count($files) + count($siteAttachmentPaths)) {
+                throw new \RuntimeException('Not all chat attachments were stored.');
+            }
+
+            $requestContext = $this->getRequestContext();
+            $this->chatMessages->ensureTableExists();
+            if ($ownsTransaction) {
+                $database->beginTransaction();
+            }
+
+            if (empty($attachments)) {
+                $this->chatMessages->create($currentUserId, $contactId, $message, null, $requestContext);
+            } else {
+                foreach ($attachments as $index => $attachment) {
+                    $text = $index === 0 ? $message : '';
+                    $this->chatMessages->create($currentUserId, $contactId, $text, $attachment, $requestContext);
+                }
+            }
+
+            if ($ownsTransaction) {
+                $database->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            $this->cleanupStoredAttachments($attachments);
+            log_error_details('Protected chat media storage failed', [
+                'sender_id' => $currentUserId,
+                'receiver_id' => $contactId,
+                'attachment_count' => count($files) + count($siteAttachmentPaths),
+            ], $exception);
             response()->json([
                 'status' => false,
-                'message' => return_translation('chat_file_upload_error'),
+                'message' => count($files) + count($siteAttachmentPaths) > 0
+                    ? return_translation('chat_file_upload_error')
+                    : return_translation('chat_message_send_error'),
             ], 422);
         }
-        $attachments = array_merge($attachments, $this->buildSiteAttachments($siteAttachmentPaths));
 
-        $requestContext = $this->getRequestContext();
-
-        if (empty($attachments)) {
-            $this->chatMessages->create($currentUserId, $contactId, $message, null, $requestContext);
-        } else {
-            foreach ($attachments as $index => $attachment) {
-                $text = $index === 0 ? $message : '';
-                $this->chatMessages->create($currentUserId, $contactId, $text, $attachment, $requestContext);
-            }
-        }
         $this->notifyChatRecipient($currentUserId, $contactId, $message, $attachments);
 
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
@@ -162,9 +232,10 @@ class ChatController extends BaseController
         }
 
         try {
-            $this->chatMessages->softDeleteMessages($messageIds, $currentUserId, [
+            $result = $this->chatMessages->softDeleteMessages($messageIds, $currentUserId, [
                 'reason' => trim((string)request()->post('reason')),
                 'remove_media' => true,
+                'conversation_user_ids' => [$currentUserId, $contactId],
                 'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
                 'user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
             ]);
@@ -176,7 +247,8 @@ class ChatController extends BaseController
         }
 
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
-        $payload['message'] = count($messageIds) > 1
+        $payload['deleted_count'] = (int)($result['deleted_count'] ?? 0);
+        $payload['message'] = (int)($result['deleted_count'] ?? 0) > 1
             ? return_translation('chat_messages_deleted')
             : return_translation('chat_message_deleted');
 
@@ -199,7 +271,7 @@ class ChatController extends BaseController
         }
 
         try {
-            $this->chatMessages->clearConversation($currentUserId, $contactId, [
+            $result = $this->chatMessages->clearConversation($currentUserId, $contactId, [
                 'reason' => trim((string)request()->post('reason')),
                 'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
                 'user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
@@ -212,6 +284,7 @@ class ChatController extends BaseController
         }
 
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
+        $payload['cleared_count'] = (int)($result['deleted_count'] ?? 0);
         $payload['message'] = return_translation('chat_conversation_cleared');
 
         response()->json($payload);
@@ -226,7 +299,8 @@ class ChatController extends BaseController
         $currentUserId = (int)$currentUser['id'];
         $contactId = (int)request()->get('user_id');
 
-        if (!can_view_chat_audit()) {
+        $permissions = $this->chatMessages->getPermissionsForRole((string)($currentUser['role'] ?? 'user'));
+        if (empty($permissions['can_view_audit'])) {
             response()->json([
                 'status' => false,
                 'message' => return_translation('chat_permission_denied'),
@@ -358,6 +432,19 @@ class ChatController extends BaseController
 
             if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true) && !@getimagesize($file->getTmpName())) {
                 $errors[] = return_translation('chat_file_type_error');
+                continue;
+            }
+
+            try {
+                (new SafeUploadService())->validate(
+                    $file->getTmpName(),
+                    $file->getName(),
+                    $file->getSize(),
+                    UploadSettings::maxFileSizeBytes(),
+                    $allowedExtensions
+                );
+            } catch (\RuntimeException) {
+                $errors[] = return_translation('chat_file_type_error');
             }
         }
 
@@ -370,27 +457,25 @@ class ChatController extends BaseController
     protected function storeAttachments(array $files): array
     {
         $attachments = [];
+        $storage = new ChatMediaStorage();
 
-        foreach ($files as $file) {
-            if (!$file instanceof File || !$file->isFile) {
-                continue;
+        try {
+            foreach ($files as $file) {
+                if (!$file instanceof File || !$file->isFile) {
+                    continue;
+                }
+
+                $extension = strtolower($file->getExt());
+                $attachments[] = [
+                    'path' => $storage->store($file->getTmpName()),
+                    'name' => $this->normalizeAttachmentName($file->getName()),
+                    'type' => $this->resolveAttachmentMimeType($extension, $file->getType()),
+                    'size' => $file->getSize(),
+                ];
             }
-
-            $savedPath = $file->save('chat');
-            if (!$savedPath) {
-                continue;
-            }
-
-            $type = $file->getType();
-            $extension = strtolower($file->getExt());
-            $type = $this->resolveAttachmentMimeType($extension, $type);
-
-            $attachments[] = [
-                'path' => ltrim((string)$savedPath, '/'),
-                'name' => $file->getName(),
-                'type' => $type,
-                'size' => $file->getSize(),
-            ];
+        } catch (\Throwable $exception) {
+            $this->cleanupStoredAttachments($attachments);
+            throw $exception;
         }
 
         return $attachments;
@@ -498,6 +583,19 @@ class ChatController extends BaseController
 
             if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true) && !@getimagesize($absolutePath)) {
                 $errors[] = return_translation('chat_file_type_error');
+                continue;
+            }
+
+            try {
+                (new SafeUploadService())->validate(
+                    $absolutePath,
+                    basename($path),
+                    $size,
+                    UploadSettings::maxFileSizeBytes(),
+                    $allowedExtensions
+                );
+            } catch (\RuntimeException) {
+                $errors[] = return_translation('chat_file_type_error');
             }
         }
 
@@ -510,23 +608,40 @@ class ChatController extends BaseController
     protected function buildSiteAttachments(array $paths): array
     {
         $attachments = [];
+        $storage = new ChatMediaStorage();
 
-        foreach ($paths as $path) {
-            $absolutePath = $this->getSiteAttachmentAbsolutePath($path);
-            if ($absolutePath === '' || !is_file($absolutePath)) {
-                continue;
+        try {
+            foreach ($paths as $path) {
+                $absolutePath = $this->getSiteAttachmentAbsolutePath($path);
+                if ($absolutePath === '' || !is_file($absolutePath)) {
+                    throw new \RuntimeException('Selected site attachment is unavailable.');
+                }
+
+                $extension = strtolower((string)pathinfo($path, PATHINFO_EXTENSION));
+                $attachments[] = [
+                    'path' => $storage->store($absolutePath),
+                    'name' => $this->normalizeAttachmentName(basename($path)),
+                    'type' => $this->resolveAttachmentMimeType($extension, (string)(@mime_content_type($absolutePath) ?: 'application/octet-stream')),
+                    'size' => (int)@filesize($absolutePath),
+                ];
             }
-
-            $extension = strtolower((string)pathinfo($path, PATHINFO_EXTENSION));
-            $attachments[] = [
-                'path' => $path,
-                'name' => basename($path),
-                'type' => $this->resolveAttachmentMimeType($extension, (string)(@mime_content_type($absolutePath) ?: 'application/octet-stream')),
-                'size' => (int)@filesize($absolutePath),
-            ];
+        } catch (\Throwable $exception) {
+            $this->cleanupStoredAttachments($attachments);
+            throw $exception;
         }
 
         return $attachments;
+    }
+
+    /**
+     * Удаляет уже зашифрованные файлы, если отправка сообщения не завершилась.
+     */
+    protected function cleanupStoredAttachments(array $attachments): void
+    {
+        $storage = new ChatMediaStorage();
+        foreach ($attachments as $attachment) {
+            $storage->delete((string)($attachment['path'] ?? ''));
+        }
     }
 
     /**
@@ -568,7 +683,32 @@ class ChatController extends BaseController
             return '';
         }
 
-        return rtrim(UPLOADS, '/') . '/' . $relativePath;
+        $uploadsRoot = realpath(UPLOADS);
+        $absolutePath = realpath(rtrim(UPLOADS, '/') . '/' . $relativePath);
+        if ($uploadsRoot === false || $absolutePath === false) {
+            return '';
+        }
+
+        $uploadsPrefix = rtrim(str_replace('\\', '/', $uploadsRoot), '/') . '/';
+        $normalizedPath = str_replace('\\', '/', $absolutePath);
+        if (!str_starts_with($normalizedPath, $uploadsPrefix)) {
+            return '';
+        }
+
+        return $absolutePath;
+    }
+
+    /**
+     * Нормализует имя вложения для заголовков скачивания и поля VARCHAR(255).
+     */
+    protected function normalizeAttachmentName(string $name): string
+    {
+        $name = basename(str_replace('\\', '/', str_replace(["\0", "\r", "\n"], '', trim($name))));
+        if ($name === '' || $name === '.' || $name === '..') {
+            $name = 'file';
+        }
+
+        return mb_substr($name, 0, 255);
     }
 
     /**
@@ -640,6 +780,10 @@ class ChatController extends BaseController
             'rar' => 'application/vnd.rar',
             '7z' => 'application/x-7z-compressed',
         ];
+
+        if ($extension === 'webm' && str_starts_with(strtolower($fallbackType), 'audio/')) {
+            return 'audio/webm';
+        }
 
         return $mimeTypes[$extension] ?? $fallbackType;
     }
