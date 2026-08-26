@@ -2366,6 +2366,17 @@ html.chat-viewport-fullscreen .chat-page {
     background: var(--cz-body-bg);
 }
 
+/*
+ * iOS standalone already subtracts the home-indicator area from the numeric
+ * viewport height. Anchoring the closed-keyboard shell to both viewport edges
+ * lets the chat cover that area, while the composer adds the safe inset once.
+ */
+html.chat-pwa-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page {
+    top: 0;
+    bottom: 0;
+    height: auto;
+}
+
 html.chat-viewport-fullscreen .chat-page-header {
     display: none !important;
 }
@@ -2674,19 +2685,39 @@ html.chat-viewport-fullscreen .chat-messages-surface {
         width: min(88vw, 22rem);
     }
 
+    [data-chat-preview-modal],
+    [data-chat-audit-modal],
+    [data-chat-confirm-modal] {
+        --chat-modal-mobile-top: max(.875rem, calc(env(safe-area-inset-top, 0px) + .25rem));
+        --chat-modal-mobile-bottom: max(.875rem, calc(env(safe-area-inset-bottom, 0px) + .25rem));
+    }
+
+    [data-chat-preview-modal] .modal-dialog,
+    [data-chat-audit-modal] .modal-dialog,
+    [data-chat-confirm-modal] .modal-dialog {
+        margin-top: var(--chat-modal-mobile-top);
+        margin-bottom: var(--chat-modal-mobile-bottom);
+    }
+
+    [data-chat-audit-modal] .modal-dialog-centered,
+    [data-chat-confirm-modal] .modal-dialog-centered {
+        min-height: calc(100% - var(--chat-modal-mobile-top) - var(--chat-modal-mobile-bottom));
+    }
+
     [data-chat-preview-modal] .modal-dialog {
         width: calc(100vw - 1rem);
         max-width: calc(100vw - 1rem);
         height: auto;
         min-height: 0;
-        margin: .5rem auto;
+        margin-right: auto;
+        margin-left: auto;
         align-items: center;
     }
 
     [data-chat-preview-modal] .modal-content {
         height: auto;
         min-height: 0;
-        max-height: calc(100dvh - 1rem);
+        max-height: calc(100dvh - var(--chat-modal-mobile-top) - var(--chat-modal-mobile-bottom));
         border-radius: 1.25rem !important;
     }
 

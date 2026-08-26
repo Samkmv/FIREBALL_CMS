@@ -20,10 +20,12 @@ $pluginsPage = (string)file_get_contents($root . '/app/Views/themes/default/admi
 $mobileNavigation = (string)file_get_contents($root . '/app/Views/themes/default/admin/mobile_bottom_nav.php');
 $commandPalette = (string)file_get_contents($root . '/app/Views/themes/default/admin/command_palette.php');
 $styles = (string)file_get_contents($root . '/public/assets/default/css/admin-ui.css');
+$blockEditorStyles = (string)file_get_contents($root . '/public/assets/default/css/block-editor.css');
 $scripts = (string)file_get_contents($root . '/public/assets/default/js/admin-ui.js');
 $mainScripts = (string)file_get_contents($root . '/public/assets/default/js/main.js');
 $deleteModalScripts = (string)file_get_contents($root . '/public/assets/default/js/admin-delete-modal.js');
 $defaultLayout = (string)file_get_contents($root . '/app/Views/layouts/default.php');
+$filesPage = (string)file_get_contents($root . '/app/Views/themes/default/admin/files.php');
 $themeHeader = (string)file_get_contents($root . '/themes/default/partials/header.php');
 $pwaService = (string)file_get_contents($root . '/app/Services/PwaService.php');
 $routes = (string)file_get_contents($root . '/config/routes.php');
@@ -77,6 +79,24 @@ admin_ui_assert(str_contains($mobileNavigation, 'data-fb-command-mode="actions"'
 admin_ui_assert(str_contains($commandPalette, 'data-site-suggest-url'), 'The command palette is not connected to site-wide search.');
 admin_ui_assert(str_contains($scripts, 'loadSiteCommands'), 'The command palette cannot load public site results.');
 admin_ui_assert(str_contains($styles, 'html.pwa-standalone .fb-topbar'), 'The PWA admin topbar is not pinned below the safe area.');
+admin_ui_assert(
+    str_contains($styles, '--fb-modal-mobile-top: max(.75rem, calc(env(safe-area-inset-top, 0px) + .35rem));')
+    && str_contains($styles, 'min-height: calc(100dvh - var(--fb-modal-mobile-top) - var(--fb-modal-mobile-bottom));')
+    && str_contains($styles, 'max-height: calc(100dvh - var(--fb-modal-mobile-top) - var(--fb-modal-mobile-bottom));')
+    && str_contains($styles, ".fb-admin-body .modal-body {\n        min-height: 0;\n        overflow-y: auto;")
+    && str_contains($styles, 'border-radius: var(--fb-radius-xl) !important;'),
+    'Mobile admin dialogs do not stay inside the display safe area.'
+);
+admin_ui_assert(
+    str_contains($filesPage, 'max-height: calc(100dvh - var(--fb-modal-mobile-top, .75rem) - var(--fb-modal-mobile-bottom, .75rem));'),
+    'The file preview modal overrides the shared mobile safe area.'
+);
+admin_ui_assert(
+    str_contains($blockEditorStyles, '--fb-editor-modal-mobile-top: max(.75rem, calc(env(safe-area-inset-top, 0px) + .35rem));')
+    && str_contains($blockEditorStyles, 'inset: var(--fb-editor-modal-mobile-top) .625rem var(--fb-editor-modal-mobile-bottom);')
+    && str_contains($blockEditorStyles, 'max-height: calc(100dvh - var(--fb-editor-modal-mobile-top) - var(--fb-editor-modal-mobile-bottom));'),
+    'Native block editor dialogs do not stay inside the mobile display safe area.'
+);
 admin_ui_assert(str_contains($scripts, 'const isChat ='), 'The mobile chat item cannot receive its active state.');
 admin_ui_assert(str_contains($topbar, 'data-notifications-clear') && str_contains($topbar, "notification_clear_all"), 'The notification center has no clear action.');
 admin_ui_assert(str_contains($routes, "post('/notifications/clear'") && str_contains($notificationController, 'clearForUser'), 'The notification clear endpoint is not connected.');

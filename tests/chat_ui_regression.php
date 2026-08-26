@@ -44,16 +44,27 @@ chatUiAssert(str_contains($javascript, "classList.toggle('chat-mobile-fullscreen
 chatUiAssert(str_contains($javascript, "classList.toggle('chat-pwa-fullscreen', isStandalone)"), 'The installed PWA does not enter its dedicated fullscreen chat state.');
 chatUiAssert(str_contains($javascript, 'const siteHeader = isStandalone ? null'), 'The PWA chat still reserves viewport height for the hidden site navbar.');
 chatUiAssert(
-    str_contains($javascript, 'const keyboardLikelyVisible = isMobile')
+    str_contains($javascript, 'const keyboardLikelyVisible = composerHasFocus')
+    && str_contains($javascript, "classList.toggle('chat-keyboard-visible', keyboardLikelyVisible)")
     && str_contains($javascript, 'isStandalone && !keyboardLikelyVisible ? 0 : visualViewportTop')
-    && str_contains($javascript, '? layoutViewportHeight'),
-    'The installed PWA still uses the safe-area-reduced visual viewport while the keyboard is closed.'
+    && str_contains($javascript, "document.addEventListener('focusin', scheduleMobileFullscreenSync"),
+    'The installed PWA does not distinguish the closed viewport from the on-screen keyboard.'
 );
 chatUiAssert(str_contains($javascript, 'window.visualViewport.addEventListener'), 'The mobile chat does not adapt to the on-screen keyboard.');
 chatUiAssert(str_contains($stylesheet, 'html.chat-viewport-fullscreen .chat-page {'), 'The chat has no fixed viewport shell.');
+chatUiAssert(
+    str_contains($stylesheet, 'html.chat-pwa-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page')
+    && str_contains($stylesheet, "bottom: 0;\n    height: auto;"),
+    'The closed iPhone PWA chat still stops above the home-indicator viewport edge.'
+);
 chatUiAssert(str_contains($stylesheet, 'html.pwa-standalone.chat-viewport-fullscreen body > header.navbar-sticky'), 'The PWA site navbar still occupies fullscreen chat space.');
 chatUiAssert(str_contains($stylesheet, 'padding-top: calc(1rem + var(--pwa-safe-top));'), 'The PWA chat header does not respect the display safe area.');
 chatUiAssert(str_contains($stylesheet, 'padding-bottom: calc(.75rem + var(--pwa-safe-bottom));'), 'The PWA chat composer does not respect the display safe area.');
+chatUiAssert(
+    str_contains($stylesheet, '--chat-modal-mobile-top: max(.875rem, calc(env(safe-area-inset-top, 0px) + .25rem));')
+    && str_contains($stylesheet, 'max-height: calc(100dvh - var(--chat-modal-mobile-top) - var(--chat-modal-mobile-bottom));'),
+    'Mobile chat dialogs can still overlap the display safe area.'
+);
 chatUiAssert(str_contains($stylesheet, 'overflow: hidden !important;'), 'The outer mobile chat page can still scroll.');
 chatUiAssert(str_contains($javascript, "chatApp.toggleClass('is-selection-mode'"), 'Mobile selection mode has no compact layout state.');
 chatUiAssert(str_contains($javascript, "document.body.classList.add('chat-sidebar-open')"), 'The chat sidebar cannot rise above the site navbar.');

@@ -256,7 +256,7 @@
         }
 
         [data-file-preview-modal] .modal-content {
-            max-height: calc(100dvh - 1.5rem);
+            max-height: calc(100dvh - var(--fb-modal-mobile-top, .75rem) - var(--fb-modal-mobile-bottom, .75rem));
         }
 
         [data-file-preview-modal] .modal-body {

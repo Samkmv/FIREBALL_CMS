@@ -7,6 +7,7 @@ $(function () {
     const mobileFullscreenQuery = window.matchMedia('(max-width: 767.98px)');
     const rootElement = document.documentElement;
     let mobileViewportFrame = 0;
+    let standaloneViewportHeight = 0;
 
     const syncMobileFullscreen = () => {
         mobileViewportFrame = 0;
@@ -33,8 +34,30 @@ $(function () {
         );
         const visualViewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
         const visualViewportHeight = Math.max(0, Number(viewport ? viewport.height : layoutViewportHeight) || layoutViewportHeight);
-        const keyboardLikelyVisible = isMobile
-            && (layoutViewportHeight - visualViewportHeight - visualViewportTop) > Math.max(120, layoutViewportHeight * .18);
+        const activeElement = document.activeElement;
+        const composerHasFocus = Boolean(
+            isMobile
+            && activeElement
+            && chatApp[0].contains(activeElement)
+            && activeElement.matches('input, textarea, [contenteditable="true"]')
+        );
+
+        if (isStandalone && !composerHasFocus) {
+            standaloneViewportHeight = Math.max(
+                standaloneViewportHeight,
+                layoutViewportHeight,
+                visualViewportHeight + visualViewportTop
+            );
+        }
+
+        const keyboardReferenceHeight = isStandalone && standaloneViewportHeight
+            ? standaloneViewportHeight
+            : layoutViewportHeight;
+        const keyboardLikelyVisible = composerHasFocus
+            && (keyboardReferenceHeight - visualViewportHeight - visualViewportTop) > Math.max(80, keyboardReferenceHeight * .12);
+
+        rootElement.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
+        document.body.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
         const viewportTop = isStandalone && !keyboardLikelyVisible ? 0 : visualViewportTop;
         const viewportHeight = isStandalone && !keyboardLikelyVisible
             ? layoutViewportHeight
@@ -66,6 +89,8 @@ $(function () {
         window.visualViewport.addEventListener('resize', scheduleMobileFullscreenSync, {passive: true});
         window.visualViewport.addEventListener('scroll', scheduleMobileFullscreenSync, {passive: true});
     }
+    document.addEventListener('focusin', scheduleMobileFullscreenSync, {passive: true});
+    document.addEventListener('focusout', scheduleMobileFullscreenSync, {passive: true});
     syncMobileFullscreen();
 
     const fetchUrl = String(chatApp.data('fetch-url') || '');

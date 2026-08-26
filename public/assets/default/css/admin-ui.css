@@ -3273,19 +3273,36 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
         overflow: visible !important;
     }
 
+    .fb-admin-body .modal {
+        --fb-modal-mobile-top: max(.75rem, calc(env(safe-area-inset-top, 0px) + .35rem));
+        --fb-modal-mobile-bottom: max(.75rem, calc(env(safe-area-inset-bottom, 0px) + .35rem));
+    }
+
     .fb-admin-body .modal-dialog {
-        min-height: 100%;
-        margin: 0;
+        width: calc(100% - 1.25rem);
+        min-height: calc(100% - var(--fb-modal-mobile-top) - var(--fb-modal-mobile-bottom));
+        margin: var(--fb-modal-mobile-top) auto var(--fb-modal-mobile-bottom);
     }
 
     .fb-admin-body .modal-dialog:not(.modal-sm) {
-        max-width: none;
+        max-width: calc(100% - 1.25rem);
+    }
+
+    .fb-admin-body .modal-content {
+        max-height: calc(100vh - var(--fb-modal-mobile-top) - var(--fb-modal-mobile-bottom));
+        max-height: calc(100dvh - var(--fb-modal-mobile-top) - var(--fb-modal-mobile-bottom));
     }
 
     .fb-admin-body .modal-dialog:not(.modal-sm) .modal-content {
-        min-height: 100vh;
-        min-height: 100dvh;
-        border-radius: 0 !important;
+        min-height: calc(100vh - var(--fb-modal-mobile-top) - var(--fb-modal-mobile-bottom));
+        min-height: calc(100dvh - var(--fb-modal-mobile-top) - var(--fb-modal-mobile-bottom));
+        border-radius: var(--fb-radius-xl) !important;
+    }
+
+    .fb-admin-body .modal-body {
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .fb-command-palette {

@@ -2322,6 +2322,11 @@ body:has(.fb-editor-workspace) {
 }
 
 @media (max-width: 767.98px) {
+    .fb-editor2__dialog {
+        --fb-editor-modal-mobile-top: max(.75rem, calc(env(safe-area-inset-top, 0px) + .35rem));
+        --fb-editor-modal-mobile-bottom: max(.75rem, calc(env(safe-area-inset-bottom, 0px) + .35rem));
+    }
+
     /*
      * Mobile Safari zooms the page when an editable control with a computed
      * font size below 16px receives focus. Keep every text-entry surface at
@@ -2342,10 +2347,12 @@ body:has(.fb-editor-workspace) {
     }
 
     .fb-editor2__command-dialog {
-        width: 100%;
-        height: 100%;
+        position: fixed;
+        inset: var(--fb-editor-modal-mobile-top) .625rem var(--fb-editor-modal-mobile-bottom);
+        width: auto;
+        height: auto;
         max-height: none;
-        margin: 0;
+        margin: 0 auto;
         padding: 8px;
     }
 
@@ -2355,7 +2362,7 @@ body:has(.fb-editor-workspace) {
 
     .fb-editor2__command-dialog .fb-editor2__dialog-card {
         height: min(78dvh, 680px);
-        max-height: calc(100dvh - 16px);
+        max-height: calc(100dvh - var(--fb-editor-modal-mobile-top) - var(--fb-editor-modal-mobile-bottom) - 16px);
         margin-top: auto;
         border-radius: 16px;
     }
@@ -2509,10 +2516,42 @@ body:has(.fb-editor-workspace) {
     }
 
     .fb-editor2__preview-card {
-        height: 100dvh;
+        height: 100%;
         margin: 0;
-        border: 0;
-        border-radius: 0;
+        border: 1px solid var(--fb-editor-border);
+        border-radius: 16px;
+    }
+
+    .fb-editor2__preview-dialog {
+        position: fixed;
+        inset: var(--fb-editor-modal-mobile-top) .625rem var(--fb-editor-modal-mobile-bottom);
+        width: auto;
+        height: auto;
+        max-height: none;
+        margin: 0;
+    }
+
+    .fb-editor2__recovery-dialog {
+        max-height: calc(100dvh - var(--fb-editor-modal-mobile-top) - var(--fb-editor-modal-mobile-bottom));
+    }
+
+    .fb-editor2__recovery-card {
+        max-height: inherit;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .fb-editor2__dialog[data-editor-delete-dialog] {
+        inset: var(--fb-editor-modal-mobile-top) .625rem var(--fb-editor-modal-mobile-bottom);
+        width: auto;
+        height: auto;
+        max-height: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .fb-editor2__dialog[data-editor-delete-dialog] .fb-editor2__recovery-card {
+        max-height: 100%;
     }
 
     .fb-editor2__preview-stage {

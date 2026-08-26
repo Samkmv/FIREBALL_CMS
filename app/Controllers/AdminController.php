@@ -251,10 +251,28 @@ class AdminController extends BaseController
             }
 
             session()->remove($replyTokenKey);
+            $supportEmail = trim($this->siteSettings->get('contacts_email_support'));
+            if (!filter_var($supportEmail, FILTER_VALIDATE_EMAIL)) {
+                $supportEmail = trim($this->siteSettings->get('mail_reply_to_email'));
+            }
+            if (!filter_var($supportEmail, FILTER_VALIDATE_EMAIL)) {
+                $supportEmail = trim($this->siteSettings->get('mail_from_email'));
+            }
+            $emailHtml = view('admin/contact_request_reply_email', [
+                'site_title' => $this->siteSettings->get('site_title', SITE_NAME),
+                'site_url' => base_url('/'),
+                'site_logo_url' => site_favicon_url(),
+                'brand_color' => $this->siteSettings->get('pwa_theme_color', '#181d25'),
+                'support_email' => filter_var($supportEmail, FILTER_VALIDATE_EMAIL) ? $supportEmail : '',
+                'request_id' => $requestId,
+                'request_subject' => (string)$contactRequest['subject'],
+                'recipient_name' => (string)$contactRequest['name'],
+                'message' => $message,
+            ], false);
             $sent = $mail->send(
                 [(string)$contactRequest['email']],
                 $subject,
-                '<div style="font-family:Arial,sans-serif;line-height:1.6">' . nl2br(htmlSC($message)) . '</div>',
+                $emailHtml,
                 $message
             );
             if (!$sent) {
