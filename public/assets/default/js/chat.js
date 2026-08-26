@@ -11,6 +11,9 @@ $(function () {
     const syncMobileFullscreen = () => {
         mobileViewportFrame = 0;
         const isMobile = mobileFullscreenQuery.matches;
+        const isStandalone = rootElement.classList.contains('pwa-standalone')
+            || window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
 
         if (!rootElement.classList.contains('chat-viewport-fullscreen')) {
             window.scrollTo({top: 0, left: 0, behavior: 'auto'});
@@ -20,11 +23,13 @@ $(function () {
         document.body.classList.add('chat-viewport-fullscreen');
         rootElement.classList.toggle('chat-mobile-fullscreen', isMobile);
         document.body.classList.toggle('chat-mobile-fullscreen', isMobile);
+        rootElement.classList.toggle('chat-pwa-fullscreen', isStandalone);
+        document.body.classList.toggle('chat-pwa-fullscreen', isStandalone);
 
         const viewport = window.visualViewport;
         const viewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
         const viewportHeight = Math.max(0, Number(viewport ? viewport.height : window.innerHeight) || window.innerHeight);
-        const siteHeader = document.querySelector('body > header') || document.querySelector('header');
+        const siteHeader = isStandalone ? null : (document.querySelector('body > header') || document.querySelector('header'));
         const headerRect = siteHeader ? siteHeader.getBoundingClientRect() : null;
         const visibleHeaderHeight = headerRect
             ? Math.max(0, Math.min(viewportHeight, headerRect.bottom - viewportTop))
@@ -72,11 +77,11 @@ $(function () {
         .map((item) => item.trim().replace(/^\./, '').toLowerCase())
         .filter(Boolean);
 
-    const getContactButtons = () => chatApp.find('[data-chat-contact]');
-    const contactGroupLists = chatApp.find('[data-chat-contact-group-list]');
-    const contactGroups = chatApp.find('[data-chat-contact-group]');
-    const contactSearchInput = chatApp.find('[data-chat-contact-search]');
-    const contactSearchEmpty = chatApp.find('[data-chat-search-empty]');
+    const getContactButtons = () => $('[data-chat-contact]');
+    const contactGroupLists = $('[data-chat-contact-group-list]');
+    const contactGroups = $('[data-chat-contact-group]');
+    const contactSearchInput = $('[data-chat-contact-search]');
+    const contactSearchEmpty = $('[data-chat-search-empty]');
     const messagesBox = chatApp.find('[data-chat-messages]');
     const currentName = chatApp.find('[data-chat-current-name]');
     const currentRole = chatApp.find('[data-chat-current-role]');
@@ -90,8 +95,6 @@ $(function () {
     const messageInput = form.find('[data-chat-message-input]');
     const attachmentInput = form.find('[data-chat-attachment]');
     const siteFileInput = form.find('[data-chat-site-file-input]');
-    const cameraInput = form.find('[data-chat-camera-input]');
-    const galleryInput = form.find('[data-chat-gallery-input]');
     const recordVoiceButton = form.find('[data-chat-record-voice]');
     const voiceRecorderPanel = form.find('[data-chat-voice-recorder]');
     const voiceRecordingTimer = form.find('[data-chat-recording-timer]');
@@ -181,8 +184,6 @@ $(function () {
     const getPreviewText = (value) => String(value || chatApp.data('empty-text') || '');
     const getGroupKey = (value) => String(value || 'clients');
     const currentSearchQuery = () => String(messageSearchInput.val() || '').trim();
-    const canUseShowPicker = (input) => input && typeof input.showPicker === 'function';
-
     const showFlashAlert = (type, message, title) => {
         if (type !== 'error') {
             return;
@@ -222,25 +223,6 @@ $(function () {
         chatApp[0].style.setProperty('--chat-composer-growth', `${composerGrowth}px`);
     };
 
-    const openNativeFilePicker = (input) => {
-        if (!input || input.disabled) {
-            return;
-        }
-
-        input.value = '';
-
-        if (canUseShowPicker(input)) {
-            try {
-                input.showPicker();
-                return;
-            } catch (error) {
-                // Fall through to click() when showPicker is unavailable for the current browser state.
-            }
-        }
-
-        input.click();
-    };
-
     const formatBytes = (bytes) => {
         const size = Number(bytes) || 0;
         if (size >= 1024 * 1024) {
@@ -264,9 +246,10 @@ $(function () {
         .map((height) => `<span data-chat-voice-bar aria-hidden="true" style="--voice-bar-height: ${height}%"></span>`)
         .join('');
 
-    const renderVoicePlayerMarkup = (sourceUrl, fileName, fileSize = 0, extraClass = 'mt-2') => {
+    const renderVoicePlayerMarkup = (sourceUrl, fileName, fileSize = 0, extraClass = 'mt-2', mimeType = '') => {
         const url = escapeHtml(sourceUrl);
         const name = escapeHtml(fileName || chatApp.data('voice-message-text') || 'Voice message');
+        const type = escapeHtml(String(mimeType || '').split(';')[0].trim());
         const playText = escapeHtml(chatApp.data('voice-play-text') || 'Play voice message');
         const seekText = escapeHtml(chatApp.data('voice-seek-text') || 'Seek voice message');
         const voiceText = escapeHtml(chatApp.data('voice-message-text') || 'Voice message');
@@ -275,7 +258,9 @@ $(function () {
 
         return `
             <div class="chat-message-voice ${extraClass}" data-chat-voice-player>
-                <audio class="chat-message-voice__audio" preload="metadata" src="${url}" data-chat-voice-audio></audio>
+                <audio class="chat-message-voice__audio" preload="metadata" controls playsinline webkit-playsinline tabindex="-1" aria-hidden="true" data-chat-voice-audio>
+                    <source src="${url}"${type ? ` type="${type}"` : ''}>
+                </audio>
                 <button class="chat-message-voice__toggle" type="button" data-chat-voice-toggle aria-label="${playText}" title="${playText}">
                     <i class="ci-play" aria-hidden="true"></i>
                 </button>
@@ -654,8 +639,6 @@ $(function () {
         state.pendingSiteAttachments = [];
         attachmentInput.val('');
         siteFileInput.val('');
-        cameraInput.val('');
-        galleryInput.val('');
         pendingAttachment.addClass('d-none');
         pendingList.empty();
         pendingMeta.text('');
@@ -688,7 +671,7 @@ $(function () {
             } else if (kind === 'video') {
                 previewHtml = `<video src="${escapeHtml(previewUrl)}" muted></video>`;
             } else if (kind === 'audio') {
-                previewHtml = renderVoicePlayerMarkup(previewUrl, file.name, file.size, 'chat-message-voice--pending');
+                previewHtml = renderVoicePlayerMarkup(previewUrl, file.name, file.size, 'chat-message-voice--pending', file.type);
             }
 
             html += `
@@ -793,7 +776,12 @@ $(function () {
         const voiceSupported = Boolean(navigator.mediaDevices
             && typeof navigator.mediaDevices.getUserMedia === 'function'
             && typeof window.MediaRecorder !== 'undefined');
-        recordVoiceButton.removeClass('is-recording').prop('disabled', !voiceSupported);
+        const recordLabel = String(chatApp.data('voice-record-text') || 'Record voice message');
+        recordVoiceButton
+            .removeClass('is-recording')
+            .prop('disabled', !voiceSupported)
+            .attr({ title: recordLabel, 'aria-label': recordLabel });
+        recordVoiceButton.find('i').attr('class', 'ci-mic').attr('aria-hidden', 'true');
         sendButton.prop('disabled', false);
         stopVoiceTracks();
     };
@@ -855,9 +843,10 @@ $(function () {
         }
 
         const candidates = [
+            'audio/mp4;codecs=mp4a.40.2',
+            'audio/mp4',
             'audio/webm;codecs=opus',
             'audio/ogg;codecs=opus',
-            'audio/mp4',
             'audio/webm',
         ];
 
@@ -912,7 +901,12 @@ $(function () {
 
             state.voiceStartedAt = Date.now();
             voiceRecorderPanel.removeClass('d-none');
-            recordVoiceButton.addClass('is-recording').prop('disabled', true);
+            const stopLabel = String(chatApp.data('voice-stop-text') || 'Stop recording');
+            recordVoiceButton
+                .addClass('is-recording')
+                .prop('disabled', false)
+                .attr({ title: stopLabel, 'aria-label': stopLabel });
+            recordVoiceButton.find('i').attr('class', 'ci-stop-circle').attr('aria-hidden', 'true');
             sendButton.prop('disabled', true);
             state.voiceTimerId = window.setInterval(() => {
                 const elapsed = Date.now() - state.voiceStartedAt;
@@ -1102,7 +1096,9 @@ $(function () {
             return renderVoicePlayerMarkup(
                 attachment.url,
                 attachment.name || chatApp.data('voice-message-text') || 'Voice message',
-                attachment.size
+                attachment.size,
+                'mt-2',
+                attachment.type
             );
         }
 
@@ -1795,7 +1791,8 @@ $(function () {
         });
     };
 
-    chatApp.on('click', '[data-chat-contact]', function () {
+    $(document).on('click', '[data-chat-contact]', function (event) {
+        event.preventDefault();
         setActiveContact($(this));
     });
 
@@ -1831,26 +1828,6 @@ $(function () {
         openAttachmentPreview($(this));
     });
 
-    chatApp.find('[data-chat-pick-camera]').on('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (this.disabled || !cameraInput.length) {
-            return;
-        }
-
-        openNativeFilePicker(cameraInput[0]);
-    });
-
-    chatApp.find('[data-chat-pick-gallery]').on('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (this.disabled || !galleryInput.length) {
-            return;
-        }
-
-        openNativeFilePicker(galleryInput[0]);
-    });
-
     attachmentInput.on('change', function () {
         setPendingFiles(this.files || []);
     });
@@ -1859,15 +1836,12 @@ $(function () {
         addPendingSiteAttachment($(this).val());
     });
 
-    cameraInput.on('change', function () {
-        setPendingFiles(this.files || []);
-    });
-
-    galleryInput.on('change', function () {
-        setPendingFiles(this.files || []);
-    });
-
     recordVoiceButton.on('click', function () {
+        if (state.voiceRecorder && state.voiceRecorder.state !== 'inactive') {
+            stopVoiceRecording(true);
+            return;
+        }
+
         startVoiceRecording();
     });
 
@@ -1942,6 +1916,9 @@ $(function () {
         }
 
         if (audio.paused) {
+            if (audio.readyState === 0) {
+                audio.load();
+            }
             const playRequest = audio.play();
             if (playRequest && typeof playRequest.catch === 'function') {
                 playRequest.catch(() => setVoicePlayerState(player, false));

@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__) . '/app/Services/ChatMediaStorage.php';
+require_once dirname(__DIR__) . '/app/Services/SafeUploadService.php';
 if (!defined('CHAT_ENCRYPTION_KEY')) {
     define('CHAT_ENCRYPTION_KEY', 'chat-message-unit-test-key');
 }
@@ -9,6 +10,7 @@ require_once dirname(__DIR__) . '/app/Models/ChatMessage.php';
 
 use App\Models\ChatMessage;
 use App\Services\ChatMediaStorage;
+use App\Services\SafeUploadService;
 
 if (!function_exists('get_role_rank')) {
     function get_role_rank(?string $role = null): int
@@ -97,9 +99,24 @@ function chatMediaAssert(bool $condition, string $message): void
 
 $testRoot = sys_get_temp_dir() . '/fireball-chat-media-test-' . bin2hex(random_bytes(6));
 $sourcePath = $testRoot . '/source.bin';
+$safariM4aPath = $testRoot . '/safari-voice.m4a';
 @mkdir($testRoot, 0700, true);
 
 try {
+    $safariM4a = pack('N', 24) . 'ftyp' . 'isom' . pack('N', 0) . 'isom' . 'mp42';
+    file_put_contents($safariM4aPath, $safariM4a);
+    $safariM4aMime = (new SafeUploadService())->validate(
+        $safariM4aPath,
+        'voice-from-iphone.m4a',
+        strlen($safariM4a),
+        1024,
+        ['m4a']
+    );
+    chatMediaAssert(
+        in_array($safariM4aMime, ['audio/mp4', 'audio/x-m4a', 'video/mp4', 'application/mp4'], true),
+        'Safari audio-only MP4 container is rejected as an invalid M4A upload.'
+    );
+
     $marker = 'FIREBALL-CHAT-PLAINTEXT-MARKER';
     $plainText = random_bytes(1024 * 1024 - 9)
         . $marker
@@ -186,6 +203,9 @@ try {
 } finally {
     if (is_file($sourcePath)) {
         @unlink($sourcePath);
+    }
+    if (is_file($safariM4aPath)) {
+        @unlink($safariM4aPath);
     }
     $encryptedDirectory = $testRoot . '/encrypted';
     if (is_dir($encryptedDirectory)) {

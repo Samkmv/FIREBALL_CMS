@@ -38,7 +38,10 @@ final class SafeUploadService
         'mp3' => ['audio/mpeg', 'audio/mp3'],
         'wav' => ['audio/wav', 'audio/x-wav', 'audio/wave'],
         'ogg' => ['audio/ogg', 'application/ogg'],
-        'm4a' => ['audio/mp4', 'audio/x-m4a'],
+        // Safari MediaRecorder writes audio-only ISO BMFF with generic brands such as
+        // isom/iso5/mp42. libmagic commonly identifies those valid M4A files as
+        // video/mp4 or application/mp4 even though the stream contains audio only.
+        'm4a' => ['audio/mp4', 'audio/x-m4a', 'video/mp4', 'application/mp4'],
         'flac' => ['audio/flac', 'audio/x-flac'],
         'aac' => ['audio/aac', 'audio/x-aac'],
         'mp4' => ['video/mp4'],
