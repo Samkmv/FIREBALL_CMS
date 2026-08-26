@@ -4,7 +4,6 @@ $planCount = count($plans);
 $planColumnClass = $planCount === 1
     ? 'col-md-8 col-lg-6 col-xl-5'
     : ($planCount === 2 ? 'col-md-6 col-xl-5' : 'col-md-6 col-xl-4');
-$planIcons = ['ci-repeat', 'ci-star-filled', 'ci-briefcase'];
 $features = [
     ['posts.view_paid', 'subscriptions_feature_posts'],
     ['videos.view_paid', 'subscriptions_feature_video'],
@@ -25,7 +24,6 @@ $features = [
         <?php foreach ($plans as $planIndex => $plan): ?>
             <?php
             $isRecommended = !empty($plan['is_popular']);
-            $planIcon = $planIcons[$planIndex % count($planIcons)];
             $cardClass = 'subscriptions-plan-card subscriptions-plan-card--tone-' . (($planIndex % 3) + 1) . ' border h-100 d-flex flex-column';
             if ($isRecommended) {
                 $cardClass .= ' subscriptions-plan-card--recommended';
@@ -41,7 +39,7 @@ $features = [
                     <div class="subscriptions-plan-card__accent" aria-hidden="true"></div>
                     <div class="subscriptions-plan-card__body p-4 p-lg-5 d-flex flex-column flex-grow-1">
                         <div class="subscriptions-plan-card__heading d-flex align-items-start gap-3 mb-3">
-                            <span class="subscriptions-plan-card__icon d-inline-flex align-items-center justify-content-center rounded-circle" aria-hidden="true"><i class="<?= htmlSC($planIcon) ?>"></i></span>
+                            <span class="subscriptions-plan-card__icon d-inline-flex align-items-center justify-content-center rounded-circle" aria-hidden="true"><i class="ci-award"></i></span>
                             <div class="min-w-0 pt-1">
                                 <h2 class="h3 mb-1"><?= htmlSC((string)$plan['name']) ?></h2>
                                 <span class="subscriptions-plan-card__duration d-inline-flex align-items-center gap-1">
@@ -50,7 +48,9 @@ $features = [
                             </div>
                         </div>
 
-                        <p class="subscriptions-plan-card__description text-body-secondary mb-4"><?php if (trim((string)$plan['description']) !== ''): ?><?= nl2br(htmlSC((string)$plan['description'])) ?><?php endif; ?></p>
+                        <?php if (trim((string)$plan['description']) !== ''): ?>
+                            <p class="subscriptions-plan-card__description text-body-secondary mb-4"><?= nl2br(htmlSC((string)$plan['description'])) ?></p>
+                        <?php endif; ?>
 
                         <div class="subscriptions-plan-card__price-row d-flex align-items-end flex-wrap gap-2 mb-4">
                             <div class="subscriptions-plan-card__price"><?= htmlSC((string)$plan['price_display']) ?></div>

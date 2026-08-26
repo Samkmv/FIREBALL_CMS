@@ -183,6 +183,39 @@ $(function(){
         }
     });
 
+    const resetSupportReplyForms = () => {
+        document.querySelectorAll('[data-support-reply-form]').forEach((form) => {
+            form.removeAttribute('data-support-reply-submitting');
+            form.removeAttribute('aria-busy');
+            const submitButton = form.querySelector('[data-support-reply-submit]');
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
+        });
+    };
+
+    window.addEventListener('pageshow', resetSupportReplyForms);
+    document.addEventListener('submit', (event) => {
+        const form = event.target.closest('[data-support-reply-form]');
+        if (!form) {
+            return;
+        }
+        if (form.hasAttribute('data-support-reply-submitting')) {
+            event.preventDefault();
+            return;
+        }
+        if (event.defaultPrevented || !form.checkValidity()) {
+            return;
+        }
+
+        form.setAttribute('data-support-reply-submitting', 'true');
+        form.setAttribute('aria-busy', 'true');
+        const submitButton = form.querySelector('[data-support-reply-submit]');
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+    });
+
     try {
         const profileScrollTarget = window.sessionStorage.getItem(profileScrollStorageKey);
         if (profileScrollTarget) {

@@ -219,7 +219,15 @@ class AdminController extends BaseController
             abort();
         }
 
+        $replyTokenKey = 'support_reply_tokens.' . $requestId;
+        $replyToken = trim((string)session()->get($replyTokenKey, ''));
+
         if (request()->isPost()) {
+            $submittedReplyToken = trim((string)request()->post('reply_token', ''));
+            if ($replyToken === '' || $submittedReplyToken === '' || !hash_equals($replyToken, $submittedReplyToken)) {
+                response()->redirect(base_href('/admin/support/requests'));
+            }
+
             $subject = mb_substr(trim((string)request()->post('subject', '')), 0, 190);
             $message = trim((string)request()->post('message', ''));
             $errors = [];
@@ -242,6 +250,7 @@ class AdminController extends BaseController
                 response()->redirect(base_href('/admin/support/requests/reply/' . $requestId));
             }
 
+            session()->remove($replyTokenKey);
             $sent = $mail->send(
                 [(string)$contactRequest['email']],
                 $subject,
@@ -249,6 +258,8 @@ class AdminController extends BaseController
                 $message
             );
             if (!$sent) {
+                $replyToken = bin2hex(random_bytes(32));
+                session()->set($replyTokenKey, $replyToken);
                 session()->set('form_data', ['subject' => $subject, 'message' => $message]);
                 session()->setFlash('error', return_translation('admin_support_reply_failed'));
                 response()->redirect(base_href('/admin/support/requests/reply/' . $requestId));
@@ -261,6 +272,11 @@ class AdminController extends BaseController
             response()->redirect(base_href('/admin/support/requests'));
         }
 
+        if ($replyToken === '') {
+            $replyToken = bin2hex(random_bytes(32));
+            session()->set($replyTokenKey, $replyToken);
+        }
+
         $formData = (array)session()->get('form_data', []);
         session()->remove('form_data');
 
@@ -268,6 +284,7 @@ class AdminController extends BaseController
             'title' => return_translation('admin_support_reply_title'),
             'contact_request' => $contactRequest,
             'form_data' => $formData,
+            'reply_token' => $replyToken,
         ]);
     }
 

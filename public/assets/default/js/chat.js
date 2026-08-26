@@ -27,8 +27,18 @@ $(function () {
         document.body.classList.toggle('chat-pwa-fullscreen', isStandalone);
 
         const viewport = window.visualViewport;
-        const viewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
-        const viewportHeight = Math.max(0, Number(viewport ? viewport.height : window.innerHeight) || window.innerHeight);
+        const layoutViewportHeight = Math.max(
+            Number(window.innerHeight) || 0,
+            Number(rootElement.clientHeight) || 0
+        );
+        const visualViewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
+        const visualViewportHeight = Math.max(0, Number(viewport ? viewport.height : layoutViewportHeight) || layoutViewportHeight);
+        const keyboardLikelyVisible = isMobile
+            && (layoutViewportHeight - visualViewportHeight - visualViewportTop) > Math.max(120, layoutViewportHeight * .18);
+        const viewportTop = isStandalone && !keyboardLikelyVisible ? 0 : visualViewportTop;
+        const viewportHeight = isStandalone && !keyboardLikelyVisible
+            ? layoutViewportHeight
+            : visualViewportHeight;
         const siteHeader = isStandalone ? null : (document.querySelector('body > header') || document.querySelector('header'));
         const headerRect = siteHeader ? siteHeader.getBoundingClientRect() : null;
         const visibleHeaderHeight = headerRect

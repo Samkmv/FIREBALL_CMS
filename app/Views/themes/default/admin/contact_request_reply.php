@@ -1,6 +1,7 @@
 <?php
 $contactRequest = (array)($contact_request ?? []);
 $formData = (array)($form_data ?? []);
+$replyToken = (string)($reply_token ?? '');
 $subject = (string)($formData['subject'] ?? ('Re: ' . (string)($contactRequest['subject'] ?? '')));
 $message = (string)($formData['message'] ?? '');
 ?>
@@ -25,8 +26,9 @@ $message = (string)($formData['message'] ?? '');
             </section>
         </div>
         <div class="col-lg-7">
-            <form class="border rounded-5 p-3 p-md-4" method="post" action="<?= base_href('/admin/support/requests/reply/' . (int)($contactRequest['id'] ?? 0)) ?>">
+            <form class="border rounded-5 p-3 p-md-4" method="post" action="<?= base_href('/admin/support/requests/reply/' . (int)($contactRequest['id'] ?? 0)) ?>" data-support-reply-form>
                 <?= get_csrf_field() ?>
+                <input type="hidden" name="reply_token" value="<?= htmlSC($replyToken) ?>">
                 <div class="mb-3">
                     <label class="form-label"><?= print_translation('admin_support_reply_recipient') ?></label>
                     <input class="form-control" value="<?= htmlSC((string)($contactRequest['email'] ?? '')) ?>" readonly>
@@ -42,7 +44,7 @@ $message = (string)($formData['message'] ?? '');
                     <?= get_errors('message') ?>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <button class="btn btn-dark rounded-pill" type="submit"><i class="ci-send me-2"></i><?= print_translation('admin_support_reply_send') ?></button>
+                    <button class="btn btn-dark rounded-pill" type="submit" data-support-reply-submit><i class="ci-send me-2"></i><?= print_translation('admin_support_reply_send') ?></button>
                     <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/support/requests') ?>"><?= print_translation('admin_btn_cancel') ?></a>
                 </div>
             </form>

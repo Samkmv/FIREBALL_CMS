@@ -43,6 +43,12 @@ chatUiAssert(str_contains($javascript, "classList.add('chat-viewport-fullscreen'
 chatUiAssert(str_contains($javascript, "classList.toggle('chat-mobile-fullscreen', isMobile)"), 'The chat page does not retain its mobile-only compact state.');
 chatUiAssert(str_contains($javascript, "classList.toggle('chat-pwa-fullscreen', isStandalone)"), 'The installed PWA does not enter its dedicated fullscreen chat state.');
 chatUiAssert(str_contains($javascript, 'const siteHeader = isStandalone ? null'), 'The PWA chat still reserves viewport height for the hidden site navbar.');
+chatUiAssert(
+    str_contains($javascript, 'const keyboardLikelyVisible = isMobile')
+    && str_contains($javascript, 'isStandalone && !keyboardLikelyVisible ? 0 : visualViewportTop')
+    && str_contains($javascript, '? layoutViewportHeight'),
+    'The installed PWA still uses the safe-area-reduced visual viewport while the keyboard is closed.'
+);
 chatUiAssert(str_contains($javascript, 'window.visualViewport.addEventListener'), 'The mobile chat does not adapt to the on-screen keyboard.');
 chatUiAssert(str_contains($stylesheet, 'html.chat-viewport-fullscreen .chat-page {'), 'The chat has no fixed viewport shell.');
 chatUiAssert(str_contains($stylesheet, 'html.pwa-standalone.chat-viewport-fullscreen body > header.navbar-sticky'), 'The PWA site navbar still occupies fullscreen chat space.');

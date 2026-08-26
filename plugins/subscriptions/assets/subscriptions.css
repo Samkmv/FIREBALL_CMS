@@ -65,6 +65,9 @@
 }
 
 .subscriptions-plan-card--recommended .subscriptions-plan-card__accent {
+    width: calc(100% - 2.5rem);
+    margin-inline: auto;
+    border-radius: 0 0 .35rem .35rem;
     background: linear-gradient(90deg, #ff8063, var(--cz-primary), #f33e74);
 }
 

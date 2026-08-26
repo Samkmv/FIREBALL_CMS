@@ -141,7 +141,7 @@ final class FireballPluginSubscriptions implements PluginInterface
                 'plugin' => self::SLUG,
                 'title' => self::t('subscriptions_admin_title'),
                 'subtitle' => self::t('subscriptions_admin_subtitle'),
-                'icon' => 'ci-award',
+                'icon' => 'ci-credit-card',
                 'href' => base_href('/admin/subscriptions'),
                 'metrics' => [
                     ['label' => self::t('subscriptions_stat_active'), 'value' => $active, 'tone' => 'success'],

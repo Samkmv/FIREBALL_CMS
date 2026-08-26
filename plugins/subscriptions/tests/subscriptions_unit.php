@@ -447,9 +447,10 @@ assertTrueValue(
 
 $pluginSource = (string)file_get_contents(__DIR__ . '/../Plugin.php');
 assertTrueValue(
-    substr_count($pluginSource, "'icon' => 'ci-award'") >= 3
+    substr_count($pluginSource, "'icon' => 'ci-credit-card'") >= 3
+    && !str_contains($pluginSource, "'icon' => 'ci-award'")
     && !str_contains($pluginSource, "'icon' => 'ci-repeat'"),
-    'Subscription navigation and dashboard surfaces must use the award identity icon'
+    'Subscription navigation and dashboard surfaces must use the credit card identity icon'
 );
 assertTrueValue(
     str_contains($pluginSource, "add_filter('public_posts_before_render'")
@@ -677,7 +678,9 @@ assertTrueValue(
     && str_contains($plansTemplate, 'subscriptions_plan_popular')
     && str_contains($plansTemplate, 'subscriptions-plan-card__accent')
     && str_contains($plansTemplate, 'subscriptions_plan_features')
-    && str_contains($plansTemplate, "\$planIcons = ['ci-repeat', 'ci-star-filled', 'ci-briefcase']")
+    && str_contains($plansTemplate, '<i class="ci-award"></i>')
+    && !str_contains($plansTemplate, '$planIcons')
+    && !str_contains($plansTemplate, 'ci-repeat')
     && !str_contains($plansTemplate, 'ci-send')
     && str_contains($plansTemplate, 'ci-arrow-right'),
     'Public plan selection must adapt its card grid to one, two, or many plans'
@@ -697,6 +700,8 @@ assertTrueValue(
     && str_contains($publicStyles, '[data-bs-theme="dark"] .subscriptions-plans-hero')
     && str_contains($publicStyles, '.subscriptions-plan-card__popular')
     && str_contains($publicStyles, '.subscriptions-plan-card--recommended')
+    && str_contains($publicStyles, 'width: calc(100% - 2.5rem)')
+    && str_contains($publicStyles, 'border-radius: 0 0 .35rem .35rem')
     && str_contains($publicStyles, '.subscriptions-checkout-summary')
     && str_contains($publicStyles, '@media (max-width: 767.98px)')
     && str_contains($publicStyles, '.subscriptions-content-access-form--mobile')
