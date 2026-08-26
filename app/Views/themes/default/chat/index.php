@@ -29,7 +29,15 @@
                             <?= htmlSC(get_user()['name'] ?? '') ?><?= render_public_verified_badge(get_user()['role'] ?? null) ?>
                         </div>
                     </div>
-                    <button type="button" class="btn-close d-lg-none flex-shrink-0" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                    <button
+                        type="button"
+                        class="chat-sidebar__close btn btn-outline-secondary rounded-circle d-lg-none flex-shrink-0"
+                        data-bs-dismiss="offcanvas"
+                        title="<?= htmlSC(return_translation('admin_btn_close')) ?>"
+                        aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"
+                    >
+                        <i class="ci-close" aria-hidden="true"></i>
+                    </button>
                 </div>
                 <div class="position-relative mt-3">
                     <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"></i>
@@ -284,7 +292,7 @@
                                 </div>
 
                                 <div class="chat-thread__searchbar d-flex align-items-center gap-2 flex-wrap">
-                                    <div class="position-relative flex-grow-1">
+                                    <div class="chat-thread__search-field position-relative flex-grow-1">
                                         <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"></i>
                                         <input
                                             type="search"
@@ -294,11 +302,26 @@
                                         >
                                     </div>
                                     <span class="badge rounded-pill text-body-emphasis bg-body-tertiary px-3 py-2 d-none" data-chat-message-search-results></span>
-                                    <button type="button" class="btn btn-outline-secondary rounded-pill d-none" data-chat-selection-cancel>
-                                        <?= print_translation('chat_selection_cancel') ?>
+                                    <span class="chat-selection-count badge rounded-pill text-body-emphasis bg-body-tertiary d-none" data-chat-selection-count aria-live="polite"></span>
+                                    <button
+                                        type="button"
+                                        class="chat-selection-action btn btn-outline-secondary rounded-pill d-none"
+                                        title="<?= htmlSC(return_translation('chat_selection_cancel')) ?>"
+                                        aria-label="<?= htmlSC(return_translation('chat_selection_cancel')) ?>"
+                                        data-chat-selection-cancel
+                                    >
+                                        <i class="ci-close" aria-hidden="true"></i>
+                                        <span class="chat-selection-action__label"><?= print_translation('chat_selection_cancel') ?></span>
                                     </button>
-                                    <button type="button" class="btn btn-danger rounded-pill d-none" data-chat-delete-selected>
-                                        <?= print_translation('chat_delete_selected_btn') ?>
+                                    <button
+                                        type="button"
+                                        class="chat-selection-action btn btn-danger rounded-pill d-none"
+                                        title="<?= htmlSC(return_translation('chat_delete_selected_btn')) ?>"
+                                        aria-label="<?= htmlSC(return_translation('chat_delete_selected_btn')) ?>"
+                                        data-chat-delete-selected
+                                    >
+                                        <i class="ci-trash" aria-hidden="true"></i>
+                                        <span class="chat-selection-action__label"><?= print_translation('chat_delete_selected_btn') ?></span>
                                     </button>
                                 </div>
                             </div>
@@ -317,8 +340,6 @@
                                     <?= get_csrf_field() ?>
                                     <input type="hidden" name="user_id" value="<?= (int)$active_contact['id'] ?>" data-chat-user-id>
                                     <input class="visually-hidden position-absolute" type="text" id="chatSiteFileSelection" data-chat-site-file-input>
-                                    <input class="d-none" type="file" data-chat-camera-input accept="image/*,video/*" capture="environment">
-                                    <input class="d-none" type="file" data-chat-gallery-input accept="image/*,video/*" multiple>
 
                                     <div class="chat-composer" data-chat-dropzone>
                                         <div class="chat-composer__dropzone d-none" data-chat-dropzone-overlay>
@@ -334,33 +355,6 @@
                                                     <i class="ci-paperclip"></i>
                                                     <input class="chat-file-input" type="file" id="chatFileInput" name="attachment[]" multiple data-chat-attachment accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.rtf,.odt,.ods,.odp,.ppt,.pptx,.zip,.rar,.7z,.json,.xml,.md">
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    class="chat-composer__attach btn btn-outline-secondary rounded-circle d-none d-md-inline-flex"
-                                                    title="<?= htmlSC(return_translation('chat_attachment_gallery')) ?>"
-                                                    aria-label="<?= htmlSC(return_translation('chat_attachment_gallery')) ?>"
-                                                    data-chat-pick-gallery
-                                                >
-                                                    <i class="ci-image" aria-hidden="true"></i>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="chat-composer__attach btn btn-outline-secondary rounded-circle d-none d-lg-inline-flex"
-                                                    title="<?= htmlSC(return_translation('chat_attachment_camera')) ?>"
-                                                    aria-label="<?= htmlSC(return_translation('chat_attachment_camera')) ?>"
-                                                    data-chat-pick-camera
-                                                >
-                                                    <i class="ci-camera" aria-hidden="true"></i>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="chat-composer__attach chat-composer__record btn btn-outline-secondary rounded-circle"
-                                                    title="<?= htmlSC(return_translation('chat_voice_record')) ?>"
-                                                    aria-label="<?= htmlSC(return_translation('chat_voice_record')) ?>"
-                                                    data-chat-record-voice
-                                                >
-                                                    <i class="ci-mic" aria-hidden="true"></i>
-                                                </button>
                                                 <?php if (!empty($chat_file_manager_enabled) && !empty($chat_file_manager_url)): ?>
                                                     <button
                                                         type="button"
@@ -374,6 +368,15 @@
                                                         <i class="ci-folder"></i>
                                                     </button>
                                                 <?php endif; ?>
+                                                <button
+                                                    type="button"
+                                                    class="chat-composer__attach chat-composer__record btn btn-outline-secondary rounded-circle"
+                                                    title="<?= htmlSC(return_translation('chat_voice_record')) ?>"
+                                                    aria-label="<?= htmlSC(return_translation('chat_voice_record')) ?>"
+                                                    data-chat-record-voice
+                                                >
+                                                    <i class="ci-mic" aria-hidden="true"></i>
+                                                </button>
 
                                             </div>
                                             <textarea
@@ -398,7 +401,7 @@
                                         <div class="chat-voice-recorder d-none" data-chat-voice-recorder role="status" aria-live="polite">
                                             <div class="chat-voice-recorder__status min-w-0">
                                                 <span class="chat-voice-recorder__dot" aria-hidden="true"></span>
-                                                <span class="fw-semibold text-truncate" data-chat-recording-label><?= print_translation('chat_voice_recording') ?></span>
+                                                <span class="fw-semibold text-truncate" data-chat-recording-label><?= print_translation('chat_voice_recording_short') ?></span>
                                                 <time class="chat-voice-recorder__timer" data-chat-recording-timer>00:00</time>
                                             </div>
                                             <div class="chat-voice-recorder__actions d-flex align-items-center gap-2">
@@ -410,8 +413,7 @@
                                                     data-chat-record-stop
                                                 >
                                                     <i class="ci-stop-circle" aria-hidden="true"></i>
-                                                    <span class="d-none d-sm-inline"><?= print_translation('chat_voice_stop') ?></span>
-                                                    <span class="d-inline d-sm-none" aria-hidden="true"><?= print_translation('chat_voice_stop_short') ?></span>
+                                                    <span><?= print_translation('chat_voice_stop_short') ?></span>
                                                 </button>
                                                 <button
                                                     type="button"
@@ -420,8 +422,8 @@
                                                     aria-label="<?= htmlSC(return_translation('chat_voice_cancel')) ?>"
                                                     data-chat-record-cancel
                                                 >
-                                                    <span class="d-none d-sm-inline"><?= print_translation('chat_voice_cancel') ?></span>
-                                                    <span class="d-inline d-sm-none" aria-hidden="true"><?= print_translation('chat_voice_cancel_short') ?></span>
+                                                    <i class="ci-close" aria-hidden="true"></i>
+                                                    <span><?= print_translation('chat_voice_cancel_short') ?></span>
                                                 </button>
                                             </div>
                                         </div>
@@ -450,6 +452,12 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        <?php endif; ?>
+    </section>
+</main>
+
+<?php if (!empty($contacts)): ?>
             <div class="offcanvas offcanvas-start chat-sidebar-offcanvas d-lg-none" tabindex="-1" id="accountSidebar" aria-label="<?= htmlSC(return_translation('chat_contacts_title')) ?>">
                 <div class="offcanvas-body p-0">
                     <?php $renderChatSidebar(); ?>
@@ -537,8 +545,4 @@
                     </div>
                 </div>
             </div>
-
-            </div>
-        <?php endif; ?>
-    </section>
-</main>
+<?php endif; ?>

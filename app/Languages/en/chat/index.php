@@ -25,6 +25,7 @@ return [
     'chat_attachment_gallery' => 'Gallery',
     'chat_voice_record' => 'Record a voice message',
     'chat_voice_recording' => 'Recording a voice message',
+    'chat_voice_recording_short' => 'Voice recording',
     'chat_voice_stop' => 'Stop recording',
     'chat_voice_stop_short' => 'Stop',
     'chat_voice_cancel' => 'Cancel recording',

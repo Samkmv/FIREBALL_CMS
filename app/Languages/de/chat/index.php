@@ -25,6 +25,7 @@ return [
     'chat_attachment_gallery' => 'Galerie',
     'chat_voice_record' => 'Sprachnachricht aufnehmen',
     'chat_voice_recording' => 'Sprachnachricht wird aufgenommen',
+    'chat_voice_recording_short' => 'Sprachaufnahme',
     'chat_voice_stop' => 'Aufnahme stoppen',
     'chat_voice_stop_short' => 'Stopp',
     'chat_voice_cancel' => 'Aufnahme abbrechen',

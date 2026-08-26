@@ -25,6 +25,7 @@ return [
     'chat_attachment_gallery' => '相册',
     'chat_voice_record' => '录制语音消息',
     'chat_voice_recording' => '正在录制语音消息',
+    'chat_voice_recording_short' => '语音录制',
     'chat_voice_stop' => '停止录制',
     'chat_voice_stop_short' => '停止',
     'chat_voice_cancel' => '取消录制',

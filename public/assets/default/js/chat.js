@@ -4,6 +4,55 @@ $(function () {
         return;
     }
 
+    const mobileFullscreenQuery = window.matchMedia('(max-width: 767.98px)');
+    const rootElement = document.documentElement;
+    let mobileViewportFrame = 0;
+
+    const syncMobileFullscreen = () => {
+        mobileViewportFrame = 0;
+        const isMobile = mobileFullscreenQuery.matches;
+
+        if (!rootElement.classList.contains('chat-viewport-fullscreen')) {
+            window.scrollTo({top: 0, left: 0, behavior: 'auto'});
+        }
+
+        rootElement.classList.add('chat-viewport-fullscreen');
+        document.body.classList.add('chat-viewport-fullscreen');
+        rootElement.classList.toggle('chat-mobile-fullscreen', isMobile);
+        document.body.classList.toggle('chat-mobile-fullscreen', isMobile);
+
+        const viewport = window.visualViewport;
+        const viewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
+        const viewportHeight = Math.max(0, Number(viewport ? viewport.height : window.innerHeight) || window.innerHeight);
+        const siteHeader = document.querySelector('body > header') || document.querySelector('header');
+        const headerRect = siteHeader ? siteHeader.getBoundingClientRect() : null;
+        const visibleHeaderHeight = headerRect
+            ? Math.max(0, Math.min(viewportHeight, headerRect.bottom - viewportTop))
+            : 0;
+
+        rootElement.style.setProperty('--chat-mobile-viewport-top', `${viewportTop + visibleHeaderHeight}px`);
+        rootElement.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, viewportHeight - visibleHeaderHeight)}px`);
+    };
+
+    const scheduleMobileFullscreenSync = () => {
+        if (mobileViewportFrame) {
+            cancelAnimationFrame(mobileViewportFrame);
+        }
+        mobileViewportFrame = requestAnimationFrame(syncMobileFullscreen);
+    };
+
+    if (typeof mobileFullscreenQuery.addEventListener === 'function') {
+        mobileFullscreenQuery.addEventListener('change', scheduleMobileFullscreenSync);
+    } else if (typeof mobileFullscreenQuery.addListener === 'function') {
+        mobileFullscreenQuery.addListener(scheduleMobileFullscreenSync);
+    }
+    window.addEventListener('resize', scheduleMobileFullscreenSync, {passive: true});
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleMobileFullscreenSync, {passive: true});
+        window.visualViewport.addEventListener('scroll', scheduleMobileFullscreenSync, {passive: true});
+    }
+    syncMobileFullscreen();
+
     const fetchUrl = String(chatApp.data('fetch-url') || '');
     const sendUrl = String(chatApp.data('send-url') || '');
     const deleteUrl = String(chatApp.data('delete-url') || '');
@@ -35,6 +84,7 @@ $(function () {
     const currentStatus = chatApp.find('[data-chat-current-status]');
     const messageSearchInput = chatApp.find('[data-chat-message-search]');
     const messageSearchResults = chatApp.find('[data-chat-message-search-results]');
+    const selectionCountBadge = chatApp.find('[data-chat-selection-count]');
     const form = chatApp.find('[data-chat-form]');
     const userIdInput = form.find('[data-chat-user-id]');
     const messageInput = form.find('[data-chat-message-input]');
@@ -86,6 +136,13 @@ $(function () {
         ? bootstrapApi.Modal.getOrCreateInstance(confirmModalElement[0])
         : null;
 
+    offcanvasElement.on('show.bs.offcanvas shown.bs.offcanvas', function () {
+        document.body.classList.add('chat-sidebar-open');
+    });
+    offcanvasElement.on('hidden.bs.offcanvas', function () {
+        document.body.classList.remove('chat-sidebar-open');
+    });
+
     const state = {
         messages: [],
         renderedSignature: '',
@@ -127,7 +184,11 @@ $(function () {
     const canUseShowPicker = (input) => input && typeof input.showPicker === 'function';
 
     const showFlashAlert = (type, message, title) => {
-        const alertType = ['success', 'error', 'info', 'warning'].includes(type) ? type : 'info';
+        if (type !== 'error') {
+            return;
+        }
+
+        const alertType = 'error';
         const alertMessage = String(message || '').trim();
         if (!alertMessage || !window.toastr || typeof window.toastr[alertType] !== 'function') {
             return;
@@ -765,7 +826,6 @@ $(function () {
         });
 
         setPendingFiles([voiceFile]);
-        showFlashAlert('success', chatApp.data('voice-ready-text') || 'Voice message is ready.');
     };
 
     const stopVoiceRecording = (keepRecording) => {
@@ -858,7 +918,6 @@ $(function () {
                 const elapsed = Date.now() - state.voiceStartedAt;
                 voiceRecordingTimer.text(formatRecordingTime(elapsed));
                 if (elapsed >= 5 * 60 * 1000) {
-                    showFlashAlert('info', chatApp.data('voice-max-duration-text') || 'Maximum recording duration reached.');
                     stopVoiceRecording(true);
                 }
             }, 250);
@@ -1090,16 +1149,16 @@ $(function () {
         const selectedCount = state.selectedIds.size;
         const label = String(chatApp.data('selection-count-text') || 'Selected: :count').replace(':count', selectedCount);
 
+        chatApp.toggleClass('is-selection-mode', state.selectionMode);
+        selectionCountBadge
+            .toggleClass('d-none', !state.selectionMode)
+            .attr('data-count', selectedCount)
+            .text(label);
         selectionCancelButton.toggleClass('d-none', !state.selectionMode);
         deleteSelectedButton
             .toggleClass('d-none', !state.selectionMode)
-            .prop('disabled', selectedCount === 0)
-            .text(selectedCount > 0 ? label : (deleteSelectedButton.data('default-text') || deleteSelectedButton.text()));
+            .prop('disabled', selectedCount === 0);
     };
-
-    if (deleteSelectedButton.length) {
-        deleteSelectedButton.attr('data-default-text', deleteSelectedButton.text());
-    }
 
     const renderMessages = (messages, currentUserId, options = {}) => {
         const box = messagesBox[0];
@@ -1471,7 +1530,6 @@ $(function () {
                 clearPendingAttachment();
                 state.messagesRequestId += 1;
                 applyPayload(response, { force: true, stickToBottom: true });
-                showFlashAlert('success', response.message || '');
             },
             error: function (request) {
                 const message = request.responseJSON && request.responseJSON.message
@@ -1522,7 +1580,6 @@ $(function () {
                 } else {
                     loadMessages({ force: true });
                 }
-                showFlashAlert('success', response.message || chatApp.data('delete-message-text') || '');
             },
             error: function (request) {
                 showFlashAlert('error', request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
@@ -1569,7 +1626,6 @@ $(function () {
                 } else {
                     loadMessages({ force: true });
                 }
-                showFlashAlert('success', response.message || chatApp.data('clear-chat-text') || '');
             },
             error: function (request) {
                 showFlashAlert('error', request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
@@ -1611,7 +1667,6 @@ $(function () {
                 if (contactId === activeContactId()) {
                     renderAuditItems([]);
                 }
-                showFlashAlert('success', response.message || chatApp.data('audit-cleared-text') || '');
             },
             error: function (request) {
                 const message = request.responseJSON && request.responseJSON.message

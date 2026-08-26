@@ -25,6 +25,7 @@ return [
     'chat_attachment_gallery' => 'Галерея',
     'chat_voice_record' => 'Записать голосовое сообщение',
     'chat_voice_recording' => 'Идёт запись голосового сообщения',
+    'chat_voice_recording_short' => 'Запись голосового',
     'chat_voice_stop' => 'Остановить запись',
     'chat_voice_stop_short' => 'Стоп',
     'chat_voice_cancel' => 'Отменить запись',
