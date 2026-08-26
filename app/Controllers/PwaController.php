@@ -18,7 +18,8 @@ class PwaController extends BaseController
     {
         header('Content-Type: application/manifest+json; charset=utf-8');
         header('Cache-Control: no-cache, must-revalidate');
-        exit(json_encode($this->pwa->manifest(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        $startPath = (string)request()->get('start', '/');
+        exit(json_encode($this->pwa->manifest($startPath), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     }
 
     public function serviceWorker(): void

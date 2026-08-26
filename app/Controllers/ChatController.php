@@ -58,6 +58,7 @@ class ChatController extends BaseController
             'chat_delete_url' => base_href('/chat/messages/delete'),
             'chat_clear_url' => base_href('/chat/conversation/clear'),
             'chat_audit_url' => base_href('/chat/conversation/audit'),
+            'chat_audit_clear_url' => base_href('/chat/conversation/audit/clear'),
             'chat_file_manager_enabled' => check_admin(),
             'chat_file_manager_url' => base_href('/admin/files'),
             'chat_max_file_size' => UploadSettings::maxFileSizeBytes(),
@@ -74,13 +75,6 @@ class ChatController extends BaseController
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->get('user_id');
         $this->users->touchPresence($currentUserId);
-
-        if (mb_strlen($message) > 2000) {
-            response()->json([
-                'status' => false,
-                'message' => return_translation('chat_message_too_long'),
-            ], 422);
-        }
 
         if (!$this->isAllowedContact($currentUserId, $contactId)) {
             response()->json([
@@ -133,6 +127,13 @@ class ChatController extends BaseController
         $files = $this->getAttachmentFiles();
         $siteAttachmentPaths = $this->getSiteAttachmentPaths();
         $this->users->touchPresence($currentUserId);
+
+        if (mb_strlen($message) > 2000) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_message_too_long'),
+            ], 422);
+        }
 
         $errors = array_merge(
             $this->validateAttachments($files),
@@ -317,6 +318,46 @@ class ChatController extends BaseController
         response()->json([
             'status' => true,
             'items' => $this->chatMessages->getAuditLogForConversation($currentUserId, $contactId),
+        ]);
+    }
+
+    /**
+     * Удаляет аудит выбранного диалога. Действие доступно только создателю сайта.
+     */
+    public function clearAudit()
+    {
+        $currentUser = get_user();
+        $currentUserId = (int)$currentUser['id'];
+        $contactId = (int)request()->post('user_id');
+
+        $permissions = $this->chatMessages->getPermissionsForRole((string)($currentUser['role'] ?? 'user'));
+        if (empty($permissions['can_delete_audit'])) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_permission_denied'),
+            ], 403);
+        }
+
+        if (!$this->isAllowedContact($currentUserId, $contactId)) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_access_denied'),
+            ], 403);
+        }
+
+        try {
+            $deletedCount = $this->chatMessages->clearAuditLogForConversation($currentUserId, $contactId);
+        } catch (\Throwable $exception) {
+            response()->json([
+                'status' => false,
+                'message' => $exception->getMessage(),
+            ], 403);
+        }
+
+        response()->json([
+            'status' => true,
+            'deleted_count' => $deletedCount,
+            'message' => return_translation('chat_audit_cleared'),
         ]);
     }
 

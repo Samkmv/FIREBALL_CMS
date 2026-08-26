@@ -26,16 +26,18 @@ class PwaService
         return $this->settings->get('pwa_push_enabled', '0') === '1';
     }
 
-    public function manifest(): array
+    public function manifest(?string $startPath = null): array
     {
         $siteTitle = $this->appName();
         $shortName = $this->shortName($siteTitle);
+        $startPath = $this->normalizeStartPath($startPath);
 
         return [
+            'id' => base_url('/'),
             'name' => $siteTitle,
             'short_name' => $shortName,
             'description' => $this->appDescription(),
-            'start_url' => base_url('/'),
+            'start_url' => base_url($startPath),
             'scope' => base_url('/'),
             'display' => 'standalone',
             'orientation' => $this->oneOf('pwa_orientation', ['any', 'portrait', 'portrait-primary', 'landscape', 'landscape-primary'], 'any'),
@@ -50,13 +52,18 @@ class PwaService
     {
         $icons = $this->icons();
         $name = $this->appName();
+        $startPath = $this->currentStartPath();
+        $manifestQuery = http_build_query([
+            'v' => $this->cacheVersion(),
+            'start' => $startPath,
+        ], '', '&', PHP_QUERY_RFC3986);
 
         return [
             'enabled' => $this->isEnabled(),
             'push_enabled' => $this->isPushEnabled(),
             'app_name' => $name,
             'short_name' => $this->shortName($name),
-            'manifest_url' => base_url('/manifest.webmanifest?v=' . rawurlencode($this->cacheVersion())),
+            'manifest_url' => base_url('/manifest.webmanifest?' . $manifestQuery),
             'service_worker_url' => base_url('/service-worker.js?v=' . rawurlencode($this->cacheVersion())),
             'theme_color' => $this->color('pwa_theme_color', '#181d25'),
             'background_color' => $this->color('pwa_background_color', '#ffffff'),
@@ -66,6 +73,61 @@ class PwaService
             'startup_image_url' => $this->startupImageUrl(),
             'vapid_public_key' => $this->settings->get('pwa_vapid_public_key', ''),
         ];
+    }
+
+    /**
+     * Keeps an install launch target on this application and strips unsafe URL forms.
+     */
+    public function normalizeStartPath(?string $value): string
+    {
+        $value = trim((string)$value);
+        if ($value === '' || strlen($value) > 4096) {
+            return '/';
+        }
+
+        if (!str_starts_with($value, '/')
+            || str_starts_with($value, '//')
+            || str_contains($value, '\\')
+            || preg_match('/[\x00-\x1F\x7F]/', $value)
+        ) {
+            return '/';
+        }
+
+        $parts = parse_url($value);
+        if ($parts === false
+            || isset($parts['scheme'])
+            || isset($parts['host'])
+            || isset($parts['user'])
+            || isset($parts['pass'])
+        ) {
+            return '/';
+        }
+
+        $path = (string)($parts['path'] ?? '/');
+        $decodedPath = rawurldecode($path);
+        foreach (explode('/', $decodedPath) as $segment) {
+            if ($segment === '.' || $segment === '..') {
+                return '/';
+            }
+        }
+
+        $basePath = rtrim((string)(parse_url(app_base_url(), PHP_URL_PATH) ?? ''), '/');
+        if ($basePath !== '' && ($path === $basePath || str_starts_with($path, $basePath . '/'))) {
+            $path = substr($path, strlen($basePath)) ?: '/';
+        }
+
+        if (!str_starts_with($path, '/')) {
+            $path = '/' . $path;
+        }
+
+        $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+
+        return $path . $query;
+    }
+
+    protected function currentStartPath(): string
+    {
+        return $this->normalizeStartPath((string)($_SERVER['REQUEST_URI'] ?? '/'));
     }
 
     public function manifestIcons(): array

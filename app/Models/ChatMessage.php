@@ -348,6 +348,7 @@ class ChatMessage
             'can_bulk_delete' => $rank >= get_role_rank('admin'),
             'can_clear_chat' => $rank >= get_role_rank('admin'),
             'can_view_audit' => $rank >= get_role_rank('admin'),
+            'can_delete_audit' => $role === 'creator',
             'is_creator' => $role === 'creator',
         ];
     }
@@ -668,6 +669,38 @@ class ChatMessage
                 'details' => $details,
             ];
         }, $rows);
+    }
+
+    /**
+     * Безвозвратно удаляет аудит конкретного диалога. Доступно только создателю сайта.
+     */
+    public function clearAuditLogForConversation(int $actorUserId, int $contactId): int
+    {
+        $this->ensureTableExists();
+
+        $actor = (new User())->findById($actorUserId);
+        $permissions = $this->getPermissionsForRole((string)($actor['role'] ?? 'user'));
+        if (empty($permissions['can_delete_audit'])) {
+            throw new \RuntimeException(return_translation('chat_permission_denied'));
+        }
+
+        if ($actorUserId <= 0 || $contactId <= 0 || $actorUserId === $contactId) {
+            throw new \RuntimeException(return_translation('chat_access_denied'));
+        }
+
+        return db()->query(
+            "DELETE FROM {$this->auditTable}
+             WHERE (
+                    (conversation_first_user_id = :actor_id AND conversation_second_user_id = :contact_id)
+                    OR (conversation_first_user_id = :contact_id_reverse AND conversation_second_user_id = :actor_id_reverse)
+               )",
+            [
+                'actor_id' => $actorUserId,
+                'contact_id' => $contactId,
+                'contact_id_reverse' => $contactId,
+                'actor_id_reverse' => $actorUserId,
+            ]
+        )->rowCount();
     }
 
     /**

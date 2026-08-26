@@ -955,6 +955,7 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
 .chat-app-shell {
     --chat-shell-height: clamp(38rem, calc(100dvh - 13rem), 48rem);
     --chat-composer-offset: max(0px, env(safe-area-inset-bottom));
+    --chat-composer-growth: 0px;
     width: 100%;
     min-height: 0;
 }
@@ -1823,10 +1824,31 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
     .chat-voice-recorder {
         align-items: stretch;
         flex-direction: column;
+        width: calc(100% - .5rem);
+        min-width: 0;
+        box-sizing: border-box;
     }
 
-    .chat-voice-recorder > .d-flex {
-        justify-content: flex-end;
+    .chat-voice-recorder__actions {
+        display: flex !important;
+        justify-content: flex-start;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .chat-voice-recorder__actions > .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 1 auto;
+        width: auto;
+        min-width: 0;
+        min-height: 2.25rem;
+        padding: .4rem .75rem;
+        gap: .35rem;
+        font-size: .875rem;
+        line-height: 1.15;
+        white-space: nowrap;
     }
 }
 
@@ -2274,8 +2296,8 @@ html.pwa-standalone body .chat-sidebar-offcanvas {
     }
 
     .chat-app-layout {
-        height: var(--chat-shell-height);
-        max-height: var(--chat-shell-height);
+        height: calc(var(--chat-shell-height) + var(--chat-composer-growth));
+        max-height: calc(var(--chat-shell-height) + var(--chat-composer-growth));
         border-radius: 1.15rem;
     }
 
@@ -2405,7 +2427,7 @@ html.pwa-standalone body .chat-sidebar-offcanvas {
 
     .chat-composer__row {
         grid-template-columns: auto minmax(0, 1fr) auto;
-        align-items: end;
+        align-items: start;
         gap: .35rem;
     }
 

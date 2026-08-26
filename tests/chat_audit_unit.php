@@ -122,6 +122,26 @@ namespace {
                 return $this;
             }
 
+            if (str_starts_with($normalized, 'DELETE FROM CHAT_AUDIT_LOGS')) {
+                $remainingRows = [];
+                foreach ($this->auditRows as $row) {
+                    $matchesConversation = (
+                        ((int)($row['conversation_first_user_id'] ?? 0) === (int)($params['actor_id'] ?? 0)
+                            && (int)($row['conversation_second_user_id'] ?? 0) === (int)($params['contact_id'] ?? 0))
+                        || ((int)($row['conversation_first_user_id'] ?? 0) === (int)($params['contact_id_reverse'] ?? 0)
+                            && (int)($row['conversation_second_user_id'] ?? 0) === (int)($params['actor_id_reverse'] ?? 0))
+                    );
+
+                    if ($matchesConversation) {
+                        $this->affectedRows++;
+                    } else {
+                        $remainingRows[] = $row;
+                    }
+                }
+                $this->auditRows = $remainingRows;
+                return $this;
+            }
+
             return $this;
         }
 
@@ -188,7 +208,7 @@ namespace App\Models {
     {
         public function findById(int $id): ?array
         {
-            return $id > 0 ? ['id' => $id, 'role' => 'admin'] : null;
+            return $id > 0 ? ['id' => $id, 'role' => $id === 40 ? 'creator' : 'admin'] : null;
         }
     }
 }
@@ -244,6 +264,25 @@ namespace {
     chatAuditAssert($bulkResult['deleted_count'] === 2, 'Bulk deletion count is incorrect.');
     chatAuditAssert(count(db()->auditRows) === 1, 'Bulk deletion should create one aggregate audit event.');
     chatAuditAssert(db()->auditRows[0]['action'] === 'bulk_delete', 'Bulk deletion audit action is incorrect.');
+
+    db()->auditRows = [
+        ['id' => 1, 'conversation_first_user_id' => 40, 'conversation_second_user_id' => 20],
+        ['id' => 2, 'conversation_first_user_id' => 20, 'conversation_second_user_id' => 40],
+        ['id' => 3, 'conversation_first_user_id' => 40, 'conversation_second_user_id' => 30],
+    ];
+    $deletedAuditCount = $chatMessages->clearAuditLogForConversation(40, 20);
+    chatAuditAssert($deletedAuditCount === 2, 'Creator did not delete all audit entries for the selected conversation.');
+    chatAuditAssert(count(db()->auditRows) === 1 && (int)db()->auditRows[0]['id'] === 3, 'Audit cleanup affected another conversation.');
+
+    $adminAuditDeleteBlocked = false;
+    try {
+        $chatMessages->clearAuditLogForConversation(10, 20);
+    } catch (RuntimeException $exception) {
+        $adminAuditDeleteBlocked = $exception->getMessage() === 'chat_permission_denied';
+    }
+    chatAuditAssert($adminAuditDeleteBlocked, 'Administrator unexpectedly deleted chat audit logs.');
+    chatAuditAssert($chatMessages->getPermissionsForRole('creator')['can_delete_audit'] === true, 'Creator is missing chat audit deletion permission.');
+    chatAuditAssert($chatMessages->getPermissionsForRole('admin')['can_delete_audit'] === false, 'Administrator unexpectedly has chat audit deletion permission.');
 
     echo "Chat audit unit checks passed.\n";
 }

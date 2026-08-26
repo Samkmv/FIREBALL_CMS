@@ -9,6 +9,7 @@ $(function () {
     const deleteUrl = String(chatApp.data('delete-url') || '');
     const clearUrl = String(chatApp.data('clear-url') || '');
     const auditUrl = String(chatApp.data('audit-url') || '');
+    const auditClearUrl = String(chatApp.data('audit-clear-url') || '');
     const bootstrapApi = typeof bootstrap !== 'undefined'
         ? bootstrap
         : (window.bootstrap || null);
@@ -62,6 +63,7 @@ $(function () {
     const previewModalDownload = previewModalElement.find('[data-chat-preview-modal-download]');
     const auditModalElement = $('[data-chat-audit-modal]').first();
     const auditList = auditModalElement.find('[data-chat-audit-list]');
+    const auditClearButton = auditModalElement.find('[data-chat-clear-audit]');
     const confirmModalElement = $('[data-chat-confirm-modal]').first();
     const confirmModalMessage = confirmModalElement.find('[data-chat-confirm-message]');
     const confirmModalReasonWrap = confirmModalElement.find('[data-chat-confirm-reason-wrap]');
@@ -105,10 +107,12 @@ $(function () {
         voiceTimerId: null,
         discardVoiceRecording: false,
         voiceRequestId: 0,
+        messagesLoadErrorShown: false,
         canModerate: String(chatApp.data('can-moderate')) === '1',
         canBulkDelete: String(chatApp.data('can-bulk-delete')) === '1',
         canClearChat: String(chatApp.data('can-clear-chat')) === '1',
         canViewAudit: String(chatApp.data('can-view-audit')) === '1',
+        canDeleteAudit: String(chatApp.data('can-delete-audit')) === '1',
     };
 
     const escapeHtml = (text) => $('<div>').text(text || '').html();
@@ -122,6 +126,16 @@ $(function () {
     const currentSearchQuery = () => String(messageSearchInput.val() || '').trim();
     const canUseShowPicker = (input) => input && typeof input.showPicker === 'function';
 
+    const showFlashAlert = (type, message, title) => {
+        const alertType = ['success', 'error', 'info', 'warning'].includes(type) ? type : 'info';
+        const alertMessage = String(message || '').trim();
+        if (!alertMessage || !window.toastr || typeof window.toastr[alertType] !== 'function') {
+            return;
+        }
+
+        window.toastr[alertType](alertMessage, title);
+    };
+
     const resizeMessageInput = () => {
         const input = messageInput[0];
         if (!input) {
@@ -130,10 +144,21 @@ $(function () {
 
         input.style.height = 'auto';
         const computedStyle = window.getComputedStyle(input);
+        const minHeight = Number.parseFloat(computedStyle.minHeight) || 44;
         const maxHeight = Number.parseFloat(computedStyle.maxHeight) || 132;
-        const nextHeight = Math.min(input.scrollHeight, maxHeight);
+        const nextHeight = Math.max(minHeight, Math.min(input.scrollHeight, maxHeight));
         input.style.height = `${nextHeight}px`;
         input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
+
+        if (!input.dataset.chatBaseHeight || String(input.value || '') === '') {
+            input.dataset.chatBaseHeight = String(nextHeight);
+        }
+
+        const isMobile = typeof window.matchMedia === 'function'
+            && window.matchMedia('(max-width: 767.98px)').matches;
+        const baseHeight = Number(input.dataset.chatBaseHeight) || nextHeight;
+        const composerGrowth = isMobile ? Math.max(0, nextHeight - baseHeight) : 0;
+        chatApp[0].style.setProperty('--chat-composer-growth', `${composerGrowth}px`);
     };
 
     const openNativeFilePicker = (input) => {
@@ -659,13 +684,13 @@ $(function () {
 
         const extension = String((file.name || '').split('.').pop() || '').toLowerCase();
         if (file.size > maxFileSize) {
-            toastr.error(chatApp.data('file-too-large-text') || 'File is too large.');
+            showFlashAlert('error', chatApp.data('file-too-large-text') || 'File is too large.');
             return false;
         }
 
         const kind = getPendingFileKind(file);
         if (!isExtensionAllowed(extension, kind)) {
-            toastr.error(chatApp.data('file-type-error-text') || 'Invalid file type.');
+            showFlashAlert('error', chatApp.data('file-type-error-text') || 'Invalid file type.');
             return false;
         }
 
@@ -740,7 +765,7 @@ $(function () {
         });
 
         setPendingFiles([voiceFile]);
-        toastr.success(chatApp.data('voice-ready-text') || 'Voice message is ready.');
+        showFlashAlert('success', chatApp.data('voice-ready-text') || 'Voice message is ready.');
     };
 
     const stopVoiceRecording = (keepRecording) => {
@@ -788,7 +813,7 @@ $(function () {
         }
 
         if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function' || typeof window.MediaRecorder === 'undefined') {
-            toastr.error(chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.');
+            showFlashAlert('error', chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.');
             return;
         }
 
@@ -833,7 +858,7 @@ $(function () {
                 const elapsed = Date.now() - state.voiceStartedAt;
                 voiceRecordingTimer.text(formatRecordingTime(elapsed));
                 if (elapsed >= 5 * 60 * 1000) {
-                    toastr.info(chatApp.data('voice-max-duration-text') || 'Maximum recording duration reached.');
+                    showFlashAlert('info', chatApp.data('voice-max-duration-text') || 'Maximum recording duration reached.');
                     stopVoiceRecording(true);
                 }
             }, 250);
@@ -841,7 +866,7 @@ $(function () {
             stopVoiceTracks();
             resetVoiceRecorderUi();
             const permissionDenied = error && ['NotAllowedError', 'SecurityError'].includes(String(error.name || ''));
-            toastr.error(permissionDenied
+            showFlashAlert('error', permissionDenied
                 ? (chatApp.data('voice-permission-error-text') || 'Microphone permission was denied.')
                 : (chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.'));
         }
@@ -850,14 +875,14 @@ $(function () {
     const addPendingSiteAttachment = (value) => {
         const path = normalizeSiteAttachmentPath(value);
         if (path === '') {
-            toastr.error(chatApp.data('file-type-error-text') || 'Invalid file type.');
+            showFlashAlert('error', chatApp.data('file-type-error-text') || 'Invalid file type.');
             return;
         }
 
         const extension = String(path.split('.').pop() || '').toLowerCase();
         const kind = getSiteAttachmentKind(path);
         if (!isExtensionAllowed(extension, kind)) {
-            toastr.error(chatApp.data('file-type-error-text') || 'Invalid file type.');
+            showFlashAlert('error', chatApp.data('file-type-error-text') || 'Invalid file type.');
             return;
         }
 
@@ -1279,12 +1304,14 @@ $(function () {
             return;
         }
 
+        state.messagesLoadErrorShown = false;
         state.messages = Array.isArray(response.messages) ? response.messages : [];
         if (response.permissions) {
             state.canModerate = Boolean(response.permissions.can_moderate);
             state.canBulkDelete = Boolean(response.permissions.can_bulk_delete);
             state.canClearChat = Boolean(response.permissions.can_clear_chat);
             state.canViewAudit = Boolean(response.permissions.can_view_audit);
+            state.canDeleteAudit = Boolean(response.permissions.can_delete_audit);
         }
 
         renderMessages(state.messages, response.current_user_id || 0, options);
@@ -1318,6 +1345,29 @@ $(function () {
                     return;
                 }
                 applyPayload(response, options);
+            },
+            error: function (request) {
+                if (requestId !== state.messagesRequestId || contactId !== activeContactId()) {
+                    return;
+                }
+
+                const message = request.responseJSON && request.responseJSON.message
+                    ? request.responseJSON.message
+                    : (chatApp.data('load-error-text') || 'Could not load messages. Please try again.');
+
+                if (!state.messagesLoadErrorShown) {
+                    showFlashAlert('error', message);
+                    state.messagesLoadErrorShown = true;
+                }
+
+                if (!state.messages.length) {
+                    messagesBox.html(`
+                        <div class="chat-dialog-empty">
+                            <span class="chat-dialog-empty__icon text-danger" aria-hidden="true"><i class="ci-alert-circle"></i></span>
+                            <p class="text-body-secondary mb-0">${escapeHtml(message)}</p>
+                        </div>
+                    `);
+                }
             }
         });
     };
@@ -1362,7 +1412,7 @@ $(function () {
         const contactId = activeContactId();
         const text = String(messageInput.val() || '').trim();
         if (text === '' && !state.pendingFiles.length && !state.pendingSiteAttachments.length) {
-            toastr.error(chatApp.data('message-required-text') || 'Message is required.');
+            showFlashAlert('error', chatApp.data('message-required-text') || 'Message is required.');
             return;
         }
 
@@ -1407,7 +1457,7 @@ $(function () {
             },
             success: function (response) {
                 if (!response.status) {
-                    toastr.error(response.message || 'Message could not be sent.');
+                    showFlashAlert('error', response.message || 'Message could not be sent.');
                     return;
                 }
 
@@ -1421,12 +1471,13 @@ $(function () {
                 clearPendingAttachment();
                 state.messagesRequestId += 1;
                 applyPayload(response, { force: true, stickToBottom: true });
+                showFlashAlert('success', response.message || '');
             },
             error: function (request) {
                 const message = request.responseJSON && request.responseJSON.message
                     ? request.responseJSON.message
                     : 'Message send error.';
-                toastr.error(message);
+                showFlashAlert('error', message);
             },
             complete: function () {
                 sendButton.prop('disabled', false);
@@ -1459,7 +1510,7 @@ $(function () {
             },
             success: function (response) {
                 if (!response.status) {
-                    toastr.error(response.message || '');
+                    showFlashAlert('error', response.message || '');
                     return;
                 }
 
@@ -1471,10 +1522,10 @@ $(function () {
                 } else {
                     loadMessages({ force: true });
                 }
-                toastr.success(response.message || chatApp.data('delete-message-text') || '');
+                showFlashAlert('success', response.message || chatApp.data('delete-message-text') || '');
             },
             error: function (request) {
-                toastr.error(request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
+                showFlashAlert('error', request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
             },
             complete: function () {
                 state.moderationRequestPending = false;
@@ -1505,7 +1556,7 @@ $(function () {
             },
             success: function (response) {
                 if (!response.status) {
-                    toastr.error(response.message || '');
+                    showFlashAlert('error', response.message || '');
                     return;
                 }
 
@@ -1518,14 +1569,60 @@ $(function () {
                 } else {
                     loadMessages({ force: true });
                 }
-                toastr.success(response.message || chatApp.data('clear-chat-text') || '');
+                showFlashAlert('success', response.message || chatApp.data('clear-chat-text') || '');
             },
             error: function (request) {
-                toastr.error(request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
+                showFlashAlert('error', request.responseJSON && request.responseJSON.message ? request.responseJSON.message : '');
             },
             complete: function () {
                 state.moderationRequestPending = false;
                 confirmModalSubmit.prop('disabled', false);
+            },
+        });
+    };
+
+    const runClearAudit = () => {
+        if (!state.canDeleteAudit || !auditClearUrl || state.moderationRequestPending) {
+            return;
+        }
+
+        const contactId = activeContactId();
+
+        $.ajax({
+            url: auditClearUrl,
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
+                user_id: contactId,
+            },
+            beforeSend: function () {
+                state.moderationRequestPending = true;
+                confirmModalSubmit.prop('disabled', true);
+                auditClearButton.prop('disabled', true);
+            },
+            success: function (response) {
+                if (!response.status) {
+                    showFlashAlert('error', response.message || chatApp.data('audit-clear-error-text') || '');
+                    return;
+                }
+
+                state.auditRequestId += 1;
+                if (contactId === activeContactId()) {
+                    renderAuditItems([]);
+                }
+                showFlashAlert('success', response.message || chatApp.data('audit-cleared-text') || '');
+            },
+            error: function (request) {
+                const message = request.responseJSON && request.responseJSON.message
+                    ? request.responseJSON.message
+                    : (chatApp.data('audit-clear-error-text') || '');
+                showFlashAlert('error', message);
+            },
+            complete: function () {
+                state.moderationRequestPending = false;
+                confirmModalSubmit.prop('disabled', false);
+                auditClearButton.prop('disabled', false);
             },
         });
     };
@@ -1626,7 +1723,7 @@ $(function () {
                     return;
                 }
                 if (!response.status) {
-                    toastr.error(response.message || '');
+                    showFlashAlert('error', response.message || '');
                     auditList.html(`<p class="text-danger mb-0">${escapeHtml(response.message || chatApp.data('audit-load-error-text') || '')}</p>`);
                     return;
                 }
@@ -1637,7 +1734,7 @@ $(function () {
                 const message = request.responseJSON && request.responseJSON.message
                     ? request.responseJSON.message
                     : (chatApp.data('audit-load-error-text') || '');
-                toastr.error(message);
+                showFlashAlert('error', message);
                 auditList.html(`<p class="text-danger mb-0">${escapeHtml(message)}</p>`);
             }
         });
@@ -1770,6 +1867,8 @@ $(function () {
         resizeMessageInput();
     });
 
+    window.addEventListener('resize', resizeMessageInput);
+
     messageInput.on('keydown', function (event) {
         const originalEvent = event.originalEvent || event;
         if (event.key !== 'Enter' || event.shiftKey || originalEvent.isComposing) {
@@ -1880,6 +1979,22 @@ $(function () {
 
     chatApp.find('[data-chat-open-audit]').on('click', function () {
         openAudit();
+    });
+
+    auditClearButton.on('click', function () {
+        const openConfirmation = () => {
+            showConfirm(chatApp.data('confirm-clear-audit-text') || '', function () {
+                runClearAudit();
+            });
+        };
+
+        if (auditModal && auditModalElement.hasClass('show')) {
+            auditModalElement.one('hidden.bs.modal', openConfirmation);
+            auditModal.hide();
+            return;
+        }
+
+        openConfirmation();
     });
 
     window.__chatAppState = { activeContactId: activeContactId(), currentUserId: 0 };

@@ -171,6 +171,8 @@ try {
     $chatMessages = new ChatMessage();
     chatMediaAssert($chatMessages->getPermissionsForRole('admin')['can_view_audit'] === true, 'Administrators cannot view chat audit.');
     chatMediaAssert($chatMessages->getPermissionsForRole('moderator')['can_view_audit'] === false, 'Moderators unexpectedly gained chat audit access.');
+    chatMediaAssert($chatMessages->getPermissionsForRole('creator')['can_delete_audit'] === true, 'Creator cannot delete chat audit logs.');
+    chatMediaAssert($chatMessages->getPermissionsForRole('admin')['can_delete_audit'] === false, 'Administrator unexpectedly can delete chat audit logs.');
     $chatMessages->ensureTableExists();
     $chatMediaFakeDatabase->beginTransaction();
     $chatMessages->create(10, 20, 'transaction check');

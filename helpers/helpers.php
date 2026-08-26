@@ -1097,7 +1097,9 @@ function pwa_head_data(): array
             'push_enabled' => false,
             'app_name' => $fallbackName,
             'short_name' => mb_substr($fallbackName, 0, 24),
-            'manifest_url' => base_url('/manifest.webmanifest'),
+            'manifest_url' => base_url('/manifest.webmanifest?' . http_build_query([
+                'start' => (string)($_SERVER['REQUEST_URI'] ?? '/'),
+            ], '', '&', PHP_QUERY_RFC3986)),
             'service_worker_url' => base_url('/service-worker.js'),
             'theme_color' => '#181d25',
             'background_color' => '#ffffff',

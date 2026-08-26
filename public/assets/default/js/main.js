@@ -1331,7 +1331,7 @@ $(function(){
         error: {
             typeClass: 'app-toast--error',
             borderClass: 'border-danger',
-            iconClass: 'ci-alert-circle text-danger',
+            iconClass: 'ci-banned text-danger',
             title: body.dataset.toastErrorTitle || 'Error',
         },
         info: {
@@ -1370,20 +1370,19 @@ $(function(){
         const container = getContainer();
         const toast = document.createElement('div');
 
-        toast.className = `toast ${variant.typeClass} ${variant.borderClass} fade bg-white text-body shadow-sm`;
+        toast.className = `toast ${variant.typeClass} ${variant.borderClass} fade`;
         toast.setAttribute('role', 'alert');
         toast.setAttribute('aria-live', 'assertive');
         toast.setAttribute('aria-atomic', 'true');
-        toast.setAttribute('data-bs-theme', 'light');
 
         toast.innerHTML = `
-            <div class="toast-header bg-white text-body">
-                <i class="${variant.iconClass} fs-base me-2"></i>
-                <span class="fw-semibold">${escapeHtml(titleOverride || variant.title)}</span>
+            <div class="d-flex align-items-start">
+                <i class="${variant.iconClass} fs-base mt-1 me-2"></i>
+                <div class="toast-body me-2">
+                    <strong class="d-block mb-1">${escapeHtml(titleOverride || variant.title)}</strong>
+                    <span>${escapeHtml(message)}</span>
+                </div>
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body me-2 bg-white text-body">
-                ${escapeHtml(message)}
             </div>
         `;
 

@@ -149,9 +149,11 @@
                 data-delete-url="<?= htmlSC($chat_delete_url) ?>"
                 data-clear-url="<?= htmlSC($chat_clear_url) ?>"
                 data-audit-url="<?= htmlSC($chat_audit_url) ?>"
+                data-audit-clear-url="<?= htmlSC($chat_audit_clear_url) ?>"
                 data-current-user-avatar="<?= htmlSC(get_user_avatar(get_user()['avatar'] ?? null, 'sm')) ?>"
                 data-verified-title="<?= htmlSC(return_translation('tpl_verified_customer')) ?>"
                 data-empty-text="<?= htmlSC(return_translation('chat_empty_dialog')) ?>"
+                data-load-error-text="<?= htmlSC(return_translation('chat_load_error')) ?>"
                 data-new-message-text="<?= htmlSC(return_translation('chat_new_message')) ?>"
                 data-attachment-label="<?= htmlSC(return_translation('chat_attachment_label')) ?>"
                 data-file-too-large-text="<?= htmlSC(return_translation('chat_file_size_error')) ?>"
@@ -204,6 +206,9 @@
                 data-audit-deleted-count-text="<?= htmlSC(return_translation('chat_audit_label_deleted_count')) ?>"
                 data-audit-attachment-count-text="<?= htmlSC(return_translation('chat_audit_label_attachment_count')) ?>"
                 data-audit-load-error-text="<?= htmlSC(return_translation('chat_audit_load_error')) ?>"
+                data-audit-clear-error-text="<?= htmlSC(return_translation('chat_audit_clear_error')) ?>"
+                data-audit-cleared-text="<?= htmlSC(return_translation('chat_audit_cleared')) ?>"
+                data-confirm-clear-audit-text="<?= htmlSC(return_translation('chat_confirm_clear_audit')) ?>"
                 data-confirm-reason-label="<?= htmlSC(return_translation('chat_confirm_reason_label')) ?>"
                 data-confirm-reason-placeholder="<?= htmlSC(return_translation('chat_confirm_reason_placeholder')) ?>"
                 data-selection-count-text="<?= htmlSC(return_translation('chat_selection_count')) ?>"
@@ -211,6 +216,7 @@
                 data-can-bulk-delete="<?= !empty($chatPermissions['can_bulk_delete']) ? '1' : '0' ?>"
                 data-can-clear-chat="<?= !empty($chatPermissions['can_clear_chat']) ? '1' : '0' ?>"
                 data-can-view-audit="<?= !empty($chatPermissions['can_view_audit']) ? '1' : '0' ?>"
+                data-can-delete-audit="<?= !empty($chatPermissions['can_delete_audit']) ? '1' : '0' ?>"
             >
                 <div class="chat-app-layout">
                     <aside class="chat-layout-sidebar d-none d-lg-flex">
@@ -395,13 +401,27 @@
                                                 <span class="fw-semibold text-truncate" data-chat-recording-label><?= print_translation('chat_voice_recording') ?></span>
                                                 <time class="chat-voice-recorder__timer" data-chat-recording-timer>00:00</time>
                                             </div>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <button type="button" class="btn btn-danger rounded-pill" data-chat-record-stop>
-                                                    <i class="ci-stop-circle me-1" aria-hidden="true"></i>
-                                                    <?= print_translation('chat_voice_stop') ?>
+                                            <div class="chat-voice-recorder__actions d-flex align-items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-danger rounded-pill"
+                                                    title="<?= htmlSC(return_translation('chat_voice_stop')) ?>"
+                                                    aria-label="<?= htmlSC(return_translation('chat_voice_stop')) ?>"
+                                                    data-chat-record-stop
+                                                >
+                                                    <i class="ci-stop-circle" aria-hidden="true"></i>
+                                                    <span class="d-none d-sm-inline"><?= print_translation('chat_voice_stop') ?></span>
+                                                    <span class="d-inline d-sm-none" aria-hidden="true"><?= print_translation('chat_voice_stop_short') ?></span>
                                                 </button>
-                                                <button type="button" class="btn btn-outline-secondary rounded-pill" data-chat-record-cancel>
-                                                    <?= print_translation('chat_voice_cancel') ?>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-outline-secondary rounded-pill"
+                                                    title="<?= htmlSC(return_translation('chat_voice_cancel')) ?>"
+                                                    aria-label="<?= htmlSC(return_translation('chat_voice_cancel')) ?>"
+                                                    data-chat-record-cancel
+                                                >
+                                                    <span class="d-none d-sm-inline"><?= print_translation('chat_voice_cancel') ?></span>
+                                                    <span class="d-inline d-sm-none" aria-hidden="true"><?= print_translation('chat_voice_cancel_short') ?></span>
                                                 </button>
                                             </div>
                                         </div>
@@ -473,6 +493,14 @@
                         <div class="modal-body" data-chat-audit-list>
                             <p class="text-body-secondary mb-0"><?= print_translation('chat_loading') ?></p>
                         </div>
+                        <?php if (!empty($chatPermissions['can_delete_audit'])): ?>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-danger rounded-pill" data-chat-clear-audit>
+                                    <i class="ci-trash me-2" aria-hidden="true"></i>
+                                    <?= print_translation('chat_audit_clear_btn') ?>
+                                </button>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

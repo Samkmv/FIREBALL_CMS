@@ -81,6 +81,7 @@ $app->router->post('/chat/send', [ChatController::class, 'send'])->middleware(['
 $app->router->post('/chat/messages/delete', [ChatController::class, 'deleteMessages'])->middleware(['auth']);
 $app->router->post('/chat/conversation/clear', [ChatController::class, 'clearConversation'])->middleware(['auth']);
 $app->router->get('/chat/conversation/audit', [ChatController::class, 'audit'])->middleware(['auth']);
+$app->router->post('/chat/conversation/audit/clear', [ChatController::class, 'clearAudit'])->middleware(['auth', 'creator']);
 $app->router->get('/notifications/feed', [NotificationController::class, 'feed'])->middleware(['auth']);
 $app->router->post('/notifications/read', [NotificationController::class, 'markRead'])->middleware(['auth']);
 $app->router->post('/notifications/clear', [NotificationController::class, 'clear'])->middleware(['auth']);
