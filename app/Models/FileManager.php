@@ -52,6 +52,9 @@ class FileManager
         $search = trim((string)($options['search'] ?? ''));
         $sort = $this->normalizeSortColumn((string)($options['sort'] ?? 'modified'));
         $direction = strtolower((string)($options['direction'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $type = in_array(($options['type'] ?? 'all'), ['directory', 'file'], true)
+            ? (string)$options['type']
+            : 'all';
         $currentDirectoryData = $this->collectDirectoryItems($relativeDir);
         $directories = $currentDirectoryData['directories'];
         $files = $currentDirectoryData['files'];
@@ -66,6 +69,13 @@ class FileManager
             $directoryItems = array_values(array_filter(
                 $directoryItems,
                 fn(array $directoryItem): bool => $this->matchesSearch($directoryItem, $search)
+            ));
+        }
+
+        if ($type !== 'all') {
+            $directoryItems = array_values(array_filter(
+                $directoryItems,
+                static fn(array $directoryItem): bool => ($directoryItem['type'] ?? 'file') === $type
             ));
         }
 
@@ -91,6 +101,7 @@ class FileManager
             'search' => $search,
             'sort' => $sort,
             'direction' => $direction,
+            'type_filter' => $type,
             'per_page' => $perPage,
         ];
     }

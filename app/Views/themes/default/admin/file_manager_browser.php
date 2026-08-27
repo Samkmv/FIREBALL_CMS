@@ -8,10 +8,12 @@ $total = (int)($manager['total'] ?? count($items));
 $search = (string)($manager['search'] ?? '');
 $sort = (string)($manager['sort'] ?? 'modified');
 $direction = (string)($manager['direction'] ?? 'desc');
+$typeFilter = (string)($manager['type_filter'] ?? 'all');
 $pagination = $manager['pagination'] ?? null;
 $breadcrumbs = $manager['breadcrumbs'] ?? [];
 $destinationDirectories = $manager['destination_directories'] ?? [];
-$directoryCount = count($manager['directories'] ?? []);
+$directories = $manager['directories'] ?? [];
+$directoryCount = count($directories);
 $fileCount = count($manager['files'] ?? []);
 $currentPage = max(1, (int)request()->get('page', 1));
 
@@ -23,7 +25,7 @@ $sortIndicator = static function (string $column) use ($sort, $direction): strin
     return strtolower($direction) === 'asc' ? ' ↑' : ' ↓';
 };
 
-$buildManagerUrl = static function (?string $dir = null, array $overrides = []) use ($pickerMode, $pickerField, $sort, $direction, $search, $currentDir): string {
+$buildManagerUrl = static function (?string $dir = null, array $overrides = []) use ($pickerMode, $pickerField, $sort, $direction, $search, $typeFilter, $currentDir): string {
     $params = [];
     $dirValue = array_key_exists('dir', $overrides) ? $overrides['dir'] : $dir;
 
@@ -46,6 +48,11 @@ $buildManagerUrl = static function (?string $dir = null, array $overrides = []) 
     $params['sort'] = (string)($overrides['sort'] ?? $sort);
     $params['direction'] = (string)($overrides['direction'] ?? $direction);
 
+    $typeValue = (string)($overrides['type'] ?? $typeFilter);
+    if ($typeValue !== '' && $typeValue !== 'all') {
+        $params['type'] = $typeValue;
+    }
+
     $searchValue = array_key_exists('q', $overrides) ? (string)$overrides['q'] : $search;
     if ($searchValue !== '') {
         $params['q'] = $searchValue;
@@ -59,6 +66,17 @@ $buildManagerUrl = static function (?string $dir = null, array $overrides = []) 
 $buildSortUrl = static function (string $column) use ($sort, $direction, $buildManagerUrl): string {
     $nextDirection = ($sort === $column && strtolower($direction) === 'asc') ? 'desc' : 'asc';
     return $buildManagerUrl(null, ['sort' => $column, 'direction' => $nextDirection]);
+};
+$typeFilterLabel = match ($typeFilter) {
+    'directory' => return_translation('admin_files_filter_folders'),
+    'file' => return_translation('admin_files_filter_files'),
+    default => return_translation('admin_files_filter_type'),
+};
+$sortLabel = match ($sort . ':' . strtolower($direction)) {
+    'modified:asc' => return_translation('admin_files_sort_oldest'),
+    'name:asc' => return_translation('admin_files_sort_name'),
+    'size:desc' => return_translation('admin_files_sort_size'),
+    default => return_translation('admin_files_sort_newest'),
 };
 $archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'xz'];
 
@@ -132,48 +150,69 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
 ?>
 
 <div data-file-manager-workspace>
-    <aside class="p-3 p-lg-4" data-file-manager-sidebar>
-        <div class="border rounded-4 p-3 mb-3 bg-body-tertiary" data-file-manager-sidebar-head>
-            <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle d-flex align-items-center justify-content-center border bg-body text-body-secondary flex-shrink-0" style="width: 2.75rem; height: 2.75rem;">
+    <aside data-file-manager-sidebar>
+        <div class="p-3 p-xl-4" data-file-manager-sidebar-body>
+            <div class="d-flex align-items-center gap-3 mb-4" data-file-manager-sidebar-head>
+                <div class="d-inline-grid place-items-center rounded-3 flex-shrink-0" data-file-manager-sidebar-icon>
                     <i class="ci-folder"></i>
                 </div>
                 <div class="min-w-0">
-                    <div class="fw-semibold"><?= print_translation('admin_files_root') ?></div>
+                    <div class="fw-semibold"><?= print_translation('admin_files_heading') ?></div>
                     <div class="small text-body-secondary text-truncate">/<?= htmlSC($currentDir !== '' ? $currentDir : return_translation('admin_files_root')) ?></div>
                 </div>
             </div>
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <span class="badge rounded-pill text-body-emphasis bg-body border px-3 py-2">
-                    <?= print_translation('admin_files_folders') ?>: <?= $directoryCount ?>
-                </span>
-                <span class="badge rounded-pill text-body-emphasis bg-body border px-3 py-2">
-                    <?= print_translation('admin_files_type_file') ?>: <?= $fileCount ?>
-                </span>
+
+            <div class="small text-uppercase text-body-secondary fw-semibold mb-2" data-file-manager-section-label><?= print_translation('admin_files_quick_access') ?></div>
+            <div class="list-group list-group-flush mb-4" data-file-manager-quick-links>
+                <a class="list-group-item list-group-item-action <?= $currentDir === '' ? 'active' : '' ?>" href="<?= $buildManagerUrl('') ?>" data-fm-nav-link data-fm-drop-dir="">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <span class="d-inline-flex align-items-center gap-2 min-w-0"><i class="ci-home"></i><span class="text-truncate"><?= print_translation('admin_files_all_files') ?></span></span>
+                        <span class="small text-body-secondary"><?= $directoryCount + $fileCount ?></span>
+                    </div>
+                </a>
+                <?php if ($parentDir !== null): ?>
+                    <a class="list-group-item list-group-item-action" href="<?= $buildManagerUrl($parentDir) ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)$parentDir) ?>">
+                        <span class="d-inline-flex align-items-center gap-2"><i class="ci-corner-up-left"></i><?= print_translation('admin_files_up') ?></span>
+                    </a>
+                <?php endif; ?>
             </div>
+
+            <div class="small text-uppercase text-body-secondary fw-semibold mb-2" data-file-manager-section-label><?= print_translation('admin_files_folders') ?></div>
+            <nav class="list-group list-group-flush" aria-label="<?= htmlSC(return_translation('admin_files_folders')) ?>" data-file-manager-folder-tree>
+                <?php foreach ($breadcrumbs as $index => $crumb): ?>
+                    <a
+                        class="list-group-item list-group-item-action <?= ($crumb['dir'] ?? '') === $currentDir ? 'active' : '' ?>"
+                        href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>"
+                        data-fm-nav-link
+                        data-fm-drop-dir="<?= htmlSC((string)($crumb['dir'] ?? '')) ?>"
+                        style="--fm-folder-depth: <?= max(0, (int)$index) ?>;"
+                    >
+                        <span class="d-inline-flex align-items-center gap-2 min-w-0"><i class="ci-folder"></i><span class="text-truncate"><?= htmlSC((string)($crumb['label'] ?? '')) ?></span></span>
+                    </a>
+                <?php endforeach; ?>
+                <?php foreach ($directories as $directory): ?>
+                    <a
+                        class="list-group-item list-group-item-action"
+                        href="<?= $buildManagerUrl((string)($directory['relative_path'] ?? '')) ?>"
+                        data-fm-nav-link
+                        data-fm-drop-dir="<?= htmlSC((string)($directory['relative_path'] ?? '')) ?>"
+                        style="--fm-folder-depth: <?= max(1, count($breadcrumbs)) ?>;"
+                    >
+                        <span class="d-inline-flex align-items-center gap-2 min-w-0"><i class="ci-folder"></i><span class="text-truncate"><?= htmlSC((string)($directory['name'] ?? '')) ?></span></span>
+                    </a>
+                <?php endforeach; ?>
+            </nav>
         </div>
 
-        <div class="list-group list-group-flush mb-3">
-            <a class="list-group-item list-group-item-action <?= $currentDir === '' ? 'active' : '' ?>" href="<?= $buildManagerUrl('') ?>" data-fm-nav-link data-fm-drop-dir="">
-                <div class="d-flex align-items-center justify-content-between gap-2">
-                    <span class="d-inline-flex align-items-center gap-2"><i class="ci-home"></i><?= print_translation('admin_files_root') ?></span>
-                    <span class="small text-body-secondary"><?= $directoryCount + $fileCount ?></span>
-                </div>
-            </a>
-            <?php if ($parentDir !== null): ?>
-                <a class="list-group-item list-group-item-action" href="<?= $buildManagerUrl($parentDir) ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)$parentDir) ?>">
-                    <span class="d-inline-flex align-items-center gap-2"><i class="ci-corner-up-left"></i><?= print_translation('admin_files_up') ?></span>
-                </a>
-            <?php endif; ?>
-        </div>
-
-        <div class="small text-uppercase text-body-secondary fw-semibold mb-2"><?= print_translation('admin_files_folders') ?></div>
-        <div class="list-group list-group-flush">
-            <?php foreach ($breadcrumbs as $crumb): ?>
-                <a class="list-group-item list-group-item-action <?= ($crumb['dir'] ?? '') === $currentDir ? 'active' : '' ?>" href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)($crumb['dir'] ?? '')) ?>">
-                    <span class="d-inline-flex align-items-center gap-2"><i class="ci-folder"></i><?= htmlSC((string)($crumb['label'] ?? '')) ?></span>
-                </a>
-            <?php endforeach; ?>
+        <div class="p-3 p-xl-4 mt-auto border-top" data-file-manager-sidebar-footer>
+            <div class="d-flex justify-content-between gap-3 small mb-2">
+                <span class="text-body-secondary"><?= print_translation('admin_files_folders') ?></span>
+                <strong><?= $directoryCount ?></strong>
+            </div>
+            <div class="d-flex justify-content-between gap-3 small">
+                <span class="text-body-secondary"><?= print_translation('admin_files_filter_files') ?></span>
+                <strong><?= $fileCount ?></strong>
+            </div>
         </div>
     </aside>
 
@@ -183,87 +222,31 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
         <div class="px-3 px-lg-4 py-3" data-file-manager-toolbar>
             <div class="d-flex flex-column gap-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <div class="min-w-0">
-                        <div class="small text-uppercase text-body-secondary fw-semibold mb-1"><?= print_translation('admin_files_heading') ?></div>
-                        <div class="d-flex align-items-center gap-2" data-file-manager-breadcrumbs>
-                            <?php foreach ($breadcrumbs as $index => $crumb): ?>
-                                <?php if ($index > 0): ?>
-                                    <span class="text-body-secondary">/</span>
-                                <?php endif; ?>
-                                <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)($crumb['dir'] ?? '')) ?>"><?= htmlSC((string)($crumb['label'] ?? '')) ?></a>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
+                    <nav class="d-flex align-items-center gap-2 min-w-0" aria-label="<?= htmlSC(return_translation('admin_files_folders')) ?>" data-file-manager-breadcrumbs>
+                        <?php foreach ($breadcrumbs as $index => $crumb): ?>
+                            <?php if ($index > 0): ?>
+                                <span class="text-body-secondary" aria-hidden="true">/</span>
+                            <?php endif; ?>
+                            <a class="text-decoration-none <?= $index === count($breadcrumbs) - 1 ? 'fw-semibold text-body-emphasis' : 'text-body-secondary' ?>" href="<?= $buildManagerUrl($crumb['dir'] ?? '') ?>" data-fm-nav-link data-fm-drop-dir="<?= htmlSC((string)($crumb['dir'] ?? '')) ?>"><?= htmlSC((string)($crumb['label'] ?? '')) ?></a>
+                        <?php endforeach; ?>
+                    </nav>
 
                     <div class="d-flex flex-wrap align-items-center gap-2" data-file-manager-toolbar-actions>
-                        <div class="dropdown">
-                            <button class="btn btn-dark rounded-pill dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="ci-plus"></i><?= print_translation('admin_files_add_btn') ?>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                <li>
-                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-open-upload>
-                                        <i class="ci-upload"></i><?= print_translation('admin_files_upload_label') ?>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-open-folder>
-                                        <i class="ci-folder-plus"></i><?= print_translation('admin_files_folder_label') ?>
-                                    </button>
-                                </li>
-                            </ul>
+                        <div class="btn-group" role="group" aria-label="<?= htmlSC(return_translation('admin_files_view_list')) ?>">
+                            <button class="btn btn-outline-secondary btn-icon" type="button" data-file-manager-view="list" aria-label="<?= htmlSC(return_translation('admin_files_view_list')) ?>" title="<?= htmlSC(return_translation('admin_files_view_list')) ?>"><i class="ci-list"></i></button>
+                            <button class="btn btn-outline-secondary btn-icon" type="button" data-file-manager-view="grid" aria-label="<?= htmlSC(return_translation('admin_files_view_grid')) ?>" title="<?= htmlSC(return_translation('admin_files_view_grid')) ?>"><i class="ci-grid"></i></button>
                         </div>
-
-                        <div class="dropdown">
-                            <button class="btn btn-outline-dark rounded-pill dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-file-manager-action-toggle disabled>
-                                <i class="ci-settings"></i><?= print_translation('admin_files_actions_btn') ?>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                <li>
-                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="open">
-                                        <i class="ci-folder"></i><?= print_translation('admin_btn_open') ?>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="download">
-                                        <i class="ci-download"></i><?= print_translation('admin_files_download') ?>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="rename">
-                                        <i class="ci-edit"></i><?= print_translation('admin_files_rename') ?>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="copy">
-                                        <i class="ci-copy"></i><?= print_translation('admin_files_copy_selected') ?>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="move">
-                                        <i class="ci-move"></i><?= print_translation('admin_files_move_selected') ?>
-                                    </button>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="delete">
-                                        <i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?>
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
+                        <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-file-manager-open-folder>
+                            <i class="ci-folder-plus"></i><span><?= print_translation('admin_files_folder_label') ?></span>
+                        </button>
+                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" data-file-manager-open-upload>
+                            <i class="ci-upload"></i><span><?= print_translation('admin_files_upload_btn') ?></span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-                    <div class="d-flex flex-wrap align-items-center gap-2" data-file-manager-status>
-                        <span class="badge rounded-pill px-3 py-2 fw-medium" data-file-manager-selection-badge>
-                            <?= print_translation('admin_files_selected_count') ?>: <span data-file-manager-selection-count>0</span>
-                        </span>
-                        <span class="small text-body-secondary"><?= str_replace(':size', (string)\App\Services\UploadSettings::maxFileSizeMb(), return_translation('admin_files_upload_limit_hint')) ?></span>
-                    </div>
-
-                    <form method="get" class="position-relative" data-fm-search-form data-file-manager-search-form>
+                <div class="d-flex flex-column flex-xl-row align-items-xl-center gap-2" data-file-manager-controls>
+                    <form method="get" class="position-relative flex-grow-1" data-fm-search-form data-file-manager-search-form>
                         <input type="hidden" name="dir" value="<?= htmlSC($currentDir) ?>">
                         <?php if ($pickerMode): ?>
                             <input type="hidden" name="picker" value="1">
@@ -273,20 +256,65 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                         <?php endif; ?>
                         <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                         <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                        <input type="hidden" name="type" value="<?= htmlSC($typeFilter) ?>">
                         <i class="ci-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-                        <input type="search" name="q" value="<?= htmlSC($search) ?>" class="table-search form-control form-icon-start rounded-pill" placeholder="<?= print_translation('admin_table_search_placeholder') ?>">
+                        <input type="search" name="q" value="<?= htmlSC($search) ?>" class="table-search form-control form-icon-start" placeholder="<?= htmlSC(return_translation('admin_files_search_placeholder')) ?>">
                     </form>
+
+                    <div class="d-flex flex-wrap align-items-center gap-2" data-file-manager-control-actions>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="ci-sliders"></i><span><?= htmlSC($typeFilterLabel) ?></span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+                                <li><a class="dropdown-item<?= $typeFilter === 'all' ? ' active' : '' ?>" href="<?= $buildManagerUrl(null, ['type' => 'all']) ?>" data-fm-nav-link><?= print_translation('admin_files_filter_all') ?></a></li>
+                                <li><a class="dropdown-item<?= $typeFilter === 'directory' ? ' active' : '' ?>" href="<?= $buildManagerUrl(null, ['type' => 'directory']) ?>" data-fm-nav-link><?= print_translation('admin_files_filter_folders') ?></a></li>
+                                <li><a class="dropdown-item<?= $typeFilter === 'file' ? ' active' : '' ?>" href="<?= $buildManagerUrl(null, ['type' => 'file']) ?>" data-fm-nav-link><?= print_translation('admin_files_filter_files') ?></a></li>
+                            </ul>
+                        </div>
+
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="ci-sort"></i><span><?= htmlSC($sortLabel) ?></span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+                                <li><a class="dropdown-item" href="<?= $buildManagerUrl(null, ['sort' => 'modified', 'direction' => 'desc']) ?>" data-fm-nav-link><?= print_translation('admin_files_sort_newest') ?></a></li>
+                                <li><a class="dropdown-item" href="<?= $buildManagerUrl(null, ['sort' => 'modified', 'direction' => 'asc']) ?>" data-fm-nav-link><?= print_translation('admin_files_sort_oldest') ?></a></li>
+                                <li><a class="dropdown-item" href="<?= $buildManagerUrl(null, ['sort' => 'name', 'direction' => 'asc']) ?>" data-fm-nav-link><?= print_translation('admin_files_sort_name') ?></a></li>
+                                <li><a class="dropdown-item" href="<?= $buildManagerUrl(null, ['sort' => 'size', 'direction' => 'desc']) ?>" data-fm-nav-link><?= print_translation('admin_files_sort_size') ?></a></li>
+                            </ul>
+                        </div>
+
+                        <span class="badge rounded-pill px-3 py-2 fw-medium" data-file-manager-selection-badge>
+                            <?= print_translation('admin_files_selected_count') ?>: <span data-file-manager-selection-count>0</span>
+                        </span>
+
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-file-manager-action-toggle disabled>
+                                <i class="ci-settings"></i><span><?= print_translation('admin_files_actions_btn') ?></span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+                                <li><button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="open"><i class="ci-folder"></i><?= print_translation('admin_btn_open') ?></button></li>
+                                <li><button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="download"><i class="ci-download"></i><?= print_translation('admin_files_download') ?></button></li>
+                                <li><button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="rename"><i class="ci-edit"></i><?= print_translation('admin_files_rename') ?></button></li>
+                                <li><button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="copy"><i class="ci-copy"></i><?= print_translation('admin_files_copy_selected') ?></button></li>
+                                <li><button class="dropdown-item d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="move"><i class="ci-move"></i><?= print_translation('admin_files_move_selected') ?></button></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button class="dropdown-item text-danger d-inline-flex align-items-center gap-2" type="button" data-file-manager-action="delete"><i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?></button></li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="p-3 p-lg-4">
+        <div class="p-3 p-lg-4" data-file-manager-results>
             <?php if (empty($items)): ?>
                 <div class="text-center py-5">
                     <div class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px;">
                         <i class="ci-folder fs-2 text-body-secondary"></i>
                     </div>
-                    <p class="text-body-secondary mb-0"><?= print_translation('admin_table_empty') ?></p>
+                    <p class="text-body-secondary mb-0"><?= print_translation('admin_files_empty') ?></p>
                 </div>
             <?php else: ?>
                 <form action="<?= base_href('/admin/files/action') ?>" method="post" data-file-manager-bulk-form>
@@ -297,6 +325,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                     <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                     <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                     <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                    <input type="hidden" name="type" value="<?= htmlSC($typeFilter) ?>">
                     <input type="hidden" name="page" value="<?= $currentPage ?>">
                     <input type="hidden" name="action_name" value="" data-file-manager-action-name>
 
@@ -490,6 +519,13 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                     'pagination_attributes' => ['data-fm-pagination' => true],
                 ]) ?>
             <?php endif; ?>
+
+            <button class="w-100 mt-4" type="button" data-file-manager-upload-drop data-file-manager-open-upload>
+                <span class="d-inline-flex align-items-center justify-content-center rounded-circle" data-file-manager-upload-drop-icon><i class="ci-upload"></i></span>
+                <span class="d-block fw-semibold mt-2"><?= print_translation('admin_files_drop_title') ?></span>
+                <span class="d-block small text-body-secondary mt-1"><?= print_translation('admin_files_drop_hint') ?></span>
+                <span class="d-block small text-body-secondary mt-2"><?= str_replace(':size', (string)\App\Services\UploadSettings::maxFileSizeMb(), return_translation('admin_files_upload_limit_hint')) ?></span>
+            </button>
         </div>
     </div>
 </div>
@@ -497,7 +533,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
 <div class="modal fade" id="fileUploadModal" tabindex="-1" aria-hidden="true" data-file-upload-modal>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-5 overflow-hidden">
-            <form action="<?= base_href('/admin/files/upload') ?>" method="post" enctype="multipart/form-data" data-fm-async-form>
+            <form action="<?= base_href('/admin/files/upload') ?>" method="post" enctype="multipart/form-data" data-fm-async-form data-file-manager-upload-form>
                 <?= get_csrf_field() ?>
                 <input type="hidden" name="dir" value="<?= htmlSC($currentDir) ?>">
                 <input type="hidden" name="picker" value="<?= $pickerMode ? '1' : '0' ?>">
@@ -505,6 +541,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="type" value="<?= htmlSC($typeFilter) ?>">
                 <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <div class="modal-header border-0 pb-0">
                     <h2 class="modal-title fs-5"><?= print_translation('admin_files_upload_label') ?></h2>
@@ -512,7 +549,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                 </div>
                 <div class="modal-body pt-3">
                     <label class="form-label"><?= print_translation('admin_files_upload_label') ?></label>
-                    <input class="form-control" type="file" name="upload_files[]" multiple required>
+                    <input class="form-control" type="file" name="upload_files[]" multiple required data-file-manager-upload-input>
                     <div class="form-text"><?= print_translation('admin_files_upload_hint') ?></div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -535,6 +572,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="type" value="<?= htmlSC($typeFilter) ?>">
                 <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <div class="modal-header border-0 pb-0">
                     <h2 class="modal-title fs-5"><?= print_translation('admin_files_folder_label') ?></h2>
@@ -565,6 +603,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="type" value="<?= htmlSC($typeFilter) ?>">
                 <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <input type="hidden" name="path" value="" data-file-rename-path-input>
                 <div class="modal-header border-0 pb-0">
@@ -602,6 +641,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                 <input type="hidden" name="q" value="<?= htmlSC($search) ?>">
                 <input type="hidden" name="sort" value="<?= htmlSC($sort) ?>">
                 <input type="hidden" name="direction" value="<?= htmlSC($direction) ?>">
+                <input type="hidden" name="type" value="<?= htmlSC($typeFilter) ?>">
                 <input type="hidden" name="page" value="<?= $currentPage ?>">
                 <input type="hidden" name="action_name" value="" data-file-transfer-action-input>
                 <div data-file-transfer-hidden-inputs></div>

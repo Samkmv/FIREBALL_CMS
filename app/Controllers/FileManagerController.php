@@ -216,6 +216,7 @@ class FileManagerController extends BaseController
         $search = trim((string)($tableParams['search'] ?? ''));
         $sort = trim((string)($tableParams['sort'] ?? ''));
         $direction = trim((string)($tableParams['direction'] ?? ''));
+        $type = $this->normalizeTableType((string)($tableParams['type'] ?? 'all'));
         $page = max(1, (int)($tableParams['page'] ?? 1));
 
         if ($search !== '') {
@@ -228,6 +229,10 @@ class FileManagerController extends BaseController
 
         if ($direction !== '') {
             $params['direction'] = $direction;
+        }
+
+        if ($type !== 'all') {
+            $params['type'] = $type;
         }
 
         if ($page > 1) {
@@ -248,10 +253,11 @@ class FileManagerController extends BaseController
         $direction = $this->normalizeTableDirection((string)request()->get('direction', $defaultDirection), $defaultDirection);
 
         return [
-            'per_page' => 5,
+            'per_page' => 10,
             'search' => request()->get('q', ''),
             'sort' => $sort,
             'direction' => $direction,
+            'type' => $this->normalizeTableType((string)request()->get('type', 'all')),
             'page' => max(1, (int)request()->get('page', 1)),
         ];
     }
@@ -268,8 +274,17 @@ class FileManagerController extends BaseController
             'search' => request()->post('q', ''),
             'sort' => $sort,
             'direction' => $direction,
+            'type' => $this->normalizeTableType((string)request()->post('type', 'all')),
             'page' => max(1, (int)request()->post('page', 1)),
         ];
+    }
+
+    /**
+     * Ограничивает фильтр типов значениями, которые поддерживает список файлов.
+     */
+    protected function normalizeTableType(string $type): string
+    {
+        return in_array($type, ['all', 'directory', 'file'], true) ? $type : 'all';
     }
 
     /**

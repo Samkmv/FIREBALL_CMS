@@ -3,8 +3,10 @@ $adminShellTitle = (string)($title ?? '');
 $adminShellSubtitle = (string)($subtitle ?? '');
 $adminShellActions = (string)($actions ?? '');
 $adminShellContainerClass = (string)($container_class ?? '');
+$adminShellContentClass = (string)($content_class ?? '');
 $adminShellSidebarColClass = (string)($sidebar_col_class ?? '');
 $adminShellMainColClass = (string)($main_col_class ?? '');
+$adminShellShowHeader = !isset($show_header) || (bool)$show_header;
 ?>
 
 <a class="fb-skip-link" href="#fb-admin-content"><?= print_translation('admin_ui_skip_content') ?></a>
@@ -27,23 +29,25 @@ $adminShellMainColClass = (string)($main_col_class ?? '');
     <div class="fb-admin-main">
         <?= view()->renderPartial('admin/topbar') ?>
 
-        <main class="fb-content" id="fb-admin-content" tabindex="-1">
+        <main class="fb-content <?= htmlSC($adminShellContentClass) ?>" id="fb-admin-content" tabindex="-1">
             <div class="fb-alert-root" data-fb-alert-root>
                 <?php get_alerts(); ?>
             </div>
 
-            <header class="fb-page-header">
-                <div class="fb-page-heading">
-                    <h1 class="fb-page-title"><?= htmlSC($adminShellTitle) ?></h1>
-                    <?php if ($adminShellSubtitle !== ''): ?>
-                        <p class="fb-page-subtitle"><?= htmlSC($adminShellSubtitle) ?></p>
-                    <?php endif; ?>
-                </div>
-                <?php if ($adminShellActions !== ''): ?>
-                    <div class="fb-page-actions">
-                        <?= $adminShellActions ?>
+            <?php if ($adminShellShowHeader): ?>
+                <header class="fb-page-header">
+                    <div class="fb-page-heading">
+                        <h1 class="fb-page-title"><?= htmlSC($adminShellTitle) ?></h1>
+                        <?php if ($adminShellSubtitle !== ''): ?>
+                            <p class="fb-page-subtitle"><?= htmlSC($adminShellSubtitle) ?></p>
+                        <?php endif; ?>
                     </div>
-                <?php endif; ?>
-            </header>
+                    <?php if ($adminShellActions !== ''): ?>
+                        <div class="fb-page-actions">
+                            <?= $adminShellActions ?>
+                        </div>
+                    <?php endif; ?>
+                </header>
+            <?php endif; ?>
 
             <div class="fb-page-content <?= htmlSC($adminShellContainerClass) ?>" data-fb-page-content>

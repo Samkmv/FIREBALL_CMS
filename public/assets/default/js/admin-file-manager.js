@@ -1,5 +1,6 @@
 $(function () {
     const fileSelectionStorageKey = 'fireball:file:selected';
+    const viewModeStorageKey = 'fireball:file-manager:view';
     const popupName = 'fireball_file_manager';
     const bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : (window.bootstrap || null);
     const page = $('[data-file-manager-page]');
@@ -127,6 +128,45 @@ $(function () {
     if (!page.length) {
         return;
     }
+
+    function getStoredViewMode() {
+        try {
+            return localStorage.getItem(viewModeStorageKey) === 'grid' ? 'grid' : 'list';
+        } catch (error) {
+            return 'list';
+        }
+    }
+
+    function applyViewMode(mode, persist) {
+        mode = mode === 'grid' ? 'grid' : 'list';
+        page.attr('data-fm-view-mode', mode);
+        page.find('[data-file-manager-view]').each(function () {
+            const buttonMode = String($(this).data('fileManagerView') || 'list');
+            $(this).attr('aria-pressed', buttonMode === mode ? 'true' : 'false');
+        });
+
+        if (persist !== false) {
+            try {
+                localStorage.setItem(viewModeStorageKey, mode);
+            } catch (error) {
+            }
+        }
+    }
+
+    function eventHasFiles(event) {
+        const dataTransfer = event && event.originalEvent ? event.originalEvent.dataTransfer : null;
+        if (!dataTransfer) {
+            return false;
+        }
+
+        if (dataTransfer.files && dataTransfer.files.length) {
+            return true;
+        }
+
+        return Array.from(dataTransfer.types || []).indexOf('Files') !== -1;
+    }
+
+    applyViewMode(getStoredViewMode(), false);
 
     function closeFloatingRowMenus() {
         if (!bootstrapApi || typeof bootstrapApi.Dropdown === 'undefined') {
@@ -302,6 +342,7 @@ $(function () {
     function replaceBrowser(html) {
         closeFloatingRowMenus();
         getBrowser().html(html);
+        applyViewMode(getStoredViewMode(), false);
         refreshSelectionState();
         initTooltips();
         if (window.FireballAdminTables?.prepareResponsiveTables) {
@@ -886,6 +927,59 @@ $(function () {
     page.on('submit', '[data-fm-async-form]', function (event) {
         event.preventDefault();
         submitAsyncForm(event.currentTarget, function () {
+            closeTransientModals();
+        });
+    });
+
+    page.on('click', '[data-file-manager-view]', function () {
+        applyViewMode(String($(this).data('fileManagerView') || 'list'), true);
+    });
+
+    page.on('dragenter dragover', '[data-file-manager-upload-drop]', function (event) {
+        if (draggedFileRows || !eventHasFiles(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        $(this).addClass('is-dragover');
+
+        if (event.originalEvent.dataTransfer) {
+            event.originalEvent.dataTransfer.dropEffect = 'copy';
+        }
+    });
+
+    page.on('dragleave', '[data-file-manager-upload-drop]', function (event) {
+        if (!$(event.currentTarget).has(event.relatedTarget).length) {
+            $(this).removeClass('is-dragover');
+        }
+    });
+
+    page.on('drop', '[data-file-manager-upload-drop]', function (event) {
+        if (draggedFileRows || !eventHasFiles(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        $(this).removeClass('is-dragover');
+
+        const dataTransfer = event.originalEvent.dataTransfer;
+        const form = page.find('[data-file-manager-upload-form]').first()[0];
+        const input = page.find('[data-file-manager-upload-input]').first()[0];
+
+        if (!form || !input || !dataTransfer.files || !dataTransfer.files.length) {
+            return;
+        }
+
+        try {
+            input.files = dataTransfer.files;
+        } catch (error) {
+            renderFeedback('error', String(page.data('fmUploadError') || 'Upload failed.'));
+            return;
+        }
+
+        submitAsyncForm(form, function () {
             closeTransientModals();
         });
     });
