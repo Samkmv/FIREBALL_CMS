@@ -206,6 +206,69 @@
     padding: 1rem;
 }
 
+.subscriptions-details-modal-body {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.subscriptions-details-section {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--cz-border-color);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--cz-tertiary-bg) 66%, var(--cz-body-bg));
+}
+
+.subscriptions-payer-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+    min-width: 0;
+}
+
+.subscriptions-payer-field {
+    display: grid;
+    align-content: start;
+    gap: .25rem;
+    min-width: 0;
+    padding: .75rem;
+    border: 1px solid var(--cz-border-color);
+    border-radius: .8rem;
+    background: color-mix(in srgb, var(--cz-body-bg) 90%, transparent);
+}
+
+.subscriptions-payer-field--wide {
+    grid-column: 1 / -1;
+}
+
+.subscriptions-payer-field__label {
+    color: var(--cz-secondary-color);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.subscriptions-payer-field__value {
+    min-width: 0;
+    font-size: .9rem;
+    font-weight: 500;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.subscriptions-payer-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .65rem;
+    min-height: 6rem;
+    padding: 1rem;
+    text-align: center;
+    border: 1px dashed var(--cz-border-color);
+    border-radius: .9rem;
+}
+
 .subscriptions-admin-tabs {
     max-width: 100%;
     overflow-x: auto;
@@ -555,6 +618,18 @@
 
     .subscriptions-public {
         padding-top: 2rem !important;
+    }
+
+    .subscriptions-details-section {
+        padding: .8rem;
+    }
+
+    .subscriptions-payer-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .subscriptions-payer-field--wide {
+        grid-column: auto;
     }
 
     .subscriptions-plans-hero {

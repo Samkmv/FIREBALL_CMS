@@ -246,12 +246,19 @@
                                         >
                                             <i class="ci-sidebar"></i>
                                         </button>
-                                        <img
-                                            src="<?= get_user_avatar($active_contact['avatar'] ?? null, 'sm') ?>"
-                                            alt="<?= htmlSC($active_contact['name']) ?>"
-                                            class="chat-current-avatar rounded-circle border object-fit-cover flex-shrink-0"
-                                            data-chat-current-avatar
-                                        >
+                                        <span class="position-relative flex-shrink-0">
+                                            <img
+                                                src="<?= get_user_avatar($active_contact['avatar'] ?? null, 'sm') ?>"
+                                                alt="<?= htmlSC($active_contact['name']) ?>"
+                                                class="chat-current-avatar rounded-circle border object-fit-cover"
+                                                data-chat-current-avatar
+                                            >
+                                            <span
+                                                class="chat-contact-presence <?= !empty($active_contact['is_online']) ? 'is-online' : 'is-offline' ?>"
+                                                data-chat-current-presence
+                                                aria-hidden="true"
+                                            ></span>
+                                        </span>
                                         <div class="min-w-0">
                                             <strong class="d-block text-truncate" data-chat-current-name><?= htmlSC($active_contact['name']) ?><?= render_public_verified_badge($active_contact['role'] ?? null) ?></strong>
                                             <div class="chat-current-meta small d-flex align-items-center gap-2 text-body-secondary">

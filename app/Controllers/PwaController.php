@@ -106,9 +106,13 @@ class PwaController extends BaseController
             response()->json(['status' => false, 'message' => 'Authentication required.'], 401);
         }
 
+        $currentUser = get_user();
+        $userId = (int)$currentUser['id'];
+
         response()->json([
             'status' => true,
-            'push' => $this->pwa->pushStatusForUser((int)get_user()['id']),
+            'user_id' => $userId,
+            'push' => $this->pwa->pushStatusForUser($userId),
         ]);
     }
 

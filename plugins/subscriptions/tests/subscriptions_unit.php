@@ -139,7 +139,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.26', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.27', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -597,6 +597,33 @@ assertTrueValue(
     && str_contains($subscribersTemplate, "modal.addEventListener('show.bs.modal'")
     && !str_contains($subscribersTemplate, 'subscriptions-inline-editor'),
     'Subscriber actions must use the standard ellipsis menu and edit in a modal without resizing mobile cards'
+);
+
+$paymentsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/payments.php');
+$profileRepositorySource = (string)file_get_contents(__DIR__ . '/../src/Repositories/ProfileRepository.php');
+$payerDetailsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/payer-details.php');
+assertTrueValue(
+    str_contains($profileRepositorySource, 'public function profilesForUsers(array $userIds): array')
+    && str_contains($profileRepositorySource, 'public function snapshotFromProfile(array $profile): array')
+    && str_contains($adminControllerSource, 'attachSubscriberDetails')
+    && str_contains($adminControllerSource, 'o.customer_snapshot')
+    && str_contains($adminControllerSource, "\$row['payer_snapshot']"),
+    'Subscriber and payment administration must load immutable payer snapshots with a current-profile fallback'
+);
+assertTrueValue(
+    str_contains($subscribersTemplate, 'data-subscriptions-subscriber-details-template')
+    && str_contains($subscribersTemplate, 'id="subscriptionsSubscriberDetailsModal"')
+    && str_contains($paymentsTemplate, 'data-subscriptions-payment-details-template')
+    && str_contains($paymentsTemplate, 'id="subscriptionsPaymentDetailsModal"')
+    && str_contains($payerDetailsTemplate, 'subscriptions_profile_field_')
+    && str_contains($payerDetailsTemplate, "\$payer['custom_fields']"),
+    'Admin details dialogs must show full system, address, payment, consent, and custom payer data'
+);
+assertTrueValue(
+    str_contains($subscriptionStyles, '.subscriptions-details-modal-body')
+    && str_contains($subscriptionStyles, '.subscriptions-payer-grid')
+    && str_contains($subscriptionStyles, '.subscriptions-payer-field--wide'),
+    'Payer detail dialogs must remain readable and responsive on mobile screens'
 );
 
 assertTrueValue(

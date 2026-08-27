@@ -281,6 +281,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-admin-table-retry-label="<?= htmlSC(return_translation('admin_table_retry')) ?>"
     data-pwa-enabled="<?= !empty($pwaHeadData['enabled']) ? '1' : '0' ?>"
     data-pwa-push-enabled="<?= !empty($pwaHeadData['push_enabled']) ? '1' : '0' ?>"
+    data-pwa-auth-user-id="<?= (int)($currentUser['id'] ?? 0) ?>"
     data-pwa-vapid-public-key="<?= htmlSC((string)($pwaHeadData['vapid_public_key'] ?? '')) ?>"
     data-pwa-service-worker-url="<?= htmlSC((string)($pwaHeadData['service_worker_url'] ?? base_url('/service-worker.js'))) ?>"
     data-pwa-subscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions')) ?>"

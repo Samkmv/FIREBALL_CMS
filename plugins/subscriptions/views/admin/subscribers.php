@@ -2,6 +2,8 @@
 $subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
 $plans = is_array($plans ?? null) ? $plans : [];
 $users = is_array($users ?? null) ? $users : [];
+$profileFields = is_array($profile_fields ?? null) ? $profile_fields : [];
+$renderPayerDetails = require __DIR__ . '/payer-details.php';
 $statusLabels = [
     'active' => FireballPluginSubscriptions::t('subscriptions_status_active'),
     'disabled' => FireballPluginSubscriptions::t('subscriptions_status_disabled'),
@@ -34,7 +36,7 @@ $renderAttributes = static function (array $attributes): string {
 
     return $html;
 };
-$renderActions = static function (array $attributes) use ($renderAttributes): string {
+$renderActions = static function (array $actions) use ($renderAttributes): string {
     ob_start();
     ?>
     <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
@@ -42,10 +44,12 @@ $renderActions = static function (array $attributes) use ($renderAttributes): st
             <i class="ci-more-vertical"></i>
         </button>
         <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-            <button class="dropdown-item d-flex align-items-center gap-2" type="button"<?= $renderAttributes($attributes) ?>>
-                <i class="ci-edit"></i>
-                <span><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_edit')) ?></span>
-            </button>
+            <?php foreach ($actions as $action): ?>
+                <button class="dropdown-item d-flex align-items-center gap-2" type="button"<?= $renderAttributes((array)$action['attributes']) ?>>
+                    <i class="<?= htmlSC((string)$action['icon']) ?>"></i>
+                    <span><?= htmlSC((string)$action['label']) ?></span>
+                </button>
+            <?php endforeach; ?>
         </div>
     </div>
     <?php
@@ -68,8 +72,23 @@ foreach ($subscriptions as $subscription) {
         'data-subscription-status' => $statusKey,
         'data-subscription-ends-at' => date('Y-m-d\TH:i', strtotime((string)$subscription['ends_at']) ?: time()),
     ];
-    $actions = $renderActions($editAttributes);
+    $detailsAttributes = [
+        'data-bs-toggle' => 'modal',
+        'data-bs-target' => '#subscriptionsSubscriberDetailsModal',
+        'data-subscriptions-subscriber-details' => true,
+        'data-subscription-id' => (int)$subscription['id'],
+        'data-subscription-user' => (string)$subscription['user_name'],
+    ];
+    $actions = $renderActions([
+        ['label' => FireballPluginSubscriptions::t('subscriptions_view_details'), 'icon' => 'ci-eye', 'attributes' => $detailsAttributes],
+        ['label' => FireballPluginSubscriptions::t('subscriptions_edit'), 'icon' => 'ci-edit', 'attributes' => $editAttributes],
+    ]);
     $mobileActions = [[
+        'label' => FireballPluginSubscriptions::t('subscriptions_view_details'),
+        'icon' => 'ci-eye',
+        'type' => 'button',
+        'attributes' => $detailsAttributes,
+    ], [
         'label' => FireballPluginSubscriptions::t('subscriptions_edit'),
         'icon' => 'ci-edit',
         'type' => 'button',
@@ -152,6 +171,67 @@ foreach ($subscriptions as $subscription) {
         <?= view()->renderPartial('admin/partials/table_footer', ['visible' => count($subscriptions), 'total' => (int)($total ?? 0), 'pagination' => $pagination ?? null, 'show_results_label' => false]) ?>
     </div>
 
+    <?php foreach ($subscriptions as $subscription): ?>
+        <?php
+        $subscriptionStatusKey = (string)($subscription['status'] ?? '');
+        $subscriptionSource = $sourceLabels[(string)($subscription['source'] ?? '')] ?? (string)($subscription['source'] ?? '');
+        $purchaseOrder = is_array($subscription['purchase_order'] ?? null) ? $subscription['purchase_order'] : [];
+        $payerSnapshot = is_array($subscription['payer_snapshot'] ?? null) ? $subscription['payer_snapshot'] : [];
+        $payerHintKey = ($subscription['payer_snapshot_source'] ?? '') === 'order'
+            ? 'subscriptions_payer_snapshot_hint'
+            : 'subscriptions_current_profile_hint';
+        ?>
+        <template data-subscriptions-subscriber-details-template="<?= (int)$subscription['id'] ?>">
+            <section class="subscriptions-details-section">
+                <h3 class="h6 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_subscription_details')) ?></h3>
+                <div class="subscriptions-payer-grid">
+                    <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label">ID</span><span class="subscriptions-payer-field__value">#<?= (int)$subscription['id'] ?></span></div>
+                    <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_user_id')) ?></span><span class="subscriptions-payer-field__value">#<?= (int)$subscription['user_id'] ?></span></div>
+                    <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC((string)$subscription['plan_name']) ?></span></div>
+                    <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_status')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC($statusLabels[$subscriptionStatusKey] ?? $subscriptionStatusKey) ?></span></div>
+                    <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_source')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC($subscriptionSource) ?></span></div>
+                    <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_period')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC((string)$subscription['starts_at']) ?><br><?= htmlSC((string)$subscription['ends_at']) ?></span></div>
+                    <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_auto_renew')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC(FireballPluginSubscriptions::t(!empty($subscription['auto_renew']) ? 'subscriptions_value_yes' : 'subscriptions_value_no')) ?></span></div>
+                    <?php if (trim((string)($subscription['admin_comment'] ?? '')) !== ''): ?><div class="subscriptions-payer-field subscriptions-payer-field--wide"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_comment')) ?></span><span class="subscriptions-payer-field__value"><?= nl2br(htmlSC((string)$subscription['admin_comment'])) ?></span></div><?php endif; ?>
+                </div>
+            </section>
+            <?php if ($purchaseOrder !== []): ?>
+                <section class="subscriptions-details-section">
+                    <h3 class="h6 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payment_details')) ?></h3>
+                    <div class="subscriptions-payer-grid">
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_order')) ?></span><span class="subscriptions-payer-field__value">#<?= (int)$purchaseOrder['id'] ?></span></div>
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_invoice')) ?></span><span class="subscriptions-payer-field__value">#<?= (int)$purchaseOrder['invoice_id'] ?></span></div>
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_price')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC(\Fireball\Subscriptions\Support\Money::display((int)$purchaseOrder['amount_minor'], (string)$purchaseOrder['currency'])) ?></span></div>
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_status')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC((string)$purchaseOrder['status']) ?></span></div>
+                    </div>
+                </section>
+            <?php endif; ?>
+            <section class="subscriptions-details-section">
+                <h3 class="h6 mb-1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payer_details')) ?></h3>
+                <p class="small text-body-secondary mb-3"><?= htmlSC(FireballPluginSubscriptions::t($payerHintKey)) ?></p>
+                <?= $renderPayerDetails($payerSnapshot, $profileFields, (array)($subscription['payer_custom_fields'] ?? [])) ?>
+            </section>
+        </template>
+    <?php endforeach; ?>
+
+    <div class="modal fade" id="subscriptionsSubscriberDetailsModal" tabindex="-1" aria-labelledby="subscriptionsSubscriberDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content rounded-5">
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <h2 class="modal-title h5 mb-1" id="subscriptionsSubscriberDetailsModalLabel"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_details')) ?></h2>
+                        <div class="small text-body-secondary" data-subscriptions-subscriber-details-user></div>
+                    </div>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel')) ?>"></button>
+                </div>
+                <div class="modal-body subscriptions-details-modal-body" data-subscriptions-subscriber-details-body></div>
+                <div class="modal-footer border-0 pt-0">
+                    <button class="btn btn-dark rounded-pill" type="button" data-bs-dismiss="modal"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_close')) ?></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="subscriptionsSubscriberEditModal" tabindex="-1" aria-labelledby="subscriptionsSubscriberEditModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-5">
@@ -197,6 +277,23 @@ foreach ($subscriptions as $subscription) {
 
     <script>
         (() => {
+            const detailsModal = document.getElementById('subscriptionsSubscriberDetailsModal');
+            detailsModal?.addEventListener('show.bs.modal', (event) => {
+                const trigger = event.relatedTarget;
+                if (!(trigger instanceof HTMLElement) || !trigger.matches('[data-subscriptions-subscriber-details]')) {
+                    return;
+                }
+                const template = document.querySelector(`[data-subscriptions-subscriber-details-template="${CSS.escape(trigger.dataset.subscriptionId || '')}"]`);
+                const body = detailsModal.querySelector('[data-subscriptions-subscriber-details-body]');
+                if (template instanceof HTMLTemplateElement && body) {
+                    body.replaceChildren(template.content.cloneNode(true));
+                }
+                const user = detailsModal.querySelector('[data-subscriptions-subscriber-details-user]');
+                if (user) {
+                    user.textContent = trigger.dataset.subscriptionUser || '';
+                }
+            });
+
             const modal = document.getElementById('subscriptionsSubscriberEditModal');
             if (!modal) {
                 return;

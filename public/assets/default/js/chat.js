@@ -7,7 +7,8 @@ $(function () {
     const mobileFullscreenQuery = window.matchMedia('(max-width: 767.98px)');
     const rootElement = document.documentElement;
     let mobileViewportFrame = 0;
-    let standaloneViewportHeight = 0;
+    let stableMobileViewportHeight = 0;
+    let stableMobileViewportWidth = 0;
 
     const syncMobileFullscreen = () => {
         mobileViewportFrame = 0;
@@ -32,6 +33,10 @@ $(function () {
             Number(window.innerHeight) || 0,
             Number(rootElement.clientHeight) || 0
         );
+        const layoutViewportWidth = Math.max(
+            Number(window.innerWidth) || 0,
+            Number(rootElement.clientWidth) || 0
+        );
         const visualViewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
         const visualViewportHeight = Math.max(0, Number(viewport ? viewport.height : layoutViewportHeight) || layoutViewportHeight);
         const activeElement = document.activeElement;
@@ -42,30 +47,43 @@ $(function () {
             && activeElement.matches('input, textarea, [contenteditable="true"]')
         );
 
-        if (isStandalone && !composerHasFocus) {
-            standaloneViewportHeight = Math.max(
-                standaloneViewportHeight,
+        if (isMobile && !composerHasFocus) {
+            if (stableMobileViewportWidth && Math.abs(stableMobileViewportWidth - layoutViewportWidth) > 40) {
+                stableMobileViewportHeight = 0;
+            }
+            stableMobileViewportWidth = layoutViewportWidth;
+            stableMobileViewportHeight = Math.max(
+                stableMobileViewportHeight,
                 layoutViewportHeight,
                 visualViewportHeight + visualViewportTop
             );
         }
 
-        const keyboardReferenceHeight = isStandalone && standaloneViewportHeight
-            ? standaloneViewportHeight
+        const keyboardReferenceHeight = isMobile && stableMobileViewportHeight
+            ? stableMobileViewportHeight
             : layoutViewportHeight;
         const keyboardLikelyVisible = composerHasFocus
             && (keyboardReferenceHeight - visualViewportHeight - visualViewportTop) > Math.max(80, keyboardReferenceHeight * .12);
 
         rootElement.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
         document.body.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
-        const viewportTop = isStandalone && !keyboardLikelyVisible ? 0 : visualViewportTop;
-        const viewportHeight = isStandalone && !keyboardLikelyVisible
+
+        if (isMobile && !keyboardLikelyVisible) {
+            window.scrollTo({top: 0, left: 0, behavior: 'auto'});
+            rootElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }
+
+        const viewportTop = isMobile && !keyboardLikelyVisible ? 0 : visualViewportTop;
+        const viewportHeight = isMobile && !keyboardLikelyVisible
             ? layoutViewportHeight
             : visualViewportHeight;
-        const siteHeader = isStandalone ? null : (document.querySelector('body > header') || document.querySelector('header'));
+        const siteHeader = isStandalone && !isMobile
+            ? null
+            : (document.querySelector('body > header') || document.querySelector('header'));
         const headerRect = siteHeader ? siteHeader.getBoundingClientRect() : null;
         const visibleHeaderHeight = headerRect
-            ? Math.max(0, Math.min(viewportHeight, headerRect.bottom - viewportTop))
+            ? Math.max(0, Math.min(viewportHeight, Number(headerRect.height) || Number(siteHeader.offsetHeight) || 0))
             : 0;
 
         rootElement.style.setProperty('--chat-mobile-viewport-top', `${viewportTop + visibleHeaderHeight}px`);
@@ -79,6 +97,13 @@ $(function () {
         mobileViewportFrame = requestAnimationFrame(syncMobileFullscreen);
     };
 
+    const scheduleKeyboardRecovery = () => {
+        scheduleMobileFullscreenSync();
+        [120, 320, 640].forEach((delay) => {
+            window.setTimeout(scheduleMobileFullscreenSync, delay);
+        });
+    };
+
     if (typeof mobileFullscreenQuery.addEventListener === 'function') {
         mobileFullscreenQuery.addEventListener('change', scheduleMobileFullscreenSync);
     } else if (typeof mobileFullscreenQuery.addListener === 'function') {
@@ -90,7 +115,14 @@ $(function () {
         window.visualViewport.addEventListener('scroll', scheduleMobileFullscreenSync, {passive: true});
     }
     document.addEventListener('focusin', scheduleMobileFullscreenSync, {passive: true});
-    document.addEventListener('focusout', scheduleMobileFullscreenSync, {passive: true});
+    document.addEventListener('focusout', scheduleKeyboardRecovery, {passive: true});
+    window.addEventListener('pageshow', scheduleKeyboardRecovery, {passive: true});
+    window.addEventListener('orientationchange', scheduleKeyboardRecovery, {passive: true});
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            scheduleKeyboardRecovery();
+        }
+    }, {passive: true});
     syncMobileFullscreen();
 
     const fetchUrl = String(chatApp.data('fetch-url') || '');
@@ -121,6 +153,7 @@ $(function () {
     const currentName = chatApp.find('[data-chat-current-name]');
     const currentRole = chatApp.find('[data-chat-current-role]');
     const currentAvatar = chatApp.find('[data-chat-current-avatar]');
+    const currentAvatarPresence = chatApp.find('[data-chat-current-presence]');
     const currentStatus = chatApp.find('[data-chat-current-status]');
     const messageSearchInput = chatApp.find('[data-chat-message-search]');
     const messageSearchResults = chatApp.find('[data-chat-message-search-results]');
@@ -513,6 +546,9 @@ $(function () {
     `;
 
     const updateCurrentContactPresence = (isOnline) => {
+        currentAvatarPresence
+            .toggleClass('is-online', isOnline)
+            .toggleClass('is-offline', !isOnline);
         currentStatus
             .toggleClass('text-success', isOnline)
             .toggleClass('text-body-secondary', !isOnline)
@@ -1065,6 +1101,10 @@ $(function () {
                     .toggleClass('text-success', isOnline)
                     .toggleClass('text-body-secondary', !isOnline)
                     .html(renderPresenceBadge(isOnline));
+
+                button.find('.chat-contact-presence')
+                    .toggleClass('is-online', isOnline)
+                    .toggleClass('is-offline', !isOnline);
 
                 button.find(`[data-chat-contact-preview="${contactId}"]`).text(getPreviewText(item.last_message_preview));
             });

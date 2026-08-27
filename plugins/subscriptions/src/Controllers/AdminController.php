@@ -114,10 +114,13 @@ final class AdminController
              {$whereSql} ORDER BY s.created_at DESC LIMIT {$offset}, 20",
             $params
         )->get() ?: [];
+        $profiles = new ProfileRepository();
+        $rows = $this->attachSubscriberDetails($rows, $profiles);
 
         return $this->view('admin/subscribers', 'subscribers', [
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_subscribers'),
             'subscriptions' => $rows,
+            'profile_fields' => $profiles->fields(),
             'plans' => (new PlanRepository())->all(),
             'users' => db()->query('SELECT id, name, email FROM users ORDER BY name, email LIMIT 1000')->get() ?: [],
             'pagination' => $pagination,
@@ -174,13 +177,25 @@ final class AdminController
         $pagination = new \FBL\Pagination($total, 25);
         $offset = $pagination->getOffset();
         $rows = db()->query(
-            "SELECT sp.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name FROM subscription_payments sp INNER JOIN users u ON u.id = sp.user_id INNER JOIN subscription_plans p ON p.id = sp.plan_id {$whereSql} ORDER BY sp.created_at DESC LIMIT {$offset}, 25",
+            "SELECT sp.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name,
+                    o.status AS order_status, o.customer_snapshot, o.consent_snapshot, o.plan_snapshot
+             FROM subscription_payments sp
+             INNER JOIN users u ON u.id = sp.user_id
+             INNER JOIN subscription_plans p ON p.id = sp.plan_id
+             INNER JOIN subscription_orders o ON o.id = sp.order_id
+             {$whereSql} ORDER BY sp.created_at DESC LIMIT {$offset}, 25",
             $params
         )->get() ?: [];
+        foreach ($rows as &$row) {
+            $row['payer_snapshot'] = $this->decodeSnapshot((string)($row['customer_snapshot'] ?? ''));
+            $row['consents'] = $this->decodeSnapshot((string)($row['consent_snapshot'] ?? ''));
+        }
+        unset($row);
 
         return $this->view('admin/payments', 'payments', [
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_payments'),
             'payments' => $rows,
+            'profile_fields' => (new ProfileRepository())->fields(),
             'pagination' => $pagination,
             'total' => $total,
             'search' => $search,
@@ -348,6 +363,64 @@ final class AdminController
         }
 
         response()->redirect(base_href('/admin/subscriptions/settings'));
+    }
+
+    private function attachSubscriberDetails(array $subscriptions, ProfileRepository $profiles): array
+    {
+        if ($subscriptions === []) {
+            return [];
+        }
+
+        $profileRows = $profiles->profilesForUsers(array_column($subscriptions, 'user_id'));
+        $subscriptionIds = array_values(array_unique(array_filter(
+            array_map(static fn(array $row): int => (int)($row['id'] ?? 0), $subscriptions),
+            static fn(int $id): bool => $id > 0
+        )));
+        $ordersBySubscription = [];
+        if ($subscriptionIds !== []) {
+            $placeholders = implode(',', array_fill(0, count($subscriptionIds), '?'));
+            $orders = db()->query(
+                "SELECT * FROM subscription_orders
+                 WHERE subscription_id IN ({$placeholders})
+                 ORDER BY subscription_id ASC, CASE WHEN status = 'paid' THEN 0 ELSE 1 END ASC, id DESC",
+                $subscriptionIds
+            )->get() ?: [];
+            foreach ($orders as $order) {
+                $subscriptionId = (int)($order['subscription_id'] ?? 0);
+                if ($subscriptionId > 0 && !isset($ordersBySubscription[$subscriptionId])) {
+                    $ordersBySubscription[$subscriptionId] = $order;
+                }
+            }
+        }
+
+        foreach ($subscriptions as &$subscription) {
+            $subscriptionId = (int)($subscription['id'] ?? 0);
+            $userId = (int)($subscription['user_id'] ?? 0);
+            $order = $ordersBySubscription[$subscriptionId] ?? [];
+            $snapshot = $this->decodeSnapshot((string)($order['customer_snapshot'] ?? ''));
+            $snapshotSource = $snapshot !== [] ? 'order' : 'profile';
+            if ($snapshot === [] && isset($profileRows[$userId])) {
+                $snapshot = $profiles->snapshotFromProfile($profileRows[$userId]);
+            }
+            $subscription['payer_snapshot'] = $snapshot;
+            $subscription['payer_snapshot_source'] = $snapshot !== [] ? $snapshotSource : 'none';
+            $subscription['payer_custom_fields'] = (array)($profileRows[$userId]['custom_fields'] ?? []);
+            $subscription['purchase_order'] = $order;
+        }
+        unset($subscription);
+
+        return $subscriptions;
+    }
+
+    private function decodeSnapshot(string $value): array
+    {
+        if (trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function view(string $view, string $tab, array $data): string

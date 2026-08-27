@@ -41,6 +41,55 @@ final class ProfileRepository
         return $profile;
     }
 
+    public function profilesForUsers(array $userIds): array
+    {
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn(int $id): bool => $id > 0)));
+        if ($userIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+        $rows = db()->query(
+            "SELECT * FROM subscription_profiles WHERE user_id IN ({$placeholders})",
+            $userIds
+        )->get() ?: [];
+        $profiles = [];
+        foreach ($rows as $row) {
+            $row['custom_values'] = [];
+            $row['custom_fields'] = [];
+            $profiles[(int)$row['user_id']] = $row;
+        }
+        if ($profiles === []) {
+            return [];
+        }
+
+        $values = db()->query(
+            "SELECT p.user_id, f.field_key, f.label, f.field_type, v.field_value
+             FROM subscription_profile_values v
+             INNER JOIN subscription_profiles p ON p.id = v.profile_id
+             INNER JOIN subscription_profile_fields f ON f.id = v.field_id
+             WHERE p.user_id IN ({$placeholders})
+             ORDER BY f.sort_order ASC, f.id ASC",
+            $userIds
+        )->get() ?: [];
+        foreach ($values as $value) {
+            $userId = (int)$value['user_id'];
+            if (!isset($profiles[$userId])) {
+                continue;
+            }
+            $key = (string)$value['field_key'];
+            $profiles[$userId]['custom_values'][$key] = (string)($value['field_value'] ?? '');
+            $profiles[$userId]['custom_fields'][$key] = [
+                'key' => $key,
+                'label' => (string)($value['label'] ?? $key),
+                'type' => (string)($value['field_type'] ?? 'text'),
+                'value' => (string)($value['field_value'] ?? ''),
+            ];
+        }
+
+        return $profiles;
+    }
+
     public function fields(bool $activeOnly = false): array
     {
         $where = $activeOnly ? 'WHERE is_active = 1' : '';
@@ -159,6 +208,11 @@ final class ProfileRepository
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_profile_incomplete'));
         }
 
+        return $this->snapshotFromProfile($profile);
+    }
+
+    public function snapshotFromProfile(array $profile): array
+    {
         return [
             'first_name' => (string)$profile['first_name'],
             'last_name' => (string)$profile['last_name'],

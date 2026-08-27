@@ -5,6 +5,8 @@
   if (!body) return;
 
   const csrf = document.querySelector('meta[name="needCSRFToken"]')?.getAttribute('content') || '';
+  const currentUserId = Number.parseInt(body.dataset.pwaAuthUserId || '0', 10) || 0;
+  let syncedSubscriptionEndpoint = '';
   const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const isSecure = window.location.protocol === 'https:' || isLocalhost;
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -101,8 +103,8 @@
   };
 
   const syncPushControls = () => {
-    const hidePush = isIos && !isStandalone();
-    document.querySelectorAll('[data-pwa-enable-push]').forEach((button) => {
+    const hidePush = currentUserId <= 0 || (isIos && !isStandalone());
+    document.querySelectorAll('[data-pwa-enable-push], [data-pwa-disable-push]').forEach((button) => {
       button.classList.toggle('d-none', hidePush);
       button.toggleAttribute('aria-hidden', hidePush);
       if (hidePush) button.setAttribute('tabindex', '-1');
@@ -120,12 +122,23 @@
   };
 
   const browserPushStatus = () => {
+    if (currentUserId <= 0) return 'disabled';
     if (body.dataset.pwaPushEnabled !== '1' || !body.dataset.pwaVapidPublicKey) return 'unavailable';
     if (!isSecure) return 'unavailable';
     if (isIos && !isStandalone()) return 'unavailable';
     if (!('Notification' in window) || !('PushManager' in window)) return 'unsupported';
     if (Notification.permission === 'denied') return 'permission';
     return '';
+  };
+
+  const syncExistingSubscription = async (subscription) => {
+    if (!subscription || currentUserId <= 0 || !body.dataset.pwaSubscribeUrl) return false;
+    if (syncedSubscriptionEndpoint === subscription.endpoint) return true;
+
+    const response = await postJson(body.dataset.pwaSubscribeUrl, subscription.toJSON());
+    if (!response.ok) return false;
+    syncedSubscriptionEndpoint = subscription.endpoint;
+    return true;
   };
 
   const syncPushStatus = async () => {
@@ -138,27 +151,20 @@
     const registration = window.FireballPwa.registration || await registerServiceWorker();
     const subscription = registration?.pushManager ? await registration.pushManager.getSubscription() : null;
     if (subscription) {
-      setPushStatusText('enabled');
+      if (!subscriptionUsesCurrentVapidKey(subscription)) {
+        setPushStatusText('disabled');
+        return;
+      }
+
+      try {
+        setPushStatusText(await syncExistingSubscription(subscription) ? 'enabled' : 'disabled');
+      } catch (error) {
+        setPushStatusText('disabled');
+      }
       return;
     }
 
-    if (!body.dataset.pwaStatusUrl) {
-      setPushStatusText('disabled');
-      return;
-    }
-
-    try {
-      const response = await fetch(body.dataset.pwaStatusUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
-      const data = await response.json();
-      const push = data && data.push ? data.push : {};
-      setPushStatusText(push.user_enabled && Number(push.active_subscriptions || 0) > 0 ? 'enabled' : 'disabled');
-    } catch (error) {
-      setPushStatusText('disabled');
-    }
+    setPushStatusText('disabled');
   };
 
   const registerServiceWorker = async () => {
@@ -189,6 +195,7 @@
   };
 
   const subscribePush = async () => {
+    if (currentUserId <= 0) return { status: false, reason: 'auth' };
     if (body.dataset.pwaPushEnabled !== '1') return { status: false, reason: 'disabled' };
     if (!isSecure) return { status: false, reason: 'https' };
     if (isIos && !isStandalone()) {
@@ -220,26 +227,33 @@
       applicationServerKey: urlBase64ToUint8Array(body.dataset.pwaVapidPublicKey)
     });
 
-    await postJson(body.dataset.pwaSubscribeUrl, subscription.toJSON());
+    const response = await postJson(body.dataset.pwaSubscribeUrl, subscription.toJSON());
+    if (!response.ok) {
+      return { status: false, reason: response.status === 401 ? 'auth' : 'server' };
+    }
+    syncedSubscriptionEndpoint = subscription.endpoint;
     await syncPushStatus();
     return { status: true, subscription };
   };
 
   const unsubscribePush = async () => {
+    if (currentUserId <= 0) return { status: false, reason: 'auth' };
     const registration = window.FireballPwa.registration || await registerServiceWorker();
     if (!registration || !registration.pushManager) {
-      await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: '' });
       await syncPushStatus();
       return { status: true };
     }
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
-      await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: '' });
       await syncPushStatus();
       return { status: true };
     }
-    await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: subscription.endpoint });
+    const response = await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: subscription.endpoint });
+    if (!response.ok) {
+      return { status: false, reason: response.status === 401 ? 'auth' : 'server' };
+    }
     await subscription.unsubscribe();
+    syncedSubscriptionEndpoint = '';
     await syncPushStatus();
     return { status: true };
   };

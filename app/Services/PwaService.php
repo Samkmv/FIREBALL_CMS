@@ -251,6 +251,7 @@ class PwaService
             'defaultBody' => return_translation('pwa_push_default_body'),
             'icon' => $icons['sizes'][192] ?? $icons['apple']['src'] ?? base_url('/assets/img/fbl_logo.png'),
             'badge' => $icons['sizes'][72] ?? $icons['favicon']['src'] ?? base_url('/assets/img/fbl_logo.png'),
+            'statusUrl' => base_url('/api/pwa/status'),
             'privatePrefixes' => [
                 base_url('/admin'),
                 base_url('/login'),
@@ -310,6 +311,23 @@ self.addEventListener("push", (event) => {
   };
 
   event.waitUntil((async () => {
+    const targetUserId = Number(options.data && options.data.user_id ? options.data.user_id : 0);
+    if (targetUserId > 0) {
+      try {
+        const response = await fetch(FIREBALL_PWA.statusUrl, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        if (!response.ok) return;
+        const status = await response.json();
+        if (!status || Number(status.user_id || 0) !== targetUserId) return;
+      } catch (error) {
+        return;
+      }
+    }
+
     if (self.registration.setAppBadge) {
       try { await self.registration.setAppBadge(1); } catch (error) {}
     }
@@ -492,8 +510,13 @@ self.addEventListener("sync", () => {});
         $platform = $this->detectPlatform($userAgent);
         $browser = $this->detectBrowser($userAgent);
         $now = date('Y-m-d H:i:s');
+        $endpointHash = hash('sha256', $endpoint);
 
         $this->ensureTables();
+        $previousUserId = (int)db()->query(
+            'SELECT user_id FROM pwa_subscriptions WHERE endpoint_hash = ? LIMIT 1',
+            [$endpointHash]
+        )->getColumn();
         db()->query(
             "INSERT INTO pwa_subscriptions
                 (user_id, is_active, endpoint_hash, endpoint, p256dh, auth, platform, browser, user_agent, subscription_json, last_seen_at, last_used_at, revoked_at, created_at, updated_at)
@@ -512,7 +535,7 @@ self.addEventListener("sync", () => {});
                 updated_at = VALUES(updated_at)",
             [
                 $userId,
-                hash('sha256', $endpoint),
+                $endpointHash,
                 $endpoint,
                 (string)$keys['p256dh'],
                 (string)$keys['auth'],
@@ -526,6 +549,9 @@ self.addEventListener("sync", () => {});
             ]
         );
         $this->setUserPushEnabled($userId, true);
+        if ($previousUserId > 0 && $previousUserId !== $userId) {
+            $this->syncUserPushEnabledFromSubscriptions($previousUserId);
+        }
 
         return true;
     }
@@ -535,7 +561,7 @@ self.addEventListener("sync", () => {});
         $endpoint = trim($endpoint);
         if ($endpoint === '') {
             if ($userId !== null && $userId > 0) {
-                $this->setUserPushEnabled($userId, false);
+                $this->syncUserPushEnabledFromSubscriptions($userId);
             }
             return;
         }
@@ -550,7 +576,7 @@ self.addEventListener("sync", () => {});
 
         db()->query('UPDATE pwa_subscriptions SET is_active = 0, revoked_at = ?, updated_at = ? WHERE ' . $where, [$params[0], $params[0], ...array_slice($params, 1)]);
         if ($userId !== null && $userId > 0) {
-            $this->setUserPushEnabled($userId, false);
+            $this->syncUserPushEnabledFromSubscriptions($userId);
         }
     }
 
@@ -642,7 +668,12 @@ self.addEventListener("sync", () => {});
 
         foreach ($subscriptions as $subscription) {
             try {
-                $status = $this->sendWebPush($subscription, $payload);
+                $subscriptionPayload = $payload;
+                $subscriptionPayload['data'] = is_array($subscriptionPayload['data'] ?? null)
+                    ? $subscriptionPayload['data']
+                    : [];
+                $subscriptionPayload['data']['user_id'] = (int)$subscription['user_id'];
+                $status = $this->sendWebPush($subscription, $subscriptionPayload);
                 if ($status === 'sent') {
                     $sent++;
                 } else {
@@ -720,6 +751,20 @@ self.addEventListener("sync", () => {});
              ON DUPLICATE KEY UPDATE push_enabled = VALUES(push_enabled), updated_at = VALUES(updated_at)",
             [$userId, $enabled ? 1 : 0, $now, $now]
         );
+    }
+
+    protected function syncUserPushEnabledFromSubscriptions(int $userId): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+
+        $this->ensureTables();
+        $activeSubscriptions = (int)db()->query(
+            'SELECT COUNT(*) FROM pwa_subscriptions WHERE user_id = ? AND is_active = 1 AND revoked_at IS NULL',
+            [$userId]
+        )->getColumn();
+        $this->setUserPushEnabled($userId, $activeSubscriptions > 0);
     }
 
     public function isUserPushEnabled(int $userId): bool

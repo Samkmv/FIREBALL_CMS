@@ -2346,8 +2346,19 @@ html.chat-viewport-fullscreen body > .floating-buttons {
     display: none !important;
 }
 
-html.pwa-standalone.chat-viewport-fullscreen body > header.navbar-sticky {
-    display: none !important;
+@media (min-width: 768px) {
+    html.pwa-standalone.chat-viewport-fullscreen body > header.navbar-sticky {
+        display: none !important;
+    }
+}
+
+html.chat-mobile-fullscreen body > header.navbar-sticky {
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1040;
+    width: 100%;
 }
 
 html.chat-viewport-fullscreen .chat-page {
@@ -2371,18 +2382,14 @@ html.chat-viewport-fullscreen .chat-page {
  * viewport height. Anchoring the closed-keyboard shell to both viewport edges
  * lets the chat cover that area, while the composer adds the safe inset once.
  */
-html.chat-pwa-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page {
-    top: 0;
+html.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page {
+    top: var(--chat-mobile-viewport-top, 0px);
     bottom: 0;
     height: auto;
 }
 
 html.chat-viewport-fullscreen .chat-page-header {
     display: none !important;
-}
-
-html.pwa-standalone.chat-viewport-fullscreen .chat-thread__head {
-    padding-top: calc(1rem + var(--pwa-safe-top));
 }
 
 html.pwa-standalone.chat-viewport-fullscreen .chat-thread__composer {

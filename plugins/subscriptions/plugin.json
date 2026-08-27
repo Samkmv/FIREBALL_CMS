@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.2.26",
+  "version": "1.2.27",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Added complete payer, subscription, order, payment, consent, address, and custom profile details to the subscriber and payment administration screens.",
     "Switched the subscription identity icon to the award symbol across admin navigation, account navigation, and dashboard widgets.",
     "Fixed the subscription-access badge contrast so its text changes correctly between light and dark themes.",
     "Replaced the paper-plane and generic payment icons with a clear recurring-subscription symbol across plans, navigation, profiles, and dashboard widgets.",
@@ -53,6 +54,7 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "В разделах подписчиков и платежей добавлен просмотр полной информации: данные плательщика, анкета на момент покупки, адрес, дополнительные поля, подписка, заказ, платёж и согласия.",
       "Основная иконка подписок заменена на знак награды в навигации админки, меню аккаунта и виджетах обзора.",
       "Исправлен контраст плашки «Доступ по подписке»: цвет текста теперь корректно меняется между светлой и тёмной темами.",
       "Бумажный самолётик и общая платёжная иконка заменены понятным знаком регулярной подписки в тарифах, навигации, профиле и виджетах обзора.",
@@ -82,6 +84,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Added complete payer, subscription, order, payment, consent, address, and custom profile details to the subscriber and payment administration screens.",
       "Switched the subscription identity icon to the award symbol across admin navigation, account navigation, and dashboard widgets.",
       "Fixed the subscription-access badge contrast so its text changes correctly between light and dark themes.",
       "Replaced the paper-plane and generic payment icons with a clear recurring-subscription symbol across plans, navigation, profiles, and dashboard widgets.",
@@ -111,6 +114,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "In der Abonnenten- und Zahlungsverwaltung werden jetzt vollständige Zahler-, Profil-, Adress-, Bestell-, Zahlungs-, Einwilligungs- und Abonnementdaten angezeigt.",
       "Das Abonnement-Symbol wurde in der Admin-Navigation, der Kontonavigation und den Übersichts-Widgets durch das Auszeichnungssymbol ersetzt.",
       "Der Kontrast des Abonnementzugangs-Badges wurde korrigiert; die Textfarbe wechselt nun korrekt zwischen hellem und dunklem Design.",
       "Papierflieger und allgemeines Zahlungssymbol wurden in Tarifen, Navigation, Profil und Übersichts-Widgets durch ein eindeutiges Symbol für wiederkehrende Abonnements ersetzt.",
@@ -140,6 +144,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "订阅者和付款管理页面现可查看完整的付款人资料、购买时快照、地址、附加字段、订阅、订单、付款及同意事项。",
       "管理导航、账户导航和概览小组件中的订阅主图标已改为奖章图标。",
       "修复了订阅访问徽章的对比度，文字颜色现在会在浅色和深色主题之间正确切换。",
       "套餐、导航、个人资料和概览小组件中的纸飞机及通用付款图标已替换为清晰的周期订阅图标。",
