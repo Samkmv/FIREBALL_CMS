@@ -230,6 +230,22 @@ final class FireballPluginCameraManager implements PluginInterface
         ] as $key => $value) {
             plugin_setting_set(self::SLUG, $key, $value);
         }
+
+        if ($pullToken !== '') {
+            self::assertStoredPullTokenHash($pullTokenHash);
+        }
+    }
+
+    public static function savePullToken(string $token): void
+    {
+        $token = strtolower(trim($token));
+        if (preg_match('/^[a-f0-9]{64}$/', $token) !== 1) {
+            throw new RuntimeException('HTTPS-токен должен состоять ровно из 64 шестнадцатеричных символов.');
+        }
+
+        $hash = hash('sha256', $token);
+        plugin_setting_set(self::SLUG, 'pull_token_hash', $hash);
+        self::assertStoredPullTokenHash($hash);
     }
 
     public static function tabs(string $active): array
@@ -739,6 +755,14 @@ final class FireballPluginCameraManager implements PluginInterface
         $port = (int)$value;
 
         return $port >= 1 && $port <= 65535 ? $port : $default;
+    }
+
+    private static function assertStoredPullTokenHash(string $expectedHash): void
+    {
+        $storedHash = strtolower(trim((string)plugin_setting(self::SLUG, 'pull_token_hash', '')));
+        if (preg_match('/^[a-f0-9]{64}$/', $storedHash) !== 1 || !hash_equals($expectedHash, $storedHash)) {
+            throw new RuntimeException('SprintHost не сохранил HTTPS-токен в настройках плагина. Проверьте доступ базы данных на запись.');
+        }
     }
 
     private static function ensureDatabaseSchema(): void

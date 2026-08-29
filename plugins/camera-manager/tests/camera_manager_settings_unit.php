@@ -24,6 +24,12 @@ foreach (FireballPluginCameraManager::defaultSettings() as $key => $value) {
 }
 
 $token = str_repeat('ab', 32);
+FireballPluginCameraManager::savePullToken($token);
+$directStoredHash = (string)plugin_setting(FireballPluginCameraManager::SLUG, 'pull_token_hash', '');
+if (!hash_equals(hash('sha256', $token), $directStoredHash)) {
+    throw new RuntimeException('Dedicated HTTPS token save did not persist the hash.');
+}
+
 FireballPluginCameraManager::saveSettings([
     'connection_mode' => 'pull',
     'hls_base_url' => 'https://rtsp.ddns.net/rtsp',

@@ -168,6 +168,17 @@ $router->post('/admin/camera-manager/settings', static function () use ($cameraM
     $cameraManagerRedirect('/admin/camera-manager/settings');
 })->middleware(['auth', 'admin']);
 
+$router->post('/admin/camera-manager/settings/token', static function () use ($cameraManagerRedirect): never {
+    try {
+        FireballPluginCameraManager::savePullToken((string)request()->post('pull_token', ''));
+        session()->setFlash('success', 'HTTPS-токен сохранён и проверен чтением из базы данных.');
+    } catch (Throwable $exception) {
+        log_error_details('Camera Manager HTTPS token save failed', [], $exception);
+        session()->setFlash('error', $exception->getMessage());
+    }
+    $cameraManagerRedirect('/admin/camera-manager/settings');
+})->middleware(['auth', 'admin']);
+
 $router->post('/admin/camera-manager/settings/test-connection', static function () use ($cameraManagerRedirect): never {
     try {
         $result = FireballPluginCameraManager::testConnection();
