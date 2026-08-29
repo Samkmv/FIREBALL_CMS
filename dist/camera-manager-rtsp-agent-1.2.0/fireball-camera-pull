@@ -1,0 +1,408 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Digest::SHA qw(sha256_hex);
+use Fcntl qw(:DEFAULT :flock);
+use File::Basename qw(dirname);
+use File::Temp qw(tempfile);
+use JSON::PP;
+use POSIX qw(strftime);
+
+my $CONFIG_FILE = '/etc/fireball-camera-pull.conf';
+my $STREAMS_FILE = '/var/www/html/rtsp/streams.pl';
+my $SERVICE_NAME = 'rtsp-streams.service';
+my $PERL_BINARY = '/usr/bin/perl';
+my $CURL_BINARY = '/usr/bin/curl';
+my $VERIFY_BINARY = '/usr/local/libexec/fireball-camera-verify';
+my $BACKUP_DIRECTORY = '/var/www/html/rtsp/.fireball-camera-manager-backups';
+my $STATE_DIRECTORY = '/var/lib/fireball-camera-manager';
+my $STATE_FILE = "$STATE_DIRECTORY/state.json";
+my $LOCK_FILE = '/var/www/html/rtsp/.fireball-camera-manager.lock';
+my $RUNTIME_DIRECTORY = '/run/fireball-camera-manager';
+my $BEGIN_MARKER = '# FIREBALL CAMERA MANAGER: BEGIN';
+my $END_MARKER = '# FIREBALL CAMERA MANAGER: END';
+my $PROTOCOL_VERSION = 1;
+
+sub fail {
+    my ($message) = @_;
+    $message =~ s{(rtsp://)[^\s\@]+\@}{$1***:***\@}gi;
+    die "$message\n";
+}
+
+sub ensure_directory {
+    my ($path, $mode) = @_;
+    if (!-d $path) {
+        mkdir $path, $mode or fail("Unable to create $path.");
+    }
+    chmod $mode, $path or fail("Unable to set permissions on $path.");
+}
+
+sub read_config {
+    open my $handle, '<', $CONFIG_FILE or fail("Unable to read $CONFIG_FILE.");
+    my %config;
+    while (my $line = <$handle>) {
+        $line =~ s/\r?\n\z//;
+        next if $line =~ /^\s*(?:#|\z)/;
+        $line =~ /^([A-Z_]+)=(.*)\z/ or fail('Invalid agent configuration line.');
+        my ($key, $value) = ($1, $2);
+        ($key eq 'CMS_ENDPOINT' || $key eq 'CMS_TOKEN')
+            or fail('Unsupported agent configuration key.');
+        exists $config{$key} and fail('Duplicate agent configuration key.');
+        $config{$key} = $value;
+    }
+    close $handle;
+
+    my $endpoint = $config{CMS_ENDPOINT} // '';
+    my $token = lc($config{CMS_TOKEN} // '');
+    $endpoint =~ m{\Ahttps://[^\s"'<>]+\z} or fail('CMS_ENDPOINT must be an HTTPS URL.');
+    $token =~ /\A[a-f0-9]{64}\z/ or fail('CMS_TOKEN must contain 64 hexadecimal characters.');
+
+    return ($endpoint, $token);
+}
+
+sub read_text_file {
+    my ($path, $maximum) = @_;
+    -f $path && !-l $path or fail("Refusing to read an invalid file: $path.");
+    my $size = -s $path;
+    defined $size && $size <= $maximum or fail("File is too large: $path.");
+    open my $handle, '<', $path or fail("Unable to read $path.");
+    binmode $handle;
+    local $/;
+    my $contents = <$handle>;
+    close $handle;
+    return defined $contents ? $contents : '';
+}
+
+sub read_state {
+    return { revision => 0 } if !-f $STATE_FILE;
+    my $raw = eval { read_text_file($STATE_FILE, 65536) };
+    return { revision => 0 } if !defined $raw || $@;
+    my $state = eval { JSON::PP->new->decode($raw) };
+    return { revision => 0 } if ref($state) ne 'HASH';
+    $state->{revision} = int($state->{revision} // 0);
+    $state->{revision} = 0 if $state->{revision} < 0;
+    return $state;
+}
+
+sub write_state {
+    my ($state) = @_;
+    ensure_directory($STATE_DIRECTORY, 0700);
+    my ($handle, $temporary) = tempfile('.state.XXXXXX', DIR => $STATE_DIRECTORY, UNLINK => 0);
+    chmod 0600, $temporary or fail('Unable to protect temporary state file.');
+    print {$handle} JSON::PP->new->canonical->encode($state)
+        or fail('Unable to write agent state.');
+    close $handle or fail('Unable to close agent state.');
+    rename $temporary, $STATE_FILE or fail('Unable to replace agent state.');
+    chmod 0600, $STATE_FILE or fail('Unable to protect agent state.');
+}
+
+sub curl_quote {
+    my ($value) = @_;
+    $value =~ s/\\/\\\\/g;
+    $value =~ s/"/\\"/g;
+    $value =~ s/[\r\n]//g;
+    return $value;
+}
+
+sub post_json {
+    my ($endpoint, $token, $payload) = @_;
+    ensure_directory($RUNTIME_DIRECTORY, 0700);
+    my ($request_handle, $request_path) = tempfile('request.XXXXXX', DIR => $RUNTIME_DIRECTORY, UNLINK => 0);
+    my ($response_handle, $response_path) = tempfile('response.XXXXXX', DIR => $RUNTIME_DIRECTORY, UNLINK => 0);
+    my ($config_handle, $config_path) = tempfile('curl.XXXXXX', DIR => $RUNTIME_DIRECTORY, UNLINK => 0);
+    chmod 0600, $request_path, $response_path, $config_path;
+
+    my $cleanup = sub {
+        unlink $_ for grep { defined $_ && -e $_ } ($request_path, $response_path, $config_path);
+    };
+
+    my $encoded = JSON::PP->new->canonical->encode($payload);
+    print {$request_handle} $encoded or do { $cleanup->(); fail('Unable to write HTTPS request.'); };
+    close $request_handle;
+    close $response_handle;
+
+    my $safe_endpoint = curl_quote($endpoint);
+    my $safe_token = curl_quote($token);
+    my $safe_request = curl_quote($request_path);
+    my $safe_response = curl_quote($response_path);
+    print {$config_handle} <<"CURL_CONFIG";
+silent
+show-error
+fail
+proto = "=https"
+tlsv1.2
+connect-timeout = 10
+max-time = 45
+request = "POST"
+header = "Accept: application/json"
+header = "Content-Type: application/json"
+header = "X-Fireball-Camera-Token: $safe_token"
+data-binary = "\@$safe_request"
+output = "$safe_response"
+url = "$safe_endpoint"
+CURL_CONFIG
+    close $config_handle;
+
+    my $exit = system($CURL_BINARY, '--config', $config_path);
+    if ($exit == -1 || ($exit >> 8) != 0) {
+        $cleanup->();
+        fail('HTTPS request to CMS failed.');
+    }
+
+    my $raw = eval { read_text_file($response_path, 2_000_000) };
+    if ($@) {
+        $cleanup->();
+        fail('Unable to read CMS response.');
+    }
+    $cleanup->();
+    my $decoded = eval { JSON::PP->new->decode($raw) };
+    ref($decoded) eq 'HASH' or fail('CMS returned invalid JSON.');
+    $decoded->{success} or fail('CMS rejected the request: ' . ($decoded->{message} // 'unknown error'));
+    int($decoded->{protocol} // 0) == $PROTOCOL_VERSION or fail('CMS protocol version mismatch.');
+    return $decoded;
+}
+
+sub marker_count {
+    my ($contents, $marker) = @_;
+    my $count = 0;
+    my $offset = 0;
+    while ((my $position = index($contents, $marker, $offset)) >= 0) {
+        $count++;
+        $offset = $position + length($marker);
+    }
+    return $count;
+}
+
+sub merge_managed_block {
+    my ($source, $block) = @_;
+    marker_count($block, $BEGIN_MARKER) == 1 && marker_count($block, $END_MARKER) == 1
+        or fail('CMS payload contains invalid managed block markers.');
+    my $begin_count = marker_count($source, $BEGIN_MARKER);
+    my $end_count = marker_count($source, $END_MARKER);
+    ($begin_count <= 1 && $end_count <= 1 && $begin_count == $end_count)
+        or fail('streams.pl contains incomplete or duplicated managed block markers.');
+
+    if ($begin_count == 1) {
+        my $begin = index($source, $BEGIN_MARKER);
+        my $end = index($source, $END_MARKER);
+        $begin <= $end or fail('streams.pl managed block markers are reversed.');
+        my $line_start = rindex($source, "\n", $begin - 1);
+        $line_start = $line_start < 0 ? 0 : $line_start + 1;
+        my $line_end = index($source, "\n", $end);
+        my $suffix = $line_end < 0 ? '' : substr($source, $line_end + 1);
+        return substr($source, 0, $line_start) . $block . "\n" . $suffix;
+    }
+
+    $source =~ /%cam\s*=\s*\(/g or fail('The %cam hash was not found in streams.pl.');
+    my $search_offset = pos($source);
+    pos($source) = $search_offset;
+    $source =~ /^\s*\);\s*$/mg or fail('The closing line of the %cam hash was not found.');
+    my $insert_at = $-[0];
+    my $prefix = substr($source, 0, $insert_at);
+    $prefix .= "\n" if $prefix ne '' && $prefix !~ /\n\z/;
+    return $prefix . $block . "\n" . substr($source, $insert_at);
+}
+
+sub run_quiet {
+    my (@command) = @_;
+    my $pid = fork();
+    defined $pid or fail('Unable to fork validation process.');
+    if ($pid == 0) {
+        open STDOUT, '>', '/dev/null' or exit 126;
+        open STDERR, '>', '/dev/null' or exit 126;
+        exec { $command[0] } @command;
+        exit 127;
+    }
+    waitpid($pid, 0);
+    return $? >> 8;
+}
+
+sub write_candidate {
+    my ($contents, $current_stat) = @_;
+    my $directory = dirname($STREAMS_FILE);
+    my ($handle, $path) = tempfile('.camera-manager.XXXXXX', DIR => $directory, UNLINK => 0);
+    binmode $handle;
+    print {$handle} $contents or do { unlink $path; fail('Unable to write candidate streams.pl.'); };
+    close $handle or do { unlink $path; fail('Unable to close candidate streams.pl.'); };
+    chmod($current_stat->[2] & 07777, $path) or do { unlink $path; fail('Unable to preserve streams.pl permissions.'); };
+    chown($current_stat->[4], $current_stat->[5], $path) or do { unlink $path; fail('Unable to preserve streams.pl ownership.'); };
+    return $path;
+}
+
+sub create_backup {
+    my ($source, $current_stat) = @_;
+    ensure_directory($BACKUP_DIRECTORY, 0750);
+    my $stamp = strftime('%Y%m%d-%H%M%S', gmtime());
+    my $path = "$BACKUP_DIRECTORY/streams.pl.$stamp." . substr(sha256_hex($source), 0, 12) . ".$$.bak";
+    sysopen my $handle, $path, O_WRONLY | O_CREAT | O_EXCL, 0640
+        or fail('Unable to create streams.pl backup.');
+    binmode $handle;
+    print {$handle} $source or do { close $handle; unlink $path; fail('Unable to write streams.pl backup.'); };
+    close $handle or do { unlink $path; fail('Unable to close streams.pl backup.'); };
+    chmod 0640, $path;
+    chown($current_stat->[4], $current_stat->[5], $path);
+    return $path;
+}
+
+sub pending_report {
+    my ($revision, $status, $message, $backup_path, $stream_count) = @_;
+    return {
+        action => 'report',
+        revision => int($revision),
+        status => $status,
+        message => $message,
+        backup_path => $backup_path // '',
+        stream_count => int($stream_count // 0),
+    };
+}
+
+sub send_pending_report {
+    my ($endpoint, $token, $state) = @_;
+    return 1 if ref($state->{pending_report}) ne 'HASH';
+    my $ok = eval { post_json($endpoint, $token, $state->{pending_report}); 1 };
+    return 0 if !$ok;
+    delete $state->{pending_report};
+    write_state($state);
+    return 1;
+}
+
+sub restore_original {
+    my ($source, $current_stat) = @_;
+    my $rollback = write_candidate($source, $current_stat);
+    rename $rollback, $STREAMS_FILE or do { unlink $rollback; fail('Unable to restore original streams.pl.'); };
+    return run_quiet('/bin/systemctl', 'restart', $SERVICE_NAME) == 0
+        && run_quiet('/bin/systemctl', 'is-active', '--quiet', $SERVICE_NAME) == 0;
+}
+
+sub self_test {
+    my $source = <<'PERL_SOURCE';
+#!/usr/bin/perl
+my %cam = (
+    '01-01' => 'rtsp://legacy.example/channel=1',
+);
+print scalar(keys %cam);
+PERL_SOURCE
+    my $block = <<'MANAGED_BLOCK';
+    # FIREBALL CAMERA MANAGER: BEGIN
+    # Generated by FIREBALL CMS. Edit cameras in Camera Manager, not here.
+    '33-01' => 'rtsp://user:secret\@192.168.33.201/live',
+    # FIREBALL CAMERA MANAGER: END
+MANAGED_BLOCK
+    $block =~ s/\n\z//;
+    my $first = merge_managed_block($source, $block);
+    index($first, "'01-01' =>") >= 0 or fail('Self-test removed a legacy camera.');
+    index($first, "'33-01' =>") >= 0 or fail('Self-test omitted a managed camera.');
+    marker_count($first, $BEGIN_MARKER) == 1 or fail('Self-test duplicated the managed block.');
+    my $second = merge_managed_block($first, $block);
+    marker_count($second, $BEGIN_MARKER) == 1 or fail('Self-test duplicated the managed block on retry.');
+    $first eq $second or fail('Self-test publication is not idempotent.');
+    print "fireball-camera-pull self-test passed.\n";
+    return 0;
+}
+
+sub main {
+    $> == 0 or fail('fireball-camera-pull must run as root.');
+    -f $CONFIG_FILE && !-l $CONFIG_FILE or fail('Agent configuration must be a regular file.');
+    my @config_stat = stat($CONFIG_FILE);
+    @config_stat && $config_stat[4] == 0 && (($config_stat[2] & 0777) & 0077) == 0
+        or fail('Agent configuration must be owned by root with mode 0600 or stricter.');
+    -x $CURL_BINARY or fail('curl is not executable.');
+    -x $PERL_BINARY or fail('Perl is not executable.');
+    -x $VERIFY_BINARY or fail('Camera payload verifier is not executable.');
+    -f $STREAMS_FILE && !-l $STREAMS_FILE && -r $STREAMS_FILE && -w $STREAMS_FILE
+        or fail('streams.pl must be a readable, writable regular file.');
+
+    open my $lock, '>>', $LOCK_FILE or fail('Unable to open Camera Manager lock.');
+    flock($lock, LOCK_EX | LOCK_NB) or fail('Another camera synchronization is already running.');
+
+    my ($endpoint, $token) = read_config();
+    ensure_directory($STATE_DIRECTORY, 0700);
+    my $state = read_state();
+    send_pending_report($endpoint, $token, $state);
+
+    my $response = post_json($endpoint, $token, {
+        action => 'fetch',
+        current_revision => int($state->{revision} // 0),
+    });
+    return 0 if !$response->{changed};
+
+    my $revision = int($response->{revision} // 0);
+    $revision > 0 or fail('CMS returned an invalid revision.');
+    my $block = $response->{managed_block};
+    defined $block && !ref($block) && length($block) <= 1_500_000
+        or fail('CMS returned an invalid managed block.');
+    sha256_hex($block) eq lc($response->{managed_block_sha256} // '')
+        or fail('CMS managed block checksum mismatch.');
+
+    my @current_stat = stat($STREAMS_FILE);
+    @current_stat or fail('Unable to stat streams.pl.');
+    my $source = read_text_file($STREAMS_FILE, 10_000_000);
+    my $candidate_contents = merge_managed_block($source, $block);
+    my $candidate = write_candidate($candidate_contents, \@current_stat);
+
+    if (run_quiet($VERIFY_BINARY, $STREAMS_FILE, $candidate) != 0) {
+        unlink $candidate;
+        fail('Candidate changes data outside the managed block or contains unsupported entries.');
+    }
+    if (run_quiet($PERL_BINARY, '-c', $candidate) != 0) {
+        unlink $candidate;
+        fail('Perl syntax check failed; streams.pl was not changed.');
+    }
+
+    my $backup = create_backup($source, \@current_stat);
+    rename $candidate, $STREAMS_FILE or do { unlink $candidate; fail('Unable to atomically replace streams.pl.'); };
+
+    my $restart = $response->{restart} ? 1 : 0;
+    if ($restart) {
+        my $healthy = run_quiet('/bin/systemctl', 'restart', $SERVICE_NAME) == 0
+            && run_quiet('/bin/systemctl', 'is-active', '--quiet', $SERVICE_NAME) == 0;
+        if (!$healthy) {
+            my $restored = restore_original($source, \@current_stat);
+            my $message = $restored
+                ? 'New configuration was rolled back because the service failed to restart; original cameras restored.'
+                : 'New configuration failed and the original file was restored, but the service is not active.';
+            $state->{pending_report} = pending_report(
+                $revision,
+                'failed',
+                $message,
+                $backup,
+                $response->{stream_count}
+            );
+            write_state($state);
+            send_pending_report($endpoint, $token, $state);
+            fail($message);
+        }
+    }
+
+    $state->{revision} = $revision;
+    $state->{pending_report} = pending_report(
+        $revision,
+        'success',
+        $restart ? 'Configuration checked, backed up, applied, and service restarted.'
+                 : 'Configuration checked, backed up, and applied without service restart.',
+        $backup,
+        $response->{stream_count}
+    );
+    write_state($state);
+    send_pending_report($endpoint, $token, $state);
+    return 0;
+}
+
+my $exit = eval {
+    if (@ARGV == 1 && $ARGV[0] eq '--self-test') {
+        self_test();
+    } elsif (@ARGV == 0) {
+        main();
+    } else {
+        fail('Unsupported command-line argument.');
+    }
+};
+if ($@) {
+    my $error = $@;
+    $error =~ s/[\r\n]+\z//;
+    print STDERR "$error\n";
+    exit 1;
+}
+exit int($exit // 0);

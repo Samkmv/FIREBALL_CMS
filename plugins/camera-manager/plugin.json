@@ -1,7 +1,7 @@
 {
   "name": "Camera Manager",
   "slug": "camera-manager",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
   "release_notes": [
@@ -9,7 +9,8 @@
     "Added encrypted RTSP credential storage and public HLS URL generation.",
     "Added atomic streams.pl publishing with locking, backups, Perl syntax validation, and optional service restart.",
     "Added strict host-key-checked SSH transport and a forced-command agent for a separate RTSP server.",
-    "Added HTTPS pull synchronization for FTP-only shared hosting, with agent status reporting and automatic rollback."
+    "Added HTTPS pull synchronization for FTP-only shared hosting, with agent status reporting and automatic rollback.",
+    "Added an inline HTTPS token save button, visible token status, and settings error logging."
   ],
   "release_notes_i18n": {
     "ru": [
@@ -17,7 +18,8 @@
       "Пароли RTSP хранятся в зашифрованном виде, публичные HLS-ссылки создаются автоматически.",
       "Публикация streams.pl выполняется атомарно: блокировка, резервная копия, perl -c и необязательный перезапуск службы.",
       "Добавлено SSH-подключение к отдельному RTSP-серверу с обязательной проверкой host key и ограниченным агентом.",
-      "Добавлена HTTPS pull-синхронизация для FTP-хостинга, отчёты агента и автоматический откат при ошибке службы."
+      "Добавлена HTTPS pull-синхронизация для FTP-хостинга, отчёты агента и автоматический откат при ошибке службы.",
+      "Добавлены заметная кнопка сохранения HTTPS-токена, индикатор его состояния и журналирование ошибок формы."
     ]
   },
   "update": {

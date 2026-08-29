@@ -20,6 +20,7 @@
             <div class="row g-3">
                 <div class="col-md-7"><label class="form-label" for="cameraPullEndpoint">Endpoint CMS</label><input class="form-control font-monospace" id="cameraPullEndpoint" readonly value="<?= htmlSC(base_url('/api/camera-manager/pull')) ?>"><div class="form-text">Этот HTTPS-адрес указывается в конфигурации агента на RTSP-сервере.</div></div>
                 <div class="col-md-5"><label class="form-label" for="cameraPullToken">Секретный токен</label><input class="form-control font-monospace" id="cameraPullToken" name="pull_token" type="password" autocomplete="new-password" placeholder="<?= !empty($settings['pull_token_configured']) ? 'Уже настроен — оставьте пустым' : '64 шестнадцатеричных символа' ?>"><div class="form-text">Создайте командой <code>openssl rand -hex 32</code>. CMS хранит только SHA-256 хеш.</div></div>
+                <div class="col-12 d-flex flex-wrap align-items-center gap-3"><button class="btn btn-dark rounded-pill" type="submit">Сохранить токен и настройки</button><span class="badge rounded-pill text-bg-<?= !empty($settings['pull_token_configured']) ? 'success' : 'warning' ?>"><?= !empty($settings['pull_token_configured']) ? 'Токен настроен' : 'Токен ещё не сохранён' ?></span></div>
             </div>
             <dl class="row small mt-3 mb-0">
                 <dt class="col-md-3">Последнее обращение агента</dt><dd class="col-md-9 mb-1"><?= htmlSC((string)($settings['pull_last_seen_at'] ?: 'ещё не было')) ?></dd>

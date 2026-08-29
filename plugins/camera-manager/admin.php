@@ -162,6 +162,7 @@ $router->post('/admin/camera-manager/settings', static function () use ($cameraM
         FireballPluginCameraManager::saveSettings(request()->getData());
         session()->setFlash('success', 'Настройки сохранены.');
     } catch (Throwable $exception) {
+        log_error_details('Camera Manager settings save failed', [], $exception);
         session()->setFlash('error', $exception->getMessage());
     }
     $cameraManagerRedirect('/admin/camera-manager/settings');
