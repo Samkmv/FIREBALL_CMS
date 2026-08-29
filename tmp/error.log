@@ -1,0 +1,49 @@
+[2026-08-28 21:52:33] Camera Manager connection test failed
+Request URI: /admin/camera-manager/settings/test-connection
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Файл настройки ssh_identity_file не найден или недоступен PHP.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/src/SshCameraTransport.php
+Line: 117
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/src/SshCameraTransport.php(75): Fireball\CameraManager\SshCameraTransport->absoluteReadableFile('ssh_identity_fi...')
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/src/SshCameraTransport.php(69): Fireball\CameraManager\SshCameraTransport->command()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/src/SshCameraTransport.php(18): Fireball\CameraManager\SshCameraTransport->request('PING\n', 20)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/Plugin.php(498): Fireball\CameraManager\SshCameraTransport->ping()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/admin.php(167): FireballPluginCameraManager::testConnection()
+#5 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#7 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#8 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#9 {main}
+========================================================================
+[2026-08-29 08:30:57] Camera Manager connection test failed
+Request URI: /admin/camera-manager/settings/test-connection
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: RTSP-агент ещё не обращался к HTTPS endpoint. Запустите его проверку на RTSP-сервере.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/Plugin.php
+Line: 562
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/admin.php(172): FireballPluginCameraManager::testConnection()
+#1 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================
+[2026-08-29 08:31:04] Camera Manager connection test failed
+Request URI: /admin/camera-manager/settings/test-connection
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: RTSP-агент ещё не обращался к HTTPS endpoint. Запустите его проверку на RTSP-сервере.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/Plugin.php
+Line: 562
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/admin.php(172): FireballPluginCameraManager::testConnection()
+#1 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================

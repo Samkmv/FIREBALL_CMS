@@ -1,0 +1,91 @@
+#!/bin/sh
+
+set -eu
+
+# This file is installed on the RTSP server as /usr/local/sbin/fireball-camera-agent.
+# Keep these values fixed on the remote host. The CMS cannot override them.
+STREAMS_FILE="/var/www/html/rtsp/streams.pl"
+SERVICE_NAME="rtsp-streams.service"
+PERL_BINARY="/usr/bin/perl"
+VERIFY_BINARY="/usr/local/libexec/fireball-camera-verify"
+BACKUP_DIRECTORY="/var/www/html/rtsp/.fireball-camera-manager-backups"
+LOCK_FILE="/var/www/html/rtsp/.fireball-camera-manager.lock"
+
+json_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+fail() {
+    message=$(json_escape "$1")
+    printf '{"success":false,"message":"%s"}\n' "$message"
+    exit "${2:-1}"
+}
+
+IFS= read -r request || fail "Missing Camera Manager protocol request." 2
+
+case "$request" in
+    PING)
+        [ -r "$STREAMS_FILE" ] || fail "streams.pl is not readable." 3
+        [ -w "$STREAMS_FILE" ] || fail "streams.pl is not writable." 3
+        [ -x "$PERL_BINARY" ] || fail "Perl is not executable." 3
+        [ -x "$VERIFY_BINARY" ] || fail "Camera payload verifier is not executable." 3
+        command -v flock >/dev/null 2>&1 || fail "flock is not installed." 3
+        streams_file=$(json_escape "$STREAMS_FILE")
+        service=$(json_escape "$SERVICE_NAME")
+        printf '{"success":true,"message":"Camera agent is ready.","streams_file":"%s","service":"%s"}\n' "$streams_file" "$service"
+        ;;
+    READ)
+        [ -r "$STREAMS_FILE" ] || fail "streams.pl is not readable." 3
+        exec cat -- "$STREAMS_FILE"
+        ;;
+    "PUBLISH 0"|"PUBLISH 1")
+        restart=0
+        [ "$request" = "PUBLISH 1" ] && restart=1
+        [ -r "$STREAMS_FILE" ] || fail "streams.pl is not readable." 3
+        [ -w "$STREAMS_FILE" ] || fail "streams.pl is not writable." 3
+        directory=$(dirname "$STREAMS_FILE")
+        mkdir -p -- "$BACKUP_DIRECTORY"
+        chmod 0750 "$BACKUP_DIRECTORY"
+
+        exec 9>"$LOCK_FILE"
+        flock -n 9 || fail "Another camera publication is already running." 4
+
+        temporary=$(mktemp "$directory/.camera-manager.XXXXXX") || fail "Unable to create temporary streams.pl." 5
+        cleanup() {
+            [ ! -e "$temporary" ] || rm -f -- "$temporary"
+        }
+        trap cleanup EXIT HUP INT TERM
+        cat >"$temporary" || fail "Unable to receive streams.pl." 5
+        [ -s "$temporary" ] || fail "Received streams.pl is empty." 5
+        chmod --reference="$STREAMS_FILE" "$temporary"
+        chown --reference="$STREAMS_FILE" "$temporary"
+
+        "$VERIFY_BINARY" "$STREAMS_FILE" "$temporary" >/dev/null 2>&1 || fail "Candidate changes data outside the managed camera block or contains unsupported entries." 6
+        "$PERL_BINARY" -c "$temporary" >/dev/null 2>&1 || fail "Perl syntax check failed; working file was not changed." 6
+
+        timestamp=$(date -u +%Y%m%d-%H%M%S)
+        backup="$BACKUP_DIRECTORY/streams.pl.$timestamp.$$.bak"
+        cp -p -- "$STREAMS_FILE" "$backup" || fail "Unable to create streams.pl backup." 7
+        chmod 0640 "$backup"
+        mv -f -- "$temporary" "$STREAMS_FILE" || fail "Unable to atomically replace streams.pl." 8
+        trap - EXIT HUP INT TERM
+
+        restarted=false
+        message="Configuration published without service restart."
+        if [ "$restart" -eq 1 ]; then
+            if systemctl restart "$SERVICE_NAME"; then
+                restarted=true
+                message="Configuration published and service restarted."
+            else
+                message="Configuration published, but service restart failed."
+            fi
+        fi
+
+        backup_json=$(json_escape "$backup")
+        message_json=$(json_escape "$message")
+        printf '{"success":true,"backup_path":"%s","restarted":%s,"message":"%s"}\n' "$backup_json" "$restarted" "$message_json"
+        ;;
+    *)
+        fail "Unsupported Camera Manager protocol request." 2
+        ;;
+esac

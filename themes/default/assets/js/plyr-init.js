@@ -1153,32 +1153,6 @@
         attemptDeferredPlay(element);
     };
 
-    const attachNativeHlsFromUserGesture = function (element) {
-        if (!(element instanceof HTMLVideoElement) || !element.hlsSource) {
-            return false;
-        }
-
-        const forceReload = Boolean(element.error);
-        const sourceChanged = element.getAttribute('src') !== element.hlsSource;
-
-        if (sourceChanged || forceReload) {
-            element.setAttribute('src', element.hlsSource);
-        }
-
-        if (sourceChanged || forceReload || !element.currentSrc) {
-            element.load();
-        }
-
-        element.hlsMediaReady = true;
-        showHlsInfo(element, t('preparing_native'));
-
-        // Важно для iPhone/Safari: play() вызывается до первого await,
-        // пока пользовательский жест всё ещё активен.
-        attemptDeferredPlay(element);
-
-        return true;
-    };
-
     const prepareNativeHlsPlayback = async function (element) {
         let isAwake = true;
 
@@ -2124,24 +2098,16 @@
         element.hlsWarmupActive = true;
         showHlsInfo(element, t('first_play'));
 
-        let backendWakePromise = null;
-
-        if (useNativeHls) {
-            // Стартуем backend wake первым, но не ждём его здесь.
-            // Для Safari критично сохранить текущий пользовательский жест.
-            backendWakePromise = wakeBackendStream(element);
-
-            // src -> load() -> play() выполняются синхронно до первого await.
-            attachNativeHlsFromUserGesture(element);
-        } else {
-            // Старое поведение hls.js оставляем без изменений.
+        if (!useNativeHls) {
             primePlaybackSession(element);
         }
 
         let isReady = false;
 
         try {
-            const backendReady = await (backendWakePromise || wakeBackendStream(element));
+            // Do not assign the native HLS source until the backend has confirmed
+            // that both the manifest and its first media segment are available.
+            const backendReady = await wakeBackendStream(element);
 
             if (backendReady) {
                 if (useNativeHls) {
