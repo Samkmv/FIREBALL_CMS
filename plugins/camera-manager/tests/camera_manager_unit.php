@@ -212,6 +212,16 @@ if (!class_exists('FireballPluginCameraManager')) {
     {
         public const SLUG = 'camera-manager';
 
+        public static function settingValue(string $key, mixed $default = null): mixed
+        {
+            return $GLOBALS['camera_manager_pull_settings'][$key] ?? $default;
+        }
+
+        public static function setSettingValue(string $key, mixed $value): void
+        {
+            $GLOBALS['camera_manager_pull_settings'][$key] = $value;
+        }
+
         public static function settings(): array
         {
             return $GLOBALS['camera_manager_pull_settings'];

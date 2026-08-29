@@ -10,11 +10,7 @@ final class PullSyncService
 
     public function authenticate(string $token): bool
     {
-        $storedHash = strtolower(trim((string)plugin_setting(
-            \FireballPluginCameraManager::SLUG,
-            'pull_token_hash',
-            ''
-        )));
+        $storedHash = strtolower(trim((string)\FireballPluginCameraManager::settingValue('pull_token_hash', '')));
 
         return preg_match('/^[a-f0-9]{64}$/', $storedHash) === 1
             && preg_match('/^[a-f0-9]{64}$/', $token) === 1
@@ -44,7 +40,7 @@ final class PullSyncService
         $currentRevision = $this->revision($payload['current_revision'] ?? 0);
         $desiredRevision = max(0, (int)$settings['pull_revision']);
         $now = date('Y-m-d H:i:s');
-        plugin_setting_set(\FireballPluginCameraManager::SLUG, 'pull_last_seen_at', $now);
+        \FireballPluginCameraManager::setSettingValue('pull_last_seen_at', $now);
 
         if ($desiredRevision === 0 || $currentRevision === $desiredRevision) {
             return [
@@ -56,11 +52,7 @@ final class PullSyncService
             ];
         }
 
-        $encryptedSnapshot = (string)plugin_setting(
-            \FireballPluginCameraManager::SLUG,
-            'pull_payload_encrypted',
-            ''
-        );
+        $encryptedSnapshot = (string)\FireballPluginCameraManager::settingValue('pull_payload_encrypted', '');
         if ($encryptedSnapshot === '') {
             throw new RuntimeException('Published camera snapshot is missing.');
         }
@@ -115,23 +107,19 @@ final class PullSyncService
         }
         $streamCount = max(0, min(100000, (int)($payload['stream_count'] ?? 0)));
         $fingerprint = hash('sha256', implode("\n", [$revision, $status, $backupPath, $message]));
-        $previousFingerprint = (string)plugin_setting(
-            \FireballPluginCameraManager::SLUG,
-            'pull_last_report_fingerprint',
-            ''
-        );
+        $previousFingerprint = (string)\FireballPluginCameraManager::settingValue('pull_last_report_fingerprint', '');
         $lastRevision = max(0, (int)$settings['pull_last_revision']);
 
-        plugin_setting_set(\FireballPluginCameraManager::SLUG, 'pull_last_seen_at', date('Y-m-d H:i:s'));
+        \FireballPluginCameraManager::setSettingValue('pull_last_seen_at', date('Y-m-d H:i:s'));
         if ($revision >= $lastRevision) {
-            plugin_setting_set(\FireballPluginCameraManager::SLUG, 'pull_last_revision', $revision);
-            plugin_setting_set(\FireballPluginCameraManager::SLUG, 'pull_last_status', $status);
-            plugin_setting_set(\FireballPluginCameraManager::SLUG, 'pull_last_message', $message);
-            plugin_setting_set(\FireballPluginCameraManager::SLUG, 'pull_last_backup_path', $backupPath);
+            \FireballPluginCameraManager::setSettingValue('pull_last_revision', $revision);
+            \FireballPluginCameraManager::setSettingValue('pull_last_status', $status);
+            \FireballPluginCameraManager::setSettingValue('pull_last_message', $message);
+            \FireballPluginCameraManager::setSettingValue('pull_last_backup_path', $backupPath);
         }
 
         if (!hash_equals($previousFingerprint, $fingerprint)) {
-            plugin_setting_set(\FireballPluginCameraManager::SLUG, 'pull_last_report_fingerprint', $fingerprint);
+            \FireballPluginCameraManager::setSettingValue('pull_last_report_fingerprint', $fingerprint);
             \FireballPluginCameraManager::recordPublication(
                 $status,
                 $streamCount,

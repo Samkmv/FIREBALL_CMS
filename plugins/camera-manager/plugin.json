@@ -1,7 +1,7 @@
 {
   "name": "Camera Manager",
   "slug": "camera-manager",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
   "release_notes": [
@@ -11,7 +11,8 @@
     "Added strict host-key-checked SSH transport and a forced-command agent for a separate RTSP server.",
     "Added HTTPS pull synchronization for FTP-only shared hosting, with agent status reporting and automatic rollback.",
     "Added an inline HTTPS token save button, visible token status, and settings error logging.",
-    "Added a dedicated HTTPS token save route with immediate database read-back verification."
+    "Added a dedicated HTTPS token save route with immediate database read-back verification.",
+    "Added compatibility for legacy SprintHost plugin_settings tables with duplicate setting rows."
   ],
   "release_notes_i18n": {
     "ru": [
@@ -21,7 +22,8 @@
       "Добавлено SSH-подключение к отдельному RTSP-серверу с обязательной проверкой host key и ограниченным агентом.",
       "Добавлена HTTPS pull-синхронизация для FTP-хостинга, отчёты агента и автоматический откат при ошибке службы.",
       "Добавлены заметная кнопка сохранения HTTPS-токена, индикатор его состояния и журналирование ошибок формы.",
-      "Добавлен отдельный маршрут сохранения HTTPS-токена с немедленной проверкой чтением из базы данных."
+      "Добавлен отдельный маршрут сохранения HTTPS-токена с немедленной проверкой чтением из базы данных.",
+      "Добавлена совместимость со старыми таблицами plugin_settings на SprintHost, содержащими дубли настроек."
     ]
   },
   "update": {

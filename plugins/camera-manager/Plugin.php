@@ -29,9 +29,10 @@ final class FireballPluginCameraManager implements PluginInterface
     public function install(): void
     {
         self::ensureDatabaseSchema();
+        self::synchronizeSettingRows();
         foreach (self::defaultSettings() as $key => $value) {
-            if (plugin_setting(self::SLUG, $key, null) === null) {
-                plugin_setting_set(self::SLUG, $key, $value);
+            if (self::settingValue($key, null) === null) {
+                self::setSettingValue($key, $value);
             }
         }
     }
@@ -44,6 +45,7 @@ final class FireballPluginCameraManager implements PluginInterface
     public function activate(): void
     {
         self::ensureDatabaseSchema();
+        self::synchronizeSettingRows();
     }
 
     public function deactivate(): void
@@ -54,6 +56,7 @@ final class FireballPluginCameraManager implements PluginInterface
     {
         try {
             self::ensureDatabaseSchema();
+            self::synchronizeSettingRows();
         } catch (Throwable $exception) {
             log_error_details('Camera Manager schema check failed', [], $exception);
         }
@@ -127,7 +130,7 @@ final class FireballPluginCameraManager implements PluginInterface
     {
         $settings = [];
         foreach (self::defaultSettings() as $key => $default) {
-            $settings[$key] = plugin_setting(self::SLUG, $key, $default);
+            $settings[$key] = self::settingValue($key, $default);
         }
         $settings['streams_file_path'] = trim((string)$settings['streams_file_path']);
         $settings['perl_binary'] = trim((string)$settings['perl_binary']);
@@ -170,7 +173,7 @@ final class FireballPluginCameraManager implements PluginInterface
         $identityFile = trim((string)($data['ssh_identity_file'] ?? ''));
         $knownHostsFile = trim((string)($data['ssh_known_hosts_file'] ?? ''));
         $pullToken = strtolower(trim((string)($data['pull_token'] ?? '')));
-        $existingPullTokenHash = trim((string)plugin_setting(self::SLUG, 'pull_token_hash', ''));
+        $existingPullTokenHash = trim((string)self::settingValue('pull_token_hash', ''));
 
         if ($connectionMode === 'local' && ($streamsPath === '' || $streamsPath[0] !== '/' || basename($streamsPath) !== 'streams.pl')) {
             throw new RuntimeException('Укажите абсолютный путь к файлу streams.pl.');
@@ -228,7 +231,7 @@ final class FireballPluginCameraManager implements PluginInterface
             'ssh_known_hosts_file' => $knownHostsFile,
             'pull_token_hash' => $pullTokenHash,
         ] as $key => $value) {
-            plugin_setting_set(self::SLUG, $key, $value);
+            self::setSettingValue($key, $value);
         }
 
         if ($pullToken !== '') {
@@ -244,8 +247,41 @@ final class FireballPluginCameraManager implements PluginInterface
         }
 
         $hash = hash('sha256', $token);
-        plugin_setting_set(self::SLUG, 'pull_token_hash', $hash);
+        self::setSettingValue('pull_token_hash', $hash);
         self::assertStoredPullTokenHash($hash);
+    }
+
+    public static function settingValue(string $key, mixed $default = null): mixed
+    {
+        return plugin_setting(self::SLUG, $key, $default);
+    }
+
+    public static function setSettingValue(string $key, mixed $value): void
+    {
+        if (!function_exists('db')) {
+            plugin_setting_set(self::SLUG, $key, $value);
+            return;
+        }
+
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $stored = $encoded !== false ? $encoded : 'null';
+        $existing = (int)db()->query(
+            'SELECT COUNT(*) FROM plugin_settings WHERE plugin_slug = ? AND setting_key = ?',
+            [self::SLUG, $key]
+        )->getColumn();
+
+        if ($existing > 0) {
+            db()->query(
+                'UPDATE plugin_settings SET setting_value = ?, updated_at = ? WHERE plugin_slug = ? AND setting_key = ?',
+                [$stored, date('Y-m-d H:i:s'), self::SLUG, $key]
+            );
+            return;
+        }
+
+        db()->query(
+            'INSERT INTO plugin_settings (plugin_slug, setting_key, setting_value, updated_at) VALUES (?, ?, ?, ?)',
+            [self::SLUG, $key, $stored, date('Y-m-d H:i:s')]
+        );
     }
 
     public static function tabs(string $active): array
@@ -527,9 +563,9 @@ final class FireballPluginCameraManager implements PluginInterface
                     'managed_block' => $managedBlock,
                     'managed_block_sha256' => hash('sha256', $managedBlock),
                 ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-                plugin_setting_set(self::SLUG, 'pull_payload_encrypted', SecretCipher::encrypt($snapshot));
-                plugin_setting_set(self::SLUG, 'pull_revision', $revision);
-                plugin_setting_set(self::SLUG, 'pull_requested_at', date('Y-m-d H:i:s'));
+                self::setSettingValue('pull_payload_encrypted', SecretCipher::encrypt($snapshot));
+                self::setSettingValue('pull_revision', $revision);
+                self::setSettingValue('pull_requested_at', date('Y-m-d H:i:s'));
                 self::recordPublication(
                     'warning',
                     count($streams),
@@ -759,9 +795,46 @@ final class FireballPluginCameraManager implements PluginInterface
 
     private static function assertStoredPullTokenHash(string $expectedHash): void
     {
-        $storedHash = strtolower(trim((string)plugin_setting(self::SLUG, 'pull_token_hash', '')));
+        $storedHash = strtolower(trim((string)self::settingValue('pull_token_hash', '')));
         if (preg_match('/^[a-f0-9]{64}$/', $storedHash) !== 1 || !hash_equals($expectedHash, $storedHash)) {
             throw new RuntimeException('SprintHost не сохранил HTTPS-токен в настройках плагина. Проверьте доступ базы данных на запись.');
+        }
+    }
+
+    private static function synchronizeSettingRows(): void
+    {
+        if (!function_exists('db')) {
+            return;
+        }
+
+        $rows = db()->query(
+            'SELECT setting_key, setting_value, updated_at FROM plugin_settings WHERE plugin_slug = ? ORDER BY id DESC',
+            [self::SLUG]
+        )->get() ?: [];
+        $latest = [];
+        $counts = [];
+        foreach ($rows as $row) {
+            $key = (string)($row['setting_key'] ?? '');
+            if ($key === '') {
+                continue;
+            }
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+            if (!isset($latest[$key])) {
+                $latest[$key] = [
+                    'value' => (string)($row['setting_value'] ?? 'null'),
+                    'updated_at' => (string)($row['updated_at'] ?? date('Y-m-d H:i:s')),
+                ];
+            }
+        }
+
+        foreach ($latest as $key => $row) {
+            if (($counts[$key] ?? 0) < 2) {
+                continue;
+            }
+            db()->query(
+                'UPDATE plugin_settings SET setting_value = ?, updated_at = ? WHERE plugin_slug = ? AND setting_key = ?',
+                [$row['value'], $row['updated_at'], self::SLUG, $key]
+            );
         }
     }
 
