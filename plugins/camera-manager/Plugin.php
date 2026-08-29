@@ -304,9 +304,14 @@ final class FireballPluginCameraManager implements PluginInterface
 
     public static function viewData(string $active, array $data = []): array
     {
+        $playerAssetPath = __DIR__ . '/assets/camera-manager-player.js';
+        $playerAssetVersion = is_file($playerAssetPath) ? (string)filemtime($playerAssetPath) : (string)time();
+
         return array_merge([
             'tabs' => self::tabs($active),
             'settings' => self::settings(),
+            'styles' => [],
+            'footer_scripts' => [base_href('/plugins/camera-manager/assets/camera-manager-player.js?v=' . $playerAssetVersion)],
         ], $data);
     }
 

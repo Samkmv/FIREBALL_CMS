@@ -1237,7 +1237,8 @@ body:has(.fb-editor-workspace) {
 
 .fb-editor2-media img,
 .fb-editor2-gallery img,
-.fb-editor2-video video {
+.fb-editor2-video video,
+.fb-editor2-video .fireplayer {
     display: block;
     max-width: 100%;
     max-height: 560px;
@@ -1295,7 +1296,8 @@ body:has(.fb-editor-workspace) {
     border-radius: 8px;
 }
 
-.fb-editor2-audio audio {
+.fb-editor2-audio audio,
+.fb-editor2-audio .fireplayer {
     width: 100%;
 }
 

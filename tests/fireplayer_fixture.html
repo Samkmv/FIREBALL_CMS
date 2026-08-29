@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru" data-bs-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FirePlayer browser fixture</title>
+    <link rel="stylesheet" href="/public/assets/default/css/fireplayer.css">
+    <style>
+        body { max-width: 960px; margin: 0 auto; padding: 32px; font: 16px/1.5 system-ui, sans-serif; background: #edf1f5; }
+        main { display: grid; gap: 32px; }
+        h1, h2 { color: #172033; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>FirePlayer browser fixture</h1>
+    <section><h2>Video / LIVE UI</h2><div id="fixtureVideo" class="fire-player" data-fire-player-manual></div></section>
+    <section><h2>Audio UI</h2><div id="fixtureAudio" class="fire-player" data-fire-player-manual></div></section>
+</main>
+<script src="/public/assets/default/js/fireplayer.js"></script>
+<script src="/public/assets/default/js/fireplayer-video.js"></script>
+<script src="/public/assets/default/js/fireplayer-audio.js"></script>
+<script src="/public/assets/default/js/fireplayer-live.js"></script>
+<script>
+    window.fixtureVideoPlayer = new FirePlayer('#fixtureVideo', { media: 'video', mode: 'live', probe: false });
+    window.fixtureVideoPlayer.info = { media: 'video', protocol: 'hls', mode: 'live' };
+    window.fixtureVideoPlayer.setMode('live');
+    window.fixtureAudioPlayer = new FirePlayer('#fixtureAudio', { media: 'audio', probe: false });
+    window.fixtureAudioPlayer.load('/fixtures/fireplayer-sample.mp3', { media: 'audio', probe: false });
+    Promise.all([
+        FirePlayer.detect('/movie.mp4', { probe: false }),
+        FirePlayer.detect('/song.mp3', { probe: false }),
+        FirePlayer.detect('/camera/index.m3u8', { probe: false }),
+        FirePlayer.detect('/tests/fixtures/fireplayer-live.m3u8'),
+        FirePlayer.detect('/tests/fixtures/fireplayer-vod.m3u8')
+    ]).then(function (results) {
+        document.documentElement.dataset.fixtureDetection = results.map(function (item) {
+            return item.media + ':' + item.protocol + ':' + item.mode;
+        }).join(',');
+    });
+</script>
+</body>
+</html>

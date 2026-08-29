@@ -201,6 +201,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <link rel="stylesheet" href="<?= theme_asset('vendor/simplebar/simplebar.min.css') ?>">
     <link rel="stylesheet" href="<?= theme_asset('vendor/swiper/swiper-bundle.min.css') ?>">
     <link rel="stylesheet" href="<?= theme_asset('vendor/plyr/plyr.css') . '?v=' . filemtime(theme()->assetPath('vendor/plyr/plyr.css')) ?>">
+    <link rel="stylesheet" href="<?= base_url('/assets/default/css/fireplayer.css?v=' . filemtime(WWW . '/assets/default/css/fireplayer.css')) ?>">
     <link rel="stylesheet" href="<?= theme_asset('vendor/highlight.js/styles/atom-one-dark.min.css') ?>">
 
     <?php if (!empty($styles)): ?>
@@ -318,6 +319,10 @@ $postCategoryUrl = static function (?string $slug = null): string {
     window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
     window.canViewVideoDiagnostics = window.canViewVideoStatus;
     document.documentElement.dataset.videoStatus = window.canViewVideoStatus ? '1' : '0';
+    window.firePlayerConfig = {
+        assetBase: <?= json_encode(base_url('/assets/default'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+        hlsScriptUrl: <?= json_encode(theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js')), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
+    };
     if (!window.canViewVideoStatus) {
         (function () {
             const diagnosticTextPattern = /Загрузка видео|Подключение|Повторное подключение|Loading video|Connecting|Reconnecting/i;
@@ -423,6 +428,12 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
 <!-- Customs scripts -->
 <script src="<?= theme_asset('js/select-init.js') . '?v=' . filemtime(theme()->assetPath('js/select-init.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/fireplayer.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/fireplayer-video.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-video.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/fireplayer-audio.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-audio.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/fireplayer-hls.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-hls.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/fireplayer-live.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-live.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/fireplayer-init.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-init.js')) ?>"></script>
 <script src="<?= theme_asset('js/plyr-init.js') . '?v=' . filemtime(theme()->assetPath('js/plyr-init.js')) ?>"></script>
 <?php if ($isAdmin): ?>
     <script src="<?= theme_asset('js/admin-delete-modal.js') . '?v=' . filemtime(theme()->assetPath('js/admin-delete-modal.js')) ?>"></script>

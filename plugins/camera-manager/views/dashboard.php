@@ -62,6 +62,18 @@
                     </td>
                     <td class="text-end">
                         <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                            <button
+                                class="btn btn-sm btn-dark rounded-pill"
+                                type="button"
+                                data-bs-toggle="modal"
+                                data-bs-target="#cameraManagerPlayerModal"
+                                data-camera-player-open
+                                data-player-src="<?= htmlSC(FireballPluginCameraManager::hlsUrl((string)$camera['stream_key'])) ?>"
+                                data-player-poster="<?= htmlSC(FireballPluginCameraManager::posterUrl((string)$camera['stream_key'])) ?>"
+                                data-player-stream-id="<?= htmlSC((string)$camera['stream_key']) ?>"
+                                data-player-title="<?= htmlSC((string)$camera['name']) ?>"
+                                <?= !$isEnabled ? 'disabled' : '' ?>
+                            ><i class="ci-play me-1" aria-hidden="true"></i>Смотреть LIVE</button>
                             <form action="<?= base_href('/admin/camera-manager/cameras/probe') ?>" method="post">
                                 <?= get_csrf_field() ?><input type="hidden" name="id" value="<?= (int)$camera['id'] ?>">
                                 <button class="btn btn-sm btn-outline-secondary rounded-pill" type="submit">Проверить</button>
@@ -77,6 +89,24 @@
             <?php endforeach; ?>
             </tbody>
         </table>
+    </div>
+
+    <div class="modal fade" id="cameraManagerPlayerModal" tabindex="-1" aria-labelledby="cameraManagerPlayerTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 rounded-5 overflow-hidden">
+                <div class="modal-header border-0 px-3 px-md-4 pt-3 pt-md-4">
+                    <div>
+                        <div class="small text-body-secondary mb-1">Camera Manager · LIVE</div>
+                        <h2 class="modal-title h5 mb-0" id="cameraManagerPlayerTitle" data-camera-player-title>Камера</h2>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4 pt-2">
+                    <div class="fire-player" data-fire-player-manual data-camera-player aria-label="LIVE-поток камеры"></div>
+                    <p class="small text-body-secondary mt-3 mb-0">Тип источника, HLS-движок и режим LIVE определяются автоматически. При зависании поток переподключится.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
 <?= view()->renderPartial('admin/shell_close') ?>

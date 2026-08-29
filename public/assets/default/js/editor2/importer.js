@@ -174,7 +174,8 @@
 
     function mediaBlock(element, type) {
         const hlsSource = type === 'video' ? element.getAttribute('data-hls-src') || '' : '';
-        const source = element.getAttribute('src')
+        const source = element.getAttribute('data-src')
+            || element.getAttribute('src')
             || hlsSource
             || (element.querySelector('source') ? element.querySelector('source').getAttribute('src') : '');
         return {
@@ -182,9 +183,14 @@
             type: type,
             data: {
                 src: sanitizer.safeUrl(source || '', false),
-                poster: sanitizer.safeUrl(element.getAttribute('poster') || '', true),
+                poster: sanitizer.safeUrl(element.getAttribute('data-poster') || element.getAttribute('poster') || '', true),
                 caption: '',
-                hls: Boolean(hlsSource) || /\.m3u8(?:$|[?#])/i.test(String(source || ''))
+                hls: element.getAttribute('data-protocol') === 'hls' || Boolean(hlsSource) || /\.m3u8(?:$|[?#])/i.test(String(source || '')),
+                aspectRatio: element.getAttribute('data-aspect-ratio') || '16:9',
+                autoplay: element.getAttribute('data-autoplay') === 'true',
+                muted: element.getAttribute('data-muted') === 'true',
+                loop: element.getAttribute('data-loop') === 'true',
+                controls: element.getAttribute('data-controls') !== 'false'
             }
         };
     }
@@ -202,6 +208,18 @@
         const tag = element.tagName.toLowerCase();
         if (element.matches('template[data-fb-editor-state], template[data-fb-hidden-block]')) {
             return [];
+        }
+        const firePlayer = element.matches('[data-fire-player]') ? element : element.querySelector('[data-fire-player]');
+        if (firePlayer) {
+            const declaredType = firePlayer.getAttribute('data-media') || '';
+            const source = firePlayer.getAttribute('data-src') || '';
+            const type = declaredType === 'audio' || (!declaredType && /\.(?:mp3|aac|m4a|oga|ogg|wav|flac)(?:$|[?#])/i.test(source))
+                ? 'audio'
+                : 'video';
+            const block = mediaBlock(firePlayer, type);
+            const caption = element.matches('figure') ? element.querySelector('figcaption') : null;
+            block.data.caption = caption ? String(caption.textContent || '').trim() : '';
+            return [block];
         }
         if (/^h[1-6]$/.test(tag)) {
             return [{

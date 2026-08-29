@@ -1,7 +1,7 @@
 {
   "name": "Camera Manager",
   "slug": "camera-manager",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
   "release_notes": [
@@ -12,7 +12,8 @@
     "Added HTTPS pull synchronization for FTP-only shared hosting, with agent status reporting and automatic rollback.",
     "Added an inline HTTPS token save button, visible token status, and settings error logging.",
     "Added a dedicated HTTPS token save route with immediate database read-back verification.",
-    "Added compatibility for legacy SprintHost plugin_settings tables with duplicate setting rows."
+    "Added compatibility for legacy SprintHost plugin_settings tables with duplicate setting rows.",
+    "Added FirePlayer LIVE preview with automatic HLS detection, recovery, and background stream cleanup."
   ],
   "release_notes_i18n": {
     "ru": [
@@ -23,7 +24,8 @@
       "Добавлена HTTPS pull-синхронизация для FTP-хостинга, отчёты агента и автоматический откат при ошибке службы.",
       "Добавлены заметная кнопка сохранения HTTPS-токена, индикатор его состояния и журналирование ошибок формы.",
       "Добавлен отдельный маршрут сохранения HTTPS-токена с немедленной проверкой чтением из базы данных.",
-      "Добавлена совместимость со старыми таблицами plugin_settings на SprintHost, содержащими дубли настроек."
+      "Добавлена совместимость со старыми таблицами plugin_settings на SprintHost, содержащими дубли настроек.",
+      "Добавлен LIVE-предпросмотр через FirePlayer с автоопределением HLS, восстановлением потока и остановкой фоновой загрузки."
     ]
   },
   "update": {

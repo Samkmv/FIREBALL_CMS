@@ -472,18 +472,22 @@
             }
             if (block.type === 'video') {
                 const src = sanitizer.safeUrl(data.src || '', false);
-                const videoAttributes = (data.controls === false ? '' : ' controls') +
-                    (data.autoplay ? ' autoplay' : '') +
-                    (data.muted || data.autoplay ? ' muted' : '') +
-                    (data.loop ? ' loop' : '');
+                const playerAttributes = ' class="fire-player" data-fire-player data-src="' + escapeAttr(src) + '" data-media="video"' +
+                    ' data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"' +
+                    ' data-controls="' + (data.controls === false ? 'false' : 'true') + '"' +
+                    ' data-autoplay="' + (data.autoplay ? 'true' : 'false') + '"' +
+                    ' data-muted="' + (data.muted || data.autoplay ? 'true' : 'false') + '"' +
+                    ' data-loop="' + (data.loop ? 'true' : 'false') + '"' +
+                    (data.poster ? ' data-poster="' + escapeAttr(sanitizer.safeUrl(data.poster, true)) + '"' : '') +
+                    (data.hls ? ' data-protocol="hls"' : '');
                 return src
-                    ? '<div class="fb-editor2-video" data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"><video' + videoAttributes + ' preload="metadata" src="' + escapeAttr(src) + '" poster="' + escapeAttr(sanitizer.safeUrl(data.poster || '', true)) + '"></video><p contenteditable="true" data-editor-plain data-editor-field="data.caption">' + escapeAttr(data.caption || '') + '</p></div>'
+                    ? '<div class="fb-editor2-video" data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"><div' + playerAttributes + '></div><p contenteditable="true" data-editor-plain data-editor-field="data.caption">' + escapeAttr(data.caption || '') + '</p></div>'
                     : '<button type="button" class="fb-editor2-media__empty" data-editor-pick-block-media><i class="ci-video"></i><span>' + escapeAttr(this.label('chooseFile', 'Choose video')) + '</span></button>';
             }
             if (block.type === 'audio') {
                 const src = sanitizer.safeUrl(data.src || '', false);
                 return src
-                    ? '<div class="fb-editor2-audio"><audio controls preload="metadata" src="' + escapeAttr(src) + '"></audio><p contenteditable="true" data-editor-plain data-editor-field="data.caption">' + escapeAttr(data.caption || '') + '</p></div>'
+                    ? '<div class="fb-editor2-audio"><div class="fire-player" data-fire-player data-src="' + escapeAttr(src) + '" data-media="audio"></div><p contenteditable="true" data-editor-plain data-editor-field="data.caption">' + escapeAttr(data.caption || '') + '</p></div>'
                     : '<button type="button" class="fb-editor2-media__empty" data-editor-pick-block-media><i class="ci-music"></i><span>' + escapeAttr(this.label('chooseFile', 'Choose audio')) + '</span></button>';
             }
             if (block.type === 'table') {
@@ -2885,16 +2889,20 @@
             } else if (block.type === 'video') {
                 const src = sanitizer.safeUrl(data.src || '', false);
                 const embed = this.embedUrl(src);
-                const videoAttributes = (data.controls === false ? '' : ' controls') +
-                    (data.autoplay ? ' autoplay' : '') +
-                    (data.muted || data.autoplay ? ' muted' : '') +
-                    (data.loop ? ' loop' : '');
+                const playerAttributes = ' class="fire-player" data-fire-player data-src="' + escapeAttr(src) + '" data-media="video"' +
+                    ' data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"' +
+                    ' data-controls="' + (data.controls === false ? 'false' : 'true') + '"' +
+                    ' data-autoplay="' + (data.autoplay ? 'true' : 'false') + '"' +
+                    ' data-muted="' + (data.muted || data.autoplay ? 'true' : 'false') + '"' +
+                    ' data-loop="' + (data.loop ? 'true' : 'false') + '"' +
+                    (data.poster ? ' data-poster="' + escapeAttr(sanitizer.safeUrl(data.poster, true)) + '"' : '') +
+                    (data.hls ? ' data-protocol="hls"' : '');
                 content = embed
                     ? '<div class="ratio ratio-16x9"><iframe src="' + escapeAttr(embed) + '" title="' + escapeAttr(data.caption || 'Video') + '" loading="lazy" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>'
-                    : (src ? '<figure data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"><video' + videoAttributes + ' preload="metadata" src="' + escapeAttr(src) + '"' + (data.poster ? ' poster="' + escapeAttr(sanitizer.safeUrl(data.poster, true)) + '"' : '') + '></video>' + (data.caption ? '<figcaption>' + escapeAttr(data.caption) + '</figcaption>' : '') + '</figure>' : '');
+                    : (src ? '<figure data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"><div' + playerAttributes + '></div>' + (data.caption ? '<figcaption>' + escapeAttr(data.caption) + '</figcaption>' : '') + '</figure>' : '');
             } else if (block.type === 'audio') {
                 const src = sanitizer.safeUrl(data.src || '', false);
-                content = src ? '<figure><audio controls preload="metadata" src="' + escapeAttr(src) + '"></audio>' + (data.caption ? '<figcaption>' + escapeAttr(data.caption) + '</figcaption>' : '') + '</figure>' : '';
+                content = src ? '<figure><div class="fire-player" data-fire-player data-src="' + escapeAttr(src) + '" data-media="audio"></div>' + (data.caption ? '<figcaption>' + escapeAttr(data.caption) + '</figcaption>' : '') + '</figure>' : '';
             } else if (block.type === 'table') {
                 const rows = Array.isArray(data.rows) ? data.rows : [];
                 const body = rows.map(function (row, rowIndex) {
