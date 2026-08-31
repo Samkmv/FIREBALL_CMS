@@ -2,10 +2,15 @@
 
 use App\Services\SqlFileRunner;
 use FBL\Plugins\PluginInterface;
+use Fireball\CameraManager\DiagnosticJobService;
+use Fireball\CameraManager\InputValidator;
+use Fireball\CameraManager\NetworkConfigGenerator;
 use Fireball\CameraManager\RemoteStreamsPublisher;
+use Fireball\CameraManager\RtspUrlBuilder;
 use Fireball\CameraManager\SecretCipher;
 use Fireball\CameraManager\SshCameraTransport;
 use Fireball\CameraManager\StreamsFilePublisher;
+use Fireball\CameraManager\StreamKeyGenerator;
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'Fireball\\CameraManager\\';
@@ -107,6 +112,12 @@ final class FireballPluginCameraManager implements PluginInterface
             'restart_on_publish' => true,
             'use_sudo' => true,
             'hls_base_url' => 'https://rtsp.ddns.net/rtsp',
+            'wireguard_interface' => 'wg0',
+            'wireguard_server_ip' => '',
+            'wireguard_endpoint' => '',
+            'wireguard_server_public_key' => '',
+            'external_interface' => 'ens3',
+            'public_ip' => '',
             'ssh_binary' => '/usr/bin/ssh',
             'ssh_host' => 'rtsp.ddns.net',
             'ssh_port' => 22,
@@ -123,6 +134,7 @@ final class FireballPluginCameraManager implements PluginInterface
             'pull_last_message' => '',
             'pull_last_backup_path' => '',
             'pull_last_report_fingerprint' => '',
+            'pull_agent_capabilities' => [],
         ];
     }
 
@@ -136,6 +148,12 @@ final class FireballPluginCameraManager implements PluginInterface
         $settings['perl_binary'] = trim((string)$settings['perl_binary']);
         $settings['service_name'] = trim((string)$settings['service_name']);
         $settings['hls_base_url'] = rtrim(trim((string)$settings['hls_base_url']), '/');
+        $settings['wireguard_interface'] = trim((string)$settings['wireguard_interface']);
+        $settings['wireguard_server_ip'] = trim((string)$settings['wireguard_server_ip']);
+        $settings['wireguard_endpoint'] = trim((string)$settings['wireguard_endpoint']);
+        $settings['wireguard_server_public_key'] = trim((string)$settings['wireguard_server_public_key']);
+        $settings['external_interface'] = trim((string)$settings['external_interface']);
+        $settings['public_ip'] = trim((string)$settings['public_ip']);
         $connectionMode = (string)$settings['connection_mode'];
         $settings['connection_mode'] = in_array($connectionMode, ['pull', 'ssh', 'local'], true)
             ? $connectionMode
@@ -151,6 +169,9 @@ final class FireballPluginCameraManager implements PluginInterface
         $settings['pull_token_configured'] = preg_match('/^[a-f0-9]{64}$/', (string)$settings['pull_token_hash']) === 1;
         $settings['pull_revision'] = max(0, (int)$settings['pull_revision']);
         $settings['pull_last_revision'] = max(0, (int)$settings['pull_last_revision']);
+        $settings['pull_agent_capabilities'] = is_array($settings['pull_agent_capabilities'])
+            ? array_values(array_filter($settings['pull_agent_capabilities'], 'is_string'))
+            : [];
         unset($settings['pull_token_hash'], $settings['pull_payload_encrypted']);
 
         return $settings;
@@ -172,6 +193,15 @@ final class FireballPluginCameraManager implements PluginInterface
         $sshUser = trim((string)($data['ssh_user'] ?? ''));
         $identityFile = trim((string)($data['ssh_identity_file'] ?? ''));
         $knownHostsFile = trim((string)($data['ssh_known_hosts_file'] ?? ''));
+        $wireguardInterface = InputValidator::linuxInterface($data['wireguard_interface'] ?? 'wg0', 'Интерфейс WireGuard');
+        $wireguardServerIp = InputValidator::nullableIpv4($data['wireguard_server_ip'] ?? '', 'IP WireGuard-сервера') ?? '';
+        $wireguardEndpoint = InputValidator::wireGuardEndpoint($data['wireguard_endpoint'] ?? '');
+        $wireguardServerPublicKey = InputValidator::wireGuardPublicKey(
+            $data['wireguard_server_public_key'] ?? '',
+            'PublicKey WireGuard-сервера'
+        ) ?? '';
+        $externalInterface = InputValidator::linuxInterface($data['external_interface'] ?? 'ens3', 'Внешний интерфейс');
+        $publicIp = InputValidator::nullableIpv4($data['public_ip'] ?? '', 'Публичный IP RTSP-сервера') ?? '';
         $pullToken = strtolower(trim((string)($data['pull_token'] ?? '')));
         $existingPullTokenHash = trim((string)self::settingValue('pull_token_hash', ''));
 
@@ -186,6 +216,10 @@ final class FireballPluginCameraManager implements PluginInterface
         }
         if (!filter_var($hlsBaseUrl, FILTER_VALIDATE_URL) || !preg_match('~^https?://~i', $hlsBaseUrl)) {
             throw new RuntimeException('Некорректный базовый HLS URL.');
+        }
+        $hlsParts = parse_url($hlsBaseUrl);
+        if (!is_array($hlsParts) || isset($hlsParts['user']) || isset($hlsParts['pass'])) {
+            throw new RuntimeException('Базовый HLS URL не должен содержать логин или пароль.');
         }
         if ($connectionMode === 'ssh') {
             if ($sshBinary === '' || $sshBinary[0] !== '/') {
@@ -221,6 +255,12 @@ final class FireballPluginCameraManager implements PluginInterface
             'perl_binary' => $perlBinary,
             'service_name' => $serviceName,
             'hls_base_url' => $hlsBaseUrl,
+            'wireguard_interface' => $wireguardInterface,
+            'wireguard_server_ip' => $wireguardServerIp,
+            'wireguard_endpoint' => $wireguardEndpoint,
+            'wireguard_server_public_key' => $wireguardServerPublicKey,
+            'external_interface' => $externalInterface,
+            'public_ip' => $publicIp,
             'restart_on_publish' => !empty($data['restart_on_publish']),
             'use_sudo' => !empty($data['use_sudo']),
             'ssh_binary' => $sshBinary,
@@ -347,12 +387,25 @@ final class FireballPluginCameraManager implements PluginInterface
 
         $code = strtoupper(trim((string)($data['code'] ?? '')));
         $name = trim((string)($data['name'] ?? ''));
-        $recorderIp = trim((string)($data['recorder_ip'] ?? ''));
-        $routerIp = trim((string)($data['router_ip'] ?? ''));
-        $vpnIp = trim((string)($data['vpn_ip'] ?? ''));
+        $recorderIp = InputValidator::requiredIpv4($data['recorder_ip'] ?? '', 'IP регистратора');
+        $routerIp = InputValidator::nullableIpv4($data['router_ip'] ?? '', 'IP роутера');
+        $vpnIp = InputValidator::nullableIpv4($data['vpn_ip'] ?? '', 'VPN IP');
+        $lanCidr = InputValidator::nullableIpv4Cidr($data['lan_cidr'] ?? '', 'LAN CIDR');
+        $wireguardPublicKey = InputValidator::wireGuardPublicKey($data['wireguard_public_key'] ?? '');
+        $rtspPort = InputValidator::requiredPort($data['rtsp_port'] ?? 554, 'RTSP-порт', 554);
+        $externalRtspPort = InputValidator::nullablePort($data['external_rtsp_port'] ?? null, 'Внешний RTSP-порт');
+        $managementPort = InputValidator::nullablePort($data['management_port'] ?? null, 'Порт управления');
+        $externalManagementPort = InputValidator::nullablePort(
+            $data['external_management_port'] ?? null,
+            'Внешний порт управления'
+        );
         $username = trim((string)($data['rtsp_username'] ?? ''));
         $password = (string)($data['rtsp_password'] ?? '');
         $template = trim((string)($data['rtsp_path_template'] ?? ''));
+        $profile = InputValidator::rtspProfile($data['rtsp_profile'] ?? 'custom');
+        $streamMode = InputValidator::streamMode($data['rtsp_stream_mode'] ?? 'camera');
+        $networkStatus = InputValidator::networkStatus($data['network_setup_status'] ?? 'not_configured');
+        $networkNotes = mb_substr(trim((string)($data['network_notes'] ?? '')), 0, 4000);
 
         if (!preg_match('/^[A-Z0-9_-]{1,32}$/', $code)) {
             throw new RuntimeException('Код объекта: только латинские буквы, цифры, дефис и подчёркивание.');
@@ -360,12 +413,7 @@ final class FireballPluginCameraManager implements PluginInterface
         if ($name === '' || mb_strlen($name) > 190) {
             throw new RuntimeException('Укажите название объекта.');
         }
-        foreach (['IP регистратора' => $recorderIp, 'IP роутера' => $routerIp, 'VPN IP' => $vpnIp] as $label => $ip) {
-            if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) === false) {
-                throw new RuntimeException($label . ' указан некорректно.');
-            }
-        }
-        if ($recorderIp === '' || $username === '') {
+        if ($username === '') {
             throw new RuntimeException('IP регистратора и RTSP-логин обязательны.');
         }
         if ($template === '' || !str_starts_with($template, '/') || str_contains($template, "\n") || str_contains($template, "\r")) {
@@ -377,6 +425,19 @@ final class FireballPluginCameraManager implements PluginInterface
         if ($id === null && $password === '') {
             throw new RuntimeException('Пароль RTSP обязателен для нового объекта.');
         }
+        if ($externalRtspPort !== null && $externalManagementPort !== null && $externalRtspPort === $externalManagementPort) {
+            throw new RuntimeException('Внешние RTSP и management порты должны различаться.');
+        }
+        foreach (array_filter([$externalRtspPort, $externalManagementPort], static fn(?int $port): bool => $port !== null) as $externalPort) {
+            $portConflict = db()->query(
+                'SELECT id FROM camera_manager_sites
+                 WHERE id <> ? AND (external_rtsp_port = ? OR external_management_port = ?) LIMIT 1',
+                [$id ?? 0, $externalPort, $externalPort]
+            )->getOne();
+            if (is_array($portConflict)) {
+                throw new RuntimeException('Внешний порт ' . $externalPort . ' уже используется другим объектом.');
+            }
+        }
 
         $encryptedPassword = $password !== ''
             ? SecretCipher::encrypt($password)
@@ -385,15 +446,22 @@ final class FireballPluginCameraManager implements PluginInterface
             $code,
             $name,
             mb_substr(trim((string)($data['address'] ?? '')), 0, 255),
-            $routerIp !== '' ? $routerIp : null,
+            $routerIp,
             $recorderIp,
-            $vpnIp !== '' ? $vpnIp : null,
-            mb_substr(trim((string)($data['wireguard_public_key'] ?? '')), 0, 190),
-            self::port($data['rtsp_port'] ?? 554, 554),
-            self::port($data['management_port'] ?? 37777, 37777),
+            $vpnIp,
+            $lanCidr,
+            $wireguardPublicKey,
+            $rtspPort,
+            $externalRtspPort,
+            $managementPort,
+            $externalManagementPort,
             mb_substr($username, 0, 190),
             $encryptedPassword,
             mb_substr($template, 0, 500),
+            $profile,
+            $streamMode,
+            $networkStatus,
+            $networkNotes !== '' ? $networkNotes : null,
             !empty($data['enabled']) ? 1 : 0,
         ];
         $now = date('Y-m-d H:i:s');
@@ -402,8 +470,10 @@ final class FireballPluginCameraManager implements PluginInterface
             db()->query(
                 'UPDATE camera_manager_sites
                  SET code = ?, name = ?, address = ?, router_ip = ?, recorder_ip = ?, vpn_ip = ?,
-                     wireguard_public_key = ?, rtsp_port = ?, management_port = ?, rtsp_username = ?,
-                     rtsp_password_encrypted = ?, rtsp_path_template = ?, enabled = ?, updated_at = ?
+                     lan_cidr = ?, wireguard_public_key = ?, rtsp_port = ?, external_rtsp_port = ?,
+                     management_port = ?, external_management_port = ?, rtsp_username = ?,
+                     rtsp_password_encrypted = ?, rtsp_path_template = ?, rtsp_profile = ?, rtsp_stream_mode = ?,
+                     network_setup_status = ?, network_notes = ?, enabled = ?, updated_at = ?
                  WHERE id = ?',
                 array_merge($values, [$now, $id])
             );
@@ -413,9 +483,11 @@ final class FireballPluginCameraManager implements PluginInterface
 
         db()->query(
             'INSERT INTO camera_manager_sites
-             (code, name, address, router_ip, recorder_ip, vpn_ip, wireguard_public_key, rtsp_port,
-              management_port, rtsp_username, rtsp_password_encrypted, rtsp_path_template, enabled, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             (code, name, address, router_ip, recorder_ip, vpn_ip, lan_cidr, wireguard_public_key,
+              rtsp_port, external_rtsp_port, management_port, external_management_port, rtsp_username,
+              rtsp_password_encrypted, rtsp_path_template, rtsp_profile, rtsp_stream_mode,
+              network_setup_status, network_notes, enabled, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             array_merge($values, [$now, $now])
         );
 
@@ -440,6 +512,14 @@ final class FireballPluginCameraManager implements PluginInterface
         return is_array($camera) ? $camera : null;
     }
 
+    public static function siteCameras(int $siteId): array
+    {
+        return db()->query(
+            'SELECT * FROM camera_manager_cameras WHERE site_id = ? ORDER BY channel_number ASC, id ASC',
+            [$siteId]
+        )->get() ?: [];
+    }
+
     public static function saveCamera(array $data, ?int $id = null): int
     {
         if ($id !== null && self::camera($id) === null) {
@@ -457,10 +537,15 @@ final class FireballPluginCameraManager implements PluginInterface
         }
         $streamKey = trim((string)($data['stream_key'] ?? ''));
         if ($streamKey === '') {
-            $streamKey = strtolower((string)$site['code']) . '-' . str_pad((string)$channel, 2, '0', STR_PAD_LEFT);
+            $streamKey = (new StreamKeyGenerator())->generate((string)$site['code'], $channel);
         }
-        if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $streamKey)) {
-            throw new RuntimeException('Некорректный ключ потока. Пример: 33-01.');
+        $streamKey = (new StreamKeyGenerator())->validate($streamKey);
+        $conflict = db()->query(
+            'SELECT id FROM camera_manager_cameras WHERE stream_key = ? AND id <> ? LIMIT 1',
+            [$streamKey, $id ?? 0]
+        )->getOne();
+        if (is_array($conflict)) {
+            throw new RuntimeException('Ключ потока уже используется другой камерой.');
         }
         $name = trim((string)($data['name'] ?? '')) ?: 'Камера ' . $channel;
         $override = trim((string)($data['rtsp_path_override'] ?? ''));
@@ -515,7 +600,7 @@ final class FireballPluginCameraManager implements PluginInterface
         $rows = db()->query(
             'SELECT c.stream_key, c.channel_number, c.subtype, c.rtsp_path_override,
                     s.recorder_ip, s.rtsp_port, s.rtsp_username, s.rtsp_password_encrypted,
-                    s.rtsp_path_template
+                    s.rtsp_path_template, s.rtsp_profile, s.rtsp_stream_mode
              FROM camera_manager_cameras c
              INNER JOIN camera_manager_sites s ON s.id = c.site_id
              WHERE c.enabled = 1 AND s.enabled = 1
@@ -523,20 +608,28 @@ final class FireballPluginCameraManager implements PluginInterface
         )->get() ?: [];
 
         $streams = [];
+        $builder = new RtspUrlBuilder();
         foreach ($rows as $row) {
-            $path = trim((string)($row['rtsp_path_override'] ?: $row['rtsp_path_template']));
-            $path = str_replace(
-                ['{channel}', '{subtype}'],
-                [(string)(int)$row['channel_number'], (string)(int)$row['subtype']],
-                $path
-            );
+            $override = trim((string)($row['rtsp_path_override'] ?? ''));
+            $path = $override !== ''
+                ? $builder->customPath($override, (int)$row['channel_number'], (int)$row['subtype'])
+                : $builder->path(
+                    (string)($row['rtsp_profile'] ?: 'custom'),
+                    (int)$row['channel_number'],
+                    (int)$row['subtype'],
+                    (string)$row['rtsp_path_template'],
+                    (string)($row['rtsp_stream_mode'] ?: 'camera')
+                );
             $path = str_replace('&', '\\&', $path);
             $streams[] = [
                 'stream_key' => (string)$row['stream_key'],
-                'rtsp_url' => 'rtsp://'
-                    . rawurlencode((string)$row['rtsp_username']) . ':'
-                    . rawurlencode(SecretCipher::decrypt((string)$row['rtsp_password_encrypted'])) . '@'
-                    . (string)$row['recorder_ip'] . ':' . (int)$row['rtsp_port'] . $path,
+                'rtsp_url' => $builder->url(
+                    (string)$row['recorder_ip'],
+                    (int)$row['rtsp_port'],
+                    (string)$row['rtsp_username'],
+                    SecretCipher::decrypt((string)$row['rtsp_password_encrypted']),
+                    $path
+                ),
             ];
         }
 
@@ -548,8 +641,108 @@ final class FireballPluginCameraManager implements PluginInterface
         return (new StreamsFilePublisher())->renderManagedBlock(self::activeStreams(), true);
     }
 
+    /** @return list<array<string,mixed>> */
+    public static function publicationPreview(): array
+    {
+        $rows = db()->query(
+            'SELECT c.stream_key, c.name AS camera_name, c.channel_number, c.subtype, c.rtsp_path_override,
+                    c.enabled, s.code AS site_code, s.name AS site_name, s.recorder_ip, s.rtsp_port,
+                    s.rtsp_username, s.rtsp_path_template, s.rtsp_profile, s.rtsp_stream_mode, s.enabled AS site_enabled
+             FROM camera_manager_cameras c
+             INNER JOIN camera_manager_sites s ON s.id = c.site_id
+             ORDER BY s.code ASC, c.channel_number ASC, c.id ASC'
+        )->get() ?: [];
+        $builder = new RtspUrlBuilder();
+        $preview = [];
+        foreach ($rows as $row) {
+            $override = trim((string)($row['rtsp_path_override'] ?? ''));
+            $path = $override !== ''
+                ? $builder->customPath($override, (int)$row['channel_number'], (int)$row['subtype'])
+                : $builder->path(
+                    (string)($row['rtsp_profile'] ?: 'custom'),
+                    (int)$row['channel_number'],
+                    (int)$row['subtype'],
+                    (string)$row['rtsp_path_template'],
+                    (string)($row['rtsp_stream_mode'] ?: 'camera')
+                );
+            $streamKey = (string)$row['stream_key'];
+            $preview[] = [
+                'stream_key' => $streamKey,
+                'site' => (string)$row['site_code'] . ' · ' . (string)$row['site_name'],
+                'camera' => (string)$row['camera_name'],
+                'rtsp_url' => $builder->maskedUrl(
+                    (string)$row['recorder_ip'],
+                    (int)$row['rtsp_port'],
+                    (string)$row['rtsp_username'],
+                    $path
+                ),
+                'hls_url' => self::hlsUrl($streamKey),
+                'poster_url' => self::posterUrl($streamKey),
+                'enabled' => !empty($row['enabled']) && !empty($row['site_enabled']),
+            ];
+        }
+
+        return $preview;
+    }
+
+    public static function networkConfiguration(int $siteId): array
+    {
+        $site = self::site($siteId);
+        if ($site === null) {
+            throw new RuntimeException('Объект не найден.');
+        }
+
+        return (new NetworkConfigGenerator())->generate($site, self::settings());
+    }
+
+    public static function diagnosticJobs(int $siteId): array
+    {
+        return (new DiagnosticJobService())->siteJobs($siteId);
+    }
+
+    public static function queueSiteDiagnostics(int $siteId): string
+    {
+        $user = (array)get_user();
+
+        return (new DiagnosticJobService())->queueSiteCheck(
+            $siteId,
+            !empty($user['id']) ? (int)$user['id'] : null
+        );
+    }
+
+    public static function queueRtspProbe(int $siteId, int $channel, int $subtype): string
+    {
+        $user = (array)get_user();
+
+        return (new DiagnosticJobService())->queueRtspProbe(
+            $siteId,
+            $channel,
+            $subtype,
+            !empty($user['id']) ? (int)$user['id'] : null
+        );
+    }
+
+    public static function applyDetectedRtspProfile(int $siteId): string
+    {
+        $probe = (new DiagnosticJobService())->latestSuccessfulRtspProbe($siteId);
+        if ($probe === null || empty($probe['result']['success'])) {
+            throw new RuntimeException('Успешный результат RTSP auto-detect не найден.');
+        }
+        $profile = InputValidator::rtspProfile($probe['result']['profile'] ?? '');
+        if ($profile === 'auto') {
+            throw new RuntimeException('Диагностика не вернула конкретный RTSP-профиль.');
+        }
+        db()->query(
+            'UPDATE camera_manager_sites SET rtsp_profile = ?, updated_at = ? WHERE id = ?',
+            [$profile, date('Y-m-d H:i:s'), $siteId]
+        );
+
+        return RtspUrlBuilder::PROFILE_LABELS[$profile] ?? $profile;
+    }
+
     public static function publish(): array
     {
+        self::assertPublicationKeysUnique();
         $streams = self::activeStreams();
         $settings = self::settings();
         try {
@@ -669,20 +862,24 @@ final class FireballPluginCameraManager implements PluginInterface
         $result = self::httpGet($url, 8);
         $segmentUrl = $result['status'] === 200 ? self::firstSegmentUrl($result['body'], $url) : '';
         $segment = $segmentUrl !== '' ? self::httpGet($segmentUrl, 8, true) : ['status' => 0, 'body' => ''];
+        $poster = self::httpGet(self::posterUrl((string)$camera['stream_key']), 8, true);
+        $posterAvailable = in_array($poster['status'], [200, 206], true);
         $online = $result['status'] === 200
             && str_contains($result['body'], '#EXTM3U')
             && $segmentUrl !== ''
             && in_array($segment['status'], [200, 206], true);
         $message = $online
-            ? 'HLS-плейлист и первый медиасегмент доступны.'
-            : 'HLS не готов: плейлист HTTP ' . $result['status'] . ', сегмент HTTP ' . $segment['status'] . '.';
+            ? 'HLS-плейлист и первый медиасегмент доступны. Постер ' . ($posterAvailable ? 'доступен.' : 'отсутствует.')
+            : 'HLS pending: плейлист HTTP ' . $result['status'] . ', сегмент HTTP ' . $segment['status']
+                . '. Первый запрос может только разбудить FFmpeg. Постер ' . ($posterAvailable ? 'доступен.' : 'отсутствует.');
+        $healthStatus = $online ? 'online' : ($result['status'] === 404 ? 'unknown' : 'offline');
         db()->query(
             'UPDATE camera_manager_cameras
              SET last_health_status = ?, last_health_message = ?, last_checked_at = ?, updated_at = ? WHERE id = ?',
-            [$online ? 'online' : 'offline', $message, date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $id]
+            [$healthStatus, $message, date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $id]
         );
 
-        return ['online' => $online, 'message' => $message, 'url' => $url];
+        return ['online' => $online, 'poster_available' => $posterAvailable, 'message' => $message, 'url' => $url];
     }
 
     public static function t(string $key): string
@@ -786,11 +983,14 @@ final class FireballPluginCameraManager implements PluginInterface
         );
     }
 
-    private static function port(mixed $value, int $default): int
+    private static function assertPublicationKeysUnique(): void
     {
-        $port = (int)$value;
-
-        return $port >= 1 && $port <= 65535 ? $port : $default;
+        $duplicate = db()->query(
+            'SELECT stream_key FROM camera_manager_cameras GROUP BY stream_key HAVING COUNT(*) > 1 LIMIT 1'
+        )->getColumn();
+        if (is_string($duplicate) && $duplicate !== '') {
+            throw new RuntimeException('Конфликт ключа потока: ' . $duplicate . '. Исправьте его до публикации.');
+        }
     }
 
     private static function assertStoredPullTokenHash(string $expectedHash): void
@@ -858,6 +1058,22 @@ final class FireballPluginCameraManager implements PluginInterface
             $sql = is_file($file) ? (string)file_get_contents($file) : '';
             if ($sql === '') {
                 throw new RuntimeException('Camera Manager migration is missing.');
+            }
+            (new SqlFileRunner())->executeDatabase($sql);
+        }
+        $wizardColumnExists = (int)db()->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'camera_manager_sites' AND COLUMN_NAME = 'lan_cidr'"
+        )->getColumn() === 1;
+        $diagnosticTableExists = (int)db()->query(
+            'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            ['camera_manager_diagnostic_jobs']
+        )->getColumn() === 1;
+        if (!$wizardColumnExists || !$diagnosticTableExists) {
+            $file = __DIR__ . '/migrations/002_add_connection_wizard_and_diagnostics.sql';
+            $sql = is_file($file) ? (string)file_get_contents($file) : '';
+            if ($sql === '') {
+                throw new RuntimeException('Camera Manager connection wizard migration is missing.');
             }
             (new SqlFileRunner())->executeDatabase($sql);
         }

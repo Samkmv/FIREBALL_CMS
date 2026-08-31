@@ -36,6 +36,7 @@ openssl rand -hex 32
 ```text
 fireball-camera-pull
 fireball-camera-verify
+fireball-camera-diagnostics
 fireball-camera-pull.service
 fireball-camera-pull.timer
 fireball-camera-pull.conf.example
@@ -47,6 +48,7 @@ fireball-camera-pull.conf.example
 install -o root -g root -m 0755 fireball-camera-pull /usr/local/sbin/fireball-camera-pull
 install -d -o root -g root -m 0755 /usr/local/libexec
 install -o root -g root -m 0755 fireball-camera-verify /usr/local/libexec/fireball-camera-verify
+install -o root -g root -m 0755 fireball-camera-diagnostics /usr/local/libexec/fireball-camera-diagnostics
 install -o root -g root -m 0600 fireball-camera-pull.conf.example /etc/fireball-camera-pull.conf
 install -o root -g root -m 0644 fireball-camera-pull.service /etc/systemd/system/fireball-camera-pull.service
 install -o root -g root -m 0644 fireball-camera-pull.timer /etc/systemd/system/fireball-camera-pull.timer
@@ -56,7 +58,7 @@ install -d -o root -g root -m 0700 /var/lib/fireball-camera-manager
 Откройте `/etc/fireball-camera-pull.conf` и замените значение `CMS_TOKEN` на тот же токен:
 
 ```text
-CMS_ENDPOINT=https://maxipapa.ru/api/camera-manager/pull
+CMS_ENDPOINT=https://cms.example.com/api/camera-manager/pull
 CMS_TOKEN=64_СИМВОЛА_ИЗ_OPENSSL
 ```
 
@@ -75,6 +77,8 @@ chmod 0600 /etc/fireball-camera-pull.conf
 perl -c /usr/local/sbin/fireball-camera-pull
 /usr/local/sbin/fireball-camera-pull --self-test
 perl -c /usr/local/libexec/fireball-camera-verify
+perl -c /usr/local/libexec/fireball-camera-diagnostics
+/usr/local/libexec/fireball-camera-diagnostics --self-test
 systemctl daemon-reload
 systemctl start fireball-camera-pull.service
 systemctl status --no-pager fireball-camera-pull.service
@@ -110,6 +114,32 @@ journalctl -u fireball-camera-pull.service -n 50 --no-pager
 perl -c /var/www/html/rtsp/streams.pl
 systemctl is-active rtsp-streams.service
 ```
+
+## Подключение нового объекта
+
+Пример ниже содержит только placeholder-адреса:
+
+```text
+Объект:        34
+Router:        192.168.34.1
+VPN:           10.10.0.34
+LAN:           192.168.34.0/24
+Recorder:      192.168.34.100
+RTSP:          554
+External RTSP: 55434
+```
+
+Порядок: Keenetic/Netcraze → WireGuard peer → firewall WireGuard/LAN → route на RTSP-сервере → сгенерированные NAT scripts → RTSP auto-detect → камеры → публикация → HLS/poster.
+
+Camera Manager показывает peer и содержимое `.up.sh`/`.down.sh`, но не записывает `/etc/wireguard/wg0.conf`, не запускает iptables и не перезапускает WireGuard. Скрипты используют `iptables -C ... || iptables -A ...`; down-файл удаляет только правила и маршрут конкретного объекта.
+
+## Whitelist diagnostics
+
+Обновлённый `fireball-camera-pull` объявляет capability `diagnostics_v1`. Старые агенты продолжают публиковать камеры, но не выполняют новые проверки.
+
+Разрешены только структурированные операции `wg_peer`, `route_check`, `ping_check`, `tcp_check`, `port_discovery`, `rtsp_probe`, `hls_check`. Помощник повторно проверяет IP, порты, interface, PublicKey и RTSP presets. Произвольная команда или shell fragment отклоняются.
+
+Credentials RTSP не входят в аргументы helper-процесса: JSON передаётся через stdin. Пароль не возвращается в CMS, не печатается в stdout/stderr и не попадает в journalctl. Полный URL с паролем не сохраняется в diagnostic queue.
 
 ## Альтернативный SSH-режим
 

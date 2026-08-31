@@ -1,0 +1,28 @@
+{
+  "name": "Calendar",
+  "slug": "calendar",
+  "class": "FireballPluginCalendar",
+  "version": "1.0.0",
+  "type": "system",
+  "description": "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery.",
+  "name_i18n": {
+    "ru": "Календарь",
+    "en": "Calendar",
+    "de": "Kalender",
+    "zh-cn": "日历"
+  },
+  "description_i18n": {
+    "ru": "Личные и общие события с повторениями, напоминаниями на сайте и через PWA Push.",
+    "en": "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery.",
+    "de": "Persönliche und gemeinsame Termine mit Wiederholungen, Website-Erinnerungen und PWA-Push.",
+    "zh-cn": "支持重复、站内提醒和 PWA Push 的个人与共享日程。"
+  },
+  "author": "FIREBALL CMS",
+  "auto_migrate": true,
+  "admin_menu": {
+    "title": "Календарь",
+    "icon": "ci-calendar",
+    "route": "/calendar",
+    "position": 35
+  }
+}

@@ -1,0 +1,839 @@
+.fb-calendar-page {
+    --calendar-accent: #6f5ef9;
+    --calendar-accent-rgb: 111, 94, 249;
+    --calendar-border: color-mix(in srgb, var(--cz-border-color) 74%, transparent);
+    --calendar-muted: color-mix(in srgb, var(--cz-body-color) 62%, transparent);
+    min-height: 80vh;
+    background:
+        radial-gradient(circle at 10% -10%, rgba(var(--calendar-accent-rgb), .12), transparent 32rem),
+        var(--cz-body-bg);
+}
+
+.fb-calendar-hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.fb-calendar-hero::after {
+    position: absolute;
+    top: -8rem;
+    right: max(1rem, calc((100vw - 1320px) / 2));
+    width: 18rem;
+    height: 18rem;
+    border: 1px solid rgba(var(--calendar-accent-rgb), .12);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3rem rgba(var(--calendar-accent-rgb), .03), 0 0 0 6rem rgba(var(--calendar-accent-rgb), .02);
+    content: "";
+    pointer-events: none;
+}
+
+.fb-calendar-eyebrow,
+.fb-calendar-modal__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    margin-bottom: .65rem;
+    color: var(--calendar-accent);
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.fb-calendar-status-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding: .9rem 1.1rem;
+    border: 1px solid var(--calendar-border);
+    border-radius: 1.25rem;
+    background: color-mix(in srgb, var(--cz-body-bg) 88%, transparent);
+    box-shadow: 0 .4rem 1.5rem rgba(28, 23, 60, .04);
+    backdrop-filter: blur(16px);
+}
+
+.fb-calendar-status-card__icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.65rem;
+    height: 2.65rem;
+    border-radius: .9rem;
+    font-size: 1.15rem;
+}
+
+.fb-calendar-status-card.is-ready .fb-calendar-status-card__icon {
+    color: #0f9f6e;
+    background: rgba(16, 185, 129, .12);
+}
+
+.fb-calendar-status-card.is-off .fb-calendar-status-card__icon {
+    color: #b7791f;
+    background: rgba(245, 158, 11, .13);
+}
+
+.fb-calendar-shell {
+    overflow: hidden;
+    border: 1px solid var(--calendar-border);
+    border-radius: 1.75rem;
+    background: color-mix(in srgb, var(--cz-body-bg) 96%, var(--cz-secondary-bg));
+    box-shadow: 0 1.5rem 4rem rgba(25, 20, 60, .08);
+}
+
+.fb-calendar-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.2rem 1.35rem;
+    border-bottom: 1px solid var(--calendar-border);
+}
+
+.fb-calendar-arrows .btn:first-child {
+    border-radius: 999px 0 0 999px;
+}
+
+.fb-calendar-arrows .btn:last-child {
+    border-radius: 0 999px 999px 0;
+}
+
+.fb-calendar-period {
+    min-width: 12rem;
+    margin-left: .65rem;
+    font-size: 1.12rem;
+    font-weight: 650;
+    text-transform: capitalize;
+}
+
+.fb-calendar-view-switch {
+    display: inline-flex;
+    gap: .25rem;
+    padding: .25rem;
+    border-radius: 999px;
+    background: var(--cz-secondary-bg);
+}
+
+.fb-calendar-view-switch .btn {
+    padding: .45rem .85rem;
+    border: 0;
+    border-radius: 999px;
+    color: var(--calendar-muted);
+    font-size: .84rem;
+    font-weight: 600;
+}
+
+.fb-calendar-view-switch .btn.is-active {
+    color: #fff;
+    background: #19172c;
+    box-shadow: 0 .25rem .65rem rgba(18, 16, 39, .2);
+}
+
+[data-bs-theme="dark"] .fb-calendar-view-switch .btn.is-active {
+    color: #161326;
+    background: #fff;
+}
+
+.fb-calendar-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    min-height: 39rem;
+}
+
+.fb-calendar-main {
+    position: relative;
+    min-width: 0;
+}
+
+.fb-calendar-loading {
+    position: absolute;
+    z-index: 6;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    background: color-mix(in srgb, var(--cz-body-bg) 85%, transparent);
+    font-size: .9rem;
+    backdrop-filter: blur(4px);
+    transition: opacity .18s ease;
+}
+
+.fb-calendar-loading[hidden] {
+    display: none;
+}
+
+.fb-calendar-aside {
+    padding: 1.3rem;
+    border-left: 1px solid var(--calendar-border);
+    background: color-mix(in srgb, var(--cz-secondary-bg) 38%, transparent);
+}
+
+.fb-calendar-aside__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.fb-calendar-aside__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .85rem;
+    color: var(--calendar-accent);
+    background: rgba(var(--calendar-accent-rgb), .1);
+}
+
+.fb-calendar-upcoming {
+    display: grid;
+    gap: .65rem;
+}
+
+.fb-calendar-upcoming-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.6rem minmax(0, 1fr);
+    gap: .75rem;
+    width: 100%;
+    padding: .75rem;
+    border: 1px solid transparent;
+    border-radius: 1rem;
+    color: inherit;
+    background: color-mix(in srgb, var(--cz-body-bg) 78%, transparent);
+    text-align: left;
+    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.fb-calendar-upcoming-item:hover {
+    transform: translateY(-1px);
+    border-color: var(--calendar-border);
+    box-shadow: 0 .5rem 1.2rem rgba(28, 23, 60, .07);
+}
+
+.fb-calendar-upcoming-item__date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.8rem;
+    border-radius: .78rem;
+    color: #fff;
+    background: var(--event-color, var(--calendar-accent));
+    line-height: 1;
+}
+
+.fb-calendar-upcoming-item__date strong {
+    font-size: 1.05rem;
+}
+
+.fb-calendar-upcoming-item__date small {
+    margin-top: .25rem;
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.fb-calendar-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 13rem;
+    padding: 2rem;
+    color: var(--calendar-muted);
+    text-align: center;
+}
+
+.fb-calendar-empty i {
+    margin-bottom: .75rem;
+    font-size: 2rem;
+    opacity: .65;
+}
+
+/* Month */
+.fb-calendar-weekdays,
+.fb-calendar-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.fb-calendar-weekdays {
+    border-bottom: 1px solid var(--calendar-border);
+}
+
+.fb-calendar-weekday {
+    padding: .8rem .5rem;
+    color: var(--calendar-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.fb-calendar-day-cell {
+    min-width: 0;
+    min-height: 7.6rem;
+    padding: .55rem;
+    border-right: 1px solid var(--calendar-border);
+    border-bottom: 1px solid var(--calendar-border);
+    background: transparent;
+    transition: background-color .15s ease;
+}
+
+.fb-calendar-day-cell:nth-child(7n) {
+    border-right: 0;
+}
+
+.fb-calendar-day-cell:hover {
+    background: rgba(var(--calendar-accent-rgb), .025);
+}
+
+.fb-calendar-day-cell.is-outside {
+    color: color-mix(in srgb, var(--cz-body-color) 32%, transparent);
+    background: color-mix(in srgb, var(--cz-secondary-bg) 26%, transparent);
+}
+
+.fb-calendar-day-cell__number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    margin-bottom: .35rem;
+    border: 0;
+    border-radius: 50%;
+    color: inherit;
+    background: transparent;
+    font-size: .8rem;
+    font-weight: 650;
+}
+
+.fb-calendar-day-cell.is-today .fb-calendar-day-cell__number {
+    color: #fff;
+    background: var(--calendar-accent);
+    box-shadow: 0 .3rem .7rem rgba(var(--calendar-accent-rgb), .28);
+}
+
+.fb-calendar-cell-events {
+    display: grid;
+    gap: .28rem;
+}
+
+.fb-calendar-event-chip {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    width: 100%;
+    padding: .32rem .42rem .32rem .58rem;
+    border: 0;
+    border-radius: .5rem;
+    color: color-mix(in srgb, var(--event-color) 76%, #151326);
+    background: color-mix(in srgb, var(--event-color) 12%, var(--cz-body-bg));
+    font-size: .72rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fb-calendar-event-chip::before {
+    position: absolute;
+    inset: .3rem auto .3rem .2rem;
+    width: .18rem;
+    border-radius: 2rem;
+    background: var(--event-color);
+    content: "";
+}
+
+.fb-calendar-event-chip:hover {
+    filter: saturate(1.15);
+}
+
+.fb-calendar-event-chip.is-completed {
+    opacity: .6;
+    text-decoration: line-through;
+}
+
+.fb-calendar-event-chip.is-cancelled {
+    opacity: .45;
+}
+
+.fb-calendar-more-button {
+    padding: .18rem .35rem;
+    border: 0;
+    color: var(--calendar-muted);
+    background: transparent;
+    font-size: .7rem;
+    font-weight: 650;
+    text-align: left;
+}
+
+/* Week, day and list */
+.fb-calendar-week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(8rem, 1fr));
+    min-height: 36rem;
+}
+
+.fb-calendar-week-column {
+    padding: .8rem;
+    border-right: 1px solid var(--calendar-border);
+}
+
+.fb-calendar-week-column:last-child {
+    border-right: 0;
+}
+
+.fb-calendar-week-column__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .4rem;
+    margin-bottom: 1rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid var(--calendar-border);
+}
+
+.fb-calendar-week-column.is-today .fb-calendar-week-column__head strong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    color: #fff;
+    background: var(--calendar-accent);
+}
+
+.fb-calendar-card-list {
+    display: grid;
+    gap: .55rem;
+}
+
+.fb-calendar-event-card {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: .8rem;
+    border: 1px solid color-mix(in srgb, var(--event-color) 20%, var(--calendar-border));
+    border-radius: .9rem;
+    color: inherit;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--event-color) 10%, var(--cz-body-bg)), var(--cz-body-bg));
+    text-align: left;
+    transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.fb-calendar-event-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 .45rem 1rem rgba(28, 23, 60, .07);
+}
+
+.fb-calendar-event-card__time {
+    display: block;
+    margin-bottom: .25rem;
+    color: var(--event-color);
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.fb-calendar-event-card__title {
+    display: block;
+    overflow: hidden;
+    font-size: .83rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+}
+
+.fb-calendar-day-view {
+    padding: 1.3rem;
+}
+
+.fb-calendar-day-view__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(var(--calendar-accent-rgb), .13), rgba(var(--calendar-accent-rgb), .03));
+}
+
+.fb-calendar-day-view__date {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+}
+
+.fb-calendar-day-view__number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 1rem;
+    color: #fff;
+    background: var(--calendar-accent);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.fb-calendar-list-view {
+    padding: 1.2rem;
+}
+
+.fb-calendar-list-group + .fb-calendar-list-group {
+    margin-top: 1.4rem;
+}
+
+.fb-calendar-list-group__date {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-bottom: .65rem;
+    color: var(--calendar-muted);
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.fb-calendar-list-group__date::after {
+    flex: 1;
+    height: 1px;
+    background: var(--calendar-border);
+    content: "";
+}
+
+.fb-calendar-list-item {
+    display: grid;
+    grid-template-columns: .35rem 5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .9rem;
+    width: 100%;
+    padding: .85rem .75rem;
+    border: 0;
+    border-radius: .85rem;
+    color: inherit;
+    background: transparent;
+    text-align: left;
+}
+
+.fb-calendar-list-item:hover {
+    background: color-mix(in srgb, var(--event-color) 7%, transparent);
+}
+
+.fb-calendar-list-item__bar {
+    align-self: stretch;
+    border-radius: 999px;
+    background: var(--event-color);
+}
+
+.fb-calendar-list-item__badges {
+    display: flex;
+    gap: .35rem;
+}
+
+.fb-calendar-list-item__badge {
+    padding: .26rem .5rem;
+    border-radius: 999px;
+    color: var(--calendar-muted);
+    background: var(--cz-secondary-bg);
+    font-size: .66rem;
+    font-weight: 650;
+}
+
+/* Modal */
+.fb-calendar-modal {
+    border: 0;
+    border-radius: 1.5rem;
+    box-shadow: 0 2rem 6rem rgba(20, 16, 48, .2);
+}
+
+.fb-calendar-title-input {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3.25rem;
+    gap: .65rem;
+}
+
+.fb-calendar-title-input .form-control-lg {
+    border-radius: .9rem;
+}
+
+.fb-calendar-title-input .form-control-color {
+    width: 3.25rem;
+    height: 100%;
+    min-height: 3.05rem;
+    padding: .38rem;
+    border-radius: .9rem;
+}
+
+.fb-calendar-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0;
+    padding: .7rem 1rem .7rem 3.25rem;
+    border-radius: 999px;
+    background: var(--cz-secondary-bg);
+}
+
+.fb-calendar-switch .form-check-input {
+    margin-top: 0;
+}
+
+.fb-calendar-date-box,
+.fb-calendar-reminders-panel {
+    height: 100%;
+    padding: 1rem;
+    border: 1px solid var(--calendar-border);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--cz-secondary-bg) 25%, transparent);
+}
+
+.fb-calendar-reminders-panel {
+    padding: 1.15rem;
+}
+
+.fb-calendar-quick-reminders {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+}
+
+.fb-calendar-quick-reminders button {
+    padding: .28rem .62rem;
+    border: 1px solid var(--calendar-border);
+    border-radius: 999px;
+    color: inherit;
+    background: var(--cz-body-bg);
+    font-size: .72rem;
+    font-weight: 600;
+}
+
+.fb-calendar-quick-reminders button:hover {
+    color: var(--calendar-accent);
+    border-color: rgba(var(--calendar-accent-rgb), .35);
+}
+
+.fb-calendar-reminder-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) 7rem minmax(9rem, .8fr) 2.3rem;
+    align-items: end;
+    gap: .65rem;
+    padding: .8rem;
+    border: 1px solid var(--calendar-border);
+    border-radius: .9rem;
+    background: var(--cz-body-bg);
+}
+
+.fb-calendar-reminder-row__value {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(4rem, .5fr) minmax(7rem, 1fr);
+    align-items: center;
+    gap: .45rem;
+}
+
+.fb-calendar-reminder-row__time {
+    display: grid;
+    gap: .3rem;
+}
+
+.fb-calendar-reminder-row__channels {
+    display: grid;
+    gap: .25rem;
+    padding-bottom: .25rem;
+    font-size: .78rem;
+}
+
+.fb-calendar-reminder-row__channels .form-check {
+    margin: 0;
+}
+
+@media (max-width: 1199.98px) {
+    .fb-calendar-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .fb-calendar-aside {
+        border-top: 1px solid var(--calendar-border);
+        border-left: 0;
+    }
+
+    .fb-calendar-upcoming {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    .fb-calendar-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .fb-calendar-view-switch {
+        align-self: flex-start;
+    }
+
+    .fb-calendar-week-grid {
+        overflow-x: auto;
+        grid-template-columns: repeat(7, minmax(10rem, 1fr));
+    }
+
+    .fb-calendar-reminder-row {
+        grid-template-columns: minmax(0, 1fr) 7rem 2.3rem;
+    }
+
+    .fb-calendar-reminder-row__channels {
+        grid-column: 1 / 3;
+        grid-row: 2;
+        grid-template-columns: repeat(2, max-content);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .fb-calendar-status-card {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .fb-calendar-shell {
+        border-radius: 1.25rem;
+    }
+
+    .fb-calendar-toolbar {
+        padding: 1rem;
+    }
+
+    .fb-calendar-period {
+        min-width: 0;
+        margin-left: .2rem;
+        font-size: 1rem;
+    }
+
+    .fb-calendar-view-switch {
+        width: 100%;
+    }
+
+    .fb-calendar-view-switch .btn {
+        flex: 1;
+        padding-inline: .4rem;
+    }
+
+    .fb-calendar-day-cell {
+        min-height: 5.9rem;
+        padding: .35rem;
+    }
+
+    .fb-calendar-day-cell__number {
+        width: 1.55rem;
+        height: 1.55rem;
+        font-size: .72rem;
+    }
+
+    .fb-calendar-event-chip {
+        min-height: .42rem;
+        padding: .2rem .25rem .2rem .48rem;
+        font-size: 0;
+    }
+
+    .fb-calendar-event-chip::after {
+        display: block;
+        overflow: hidden;
+        font-size: .63rem;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        content: attr(data-short-title);
+    }
+
+    .fb-calendar-more-button {
+        font-size: .62rem;
+    }
+
+    .fb-calendar-upcoming {
+        grid-template-columns: 1fr;
+    }
+
+    .fb-calendar-list-item {
+        grid-template-columns: .3rem 3.7rem minmax(0, 1fr);
+        gap: .6rem;
+    }
+
+    .fb-calendar-list-item__badges {
+        display: none;
+    }
+
+    .fb-calendar-reminder-row {
+        grid-template-columns: minmax(0, 1fr) 2.3rem;
+        align-items: center;
+    }
+
+    .fb-calendar-reminder-row__value {
+        grid-column: 1;
+        grid-template-columns: 4.5rem minmax(3.5rem, .45fr) minmax(6.5rem, 1fr);
+    }
+
+    .fb-calendar-reminder-row__time {
+        grid-column: 1;
+        grid-row: 2;
+        grid-template-columns: 4.5rem minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .fb-calendar-reminder-row__channels {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .fb-calendar-reminder-row > [data-calendar-remove-reminder] {
+        grid-column: 2;
+        grid-row: 1;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .fb-calendar-toolbar > div:first-child {
+        flex-wrap: wrap;
+    }
+
+    .fb-calendar-period {
+        flex-basis: 100%;
+        order: -1;
+        margin: 0 0 .3rem;
+    }
+
+    .fb-calendar-weekday {
+        padding-inline: .15rem;
+        font-size: .63rem;
+    }
+
+    .fb-calendar-day-cell {
+        min-height: 4.8rem;
+    }
+
+    .fb-calendar-cell-events .fb-calendar-event-chip:nth-child(n+3) {
+        display: none;
+    }
+
+    .fb-calendar-title-input {
+        grid-template-columns: minmax(0, 1fr) 3rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fb-calendar-page *,
+    .fb-calendar-page *::before,
+    .fb-calendar-page *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+    }
+}

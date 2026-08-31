@@ -8,7 +8,9 @@ use Fcntl qw(:DEFAULT :flock);
 use File::Basename qw(dirname);
 use File::Temp qw(tempfile);
 use JSON::PP;
+use IPC::Open3;
 use POSIX qw(strftime);
+use Symbol qw(gensym);
 
 my $CONFIG_FILE = '/etc/fireball-camera-pull.conf';
 my $STREAMS_FILE = '/var/www/html/rtsp/streams.pl';
@@ -16,6 +18,7 @@ my $SERVICE_NAME = 'rtsp-streams.service';
 my $PERL_BINARY = '/usr/bin/perl';
 my $CURL_BINARY = '/usr/bin/curl';
 my $VERIFY_BINARY = '/usr/local/libexec/fireball-camera-verify';
+my $DIAGNOSTICS_BINARY = '/usr/local/libexec/fireball-camera-diagnostics';
 my $BACKUP_DIRECTORY = '/var/www/html/rtsp/.fireball-camera-manager-backups';
 my $STATE_DIRECTORY = '/var/lib/fireball-camera-manager';
 my $STATE_FILE = "$STATE_DIRECTORY/state.json";
@@ -79,7 +82,7 @@ sub read_state {
     return { revision => 0 } if !-f $STATE_FILE;
     my $raw = eval { read_text_file($STATE_FILE, 65536) };
     return { revision => 0 } if !defined $raw || $@;
-    my $state = eval { JSON::PP->new->decode($raw) };
+    my $state = eval { JSON::PP->new->utf8->decode($raw) };
     return { revision => 0 } if ref($state) ne 'HASH';
     $state->{revision} = int($state->{revision} // 0);
     $state->{revision} = 0 if $state->{revision} < 0;
@@ -91,7 +94,7 @@ sub write_state {
     ensure_directory($STATE_DIRECTORY, 0700);
     my ($handle, $temporary) = tempfile('.state.XXXXXX', DIR => $STATE_DIRECTORY, UNLINK => 0);
     chmod 0600, $temporary or fail('Unable to protect temporary state file.');
-    print {$handle} JSON::PP->new->canonical->encode($state)
+    print {$handle} JSON::PP->new->utf8->canonical->encode($state)
         or fail('Unable to write agent state.');
     close $handle or fail('Unable to close agent state.');
     rename $temporary, $STATE_FILE or fail('Unable to replace agent state.');
@@ -118,7 +121,7 @@ sub post_json {
         unlink $_ for grep { defined $_ && -e $_ } ($request_path, $response_path, $config_path);
     };
 
-    my $encoded = JSON::PP->new->canonical->encode($payload);
+    my $encoded = JSON::PP->new->utf8->canonical->encode($payload);
     print {$request_handle} $encoded or do { $cleanup->(); fail('Unable to write HTTPS request.'); };
     close $request_handle;
     close $response_handle;
@@ -157,7 +160,7 @@ CURL_CONFIG
         fail('Unable to read CMS response.');
     }
     $cleanup->();
-    my $decoded = eval { JSON::PP->new->decode($raw) };
+    my $decoded = eval { JSON::PP->new->utf8->decode($raw) };
     ref($decoded) eq 'HASH' or fail('CMS returned invalid JSON.');
     $decoded->{success} or fail('CMS rejected the request: ' . ($decoded->{message} // 'unknown error'));
     int($decoded->{protocol} // 0) == $PROTOCOL_VERSION or fail('CMS protocol version mismatch.');
@@ -268,6 +271,69 @@ sub send_pending_report {
     return 1;
 }
 
+sub execute_diagnostic_job {
+    my ($job) = @_;
+    ref($job) eq 'HASH' or return {
+        status => 'failed', error_code => 'unknown',
+        message => 'CMS returned an invalid diagnostic job.', result => {},
+    };
+    my ($writer, $reader);
+    my $errors = gensym();
+    my $pid = eval { open3($writer, $reader, $errors, $DIAGNOSTICS_BINARY) };
+    if (!$pid) {
+        return { status => 'failed', error_code => 'unknown', message => 'Unable to start diagnostic helper.', result => {} };
+    }
+    my $encoded = JSON::PP->new->utf8->canonical->encode($job);
+    print {$writer} $encoded;
+    close $writer;
+    my ($output, $error) = ('', '');
+    my $timed_out = 0;
+    local $SIG{ALRM} = sub { $timed_out = 1; kill 'TERM', $pid; };
+    alarm 90;
+    {
+        local $/;
+        $output = <$reader> // '';
+        $error = <$errors> // '';
+    }
+    close $reader;
+    close $errors;
+    waitpid($pid, 0);
+    alarm 0;
+    if ($timed_out || ($? >> 8) != 0) {
+        return {
+            status => 'failed',
+            error_code => $timed_out ? 'timeout' : 'unknown',
+            message => $timed_out ? 'Diagnostic helper exceeded its time limit.' : 'Diagnostic helper rejected the job.',
+            result => {},
+        };
+    }
+    my $decoded = eval { JSON::PP->new->utf8->decode($output) };
+    return ref($decoded) eq 'HASH' ? $decoded : {
+        status => 'failed', error_code => 'unknown',
+        message => 'Diagnostic helper returned invalid data.', result => {},
+    };
+}
+
+sub process_diagnostic_jobs {
+    my ($endpoint, $token, $jobs) = @_;
+    return if ref($jobs) ne 'ARRAY';
+    @{$jobs} <= 20 or fail('CMS returned too many diagnostic jobs.');
+    for my $job (@{$jobs}) {
+        ref($job) eq 'HASH' or fail('CMS returned an invalid diagnostic job.');
+        my $job_id = int($job->{id} // 0);
+        $job_id > 0 or fail('CMS returned an invalid diagnostic job id.');
+        my $result = execute_diagnostic_job($job);
+        post_json($endpoint, $token, {
+            action => 'diagnostic_report',
+            job_id => $job_id,
+            status => $result->{status} // 'failed',
+            error_code => $result->{error_code} // 'unknown',
+            message => $result->{message} // '',
+            result => ref($result->{result}) eq 'HASH' ? $result->{result} : {},
+        });
+    }
+}
+
 sub restore_original {
     my ($source, $current_stat) = @_;
     my $rollback = write_candidate($source, $current_stat);
@@ -322,10 +388,13 @@ sub main {
     my $state = read_state();
     send_pending_report($endpoint, $token, $state);
 
+    my $capabilities = -x $DIAGNOSTICS_BINARY ? ['diagnostics_v1'] : [];
     my $response = post_json($endpoint, $token, {
         action => 'fetch',
         current_revision => int($state->{revision} // 0),
+        capabilities => $capabilities,
     });
+    process_diagnostic_jobs($endpoint, $token, $response->{diagnostic_jobs});
     return 0 if !$response->{changed};
 
     my $revision = int($response->{revision} // 0);

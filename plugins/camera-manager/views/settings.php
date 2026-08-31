@@ -15,6 +15,20 @@
         </div>
 
         <div class="border rounded-4 p-3 mt-4">
+            <h2 class="h5">RTSP-сервер и WireGuard</h2>
+            <p class="text-body-secondary">Общие значения используются только для инструкций, безопасных диагностик и генерации NAT-файлов. Camera Manager не изменяет <code>wg0.conf</code>.</p>
+            <div class="alert alert-warning rounded-4"><strong>PrivateKey запрещён.</strong> В CMS хранится только публичный ключ WireGuard-сервера.</div>
+            <div class="row g-3">
+                <div class="col-md-2"><label class="form-label" for="cameraWgInterface">WG interface</label><input class="form-control font-monospace" id="cameraWgInterface" name="wireguard_interface" maxlength="15" value="<?= htmlSC((string)$settings['wireguard_interface']) ?>" placeholder="wg0"></div>
+                <div class="col-md-3"><label class="form-label" for="cameraWgServerIp">IP сервера в WG</label><input class="form-control font-monospace" id="cameraWgServerIp" name="wireguard_server_ip" value="<?= htmlSC((string)$settings['wireguard_server_ip']) ?>" placeholder="10.10.0.254"></div>
+                <div class="col-md-4"><label class="form-label" for="cameraWgEndpoint">Endpoint</label><input class="form-control font-monospace" id="cameraWgEndpoint" name="wireguard_endpoint" value="<?= htmlSC((string)$settings['wireguard_endpoint']) ?>" placeholder="vpn.example.com:51820"></div>
+                <div class="col-md-3"><label class="form-label" for="cameraExternalInterface">Внешний интерфейс</label><input class="form-control font-monospace" id="cameraExternalInterface" name="external_interface" maxlength="15" value="<?= htmlSC((string)$settings['external_interface']) ?>" placeholder="ens3"></div>
+                <div class="col-md-8"><label class="form-label" for="cameraWgServerPublicKey">PublicKey сервера</label><input class="form-control font-monospace" id="cameraWgServerPublicKey" name="wireguard_server_public_key" maxlength="44" value="<?= htmlSC((string)$settings['wireguard_server_public_key']) ?>" placeholder="Base64, 44 символа"></div>
+                <div class="col-md-4"><label class="form-label" for="cameraPublicIp">Публичный IP</label><input class="form-control font-monospace" id="cameraPublicIp" name="public_ip" value="<?= htmlSC((string)$settings['public_ip']) ?>" placeholder="193.0.2.10"></div>
+            </div>
+        </div>
+
+        <div class="border rounded-4 p-3 mt-4">
             <h2 class="h5">HTTPS pull — для SprintHost и FTP</h2>
             <p class="text-body-secondary">RTSP-сервер сам обращается к CMS. Входящий SSH-доступ к хостингу и выполнение команд PHP не требуются.</p>
             <div class="row g-3">

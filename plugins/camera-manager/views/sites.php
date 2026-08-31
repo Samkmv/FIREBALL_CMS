@@ -16,11 +16,11 @@
             <?php foreach ($sites as $site): ?>
                 <tr>
                     <td><div class="fw-semibold"><?= htmlSC((string)$site['code']) ?> · <?= htmlSC((string)$site['name']) ?></div><div class="small text-body-secondary"><?= htmlSC((string)($site['address'] ?: 'Адрес не указан')) ?></div></td>
-                    <td><div>Роутер: <code><?= htmlSC((string)($site['router_ip'] ?: '—')) ?></code></div><div class="small">VPN: <code><?= htmlSC((string)($site['vpn_ip'] ?: '—')) ?></code></div></td>
-                    <td><code><?= htmlSC((string)$site['recorder_ip']) ?>:<?= (int)$site['rtsp_port'] ?></code><div class="small text-body-secondary">управление: <?= (int)$site['management_port'] ?></div></td>
+                    <td><div>Роутер: <code><?= htmlSC((string)($site['router_ip'] ?: '—')) ?></code></div><div class="small">VPN: <code><?= htmlSC((string)($site['vpn_ip'] ?: '—')) ?></code></div><div class="small">LAN: <code><?= htmlSC((string)($site['lan_cidr'] ?? '—')) ?></code></div></td>
+                    <td><code><?= htmlSC((string)$site['recorder_ip']) ?>:<?= (int)$site['rtsp_port'] ?></code><div class="small text-body-secondary">управление: <?= !empty($site['management_port']) ? (int)$site['management_port'] : '—' ?></div></td>
                     <td><?= (int)$site['enabled_camera_count'] ?> / <?= (int)$site['camera_count'] ?></td>
                     <td><span class="badge rounded-pill <?= !empty($site['enabled']) ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= !empty($site['enabled']) ? 'Активен' : 'Отключён' ?></span></td>
-                    <td class="text-end"><div class="d-inline-flex gap-1"><a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/camera-manager/cameras/create?site_id=' . (int)$site['id']) ?>">Добавить канал</a><a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/camera-manager/sites/edit/' . (int)$site['id']) ?>">Изменить</a></div></td>
+                    <td class="text-end"><div class="d-inline-flex flex-wrap justify-content-end gap-1"><a class="btn btn-sm btn-dark rounded-pill" href="<?= base_href('/admin/camera-manager/sites/connection/' . (int)$site['id']) ?>">Подключение</a><a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/camera-manager/cameras/create?site_id=' . (int)$site['id']) ?>">Добавить канал</a><a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/admin/camera-manager/sites/edit/' . (int)$site['id']) ?>">Изменить</a></div></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

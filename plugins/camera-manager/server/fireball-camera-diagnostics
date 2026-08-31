@@ -1,0 +1,372 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use utf8;
+
+use IO::Socket::INET;
+use JSON::PP;
+use POSIX qw(WNOHANG);
+use Socket qw(AF_INET AF_INET6 inet_pton);
+
+my %ALLOWED_OPERATION = map { $_ => 1 } qw(
+    wg_peer route_check ping_check tcp_check port_discovery rtsp_probe hls_check
+);
+my %ALLOWED_PROFILE = map { $_ => 1 } qw(
+    auto dahua dahua_legacy hikvision_isapi hikvision_streaming generic_channel_stream custom
+);
+
+sub json_result {
+    my ($status, $error_code, $message, $result) = @_;
+    return {
+        status => $status,
+        error_code => $error_code // '',
+        message => $message // '',
+        result => $result // {},
+    };
+}
+
+sub invalid {
+    my ($message) = @_;
+    die "Invalid diagnostic job: $message\n";
+}
+
+sub executable {
+    for my $path (@_) {
+        return $path if -x $path;
+    }
+    return '';
+}
+
+sub run_capture {
+    my ($timeout, @command) = @_;
+    @command && -x $command[0] or return (127, '');
+    pipe my $reader, my $writer or die "Unable to create diagnostic pipe.\n";
+    my $pid = fork();
+    defined $pid or die "Unable to fork diagnostic command.\n";
+    if ($pid == 0) {
+        close $reader;
+        open STDOUT, '>&', $writer or exit 126;
+        open STDERR, '>&', $writer or exit 126;
+        close $writer;
+        exec { $command[0] } @command;
+        exit 127;
+    }
+    close $writer;
+    my $output = '';
+    my $timed_out = 0;
+    local $SIG{ALRM} = sub {
+        $timed_out = 1;
+        kill 'TERM', $pid;
+    };
+    alarm $timeout;
+    while (length($output) < 1_000_000) {
+        my $chunk = '';
+        my $read = sysread($reader, $chunk, 8192);
+        last if !defined $read || $read == 0;
+        $output .= $chunk;
+    }
+    close $reader;
+    waitpid($pid, 0);
+    alarm 0;
+    return ($timed_out ? 124 : ($? >> 8), $output);
+}
+
+sub required_hash {
+    my ($value, $label) = @_;
+    ref($value) eq 'HASH' or invalid("$label must be an object");
+    return $value;
+}
+
+sub required_ip {
+    my ($value, $label) = @_;
+    defined $value && !ref($value) or invalid("$label must be an IP address");
+    my $valid = eval { inet_pton(AF_INET, $value) } || eval { inet_pton(AF_INET6, $value) };
+    $valid or invalid("$label must be an IP address");
+    return $value;
+}
+
+sub required_port {
+    my ($value, $label) = @_;
+    defined $value && !ref($value) && "$value" =~ /\A[0-9]{1,5}\z/ or invalid("$label must be a port");
+    my $port = int($value);
+    $port >= 1 && $port <= 65535 or invalid("$label must be a port");
+    return $port;
+}
+
+sub required_interface {
+    my ($value) = @_;
+    defined $value && !ref($value) && $value =~ /\A[A-Za-z0-9_.-]{1,15}\z/
+        or invalid('interface is invalid');
+    return $value;
+}
+
+sub tcp_open {
+    my ($host, $port, $timeout) = @_;
+    my $socket = IO::Socket::INET->new(
+        PeerAddr => $host,
+        PeerPort => $port,
+        Proto => 'tcp',
+        Timeout => $timeout,
+    );
+    return 0 if !$socket;
+    close $socket;
+    return 1;
+}
+
+sub percent_encode {
+    my ($value) = @_;
+    use bytes;
+    $value =~ s/([^A-Za-z0-9_.~-])/sprintf('%%%02X', ord($1))/ge;
+    return $value;
+}
+
+sub classify_error {
+    my ($output, $exit) = @_;
+    return 'timeout' if $exit == 124 || $output =~ /timed?\s*out/i;
+    return '401_unauthorized' if $output =~ /(?:401|unauthori[sz]ed)/i;
+    return '404_not_found' if $output =~ /(?:404|not\s+found)/i;
+    return 'network_unreachable' if $output =~ /(?:network is unreachable|no route to host)/i;
+    return 'connection_refused' if $output =~ /connection refused/i;
+    return 'invalid_rtsp' if $output =~ /(?:invalid data|method describe failed|server returned 4[0-9]{2})/i;
+    return 'unknown';
+}
+
+sub wg_peer {
+    my ($parameters) = @_;
+    my $interface = required_interface($parameters->{interface});
+    my $public_key = $parameters->{public_key} // '';
+    $public_key =~ /\A[A-Za-z0-9+\/]{43}=\z/ or invalid('WireGuard public key is invalid');
+    my $wg = executable('/usr/bin/wg', '/usr/local/bin/wg');
+    return json_result('failed', 'unknown', 'Утилита wg не установлена на RTSP-сервере.', {}) if $wg eq '';
+    my ($exit, $output) = run_capture(8, $wg, 'show', $interface, 'dump');
+    return json_result('failed', 'unknown', 'Не удалось прочитать WireGuard peer.', {}) if $exit != 0;
+    my @lines = split /\r?\n/, $output;
+    shift @lines if @lines;
+    for my $line (@lines) {
+        my @fields = split /\t/, $line;
+        next if @fields < 8 || $fields[0] ne $public_key;
+        my $handshake = int($fields[4] // 0);
+        my $age = $handshake > 0 ? time() - $handshake : undef;
+        $age = 0 if defined $age && $age < 0;
+        my @allowed = grep { /\A[0-9A-Fa-f:.]+\/[0-9]{1,3}\z/ } split /,/, ($fields[3] // '');
+        my $result = {
+            found => JSON::PP::true,
+            allowed_ips => \@allowed,
+            latest_handshake_age => $age,
+            rx_bytes => int($fields[5] // 0),
+            tx_bytes => int($fields[6] // 0),
+        };
+        return json_result(
+            $handshake > 0 ? 'success' : 'warning',
+            '',
+            $handshake > 0 ? 'WireGuard peer найден.' : 'Peer найден, но handshake ещё не зафиксирован.',
+            $result
+        );
+    }
+    return json_result('failed', 'network_unreachable', 'WireGuard peer с указанным PublicKey не найден.', { found => JSON::PP::false });
+}
+
+sub route_check {
+    my ($parameters) = @_;
+    my $target = required_ip($parameters->{target}, 'target');
+    my $interface = required_interface($parameters->{interface});
+    my $ip = executable('/usr/sbin/ip', '/sbin/ip', '/bin/ip');
+    return json_result('failed', 'unknown', 'Утилита ip не найдена.', {}) if $ip eq '';
+    my ($exit, $output) = run_capture(8, $ip, '-o', 'route', 'get', $target);
+    return json_result('failed', classify_error($output, $exit), 'Маршрут до регистратора не найден.', { reachable => JSON::PP::false }) if $exit != 0;
+    $output =~ s/[\r\n]+/ /g;
+    my ($device) = $output =~ /\bdev\s+([A-Za-z0-9_.-]{1,15})/;
+    my ($source) = $output =~ /\bsrc\s+([0-9A-Fa-f:.]+)/;
+    my $expected_source = $parameters->{expected_source} // '';
+    required_ip($expected_source, 'expected_source') if $expected_source ne '';
+    my $ok = defined $device && $device eq $interface && ($expected_source eq '' || (defined $source && $source eq $expected_source));
+    return json_result(
+        $ok ? 'success' : 'failed',
+        $ok ? '' : 'network_unreachable',
+        $ok ? 'Маршрут проходит через WireGuard.' : 'Маршрут не соответствует ожидаемому WireGuard interface/source.',
+        { reachable => $ok ? JSON::PP::true : JSON::PP::false, device => $device // '', source => $source // '', route => substr($output, 0, 300) }
+    );
+}
+
+sub ping_check {
+    my ($parameters) = @_;
+    my $target = required_ip($parameters->{target}, 'target');
+    my $ping = executable('/bin/ping', '/usr/bin/ping');
+    return json_result('warning', 'unknown', 'Утилита ping не найдена; это не доказывает недоступность узла.', { reachable => JSON::PP::false }) if $ping eq '';
+    my ($exit, $output) = run_capture(5, $ping, '-c', '1', '-W', '2', $target);
+    my ($latency) = $output =~ /time[=<]([0-9.]+)\s*ms/i;
+    return json_result(
+        $exit == 0 ? 'success' : 'warning',
+        $exit == 0 ? '' : 'timeout',
+        $exit == 0 ? 'ICMP-ответ получен.' : 'ICMP-ответ не получен; ping может быть запрещён firewall.',
+        { reachable => $exit == 0 ? JSON::PP::true : JSON::PP::false, latency_ms => defined $latency ? 0 + $latency : undef }
+    );
+}
+
+sub tcp_check {
+    my ($parameters) = @_;
+    my $host = required_ip($parameters->{host}, 'host');
+    my $port = required_port($parameters->{port}, 'port');
+    my $open = tcp_open($host, $port, 4);
+    return json_result(
+        $open ? 'success' : 'failed',
+        $open ? '' : 'timeout',
+        $open ? "TCP $port доступен." : "TCP $port недоступен.",
+        { reachable => $open ? JSON::PP::true : JSON::PP::false }
+    );
+}
+
+sub port_discovery {
+    my ($parameters) = @_;
+    my $host = required_ip($parameters->{host}, 'host');
+    ref($parameters->{ports}) eq 'ARRAY' or invalid('ports must be an array');
+    @{$parameters->{ports}} <= 20 or invalid('too many ports');
+    my @open;
+    for my $candidate (@{$parameters->{ports}}) {
+        my $port = required_port($candidate, 'discovery port');
+        push @open, $port if tcp_open($host, $port, 2);
+    }
+    my %open = map { $_ => 1 } @open;
+    my $heuristic = '';
+    $heuristic = 'Предположительно Hikvision/HiWatch-compatible recorder.' if $open{80} && $open{554} && $open{8000};
+    $heuristic = 'Предположительно Dahua-compatible recorder.' if $open{37777} && $open{554};
+    return json_result(
+        @open ? 'success' : 'warning',
+        @open ? '' : 'timeout',
+        @open ? 'Проверка типовых портов завершена.' : 'Типовые порты не ответили.',
+        { open_ports => \@open, heuristic => $heuristic }
+    );
+}
+
+sub rtsp_probe {
+    my ($parameters) = @_;
+    my $host = required_ip($parameters->{host}, 'host');
+    my $port = required_port($parameters->{port}, 'port');
+    my $username = $parameters->{username} // '';
+    my $password = $parameters->{password} // '';
+    !ref($username) && !ref($password) && length($username) <= 190 && length($password) <= 1000
+        or invalid('RTSP credentials are invalid');
+    ref($parameters->{presets}) eq 'ARRAY' && @{$parameters->{presets}} <= 12
+        or invalid('RTSP presets are invalid');
+    my $ffprobe = executable('/usr/bin/ffprobe', '/usr/local/bin/ffprobe');
+    return json_result('failed', 'unknown', 'ffprobe не установлен на RTSP-сервере.', {}) if $ffprobe eq '';
+    my $last_error = 'invalid_rtsp';
+    for my $preset (@{$parameters->{presets}}) {
+        ref($preset) eq 'HASH' or invalid('RTSP preset must be an object');
+        my $profile = $preset->{profile} // '';
+        my $path = $preset->{path} // '';
+        $ALLOWED_PROFILE{$profile} or invalid('RTSP profile is not allowed');
+        !ref($path) && length($path) <= 500 && $path =~ m{\A/[^\r\n\0]*\z}
+            or invalid('RTSP path is invalid');
+        my $url = 'rtsp://' . percent_encode($username) . ':' . percent_encode($password) . '@' . $host . ':' . $port . $path;
+        my ($exit, $output) = run_capture(
+            15,
+            $ffprobe,
+            '-v', 'error',
+            '-rtsp_transport', 'tcp',
+            '-rw_timeout', '7000000',
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=codec_name,codec_type,width,height,avg_frame_rate',
+            '-of', 'json',
+            $url
+        );
+        if ($exit == 0) {
+            my $decoded = eval { JSON::PP->new->utf8->decode($output) };
+            my $stream = ref($decoded) eq 'HASH' && ref($decoded->{streams}) eq 'ARRAY' ? $decoded->{streams}[0] : undef;
+            if (ref($stream) eq 'HASH') {
+                if (($stream->{codec_name} // '') eq '' || ($stream->{codec_type} // '') ne 'video') {
+                    $last_error = 'unsupported_codec';
+                    next;
+                }
+                my $rate = $stream->{avg_frame_rate} // '0/1';
+                my ($numerator, $denominator) = $rate =~ /\A([0-9]+)\/([0-9]+)\z/;
+                my $fps = defined $numerator && $denominator ? $numerator / $denominator : 0;
+                return json_result('success', '', 'RTSP-поток найден.', {
+                    success => JSON::PP::true,
+                    profile => $profile,
+                    path => $path,
+                    codec_name => $stream->{codec_name} // '',
+                    codec_type => $stream->{codec_type} // '',
+                    width => int($stream->{width} // 0),
+                    height => int($stream->{height} // 0),
+                    fps => 0 + sprintf('%.3f', $fps),
+                });
+            }
+        }
+        $last_error = classify_error($output, $exit);
+        last if $last_error eq '401_unauthorized' || $last_error eq 'network_unreachable' || $last_error eq 'connection_refused';
+    }
+    my %message = (
+        '401_unauthorized' => 'RTSP endpoint отвечает, но авторизация не принята.',
+        '404_not_found' => 'Регистратор доступен, но проверенные RTSP пути отсутствуют.',
+        'network_unreachable' => 'Нет маршрута до локальной сети объекта через WireGuard.',
+        'connection_refused' => 'Регистратор отклонил RTSP TCP-соединение.',
+        'timeout' => 'RTSP-проверка превысила лимит времени.',
+        'invalid_rtsp' => 'Ответ не распознан как RTSP-видеопоток.',
+        'unsupported_codec' => 'RTSP endpoint ответил, но видеокодек не поддерживается или не определён.',
+        'unknown' => 'RTSP-поток не определён.',
+    );
+    return json_result('failed', $last_error, $message{$last_error} // $message{unknown}, { success => JSON::PP::false });
+}
+
+sub http_status {
+    my ($url) = @_;
+    !ref($url) && $url =~ m{\Ahttps?://[^\s\@"'<>]+\z}i or invalid('HTTP diagnostic URL is invalid');
+    my $curl = executable('/usr/bin/curl', '/usr/local/bin/curl');
+    return 0 if $curl eq '';
+    my ($exit, $output) = run_capture(12, $curl, '--silent', '--show-error', '--location', '--max-redirs', '2', '--connect-timeout', '5', '--max-time', '10', '--output', '/dev/null', '--write-out', '%{http_code}', $url);
+    return 0 if $exit != 0;
+    return $output =~ /([0-9]{3})\s*\z/ ? int($1) : 0;
+}
+
+sub hls_check {
+    my ($parameters) = @_;
+    my $hls = http_status($parameters->{hls_url});
+    my $poster = http_status($parameters->{poster_url});
+    my $hls_available = $hls == 200 || $hls == 206;
+    my $poster_available = $poster == 200 || $poster == 206;
+    my $status = $hls_available && $poster_available ? 'success' : 'warning';
+    return json_result($status, '', $hls_available ? 'HLS проверен.' : 'HLS ещё не готов; первый запрос может только разбудить FFmpeg.', {
+        hls_status => $hls,
+        poster_status => $poster,
+        hls_available => $hls_available ? JSON::PP::true : JSON::PP::false,
+        poster_available => $poster_available ? JSON::PP::true : JSON::PP::false,
+    });
+}
+
+sub execute_job {
+    my ($job) = @_;
+    my $operation = $job->{operation} // '';
+    $ALLOWED_OPERATION{$operation} or invalid('operation is not allowed');
+    my $parameters = required_hash($job->{parameters}, 'parameters');
+    return wg_peer($parameters) if $operation eq 'wg_peer';
+    return route_check($parameters) if $operation eq 'route_check';
+    return ping_check($parameters) if $operation eq 'ping_check';
+    return tcp_check($parameters) if $operation eq 'tcp_check';
+    return port_discovery($parameters) if $operation eq 'port_discovery';
+    return rtsp_probe($parameters) if $operation eq 'rtsp_probe';
+    return hls_check($parameters) if $operation eq 'hls_check';
+    invalid('operation is not implemented');
+}
+
+if (@ARGV == 1 && $ARGV[0] eq '--self-test') {
+    my $rejected = eval { execute_job({ operation => 'shell', parameters => { command => 'id' } }); 0 };
+    die "Diagnostic whitelist self-test failed.\n" if !$@;
+    my $tcp = execute_job({ operation => 'tcp_check', parameters => { host => '127.0.0.1', port => 9 } });
+    ref($tcp) eq 'HASH' && $tcp->{status} =~ /\A(?:success|failed)\z/
+        or die "Diagnostic TCP self-test failed.\n";
+    print "fireball-camera-diagnostics self-test passed.\n";
+    exit 0;
+}
+@ARGV == 0 or die "Unsupported command-line argument.\n";
+local $/;
+my $raw = <STDIN>;
+defined $raw && length($raw) <= 1_000_000 or die "Diagnostic request is missing or too large.\n";
+my $job = eval { JSON::PP->new->utf8->decode($raw) };
+ref($job) eq 'HASH' or die "Diagnostic request is invalid.\n";
+my $result = eval { execute_job($job) };
+if ($@) {
+    $result = json_result('failed', 'unknown', 'Диагностическое задание отклонено безопасным валидатором.', {});
+}
+print JSON::PP->new->utf8->canonical->encode($result), "\n";

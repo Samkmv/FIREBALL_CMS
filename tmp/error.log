@@ -1,0 +1,15 @@
+[2026-08-30 09:02:56] Camera Manager connection test failed
+Request URI: /admin/camera-manager/settings/test-connection
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: RTSP-агент ещё не обращался к HTTPS endpoint. Запустите его проверку на RTSP-сервере.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/Plugin.php
+Line: 793
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/admin.php(265): FireballPluginCameraManager::testConnection()
+#1 [internal function]: FBL\Plugins\PluginManager::{closure}()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(103): call_user_func(Object(Closure))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(82): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
+#5 {main}
+========================================================================

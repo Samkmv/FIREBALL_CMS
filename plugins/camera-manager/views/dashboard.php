@@ -1,3 +1,8 @@
+<?php
+$publicationApplied = $settings['connection_mode'] === 'pull'
+    ? ((int)$settings['pull_revision'] > 0 && (int)$settings['pull_last_revision'] === (int)$settings['pull_revision'])
+    : (is_array($latest_publication) && in_array((string)$latest_publication['status'], ['success', 'warning'], true));
+?>
 <?= view()->renderPartial('admin/shell_open', [
     'title' => FireballPluginCameraManager::t('camera_manager_title'),
     'subtitle' => FireballPluginCameraManager::t('camera_manager_dashboard_subtitle'),
@@ -57,7 +62,7 @@
                         <div class="small mt-1"><a href="<?= htmlSC(FireballPluginCameraManager::hlsUrl((string)$camera['stream_key'])) ?>" target="_blank" rel="noopener">M3U8</a> · <a href="<?= htmlSC(FireballPluginCameraManager::posterUrl((string)$camera['stream_key'])) ?>" target="_blank" rel="noopener">постер</a></div>
                     </td>
                     <td>
-                        <span class="badge rounded-pill text-bg-<?= $healthClass ?>"><?= $health === 'online' ? 'Онлайн' : ($health === 'offline' ? 'Недоступна' : 'Не проверялась') ?></span>
+                        <div class="d-flex flex-wrap gap-1"><span class="badge rounded-pill text-bg-success">RTSP configured</span><span class="badge rounded-pill text-bg-<?= $publicationApplied ? 'success' : 'warning' ?>"><?= $publicationApplied ? 'Published' : 'Есть изменения' ?></span><span class="badge rounded-pill text-bg-<?= $healthClass ?>"><?= $health === 'online' ? 'HLS available' : ($health === 'offline' ? 'HLS error' : 'HLS pending') ?></span><span class="badge rounded-pill text-bg-<?= str_contains((string)($camera['last_health_message'] ?? ''), 'Постер доступен') ? 'success' : 'secondary' ?>"><?= str_contains((string)($camera['last_health_message'] ?? ''), 'Постер доступен') ? 'Poster available' : 'Poster missing' ?></span></div>
                         <?php if (!empty($camera['last_checked_at'])): ?><div class="small text-body-secondary mt-1"><?= htmlSC((string)$camera['last_checked_at']) ?></div><?php endif; ?>
                     </td>
                     <td class="text-end">

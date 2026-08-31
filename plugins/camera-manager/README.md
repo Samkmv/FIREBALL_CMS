@@ -45,3 +45,59 @@
 5. Создайте объект и камеры, проверьте «Конфигурацию» и нажмите «Опубликовать».
 
 Приватные ключи WireGuard в плагин не вводятся. Изменение `wg0.conf` намеренно не автоматизировано: ошибка в нём может отключить все действующие объекты.
+
+## Подключение нового объекта
+
+После сохранения объекта откройте «Объекты → Подключение». Мастер не выполняет root-команды, а формирует безопасные инструкции и ставит ограниченные проверки в очередь HTTPS pull-агента.
+
+Пример без реальных credentials:
+
+```text
+Объект:       34
+Router:       192.168.34.1
+VPN:          10.10.0.34
+LAN:          192.168.34.0/24
+Recorder:     192.168.34.100
+RTSP:         554
+External RTSP: 55434
+```
+
+Полный lifecycle:
+
+1. заполнить LAN, router/VPN IP, recorder и только WireGuard `PublicKey`;
+2. скопировать параметры peer в Keenetic/Netcraze и блок `[Peer]` для сервера;
+3. вручную настроить firewall роутера для WireGuard → LAN;
+4. вручную применить маршрут `ip route replace 192.168.34.0/24 dev wg0`;
+5. скачать и проверить `ipt.tun.034.up.sh`/`ipt.tun.034.down.sh`;
+6. нажать «Проверить подключение» — агент последовательно проверит peer, route, ICMP, TCP и RTSP;
+7. подтвердить найденный RTSP profile и добавить канал;
+8. проверить masked preview и опубликовать существующим HTTPS pull;
+9. открыть HLS: `{hls_base}/stream-34-01/index.m3u8`;
+10. проверить poster: `{hls_base}/tn-34-01.jpg`.
+
+Первый запрос HLS будит FFmpeg. Поэтому первоначальный HTTP 404 отображается как `HLS pending`; при отсутствии запросов поток может заснуть примерно через 120 секунд.
+
+## RTSP profiles
+
+- Dahua: `/cam/realmonitor?channel={channel}&subtype={subtype}`;
+- Dahua legacy: `/cam/realmonitor?channel={channel}_subtype={subtype}`;
+- Hikvision / HiWatch ISAPI: `/ISAPI/Streaming/Channels/101`, `102`, `201`, `202`;
+- Hikvision Streaming: `/Streaming/Channels/101` и далее;
+- Generic channel/stream: `/?channel={channel}_stream={stream}`;
+- Custom: прежний `rtsp_path_template` без изменения существующих объектов.
+
+## Безопасная диагностика
+
+CMS не обращается к `192.168.x.x`. Она хранит задание фиксированного типа, а обновлённый pull-agent выполняет только:
+
+```text
+wg_peer
+route_check
+ping_check
+tcp_check
+port_discovery
+rtsp_probe
+hls_check
+```
+
+Текст shell-команды из CMS не принимается. Все IP, порты, интерфейсы, PublicKey и RTSP paths валидируются повторно на сервере. RTSP-пароль передаётся помощнику через stdin, не записывается в очередь/результат и не выводится в журнал.
