@@ -1,7 +1,7 @@
 {
   "name": "Camera Manager",
   "slug": "camera-manager",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
   "release_notes": [
@@ -15,7 +15,8 @@
     "Added compatibility for legacy SprintHost plugin_settings tables with duplicate setting rows.",
     "Added a backward-compatible 10-step site connection wizard with WireGuard, route, firewall, and idempotent iptables generators.",
     "Added RTSP profiles for Dahua, Hikvision/HiWatch, generic and custom recorders.",
-    "Added a signed whitelist-only diagnostic queue executed by the RTSP pull agent without arbitrary commands."
+    "Added a signed whitelist-only diagnostic queue executed by the RTSP pull agent without arbitrary commands.",
+    "Completed the MAXIPAPA WireGuard wizard with /24 router values, manual backup/wg set/wg syncconf commands, and external port checks."
   ],
   "release_notes_i18n": {
     "ru": [
@@ -29,7 +30,8 @@
       "Добавлена совместимость со старыми таблицами plugin_settings на SprintHost, содержащими дубли настроек.",
       "Добавлен обратно совместимый 10-шаговый мастер подключения объекта с генераторами WireGuard, маршрута, firewall и идемпотентных iptables.",
       "Добавлены RTSP-профили Dahua, Hikvision/HiWatch, generic и custom.",
-      "Добавлена подписанная очередь диагностик с жёстким whitelist операций, выполняемая HTTPS pull-агентом без произвольных команд."
+      "Добавлена подписанная очередь диагностик с жёстким whitelist операций, выполняемая HTTPS pull-агентом без произвольных команд.",
+      "Мастер WireGuard MAXIPAPA дополнен параметрами роутера /24, ручными командами backup/wg set/wg syncconf и проверками внешних портов."
     ]
   },
   "update": {

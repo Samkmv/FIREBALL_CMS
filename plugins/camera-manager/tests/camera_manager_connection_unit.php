@@ -88,13 +88,23 @@ $settings = [
 $network = (new NetworkConfigGenerator())->generate($site, $settings);
 $up = (string)$network['scripts']['up'];
 $down = (string)$network['scripts']['down'];
+$wireGuardCommands = (string)$network['wireguard_commands'];
 $assert($network['route_command'] === 'ip route replace 192.168.34.0/24 dev wg0', 'Route generator failed.');
+$assert(str_contains((string)$network['router_config'], 'IPv4: 10.10.0.34/24'), 'Router WireGuard address is incorrect.');
+$assert(str_contains((string)$network['router_config'], 'AllowedIPs: 10.10.0.0/24'), 'Router WireGuard AllowedIPs are incorrect.');
+$assert(str_contains($wireGuardCommands, 'cp -a /etc/wireguard/wg0.conf'), 'WireGuard backup command is missing.');
+$assert(str_contains($wireGuardCommands, "wg set 'wg0' peer '" . $publicKey . "'"), 'Safe wg set command is missing.');
+$assert(str_contains($wireGuardCommands, "wg syncconf 'wg0' <(wg-quick strip 'wg0')"), 'Safe wg syncconf command is missing.');
+$assert(!str_contains($wireGuardCommands, 'PrivateKey ='), 'WireGuard commands contain a PrivateKey field.');
+$wireGuardSyntax = (new ProcessRunner())->run(['/bin/bash', '-n'], 10, $wireGuardCommands);
+$assert($wireGuardSyntax['exit_code'] === 0, 'Generated WireGuard commands failed bash -n.');
 $assert(str_contains($up, 'iptables -t nat -C PREROUTING') && str_contains($up, 'iptables -t nat -A PREROUTING'), 'Up script is not idempotent.');
 $assert(str_contains($up, '-C FORWARD') && str_contains($up, '-A FORWARD'), 'FORWARD rules are not idempotent.');
 $assert(str_contains($down, 'iptables -t nat -D OUTPUT') && str_contains($down, '2>/dev/null || true'), 'Down script does not safely invert rules.');
 $assert(substr_count($up, '--dport 55434') >= 2, 'RTSP external port is missing from NAT rules.');
 $assert(!str_contains($up, '37777') && !str_contains($up, '35773'), 'Optional management rules were generated unexpectedly.');
 $assert(!str_contains($up . $down, 'PrivateKey') && !str_contains($up . $down, 'password'), 'Generated scripts leaked a secret field.');
+$assert(str_contains((string)$network['verification_commands'], '</dev/tcp/193.0.2.10/55434'), 'External RTSP verification is missing.');
 $upSyntax = (new ProcessRunner())->run(['/bin/bash', '-n'], 10, $up);
 $downSyntax = (new ProcessRunner())->run(['/bin/bash', '-n'], 10, $down);
 $assert($upSyntax['exit_code'] === 0 && $downSyntax['exit_code'] === 0, 'Generated iptables scripts failed bash -n.');
@@ -106,6 +116,10 @@ $assert(
     str_contains((string)$networkWithManagement['scripts']['up'], '--dport 38000')
         && str_contains((string)$networkWithManagement['scripts']['up'], ':8000'),
     'Optional management NAT mapping was not generated.'
+);
+$assert(
+    str_contains((string)$networkWithManagement['verification_commands'], '</dev/tcp/193.0.2.10/38000'),
+    'External management verification is missing.'
 );
 
 $migration = (string)file_get_contents(dirname(__DIR__) . '/migrations/002_add_connection_wizard_and_diagnostics.sql');
@@ -130,6 +144,12 @@ $assert(
     str_contains($pullSource, "-x \$DIAGNOSTICS_BINARY ? ['diagnostics_v1'] : []")
         && !str_contains($pullSource, "-x \$DIAGNOSTICS_BINARY or fail"),
     'Updated pull agent would break publication when the optional diagnostic helper is not installed.'
+);
+$assert(
+    str_contains($pullSource, 'sub restore_original')
+        && str_contains($pullSource, 'original cameras restored')
+        && str_contains($pullSource, "run_quiet(\$PERL_BINARY, '-c', \$candidate)"),
+    'HTTPS pull publication no longer guarantees Perl validation and rollback.'
 );
 
 echo "Camera Manager connection wizard checks passed.\n";

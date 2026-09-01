@@ -25,7 +25,7 @@ $assert = static function (bool $condition, string $message): void {
 if (!defined('CHAT_ENCRYPTION_KEY')) {
     define('CHAT_ENCRYPTION_KEY', 'camera-manager-unit-test-key');
 }
-$secret = 'User_DEF_11!@#';
+$secret = 'fixture-password!@#';
 $encryptedSecret = SecretCipher::encrypt($secret);
 $assert($encryptedSecret !== '' && !str_contains($encryptedSecret, $secret), 'The RTSP password was not encrypted.');
 $assert(SecretCipher::decrypt($encryptedSecret) === $secret, 'The encrypted RTSP password cannot be decrypted.');

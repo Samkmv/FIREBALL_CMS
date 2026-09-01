@@ -48,13 +48,25 @@ final class NetworkConfigGenerator
         }
 
         $routerConfig = '';
+        $wireGuardCommands = '';
         if ($serverPublicKey !== null && $endpoint !== '' && $vpnIp !== null && $serverIp !== null) {
+            $wireGuardNetwork = $this->ipv4Network($serverIp, 24);
             $routerConfig = "WireGuard peer (Keenetic / Netcraze)\n"
-                . 'Address: ' . $vpnIp . "/32\n"
+                . "Peer: server\n"
+                . 'IPv4: ' . $vpnIp . "/24\n"
                 . 'PublicKey сервера: ' . $serverPublicKey . "\n"
                 . 'Endpoint: ' . $endpoint . "\n"
-                . 'Allowed IPs: ' . $serverIp . "/32\n"
+                . 'AllowedIPs: ' . $wireGuardNetwork . "/24\n"
                 . 'Persistent keepalive: 25';
+        }
+        if ($peerKey !== null && $vpnIp !== null && $lanCidr !== null) {
+            $configPath = '/etc/wireguard/' . $wgInterface . '.conf';
+            $allowedIps = $vpnIp . '/32,' . $lanCidr;
+            $wireGuardCommands = "# Выполнять вручную от root. PrivateKey не требуется.\n"
+                . 'cp -a ' . $configPath . ' "' . $configPath . '.backup-$(date +%Y%m%d-%H%M%S)"' . "\n"
+                . "wg set '" . $wgInterface . "' peer '" . $peerKey . "' allowed-ips '" . $allowedIps . "'\n"
+                . "# После ручного добавления показанного [Peer] в " . $configPath . ":\n"
+                . "wg syncconf '" . $wgInterface . "' <(wg-quick strip '" . $wgInterface . "')";
         }
 
         $routeCommand = $lanCidr !== null ? 'ip route replace ' . $lanCidr . ' dev ' . $wgInterface : '';
@@ -99,12 +111,17 @@ final class NetworkConfigGenerator
                 'down_name' => $downName,
             ];
             $verificationCommands[] = "iptables-save | grep -- '--dport " . $externalRtspPort . "'";
+            $verificationCommands[] = "timeout 5 bash -c '</dev/tcp/" . $publicIp . '/' . $externalRtspPort . "'";
+            if ($managementPort !== null && $externalManagementPort !== null) {
+                $verificationCommands[] = "timeout 5 bash -c '</dev/tcp/" . $publicIp . '/' . $externalManagementPort . "'";
+            }
         }
 
         return [
             'missing' => $missing,
             'router_config' => $routerConfig,
             'peer_block' => $peerBlock,
+            'wireguard_commands' => $wireGuardCommands,
             'route_command' => $routeCommand,
             'route_check' => $routeCheck,
             'route_expected' => $routeExpected,
@@ -216,5 +233,16 @@ final class NetworkConfigGenerator
         }
 
         return ctype_digit($code) ? str_pad($code, 3, '0', STR_PAD_LEFT) : strtolower($code);
+    }
+
+    private function ipv4Network(string $ip, int $prefix): string
+    {
+        $packed = ip2long($ip);
+        if ($packed === false || $prefix < 0 || $prefix > 32) {
+            throw new RuntimeException('Не удалось определить сеть WireGuard.');
+        }
+        $mask = $prefix === 0 ? 0 : ((0xFFFFFFFF << (32 - $prefix)) & 0xFFFFFFFF);
+
+        return long2ip($packed & $mask);
     }
 }

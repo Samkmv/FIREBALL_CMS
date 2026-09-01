@@ -131,7 +131,7 @@ External RTSP: 55434
 
 Порядок: Keenetic/Netcraze → WireGuard peer → firewall WireGuard/LAN → route на RTSP-сервере → сгенерированные NAT scripts → RTSP auto-detect → камеры → публикация → HLS/poster.
 
-Camera Manager показывает peer и содержимое `.up.sh`/`.down.sh`, но не записывает `/etc/wireguard/wg0.conf`, не запускает iptables и не перезапускает WireGuard. Скрипты используют `iptables -C ... || iptables -A ...`; down-файл удаляет только правила и маршрут конкретного объекта.
+Camera Manager показывает параметры роутера `/24`, peer, ручные команды резервного копирования/`wg set`/`wg syncconf` и содержимое `.up.sh`/`.down.sh`, но не записывает `/etc/wireguard/wg0.conf`, не запускает iptables и не перезапускает WireGuard. Скрипты используют `iptables -C ... || iptables -A ...`; down-файл удаляет только правила и маршрут конкретного объекта.
 
 ## Whitelist diagnostics
 
