@@ -77,9 +77,18 @@ $assert(is_array($manifest) && ($manifest['slug'] ?? '') === 'calendar', 'Calend
 $assert(is_file($pluginRoot . '/migrations/001_create_calendar_tables.sql'), 'Calendar migration should exist.');
 $assert(str_contains((string)file_get_contents($pluginRoot . '/Plugin.php'), 'fireball_scheduled_jobs'), 'Calendar should register its reminder job.');
 $assert(str_contains((string)file_get_contents(dirname($pluginRoot, 2) . '/app/Services/NotificationService.php'), "push_notification"), 'Notification service should support site-only delivery.');
+$routes = (string)file_get_contents($pluginRoot . '/routes.php');
+$assert(str_contains($routes, "'/admin/calendar'"), 'Calendar management should be routed through the admin panel.');
+$assert(str_contains($routes, "middleware(['auth', 'admin'])"), 'Calendar management routes should require an administrator.');
+$calendarView = (string)file_get_contents($pluginRoot . '/views/calendar.php');
+$assert(str_contains($calendarView, "'content_class' => 'fb-content--edge-workspace'"), 'Admin calendar should use the full-width workspace shell.');
 $calendarJs = (string)file_get_contents($pluginRoot . '/assets/calendar.js');
 $assert(str_contains($calendarJs, 'function eventModal()'), 'Calendar modal should resolve Bootstrap lazily after theme scripts load.');
 $assert(!str_contains($calendarJs, 'const modal = window.bootstrap'), 'Calendar must not cache Bootstrap modal before Bootstrap is available.');
+$assert(str_contains($calendarJs, 'const canManage = Boolean(config.canManage);'), 'Public calendar compatibility view should remain read-only.');
+$calendarCss = (string)file_get_contents($pluginRoot . '/assets/calendar.css');
+$assert(str_contains($calendarCss, '.fb-calendar-modal > form'), 'Calendar modal form should have its own scrollable flex layout.');
+$assert(str_contains($calendarCss, 'background: transparent;'), 'Calendar switch should not render the oversized background pill.');
 
 $english = require $pluginRoot . '/lang/en.php';
 foreach (['ru', 'de', 'zh-cn'] as $locale) {

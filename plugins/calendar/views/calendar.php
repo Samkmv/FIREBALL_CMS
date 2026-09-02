@@ -1,5 +1,7 @@
 <?php
 $t = static fn(string $key): string => htmlSC(FireballPluginCalendar::t($key));
+$isAdminContext = !empty($admin_context);
+$canManage = !empty($can_manage);
 $pushReady = !empty($push_status['global_enabled'])
     && !empty($push_status['vapid_ready'])
     && !empty($push_status['secure_context'])
@@ -20,30 +22,42 @@ $config = [
     'locale' => current_locale(),
     'timezone' => date_default_timezone_get(),
     'isAdmin' => (bool)$is_admin,
-    'eventsUrl' => base_href('/calendar/events'),
+    'canManage' => $canManage,
+    'eventsUrl' => (string)$events_url,
     'csrf' => (string)session()->get('needCSRFToken', ''),
     'labels' => $labels,
 ];
 ?>
 
-<main class="fb-calendar-page" data-calendar-app>
+<?php if ($isAdminContext): ?>
+    <?= view()->renderPartial('admin/shell_open', [
+        'title' => FireballPluginCalendar::t('calendar_title'),
+        'subtitle' => FireballPluginCalendar::t('calendar_subtitle'),
+        'show_header' => false,
+        'content_class' => 'fb-content--edge-workspace',
+    ]) ?>
+<?php endif; ?>
+
+<main class="fb-calendar-page <?= $isAdminContext ? 'fb-calendar-page--admin' : '' ?>" data-calendar-app>
     <section class="fb-calendar-hero">
-        <div class="container py-4 py-lg-5">
+        <div class="fb-calendar-frame fb-calendar-frame--hero py-4">
             <div class="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-4">
                 <div>
                     <div class="fb-calendar-eyebrow"><i class="ci-bell"></i> <?= $t('calendar_reminders') ?></div>
                     <h1 class="display-6 fw-semibold mb-2"><?= $t('calendar_title') ?></h1>
                     <p class="text-body-secondary fs-lg mb-0"><?= $t('calendar_subtitle') ?></p>
                 </div>
-                <button class="btn btn-dark btn-lg rounded-pill d-inline-flex align-items-center justify-content-center gap-2" type="button" data-calendar-create>
-                    <i class="ci-plus"></i>
-                    <span><?= $t('calendar_new_event') ?></span>
-                </button>
+                <?php if ($canManage): ?>
+                    <button class="btn btn-dark btn-lg rounded-pill d-inline-flex align-items-center justify-content-center gap-2" type="button" data-calendar-create>
+                        <i class="ci-plus"></i>
+                        <span><?= $t('calendar_new_event') ?></span>
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
     </section>
 
-    <div class="container pb-5">
+    <div class="fb-calendar-frame fb-calendar-frame--content pb-4">
         <div class="fb-calendar-status-card <?= $pushReady ? 'is-ready' : 'is-off' ?>">
             <span class="fb-calendar-status-card__icon"><i class="<?= $pushReady ? 'ci-bell' : 'ci-bell-off' ?>"></i></span>
             <div class="min-w-0">
@@ -262,3 +276,7 @@ $config = [
 
     <script type="application/json" data-calendar-config><?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 </main>
+
+<?php if ($isAdminContext): ?>
+    <?= view()->renderPartial('admin/shell_close') ?>
+<?php endif; ?>

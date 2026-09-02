@@ -14,6 +14,7 @@
 
     const labels = config.labels || {};
     const locale = String(config.locale || document.documentElement.lang || 'ru').replace('_', '-');
+    const canManage = Boolean(config.canManage);
     const stage = root.querySelector('[data-calendar-stage]');
     const loading = root.querySelector('[data-calendar-loading]');
     const period = root.querySelector('[data-calendar-period]');
@@ -374,6 +375,7 @@
         });
         stage.querySelectorAll('[data-calendar-new-date]').forEach((cell) => {
             cell.addEventListener('dblclick', (event) => {
+                if (!canManage) return;
                 if (event.target.closest('[data-calendar-event], [data-calendar-day]')) return;
                 openCreate(parseDateTime(`${cell.dataset.calendarNewDate}T09:00:00`));
             });
@@ -450,10 +452,11 @@
         updateRecurrence();
         updateAudience();
         modalTitle.textContent = label('event_edit');
-        moreActions.hidden = !Boolean(event.editable);
+        const editable = canManage && Boolean(event.editable);
+        moreActions.hidden = !editable;
         const statusAction = root.querySelector('[data-calendar-toggle-status] span');
         if (statusAction) statusAction.textContent = event.status === 'completed' ? label('restore_scheduled') : label('mark_complete');
-        if (!Boolean(event.editable)) {
+        if (!editable) {
             form.querySelectorAll('input, textarea, select, button').forEach((element) => { element.disabled = true; });
             form.querySelectorAll('[data-bs-dismiss="modal"]').forEach((element) => { element.disabled = false; });
             saveButton.hidden = true;

@@ -6,6 +6,7 @@ use Fireball\Subscriptions\Repositories\PlanRepository;
 use Fireball\Subscriptions\Repositories\ProfileRepository;
 use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 use Fireball\Subscriptions\Services\SettingsService;
+use Fireball\Subscriptions\Services\PaymentService;
 use Fireball\Subscriptions\Services\SubscriptionService;
 
 final class AdminController
@@ -178,11 +179,23 @@ final class AdminController
         $offset = $pagination->getOffset();
         $rows = db()->query(
             "SELECT sp.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name,
-                    o.status AS order_status, o.customer_snapshot, o.consent_snapshot, o.plan_snapshot
+                    o.status AS order_status, o.customer_snapshot, o.consent_snapshot, o.plan_snapshot,
+                    we.processing_status AS webhook_status,
+                    we.signature_verified AS webhook_signature_verified,
+                    we.error_message AS webhook_error_message,
+                    we.created_at AS webhook_created_at,
+                    we.processed_at AS webhook_processed_at
              FROM subscription_payments sp
              INNER JOIN users u ON u.id = sp.user_id
              INNER JOIN subscription_plans p ON p.id = sp.plan_id
              INNER JOIN subscription_orders o ON o.id = sp.order_id
+             LEFT JOIN subscription_webhook_events we ON we.id = (
+                 SELECT latest_we.id
+                 FROM subscription_webhook_events latest_we
+                 WHERE latest_we.provider = sp.provider AND latest_we.invoice_id = sp.invoice_id
+                 ORDER BY latest_we.id DESC
+                 LIMIT 1
+             )
              {$whereSql} ORDER BY sp.created_at DESC LIMIT {$offset}, 25",
             $params
         )->get() ?: [];
@@ -206,6 +219,17 @@ final class AdminController
     {
         db()->query('UPDATE subscription_payments SET cleared_at = ?, updated_at = ? WHERE cleared_at IS NULL', [date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
         session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_payments_cleared'));
+        response()->redirect(base_href('/admin/subscriptions/payments'));
+    }
+
+    public function retryPaymentWebhook(): never
+    {
+        try {
+            (new PaymentService())->retryVerifiedWebhook((int)request()->post('payment_id'));
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_webhook_retry_success'));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        }
         response()->redirect(base_href('/admin/subscriptions/payments'));
     }
 

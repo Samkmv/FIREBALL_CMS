@@ -34,6 +34,57 @@ final class PaymentService
         }
         $this->recordWebhook($invoiceId, $eventHash, true, 'processing', $payload);
 
+        return $this->processVerifiedResult($payload, $invoiceId, $eventHash, $gateway);
+    }
+
+    public function retryVerifiedWebhook(int $paymentId): string
+    {
+        $payment = db()->query(
+            'SELECT id, provider, invoice_id, status FROM subscription_payments WHERE id = ? LIMIT 1',
+            [$paymentId]
+        )->getOne();
+        if (!$payment || (string)$payment['provider'] !== 'robokassa') {
+            throw new \RuntimeException('Robokassa payment was not found.');
+        }
+
+        $invoiceId = (int)$payment['invoice_id'];
+        $gateway = new RobokassaGateway();
+        if ((string)$payment['status'] === 'paid') {
+            return $gateway->expectedResultResponse($invoiceId);
+        }
+
+        $event = db()->query(
+            "SELECT event_hash, payload
+             FROM subscription_webhook_events
+             WHERE provider = 'robokassa' AND invoice_id = ? AND signature_verified = 1 AND processing_status = 'failed'
+             ORDER BY id DESC
+             LIMIT 1",
+            [$invoiceId]
+        )->getOne();
+        if (!$event) {
+            throw new \RuntimeException('No failed, signature-verified ResultURL is available for retry.');
+        }
+
+        $payload = json_decode((string)($event['payload'] ?? ''), true);
+        if (!is_array($payload)) {
+            throw new \RuntimeException('Stored ResultURL payload is invalid.');
+        }
+        $payloadInvoiceId = (int)($payload['InvId'] ?? $payload['InvoiceID'] ?? 0);
+        if ($payloadInvoiceId !== $invoiceId) {
+            throw new \RuntimeException('Stored ResultURL invoice does not match the payment.');
+        }
+
+        $eventHash = (string)$event['event_hash'];
+        db()->query(
+            "UPDATE subscription_webhook_events SET processing_status = 'processing', error_message = NULL WHERE provider = ? AND event_hash = ? AND signature_verified = 1",
+            ['robokassa', $eventHash]
+        );
+
+        return $this->processVerifiedResult($payload, $invoiceId, $eventHash, $gateway);
+    }
+
+    private function processVerifiedResult(array $payload, int $invoiceId, string $eventHash, RobokassaGateway $gateway): string
+    {
         db()->beginTransaction();
         try {
             $payment = db()->query(
@@ -74,7 +125,7 @@ final class PaymentService
             $now = date('Y-m-d H:i:s');
             $safePayload = $this->safePayload($payload);
             db()->query(
-                "UPDATE subscription_payments SET status = 'paid', signature_verified = 1, provider_payload = ?, provider_transaction = ?, paid_at = ?, updated_at = ? WHERE id = ?",
+                "UPDATE subscription_payments SET status = 'paid', signature_verified = 1, provider_payload = ?, provider_transaction = ?, error_message = NULL, paid_at = ?, updated_at = ? WHERE id = ?",
                 [$safePayload, trim((string)($payload['PaymentMethod'] ?? $payload['IncCurrLabel'] ?? '')), $now, $now, (int)$payment['id']]
             );
             db()->query("UPDATE subscription_orders SET status = 'paid', updated_at = ? WHERE id = ?", [$now, (int)$order['id']]);
@@ -85,7 +136,12 @@ final class PaymentService
             if (db()->inTransaction()) {
                 db()->rollBack();
             }
-            db()->query("UPDATE subscription_webhook_events SET processing_status = 'failed', error_message = ? WHERE provider = ? AND event_hash = ?", [mb_substr($exception->getMessage(), 0, 2000), 'robokassa', $eventHash]);
+            $errorMessage = mb_substr($exception->getMessage(), 0, 2000);
+            db()->query("UPDATE subscription_webhook_events SET processing_status = 'failed', error_message = ? WHERE provider = ? AND event_hash = ?", [$errorMessage, 'robokassa', $eventHash]);
+            db()->query(
+                "UPDATE subscription_payments SET error_message = ?, updated_at = ? WHERE provider = 'robokassa' AND invoice_id = ? AND status <> 'paid'",
+                [$errorMessage, date('Y-m-d H:i:s'), $invoiceId]
+            );
             throw $exception;
         }
 

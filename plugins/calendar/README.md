@@ -1,6 +1,6 @@
 # Calendar
 
-Calendar is a FIREBALL CMS system plugin for personal and shared events. It provides month, week, day, and list views; recurring events; multiple reminders; and independent in-site/PWA Push delivery channels.
+Calendar is a FIREBALL CMS system plugin for personal and shared events. Its management workspace is available at `/admin/calendar` and fills the admin content area beside the standard sidebar. It provides month, week, day, and list views; recurring events; multiple reminders; and independent in-site/PWA Push delivery channels.
 
 ## Installation
 

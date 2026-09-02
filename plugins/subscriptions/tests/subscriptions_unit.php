@@ -139,7 +139,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.27', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.2.29', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -179,6 +179,8 @@ foreach ($supportedLocales as $locale) {
 
 assertSameValue(0, Money::toMinor('0'), 'Zero money parsing');
 assertSameValue(10050, Money::toMinor('100,50'), 'Exact money parsing');
+assertSameValue(10000, Money::toMinor('100.000000'), 'Robokassa live whole amount parsing');
+assertSameValue(10050, Money::toMinor('100.500000'), 'Robokassa live fractional amount parsing');
 assertSameValue('100.50', Money::decimal(10050), 'Exact money formatting');
 assertSameValue('100,50 RUB', Money::display(10050), 'Display money formatting');
 
@@ -395,6 +397,11 @@ $callback = [
 ];
 $callback['SignatureValue'] = hash('sha256', '100.50:123:secret-two:Shp_order=7:Shp_user=4');
 assertTrueValue($gateway->verifyResult($callback), 'Valid ResultURL signature');
+$liveCallback = $callback;
+$liveCallback['OutSum'] = '100.500000';
+$liveCallback['SignatureValue'] = hash('sha256', '100.500000:123:secret-two:Shp_order=7:Shp_user=4');
+assertTrueValue($gateway->verifyResult($liveCallback), 'Valid live ResultURL signature with six decimal places');
+assertSameValue(10050, Money::toMinor($liveCallback['OutSum']), 'Valid live ResultURL amount comparison');
 $callback['OutSum'] = '100.51';
 assertTrueValue(!$gateway->verifyResult($callback), 'Tampered ResultURL amount must fail signature verification');
 assertSameValue('OK123', $gateway->expectedResultResponse(123), 'Robokassa acknowledgement');

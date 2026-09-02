@@ -9,6 +9,42 @@
         var(--cz-body-bg);
 }
 
+.fb-calendar-frame {
+    width: min(calc(100% - 2rem), 1328px);
+    margin-inline: auto;
+}
+
+.fb-calendar-page--admin {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background:
+        radial-gradient(circle at 10% -10%, rgba(var(--calendar-accent-rgb), .1), transparent 32rem),
+        var(--fb-color-background, var(--cz-body-bg));
+    overscroll-behavior: contain;
+}
+
+.fb-calendar-page--admin .fb-calendar-frame {
+    width: 100%;
+    max-width: none;
+    padding-inline: clamp(1rem, 2vw, 2rem);
+}
+
+.fb-calendar-page--admin .fb-calendar-hero {
+    background: color-mix(in srgb, var(--fb-color-surface, var(--cz-body-bg)) 72%, transparent);
+}
+
+.fb-calendar-page--admin .fb-calendar-shell {
+    border-radius: var(--fb-radius-xl, 1.25rem);
+    background: var(--fb-color-surface, var(--cz-body-bg));
+    box-shadow: var(--fb-shadow-md, 0 1.5rem 4rem rgba(25, 20, 60, .08));
+}
+
+.fb-calendar-page--admin .fb-calendar-body {
+    min-height: max(39rem, calc(100dvh - 23rem));
+}
+
 .fb-calendar-hero {
     position: relative;
     overflow: hidden;
@@ -552,9 +588,33 @@
 
 /* Modal */
 .fb-calendar-modal {
+    max-height: calc(100dvh - 2rem);
+    overflow: hidden;
     border: 0;
     border-radius: 1.5rem;
     box-shadow: 0 2rem 6rem rgba(20, 16, 48, .2);
+}
+
+.fb-calendar-modal > form {
+    display: flex;
+    min-height: 0;
+    max-height: inherit;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.fb-calendar-modal .modal-header,
+.fb-calendar-modal .modal-footer {
+    flex: 0 0 auto;
+}
+
+.fb-calendar-modal .modal-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
 }
 
 .fb-calendar-title-input {
@@ -575,14 +635,16 @@
     border-radius: .9rem;
 }
 
-.fb-calendar-switch {
+.fb-calendar-modal .fb-calendar-switch {
     display: inline-flex;
+    width: max-content;
+    max-width: 100%;
     align-items: center;
     gap: .45rem;
     margin: 0;
-    padding: .7rem 1rem .7rem 3.25rem;
-    border-radius: 999px;
-    background: var(--cz-secondary-bg);
+    padding: .25rem 0 .25rem 3rem;
+    border-radius: 0;
+    background: transparent;
 }
 
 .fb-calendar-switch .form-check-input {

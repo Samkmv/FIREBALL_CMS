@@ -11,10 +11,23 @@ $statusLabels = [
     'failed' => FireballPluginSubscriptions::t('subscriptions_payment_status_failed'),
     'cancelled' => FireballPluginSubscriptions::t('subscriptions_payment_status_cancelled'),
 ];
+$webhookStatusLabels = [
+    'received' => FireballPluginSubscriptions::t('subscriptions_webhook_status_received'),
+    'processing' => FireballPluginSubscriptions::t('subscriptions_webhook_status_processing'),
+    'processed' => FireballPluginSubscriptions::t('subscriptions_webhook_status_processed'),
+    'failed' => FireballPluginSubscriptions::t('subscriptions_webhook_status_failed'),
+    'rejected' => FireballPluginSubscriptions::t('subscriptions_webhook_status_rejected'),
+];
 foreach ($payments as $payment) {
     $amount = \Fireball\Subscriptions\Support\Money::display((int)$payment['amount_minor'], (string)$payment['currency']);
     $statusKey = (string)($payment['status'] ?? '');
-    $status = '<span class="badge rounded-pill ' . ($statusKey === 'paid' ? 'text-bg-success' : 'text-bg-secondary') . '">' . htmlSC($statusLabels[$statusKey] ?? $statusKey) . '</span>' . (!empty($payment['signature_verified']) ? '<div class="small text-success">' . htmlSC(FireballPluginSubscriptions::t('subscriptions_signature_verified')) . '</div>' : '');
+    $webhookStatusKey = (string)($payment['webhook_status'] ?? '');
+    $webhookReceived = trim((string)($payment['webhook_created_at'] ?? '')) !== '';
+    $webhookStateClass = $webhookStatusKey === 'processed' ? 'text-success' : (in_array($webhookStatusKey, ['failed', 'rejected'], true) ? 'text-danger' : 'text-warning');
+    $webhookSummary = $webhookReceived
+        ? '<div class="small ' . $webhookStateClass . '">ResultURL: ' . htmlSC($webhookStatusLabels[$webhookStatusKey] ?? $webhookStatusKey) . '</div>'
+        : ($statusKey === 'pending' ? '<div class="small text-warning">' . htmlSC(FireballPluginSubscriptions::t('subscriptions_webhook_not_received')) . '</div>' : '');
+    $status = '<span class="badge rounded-pill ' . ($statusKey === 'paid' ? 'text-bg-success' : 'text-bg-secondary') . '">' . htmlSC($statusLabels[$statusKey] ?? $statusKey) . '</span>' . (!empty($payment['signature_verified']) ? '<div class="small text-success">' . htmlSC(FireballPluginSubscriptions::t('subscriptions_signature_verified')) . '</div>' : '') . $webhookSummary;
     $user = htmlSC((string)$payment['user_name']) . '<div class="small text-body-secondary">' . htmlSC((string)$payment['user_email']) . '</div>';
     $date = htmlSC((string)$payment['created_at']) . (!empty($payment['paid_at']) ? '<br>' . htmlSC((string)$payment['paid_at']) : '');
     $detailsAttributes = [
@@ -88,6 +101,28 @@ foreach ($payments as $payment) {
                     <?php if (trim((string)($payment['error_message'] ?? '')) !== ''): ?><div class="subscriptions-payer-field subscriptions-payer-field--wide"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payment_error')) ?></span><span class="subscriptions-payer-field__value text-danger"><?= nl2br(htmlSC((string)$payment['error_message'])) ?></span></div><?php endif; ?>
                 </div>
             </section>
+            <?php if (trim((string)($payment['webhook_created_at'] ?? '')) !== ''): ?>
+                <?php $webhookStatusKey = (string)($payment['webhook_status'] ?? ''); ?>
+                <section class="subscriptions-details-section">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <h3 class="h6 mb-0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_webhook_details')) ?></h3>
+                        <?php if ($paymentStatusKey !== 'paid' && $webhookStatusKey === 'failed' && !empty($payment['webhook_signature_verified'])): ?>
+                            <form method="post" action="<?= htmlSC(base_href('/admin/subscriptions/payments/retry-webhook')) ?>">
+                                <?= get_csrf_field() ?>
+                                <input type="hidden" name="payment_id" value="<?= (int)$payment['id'] ?>">
+                                <button class="btn btn-sm btn-outline-primary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_webhook_retry')) ?></button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                    <div class="subscriptions-payer-grid">
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_status')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC($webhookStatusLabels[$webhookStatusKey] ?? $webhookStatusKey) ?></span></div>
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_signature_verified')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC(FireballPluginSubscriptions::t(!empty($payment['webhook_signature_verified']) ? 'subscriptions_value_yes' : 'subscriptions_value_no')) ?></span></div>
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_webhook_received_at')) ?></span><span class="subscriptions-payer-field__value"><?= htmlSC((string)$payment['webhook_created_at']) ?></span></div>
+                        <div class="subscriptions-payer-field"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_webhook_processed_at')) ?></span><span class="subscriptions-payer-field__value"><?= trim((string)($payment['webhook_processed_at'] ?? '')) !== '' ? htmlSC((string)$payment['webhook_processed_at']) : '<span class="text-body-secondary">—</span>' ?></span></div>
+                        <?php if (trim((string)($payment['webhook_error_message'] ?? '')) !== ''): ?><div class="subscriptions-payer-field subscriptions-payer-field--wide"><span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payment_error')) ?></span><span class="subscriptions-payer-field__value text-danger"><?= nl2br(htmlSC((string)$payment['webhook_error_message'])) ?></span></div><?php endif; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
             <?php if ($consents !== []): ?>
                 <section class="subscriptions-details-section">
                     <h3 class="h6 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_details')) ?></h3>
