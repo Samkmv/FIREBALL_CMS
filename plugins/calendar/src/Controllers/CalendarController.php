@@ -9,19 +9,32 @@ final class CalendarController
 {
     public function index(): string
     {
-        $user = get_user();
-        $isAdmin = check_admin();
-        $roles = [];
-        $users = [];
-        if ($isAdmin) {
-            $roles = db()->query('SELECT slug, name FROM user_roles ORDER BY id ASC')->get() ?: [];
-            $users = db()->query('SELECT id, name, login, role FROM users ORDER BY name ASC, id ASC')->get() ?: [];
+        return $this->renderCalendar(true);
+    }
+
+    public function viewer(): string
+    {
+        if (check_admin()) {
+            $query = trim((string)($_SERVER['QUERY_STRING'] ?? ''));
+            response()->redirect(base_href('/admin/calendar') . ($query !== '' ? '?' . $query : ''));
         }
+
+        return $this->renderCalendar(false);
+    }
+
+    private function renderCalendar(bool $adminContext): string
+    {
+        $user = get_user();
+        $roles = $adminContext ? (db()->query('SELECT slug, name FROM user_roles ORDER BY id ASC')->get() ?: []) : [];
+        $users = $adminContext ? (db()->query('SELECT id, name, login, role FROM users ORDER BY name ASC, id ASC')->get() ?: []) : [];
 
         return plugin_view('calendar', 'calendar', \FireballPluginCalendar::viewData([
             'title' => \FireballPluginCalendar::t('calendar_title'),
             'user' => $user,
-            'is_admin' => $isAdmin,
+            'is_admin' => $adminContext,
+            'admin_context' => $adminContext,
+            'can_manage' => $adminContext,
+            'events_url' => base_href($adminContext ? '/admin/calendar/events' : '/calendar/events'),
             'roles' => $roles,
             'users' => $users,
             'push_status' => (new PwaService())->pushStatusForUser((int)($user['id'] ?? 0)),

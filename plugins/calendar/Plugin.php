@@ -45,26 +45,13 @@ final class FireballPluginCalendar implements PluginInterface
             $menu[] = [
                 'group' => 'applications',
                 'label' => self::t('calendar_menu'),
-                'href' => base_href('/calendar'),
+                'href' => base_href('/admin/calendar'),
                 'icon' => 'ci-calendar',
                 'plugin_menu' => true,
                 'order' => 35,
             ];
 
             return $menu;
-        });
-
-        add_filter('profile_menu', static function (array $items): array {
-            $items[] = [
-                'key' => 'calendar',
-                'label' => self::t('calendar_menu'),
-                'href' => base_href('/calendar'),
-                'icon' => 'ci-calendar',
-                'order' => 20,
-                'plugin' => self::SLUG,
-            ];
-
-            return $items;
         });
 
         add_filter('fireball_scheduled_jobs', static function (array $jobs): array {

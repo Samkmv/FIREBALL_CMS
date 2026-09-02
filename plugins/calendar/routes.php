@@ -19,10 +19,13 @@ $router->get('/plugins/calendar/assets/(?P<file>calendar\.(?:css|js))', static f
     exit;
 });
 
-$router->get('/calendar', [CalendarController::class, 'index'])->middleware(['auth']);
+$router->get('/calendar', [CalendarController::class, 'viewer'])->middleware(['auth']);
 $router->get('/calendar/events', [CalendarController::class, 'events'])->middleware(['auth']);
-$router->post('/calendar/events', [CalendarController::class, 'create'])->middleware(['auth']);
-$router->post('/calendar/events/(?P<id>\d+)/update', [CalendarController::class, 'update'])->middleware(['auth']);
-$router->post('/calendar/events/(?P<id>\d+)/delete', [CalendarController::class, 'delete'])->middleware(['auth']);
-$router->post('/calendar/events/(?P<id>\d+)/duplicate', [CalendarController::class, 'duplicate'])->middleware(['auth']);
-$router->post('/calendar/events/(?P<id>\d+)/status', [CalendarController::class, 'status'])->middleware(['auth']);
+
+$router->get('/admin/calendar', [CalendarController::class, 'index'])->middleware(['auth', 'admin']);
+$router->get('/admin/calendar/events', [CalendarController::class, 'events'])->middleware(['auth', 'admin']);
+$router->post('/admin/calendar/events', [CalendarController::class, 'create'])->middleware(['auth', 'admin']);
+$router->post('/admin/calendar/events/(?P<id>\d+)/update', [CalendarController::class, 'update'])->middleware(['auth', 'admin']);
+$router->post('/admin/calendar/events/(?P<id>\d+)/delete', [CalendarController::class, 'delete'])->middleware(['auth', 'admin']);
+$router->post('/admin/calendar/events/(?P<id>\d+)/duplicate', [CalendarController::class, 'duplicate'])->middleware(['auth', 'admin']);
+$router->post('/admin/calendar/events/(?P<id>\d+)/status', [CalendarController::class, 'status'])->middleware(['auth', 'admin']);
