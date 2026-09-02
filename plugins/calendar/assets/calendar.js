@@ -113,6 +113,111 @@
         return window.bootstrap.Modal.getOrCreateInstance(modalElement);
     }
 
+    function pickerLocale() {
+        const language = locale.toLowerCase().split('-')[0];
+        const locales = {
+            ru: {
+                firstDayOfWeek: 1,
+                weekdays: {
+                    shorthand: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+                    longhand: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'],
+                },
+                months: {
+                    shorthand: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'],
+                    longhand: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+                },
+                rangeSeparator: ' — ',
+                weekAbbreviation: 'Нед.',
+                scrollTitle: 'Прокрутите для изменения',
+                toggleTitle: 'Нажмите для переключения',
+                time_24hr: true,
+            },
+            de: {
+                firstDayOfWeek: 1,
+                weekdays: {
+                    shorthand: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+                    longhand: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+                },
+                months: {
+                    shorthand: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
+                    longhand: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+                },
+                rangeSeparator: ' bis ',
+                weekAbbreviation: 'KW',
+                time_24hr: true,
+            },
+            zh: {
+                firstDayOfWeek: 1,
+                weekdays: {
+                    shorthand: ['日', '一', '二', '三', '四', '五', '六'],
+                    longhand: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'],
+                },
+                months: {
+                    shorthand: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+                    longhand: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+                },
+                rangeSeparator: ' 至 ',
+                time_24hr: true,
+            },
+        };
+
+        return locales[language] || { firstDayOfWeek: 1, time_24hr: true };
+    }
+
+    function pickerDisplayFormat() {
+        const language = locale.toLowerCase().split('-')[0];
+        if (language === 'zh') return 'Y年m月d日';
+        if (language === 'en') return 'F j, Y';
+        return 'd.m.Y';
+    }
+
+    function connectPickerLabel(input, picker) {
+        if (!input.id || !picker.altInput) return;
+        const labelElement = form.querySelector(`label[for="${input.id}"]`);
+        picker.altInput.id = `${input.id}-display`;
+        picker.altInput.setAttribute('aria-label', labelElement?.textContent?.trim() || input.name);
+        if (labelElement) labelElement.htmlFor = picker.altInput.id;
+    }
+
+    function initDateTimePickers() {
+        if (typeof window.flatpickr !== 'function') return;
+        const common = {
+            allowInput: true,
+            disableMobile: true,
+            locale: pickerLocale(),
+        };
+        form.querySelectorAll('[data-calendar-date-picker]').forEach((input) => {
+            const picker = window.flatpickr(input, {
+                ...common,
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: pickerDisplayFormat(),
+                altInputClass: 'form-control form-icon-end',
+            });
+            connectPickerLabel(input, picker);
+        });
+        form.querySelectorAll('[data-calendar-time-picker]').forEach((input) => {
+            window.flatpickr(input, {
+                ...common,
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: 'H:i',
+                time_24hr: true,
+                minuteIncrement: 5,
+            });
+        });
+    }
+
+    function setPickerValue(name, value) {
+        const input = form.elements[name];
+        if (!input) return;
+        if (input._flatpickr) {
+            input._flatpickr.setDate(value || null, false, input._flatpickr.config.dateFormat);
+            return;
+        }
+        input.value = value;
+    }
+
     function eventColor(event) {
         return /^#[0-9a-f]{6}$/i.test(String(event.color || '')) ? event.color : '#6f5ef9';
     }
@@ -393,6 +498,11 @@
 
     function resetForm() {
         form.reset();
+        setPickerValue('start_date', '');
+        setPickerValue('start_time', '09:00');
+        setPickerValue('end_date', '');
+        setPickerValue('end_time', '10:00');
+        setPickerValue('recurrence_until', '');
         form.elements.id.value = '';
         form.elements.color.value = '#6f5ef9';
         form.elements.status.value = 'scheduled';
@@ -414,10 +524,10 @@
         start.setMinutes(0, 0, 0);
         if (start < new Date()) start.setHours(start.getHours() + 1);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
-        form.elements.start_date.value = dateKey(start);
-        form.elements.start_time.value = timeKey(start);
-        form.elements.end_date.value = dateKey(end);
-        form.elements.end_time.value = timeKey(end);
+        setPickerValue('start_date', dateKey(start));
+        setPickerValue('start_time', timeKey(start));
+        setPickerValue('end_date', dateKey(end));
+        setPickerValue('end_time', timeKey(end));
         modalTitle.textContent = label('event_create');
         addReminder({ value: 1, unit: 'days', time: '09:00', site: true, push: true });
         eventModal()?.show();
@@ -434,12 +544,12 @@
         form.elements.description.value = event.description || '';
         form.elements.color.value = eventColor(event);
         form.elements.all_day.checked = Number(event.all_day) === 1;
-        form.elements.start_date.value = dateKey(start);
-        form.elements.start_time.value = timeKey(start);
-        form.elements.end_date.value = dateKey(end);
-        form.elements.end_time.value = timeKey(end);
+        setPickerValue('start_date', dateKey(start));
+        setPickerValue('start_time', timeKey(start));
+        setPickerValue('end_date', dateKey(end));
+        setPickerValue('end_time', timeKey(end));
         form.elements.recurrence.value = event.recurrence || 'none';
-        form.elements.recurrence_until.value = event.recurrence_until ? dateKey(parseDateTime(event.recurrence_until)) : '';
+        setPickerValue('recurrence_until', event.recurrence_until ? dateKey(parseDateTime(event.recurrence_until)) : '');
         form.elements.status.value = event.status || 'scheduled';
         if (form.elements.visibility) form.elements.visibility.value = event.visibility || 'personal';
         if (form.elements.audience_role) form.elements.audience_role.value = event.audience_role || '';
@@ -652,5 +762,6 @@
         loadEvents();
     }
 
+    initDateTimePickers();
     loadEvents();
 })();

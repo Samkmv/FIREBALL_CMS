@@ -67,12 +67,20 @@ final class FireballPluginCalendar implements PluginInterface
 
     public static function viewData(array $data = []): array
     {
+        $flatpickrCss = WWW . '/assets/default/vendor/flatpickr/flatpickr.min.css';
+        $flatpickrJs = WWW . '/assets/default/vendor/flatpickr/flatpickr.min.js';
         $css = __DIR__ . '/assets/calendar.css';
         $js = __DIR__ . '/assets/calendar.js';
 
         return array_merge([
-            'styles' => [base_href('/plugins/calendar/assets/calendar.css?v=' . (is_file($css) ? filemtime($css) : time()))],
-            'footer_scripts' => [base_href('/plugins/calendar/assets/calendar.js?v=' . (is_file($js) ? filemtime($js) : time()))],
+            'styles' => [
+                base_url('/assets/default/vendor/flatpickr/flatpickr.min.css?v=' . (is_file($flatpickrCss) ? filemtime($flatpickrCss) : time())),
+                base_href('/plugins/calendar/assets/calendar.css?v=' . (is_file($css) ? filemtime($css) : time())),
+            ],
+            'footer_scripts' => [
+                base_url('/assets/default/vendor/flatpickr/flatpickr.min.js?v=' . (is_file($flatpickrJs) ? filemtime($flatpickrJs) : time())),
+                base_href('/plugins/calendar/assets/calendar.js?v=' . (is_file($js) ? filemtime($js) : time())),
+            ],
         ], $data);
     }
 

@@ -147,8 +147,20 @@ $config = [
                                 <div class="fb-calendar-date-box">
                                     <div class="fw-semibold mb-3"><i class="ci-log-in me-2 text-body-tertiary"></i><?= $t('calendar_start') ?></div>
                                     <div class="row g-2">
-                                        <div class="col-7"><label class="form-label small"><?= $t('calendar_date') ?></label><input class="form-control" type="date" name="start_date" required></div>
-                                        <div class="col-5" data-calendar-time-field><label class="form-label small"><?= $t('calendar_time') ?></label><input class="form-control" type="time" name="start_time" value="09:00" required></div>
+                                        <div class="col-7">
+                                            <label class="form-label small" for="calendar-start-date"><?= $t('calendar_date') ?></label>
+                                            <div class="position-relative fb-calendar-picker-field">
+                                                <input class="form-control form-icon-end" id="calendar-start-date" type="text" name="start_date" inputmode="numeric" autocomplete="off" data-calendar-date-picker required>
+                                                <i class="ci-calendar position-absolute top-50 end-0 translate-middle-y me-3" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col-5" data-calendar-time-field>
+                                            <label class="form-label small" for="calendar-start-time"><?= $t('calendar_time') ?></label>
+                                            <div class="position-relative fb-calendar-picker-field">
+                                                <input class="form-control form-icon-end" id="calendar-start-time" type="text" name="start_time" value="09:00" inputmode="numeric" autocomplete="off" data-calendar-time-picker required>
+                                                <i class="ci-clock position-absolute top-50 end-0 translate-middle-y me-3" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -156,8 +168,20 @@ $config = [
                                 <div class="fb-calendar-date-box">
                                     <div class="fw-semibold mb-3"><i class="ci-log-out me-2 text-body-tertiary"></i><?= $t('calendar_end') ?></div>
                                     <div class="row g-2">
-                                        <div class="col-7"><label class="form-label small"><?= $t('calendar_date') ?></label><input class="form-control" type="date" name="end_date" required></div>
-                                        <div class="col-5" data-calendar-time-field><label class="form-label small"><?= $t('calendar_time') ?></label><input class="form-control" type="time" name="end_time" value="10:00" required></div>
+                                        <div class="col-7">
+                                            <label class="form-label small" for="calendar-end-date"><?= $t('calendar_date') ?></label>
+                                            <div class="position-relative fb-calendar-picker-field">
+                                                <input class="form-control form-icon-end" id="calendar-end-date" type="text" name="end_date" inputmode="numeric" autocomplete="off" data-calendar-date-picker required>
+                                                <i class="ci-calendar position-absolute top-50 end-0 translate-middle-y me-3" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col-5" data-calendar-time-field>
+                                            <label class="form-label small" for="calendar-end-time"><?= $t('calendar_time') ?></label>
+                                            <div class="position-relative fb-calendar-picker-field">
+                                                <input class="form-control form-icon-end" id="calendar-end-time" type="text" name="end_time" value="10:00" inputmode="numeric" autocomplete="off" data-calendar-time-picker required>
+                                                <i class="ci-clock position-absolute top-50 end-0 translate-middle-y me-3" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -172,7 +196,10 @@ $config = [
                             </div>
                             <div class="col-md-6" data-calendar-recurrence-until hidden>
                                 <label class="form-label" for="calendar-recurrence-until"><?= $t('calendar_recurrence_until') ?></label>
-                                <input class="form-control" id="calendar-recurrence-until" type="date" name="recurrence_until">
+                                <div class="position-relative fb-calendar-picker-field">
+                                    <input class="form-control form-icon-end" id="calendar-recurrence-until" type="text" name="recurrence_until" inputmode="numeric" autocomplete="off" data-calendar-date-picker>
+                                    <i class="ci-calendar position-absolute top-50 end-0 translate-middle-y me-3" aria-hidden="true"></i>
+                                </div>
                             </div>
 
                             <div class="col-md-6">
