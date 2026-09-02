@@ -122,8 +122,14 @@ function assertTrueValue(bool $value, string $message): void
 require_once __DIR__ . '/../src/Support/Money.php';
 require_once __DIR__ . '/../src/Support/ProtectedContent.php';
 require_once __DIR__ . '/../src/Support/SecretCipher.php';
+require_once __DIR__ . '/../src/Support/AddressNormalizer.php';
+require_once __DIR__ . '/../src/Support/AddressMatcher.php';
 require_once __DIR__ . '/../src/Repositories/ContentRuleRepository.php';
+require_once __DIR__ . '/../src/Repositories/ProfileRepository.php';
+require_once __DIR__ . '/../src/Repositories/AddressExclusionRepository.php';
 require_once __DIR__ . '/../src/Services/AccessService.php';
+require_once __DIR__ . '/../src/Services/SubscriptionService.php';
+require_once __DIR__ . '/../src/Services/SubscriptionEligibilityService.php';
 require_once __DIR__ . '/../src/Services/SettingsService.php';
 require_once __DIR__ . '/../src/Payments/PaymentGatewayInterface.php';
 require_once __DIR__ . '/../src/Payments/RobokassaGateway.php';
@@ -139,7 +145,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.2.29', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.3.0', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -452,6 +458,22 @@ assertTrueValue(
     'Popular plan flag migration must be idempotent'
 );
 
+$eligibilityMigration = (string)file_get_contents(__DIR__ . '/../migrations/010_address_exclusions_auto_renew_and_archiving.sql');
+$eligibilityMigrationStatements = (new SqlFileRunner())->split($eligibilityMigration);
+assertTrueValue(
+    count($eligibilityMigrationStatements) >= 25
+    && str_contains($eligibilityMigration, 'CREATE TABLE IF NOT EXISTS subscription_address_exclusions')
+    && str_contains($eligibilityMigration, 'normalized_street')
+    && str_contains($eligibilityMigration, 'matched_address_exclusion_id')
+    && str_contains($eligibilityMigration, 'auto_renew_enabled')
+    && str_contains($eligibilityMigration, 'archived_at'),
+    'Address exclusions, plan auto-renew source, profile marker, and safe subscriber archiving must have an idempotent migration'
+);
+assertTrueValue(
+    !preg_match('/UPDATE\s+subscriptions\s+SET\s+auto_renew/is', $eligibilityMigration),
+    'The migration must not enable recurring billing on historical subscriptions'
+);
+
 $pluginSource = (string)file_get_contents(__DIR__ . '/../Plugin.php');
 assertTrueValue(
     substr_count($pluginSource, "'icon' => 'ci-credit-card'") >= 3
@@ -506,7 +528,7 @@ assertTrueValue(
     'Post settings must explain block-level video access and must not offer a blanket hide-all-videos switch'
 );
 
-foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'payments', 'content', 'fields', 'field-form', 'settings'] as $adminView) {
+foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'exclusions', 'exclusion-form', 'payments', 'content', 'fields', 'field-form', 'settings'] as $adminView) {
     $adminTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $adminView . '.php');
     assertTrueValue(
         str_contains($adminTemplate, "require __DIR__ . '/shell-open.php'")
@@ -545,7 +567,7 @@ assertTrueValue(
 assertTrueValue(
     str_contains($planRepositorySource, 'is_popular = 0, updated_at = ? WHERE id <> ? AND is_popular = 1')
     && str_contains($planRepositorySource, "\$copy['is_popular'] = 0")
-    && str_contains($planRepositorySource, "'is_recurring', 'is_active', 'is_public', 'is_popular'"),
+    && str_contains($planRepositorySource, "'is_recurring', 'auto_renew_enabled', 'is_active', 'is_public', 'is_popular'"),
     'Only one manually selected popular plan may remain active and cloned plans must not inherit the flag'
 );
 
@@ -585,7 +607,7 @@ assertTrueValue(
     'Checkout must use a narrowly allowlisted external redirect to the official Robokassa host'
 );
 
-foreach (['plans', 'subscribers', 'payments', 'fields'] as $tableView) {
+foreach (['plans', 'subscribers', 'exclusions', 'payments', 'fields'] as $tableView) {
     $tableTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $tableView . '.php');
     assertTrueValue(
         str_contains($tableTemplate, "renderPartial('admin/partials/table'")
@@ -726,6 +748,29 @@ assertTrueValue(
     && str_contains($checkoutTemplate, 'name="consent_privacy"')
     && str_contains($checkoutTemplate, '/subscriptions/payment/create'),
     'Checkout redesign must preserve payment submission and required consents'
+);
+assertTrueValue(
+    str_contains($planFormTemplate, "['auto_renew_enabled', 'subscriptions_field_recurring'")
+    && str_contains($checkoutTemplate, 'subscriptions_auto_renew_disclosure')
+    && str_contains($checkoutTemplate, 'name="consent_recurring"')
+    && !str_contains($checkoutTemplate, 'name="auto_renew"'),
+    'The plan controls automatic renewal while checkout clearly discloses recurring charges without an opt-in auto-renew switch'
+);
+
+$eligibilityServiceSource = (string)file_get_contents(__DIR__ . '/../src/Services/SubscriptionEligibilityService.php');
+$checkoutServiceSource = (string)file_get_contents(__DIR__ . '/../src/Services/CheckoutService.php');
+$recurringServiceSource = (string)file_get_contents(__DIR__ . '/../src/Services/RecurringService.php');
+$gatewaySource = (string)file_get_contents(__DIR__ . '/../src/Payments/RobokassaGateway.php');
+assertTrueValue(
+    str_contains($eligibilityServiceSource, 'ADDRESS_INCLUDED_IN_UTILITIES')
+    && str_contains($checkoutServiceSource, "'checkout_create'")
+    && str_contains($checkoutServiceSource, "'before_order_create'")
+    && str_contains($recurringServiceSource, "'recurring_preflight'")
+    && str_contains($recurringServiceSource, "'recurring_before_order'")
+    && str_contains($recurringServiceSource, "\$renewalPlanSnapshot['auto_renew_enabled'] = !empty(\$subscription['auto_renew'])")
+    && str_contains($gatewaySource, "'gateway_checkout'")
+    && str_contains($gatewaySource, "'gateway_recurring'"),
+    'Every initial and recurring payment layer must use the shared address eligibility service before provider interaction'
 );
 assertTrueValue(
     str_contains($publicStyles, '.subscriptions-plan-card__accent')

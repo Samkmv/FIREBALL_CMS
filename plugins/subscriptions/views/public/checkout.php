@@ -14,6 +14,15 @@ $address = implode(', ', array_filter([
     (string)$profile['apartment'],
     (string)$profile['postal_code'],
 ]));
+$autoRenewEnabled = !empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false) && !empty($recurring_available);
+$renewalPeriod = '';
+if ($autoRenewEnabled) {
+    $durationValue = max(1, (int)$plan['duration_value']);
+    $periodKey = $plan['duration_unit'] === 'months'
+        ? ($durationValue === 1 ? 'subscriptions_renewal_period_month' : 'subscriptions_renewal_period_months')
+        : ($durationValue === 1 ? 'subscriptions_renewal_period_day' : 'subscriptions_renewal_period_days');
+    $renewalPeriod = str_replace(':count', (string)$durationValue, FireballPluginSubscriptions::t($periodKey));
+}
 ?>
 
 <section class="container py-5 subscriptions-public subscriptions-checkout-page">
@@ -39,6 +48,16 @@ $address = implode(', ', array_filter([
                     <h2 class="h3 mb-2"><?= htmlSC((string)$plan['name']) ?></h2>
                     <?php if (trim((string)$plan['description']) !== ''): ?><p class="text-body-secondary mb-4"><?= nl2br(htmlSC((string)$plan['description'])) ?></p><?php endif; ?>
                     <div class="subscriptions-plan-card__price mb-4"><?= htmlSC((string)$plan['price_display']) ?></div>
+                    <?php if ($autoRenewEnabled): ?>
+                        <div class="alert alert-info rounded-4 small mb-4" role="note">
+                            <strong><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_auto_renew')) ?>.</strong>
+                            <?= htmlSC(str_replace(
+                                [':amount', ':period'],
+                                [(string)$plan['price_display'], $renewalPeriod],
+                                FireballPluginSubscriptions::t('subscriptions_auto_renew_disclosure')
+                            )) ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="border-top pt-4">
                         <div class="small fw-semibold text-uppercase text-body-secondary mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_features')) ?></div>
                         <ul class="list-unstyled vstack gap-3 mb-0">
@@ -78,10 +97,9 @@ $address = implode(', ', array_filter([
                 <div class="subscriptions-checkout-consents rounded-4 p-3 p-md-4 mb-4">
                     <label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="consent_offer" value="1" required><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_offer')) ?></span></label>
                     <label class="form-check mb-0"><input class="form-check-input" type="checkbox" name="consent_privacy" value="1" required><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_privacy')) ?></span></label>
-                    <?php if ($plan['is_recurring'] && !empty($recurring_available)): ?>
+                    <?php if ($autoRenewEnabled): ?>
                         <hr class="my-3">
-                        <label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="consent_recurring" value="1"><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_recurring')) ?></span></label>
-                        <label class="form-check mb-0"><input class="form-check-input" type="checkbox" name="auto_renew" value="1"><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_enable_auto_renew')) ?></span></label>
+                        <label class="form-check mb-0"><input class="form-check-input" type="checkbox" name="consent_recurring" value="1" required><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_recurring')) ?></span></label>
                     <?php endif; ?>
                 </div>
 

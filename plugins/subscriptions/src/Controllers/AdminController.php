@@ -5,6 +5,7 @@ namespace Fireball\Subscriptions\Controllers;
 use Fireball\Subscriptions\Repositories\PlanRepository;
 use Fireball\Subscriptions\Repositories\ProfileRepository;
 use Fireball\Subscriptions\Repositories\ContentRuleRepository;
+use Fireball\Subscriptions\Repositories\AddressExclusionRepository;
 use Fireball\Subscriptions\Services\SettingsService;
 use Fireball\Subscriptions\Services\PaymentService;
 use Fireball\Subscriptions\Services\SubscriptionService;
@@ -14,13 +15,13 @@ final class AdminController
     public function dashboard(): string
     {
         $stats = [
-            'active' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE status IN ('active', 'grace_period', 'cancelled') AND starts_at <= NOW() AND COALESCE(grace_ends_at, ends_at) > NOW()")->getColumn(),
-            'expiring' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE status IN ('active', 'cancelled') AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)")->getColumn(),
+            'active' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'grace_period', 'cancelled') AND starts_at <= NOW() AND COALESCE(grace_ends_at, ends_at) > NOW()")->getColumn(),
+            'expiring' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'cancelled') AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)")->getColumn(),
             'paid_total_minor' => (int)db()->query("SELECT COALESCE(SUM(amount_minor), 0) FROM subscription_payments WHERE status = 'paid'")->getColumn(),
             'failed' => (int)db()->query("SELECT COUNT(*) FROM subscription_payments WHERE status = 'failed'")->getColumn(),
         ];
         $byPlan = db()->query(
-            "SELECT p.name, COUNT(s.id) AS total FROM subscription_plans p LEFT JOIN subscriptions s ON s.plan_id = p.id AND s.status IN ('active', 'grace_period', 'cancelled') AND s.ends_at > NOW() GROUP BY p.id, p.name ORDER BY total DESC, p.name"
+            "SELECT p.name, COUNT(s.id) AS total FROM subscription_plans p LEFT JOIN subscriptions s ON s.plan_id = p.id AND s.archived_at IS NULL AND s.status IN ('active', 'grace_period', 'cancelled') AND s.ends_at > NOW() GROUP BY p.id, p.name ORDER BY total DESC, p.name"
         )->get() ?: [];
 
         return $this->view('admin/dashboard', 'overview', [
@@ -92,7 +93,7 @@ final class AdminController
     {
         $search = trim((string)request()->get('q', ''));
         $status = trim((string)request()->get('status', ''));
-        $where = [];
+        $where = ['s.archived_at IS NULL'];
         $params = [];
         if ($search !== '') {
             $where[] = '(u.name LIKE ? OR u.email LIKE ?)';
@@ -105,12 +106,20 @@ final class AdminController
         } else {
             $status = '';
         }
-        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
         $total = (int)db()->query("SELECT COUNT(*) FROM subscriptions s INNER JOIN users u ON u.id = s.user_id {$whereSql}", $params)->getColumn();
         $pagination = new \FBL\Pagination($total, 20);
         $offset = $pagination->getOffset();
         $rows = db()->query(
-            "SELECT s.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name
+            "SELECT s.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name,
+                    NOT EXISTS (
+                        SELECT 1 FROM subscriptions active_s
+                        WHERE active_s.user_id = s.user_id AND active_s.archived_at IS NULL
+                          AND (
+                               (active_s.status IN ('active', 'cancelled') AND active_s.starts_at <= NOW() AND active_s.ends_at > NOW())
+                               OR (active_s.status = 'grace_period' AND active_s.starts_at <= NOW() AND COALESCE(active_s.grace_ends_at, active_s.ends_at) > NOW())
+                          )
+                    ) AS can_archive_subscriber
              FROM subscriptions s INNER JOIN users u ON u.id = s.user_id INNER JOIN subscription_plans p ON p.id = s.plan_id
              {$whereSql} ORDER BY s.created_at DESC LIMIT {$offset}, 20",
             $params
@@ -161,6 +170,86 @@ final class AdminController
             session()->setFlash('error', $exception->getMessage());
         }
         response()->redirect(base_href('/admin/subscriptions/subscribers'));
+    }
+
+    public function deleteSubscriber(): never
+    {
+        try {
+            (new SubscriptionService())->archiveInactiveSubscriber(
+                (int)request()->post('user_id'),
+                (int)(get_user()['id'] ?? 0)
+            );
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_subscriber_deleted'));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        }
+        response()->redirect(base_href('/admin/subscriptions/subscribers'));
+    }
+
+    public function exclusions(): string
+    {
+        $search = trim((string)request()->get('q', ''));
+        $perPage = 25;
+        $repository = new AddressExclusionRepository();
+        $total = $repository->count($search);
+        $pagination = new \FBL\Pagination($total, $perPage);
+        $result = $repository->paginated($search, $perPage, $pagination->getOffset());
+
+        return $this->view('admin/exclusions', 'exclusions', [
+            'title' => \FireballPluginSubscriptions::t('subscriptions_admin_exclusions'),
+            'exclusions' => $result['items'],
+            'total' => $result['total'],
+            'pagination' => $pagination,
+            'search' => $search,
+        ]);
+    }
+
+    public function exclusionForm(): string
+    {
+        $id = (int)get_route_param('id');
+        $repository = new AddressExclusionRepository();
+        if (request()->isPost()) {
+            $submitted = request()->getData();
+            $submitted['is_active'] = !empty($submitted['is_active']);
+            try {
+                $repository->save($submitted, $id > 0 ? $id : null, (int)(get_user()['id'] ?? 0));
+                session()->setFlash('success', \FireballPluginSubscriptions::t($id > 0 ? 'subscriptions_exclusion_updated' : 'subscriptions_exclusion_added'));
+                response()->redirect(base_href('/admin/subscriptions/exclusions'));
+            } catch (\Throwable $exception) {
+                session()->setFlash('error', $exception->getMessage());
+                session()->set('subscriptions.exclusion_data', $submitted);
+                response()->redirect($id > 0
+                    ? base_href('/admin/subscriptions/exclusions/edit/' . $id)
+                    : base_href('/admin/subscriptions/exclusions/create'));
+            }
+        }
+        $exclusion = $id > 0 ? $repository->find($id) : null;
+        if ($id > 0 && !$exclusion) {
+            abort();
+        }
+        $formData = (array)session()->get('subscriptions.exclusion_data', []);
+        session()->remove('subscriptions.exclusion_data');
+
+        return $this->view('admin/exclusion-form', 'exclusions', [
+            'title' => \FireballPluginSubscriptions::t($id > 0 ? 'subscriptions_exclusion_edit' : 'subscriptions_exclusion_create'),
+            'exclusion' => $exclusion,
+            'form_data' => $formData,
+            'matched_users' => $id > 0 ? $repository->matchedUsers($id) : [],
+        ]);
+    }
+
+    public function deleteExclusion(): never
+    {
+        try {
+            (new AddressExclusionRepository())->delete(
+                (int)request()->post('id'),
+                (int)(get_user()['id'] ?? 0)
+            );
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_exclusion_deleted'));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        }
+        response()->redirect(base_href('/admin/subscriptions/exclusions'));
     }
 
     public function payments(): string

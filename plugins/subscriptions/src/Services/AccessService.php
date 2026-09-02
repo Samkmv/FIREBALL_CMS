@@ -25,6 +25,7 @@ final class AccessService
              FROM subscriptions s
              INNER JOIN subscription_plans p ON p.id = s.plan_id
              WHERE s.user_id = ?
+               AND s.archived_at IS NULL
                AND (
                     (s.status IN ('active', 'cancelled') AND s.starts_at <= ? AND s.ends_at > ?)
                     OR (s.status = 'grace_period' AND s.starts_at <= ? AND COALESCE(s.grace_ends_at, s.ends_at) > ?)

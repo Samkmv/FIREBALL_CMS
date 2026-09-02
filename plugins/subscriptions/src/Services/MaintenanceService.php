@@ -9,11 +9,11 @@ final class MaintenanceService
         $now = date('Y-m-d H:i:s');
         $recurring = (new RecurringService())->processDue();
         $activated = db()->query(
-            "UPDATE subscriptions SET status = 'active', updated_at = ? WHERE status = 'pending' AND starts_at <= ? AND ends_at > ?",
+            "UPDATE subscriptions SET status = 'active', updated_at = ? WHERE archived_at IS NULL AND status = 'pending' AND starts_at <= ? AND ends_at > ?",
             [$now, $now, $now]
         )->rowCount();
         $expired = db()->query(
-            "UPDATE subscriptions SET status = 'expired', auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE status IN ('active', 'cancelled', 'grace_period', 'past_due') AND COALESCE(grace_ends_at, ends_at) <= ?",
+            "UPDATE subscriptions SET status = 'expired', auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE archived_at IS NULL AND status IN ('active', 'cancelled', 'grace_period', 'past_due') AND COALESCE(grace_ends_at, ends_at) <= ?",
             [$now, $now]
         )->rowCount();
         $stalePayments = db()->query(
@@ -32,7 +32,8 @@ final class MaintenanceService
                     DATEDIFF(s.ends_at, NOW()) AS days_left
              FROM subscriptions s
              INNER JOIN subscription_plans p ON p.id = s.plan_id
-             WHERE s.status IN ('active', 'cancelled')
+             WHERE s.archived_at IS NULL
+               AND s.status IN ('active', 'cancelled')
                AND DATEDIFF(s.ends_at, NOW()) IN (1, 3)"
         )->get() ?: [];
         $sent = 0;

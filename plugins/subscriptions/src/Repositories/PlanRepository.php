@@ -45,6 +45,9 @@ final class PlanRepository
         }
 
         $isPopular = !empty($data['is_popular']);
+        $autoRenewEnabled = array_key_exists('auto_renew_enabled', $data)
+            ? !empty($data['auto_renew_enabled'])
+            : !empty($data['is_recurring']);
         $values = [
             $slug,
             $name,
@@ -54,7 +57,8 @@ final class PlanRepository
             $this->durationUnit((string)($data['duration_unit'] ?? 'days')),
             max(1, min(1200, (int)($data['duration_value'] ?? 30))),
             max(0, min(365, (int)($data['grace_period_days'] ?? 0))),
-            !empty($data['is_recurring']) ? 1 : 0,
+            $autoRenewEnabled ? 1 : 0,
+            $autoRenewEnabled ? 1 : 0,
             !empty($data['is_active']) ? 1 : 0,
             !empty($data['is_public']) ? 1 : 0,
             $isPopular ? 1 : 0,
@@ -69,12 +73,12 @@ final class PlanRepository
                     throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_plan_not_found'));
                 }
                 db()->query(
-                    'UPDATE subscription_plans SET slug = ?, name = ?, description = ?, price_minor = ?, currency = ?, duration_unit = ?, duration_value = ?, grace_period_days = ?, is_recurring = ?, is_active = ?, is_public = ?, is_popular = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+                    'UPDATE subscription_plans SET slug = ?, name = ?, description = ?, price_minor = ?, currency = ?, duration_unit = ?, duration_value = ?, grace_period_days = ?, is_recurring = ?, auto_renew_enabled = ?, is_active = ?, is_public = ?, is_popular = ?, sort_order = ?, updated_at = ? WHERE id = ?',
                     [...$values, $now, $id]
                 );
             } else {
                 db()->query(
-                    'INSERT INTO subscription_plans (slug, name, description, price_minor, currency, duration_unit, duration_value, grace_period_days, is_recurring, is_active, is_public, is_popular, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    'INSERT INTO subscription_plans (slug, name, description, price_minor, currency, duration_unit, duration_value, grace_period_days, is_recurring, auto_renew_enabled, is_active, is_public, is_popular, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [...$values, $now, $now]
                 );
                 $id = (int)db()->getInsertId();
@@ -152,7 +156,7 @@ final class PlanRepository
     {
         $keys = [
             'id', 'slug', 'name', 'description', 'price_minor', 'currency',
-            'duration_unit', 'duration_value', 'grace_period_days', 'is_recurring',
+            'duration_unit', 'duration_value', 'grace_period_days', 'is_recurring', 'auto_renew_enabled',
             'permissions', 'resources',
         ];
 
@@ -220,7 +224,10 @@ final class PlanRepository
         foreach (['id', 'price_minor', 'duration_value', 'grace_period_days', 'sort_order'] as $field) {
             $plan[$field] = (int)$plan[$field];
         }
-        foreach (['is_recurring', 'is_active', 'is_public', 'is_popular'] as $field) {
+        if (!array_key_exists('auto_renew_enabled', $plan)) {
+            $plan['auto_renew_enabled'] = $plan['is_recurring'] ?? false;
+        }
+        foreach (['is_recurring', 'auto_renew_enabled', 'is_active', 'is_public', 'is_popular'] as $field) {
             $plan[$field] = (bool)$plan[$field];
         }
         $plan['permissions'] = $this->permissionRows((int)$plan['id']);

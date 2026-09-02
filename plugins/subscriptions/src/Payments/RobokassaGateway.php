@@ -16,6 +16,10 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
     public function checkoutUrl(array $order, array $plan, array $profile): string
     {
+        (new \Fireball\Subscriptions\Services\SubscriptionEligibilityService())->assertEligible(
+            (int)($order['user_id'] ?? 0),
+            'gateway_checkout'
+        );
         $config = $this->settings->assertGatewayReady();
         $invoiceId = (string)(int)$order['invoice_id'];
         $outSum = Money::decimal((int)$order['amount_minor']);
@@ -41,7 +45,7 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
         $params['SignatureValue'] = $this->hash(implode(':', $signatureParts), $config['hash_algorithm']);
         $consents = json_decode((string)($order['consent_snapshot'] ?? ''), true);
-        if (!empty($config['recurring_enabled']) && !empty($plan['is_recurring'])
+        if (!empty($config['recurring_enabled']) && !empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false)
             && !empty($consents['recurring']) && !empty($consents['auto_renew'])) {
             $params['Recurring'] = 'true';
         }
@@ -70,6 +74,10 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
     public function initiateRecurring(array $order, array $plan, array $parentPayment): string
     {
+        (new \Fireball\Subscriptions\Services\SubscriptionEligibilityService())->assertEligible(
+            (int)($order['user_id'] ?? 0),
+            'gateway_recurring'
+        );
         $config = $this->settings->assertGatewayReady();
         if (empty($config['recurring_enabled'])) {
             throw new \RuntimeException('Recurring payments are disabled.');

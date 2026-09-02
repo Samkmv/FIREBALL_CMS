@@ -9,6 +9,7 @@ use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\CheckoutService;
 use Fireball\Subscriptions\Services\MediaTokenService;
 use Fireball\Subscriptions\Services\PaymentService;
+use Fireball\Subscriptions\Services\SubscriptionEligibilityService;
 use Fireball\Subscriptions\Services\SubscriptionService;
 use FBL\Pagination;
 
@@ -62,10 +63,14 @@ final class PublicController
         $profiles = new ProfileRepository();
         if (request()->isPost()) {
             try {
-                $profiles->saveProfile($userId, request()->getData());
-                session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_profile_saved'));
+                $savedProfile = $profiles->saveProfile($userId, request()->getData());
+                $eligible = !empty($savedProfile['eligibility']['eligible']);
+                session()->setFlash(
+                    $eligible ? 'success' : 'warning',
+                    \FireballPluginSubscriptions::t($eligible ? 'subscriptions_profile_saved' : 'subscriptions_address_included_in_utilities')
+                );
                 $returnTo = trim((string)request()->post('return_to', ''));
-                if ($returnTo !== '' && str_starts_with($returnTo, base_href('/subscriptions/checkout/'))) {
+                if ($eligible && $returnTo !== '' && str_starts_with($returnTo, base_href('/subscriptions/checkout/'))) {
                     response()->redirect($returnTo);
                 }
             } catch (\Throwable $exception) {
@@ -104,12 +109,24 @@ final class PublicController
             session()->set('subscriptions.checkout_return', base_href('/subscriptions/checkout/' . $planId));
             response()->redirect(base_href('/profile/subscription-details'));
         }
+        try {
+            (new SubscriptionEligibilityService())->assertEligible($userId, 'checkout_view', $profile);
+        } catch (\DomainException $exception) {
+            session()->setFlash('warning', $exception->getMessage());
+            response()->redirect(base_href('/profile/subscription-details'));
+        }
+
+        $recurringAvailable = (bool)(new \Fireball\Subscriptions\Services\SettingsService())->current()['recurring_enabled'];
+        if (!empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false) && !$recurringAvailable) {
+            session()->setFlash('error', \FireballPluginSubscriptions::t('subscriptions_error_recurring_disabled'));
+            response()->redirect(base_href('/subscriptions/plans'));
+        }
 
         return plugin_view('subscriptions', 'public/checkout', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_checkout_title'),
             'plan' => $plan,
             'profile' => $profile,
-            'recurring_available' => (bool)(new \Fireball\Subscriptions\Services\SettingsService())->current()['recurring_enabled'],
+            'recurring_available' => $recurringAvailable,
         ]));
     }
 
@@ -122,13 +139,16 @@ final class PublicController
                 'offer' => !empty(request()->post('consent_offer')),
                 'privacy' => !empty(request()->post('consent_privacy')),
                 'recurring' => !empty(request()->post('consent_recurring')),
-                'auto_renew' => !empty(request()->post('auto_renew')),
                 'accepted_at' => date(DATE_ATOM),
                 'ip_hash' => hash('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? '') . '|' . $userId),
             ]);
             $this->redirectToRobokassa((string)$checkout['url']);
         } catch (\Throwable $exception) {
             log_error_details('Subscription checkout failed', ['user_id' => $userId, 'plan_id' => $planId], $exception);
+            if ($exception instanceof \DomainException && $exception->getMessage() === \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) {
+                session()->setFlash('warning', $exception->getMessage());
+                response()->redirect(base_href('/profile/subscription-details'));
+            }
             if (str_contains($exception->getMessage(), \FireballPluginSubscriptions::t('subscriptions_error_profile_incomplete'))) {
                 session()->setFlash('error', $exception->getMessage());
                 response()->redirect(base_href('/profile/subscription-details'));

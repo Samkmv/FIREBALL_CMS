@@ -45,10 +45,21 @@ $renderActions = static function (array $actions) use ($renderAttributes): strin
         </button>
         <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
             <?php foreach ($actions as $action): ?>
-                <button class="dropdown-item d-flex align-items-center gap-2" type="button"<?= $renderAttributes((array)$action['attributes']) ?>>
-                    <i class="<?= htmlSC((string)$action['icon']) ?>"></i>
-                    <span><?= htmlSC((string)$action['label']) ?></span>
-                </button>
+                <?php if (($action['type'] ?? 'button') === 'form'): ?>
+                    <form action="<?= htmlSC((string)$action['action']) ?>" method="post"<?= $renderAttributes((array)($action['form_attributes'] ?? [])) ?>>
+                        <?= get_csrf_field() ?>
+                        <?php foreach ((array)($action['hidden'] ?? []) as $name => $value): ?><input type="hidden" name="<?= htmlSC((string)$name) ?>" value="<?= htmlSC((string)$value) ?>"><?php endforeach; ?>
+                        <button class="dropdown-item d-flex align-items-center gap-2 <?= htmlSC((string)($action['class'] ?? '')) ?>" type="submit">
+                            <i class="<?= htmlSC((string)$action['icon']) ?>"></i>
+                            <span><?= htmlSC((string)$action['label']) ?></span>
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <button class="dropdown-item d-flex align-items-center gap-2" type="button"<?= $renderAttributes((array)$action['attributes']) ?>>
+                        <i class="<?= htmlSC((string)$action['icon']) ?>"></i>
+                        <span><?= htmlSC((string)$action['label']) ?></span>
+                    </button>
+                <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </div>
@@ -79,10 +90,10 @@ foreach ($subscriptions as $subscription) {
         'data-subscription-id' => (int)$subscription['id'],
         'data-subscription-user' => (string)$subscription['user_name'],
     ];
-    $actions = $renderActions([
+    $actionItems = [
         ['label' => FireballPluginSubscriptions::t('subscriptions_view_details'), 'icon' => 'ci-eye', 'attributes' => $detailsAttributes],
         ['label' => FireballPluginSubscriptions::t('subscriptions_edit'), 'icon' => 'ci-edit', 'attributes' => $editAttributes],
-    ]);
+    ];
     $mobileActions = [[
         'label' => FireballPluginSubscriptions::t('subscriptions_view_details'),
         'icon' => 'ci-eye',
@@ -94,6 +105,28 @@ foreach ($subscriptions as $subscription) {
         'type' => 'button',
         'attributes' => $editAttributes,
     ]];
+    if (!empty($subscription['can_archive_subscriber'])) {
+        $deleteFormAttributes = [
+            'data-admin-delete-form' => true,
+            'data-confirm-title' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete_title'),
+            'data-delete-message' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete_confirm'),
+            'data-confirm-hint' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete_history_hint'),
+            'data-delete-confirm-label' => FireballPluginSubscriptions::t('subscriptions_delete'),
+            'data-delete-item' => (string)$subscription['user_name'],
+        ];
+        $deleteAction = [
+            'label' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete'),
+            'icon' => 'ci-trash',
+            'type' => 'form',
+            'action' => base_href('/admin/subscriptions/subscribers/delete'),
+            'hidden' => ['user_id' => (int)$subscription['user_id']],
+            'form_attributes' => $deleteFormAttributes,
+            'class' => 'text-danger',
+        ];
+        $actionItems[] = $deleteAction;
+        $mobileActions[] = $deleteAction;
+    }
+    $actions = $renderActions($actionItems);
     $source = $sourceLabels[(string)($subscription['source'] ?? '')] ?? (string)($subscription['source'] ?? '');
     $rows[] = ['cells' => [
         ['value' => '#' . (int)$subscription['id']], ['html' => $user], ['value' => (string)$subscription['plan_name']],

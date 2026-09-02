@@ -125,12 +125,14 @@ final class FireballPluginSubscriptions implements PluginInterface
         try {
             $active = (int)db()->query(
                 "SELECT COUNT(*) FROM subscriptions
-                 WHERE status IN ('active', 'grace_period', 'cancelled')
+                 WHERE archived_at IS NULL
+                   AND status IN ('active', 'grace_period', 'cancelled')
                    AND starts_at <= NOW() AND COALESCE(grace_ends_at, ends_at) > NOW()"
             )->getColumn();
             $expiring = (int)db()->query(
                 "SELECT COUNT(*) FROM subscriptions
-                 WHERE status IN ('active', 'cancelled')
+                 WHERE archived_at IS NULL
+                   AND status IN ('active', 'cancelled')
                    AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)"
             )->getColumn();
             $failed = (int)db()->query(
@@ -586,6 +588,7 @@ final class FireballPluginSubscriptions implements PluginInterface
             'overview' => ['subscriptions_admin_overview', '/admin/subscriptions', 'ci-layout'],
             'plans' => ['subscriptions_admin_plans', '/admin/subscriptions/plans', 'ci-package'],
             'subscribers' => ['subscriptions_admin_subscribers', '/admin/subscriptions/subscribers', 'ci-users'],
+            'exclusions' => ['subscriptions_admin_exclusions', '/admin/subscriptions/exclusions', 'ci-map-pin'],
             'payments' => ['subscriptions_admin_payments', '/admin/subscriptions/payments', 'ci-credit-card'],
             'content' => ['subscriptions_admin_content', '/admin/subscriptions/content', 'ci-file-text'],
             'fields' => ['subscriptions_admin_profile_fields', '/admin/subscriptions/profile-fields', 'ci-list'],

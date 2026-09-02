@@ -166,7 +166,15 @@ final class ProfileRepository
             throw $exception;
         }
 
-        return $this->profileForUser($userId, false) ?: [];
+        $fresh = $this->profileForUser($userId, false) ?: [];
+        if ($fresh === []) {
+            return [];
+        }
+        $eligibility = (new \Fireball\Subscriptions\Services\SubscriptionEligibilityService())->evaluateProfile($fresh, true);
+        $fresh = $this->profileForUser($userId, false) ?: $fresh;
+        $fresh['eligibility'] = $eligibility;
+
+        return $fresh;
     }
 
     public function completion(array $profile, ?int $planId = null): array
