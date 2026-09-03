@@ -32,9 +32,6 @@ final class CheckoutService
         $settingsService = new SettingsService();
         $settings = $settingsService->current();
         $autoRenew = !empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false);
-        if ($autoRenew && empty($settings['recurring_enabled'])) {
-            throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_disabled'));
-        }
         if ($autoRenew && empty($consents['recurring'])) {
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_consent'));
         }

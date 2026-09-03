@@ -1,6 +1,7 @@
 <?php
 
 $payments = is_array($payments ?? null) ? $payments : [];
+$isUtilityManaged = !empty($subscription['utility_managed']);
 $paymentRows = [];
 $paymentCards = [];
 $subscriptionStatusLabels = [
@@ -74,12 +75,11 @@ foreach ($payments as $payment) {
 
 <section class="container py-5 subscriptions-public">
     <?php get_alerts(); ?>
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><h1 class="h3 mb-0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_account_title')) ?></h1><a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/subscriptions/plans') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_view_plans')) ?></a></div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><h1 class="h3 mb-0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_account_title')) ?></h1><?php if (!$isUtilityManaged): ?><a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/subscriptions/plans') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_view_plans')) ?></a><?php endif; ?></div>
     <?php if ($subscription): ?>
         <?php
         $subscriptionStatus = (string)($subscription['status'] ?? '');
         $subscriptionStatusLabel = $subscriptionStatusLabels[$subscriptionStatus] ?? FireballPluginSubscriptions::t('subscriptions_status_unknown');
-        $isUtilityManaged = !empty($subscription['utility_managed']);
         ?>
         <article class="subscriptions-account-card border rounded-5 p-4 p-lg-5 mb-5 overflow-hidden">
             <?php if ($isUtilityManaged): ?><div class="alert alert-success rounded-4 mb-4" role="status"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) ?></div><?php endif; ?>

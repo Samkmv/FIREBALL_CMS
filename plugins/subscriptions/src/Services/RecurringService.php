@@ -10,9 +10,6 @@ final class RecurringService
 {
     public function processDue(int $limit = 25): array
     {
-        if (!(new SettingsService())->current()['recurring_enabled']) {
-            return ['initiated' => 0, 'failed' => 0];
-        }
         $limit = max(1, min(100, $limit));
         $rows = db()->query(
             "SELECT id FROM subscriptions

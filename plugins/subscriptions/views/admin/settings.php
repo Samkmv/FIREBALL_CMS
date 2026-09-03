@@ -23,7 +23,7 @@
             <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_media_ttl')) ?></label><input class="form-control" type="number" name="media_token_ttl" min="60" max="1800" value="<?= (int)$settings['media_token_ttl'] ?>"></div>
         </div>
         <div class="row g-3 mt-2">
-            <?php foreach ([['test_mode', 'subscriptions_test_mode'], ['recurring_enabled', 'subscriptions_recurring_enabled'], ['receipt_enabled', 'subscriptions_receipt_enabled']] as [$key, $label]): ?><div class="col-md-4"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= !empty($settings[$key]) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div><?php endforeach; ?>
+            <?php foreach ([['test_mode', 'subscriptions_test_mode'], ['receipt_enabled', 'subscriptions_receipt_enabled']] as [$key, $label]): ?><div class="col-md-4"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= !empty($settings[$key]) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div><?php endforeach; ?>
         </div>
         <div class="row g-3 mt-2">
             <?php $taxLabels = ['none' => 'subscriptions_receipt_tax_none', 'vat0' => 'subscriptions_receipt_tax_vat0', 'vat5' => 'subscriptions_receipt_tax_vat5', 'vat7' => 'subscriptions_receipt_tax_vat7', 'vat10' => 'subscriptions_receipt_tax_vat10', 'vat20' => 'subscriptions_receipt_tax_vat20']; ?>

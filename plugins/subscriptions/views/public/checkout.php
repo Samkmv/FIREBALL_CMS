@@ -14,7 +14,7 @@ $address = implode(', ', array_filter([
     (string)$profile['apartment'],
     (string)$profile['postal_code'],
 ]));
-$autoRenewEnabled = !empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false) && !empty($recurring_available);
+$autoRenewEnabled = !empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false);
 $renewalPeriod = '';
 if ($autoRenewEnabled) {
     $durationValue = max(1, (int)$plan['duration_value']);

@@ -45,7 +45,7 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
         $params['SignatureValue'] = $this->hash(implode(':', $signatureParts), $config['hash_algorithm']);
         $consents = json_decode((string)($order['consent_snapshot'] ?? ''), true);
-        if (!empty($config['recurring_enabled']) && !empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false)
+        if (!empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false)
             && !empty($consents['recurring']) && !empty($consents['auto_renew'])) {
             $params['Recurring'] = 'true';
         }
@@ -79,9 +79,6 @@ final class RobokassaGateway implements PaymentGatewayInterface
             'gateway_recurring'
         );
         $config = $this->settings->assertGatewayReady();
-        if (empty($config['recurring_enabled'])) {
-            throw new \RuntimeException('Recurring payments are disabled.');
-        }
         $invoiceId = (string)(int)$order['invoice_id'];
         $outSum = Money::decimal((int)$order['amount_minor']);
         $signatureParts = [$config['merchant_login'], $outSum, $invoiceId, $config['password1']];

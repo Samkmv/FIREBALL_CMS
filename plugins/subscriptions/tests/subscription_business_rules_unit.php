@@ -12,6 +12,7 @@ final class FireballPluginSubscriptions
             'subscriptions_address_included_in_utilities' => 'ADDRESS_INCLUDED',
             'subscriptions_subscriber_delete_active_error' => 'ACTIVE_SUBSCRIPTION',
             'subscriptions_error_subscription_not_found' => 'NOT_FOUND',
+            'subscriptions_error_utility_managed' => 'UTILITY_MANAGED',
         ][$key] ?? $key;
     }
 }
@@ -153,6 +154,74 @@ final class SubscriptionBusinessDb
             return new SubscriptionBusinessResult();
         }
 
+        if ($this->mode === 'utility_sync') {
+            if (str_starts_with($sql, 'SELECT id FROM users WHERE id')) {
+                return new SubscriptionBusinessResult(['id' => 41]);
+            }
+            if (str_starts_with($sql, 'SELECT * FROM subscriptions WHERE user_id = ? AND utility_managed = 1')) {
+                return new SubscriptionBusinessResult(rows: []);
+            }
+            if (str_starts_with($sql, 'SELECT id FROM subscription_plans WHERE id = ? AND is_active = 1')) {
+                return new SubscriptionBusinessResult(['id' => (int)$params[0]]);
+            }
+            if (str_starts_with($sql, 'INSERT INTO subscriptions')) {
+                $this->insertId++;
+                $this->insertedSubscription = [
+                    'id' => $this->insertId,
+                    'user_id' => (int)$params[0],
+                    'plan_id' => (int)$params[1],
+                    'status' => 'active',
+                    'starts_at' => (string)$params[2],
+                    'ends_at' => null,
+                    'auto_renew' => 0,
+                    'source' => 'external',
+                    'utility_managed' => 1,
+                    'address_exclusion_id' => (int)$params[3],
+                ];
+
+                return new SubscriptionBusinessResult();
+            }
+            if (str_starts_with($sql, 'SELECT * FROM subscriptions WHERE id = ? LIMIT 1')) {
+                return new SubscriptionBusinessResult($this->insertedSubscription);
+            }
+
+            return new SubscriptionBusinessResult();
+        }
+
+        if ($this->mode === 'utility_edit') {
+            if (str_starts_with($sql, 'SELECT * FROM subscriptions WHERE id = ?')) {
+                return new SubscriptionBusinessResult([
+                    'id' => 901,
+                    'user_id' => 41,
+                    'plan_id' => 3,
+                    'status' => 'active',
+                    'utility_managed' => 1,
+                ]);
+            }
+            if (str_starts_with($sql, 'SELECT id FROM subscription_plans WHERE id = ?')) {
+                return new SubscriptionBusinessResult(['id' => 3]);
+            }
+
+            return new SubscriptionBusinessResult();
+        }
+
+        if ($this->mode === 'utility_access') {
+            if (str_contains($sql, 'FROM subscriptions s') && str_contains($sql, 's.ends_at IS NULL')) {
+                return new SubscriptionBusinessResult([
+                    'id' => 901,
+                    'user_id' => 41,
+                    'plan_id' => 3,
+                    'status' => 'active',
+                    'ends_at' => null,
+                    'source' => 'external',
+                    'utility_managed' => 1,
+                    'plan_name' => 'Residents',
+                ]);
+            }
+
+            return new SubscriptionBusinessResult();
+        }
+
         return new SubscriptionBusinessResult();
     }
 
@@ -195,6 +264,7 @@ require_once __DIR__ . '/../src/Services/SubscriptionEligibilityService.php';
 require_once __DIR__ . '/../src/Services/CheckoutService.php';
 
 use Fireball\Subscriptions\Payments\PaymentGatewayInterface;
+use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\CheckoutService;
 use Fireball\Subscriptions\Services\SubscriptionService;
 
@@ -312,5 +382,38 @@ businessAssert(
     (int)$manualSubscription['auto_renew'] === 0 && !empty($businessDb->currentPlan['auto_renew_enabled']),
     'Changing the plan setting after checkout must not change the saved subscription snapshot behavior.'
 );
+
+$businessDb = new SubscriptionBusinessDb();
+$businessDb->mode = 'utility_sync';
+$utilitySubscription = (new SubscriptionService())->syncUtilityAccess(41, [
+    'eligible' => false,
+    'reason' => 'ADDRESS_INCLUDED_IN_UTILITIES',
+    'matched_exception_id' => 7,
+], 3);
+businessAssert(is_array($utilitySubscription), 'An excluded address must receive a managed external subscription.');
+businessAssert((string)$utilitySubscription['status'] === 'active', 'Utility-billed access must be active.');
+businessAssert($utilitySubscription['ends_at'] === null, 'Utility-billed access must not receive a 30-day expiry date.');
+businessAssert((string)$utilitySubscription['source'] === 'external', 'Utility-billed access must be shown as external.');
+businessAssert((int)$utilitySubscription['utility_managed'] === 1, 'Utility-billed access must remain distinguishable from manually granted external access.');
+businessAssert((int)$utilitySubscription['auto_renew'] === 0, 'Utility-billed access must never create recurring charges.');
+
+$businessDb = new SubscriptionBusinessDb();
+$businessDb->mode = 'utility_access';
+$activeUtilitySubscription = (new AccessService())->activeSubscription(41);
+businessAssert(
+    is_array($activeUtilitySubscription) && (int)$activeUtilitySubscription['id'] === 901,
+    'Access checks must recognize an active utility subscription with no expiry date.'
+);
+
+$businessDb = new SubscriptionBusinessDb();
+$businessDb->mode = 'utility_edit';
+$utilityEditBlocked = false;
+try {
+    (new SubscriptionService())->updateManaged(901, 3, 'active', '+30 days', 1);
+} catch (DomainException $exception) {
+    $utilityEditBlocked = $exception->getMessage() === 'UTILITY_MANAGED';
+}
+businessAssert($utilityEditBlocked, 'Managed utility subscriptions must not be editable through the generic admin endpoint.');
+businessAssert(!hasSql($businessDb, 'UPDATE subscriptions SET plan_id'), 'Blocked utility subscription edits must not change the database.');
 
 echo "Subscription business rule unit tests passed.\n";

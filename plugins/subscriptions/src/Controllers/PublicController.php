@@ -124,17 +124,10 @@ final class PublicController
             response()->redirect(base_href('/account/subscription'));
         }
 
-        $recurringAvailable = (bool)(new \Fireball\Subscriptions\Services\SettingsService())->current()['recurring_enabled'];
-        if (!empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false) && !$recurringAvailable) {
-            session()->setFlash('error', $this->recurringUnavailableMessage());
-            response()->redirect(base_href('/subscriptions/plans'));
-        }
-
         return plugin_view('subscriptions', 'public/checkout', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_checkout_title'),
             'plan' => $plan,
             'profile' => $profile,
-            'recurring_available' => $recurringAvailable,
         ]));
     }
 
@@ -320,7 +313,23 @@ final class PublicController
                 : \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error');
         }
 
-        return $message;
+        if ($this->isAdministrativeUser()) {
+            return str_replace(
+                [':type', ':error'],
+                [get_class($exception), $message],
+                \FireballPluginSubscriptions::t('subscriptions_checkout_error_detailed')
+            );
+        }
+
+        $safeCustomerMessages = [
+            \FireballPluginSubscriptions::t('subscriptions_error_plan_not_found'),
+            \FireballPluginSubscriptions::t('subscriptions_error_consents'),
+            \FireballPluginSubscriptions::t('subscriptions_error_recurring_consent'),
+        ];
+
+        return in_array($message, $safeCustomerMessages, true)
+            ? $message
+            : \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error');
     }
 
     private function recurringUnavailableMessage(): string

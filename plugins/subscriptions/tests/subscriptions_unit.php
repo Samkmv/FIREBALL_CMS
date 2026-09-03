@@ -136,8 +136,10 @@ require_once __DIR__ . '/../src/Payments/RobokassaGateway.php';
 require_once __DIR__ . '/../../../app/Services/SqlFileRunner.php';
 require_once __DIR__ . '/../../../core/Plugins/PluginInterface.php';
 require_once __DIR__ . '/../Plugin.php';
+require_once __DIR__ . '/../src/Controllers/PublicController.php';
 
 use App\Services\SqlFileRunner;
+use Fireball\Subscriptions\Controllers\PublicController;
 use Fireball\Subscriptions\Payments\RobokassaGateway;
 use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\SettingsService;
@@ -145,11 +147,34 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.3.0', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.3.2', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
 assertSameValue('plugins/subscriptions', $manifest['update']['path'] ?? '', 'Independent update directory');
+
+$checkoutErrorMethod = new ReflectionMethod(PublicController::class, 'checkoutErrorMessage');
+$checkoutErrorMethod->setAccessible(true);
+$checkoutController = new PublicController();
+$currentTestUser = ['id' => 1, 'role' => 'admin'];
+assertSameValue(
+    'subscriptions_checkout_error_detailed',
+    $checkoutErrorMethod->invoke($checkoutController, new RuntimeException('Provider diagnostic')),
+    'Administrators must receive detailed checkout diagnostics'
+);
+$currentTestUser = ['id' => 2, 'role' => 'creator'];
+assertSameValue(
+    'subscriptions_payment_configuration_error_detailed',
+    $checkoutErrorMethod->invoke($checkoutController, new RuntimeException(SettingsService::CREDENTIALS_NOT_CONFIGURED)),
+    'The Creator must receive actionable payment configuration diagnostics'
+);
+$currentTestUser = ['id' => 3, 'role' => 'user'];
+assertSameValue(
+    'subscriptions_payment_configuration_error',
+    $checkoutErrorMethod->invoke($checkoutController, new RuntimeException('Provider diagnostic')),
+    'Regular users must not receive internal payment diagnostics'
+);
+$currentTestUser = [];
 
 $supportedLocales = ['ru', 'en', 'de', 'zh-cn'];
 foreach (['name_i18n', 'description_i18n', 'release_notes_i18n'] as $localizedManifestField) {
@@ -380,7 +405,6 @@ $settings->save([
     'currency' => 'RUB',
     'payment_timeout_minutes' => 60,
     'media_token_ttl' => 300,
-    'recurring_enabled' => '1',
 ]);
 $recurringOrder = [
     'id' => 7,
@@ -390,7 +414,7 @@ $recurringOrder = [
     'consent_snapshot' => json_encode(['recurring' => true, 'auto_renew' => true]),
 ];
 parse_str((string)parse_url($gateway->checkoutUrl($recurringOrder, ['name' => 'Test plan', 'is_recurring' => 1], ['email' => 'buyer@example.test']), PHP_URL_QUERY), $recurringQuery);
-assertSameValue('true', $recurringQuery['Recurring'] ?? '', 'Recurring checkout registration requires explicit consent');
+assertSameValue('true', $recurringQuery['Recurring'] ?? '', 'A recurring plan with explicit consent must register recurring billing without a second global switch');
 $recurringOrder['consent_snapshot'] = json_encode(['recurring' => true, 'auto_renew' => false]);
 parse_str((string)parse_url($gateway->checkoutUrl($recurringOrder, ['name' => 'Test plan', 'is_recurring' => 1], ['email' => 'buyer@example.test']), PHP_URL_QUERY), $manualQuery);
 assertTrueValue(!isset($manualQuery['Recurring']), 'Manual checkout must not register recurring billing');
@@ -472,6 +496,16 @@ assertTrueValue(
 assertTrueValue(
     !preg_match('/UPDATE\s+subscriptions\s+SET\s+auto_renew/is', $eligibilityMigration),
     'The migration must not enable recurring billing on historical subscriptions'
+);
+
+$utilityMigration = (string)file_get_contents(__DIR__ . '/../migrations/011_add_utility_managed_subscriptions.sql');
+$utilityMigrationStatements = (new SqlFileRunner())->split($utilityMigration);
+assertTrueValue(
+    count($utilityMigrationStatements) >= 15
+    && str_contains($utilityMigration, "COLUMN_NAME = 'utility_managed'")
+    && str_contains($utilityMigration, "COLUMN_NAME = 'address_exclusion_id'")
+    && str_contains($utilityMigration, 'ON UPDATE CASCADE ON DELETE SET NULL'),
+    'Utility-billed subscriptions must use an idempotent schema extension with a safe exclusion reference'
 );
 
 $pluginSource = (string)file_get_contents(__DIR__ . '/../Plugin.php');
@@ -606,6 +640,14 @@ assertTrueValue(
     && !str_contains($publicControllerSource, "response()->redirect((string)\$checkout['url'])"),
     'Checkout must use a narrowly allowlisted external redirect to the official Robokassa host'
 );
+assertTrueValue(
+    str_contains($publicControllerSource, "response()->redirect(base_href('/account/subscription'))")
+    && str_contains($publicControllerSource, 'subscriptions_error_recurring_disabled_detailed')
+    && str_contains($publicControllerSource, 'subscriptions_checkout_error_detailed')
+    && str_contains($publicControllerSource, 'subscriptions_recurring_unavailable_customer')
+    && str_contains($publicControllerSource, "['admin', 'creator']"),
+    'Excluded profiles must open the active-subscription page and privileged users must receive actionable checkout diagnostics'
+);
 
 foreach (['plans', 'subscribers', 'exclusions', 'payments', 'fields'] as $tableView) {
     $tableTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/' . $tableView . '.php');
@@ -626,6 +668,12 @@ assertTrueValue(
     && str_contains($subscribersTemplate, "modal.addEventListener('show.bs.modal'")
     && !str_contains($subscribersTemplate, 'subscriptions-inline-editor'),
     'Subscriber actions must use the standard ellipsis menu and edit in a modal without resizing mobile cards'
+);
+assertTrueValue(
+    str_contains($subscribersTemplate, 'subscriptions_indefinite')
+    && str_contains($subscribersTemplate, "if (!\$isUtilityManaged)")
+    && str_contains($subscribersTemplate, 'subscriptions_utility_access'),
+    'Managed utility subscriptions must be shown as indefinite external access and protected from generic editing'
 );
 
 $paymentsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/payments.php');
@@ -753,14 +801,28 @@ assertTrueValue(
     str_contains($planFormTemplate, "['auto_renew_enabled', 'subscriptions_field_recurring'")
     && str_contains($checkoutTemplate, 'subscriptions_auto_renew_disclosure')
     && str_contains($checkoutTemplate, 'name="consent_recurring"')
-    && !str_contains($checkoutTemplate, 'name="auto_renew"'),
+    && !str_contains($checkoutTemplate, 'name="auto_renew"')
+    && !str_contains($checkoutTemplate, 'recurring_available')
+    && !str_contains($settingsTemplate, "['recurring_enabled', 'subscriptions_recurring_enabled']"),
     'The plan controls automatic renewal while checkout clearly discloses recurring charges without an opt-in auto-renew switch'
+);
+assertTrueValue(
+    str_contains($accountTemplate, 'subscriptions_indefinite')
+    && str_contains($accountTemplate, 'subscriptions_auto_renew_not_required')
+    && str_contains($accountTemplate, '$isUtilityManaged'),
+    'The account page must explain utility-billed access and show it without an expiry date or renewal action'
 );
 
 $eligibilityServiceSource = (string)file_get_contents(__DIR__ . '/../src/Services/SubscriptionEligibilityService.php');
 $checkoutServiceSource = (string)file_get_contents(__DIR__ . '/../src/Services/CheckoutService.php');
 $recurringServiceSource = (string)file_get_contents(__DIR__ . '/../src/Services/RecurringService.php');
 $gatewaySource = (string)file_get_contents(__DIR__ . '/../src/Payments/RobokassaGateway.php');
+assertTrueValue(
+    !str_contains($checkoutServiceSource, "settings['recurring_enabled']")
+    && !str_contains($recurringServiceSource, "current()['recurring_enabled']")
+    && !str_contains($gatewaySource, "config['recurring_enabled']"),
+    'The tariff snapshot must be the only subscription-level source of truth for automatic renewal'
+);
 assertTrueValue(
     str_contains($eligibilityServiceSource, 'ADDRESS_INCLUDED_IN_UTILITIES')
     && str_contains($checkoutServiceSource, "'checkout_create'")

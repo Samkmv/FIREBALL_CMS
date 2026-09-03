@@ -213,8 +213,8 @@ final class SubscriptionService
         if (!$subscription) {
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_no_active_subscription'));
         }
-        if ($enabled && !(new SettingsService())->current()['recurring_enabled']) {
-            throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_disabled'));
+        if (!empty($subscription['utility_managed'])) {
+            throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_error_utility_managed'));
         }
         if ($enabled) {
             (new SubscriptionEligibilityService())->assertEligible($userId, 'auto_renew_enable');
@@ -268,6 +268,9 @@ final class SubscriptionService
         $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? AND archived_at IS NULL LIMIT 1', [$subscriptionId])->getOne();
         if (!$subscription || !db()->query('SELECT id FROM subscription_plans WHERE id = ? LIMIT 1', [$planId])->getOne()) {
             throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+        }
+        if (!empty($subscription['utility_managed'])) {
+            throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_error_utility_managed'));
         }
         $status = in_array($status, ['active', 'disabled'], true) ? $status : 'disabled';
         try {

@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Made tariff auto-renew the sole source of truth, added indefinite managed external subscriptions for utility-billed addresses, redirected affected users to active subscription details, and improved privileged payment diagnostics.",
     "Added structured address exclusions, repeated backend payment eligibility checks, safe inactive-subscriber archiving, and tariff-driven automatic renewal snapshots.",
     "Fixed paid Robokassa orders remaining pending when live ResultURL amounts contain six decimal places, and exposed callback delivery errors in payment administration.",
     "Added complete payer, subscription, order, payment, consent, address, and custom profile details to the subscriber and payment administration screens.",
@@ -56,6 +57,7 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Автопродление тарифа стало единственным источником истины; для адресов из коммунальных исключений создаётся бессрочная управляемая внешняя подписка, пользователь перенаправляется к активному доступу, а администраторы получают подробную диагностику оплаты.",
       "Добавлены структурированные исключения адресов, повторные серверные проверки перед оплатой, безопасное архивирование неактивных подписчиков и snapshot автопродления из тарифа.",
       "Исправлена активация оплаченных заказов Robokassa при сумме ResultURL с шестью знаками после запятой; ошибки доставки и обработки уведомления теперь видны в истории платежей.",
       "В разделах подписчиков и платежей добавлен просмотр полной информации: данные плательщика, анкета на момент покупки, адрес, дополнительные поля, подписка, заказ, платёж и согласия.",
@@ -88,6 +90,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Made tariff auto-renew the sole source of truth, added indefinite managed external subscriptions for utility-billed addresses, redirected affected users to active subscription details, and improved privileged payment diagnostics.",
       "Added structured address exclusions, repeated backend payment eligibility checks, safe inactive-subscriber archiving, and tariff-driven automatic renewal snapshots.",
       "Fixed paid Robokassa orders remaining pending when live ResultURL amounts contain six decimal places, and exposed callback delivery errors in payment administration.",
       "Added complete payer, subscription, order, payment, consent, address, and custom profile details to the subscriber and payment administration screens.",
@@ -120,6 +123,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Die Tarifoption für automatische Verlängerung ist nun die einzige maßgebliche Quelle; für über Nebenkosten abgerechnete Adressen werden unbefristete verwaltete externe Abonnements erstellt, betroffene Benutzer zum aktiven Zugang weitergeleitet und Zahlungsfehler für Administratoren ausführlicher erklärt.",
       "Strukturierte Adressausnahmen, wiederholte serverseitige Prüfungen vor Zahlungen, sichere Archivierung inaktiver Abonnenten und tarifgesteuerte Verlängerungs-Snapshots wurden hinzugefügt.",
       "Behoben: Bezahlte Robokassa-Bestellungen blieben bei ResultURL-Betraegen mit sechs Dezimalstellen ausstehend; Zustell- und Verarbeitungsfehler sind nun in der Zahlungsverwaltung sichtbar.",
       "In der Abonnenten- und Zahlungsverwaltung werden jetzt vollständige Zahler-, Profil-, Adress-, Bestell-, Zahlungs-, Einwilligungs- und Abonnementdaten angezeigt.",
@@ -152,6 +156,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "套餐自动续订现为唯一事实来源；公共事业费地址会创建无到期日的托管外部订阅，受影响用户会跳转到有效订阅页面，管理员可看到更详细的付款诊断。",
       "新增结构化地址例外、付款前的重复服务端资格检查、安全归档非活跃订阅者，以及由套餐驱动的自动续订快照。",
       "修复了 Robokassa 正式环境 ResultURL 金额含六位小数时已付款订单仍处于待处理状态的问题，并在付款管理中显示回调传送和处理错误。",
       "订阅者和付款管理页面现可查看完整的付款人资料、购买时快照、地址、附加字段、订阅、订单、付款及同意事项。",
