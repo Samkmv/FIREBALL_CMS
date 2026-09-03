@@ -127,7 +127,7 @@ final class FireballPluginSubscriptions implements PluginInterface
                 "SELECT COUNT(*) FROM subscriptions
                  WHERE archived_at IS NULL
                    AND status IN ('active', 'grace_period', 'cancelled')
-                   AND starts_at <= NOW() AND COALESCE(grace_ends_at, ends_at) > NOW()"
+                   AND starts_at <= NOW() AND (ends_at IS NULL OR COALESCE(grace_ends_at, ends_at) > NOW())"
             )->getColumn();
             $expiring = (int)db()->query(
                 "SELECT COUNT(*) FROM subscriptions

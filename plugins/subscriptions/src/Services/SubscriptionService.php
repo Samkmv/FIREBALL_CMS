@@ -4,6 +4,124 @@ namespace Fireball\Subscriptions\Services;
 
 final class SubscriptionService
 {
+    public function syncUtilityAccess(int $userId, array $eligibility, ?int $preferredPlanId = null, ?int $actorId = null): ?array
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $isExcluded = empty($eligibility['eligible']) && (int)($eligibility['matched_exception_id'] ?? 0) > 0;
+        $exclusionId = $isExcluded ? (int)$eligibility['matched_exception_id'] : null;
+        $now = date('Y-m-d H:i:s');
+
+        db()->beginTransaction();
+        try {
+            $user = db()->query('SELECT id FROM users WHERE id = ? LIMIT 1 FOR UPDATE', [$userId])->getOne();
+            if (!$user) {
+                db()->commit();
+
+                return null;
+            }
+
+            $managed = db()->query(
+                'SELECT * FROM subscriptions WHERE user_id = ? AND utility_managed = 1 AND archived_at IS NULL ORDER BY id DESC FOR UPDATE',
+                [$userId]
+            )->get() ?: [];
+
+            if (!$isExcluded) {
+                foreach ($managed as $subscription) {
+                    if ((string)$subscription['status'] === 'disabled' && !empty($subscription['ends_at'])) {
+                        continue;
+                    }
+                    db()->query(
+                        "UPDATE subscriptions SET status = 'disabled', ends_at = ?, grace_ends_at = NULL, cancelled_at = ?, next_billing_at = NULL, auto_renew = 0, updated_at = ? WHERE id = ?",
+                        [$now, $now, $now, (int)$subscription['id']]
+                    );
+                    $this->event(
+                        'subscription.utility_access_disabled',
+                        (int)$subscription['id'], null, $userId, (string)$subscription['status'], 'disabled',
+                        ['address_exclusion_id' => (int)($subscription['address_exclusion_id'] ?? 0)],
+                        $actorId
+                    );
+                }
+                db()->commit();
+
+                return null;
+            }
+
+            $current = $managed[0] ?? null;
+            $planId = $this->resolveUtilityPlanId($userId, $preferredPlanId, $current);
+            if ($planId <= 0) {
+                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_utility_plan_missing'));
+            }
+
+            foreach (array_slice($managed, 1) as $duplicate) {
+                db()->query(
+                    "UPDATE subscriptions SET status = 'disabled', ends_at = ?, grace_ends_at = NULL, cancelled_at = ?, next_billing_at = NULL, auto_renew = 0, updated_at = ? WHERE id = ?",
+                    [$now, $now, $now, (int)$duplicate['id']]
+                );
+                $this->event(
+                    'subscription.utility_access_duplicate_disabled',
+                    (int)$duplicate['id'], null, $userId, (string)$duplicate['status'], 'disabled',
+                    ['address_exclusion_id' => (int)($duplicate['address_exclusion_id'] ?? 0)],
+                    $actorId
+                );
+            }
+
+            if ($current) {
+                $subscriptionId = (int)$current['id'];
+                $startsAt = (string)$current['status'] === 'active' && !empty($current['starts_at'])
+                    ? (string)$current['starts_at']
+                    : $now;
+                $changed = (string)$current['status'] !== 'active'
+                    || (int)$current['plan_id'] !== $planId
+                    || !empty($current['ends_at'])
+                    || (int)($current['address_exclusion_id'] ?? 0) !== $exclusionId
+                    || (string)$current['source'] !== 'external';
+                db()->query(
+                    "UPDATE subscriptions
+                     SET plan_id = ?, status = 'active', starts_at = ?, ends_at = NULL, grace_ends_at = NULL,
+                         cancelled_at = NULL, next_billing_at = NULL, auto_renew = 0, parent_payment_id = NULL,
+                         source = 'external', utility_managed = 1, address_exclusion_id = ?, updated_at = ?
+                     WHERE id = ?",
+                    [$planId, $startsAt, $exclusionId, $now, $subscriptionId]
+                );
+                if ($changed) {
+                    $this->event(
+                        'subscription.utility_access_activated',
+                        $subscriptionId, null, $userId, (string)$current['status'], 'active',
+                        ['plan_id' => $planId, 'address_exclusion_id' => $exclusionId],
+                        $actorId
+                    );
+                }
+            } else {
+                db()->query(
+                    "INSERT INTO subscriptions
+                        (user_id, plan_id, status, starts_at, ends_at, auto_renew, source, utility_managed, address_exclusion_id, created_at, updated_at)
+                     VALUES (?, ?, 'active', ?, NULL, 0, 'external', 1, ?, ?, ?)",
+                    [$userId, $planId, $now, $exclusionId, $now, $now]
+                );
+                $subscriptionId = (int)db()->getInsertId();
+                $this->event(
+                    'subscription.utility_access_activated',
+                    $subscriptionId, null, $userId, null, 'active',
+                    ['plan_id' => $planId, 'address_exclusion_id' => $exclusionId],
+                    $actorId
+                );
+            }
+
+            $result = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1', [$subscriptionId])->getOne();
+            db()->commit();
+
+            return is_array($result) ? $result : null;
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) {
+                db()->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
     public function activatePaidOrder(array $order, int $paymentId): array
     {
         $userId = (int)$order['user_id'];
@@ -182,7 +300,7 @@ final class SubscriptionService
                 "SELECT id FROM subscriptions
                  WHERE user_id = ? AND archived_at IS NULL
                    AND (
-                        (status IN ('active', 'cancelled') AND starts_at <= ? AND ends_at > ?)
+                        (status IN ('active', 'cancelled') AND starts_at <= ? AND (ends_at IS NULL OR ends_at > ?))
                         OR (status = 'grace_period' AND starts_at <= ? AND COALESCE(grace_ends_at, ends_at) > ?)
                    )
                  LIMIT 1 FOR UPDATE",
@@ -235,5 +353,43 @@ final class SubscriptionService
         $value = max(1, min(1200, $value));
 
         return new \DateInterval($unit === 'months' ? 'P' . $value . 'M' : 'P' . $value . 'D');
+    }
+
+    private function resolveUtilityPlanId(int $userId, ?int $preferredPlanId, ?array $current): int
+    {
+        if ($preferredPlanId !== null && $preferredPlanId > 0) {
+            $preferred = db()->query(
+                'SELECT id FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1',
+                [$preferredPlanId]
+            )->getOne();
+            if ($preferred) {
+                return (int)$preferred['id'];
+            }
+        }
+
+        if ($current && (int)($current['plan_id'] ?? 0) > 0) {
+            $existing = db()->query('SELECT id FROM subscription_plans WHERE id = ? LIMIT 1', [(int)$current['plan_id']])->getOne();
+            if ($existing) {
+                return (int)$existing['id'];
+            }
+        }
+
+        $previous = db()->query(
+            'SELECT p.id
+             FROM subscriptions s
+             INNER JOIN subscription_plans p ON p.id = s.plan_id
+             WHERE s.user_id = ? AND s.utility_managed = 0
+             ORDER BY s.created_at DESC, s.id DESC LIMIT 1',
+            [$userId]
+        )->getOne();
+        if ($previous) {
+            return (int)$previous['id'];
+        }
+
+        $fallback = db()->query(
+            'SELECT id FROM subscription_plans ORDER BY is_active DESC, is_public DESC, sort_order ASC, id ASC LIMIT 1'
+        )->getOne();
+
+        return (int)($fallback['id'] ?? 0);
     }
 }

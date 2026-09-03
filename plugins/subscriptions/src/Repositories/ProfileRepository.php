@@ -115,7 +115,7 @@ final class ProfileRepository
         return $rows;
     }
 
-    public function saveProfile(int $userId, array $data): array
+    public function saveProfile(int $userId, array $data, ?int $preferredPlanId = null): array
     {
         $profile = $this->profileForUser($userId);
         if (!$profile) {
@@ -171,8 +171,14 @@ final class ProfileRepository
             return [];
         }
         $eligibility = (new \Fireball\Subscriptions\Services\SubscriptionEligibilityService())->evaluateProfile($fresh, true);
+        $utilitySubscription = (new \Fireball\Subscriptions\Services\SubscriptionService())->syncUtilityAccess(
+            $userId,
+            $eligibility,
+            $preferredPlanId
+        );
         $fresh = $this->profileForUser($userId, false) ?: $fresh;
         $fresh['eligibility'] = $eligibility;
+        $fresh['utility_subscription'] = $utilitySubscription;
 
         return $fresh;
     }

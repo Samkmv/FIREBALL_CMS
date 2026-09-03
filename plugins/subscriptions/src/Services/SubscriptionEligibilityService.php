@@ -31,7 +31,8 @@ final class SubscriptionEligibilityService
     public function evaluateProfile(array $profile, bool $markProfile = true, ?array $rules = null): array
     {
         $address = $this->normalizer->normalizeProfile($profile);
-        $match = $this->matcher->match($address, $rules ?? $this->exclusions->active());
+        $candidateRules = $rules ?? $this->exclusions->candidates((string)$address['normalized_street']);
+        $match = $this->matcher->match($address, $candidateRules);
         $result = [
             'eligible' => $match === null,
             'reason' => $match === null ? null : self::REASON_ADDRESS_INCLUDED_IN_UTILITIES,
@@ -81,11 +82,20 @@ final class SubscriptionEligibilityService
     {
         $profiles = db()->query('SELECT * FROM subscription_profiles ORDER BY id')->get() ?: [];
         $rules = $this->exclusions->active();
+        $subscriptions = new SubscriptionService();
         $matched = 0;
         foreach ($profiles as $profile) {
             $result = $this->evaluateProfile($profile, true, $rules);
             if (empty($result['eligible'])) {
                 $matched++;
+            }
+            try {
+                $subscriptions->syncUtilityAccess((int)$profile['user_id'], $result);
+            } catch (\Throwable $exception) {
+                log_error_details('Utility subscription synchronization failed', [
+                    'user_id' => (int)$profile['user_id'],
+                    'address_exclusion_id' => (int)($result['matched_exception_id'] ?? 0),
+                ], $exception);
             }
         }
 

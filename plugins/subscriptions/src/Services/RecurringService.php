@@ -47,24 +47,12 @@ final class RecurringService
         try {
             (new SubscriptionEligibilityService())->assertEligible((int)$preflight['user_id'], 'recurring_preflight');
         } catch (\DomainException) {
-            $now = date('Y-m-d H:i:s');
-            db()->query(
-                'UPDATE subscriptions SET auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ?',
-                [$now, $subscriptionId]
-            );
-            (new SubscriptionService())->event(
-                'subscription.auto_renew_blocked_by_address',
-                $subscriptionId,
-                null,
-                (int)$preflight['user_id'],
-                (string)$preflight['status'],
-                (string)$preflight['status'],
-                ['reason' => SubscriptionEligibilityService::REASON_ADDRESS_INCLUDED_IN_UTILITIES]
-            );
+            $this->blockRenewalForAddress($preflight);
 
             return false;
         }
 
+        $subscription = $preflight;
         db()->beginTransaction();
         try {
             $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1 FOR UPDATE', [$subscriptionId])->getOne();
@@ -125,6 +113,12 @@ final class RecurringService
             if (db()->inTransaction()) {
                 db()->rollBack();
             }
+            if ($exception instanceof \DomainException
+                && $exception->getMessage() === \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) {
+                $this->blockRenewalForAddress($subscription ?: $preflight);
+
+                return false;
+            }
             throw $exception;
         }
 
@@ -161,6 +155,24 @@ final class RecurringService
             'subscription.auto_renew_blocked_by_address',
             (int)$subscription['id'],
             $paymentId,
+            (int)$subscription['user_id'],
+            (string)$subscription['status'],
+            (string)$subscription['status'],
+            ['reason' => SubscriptionEligibilityService::REASON_ADDRESS_INCLUDED_IN_UTILITIES]
+        );
+    }
+
+    private function blockRenewalForAddress(array $subscription): void
+    {
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            'UPDATE subscriptions SET auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ?',
+            [$now, (int)$subscription['id']]
+        );
+        (new SubscriptionService())->event(
+            'subscription.auto_renew_blocked_by_address',
+            (int)$subscription['id'],
+            null,
             (int)$subscription['user_id'],
             (string)$subscription['status'],
             (string)$subscription['status'],

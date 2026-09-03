@@ -15,13 +15,13 @@ final class AdminController
     public function dashboard(): string
     {
         $stats = [
-            'active' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'grace_period', 'cancelled') AND starts_at <= NOW() AND COALESCE(grace_ends_at, ends_at) > NOW()")->getColumn(),
+            'active' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'grace_period', 'cancelled') AND starts_at <= NOW() AND (ends_at IS NULL OR COALESCE(grace_ends_at, ends_at) > NOW())")->getColumn(),
             'expiring' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'cancelled') AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)")->getColumn(),
             'paid_total_minor' => (int)db()->query("SELECT COALESCE(SUM(amount_minor), 0) FROM subscription_payments WHERE status = 'paid'")->getColumn(),
             'failed' => (int)db()->query("SELECT COUNT(*) FROM subscription_payments WHERE status = 'failed'")->getColumn(),
         ];
         $byPlan = db()->query(
-            "SELECT p.name, COUNT(s.id) AS total FROM subscription_plans p LEFT JOIN subscriptions s ON s.plan_id = p.id AND s.archived_at IS NULL AND s.status IN ('active', 'grace_period', 'cancelled') AND s.ends_at > NOW() GROUP BY p.id, p.name ORDER BY total DESC, p.name"
+            "SELECT p.name, COUNT(s.id) AS total FROM subscription_plans p LEFT JOIN subscriptions s ON s.plan_id = p.id AND s.archived_at IS NULL AND s.status IN ('active', 'grace_period', 'cancelled') AND (s.ends_at IS NULL OR s.ends_at > NOW()) GROUP BY p.id, p.name ORDER BY total DESC, p.name"
         )->get() ?: [];
 
         return $this->view('admin/dashboard', 'overview', [
@@ -116,7 +116,7 @@ final class AdminController
                         SELECT 1 FROM subscriptions active_s
                         WHERE active_s.user_id = s.user_id AND active_s.archived_at IS NULL
                           AND (
-                               (active_s.status IN ('active', 'cancelled') AND active_s.starts_at <= NOW() AND active_s.ends_at > NOW())
+                               (active_s.status IN ('active', 'cancelled') AND active_s.starts_at <= NOW() AND (active_s.ends_at IS NULL OR active_s.ends_at > NOW()))
                                OR (active_s.status = 'grace_period' AND active_s.starts_at <= NOW() AND COALESCE(active_s.grace_ends_at, active_s.ends_at) > NOW())
                           )
                     ) AS can_archive_subscriber
@@ -193,7 +193,7 @@ final class AdminController
         $repository = new AddressExclusionRepository();
         $total = $repository->count($search);
         $pagination = new \FBL\Pagination($total, $perPage);
-        $result = $repository->paginated($search, $perPage, $pagination->getOffset());
+        $result = $repository->paginated($search, $perPage, $pagination->getOffset(), $total);
 
         return $this->view('admin/exclusions', 'exclusions', [
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_exclusions'),

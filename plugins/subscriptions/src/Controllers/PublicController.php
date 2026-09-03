@@ -63,13 +63,20 @@ final class PublicController
         $profiles = new ProfileRepository();
         if (request()->isPost()) {
             try {
-                $savedProfile = $profiles->saveProfile($userId, request()->getData());
-                $eligible = !empty($savedProfile['eligibility']['eligible']);
+                $returnTo = trim((string)request()->post('return_to', ''));
+                $savedProfile = $profiles->saveProfile(
+                    $userId,
+                    request()->getData(),
+                    $this->checkoutPlanId($returnTo)
+                );
+                $eligible = !isset($savedProfile['eligibility']) || !empty($savedProfile['eligibility']['eligible']);
                 session()->setFlash(
-                    $eligible ? 'success' : 'warning',
+                    'success',
                     \FireballPluginSubscriptions::t($eligible ? 'subscriptions_profile_saved' : 'subscriptions_address_included_in_utilities')
                 );
-                $returnTo = trim((string)request()->post('return_to', ''));
+                if (!$eligible) {
+                    response()->redirect(base_href('/account/subscription'));
+                }
                 if ($eligible && $returnTo !== '' && str_starts_with($returnTo, base_href('/subscriptions/checkout/'))) {
                     response()->redirect($returnTo);
                 }
@@ -112,13 +119,14 @@ final class PublicController
         try {
             (new SubscriptionEligibilityService())->assertEligible($userId, 'checkout_view', $profile);
         } catch (\DomainException $exception) {
-            session()->setFlash('warning', $exception->getMessage());
-            response()->redirect(base_href('/profile/subscription-details'));
+            $this->activateUtilityAccess($userId, $planId);
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities'));
+            response()->redirect(base_href('/account/subscription'));
         }
 
         $recurringAvailable = (bool)(new \Fireball\Subscriptions\Services\SettingsService())->current()['recurring_enabled'];
         if (!empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false) && !$recurringAvailable) {
-            session()->setFlash('error', \FireballPluginSubscriptions::t('subscriptions_error_recurring_disabled'));
+            session()->setFlash('error', $this->recurringUnavailableMessage());
             response()->redirect(base_href('/subscriptions/plans'));
         }
 
@@ -146,16 +154,15 @@ final class PublicController
         } catch (\Throwable $exception) {
             log_error_details('Subscription checkout failed', ['user_id' => $userId, 'plan_id' => $planId], $exception);
             if ($exception instanceof \DomainException && $exception->getMessage() === \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) {
-                session()->setFlash('warning', $exception->getMessage());
-                response()->redirect(base_href('/profile/subscription-details'));
+                $this->activateUtilityAccess($userId, $planId);
+                session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities'));
+                response()->redirect(base_href('/account/subscription'));
             }
             if (str_contains($exception->getMessage(), \FireballPluginSubscriptions::t('subscriptions_error_profile_incomplete'))) {
                 session()->setFlash('error', $exception->getMessage());
                 response()->redirect(base_href('/profile/subscription-details'));
             }
-            $message = $exception->getMessage() === \Fireball\Subscriptions\Services\SettingsService::CREDENTIALS_NOT_CONFIGURED
-                ? \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error')
-                : $exception->getMessage();
+            $message = $this->checkoutErrorMessage($exception);
             session()->setFlash('error', $message);
             response()->redirect(base_href('/subscriptions/checkout/' . $planId));
         }
@@ -281,6 +288,53 @@ final class PublicController
         }
 
         return $id;
+    }
+
+    private function checkoutPlanId(string $returnTo): ?int
+    {
+        $path = parse_url($returnTo, PHP_URL_PATH);
+        if (!is_string($path) || preg_match('~/subscriptions/checkout/([1-9][0-9]*)/?$~', $path, $matches) !== 1) {
+            return null;
+        }
+
+        return (int)$matches[1];
+    }
+
+    private function activateUtilityAccess(int $userId, int $planId): void
+    {
+        $eligibility = (new SubscriptionEligibilityService())->evaluateUser($userId, null, true);
+        if (empty($eligibility['eligible'])) {
+            (new SubscriptionService())->syncUtilityAccess($userId, $eligibility, $planId);
+        }
+    }
+
+    private function checkoutErrorMessage(\Throwable $exception): string
+    {
+        $message = $exception->getMessage();
+        if ($message === \FireballPluginSubscriptions::t('subscriptions_error_recurring_disabled')) {
+            return $this->recurringUnavailableMessage();
+        }
+        if (str_starts_with($message, \Fireball\Subscriptions\Services\SettingsService::CREDENTIALS_NOT_CONFIGURED)) {
+            return $this->isAdministrativeUser()
+                ? \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error_detailed')
+                : \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error');
+        }
+
+        return $message;
+    }
+
+    private function recurringUnavailableMessage(): string
+    {
+        return \FireballPluginSubscriptions::t(
+            $this->isAdministrativeUser()
+                ? 'subscriptions_error_recurring_disabled_detailed'
+                : 'subscriptions_recurring_unavailable_customer'
+        );
+    }
+
+    private function isAdministrativeUser(): bool
+    {
+        return in_array((string)(get_user()['role'] ?? ''), ['admin', 'creator'], true);
     }
 
     private function redirectToRobokassa(string $url): never

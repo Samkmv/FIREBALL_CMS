@@ -79,8 +79,10 @@ foreach ($payments as $payment) {
         <?php
         $subscriptionStatus = (string)($subscription['status'] ?? '');
         $subscriptionStatusLabel = $subscriptionStatusLabels[$subscriptionStatus] ?? FireballPluginSubscriptions::t('subscriptions_status_unknown');
+        $isUtilityManaged = !empty($subscription['utility_managed']);
         ?>
         <article class="subscriptions-account-card border rounded-5 p-4 p-lg-5 mb-5 overflow-hidden">
+            <?php if ($isUtilityManaged): ?><div class="alert alert-success rounded-4 mb-4" role="status"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) ?></div><?php endif; ?>
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3">
                     <span class="subscriptions-account-card__icon d-inline-flex align-items-center justify-content-center rounded-circle"><i class="ci-award"></i></span>
@@ -96,13 +98,13 @@ foreach ($payments as $payment) {
                 <div class="col-sm-6">
                     <div class="subscriptions-account-card__meta h-100 rounded-4 p-3">
                         <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_ends_at')) ?></div>
-                        <div class="fw-semibold fs-5"><?= htmlSC($formatDateTime($subscription['ends_at'] ?? '', false)) ?></div>
+                        <div class="fw-semibold fs-5"><?= htmlSC($isUtilityManaged || empty($subscription['ends_at']) ? FireballPluginSubscriptions::t('subscriptions_indefinite') : $formatDateTime($subscription['ends_at'], false)) ?></div>
                     </div>
                 </div>
                 <div class="col-sm-6">
                     <div class="subscriptions-account-card__meta h-100 rounded-4 p-3">
                         <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_auto_renew')) ?></div>
-                        <div class="fw-semibold fs-5"><?= htmlSC(FireballPluginSubscriptions::t(!empty($subscription['auto_renew']) ? 'subscriptions_auto_renew_enabled' : 'subscriptions_auto_renew_disabled')) ?></div>
+                        <div class="fw-semibold fs-5"><?= htmlSC(FireballPluginSubscriptions::t($isUtilityManaged ? 'subscriptions_auto_renew_not_required' : (!empty($subscription['auto_renew']) ? 'subscriptions_auto_renew_enabled' : 'subscriptions_auto_renew_disabled'))) ?></div>
                     </div>
                 </div>
             </div>
@@ -124,8 +126,8 @@ foreach ($payments as $payment) {
             </div>
 
             <div class="d-flex flex-wrap gap-2 mt-4">
-                <a class="btn btn-dark rounded-pill" href="<?= base_href('/subscriptions/checkout/' . (int)$subscription['plan_id']) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_renew')) ?></a>
-                <?php if (!empty($subscription['auto_renew'])): ?><form action="<?= base_href('/account/subscription/auto-renew') ?>" method="post"><?= get_csrf_field() ?><input type="hidden" name="enabled" value="0"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_disable_auto_renew')) ?></button></form><?php endif; ?>
+                <?php if (!$isUtilityManaged): ?><a class="btn btn-dark rounded-pill" href="<?= base_href('/subscriptions/checkout/' . (int)$subscription['plan_id']) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_renew')) ?></a><?php endif; ?>
+                <?php if (!$isUtilityManaged && !empty($subscription['auto_renew'])): ?><form action="<?= base_href('/account/subscription/auto-renew') ?>" method="post"><?= get_csrf_field() ?><input type="hidden" name="enabled" value="0"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_disable_auto_renew')) ?></button></form><?php endif; ?>
                 <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/profile/subscription-details') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_profile_title')) ?></a>
             </div>
         </article>

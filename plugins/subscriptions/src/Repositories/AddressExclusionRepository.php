@@ -15,6 +15,19 @@ final class AddressExclusionRepository
         )->get() ?: [];
     }
 
+    public function candidates(string $normalizedStreet): array
+    {
+        $normalizedStreet = trim($normalizedStreet);
+        if ($normalizedStreet === '') {
+            return [];
+        }
+
+        return db()->query(
+            'SELECT * FROM subscription_address_exclusions WHERE is_active = 1 AND normalized_street = ? ORDER BY normalized_house IS NOT NULL DESC, normalized_apartment IS NOT NULL DESC, id ASC',
+            [$normalizedStreet]
+        )->get() ?: [];
+    }
+
     public function find(int $id): ?array
     {
         $row = db()->query('SELECT * FROM subscription_address_exclusions WHERE id = ? LIMIT 1', [$id])->getOne();
@@ -22,8 +35,10 @@ final class AddressExclusionRepository
         return is_array($row) ? $row : null;
     }
 
-    public function paginated(string $search, int $limit, int $offset): array
+    public function paginated(string $search, int $limit, int $offset, ?int $knownTotal = null): array
     {
+        $limit = max(1, min(200, $limit));
+        $offset = max(0, $offset);
         $where = '';
         $params = [];
         if ($search !== '') {
@@ -31,7 +46,7 @@ final class AddressExclusionRepository
             $like = '%' . $search . '%';
             $params = [$like, $like, $like];
         }
-        $total = $this->count($search);
+        $total = $knownTotal ?? $this->count($search);
         $rows = db()->query(
             "SELECT e.*, COUNT(p.id) AS matched_users_count
              FROM subscription_address_exclusions e
@@ -94,6 +109,7 @@ final class AddressExclusionRepository
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_exclusion_not_found'));
         }
         $now = date('Y-m-d H:i:s');
+        $comment = mb_substr(trim((string)($data['comment'] ?? '')), 0, 10000);
         $values = [
             $address,
             (string)$parts['normalized_address'],
@@ -102,7 +118,7 @@ final class AddressExclusionRepository
             (string)$parts['normalized_street'],
             $parts['normalized_house'],
             $parts['normalized_apartment'],
-            mb_substr(trim((string)($data['comment'] ?? '')), 0, 10000),
+            $comment !== '' ? $comment : null,
             !empty($data['is_active']) ? 1 : 0,
         ];
 
