@@ -2430,7 +2430,7 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
 }
 
 .fb-admin-body .nav-tabs .nav-link {
-    border-radius: 10px 10px 0 0;
+    border-radius: 10px 10px 10px 10px;
     color: var(--fb-color-text-secondary);
 }
 
