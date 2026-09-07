@@ -1,7 +1,7 @@
 <?php
 $old = static fn(string $key, mixed $fallback = ''): mixed => $form_data[$key] ?? $profile[$key] ?? $fallback;
 $customValues = array_replace((array)($profile['custom_values'] ?? []), (array)($form_data['fields'] ?? []));
-$returnTo = (string)session()->get('subscriptions.checkout_return', '');
+$returnTo = (string)($form_data['return_to'] ?? session()->get('subscriptions.checkout_return', ''));
 session()->remove('subscriptions.checkout_return');
 ?>
 <section class="container py-5 subscriptions-public">
@@ -22,8 +22,10 @@ session()->remove('subscriptions.checkout_return');
                         <?php if (in_array($field['field_type'], ['checkbox', 'boolean'], true)): ?>
                             <label class="form-check mt-4"><input class="form-check-input" type="checkbox" name="<?= htmlSC($name) ?>" value="1" <?= !empty($fieldValue) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC((string)$field['label']) ?></span></label>
                         <?php else: ?>
-                            <label class="form-label"><?= htmlSC((string)$field['label']) ?><?= $field['is_required'] ? ' *' : '' ?></label>
-                            <?php if ($field['field_type'] === 'textarea'): ?><textarea class="form-control" name="<?= htmlSC($name) ?>" rows="4" placeholder="<?= htmlSC((string)$field['placeholder']) ?>" <?= $field['is_required'] ? 'required' : '' ?>><?= htmlSC((string)$fieldValue) ?></textarea>
+                            <label class="form-label" <?= $field['is_system'] && $key === 'region' ? 'id="subscriptions-region-label"' : '' ?>><?= htmlSC((string)$field['label']) ?><?= $field['is_required'] ? ' *' : '' ?></label>
+                            <?php if ($field['is_system'] && $key === 'region'): ?>
+                                <?php require __DIR__ . '/region-field.php'; ?>
+                            <?php elseif ($field['field_type'] === 'textarea'): ?><textarea class="form-control" name="<?= htmlSC($name) ?>" rows="4" placeholder="<?= htmlSC((string)$field['placeholder']) ?>" <?= $field['is_required'] ? 'required' : '' ?>><?= htmlSC((string)$fieldValue) ?></textarea>
                             <?php elseif (in_array($field['field_type'], ['select', 'radio'], true)): ?><select class="form-select" name="<?= htmlSC($name) ?>" <?= $field['is_required'] ? 'required' : '' ?>><option value=""></option><?php foreach ($field['options'] as $option): ?><option value="<?= htmlSC((string)$option) ?>" <?= (string)$fieldValue === (string)$option ? 'selected' : '' ?>><?= htmlSC((string)$option) ?></option><?php endforeach; ?></select>
                             <?php else: ?><input class="form-control" type="<?= in_array($field['field_type'], ['email', 'number', 'date'], true) ? htmlSC((string)$field['field_type']) : 'text' ?>" name="<?= htmlSC($name) ?>" value="<?= htmlSC((string)$fieldValue) ?>" placeholder="<?= htmlSC((string)$field['placeholder']) ?>" <?= $field['is_required'] ? 'required' : '' ?>><?php endif; ?>
                             <?php if ($field['description']): ?><div class="form-text"><?= htmlSC((string)$field['description']) ?></div><?php endif; ?>

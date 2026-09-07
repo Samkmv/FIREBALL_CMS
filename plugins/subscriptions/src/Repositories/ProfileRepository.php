@@ -2,6 +2,8 @@
 
 namespace Fireball\Subscriptions\Repositories;
 
+use Fireball\Subscriptions\Support\RussianRegionCatalog;
+
 final class ProfileRepository
 {
     public const SYSTEM_FIELDS = [
@@ -12,6 +14,14 @@ final class ProfileRepository
     public const FIELD_TYPES = [
         'text', 'textarea', 'number', 'email', 'phone', 'date',
         'select', 'radio', 'checkbox', 'boolean',
+    ];
+
+    // Labels seeded by migration 001 are translation defaults, not administrator overrides.
+    private const DEFAULT_SYSTEM_LABELS = [
+        'first_name' => 'First name', 'last_name' => 'Last name', 'middle_name' => 'Middle name',
+        'email' => 'Email', 'phone' => 'Phone', 'country' => 'Country', 'region' => 'Region',
+        'city' => 'City', 'street' => 'Street', 'house' => 'House',
+        'apartment' => 'Apartment / office', 'postal_code' => 'Postal code',
     ];
 
     public function profileForUser(int $userId, bool $create = true): ?array
@@ -104,7 +114,7 @@ final class ProfileRepository
             foreach (['is_required', 'is_active', 'is_system', 'is_editable', 'show_during_checkout', 'use_in_receipt'] as $field) {
                 $row[$field] = (bool)$row[$field];
             }
-            if ($row['is_system']) {
+            if ($row['is_system'] && $this->hasDefaultLabel($row)) {
                 $row['label'] = \FireballPluginSubscriptions::t('subscriptions_profile_field_' . (string)$row['field_key']);
             }
             $row['options'] = json_decode((string)($row['options_json'] ?? ''), true) ?: [];
@@ -124,6 +134,9 @@ final class ProfileRepository
         $columns = [];
         foreach (self::SYSTEM_FIELDS as $key) {
             $columns[$key] = trim((string)($data[$key] ?? $profile[$key] ?? ''));
+        }
+        if (array_key_exists('region', $data)) {
+            $columns['region'] = (new RussianRegionCatalog())->normalize($columns['region'], $columns['country']);
         }
         if ($columns['email'] !== '' && filter_var($columns['email'], FILTER_VALIDATE_EMAIL) === false) {
             throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_email'));
@@ -188,15 +201,21 @@ final class ProfileRepository
         $required = [];
         $missing = [];
         foreach ($this->fields(true) as $field) {
-            if (!$field['is_required'] || ($field['plan_ids'] !== [] && ($planId === null || !in_array($planId, $field['plan_ids'], true)))) {
+            if ($field['plan_ids'] !== [] && ($planId === null || !in_array($planId, $field['plan_ids'], true))) {
                 continue;
             }
             $key = (string)$field['field_key'];
-            $required[] = $key;
             $value = $field['is_system']
                 ? ($profile[$key] ?? '')
                 : ($profile['custom_values'][$key] ?? '');
-            if ($this->isEmptyValue($value) || (in_array($field['field_type'], ['checkbox', 'boolean'], true) && (string)$value !== '1')) {
+            $invalidRegion = $field['is_system'] && $key === 'region' && !$this->isEmptyValue($value)
+                && (new RussianRegionCatalog())->appliesToCountry((string)($profile['country'] ?? ''))
+                && (new RussianRegionCatalog())->resolve((string)$value) === null;
+            if (!$field['is_required'] && !$invalidRegion) {
+                continue;
+            }
+            $required[] = $key;
+            if ($invalidRegion || $this->isEmptyValue($value) || (in_array($field['field_type'], ['checkbox', 'boolean'], true) && (string)$value !== '1')) {
                 $missing[] = (string)$field['label'];
             }
         }
@@ -204,7 +223,7 @@ final class ProfileRepository
         $filled = max(0, $total - count($missing));
 
         return [
-            'complete' => $total > 0 && $missing === [],
+            'complete' => $missing === [],
             'percent' => $total === 0 ? 100 : (int)floor($filled * 100 / $total),
             'missing' => $missing,
             'required' => $required,
@@ -220,6 +239,12 @@ final class ProfileRepository
         $completion = $this->completion($profile, $planId);
         if (!$completion['complete']) {
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_profile_incomplete'));
+        }
+
+        // Normalize only the new order snapshot; never rewrite historic profiles or payments.
+        $regionCatalog = new RussianRegionCatalog();
+        if ($regionCatalog->appliesToCountry((string)($profile['country'] ?? ''))) {
+            $profile['region'] = $regionCatalog->resolve((string)($profile['region'] ?? '')) ?? ($profile['region'] ?? '');
         }
 
         return $this->snapshotFromProfile($profile);
@@ -250,13 +275,17 @@ final class ProfileRepository
         if ($existing && !empty($existing['is_system'])) {
             $key = (string)$existing['field_key'];
             $type = (string)$existing['field_type'];
+            // Saving unrelated options must not turn the translated default into a fixed label.
+            if ($this->hasDefaultLabel($existing)
+                && $label === \FireballPluginSubscriptions::t('subscriptions_profile_field_' . $key)) {
+                $label = self::DEFAULT_SYSTEM_LABELS[$key] ?? $label;
+            }
         }
-        $mandatorySystem = in_array($key, ['email', 'phone', 'country', 'region', 'city', 'street', 'house', 'postal_code'], true);
         $options = preg_split('/\R/', trim((string)($data['options'] ?? '')), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $planIds = array_values(array_unique(array_filter(array_map('intval', (array)($data['plan_ids'] ?? [])))));
         $values = [
             $key, $label, trim((string)($data['description'] ?? '')), trim((string)($data['placeholder'] ?? '')),
-            $type, ($mandatorySystem || !empty($data['is_required'])) ? 1 : 0, ($mandatorySystem || !empty($data['is_active'])) ? 1 : 0,
+            $type, !empty($data['is_required']) ? 1 : 0, !empty($data['is_active']) ? 1 : 0,
             $existing ? (int)$existing['is_system'] : 0, !empty($data['is_editable']) ? 1 : 0,
             !empty($data['show_during_checkout']) ? 1 : 0, !empty($data['use_in_receipt']) ? 1 : 0,
             trim((string)($data['validation_rules'] ?? '')), json_encode(array_values($options), JSON_UNESCAPED_UNICODE),
@@ -285,6 +314,13 @@ final class ProfileRepository
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_system_field'));
         }
         db()->query('DELETE FROM subscription_profile_fields WHERE id = ?', [$id]);
+    }
+
+    private function hasDefaultLabel(array $field): bool
+    {
+        $label = trim((string)($field['label'] ?? ''));
+
+        return $label === '' || $label === (self::DEFAULT_SYSTEM_LABELS[(string)$field['field_key']] ?? null);
     }
 
     private function values(int $profileId): array

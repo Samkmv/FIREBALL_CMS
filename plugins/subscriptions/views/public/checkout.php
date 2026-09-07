@@ -95,7 +95,8 @@ if ($autoRenewEnabled) {
                 </div>
 
                 <div class="subscriptions-checkout-consents rounded-4 p-3 p-md-4 mb-4">
-                    <label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="consent_offer" value="1" required><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_offer')) ?></span></label>
+                    <label class="form-check mb-1"><input class="form-check-input" type="checkbox" name="consent_offer" value="1" required><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_offer')) ?></span></label>
+                    <p class="small ms-4 mb-3"><a href="https://docs.robokassa.ru/media/1550/%D0%BE%D1%84%D0%B5%D1%80%D1%82%D0%B0-itv.pdf" target="_blank" rel="noopener noreferrer"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_robokassa_public_offer')) ?></a></p>
                     <label class="form-check mb-0"><input class="form-check-input" type="checkbox" name="consent_privacy" value="1" required><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_consent_privacy')) ?></span></label>
                     <?php if ($autoRenewEnabled): ?>
                         <hr class="my-3">

@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.3.2",
+  "version": "1.3.4",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,8 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Added searchable Russian region selection with English aliases and backend normalization; invalid regions cannot enter new checkout snapshots, while foreign addresses and historic records are preserved.",
+    "Added the official Robokassa payer offer beside checkout consents and fixed saving profile-field labels and flags, including optional-field completion checks.",
     "Made tariff auto-renew the sole source of truth, added indefinite managed external subscriptions for utility-billed addresses, redirected affected users to active subscription details, and improved privileged payment diagnostics.",
     "Added structured address exclusions, repeated backend payment eligibility checks, safe inactive-subscriber archiving, and tariff-driven automatic renewal snapshots.",
     "Fixed paid Robokassa orders remaining pending when live ResultURL amounts contain six decimal places, and exposed callback delivery errors in payment administration.",
@@ -57,6 +59,8 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "В анкету добавлен выбор региона с поиском на русском и английском и серверным сохранением русского названия. Ошибочные регионы требуют исправления перед оплатой; иностранные адреса и исторические записи сохранены.",
+      "Рядом с согласиями перед оплатой добавлена официальная оферта Robokassa для плательщиков. Исправлено сохранение названий и переключателей полей анкеты, а также проверка заполнения при отсутствии обязательных полей.",
       "Автопродление тарифа стало единственным источником истины; для адресов из коммунальных исключений создаётся бессрочная управляемая внешняя подписка, пользователь перенаправляется к активному доступу, а администраторы получают подробную диагностику оплаты.",
       "Добавлены структурированные исключения адресов, повторные серверные проверки перед оплатой, безопасное архивирование неактивных подписчиков и snapshot автопродления из тарифа.",
       "Исправлена активация оплаченных заказов Robokassa при сумме ResultURL с шестью знаками после запятой; ошибки доставки и обработки уведомления теперь видны в истории платежей.",
@@ -90,6 +94,8 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Added searchable Russian region selection with English aliases and backend normalization; invalid regions cannot enter new checkout snapshots, while foreign addresses and historic records are preserved.",
+      "Added the official Robokassa payer offer beside checkout consents and fixed saving profile-field labels and flags, including optional-field completion checks.",
       "Made tariff auto-renew the sole source of truth, added indefinite managed external subscriptions for utility-billed addresses, redirected affected users to active subscription details, and improved privileged payment diagnostics.",
       "Added structured address exclusions, repeated backend payment eligibility checks, safe inactive-subscriber archiving, and tariff-driven automatic renewal snapshots.",
       "Fixed paid Robokassa orders remaining pending when live ResultURL amounts contain six decimal places, and exposed callback delivery errors in payment administration.",
@@ -123,6 +129,8 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Die Regionsauswahl unterstützt die Suche auf Russisch und Englisch und speichert russische Namen serverseitig. Ungültige Regionen müssen vor der Zahlung korrigiert werden; ausländische Adressen und bestehende Daten bleiben erhalten.",
+      "Das offizielle Robokassa-Angebot für Zahler wird neben den Zahlungseinwilligungen verlinkt. Feldnamen und Optionen des Profilformulars werden korrekt gespeichert; Formulare ohne Pflichtfelder gelten als vollständig.",
       "Die Tarifoption für automatische Verlängerung ist nun die einzige maßgebliche Quelle; für über Nebenkosten abgerechnete Adressen werden unbefristete verwaltete externe Abonnements erstellt, betroffene Benutzer zum aktiven Zugang weitergeleitet und Zahlungsfehler für Administratoren ausführlicher erklärt.",
       "Strukturierte Adressausnahmen, wiederholte serverseitige Prüfungen vor Zahlungen, sichere Archivierung inaktiver Abonnenten und tarifgesteuerte Verlängerungs-Snapshots wurden hinzugefügt.",
       "Behoben: Bezahlte Robokassa-Bestellungen blieben bei ResultURL-Betraegen mit sechs Dezimalstellen ausstehend; Zustell- und Verarbeitungsfehler sind nun in der Zahlungsverwaltung sichtbar.",
@@ -156,6 +164,8 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "资料表新增俄语及英语地区搜索，服务器统一保存俄语名称。错误地区须在付款前更正；保留其他国家地址及历史记录。",
+      "在付款同意项旁添加 Robokassa 官方付款人公开要约链接。修复资料字段名称及开关的保存，并修复无必填字段时的资料完整性检查。",
       "套餐自动续订现为唯一事实来源；公共事业费地址会创建无到期日的托管外部订阅，受影响用户会跳转到有效订阅页面，管理员可看到更详细的付款诊断。",
       "新增结构化地址例外、付款前的重复服务端资格检查、安全归档非活跃订阅者，以及由套餐驱动的自动续订快照。",
       "修复了 Robokassa 正式环境 ResultURL 金额含六位小数时已付款订单仍处于待处理状态的问题，并在付款管理中显示回调传送和处理错误。",

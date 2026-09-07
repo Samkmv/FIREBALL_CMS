@@ -97,6 +97,7 @@ final class PublicController
             'fields' => $profiles->fields(true),
             'completion' => $profiles->completion($profile),
             'form_data' => $formData,
+            'footer_scripts' => [base_href('/plugins/subscriptions/assets/profile-region.js?v=' . filemtime(__DIR__ . '/../../assets/profile-region.js'))],
         ]));
     }
 
