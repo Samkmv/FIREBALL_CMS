@@ -185,21 +185,240 @@
 }
 
 .subscriptions-account-card {
-    background: linear-gradient(145deg, var(--bs-body-bg) 0%, var(--bs-tertiary-bg) 100%);
+    --subscription-accent: var(--cz-success);
+    --subscription-ink: #176443;
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--subscription-accent) 24%, var(--cz-border-color));
+    border-radius: 1.5rem;
+    background: var(--cz-body-bg);
+    box-shadow: 0 1rem 3rem color-mix(in srgb, var(--cz-emphasis-color) 5%, transparent);
+}
+
+[data-bs-theme="dark"] .subscriptions-account-card {
+    --subscription-ink: #80dfb1;
+}
+
+.subscriptions-account-card--grace {
+    --subscription-accent: var(--cz-warning);
+}
+
+.subscriptions-account-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: linear-gradient(90deg, var(--subscription-accent), color-mix(in srgb, var(--subscription-accent) 12%, transparent));
+}
+
+.subscriptions-account-card__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem 1.5rem;
+    padding: 2rem 2rem 1.75rem;
+    background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--subscription-accent) 10%, transparent), transparent 75%);
+}
+
+.subscriptions-account-card__identity {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
 }
 
 .subscriptions-account-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 3.5rem;
     height: 3.5rem;
+    flex: 0 0 3.5rem;
+    border: 1px solid color-mix(in srgb, var(--subscription-accent) 25%, transparent);
+    border-radius: 1.1rem;
     font-size: 1.35rem;
-    color: var(--bs-success);
-    background: var(--bs-success-bg-subtle);
+    color: var(--subscription-ink);
+    background: color-mix(in srgb, var(--subscription-accent) 12%, var(--cz-body-bg));
 }
 
-.subscriptions-account-card__meta,
-.subscriptions-account-card__permissions > li > div {
-    border: 1px solid var(--bs-border-color);
-    background: color-mix(in srgb, var(--bs-body-bg) 86%, transparent);
+.subscriptions-account-card__title {
+    min-width: 0;
+}
+
+.subscriptions-account-card__eyebrow {
+    margin-bottom: .25rem;
+    color: var(--cz-secondary-color);
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.subscriptions-account-card__title h2 {
+    margin: 0;
+    font-size: clamp(1.5rem, 2.5vw, 1.85rem);
+    line-height: 1.25;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+}
+
+.subscriptions-account-card .subscriptions-account-card__status {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .6rem .9rem;
+    border: 1px solid currentColor;
+    font-size: .8rem;
+    font-weight: 600;
+    white-space: normal;
+    text-align: start;
+}
+
+.subscriptions-account-card__status.text-success {
+    color: var(--subscription-ink) !important;
+    border-color: color-mix(in srgb, var(--subscription-accent) 22%, transparent);
+    background: color-mix(in srgb, var(--subscription-accent) 10%, var(--cz-body-bg)) !important;
+}
+
+.subscriptions-account-card__intro {
+    grid-column: 1 / -1;
+    max-width: 55rem;
+    color: var(--cz-secondary-color);
+    font-size: .925rem;
+    line-height: 1.6;
+}
+
+.subscriptions-account-card__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem;
+    padding: 0 2rem 2rem;
+}
+
+.subscriptions-account-card__layout--single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.subscriptions-account-card__summary,
+.subscriptions-account-card__features {
+    min-width: 0;
+}
+
+.subscriptions-account-card__facts {
+    overflow: hidden;
+    border: 1px solid var(--cz-border-color);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--cz-tertiary-bg) 55%, var(--cz-body-bg));
+}
+
+.subscriptions-account-card__meta {
+    padding: 1.15rem 1.35rem;
+}
+
+.subscriptions-account-card__meta + .subscriptions-account-card__meta {
+    border-top: 1px solid var(--cz-border-color);
+}
+
+.subscriptions-account-card__meta dt {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .45rem;
+    color: var(--cz-secondary-color);
+    font-size: .8rem;
+    font-weight: 400;
+}
+
+.subscriptions-account-card__meta dd {
+    margin: 0;
+    color: var(--cz-heading-color);
+    font-size: 1.05rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.subscriptions-account-card__meta .subscriptions-account-card__date {
+    font-size: 1.6rem;
+    line-height: 1.3;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.subscriptions-account-card__billing-note {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    padding: .9rem .15rem 0;
+    color: var(--cz-secondary-color);
+    font-size: .8rem;
+    line-height: 1.5;
+}
+
+.subscriptions-account-card__permissions {
+    display: grid;
+    gap: .6rem;
+}
+
+.subscriptions-account-card__permissions > li {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    min-width: 0;
+    padding: .7rem .9rem;
+    border: 1px solid var(--cz-border-color);
+    border-radius: .9rem;
+}
+
+.subscriptions-account-card__feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 2.25rem;
+    border-radius: .7rem;
+    color: var(--subscription-ink);
+    background: color-mix(in srgb, var(--subscription-accent) 9%, var(--cz-body-bg));
+}
+
+.subscriptions-account-card__feature-label {
+    flex: 1;
+    min-width: 0;
+    font-size: .875rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.subscriptions-account-card__feature-check {
+    flex-shrink: 0;
+    color: var(--subscription-ink);
+    font-size: .85rem;
+}
+
+.subscriptions-account-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem;
+    padding: 1.25rem 2rem;
+    border-top: 1px solid var(--cz-border-color);
+    background: color-mix(in srgb, var(--cz-tertiary-bg) 40%, var(--cz-body-bg));
+}
+
+.subscriptions-account-card__actions form {
+    margin: 0;
+}
+
+.subscriptions-account-card__actions .btn {
+    min-height: 2.75rem;
+    padding-inline: 1.25rem;
+    font-size: .85rem;
+    white-space: normal;
+}
+
+.subscriptions-account-card__renew {
+    margin-right: auto;
 }
 
 .subscriptions-admin .table > :not(caption) > * > * {
@@ -664,6 +883,36 @@
         flex: 1 1 auto;
     }
 
+    .subscriptions-account-card__header {
+        padding: 1.5rem 1.25rem;
+        gap: 1rem;
+    }
+
+    .subscriptions-account-card__identity {
+        grid-column: 1 / -1;
+        gap: .75rem;
+    }
+
+    .subscriptions-account-card__status {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+
+    .subscriptions-account-card__layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.5rem;
+        padding: 0 1.25rem 1.5rem;
+    }
+
+    .subscriptions-account-card__actions {
+        padding: 1.25rem;
+    }
+
+    .subscriptions-account-card__actions > *,
+    .subscriptions-account-card__actions form .btn {
+        width: 100%;
+    }
+
     .subscriptions-admin-tabs {
         display: flex;
         flex-wrap: nowrap;
@@ -835,4 +1084,16 @@
     .subscriptions-grant-summary__toggle i {
         transition: none;
     }
+}
+.subscriptions-payment-badges {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .375rem;
+}
+
+.subscriptions-payment-badges .badge {
+    padding: .4rem .65rem;
+    white-space: normal;
+    line-height: 1.3;
 }

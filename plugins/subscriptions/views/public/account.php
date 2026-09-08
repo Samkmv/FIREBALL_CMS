@@ -1,6 +1,16 @@
 <?php
 
 $payments = is_array($payments ?? null) ? $payments : [];
+$permissions = is_array($permissions ?? null) ? $permissions : [];
+$includedPermissions = array_filter($permissions);
+$permissionIcons = [
+    'posts.view_paid' => 'ci-file-text',
+    'videos.view_paid' => 'ci-play-circle',
+    'camera_archive.view' => 'ci-camera',
+    'camera_archive.download' => 'ci-download',
+    'camera_archive.max_days' => 'ci-calendar',
+    'camera_archive.max_fragment_minutes' => 'ci-clock',
+];
 $isUtilityManaged = !empty($subscription['utility_managed']);
 $paymentRows = [];
 $paymentCards = [];
@@ -46,7 +56,9 @@ foreach ($payments as $payment) {
     $statusKey = (string)($payment['status'] ?? '');
     $status = '<span class="badge rounded-pill '
         . htmlSC($statusClasses[$statusKey] ?? 'text-secondary bg-secondary-subtle') . '">'
-        . htmlSC($paymentStatusLabels[$statusKey] ?? FireballPluginSubscriptions::t('subscriptions_status_unknown'))
+        . htmlSC($statusKey === 'failed' && ($payment['error_message'] ?? '') === \Fireball\Subscriptions\Services\PaymentService::TIMEOUT_ERROR
+            ? FireballPluginSubscriptions::t('subscriptions_payment_status_timeout')
+            : ($paymentStatusLabels[$statusKey] ?? FireballPluginSubscriptions::t('subscriptions_status_unknown')))
         . '</span>';
     $createdAt = $formatDateTime($payment['created_at'] ?? '');
 
@@ -73,63 +85,73 @@ foreach ($payments as $payment) {
 }
 ?>
 
-<section class="container py-5 subscriptions-public">
+<section class="container py-5 subscriptions-public subscriptions-account-page">
     <?php get_alerts(); ?>
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><h1 class="h3 mb-0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_account_title')) ?></h1><?php if (!$isUtilityManaged): ?><a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/subscriptions/plans') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_view_plans')) ?></a><?php endif; ?></div>
     <?php if ($subscription): ?>
         <?php
         $subscriptionStatus = (string)($subscription['status'] ?? '');
         $subscriptionStatusLabel = $subscriptionStatusLabels[$subscriptionStatus] ?? FireballPluginSubscriptions::t('subscriptions_status_unknown');
+        $isGracePeriod = $subscriptionStatus === 'grace_period';
+        $accessEndsAt = $isGracePeriod ? ($subscription['grace_ends_at'] ?? $subscription['ends_at']) : $subscription['ends_at'];
+        $autoRenew = !$isUtilityManaged && !empty($subscription['auto_renew']);
         ?>
-        <article class="subscriptions-account-card border rounded-5 p-4 p-lg-5 mb-5 overflow-hidden">
-            <?php if ($isUtilityManaged): ?><div class="alert alert-success rounded-4 mb-4" role="status"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) ?></div><?php endif; ?>
-            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="subscriptions-account-card__icon d-inline-flex align-items-center justify-content-center rounded-circle"><i class="ci-award"></i></span>
-                    <div>
-                        <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan')) ?></div>
-                        <h2 class="h3 mb-0"><?= htmlSC((string)$subscription['plan_name']) ?></h2>
+        <article class="subscriptions-account-card <?= $isGracePeriod ? 'subscriptions-account-card--grace' : '' ?> mb-5" aria-labelledby="subscription-plan-title">
+            <header class="subscriptions-account-card__header">
+                <div class="subscriptions-account-card__identity">
+                    <span class="subscriptions-account-card__icon"><i class="<?= $isUtilityManaged ? 'ci-home' : 'ci-award' ?>" aria-hidden="true"></i></span>
+                    <div class="subscriptions-account-card__title">
+                        <div class="subscriptions-account-card__eyebrow"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan')) ?></div>
+                        <h2 id="subscription-plan-title"><?= htmlSC((string)$subscription['plan_name']) ?></h2>
                     </div>
                 </div>
-                <span class="badge rounded-pill px-3 py-2 <?= htmlSC($statusClasses[$subscriptionStatus] ?? 'text-secondary bg-secondary-subtle') ?>"><?= htmlSC($subscriptionStatusLabel) ?></span>
-            </div>
+                <span class="subscriptions-account-card__status badge rounded-pill <?= htmlSC($statusClasses[$subscriptionStatus] ?? 'text-secondary bg-secondary-subtle') ?>"><i class="<?= $isGracePeriod ? 'ci-clock' : 'ci-check-circle' ?>" aria-hidden="true"></i><?= htmlSC($subscriptionStatusLabel) ?></span>
+                <p class="subscriptions-account-card__intro mb-0"><?= htmlSC(FireballPluginSubscriptions::t($isUtilityManaged ? 'subscriptions_address_included_in_utilities' : 'subscriptions_account_access_ready')) ?></p>
+            </header>
 
-            <div class="row g-3 my-4">
-                <div class="col-sm-6">
-                    <div class="subscriptions-account-card__meta h-100 rounded-4 p-3">
-                        <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_ends_at')) ?></div>
-                        <div class="fw-semibold fs-5"><?= htmlSC($isUtilityManaged || empty($subscription['ends_at']) ? FireballPluginSubscriptions::t('subscriptions_indefinite') : $formatDateTime($subscription['ends_at'], false)) ?></div>
-                    </div>
+            <div class="subscriptions-account-card__layout <?= $includedPermissions === [] ? 'subscriptions-account-card__layout--single' : '' ?>">
+                <div class="subscriptions-account-card__summary">
+                    <dl class="subscriptions-account-card__facts mb-0">
+                        <div class="subscriptions-account-card__meta">
+                            <dt><i class="ci-calendar" aria-hidden="true"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_ends_at')) ?></dt>
+                            <dd class="subscriptions-account-card__date"><?= htmlSC($isUtilityManaged || empty($accessEndsAt) ? FireballPluginSubscriptions::t('subscriptions_indefinite') : $formatDateTime($accessEndsAt, false)) ?></dd>
+                        </div>
+                        <div class="subscriptions-account-card__meta">
+                            <dt><i class="ci-repeat" aria-hidden="true"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_auto_renew')) ?></dt>
+                            <dd><?= htmlSC(FireballPluginSubscriptions::t($isUtilityManaged ? 'subscriptions_auto_renew_not_required' : ($autoRenew ? 'subscriptions_auto_renew_enabled' : 'subscriptions_auto_renew_disabled'))) ?></dd>
+                        </div>
+                    </dl>
+                    <?php if (!$isUtilityManaged): ?>
+                        <p class="subscriptions-account-card__billing-note mb-0"><i class="<?= $autoRenew ? 'ci-check-shield' : 'ci-clock' ?>" aria-hidden="true"></i><span><?= htmlSC($autoRenew
+                            ? (!empty($subscription['next_billing_at']) ? str_replace(':date', $formatDateTime($subscription['next_billing_at'], false), FireballPluginSubscriptions::t('subscriptions_account_next_payment')) : FireballPluginSubscriptions::t('subscriptions_account_renewal_scheduled'))
+                            : (!empty($subscription['cancelled_at'])
+                                ? (!empty($accessEndsAt) ? str_replace(':date', $formatDateTime($accessEndsAt, false), FireballPluginSubscriptions::t('subscriptions_auto_renew_cancelled_until')) : FireballPluginSubscriptions::t('subscriptions_auto_renew_cancelled_access_retained'))
+                                : FireballPluginSubscriptions::t('subscriptions_account_no_auto_charge'))) ?></span></p>
+                        <?php if ($autoRenew): ?><p class="small text-body-secondary mt-2 mb-0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_auto_renew_cancel_hint')) ?></p><?php endif; ?>
+                    <?php endif; ?>
                 </div>
-                <div class="col-sm-6">
-                    <div class="subscriptions-account-card__meta h-100 rounded-4 p-3">
-                        <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_auto_renew')) ?></div>
-                        <div class="fw-semibold fs-5"><?= htmlSC(FireballPluginSubscriptions::t($isUtilityManaged ? 'subscriptions_auto_renew_not_required' : (!empty($subscription['auto_renew']) ? 'subscriptions_auto_renew_enabled' : 'subscriptions_auto_renew_disabled'))) ?></div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="border-top pt-4">
-                <h3 class="h6 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_access_included')) ?></h3>
-                <ul class="subscriptions-account-card__permissions list-unstyled row g-2 mb-0">
-                    <?php foreach ($permissions as $key => $enabled): ?>
-                        <?php if ($enabled): ?>
-                            <li class="col-md-6">
-                                <div class="d-flex align-items-center gap-2 rounded-4 p-3 h-100">
-                                    <i class="ci-check-circle text-success flex-shrink-0"></i>
-                                    <span><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_permission_' . str_replace('.', '_', $key))) ?><?= is_int($enabled) ? ': ' . (int)$enabled : '' ?></span>
-                                </div>
+                <?php if ($includedPermissions !== []): ?>
+                    <section class="subscriptions-account-card__features" aria-labelledby="subscription-features-title">
+                        <h3 class="h6 mb-3" id="subscription-features-title"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_access_included')) ?></h3>
+                        <ul class="subscriptions-account-card__permissions list-unstyled mb-0">
+                            <?php foreach ($includedPermissions as $key => $enabled): ?>
+                            <li>
+                                <span class="subscriptions-account-card__feature-icon"><i class="<?= htmlSC($permissionIcons[$key] ?? 'ci-check-circle') ?>" aria-hidden="true"></i></span>
+                                <span class="subscriptions-account-card__feature-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_permission_' . str_replace('.', '_', $key))) ?><?= is_int($enabled) ? ': ' . (int)$enabled : '' ?></span>
+                                <i class="ci-check subscriptions-account-card__feature-check" aria-hidden="true"></i>
                             </li>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </ul>
+                            <?php endforeach; ?>
+                        </ul>
+                    </section>
+                <?php endif; ?>
             </div>
 
-            <div class="d-flex flex-wrap gap-2 mt-4">
-                <?php if (!$isUtilityManaged): ?><a class="btn btn-dark rounded-pill" href="<?= base_href('/subscriptions/checkout/' . (int)$subscription['plan_id']) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_renew')) ?></a><?php endif; ?>
-                <?php if (!$isUtilityManaged && !empty($subscription['auto_renew'])): ?><form action="<?= base_href('/account/subscription/auto-renew') ?>" method="post"><?= get_csrf_field() ?><input type="hidden" name="enabled" value="0"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_disable_auto_renew')) ?></button></form><?php endif; ?>
-                <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/profile/subscription-details') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_profile_title')) ?></a>
-            </div>
+            <footer class="subscriptions-account-card__actions">
+                <?php if (!$isUtilityManaged): ?><a class="btn btn-dark rounded-pill subscriptions-account-card__renew" href="<?= base_href('/subscriptions/checkout/' . (int)$subscription['plan_id']) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_renew')) ?><i class="ci-arrow-right ms-2" aria-hidden="true"></i></a><?php endif; ?>
+                <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/profile/subscription-details') ?>"><i class="ci-user me-2" aria-hidden="true"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_profile_title')) ?></a>
+                <?php if ($autoRenew): ?><form action="<?= base_href('/account/subscription/auto-renew') ?>" method="post"><?= get_csrf_field() ?><input type="hidden" name="enabled" value="0"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_disable_auto_renew')) ?></button></form><?php endif; ?>
+            </footer>
         </article>
     <?php else: ?><div class="alert alert-info"><h2 class="h5"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_no_subscription_title')) ?></h2><p><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_no_subscription_message')) ?></p><a class="btn btn-dark rounded-pill" href="<?= base_href('/subscriptions/plans') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_view_plans')) ?></a></div><?php endif; ?>
 

@@ -26,6 +26,7 @@ final class PublicController
     public function account(): string
     {
         $userId = $this->userId();
+        (new PaymentService())->expirePending($userId);
         $subscription = (new AccessService())->activeSubscription($userId);
         $paymentsPerPage = 15;
         $paymentsTotal = (int)db()->query(
@@ -199,6 +200,11 @@ final class PublicController
 
     public function fail(): string
     {
+        // FailURL is an unsigned browser return, not proof of a declined payment.
+        $userId = $this->userId(false);
+        if ($userId > 0) {
+            (new PaymentService())->expirePending($userId);
+        }
         return plugin_view('subscriptions', 'public/payment-result', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_payment_result_title'),
             'success' => false,
@@ -209,8 +215,14 @@ final class PublicController
     public function autoRenew(): never
     {
         try {
-            (new SubscriptionService())->setAutoRenew($this->userId(), !empty(request()->post('enabled')));
-            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_auto_renew_saved'));
+            $userId = $this->userId();
+            $enabled = !empty(request()->post('enabled'));
+            (new SubscriptionService())->setAutoRenew($userId, $enabled);
+            $subscription = (new AccessService())->activeSubscription($userId);
+            $endsAt = ($subscription['status'] ?? '') === 'grace_period' ? ($subscription['grace_ends_at'] ?? $subscription['ends_at'] ?? null) : ($subscription['ends_at'] ?? null);
+            session()->setFlash('success', $enabled ? \FireballPluginSubscriptions::t('subscriptions_auto_renew_saved')
+                : ($endsAt ? str_replace(':date', date('d.m.Y', strtotime($endsAt)), \FireballPluginSubscriptions::t('subscriptions_auto_renew_cancelled_until'))
+                    : \FireballPluginSubscriptions::t('subscriptions_auto_renew_cancelled_access_retained')));
         } catch (\Throwable $exception) {
             session()->setFlash('error', $exception->getMessage());
         }

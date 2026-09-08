@@ -74,6 +74,28 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
     public function initiateRecurring(array $order, array $plan, array $parentPayment): string
     {
+        db()->beginTransaction();
+        try {
+            $subscription = db()->query(
+                'SELECT * FROM subscriptions WHERE id = ? AND user_id = ? AND plan_id = ? LIMIT 1 FOR UPDATE',
+                [(int)($order['subscription_id'] ?? 0), (int)($order['user_id'] ?? 0), (int)($order['plan_id'] ?? 0)]
+            )->getOne();
+            if (!$subscription || !empty($subscription['archived_at']) || empty($subscription['auto_renew'])
+                || empty($subscription['next_billing_at']) || !in_array($subscription['status'], ['active', 'grace_period', 'past_due'], true)) {
+                throw new \Fireball\Subscriptions\Support\RecurringCancelledException('Automatic renewal is no longer enabled.');
+            }
+            // Serialize the final dispatch with opt-out: cancellation wins if it acquired this lock first.
+            $response = $this->sendRecurring($order, $plan, $parentPayment);
+            db()->commit();
+            return $response;
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
+        }
+    }
+
+    private function sendRecurring(array $order, array $plan, array $parentPayment): string
+    {
         (new \Fireball\Subscriptions\Services\SubscriptionEligibilityService())->assertEligible(
             (int)($order['user_id'] ?? 0),
             'gateway_recurring'

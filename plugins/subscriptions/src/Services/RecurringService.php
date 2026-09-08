@@ -37,8 +37,9 @@ final class RecurringService
 
     public function initiate(int $subscriptionId): bool
     {
-        $preflight = db()->query('SELECT id, user_id, status FROM subscriptions WHERE id = ? LIMIT 1', [$subscriptionId])->getOne();
-        if (!$preflight) {
+        $preflight = db()->query('SELECT id, user_id, status, auto_renew, next_billing_at, archived_at FROM subscriptions WHERE id = ? LIMIT 1', [$subscriptionId])->getOne();
+        if (!$preflight || !empty($preflight['archived_at']) || empty($preflight['auto_renew']) || empty($preflight['next_billing_at'])
+            || !in_array($preflight['status'], ['active', 'grace_period', 'past_due'], true)) {
             return false;
         }
         try {
@@ -53,7 +54,8 @@ final class RecurringService
         db()->beginTransaction();
         try {
             $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1 FOR UPDATE', [$subscriptionId])->getOne();
-            if (!$subscription || empty($subscription['auto_renew']) || empty($subscription['next_billing_at']) || strtotime((string)$subscription['next_billing_at']) > time()) {
+            if (!$subscription || !empty($subscription['archived_at']) || empty($subscription['auto_renew']) || empty($subscription['next_billing_at'])
+                || !in_array($subscription['status'], ['active', 'grace_period', 'past_due'], true) || strtotime((string)$subscription['next_billing_at']) > time()) {
                 db()->commit();
                 return false;
             }
@@ -128,10 +130,17 @@ final class RecurringService
                 : null;
             $pendingStatus = $graceEnd !== null && strtotime($graceEnd) > time() ? 'grace_period' : 'past_due';
             db()->query('UPDATE subscription_payments SET provider_transaction = ?, updated_at = ? WHERE id = ?', [$response, date('Y-m-d H:i:s'), $paymentId]);
-            db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ?', [$pendingStatus, $graceEnd, date('Y-m-d H:i:s'), $subscriptionId]);
+            db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL', [$pendingStatus, $graceEnd, date('Y-m-d H:i:s'), $subscriptionId]);
             (new SubscriptionService())->event('payment.recurring_initiated', $subscriptionId, $paymentId, (int)$subscription['user_id'], null, 'pending', ['invoice_id' => $invoiceId]);
             return true;
         } catch (\Throwable $exception) {
+            if ($exception instanceof \Fireball\Subscriptions\Support\RecurringCancelledException) {
+                $now = date('Y-m-d H:i:s');
+                db()->query("UPDATE subscription_payments SET status = 'cancelled', error_message = ?, updated_at = ? WHERE id = ? AND status <> 'paid'", ['Auto-renew disabled before dispatch', $now, $paymentId]);
+                db()->query("UPDATE subscription_orders SET status = 'cancelled', updated_at = ? WHERE id = ? AND status <> 'paid'", [$now, $orderId]);
+                (new SubscriptionService())->event('payment.recurring_cancelled', $subscriptionId, $paymentId, (int)$subscription['user_id'], 'pending', 'cancelled');
+                return false;
+            }
             if ($exception instanceof \DomainException
                 && $exception->getMessage() === \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) {
                 $this->markEligibilityBlocked($subscription, $paymentId, $orderId, $exception);
@@ -187,7 +196,7 @@ final class RecurringService
         $status = $graceEnd !== null && strtotime($graceEnd) > time() ? 'grace_period' : 'past_due';
         db()->query("UPDATE subscription_payments SET status = 'failed', error_message = ?, failed_at = ?, updated_at = ? WHERE id = ?", [mb_substr($exception->getMessage(), 0, 2000), $now, $now, $paymentId]);
         db()->query("UPDATE subscription_orders SET status = 'failed', updated_at = ? WHERE id = ?", [$now, $orderId]);
-        db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ?', [$status, $graceEnd, $now, (int)$subscription['id']]);
+        db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL', [$status, $graceEnd, $now, (int)$subscription['id']]);
         (new SubscriptionService())->event('payment.recurring_failed', (int)$subscription['id'], $paymentId, (int)$subscription['user_id'], (string)$subscription['status'], $status, ['error_class' => get_class($exception)]);
         try {
             notification_create([

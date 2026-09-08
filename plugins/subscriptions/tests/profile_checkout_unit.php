@@ -31,6 +31,8 @@ final class ProfileTestDb
             public function __construct(private readonly PDOStatement $statement) {}
             public function get(): array { return $this->statement->fetchAll(PDO::FETCH_ASSOC); }
             public function getOne(): array|false { return $this->statement->fetch(PDO::FETCH_ASSOC); }
+            public function getColumn(): mixed { return $this->statement->fetchColumn(); }
+            public function rowCount(): int { return $this->statement->rowCount(); }
         };
     }
 
@@ -64,6 +66,12 @@ final class FireballPluginSubscriptions
 
 require_once __DIR__ . '/../src/Repositories/ProfileRepository.php';
 require_once __DIR__ . '/../src/Support/RussianRegionCatalog.php';
+require_once __DIR__ . '/../src/Services/PublicOfferService.php';
+
+function plugin_setting(string $slug, string $key, mixed $default = null): mixed
+{
+    return $GLOBALS['profileTestSettings'][$key] ?? $default;
+}
 
 $checks = 0;
 $failures = [];
@@ -173,9 +181,10 @@ foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
         check(1, $links->length, $context . ': offer link is beside payment consents');
         $link = $links->item(0);
         check('https://docs.robokassa.ru/media/1550/%D0%BE%D1%84%D0%B5%D1%80%D1%82%D0%B0-itv.pdf', $link?->getAttribute('href'), $context . ': official payer offer URL');
-        check(FireballPluginSubscriptions::t('subscriptions_robokassa_public_offer'), $link?->textContent, $context . ': localized offer label');
-        check(1, $xpath->query('//label[input[@name="consent_offer"]]/following-sibling::*[1][self::p]/a')->length, $context . ': offer link is directly below its consent checkbox');
-        check(true, str_ends_with($link?->textContent ?? '', $locale === 'zh-cn' ? '（PDF）' : '(PDF)'), $context . ': link suffix contains only PDF');
+        check(FireballPluginSubscriptions::t('subscriptions_consent_offer_link'), $link?->textContent, $context . ': localized inline offer link');
+        check(1, $xpath->query('//label[input[@name="consent_offer"]]/span/a')->length, $context . ': link is inside the consent label');
+        check(str_replace(':offer', FireballPluginSubscriptions::t('subscriptions_consent_offer_link'), FireballPluginSubscriptions::t('subscriptions_consent_offer_linked')), $link?->parentNode->textContent, $context . ': full consent sentence is preserved');
+        check(0, $xpath->query('//div[contains(@class,"subscriptions-checkout-consents")]/p/a')->length, $context . ': no separate offer link below consent');
         check('_blank', $link?->getAttribute('target'), $context . ': payment form stays open');
         check('noopener noreferrer', $link?->getAttribute('rel'), $context . ': safe new tab');
         foreach (['consent_offer', 'consent_privacy', ...($recurring ? ['consent_recurring'] : [])] as $name) {

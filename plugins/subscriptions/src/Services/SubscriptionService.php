@@ -156,6 +156,15 @@ final class SubscriptionService
         $autoRenew = !empty($terms['auto_renew_enabled'] ?? $terms['is_recurring'] ?? false)
             && !empty($consents['auto_renew'])
             && !empty($consents['recurring']);
+        $payment = db()->query('SELECT payment_type, subscription_id FROM subscription_payments WHERE id = ? LIMIT 1', [$paymentId])->getOne();
+        if (($payment['payment_type'] ?? '') === 'recurring') {
+            $renewalTarget = db()->query(
+                'SELECT auto_renew FROM subscriptions WHERE id = ? AND user_id = ? AND plan_id = ? LIMIT 1 FOR UPDATE',
+                [(int)($payment['subscription_id'] ?? 0), $userId, $planId]
+            )->getOne();
+            // A previously dispatched renewal may finish after opt-out. Honour the latest subscription preference.
+            $autoRenew = $autoRenew && !empty($renewalTarget['auto_renew']);
+        }
 
         if ($current && (int)$current['plan_id'] === $planId
             && (strtotime((string)$current['ends_at']) > $now->getTimestamp() || in_array((string)$current['status'], ['grace_period', 'past_due'], true))) {
@@ -209,39 +218,47 @@ final class SubscriptionService
 
     public function setAutoRenew(int $userId, bool $enabled): void
     {
-        $subscription = (new AccessService())->activeSubscription($userId);
-        if (!$subscription) {
-            throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_no_active_subscription'));
-        }
-        if (!empty($subscription['utility_managed'])) {
-            throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_error_utility_managed'));
-        }
-        if ($enabled) {
-            (new SubscriptionEligibilityService())->assertEligible($userId, 'auto_renew_enable');
-            $parent = db()->query(
-                'SELECT p.id, p.status, o.consent_snapshot, o.plan_snapshot FROM subscription_payments p INNER JOIN subscription_orders o ON o.id = p.order_id WHERE p.id = ? AND p.status = ? LIMIT 1',
-                [(int)$subscription['parent_payment_id'], 'paid']
-            )->getOne();
-            $consents = json_decode((string)($parent['consent_snapshot'] ?? ''), true);
-            $terms = json_decode((string)($parent['plan_snapshot'] ?? ''), true);
-            if (!$parent || empty($terms['auto_renew_enabled'] ?? $terms['is_recurring'] ?? false) || empty($consents['recurring']) || empty($consents['auto_renew'])) {
-                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_checkout_required'));
+        db()->beginTransaction();
+        try {
+            $subscription = (new AccessService())->activeSubscription($userId, true);
+            if (!$subscription) {
+                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_no_active_subscription'));
             }
+            if (!empty($subscription['utility_managed'])) {
+                throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_error_utility_managed'));
+            }
+            if ($enabled) {
+                (new SubscriptionEligibilityService())->assertEligible($userId, 'auto_renew_enable');
+                $parent = db()->query(
+                    'SELECT p.id, p.status, o.consent_snapshot, o.plan_snapshot FROM subscription_payments p INNER JOIN subscription_orders o ON o.id = p.order_id WHERE p.id = ? AND p.status = ? LIMIT 1',
+                    [(int)$subscription['parent_payment_id'], 'paid']
+                )->getOne();
+                $consents = json_decode((string)($parent['consent_snapshot'] ?? ''), true);
+                $terms = json_decode((string)($parent['plan_snapshot'] ?? ''), true);
+                if (!$parent || empty($terms['auto_renew_enabled'] ?? $terms['is_recurring'] ?? false) || empty($consents['recurring']) || empty($consents['auto_renew'])) {
+                    throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_checkout_required'));
+                }
+            }
+            $now = date('Y-m-d H:i:s');
+            $status = $subscription['status'] === 'cancelled' ? 'active' : $subscription['status'];
+            $nextBillingAt = $enabled ? ($subscription['next_billing_at'] ?? $subscription['ends_at']) : null;
+            if ((bool)$subscription['auto_renew'] === $enabled && $subscription['next_billing_at'] === $nextBillingAt && $subscription['status'] === $status) {
+                db()->commit();
+                return;
+            }
+            db()->query(
+                'UPDATE subscriptions SET auto_renew = ?, cancelled_at = ?, next_billing_at = ?, status = ?, updated_at = ? WHERE id = ?',
+                [$enabled ? 1 : 0, $enabled ? null : ($subscription['cancelled_at'] ?? $now), $nextBillingAt, $status, $now, (int)$subscription['id']]
+            );
+            $this->event(
+                $enabled ? 'subscription.auto_renew_enabled' : 'subscription.auto_renew_disabled',
+                (int)$subscription['id'], null, $userId, (string)$subscription['status'], (string)$status
+            );
+            db()->commit();
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
         }
-        db()->query(
-            'UPDATE subscriptions SET auto_renew = ?, cancelled_at = ?, status = ?, updated_at = ? WHERE id = ?',
-            [
-                $enabled ? 1 : 0,
-                $enabled ? null : date('Y-m-d H:i:s'),
-                $enabled ? 'active' : 'cancelled',
-                date('Y-m-d H:i:s'),
-                (int)$subscription['id'],
-            ]
-        );
-        $this->event(
-            $enabled ? 'subscription.auto_renew_enabled' : 'subscription.auto_renew_disabled',
-            (int)$subscription['id'], null, $userId, (string)$subscription['status'], $enabled ? 'active' : 'cancelled'
-        );
     }
 
     public function grant(int $userId, int $planId, int $durationValue, string $durationUnit, int $actorId, string $comment = '', string $source = 'manual'): int

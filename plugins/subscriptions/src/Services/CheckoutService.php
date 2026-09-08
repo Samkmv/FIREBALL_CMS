@@ -36,6 +36,7 @@ final class CheckoutService
             throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_consent'));
         }
         $consents['auto_renew'] = $autoRenew;
+        $consents['offer_url'] = (new PublicOfferService())->url();
         $consents['recurring'] = $autoRenew && !empty($consents['recurring']);
 
         $snapshot = $profiles->snapshot($userId, $planId);

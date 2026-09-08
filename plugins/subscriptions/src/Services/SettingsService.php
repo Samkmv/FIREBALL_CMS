@@ -29,6 +29,8 @@ final class SettingsService
             'success_url' => base_url('/subscriptions/robokassa/success'),
             'fail_url' => base_url('/subscriptions/robokassa/fail'),
             'media_token_ttl' => 300,
+            'public_offer_page_id' => 0,
+            'public_offer_url' => PublicOfferService::LEGACY_URL,
         ];
     }
 
@@ -61,6 +63,7 @@ final class SettingsService
             : 'RUB';
         $settings['payment_timeout_minutes'] = max(5, min(10080, (int)$settings['payment_timeout_minutes']));
         $settings['media_token_ttl'] = max(60, min(1800, (int)$settings['media_token_ttl']));
+        $settings['public_offer_page_id'] = max(0, (int)$settings['public_offer_page_id']);
         foreach (['test_mode', 'recurring_enabled', 'receipt_enabled'] as $flag) {
             $settings[$flag] = (bool)$settings[$flag];
         }
@@ -92,7 +95,16 @@ final class SettingsService
             'success_url' => base_url('/subscriptions/robokassa/success'),
             'fail_url' => base_url('/subscriptions/robokassa/fail'),
             'media_token_ttl' => max(60, min(1800, (int)($data['media_token_ttl'] ?? 300))),
+            'public_offer_page_id' => max(0, (int)($data['public_offer_page_id'] ?? $current['public_offer_page_id'])),
+            'public_offer_url' => trim((string)($data['public_offer_url'] ?? $current['public_offer_url'])),
         ];
+        $offer = new PublicOfferService();
+        if ($settings['public_offer_page_id'] > 0 && !$offer->publishedPage($settings['public_offer_page_id'])) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_offer_page_invalid'));
+        }
+        if (!$offer->validUrl($settings['public_offer_url']) && ($settings['public_offer_url'] !== '' || $settings['public_offer_page_id'] === 0)) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_offer_url_invalid'));
+        }
         if (preg_match('/^[A-Z]{3}$/', $settings['currency']) !== 1) {
             throw new \InvalidArgumentException('Currency must be a three-letter ISO code.');
         }

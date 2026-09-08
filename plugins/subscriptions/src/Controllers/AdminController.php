@@ -17,9 +17,7 @@ final class AdminController
         $stats = [
             'active' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'grace_period', 'cancelled') AND starts_at <= NOW() AND (ends_at IS NULL OR COALESCE(grace_ends_at, ends_at) > NOW())")->getColumn(),
             'expiring' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'cancelled') AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)")->getColumn(),
-            'paid_total_minor' => (int)db()->query("SELECT COALESCE(SUM(amount_minor), 0) FROM subscription_payments WHERE status = 'paid'")->getColumn(),
-            'failed' => (int)db()->query("SELECT COUNT(*) FROM subscription_payments WHERE status = 'failed'")->getColumn(),
-        ];
+        ] + (new PaymentService())->visibleHistoryStats();
         $byPlan = db()->query(
             "SELECT p.name, COUNT(s.id) AS total FROM subscription_plans p LEFT JOIN subscriptions s ON s.plan_id = p.id AND s.archived_at IS NULL AND s.status IN ('active', 'grace_period', 'cancelled') AND (s.ends_at IS NULL OR s.ends_at > NOW()) GROUP BY p.id, p.name ORDER BY total DESC, p.name"
         )->get() ?: [];
@@ -254,6 +252,7 @@ final class AdminController
 
     public function payments(): string
     {
+        (new PaymentService())->expirePending();
         $search = trim((string)request()->get('q', ''));
         $where = ['sp.cleared_at IS NULL'];
         $params = [];
@@ -306,7 +305,7 @@ final class AdminController
 
     public function clearPayments(): never
     {
-        db()->query('UPDATE subscription_payments SET cleared_at = ?, updated_at = ? WHERE cleared_at IS NULL', [date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
+        (new PaymentService())->clearHistory();
         session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_payments_cleared'));
         response()->redirect(base_href('/admin/subscriptions/payments'));
     }
@@ -318,6 +317,24 @@ final class AdminController
             session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_webhook_retry_success'));
         } catch (\Throwable $exception) {
             session()->setFlash('error', $exception->getMessage());
+        }
+        response()->redirect(base_href('/admin/subscriptions/payments'));
+    }
+
+    public function refreshPayments(): never
+    {
+        try {
+            $payments = new PaymentService();
+            $expired = $payments->expirePending();
+            $retried = $payments->retryFailedWebhooks();
+            session()->setFlash($retried['failed'] > 0 ? 'warning' : 'success', str_replace(
+                [':expired', ':processed', ':failed'],
+                [(string)$expired, (string)$retried['processed'], (string)$retried['failed']],
+                \FireballPluginSubscriptions::t('subscriptions_payments_refreshed')
+            ));
+        } catch (\Throwable $exception) {
+            log_error_details('Subscription payment status refresh failed', [], $exception);
+            session()->setFlash('error', \FireballPluginSubscriptions::t('subscriptions_payments_refresh_failed'));
         }
         response()->redirect(base_href('/admin/subscriptions/payments'));
     }
@@ -446,6 +463,7 @@ final class AdminController
         return $this->view('admin/settings', 'settings', [
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_settings'),
             'settings' => $settings->current(),
+            'offer_pages' => (new \Fireball\Subscriptions\Services\PublicOfferService())->pages(),
         ]);
     }
 
@@ -472,7 +490,9 @@ final class AdminController
             $messageKey = str_starts_with($exception->getMessage(), SettingsService::CREDENTIALS_NOT_CONFIGURED)
                 ? 'subscriptions_settings_credentials_missing'
                 : 'subscriptions_settings_save_failed';
-            session()->setFlash('error', \FireballPluginSubscriptions::t($messageKey));
+            session()->setFlash('error', $exception instanceof \InvalidArgumentException
+                && !str_starts_with($exception->getMessage(), SettingsService::CREDENTIALS_NOT_CONFIGURED)
+                ? $exception->getMessage() : \FireballPluginSubscriptions::t($messageKey));
         }
 
         response()->redirect(base_href('/admin/subscriptions/settings'));
