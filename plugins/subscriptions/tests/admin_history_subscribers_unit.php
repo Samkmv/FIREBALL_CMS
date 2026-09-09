@@ -85,14 +85,18 @@ $document->loadHTML('<?xml encoding="UTF-8">' . $html);
 libxml_clear_errors();
 libxml_use_internal_errors($previous);
 $xpath = new DOMXPath($document);
-$deleteForms = '//table//form[@action="/admin/subscriptions/subscribers/delete"]';
-check(2, $xpath->query($deleteForms)->length, 'Only inactive subscriber rows show delete actions');
-check(2, $xpath->query('//table//div[contains(@class,"dropdown-menu")]//form[@action="/admin/subscriptions/subscribers/delete"]')->length, 'Deletion stays inside the existing Actions dropdown');
+$deleteForms = '//table//form[@action="/admin/subscriptions/subscribers/delete" or @action="/admin/subscriptions/subscribers/delete-disabled"]';
+$disabledForms = '//table//form[@action="/admin/subscriptions/subscribers/delete-disabled"]';
+check(5, $xpath->query($deleteForms)->length, 'Disabled records of every source and expired subscribers show delete actions');
+check(5, $xpath->query($deleteForms . '[ancestor::div[contains(@class,"dropdown-menu")]]')->length, 'Deletion stays inside the existing Actions dropdown');
 check(0, $xpath->query($deleteForms . '[not(ancestor::div[contains(@class,"dropdown-menu")])]')->length, 'No standalone subscriber delete button is rendered');
-check(2, $xpath->query($deleteForms . '[@data-admin-delete-form and @data-delete-message]/input[@name="csrf"]')->length, 'Every delete action has confirmation and CSRF');
-check(1, $xpath->query($deleteForms . '/input[@name="user_id" and @value="1"]')->length, 'Disabled subscriber has a visible delete action');
-check(0, $xpath->query($deleteForms . '/input[@name="user_id" and (@value="2" or @value="3")]')->length, 'Other active subscription prevents a delete action');
-check(2, $xpath->query($deleteForms . '/button/span[text()="Удалить подписчика"]')->length, 'Delete buttons have clear captions');
+check(5, $xpath->query($deleteForms . '[@data-admin-delete-form and @data-delete-message]/input[@name="csrf"]')->length, 'Every delete action has confirmation and CSRF');
+check(4, $xpath->query($disabledForms . '/input[@name="subscription_id"]')->length, 'Disabled records are targeted by subscription ID');
+check(1, $xpath->query($disabledForms . '/input[@name="subscription_id" and @value="2"]')->length, 'A different active subscription does not hide deletion of the disabled row');
+check(0, $xpath->query($deleteForms . '/input[(@name="subscription_id" or @name="user_id") and @value="3"]')->length, 'The active subscription itself cannot be deleted');
+check(5, $xpath->query($deleteForms . '/button/span[text()="Удалить подписчика"]')->length, 'Delete buttons have clear captions');
+check(4, $xpath->query($disabledForms . '[@data-delete-message="' . FireballPluginSubscriptions::t('subscriptions_subscriber_delete_disabled_confirm') . '"]')->length, 'Confirmation explains that other subscriptions will remain');
+check(4, $xpath->query('//form[@action="/admin/subscriptions/subscribers/delete-disabled" and not(ancestor::table)]/input[@name="subscription_id"]')->length, 'Mobile action menus also include every disabled source');
 
 if ($failures !== []) { fwrite(STDERR, implode(PHP_EOL, $failures) . PHP_EOL); exit(1); }
 echo "Admin history and subscriber tests passed: {$checks} checks." . PHP_EOL;

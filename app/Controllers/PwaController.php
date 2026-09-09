@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Services\PwaService;
+use App\Models\NotificationCenter;
 
 class PwaController extends BaseController
 {
@@ -102,16 +103,25 @@ class PwaController extends BaseController
 
     public function pushStatus(): void
     {
+        header('Cache-Control: private, no-store');
         if (!check_auth()) {
             response()->json(['status' => false, 'message' => 'Authentication required.'], 401);
         }
 
         $currentUser = get_user();
         $userId = (int)$currentUser['id'];
+        $badgeCount = null;
+        try {
+            $badgeCount = (new NotificationCenter())->badgeCountForUser($userId, check_admin());
+        } catch (\Throwable $exception) {
+            // A badge lookup failure must not break recipient verification or push delivery.
+            log_error_details('PWA badge count failed', [], $exception);
+        }
 
         response()->json([
             'status' => true,
             'user_id' => $userId,
+            'badge_count' => $badgeCount,
             'push' => $this->pwa->pushStatusForUser($userId),
         ]);
     }

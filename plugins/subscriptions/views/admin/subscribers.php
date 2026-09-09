@@ -112,21 +112,22 @@ foreach ($subscriptions as $subscription) {
             'attributes' => $editAttributes,
         ];
     }
-    if (!empty($subscription['can_archive_subscriber'])) {
+    $deleteDisabledOnly = $statusKey === 'disabled';
+    if ($deleteDisabledOnly || !empty($subscription['can_archive_subscriber'])) {
         $deleteFormAttributes = [
             'data-admin-delete-form' => true,
             'data-confirm-title' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete_title'),
-            'data-delete-message' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete_confirm'),
+            'data-delete-message' => FireballPluginSubscriptions::t($deleteDisabledOnly ? 'subscriptions_subscriber_delete_disabled_confirm' : 'subscriptions_subscriber_delete_confirm'),
             'data-confirm-hint' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete_history_hint'),
             'data-delete-confirm-label' => FireballPluginSubscriptions::t('subscriptions_delete'),
-            'data-delete-item' => (string)$subscription['user_name'],
+            'data-delete-item' => '#' . (int)$subscription['id'] . ' — ' . (string)$subscription['user_name'],
         ];
         $deleteAction = [
             'label' => FireballPluginSubscriptions::t('subscriptions_subscriber_delete'),
             'icon' => 'ci-trash',
             'type' => 'form',
-            'action' => base_href('/admin/subscriptions/subscribers/delete'),
-            'hidden' => ['user_id' => (int)$subscription['user_id']],
+            'action' => base_href($deleteDisabledOnly ? '/admin/subscriptions/subscribers/delete-disabled' : '/admin/subscriptions/subscribers/delete'),
+            'hidden' => $deleteDisabledOnly ? ['subscription_id' => (int)$subscription['id']] : ['user_id' => (int)$subscription['user_id']],
             'form_attributes' => $deleteFormAttributes,
             'class' => 'text-danger',
         ];

@@ -46,6 +46,7 @@ $router->get('/admin/subscriptions/subscribers', [SubscriptionsAdminController::
 $router->post('/admin/subscriptions/subscribers/grant', [SubscriptionsAdminController::class, 'grant'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/subscribers/update', [SubscriptionsAdminController::class, 'updateSubscriber'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/subscribers/delete', [SubscriptionsAdminController::class, 'deleteSubscriber'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/subscribers/delete-disabled', [SubscriptionsAdminController::class, 'deleteDisabledSubscriber'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/exclusions', [SubscriptionsAdminController::class, 'exclusions'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/exclusions/create', [SubscriptionsAdminController::class, 'exclusionForm'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/exclusions/create', [SubscriptionsAdminController::class, 'exclusionForm'])->middleware(['auth', 'admin']);

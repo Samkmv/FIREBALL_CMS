@@ -13,7 +13,7 @@ $onlineSortUrl = current_url_with_query([
     'direction' => $onlineSortDirection,
     'page' => 1,
 ]);
-$canManageUsers = check_creator();
+$canManageUsers = check_admin();
 $currentAdmin = get_user();
 $currentAdminRole = (string)($currentAdmin['role'] ?? 'user');
 $allowAdminResetTwoFactor = !empty($allow_admin_reset_user_2fa);
@@ -135,7 +135,7 @@ $renderActions = static function (array $item) use ($canManageUsers, $allowAdmin
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_users_heading'),
     'subtitle' => return_translation('admin_users_subtitle'),
-    'actions' => $canManageUsers
+    'actions' => check_creator()
         ? '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/users/create') . '"><i class="ci-plus"></i>' . htmlSC(return_translation('admin_users_create')) . '</a>'
         : '',
 ]) ?>

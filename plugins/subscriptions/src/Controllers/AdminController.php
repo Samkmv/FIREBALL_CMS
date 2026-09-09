@@ -184,6 +184,20 @@ final class AdminController
         response()->redirect(base_href('/admin/subscriptions/subscribers'));
     }
 
+    public function deleteDisabledSubscriber(): never
+    {
+        try {
+            (new SubscriptionService())->archiveDisabledSubscription(
+                (int)request()->post('subscription_id'),
+                (int)(get_user()['id'] ?? 0)
+            );
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_subscriber_disabled_deleted'));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        }
+        response()->redirect(base_href('/admin/subscriptions/subscribers'));
+    }
+
     public function exclusions(): string
     {
         $search = trim((string)request()->get('q', ''));

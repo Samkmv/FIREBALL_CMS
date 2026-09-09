@@ -71,7 +71,7 @@ $statCards = [
         'value' => $installedVersion,
         'icon' => $hasUpdate ? 'ci-download' : 'ci-refresh-cw',
         'variant' => $hasUpdate ? 'is-primary' : 'is-green',
-        'href' => check_creator() ? base_href('/admin/updates') : base_href('/admin/settings'),
+        'href' => base_href('/admin/updates'),
         'meta' => $versionMeta,
     ],
 ];

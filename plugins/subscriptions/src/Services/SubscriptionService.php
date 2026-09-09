@@ -307,6 +307,42 @@ final class SubscriptionService
         ], $actorId);
     }
 
+    public function archiveDisabledSubscription(int $subscriptionId, int $actorId): bool
+    {
+        if ($subscriptionId <= 0) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+        }
+
+        db()->beginTransaction();
+        try {
+            $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1 FOR UPDATE', [$subscriptionId])->getOne();
+            if (!$subscription) {
+                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+            }
+            // Check the current row, not the status or source submitted by the browser.
+            if ((string)$subscription['status'] !== 'disabled') {
+                throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_subscriber_delete_disabled_only'));
+            }
+            if (!empty($subscription['archived_at'])) {
+                db()->commit();
+                return false;
+            }
+            $now = date('Y-m-d H:i:s');
+            db()->query(
+                "UPDATE subscriptions SET archived_at = ?, auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ? AND status = 'disabled' AND archived_at IS NULL",
+                [$now, $now, $subscriptionId]
+            );
+            $this->event('subscriber.disabled_archived_by_admin', $subscriptionId, null, (int)$subscription['user_id'], 'disabled', 'archived', [
+                'source' => (string)($subscription['source'] ?? ''),
+            ], $actorId ?: null);
+            db()->commit();
+            return true;
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
+        }
+    }
+
     public function archiveInactiveSubscriber(int $userId, int $actorId): int
     {
         if ($userId <= 0) {

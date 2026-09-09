@@ -291,6 +291,63 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+let fireballBadgeQueue = Promise.resolve();
+const queueBadgeTask = (task) => {
+  fireballBadgeQueue = fireballBadgeQueue.then(task, task);
+  return fireballBadgeQueue;
+};
+
+const applyAppBadge = async (count) => {
+  // Badging belongs to WorkerNavigator, not ServiceWorkerRegistration.
+  const api = self.navigator;
+  if (!api) return;
+  try {
+    if (count === null || count === undefined || !Number.isFinite(Number(count))) {
+      if (typeof api.setAppBadge === "function") await api.setAppBadge();
+      return;
+    }
+    const value = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(Number(count))));
+    if (value === 0 && typeof api.clearAppBadge === "function") await api.clearAppBadge();
+    else if (typeof api.setAppBadge === "function") await api.setAppBadge(value);
+  } catch (error) {
+    // Permission or platform limitations must not prevent visible push delivery.
+  }
+};
+
+const fetchBadgeState = async () => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(FIREBALL_PWA.statusUrl, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+    if (response.status === 401) return { status: true, user_id: 0, badge_count: 0 };
+    if (!response.ok) return null;
+    const status = await response.json();
+    return status && status.status ? status : null;
+  } catch (error) {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const syncBadgeState = async (expectedUserId) => {
+  const status = await fetchBadgeState();
+  if (!status || (expectedUserId !== undefined && Number(status.user_id || 0) !== expectedUserId)) return;
+  await applyAppBadge(status.badge_count);
+  // Android derives its dot from visible notifications, rather than the Badging API.
+  // Close only after the backend confirms there are no unread items (or logout).
+  if (status.badge_count === 0 && typeof self.registration.getNotifications === "function") {
+    const notifications = await self.registration.getNotifications();
+    notifications.forEach((notification) => notification.close());
+  }
+};
+
 self.addEventListener("push", (event) => {
   let payload = {};
   if (event.data) {
@@ -310,40 +367,25 @@ self.addEventListener("push", (event) => {
     actions: Array.isArray(payload.actions) ? payload.actions : []
   };
 
-  event.waitUntil((async () => {
+  event.waitUntil(queueBadgeTask(async () => {
     const targetUserId = Number(options.data && options.data.user_id ? options.data.user_id : 0);
-    if (targetUserId > 0) {
-      try {
-        const response = await fetch(FIREBALL_PWA.statusUrl, {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: { "X-Requested-With": "XMLHttpRequest" }
-        });
-        if (!response.ok) return;
-        const status = await response.json();
-        if (!status || Number(status.user_id || 0) !== targetUserId) return;
-      } catch (error) {
-        return;
-      }
-    }
-
-    if (self.registration.setAppBadge) {
-      try { await self.registration.setAppBadge(1); } catch (error) {}
-    }
+    const status = await fetchBadgeState();
+    if (!status || Number(status.user_id || 0) <= 0) return;
+    if (targetUserId > 0 && Number(status.user_id || 0) !== targetUserId) return;
     await self.registration.showNotification(title, options);
-  })());
+    await applyAppBadge(status.badge_count);
+    const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    clientsList.forEach((client) => client.postMessage({ type: "PWA_NOTIFICATIONS_CHANGED", user_id: Number(status.user_id) }));
+  }));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const targetUrl = (event.notification.data && event.notification.data.url) || FIREBALL_PWA.homeUrl;
 
-  event.waitUntil((async () => {
-    if (self.registration.clearAppBadge) {
-      try { await self.registration.clearAppBadge(); } catch (error) {}
-    }
-
+  // Opening one push does not mean all notifications were read. Refresh alongside
+  // navigation so a slow status request cannot delay opening the app.
+  event.waitUntil(Promise.all([queueBadgeTask(() => syncBadgeState()), (async () => {
     const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of clientsList) {
       if ("focus" in client) {
@@ -353,14 +395,19 @@ self.addEventListener("notificationclick", (event) => {
       }
     }
     if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
-  })());
+  })()]));
 });
 
 self.addEventListener("notificationclose", () => {});
 self.addEventListener("message", (event) => {
+  try {
+    if (!event.source || new URL(event.source.url).origin !== location.origin) return;
+  } catch (error) { return; }
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
-  if (event.data && event.data.type === "CLEAR_BADGE" && self.registration.clearAppBadge) {
-    self.registration.clearAppBadge().catch(() => {});
+  if (event.data && (event.data.type === "SYNC_BADGE" || event.data.type === "CLEAR_BADGE")) {
+    const expectedUserId = Number(event.data.user_id);
+    if (!Number.isSafeInteger(expectedUserId) || expectedUserId < 0) return;
+    event.waitUntil(queueBadgeTask(() => syncBadgeState(expectedUserId)));
   }
 });
 self.addEventListener("sync", () => {});

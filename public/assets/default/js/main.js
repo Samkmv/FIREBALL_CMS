@@ -19,6 +19,10 @@ $(function(){
     let unreadBadgesReady = false;
     let lastUnreadTotal = 0;
     let notificationsReady = false;
+    let notificationFeedRequest = null;
+    let notificationFeedGeneration = 0;
+    let notificationMutations = 0;
+    let renderedNotificationHtml = null;
     const applyImageFallback = (image) => {
         const fallbackSource = image?.getAttribute?.('data-image-fallback');
         if (!fallbackSource || image.dataset.imageFallbackApplied === 'true') {
@@ -815,19 +819,24 @@ $(function(){
         unreadBadgesReady = true;
     };
 
+    const safeNotificationUrl = (value) => {
+        const url = String(value || '').trim();
+        if (!url || url === '#') return '';
+        try {
+            const parsed = new URL(url, window.location.href);
+            return ['http:', 'https:'].includes(parsed.protocol) ? url : '';
+        } catch (error) {
+            return '';
+        }
+    };
+
     const renderNotificationItems = (items) => {
         if (!notificationList.length) {
             return;
         }
 
-        if (!Array.isArray(items) || !items.length) {
-            notificationList.html(
-                `<div class="px-3 py-3 text-body-secondary small">${escapeHtml(notificationCenter.data('empty-text') || 'No notifications')}</div>`
-            );
-            return;
-        }
-
-        let html = '';
+        items = Array.isArray(items) ? items : [];
+        let html = items.length ? '' : `<div class="px-3 py-3 text-body-secondary small">${escapeHtml(notificationCenter.data('empty-text') || 'No notifications')}</div>`;
 
         items.forEach((item) => {
             const type = String(item.type || '');
@@ -848,27 +857,50 @@ $(function(){
 
             const notificationId = Number(item.notification_id || 0);
             const notificationAttr = notificationId > 0 ? ` data-notification-id="${notificationId}"` : '';
+            const targetUrl = safeNotificationUrl(item.url);
+            const key = escapeHtml(getNotificationKey(item));
 
             html += `
-                <a class="list-group-item list-group-item-action px-3 py-3" href="${escapeHtml(item.url || '#')}"${notificationAttr}>
-                    <div class="d-flex align-items-start justify-content-between gap-3">
-                        <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                            ${avatar}
-                            <div class="min-w-0 flex-grow-1">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="badge ${sourceClass} rounded-pill">${escapeHtml(item.source_label || '')}</span>
-                                </div>
-                                <div class="fw-semibold text-truncate">${escapeHtml(item.title || '')}</div>
-                                <div class="small text-body-secondary text-wrap">${escapeHtml(item.text || '')}</div>
+                <article class="list-group-item notification-feed-item px-3 py-3" data-notification-key="${key}">
+                    <div class="d-flex align-items-start gap-3 min-w-0">
+                        ${avatar}
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="notification-feed-item__meta d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="badge ${sourceClass} rounded-pill">${escapeHtml(item.source_label || '')}</span>
+                                <time class="small text-body-tertiary">${escapeHtml(item.time || item.created_at || '')}</time>
+                            </div>
+                            <div class="fw-semibold mb-1">${escapeHtml(item.title || '')}</div>
+                            <div class="notification-feed-item__text small text-body-secondary">${escapeHtml(item.text || '')}</div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                                ${targetUrl ? `<a class="btn btn-sm btn-outline-secondary rounded-pill" href="${escapeHtml(targetUrl)}"${notificationAttr}><i class="ci-arrow-up-right me-1" aria-hidden="true"></i>${escapeHtml(notificationCenter.data('open-label') || 'Open')}</a>` : ''}
+                                ${notificationId > 0 ? `<button class="btn btn-sm btn-link text-decoration-none" type="button" data-notification-read${notificationAttr}>${escapeHtml(notificationCenter.data('mark-read-label') || 'Mark as read')}</button>` : ''}
                             </div>
                         </div>
-                        <div class="small text-body-tertiary text-nowrap">${escapeHtml(item.time || item.created_at || '')}</div>
                     </div>
-                </a>
+                </article>
             `;
         });
 
+        // Polling must not interrupt reading, keyboard focus or the scroll position.
+        if (html === renderedNotificationHtml) return;
+        const list = notificationList[0];
+        const previousScroll = list.scrollTop;
+        const listTop = list.getBoundingClientRect().top;
+        const anchor = previousScroll > 0 ? Array.from(list.children).find((child) => child.getBoundingClientRect().bottom > listTop) : null;
+        const anchorKey = anchor?.getAttribute('data-notification-key');
+        const anchorOffset = anchor ? anchor.getBoundingClientRect().top - listTop : 0;
+        const focused = list.contains(document.activeElement) ? document.activeElement : null;
+        const focusedKey = focused?.closest('[data-notification-key]')?.getAttribute('data-notification-key');
+        const focusedSelector = focused?.matches('[data-notification-read]') ? '[data-notification-read]' : 'a';
         notificationList.html(html);
+        renderedNotificationHtml = html;
+        const children = Array.from(list.children);
+        const newAnchor = anchorKey ? children.find((child) => child.getAttribute('data-notification-key') === anchorKey) : null;
+        list.scrollTop = newAnchor ? list.scrollTop + newAnchor.getBoundingClientRect().top - listTop - anchorOffset : previousScroll;
+        if (focused) {
+            const item = children.find((child) => child.getAttribute('data-notification-key') === focusedKey);
+            (item?.querySelector(focusedSelector) || list).focus({ preventScroll: true });
+        }
     };
 
     const getNotificationKey = (item) => {
@@ -878,7 +910,7 @@ $(function(){
         const createdAt = String(item.created_at || '');
         const url = String(item.url || '');
 
-        return `${type}:${senderId}:${sortId}:${createdAt}:${url}`;
+        return `${type}:${Number(item.notification_id || 0)}:${senderId}:${sortId}:${createdAt}:${url}`;
     };
 
     const notifyNotificationItems = (items) => {
@@ -946,6 +978,7 @@ $(function(){
 
     const updateNotificationBadges = (count) => {
         const total = Number(count) || 0;
+        window.FireballPwa?.setBadge(total);
 
         notificationBadges.each(function () {
             const badge = $(this);
@@ -978,6 +1011,13 @@ $(function(){
         }
     };
 
+    const beginNotificationMutation = () => {
+        notificationMutations++;
+        notificationFeedGeneration++;
+        notificationFeedRequest?.abort();
+        notificationFeedRequest = null;
+    };
+
     notificationClearButton.on('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -989,10 +1029,12 @@ $(function(){
         }
 
         notificationClearButton.prop('disabled', true);
+        beginNotificationMutation();
         $.ajax({
             url: sameOriginUrl(clearUrl),
             method: 'POST',
             dataType: 'json',
+            timeout: 15000,
             data: {
                 needCSRFToken: getCsrfToken(),
             },
@@ -1016,6 +1058,7 @@ $(function(){
                 }
             },
             complete: function () {
+                notificationMutations--;
                 notificationClearButton.prop('disabled', false);
                 setTimeout(pollNotificationFeed, 250);
             },
@@ -1023,6 +1066,8 @@ $(function(){
     });
 
     notificationList.on('click', '[data-notification-id]', function (event) {
+        // Keep standard new-tab behaviour for links; reading is not a prerequisite for navigation.
+        if (this.tagName === 'A' && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
         const readUrl = notificationCenter.data('read-url');
         const notificationId = Number($(this).data('notification-id') || 0);
         if (!readUrl || notificationId <= 0) {
@@ -1030,11 +1075,17 @@ $(function(){
         }
 
         event.preventDefault();
-        const targetUrl = $(this).attr('href') || '#';
+        event.stopPropagation();
+        const button = $(this);
+        if (button.attr('aria-busy') === 'true') return;
+        const targetUrl = safeNotificationUrl(button.attr('href'));
+        button.attr('aria-busy', 'true').prop('disabled', true);
+        beginNotificationMutation();
         $.ajax({
             url: sameOriginUrl(readUrl),
             method: 'POST',
             dataType: 'json',
+            timeout: 15000,
             data: {
                 notification_id: notificationId,
                 needCSRFToken: getCsrfToken(),
@@ -1043,7 +1094,9 @@ $(function(){
                 'X-CSRF-Token': getCsrfToken(),
             },
             complete: function () {
-                if (targetUrl && targetUrl !== '#') {
+                notificationMutations--;
+                button.removeAttr('aria-busy').prop('disabled', false);
+                if (targetUrl) {
                     window.location.href = targetUrl;
                     return;
                 }
@@ -1054,7 +1107,7 @@ $(function(){
     });
 
     const pollNotificationFeed = () => {
-        if (!notificationCenter.length) {
+        if (!notificationCenter.length || notificationFeedRequest || notificationMutations > 0 || document.hidden) {
             return;
         }
 
@@ -1063,15 +1116,51 @@ $(function(){
             return;
         }
 
-        $.ajax({
+        const generation = notificationFeedGeneration;
+        notificationList.attr('aria-busy', 'true');
+        notificationFeedRequest = $.ajax({
             url: sameOriginUrl(feedUrl),
             method: 'GET',
             dataType: 'json',
+            cache: false,
+            timeout: 15000,
             success: function (response) {
+                if (generation !== notificationFeedGeneration) return;
+                if (!response || !response.status) {
+                    showNotificationFeedError();
+                    return;
+                }
                 applyNotificationFeed(response);
+            },
+            error: function (_, status) {
+                if (status !== 'abort' && generation === notificationFeedGeneration) showNotificationFeedError();
+            },
+            complete: function () {
+                if (generation === notificationFeedGeneration) notificationFeedRequest = null;
+                notificationList.attr('aria-busy', 'false');
             }
         });
     };
+
+    const showNotificationFeedError = () => {
+        // Keep already loaded notifications when the connection is temporarily lost.
+        if (renderedNotificationHtml !== null) return;
+        notificationList.html(`<div class="px-3 py-3 small" role="status">${escapeHtml(notificationCenter.data('load-error') || 'Unable to load notifications.')}<button type="button" class="btn btn-sm btn-outline-secondary d-block mt-2" data-notifications-retry>${escapeHtml(notificationCenter.data('retry-label') || 'Retry')}</button></div>`);
+    };
+
+    notificationList.on('click', '[data-notifications-retry]', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        pollNotificationFeed();
+    });
+
+    notificationCenter.on('shown.bs.dropdown', pollNotificationFeed);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) pollNotificationFeed();
+    });
+    window.addEventListener('focus', pollNotificationFeed);
+    window.addEventListener('online', pollNotificationFeed);
+    document.addEventListener('fireball:notifications-changed', pollNotificationFeed);
 
     const pollUnreadCount = () => {
         if (!unreadBadges.length) {

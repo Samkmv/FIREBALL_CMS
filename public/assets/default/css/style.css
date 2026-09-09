@@ -96,6 +96,54 @@ html {
     z-index: 1080 !important;
 }
 
+.notification-feed-panel {
+    --cz-dropdown-min-width: 0;
+    width: min(26rem, calc(100vw - 1.5rem));
+    max-height: min(38rem, calc(100vh - 6rem));
+    max-height: min(38rem, calc(100dvh - 6rem - env(safe-area-inset-bottom, 0px)));
+    overflow: hidden;
+}
+
+.notification-feed-panel.show {
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-feed-header {
+    flex: 0 0 auto;
+}
+
+.notification-feed-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+    overflow-anchor: none;
+}
+
+.notification-feed-item {
+    flex-shrink: 0;
+    overflow-wrap: anywhere;
+}
+
+.notification-feed-item__text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.notification-feed-item__meta {
+    flex-wrap: wrap;
+    row-gap: .35rem;
+}
+
+.notification-feed-list:focus-visible {
+    outline: 2px solid var(--cz-primary);
+    outline-offset: -2px;
+}
+
 form[data-post-form] .choices {
     position: relative;
     z-index: 20;

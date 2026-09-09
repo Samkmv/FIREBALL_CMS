@@ -77,10 +77,11 @@ if (in_array($argv[1] ?? '', ['account', 'account-recurring', 'account-renewal-o
     require __DIR__ . '/../../views/admin/settings.php';
 } elseif (($argv[1] ?? '') === 'subscribers') {
     $subscriptions = [];
-    foreach (['disabled', 'disabled', 'active', 'expired'] as $index => $status) {
+    foreach (['disabled', 'disabled', 'active', 'expired', 'disabled', 'disabled'] as $index => $status) {
         $subscriptions[] = [
             'id' => $index + 1, 'user_id' => $index + 1, 'plan_id' => 1,
-            'status' => $status, 'utility_managed' => false, 'source' => 'robokassa',
+            'status' => $status, 'utility_managed' => $index === 5,
+            'source' => [0 => 'external', 1 => 'manual', 5 => 'external'][$index] ?? 'robokassa',
             'user_name' => 'Тестовый подписчик ' . ($index + 1), 'user_email' => 'subscriber' . $index . '@example.test',
             'plan_name' => 'Тариф', 'starts_at' => '2026-01-01 00:00:00', 'ends_at' => '2027-01-01 00:00:00',
             // Second disabled row belongs to a user with another active subscription.

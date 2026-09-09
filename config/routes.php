@@ -181,10 +181,10 @@ $app->router->post('/admin/categories/delete', [AdminController::class, 'categor
 $app->router->get('/admin/users', [AdminController::class, 'users'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/users/create', [AdminController::class, 'userForm'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/users/create', [AdminController::class, 'userForm'])->middleware(['auth', 'admin', 'creator']);
-$app->router->get('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin', 'creator']);
-$app->router->post('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin', 'creator']);
+$app->router->get('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/users/edit/(?P<id>\d+)/?', [AdminController::class, 'userForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/users/reset-2fa', [AdminController::class, 'resetUserTwoFactor'])->middleware(['auth', 'admin']);
-$app->router->post('/admin/users/delete', [AdminController::class, 'userDelete'])->middleware(['auth', 'admin', 'creator']);
+$app->router->post('/admin/users/delete', [AdminController::class, 'userDelete'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/roles', [AdminController::class, 'roles'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/roles/create', [AdminController::class, 'roleForm'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/roles/create', [AdminController::class, 'roleForm'])->middleware(['auth', 'admin', 'creator']);
@@ -242,10 +242,10 @@ $app->router->post('/admin/plugins/deactivate', [PluginController::class, 'deact
 $app->router->post('/admin/plugins/check-update', [PluginController::class, 'checkUpdate'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/check-updates', [PluginController::class, 'checkAllUpdates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/update', [PluginController::class, 'update'])->middleware(['auth', 'admin']);
-$app->router->get('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin', 'creator']);
+$app->router->get('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin', 'creator']);
-$app->router->post('/admin/settings/update-center/check', [AdminController::class, 'checkForUpdates'])->middleware(['auth', 'admin', 'creator']);
-$app->router->post('/admin/settings/update-center/update', [AdminController::class, 'runUpdate'])->middleware(['auth', 'admin', 'creator']);
+$app->router->post('/admin/settings/update-center/check', [AdminController::class, 'checkForUpdates'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/update-center/update', [AdminController::class, 'runUpdate'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/update-center/rollback', [AdminController::class, 'rollbackUpdate'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/files', [FileManagerController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/files/upload', [FileManagerController::class, 'upload'])->middleware(['auth', 'admin']);
