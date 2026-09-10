@@ -47,3 +47,21 @@ Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/camera-manager/admin.ph
 #4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(82): FBL\Application->run()
 #5 {main}
 ========================================================================
+[2026-09-10 11:36:07] Plugin directory is missing.
+Request URI: /notifications/feed?_=1789021491250
+Request Method: GET
+Remote IP: ::1
+Plugin: calendar
+========================================================================
+[2026-09-10 11:36:13] Plugin directory is missing.
+Request URI: /admin/posts
+Request Method: GET
+Remote IP: ::1
+Plugin: calendar
+========================================================================
+[2026-09-10 11:36:13] Missing plugin database record removed
+Request URI: /admin/posts
+Request Method: GET
+Remote IP: ::1
+Plugin: calendar
+========================================================================

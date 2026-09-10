@@ -472,6 +472,7 @@
             }
             if (block.type === 'video') {
                 const src = sanitizer.safeUrl(data.src || '', false);
+                const embed = this.embedUrl(src);
                 const playerAttributes = ' class="fire-player" data-fire-player data-src="' + escapeAttr(src) + '" data-media="video"' +
                     ' data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"' +
                     ' data-controls="' + (data.controls === false ? 'false' : 'true') + '"' +
@@ -480,8 +481,11 @@
                     ' data-loop="' + (data.loop ? 'true' : 'false') + '"' +
                     (data.poster ? ' data-poster="' + escapeAttr(sanitizer.safeUrl(data.poster, true)) + '"' : '') +
                     (data.hls ? ' data-protocol="hls"' : '');
+                const preview = embed
+                    ? '<div class="ratio ratio-16x9"><iframe src="' + escapeAttr(embed) + '" title="' + escapeAttr(data.caption || 'Video') + '" loading="lazy" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>'
+                    : '<div' + playerAttributes + '></div>';
                 return src
-                    ? '<div class="fb-editor2-video" data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '"><div' + playerAttributes + '></div><p contenteditable="true" data-editor-plain data-editor-field="data.caption">' + escapeAttr(data.caption || '') + '</p></div>'
+                    ? '<div class="fb-editor2-video" data-aspect-ratio="' + escapeAttr(data.aspectRatio || '16:9') + '">' + preview + '<p contenteditable="true" data-editor-plain data-editor-field="data.caption">' + escapeAttr(data.caption || '') + '</p></div>'
                     : '<button type="button" class="fb-editor2-media__empty" data-editor-pick-block-media><i class="ci-video"></i><span>' + escapeAttr(this.label('chooseFile', 'Choose video')) + '</span></button>';
             }
             if (block.type === 'audio') {
@@ -3437,7 +3441,40 @@
         }
 
         previewDocumentHtml() {
-            const content = this.state.blocks.map(this.serializePublicBlock.bind(this)).join('');
+            const preview = document.createElement('template');
+            preview.innerHTML = this.state.blocks.map(this.serializePublicBlock.bind(this)).join('');
+            const russian = (document.documentElement.lang || '').toLowerCase().startsWith('ru');
+            // Preview frames deliberately forbid scripts. Native controls keep media usable there.
+            preview.content.querySelectorAll('.fire-player, [data-fire-player]').forEach(function (placeholder) {
+                const src = sanitizer.safeUrl(placeholder.getAttribute('data-src') || '', false);
+                if (!src) { return; }
+                const wrapper = document.createElement('div');
+                wrapper.className = 'fb-preview-media';
+                const media = document.createElement(placeholder.getAttribute('data-media') === 'audio' ? 'audio' : 'video');
+                media.setAttribute('src', src);
+                media.setAttribute('controls', '');
+                media.setAttribute('preload', 'metadata');
+                media.setAttribute('playsinline', '');
+                if (placeholder.getAttribute('data-muted') === 'true') { media.setAttribute('muted', ''); }
+                if (placeholder.getAttribute('data-loop') === 'true') { media.setAttribute('loop', ''); }
+                const poster = sanitizer.safeUrl(placeholder.getAttribute('data-poster') || '', true);
+                if (poster && media.tagName === 'VIDEO') { media.setAttribute('poster', poster); }
+                wrapper.appendChild(media);
+                if (placeholder.getAttribute('data-protocol') === 'hls' || /\.m3u8(?:$|[?#])/i.test(src)) {
+                    const notice = document.createElement('p');
+                    notice.className = 'fb-preview-media__notice';
+                    notice.textContent = russian
+                        ? 'В предпросмотре поток воспроизводится, если браузер поддерживает HLS без дополнительных скриптов. '
+                        : 'In this preview, stream playback requires native HLS support in your browser. ';
+                    const link = document.createElement('a');
+                    link.setAttribute('href', src);
+                    link.textContent = russian ? 'Открыть источник' : 'Open source';
+                    notice.appendChild(link);
+                    wrapper.appendChild(notice);
+                }
+                placeholder.replaceWith(wrapper);
+            });
+            const content = preview.innerHTML;
             const theme = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
             const styles = Array.isArray(this.config.previewStyleAssets) ? this.config.previewStyleAssets : [];
             const styleLinks = styles.map(function (href) {
@@ -3445,7 +3482,7 @@
             }).join('');
             return '<!doctype html><html lang="' + escapeAttr(document.documentElement.lang || 'en') + '" data-bs-theme="' + theme + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
                 styleLinks +
-                '<style>body{max-width:850px;margin:0 auto;padding:40px 24px}img,video{max-width:100%;height:auto}.fb-preview-document>.fb-content-block:last-child{margin-bottom:0!important}@media(max-width:575.98px){body{padding:24px 16px}}</style></head><body><main class="fb-preview-document">' +
+                '<style>body{max-width:850px;margin:0 auto;padding:40px 24px}img,video{max-width:100%;height:auto}.fb-preview-media video,.fb-preview-media audio{display:block;width:100%}.fb-preview-media__notice{margin:.5rem 0;font-size:.875rem}.fb-preview-document>.fb-content-block:last-child{margin-bottom:0!important}@media(max-width:575.98px){body{padding:24px 16px}}</style></head><body><main class="fb-preview-document">' +
                 content + '</main></body></html>';
         }
 

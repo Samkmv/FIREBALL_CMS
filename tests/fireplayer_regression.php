@@ -33,6 +33,19 @@ fireplayer_assert(str_contains($core, "extension === 'm3u8'"), 'HLS URL auto det
 fireplayer_assert(str_contains($core, "extension === 'mpd'"), 'DASH URL recognition is missing.');
 fireplayer_assert(str_contains($core, '#EXT-X-ENDLIST'), 'HLS VOD/LIVE manifest detection is missing.');
 fireplayer_assert(str_contains($core, 'application/vnd.apple.mpegurl'), 'HLS Content-Type detection is missing.');
+fireplayer_assert(str_contains($core, 'data-fp-action="settings"'), 'Video settings control is missing.');
+fireplayer_assert(str_contains($core, 'data-fp-settings-menu'), 'Video settings menu is missing.');
+fireplayer_assert(str_contains($core, 'async retry()'), 'Manual media retry is missing.');
+fireplayer_assert(str_contains($core, "['loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough']"), 'Media loading state is not settled on readiness events.');
+fireplayer_assert(!str_contains($core, 'data-fp-live-badge'), 'The duplicate upper-left LIVE badge is still rendered.');
+fireplayer_assert(str_contains($core, "'pointerleave'"), 'Pointer leave does not hide the control panel.');
+
+$css = (string)file_get_contents($assets['css']);
+fireplayer_assert(str_contains($css, '.fireplayer__settings-menu'), 'Video settings menu styles are missing.');
+fireplayer_assert(str_contains($css, 'bottom: 4.65rem'), 'Media status badge is not positioned above the timeline.');
+fireplayer_assert(str_contains($css, '.fireplayer:not(.fireplayer--touch):hover .fireplayer__controls'), 'Desktop hover does not reveal the control panel.');
+fireplayer_assert(str_contains($css, '.fireplayer.fireplayer--keyboard-focus .fireplayer__controls'), 'Keyboard users cannot reveal the control panel.');
+fireplayer_assert(!str_contains($css, '.fireplayer:focus-within .fireplayer__controls'), 'Mouse-click focus must not keep the control panel visible.');
 
 $hls = (string)file_get_contents($assets['hls']);
 fireplayer_assert(str_contains($hls, "registerAdapter('hls'"), 'The HLS adapter is not registered.');

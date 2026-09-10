@@ -1,6 +1,6 @@
 # FirePlayer 1.0
 
-FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD, and HLS LIVE. Existing Plyr content remains supported; only `.fire-player` or `[data-fire-player]` elements opt into FirePlayer.
+FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD, and HLS LIVE. New content uses `.fire-player` or `[data-fire-player]`; legacy video/audio inside post content is upgraded automatically while chat and background media remain on their own paths.
 
 ## Declarative use
 
@@ -14,6 +14,8 @@ FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD,
 ```
 
 FirePlayer recognizes file extensions, `Content-Type`, and HLS manifest markers. `#EXT-X-ENDLIST` selects VOD; a rolling playlist selects LIVE. Safari/iOS use native HLS when available, while other supported browsers load the bundled hls.js engine.
+
+Video controls include a styled settings button with playback-speed choices. Loading and reconnect messages are shown in a compact status badge directly above the timeline, keeping the media surface unobstructed.
 
 ## JavaScript API
 

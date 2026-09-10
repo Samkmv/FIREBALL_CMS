@@ -100,7 +100,7 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
 .fireplayer__center-play:hover,
 .fireplayer__center-play:focus-visible {
     box-shadow: 0 0.9rem 2.6rem rgba(var(--fireplayer-accent-rgb), 0.54);
-    transform: translate(-50%, -50%) scale(1.06);
+    transform: translate(-50%, -50%);
 }
 
 .fireplayer__center-play svg {
@@ -131,8 +131,8 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     right: 0;
     bottom: 0;
     left: 0;
-    display: grid;
-    grid-template-columns: auto auto minmax(4rem, 1fr) auto auto auto auto auto auto;
+    display: flex;
+    flex-wrap: nowrap;
     gap: 0.5rem;
     align-items: center;
     min-height: 4.25rem;
@@ -141,11 +141,30 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.fireplayer--playing:not(:hover):not(:focus-within):not(.fireplayer--controls-visible) .fireplayer__controls,
-.fireplayer--playing:not(:hover):not(:focus-within):not(.fireplayer--controls-visible) .fireplayer__shade {
+.fireplayer:not(.fireplayer--audio) .fireplayer__controls,
+.fireplayer:not(.fireplayer--audio) .fireplayer__shade {
     opacity: 0;
     pointer-events: none;
     transform: translateY(0.5rem);
+}
+
+.fireplayer:not(.fireplayer--touch):hover .fireplayer__controls,
+.fireplayer.fireplayer--keyboard-focus .fireplayer__controls,
+.fireplayer.fireplayer--controls-visible .fireplayer__controls {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+}
+
+.fireplayer:not(.fireplayer--touch):hover .fireplayer__shade,
+.fireplayer.fireplayer--keyboard-focus .fireplayer__shade,
+.fireplayer.fireplayer--controls-visible .fireplayer__shade {
+    opacity: 0.94;
+    transform: none;
+}
+
+.fireplayer__controls > :not(.fireplayer__seek-wrap) {
+    flex-shrink: 0;
 }
 
 .fireplayer__button {
@@ -159,14 +178,14 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     border: 0;
     border-radius: 50%;
     cursor: pointer;
-    transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+    transition: color 160ms ease, background 160ms ease;
 }
 
 .fireplayer__button:hover,
 .fireplayer__button:focus-visible {
     color: #fff;
     background: rgba(255, 255, 255, 0.14);
-    transform: scale(1.05);
+    transform: none;
 }
 
 .fireplayer__button svg,
@@ -191,6 +210,10 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     align-items: center;
     min-width: 0;
     margin: 0;
+}
+
+.fireplayer__seek-wrap {
+    flex: 1 1 0;
 }
 
 .fireplayer__range {
@@ -257,36 +280,183 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
 }
 
 .fireplayer__volume {
+    position: relative;
     display: flex;
     align-items: center;
 }
 
 .fireplayer__volume label {
-    width: 0;
-    overflow: hidden;
+    position: absolute;
+    bottom: calc(100% - 0.1rem);
+    left: 50%;
+    z-index: 8;
+    width: 6.5rem;
+    padding: 0.85rem 0.7rem;
+    background: var(--fireplayer-panel);
+    border: 1px solid var(--fireplayer-border);
+    border-radius: 0.65rem;
+    visibility: hidden;
     opacity: 0;
-    transition: width 180ms ease, opacity 180ms ease;
+    pointer-events: none;
+    transform: translateX(-50%);
+    transition: opacity 180ms ease, visibility 180ms ease;
 }
 
 .fireplayer__volume:hover label,
 .fireplayer__volume:focus-within label {
-    width: 4.5rem;
+    visibility: visible;
     opacity: 1;
+    pointer-events: auto;
 }
 
 .fireplayer__speed {
-    min-width: 3.35rem;
-    height: 2.15rem;
-    padding: 0 0.35rem;
+    min-width: 4.6rem;
+    height: 2.35rem;
+    padding: 0 1.65rem 0 0.7rem;
     color: var(--fireplayer-text);
     font: inherit;
     font-size: 0.75rem;
     font-weight: 650;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid transparent;
-    border-radius: 0.65rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 0.55rem;
     outline: none;
     cursor: pointer;
+}
+
+.fireplayer__settings {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fireplayer--settings-open [data-fp-action="settings"] {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.fireplayer__settings-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.55rem);
+    z-index: 8;
+    min-width: 10.5rem;
+    padding: 0.7rem;
+    color: var(--fireplayer-text);
+    background: rgba(12, 16, 23, 0.96);
+    border: 1px solid var(--fireplayer-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(0.8rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.fireplayer__zoom {
+    min-width: 9rem;
+    margin-top: 0.7rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--fireplayer-border);
+}
+
+.fireplayer__speed-wrap[hidden] + .fireplayer__zoom {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.fireplayer__zoom-label {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+    margin: 0;
+    color: var(--fireplayer-text);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.fireplayer__zoom-label input {
+    grid-column: 1 / -1;
+}
+
+.fireplayer__zoom-reset {
+    width: 100%;
+    margin-top: 0.55rem;
+    padding: 0.45rem 0.6rem;
+    color: var(--fireplayer-text);
+    font: inherit;
+    font-size: 0.72rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--fireplayer-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transform: none;
+}
+
+.fireplayer__zoom-reset:hover:not(:disabled),
+.fireplayer__zoom-reset:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+    transform: none;
+}
+
+.fireplayer__zoom-reset:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.fireplayer--zoomed .fireplayer__stage {
+    cursor: grab;
+}
+
+.fireplayer--panning .fireplayer__stage {
+    cursor: grabbing;
+}
+
+.fireplayer__settings-menu::after {
+    position: absolute;
+    right: 0.9rem;
+    bottom: -0.35rem;
+    width: 0.7rem;
+    height: 0.7rem;
+    content: '';
+    background: rgba(12, 16, 23, 0.96);
+    border-right: 1px solid var(--fireplayer-border);
+    border-bottom: 1px solid var(--fireplayer-border);
+    transform: rotate(45deg);
+}
+
+.fireplayer__speed-wrap {
+    position: relative;
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+}
+
+.fireplayer__settings-label {
+    color: var(--fireplayer-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.fireplayer__speed-wrap::after {
+    position: absolute;
+    right: 0.6rem;
+    bottom: 0.7rem;
+    width: 0.4rem;
+    height: 0.4rem;
+    content: '';
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    pointer-events: none;
+    transform: rotate(45deg) translateY(-0.15rem);
+}
+
+.fireplayer__speed-wrap .fireplayer__speed {
+    width: 100%;
 }
 
 .fireplayer__speed:focus-visible {
@@ -297,8 +467,7 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     color: #111827;
 }
 
-.fireplayer__live-button,
-.fireplayer__live-badge {
+.fireplayer__live-button {
     align-items: center;
     gap: 0.38rem;
     color: #fff;
@@ -324,27 +493,13 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     cursor: pointer;
 }
 
-.fireplayer__live-button i,
-.fireplayer__live-badge i {
+.fireplayer__live-button i {
     width: 0.5rem;
     height: 0.5rem;
     background: #ff3b3b;
     border-radius: 50%;
     box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.55);
     animation: fireplayer-live-pulse 2s infinite;
-}
-
-.fireplayer__live-badge {
-    position: absolute;
-    z-index: 3;
-    top: 0.85rem;
-    left: 0.85rem;
-    display: inline-flex;
-    padding: 0.42rem 0.65rem;
-    background: rgba(5, 8, 13, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 99rem;
-    backdrop-filter: blur(0.65rem);
 }
 
 .fireplayer [hidden] {
@@ -354,8 +509,9 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
 .fireplayer__status {
     position: absolute;
     z-index: 3;
-    top: 50%;
+    bottom: 4.65rem;
     left: 50%;
+    width: max-content;
     max-width: calc(100% - 2rem);
     padding: 0.65rem 0.9rem;
     color: #fff;
@@ -367,7 +523,7 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0.8rem;
     backdrop-filter: blur(0.7rem);
-    transform: translate(-50%, calc(-50% + 3.4rem));
+    transform: translateX(-50%);
 }
 
 .fireplayer__status[data-tone="error"] {
@@ -438,6 +594,7 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
         rgba(255, 255, 255, 0.9);
     border-color: rgba(15, 23, 42, 0.11);
     box-shadow: 0 0.8rem 2.4rem rgba(15, 23, 42, 0.1);
+    overflow: visible;
 }
 
 .fireplayer--audio .fireplayer__stage {
@@ -454,15 +611,16 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
 
 .fireplayer--audio .fireplayer__media,
 .fireplayer--audio .fireplayer__shade,
-.fireplayer--audio .fireplayer__center-play,
-.fireplayer--audio .fireplayer__live-badge {
+.fireplayer--audio .fireplayer__center-play {
     display: none;
 }
 
 .fireplayer--audio .fireplayer__status {
     top: 50%;
+    bottom: auto;
     right: 7.5rem;
     left: 4.5rem;
+    width: auto;
     max-width: none;
     text-align: left;
     transform: translateY(-50%);
@@ -478,11 +636,13 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
 
 .fireplayer--audio .fireplayer__controls {
     position: relative;
-    grid-template-columns: auto auto minmax(4rem, 1fr) auto auto auto;
     min-height: 5.4rem;
     padding: 1rem 1.1rem;
     color: #1f2937;
     background: transparent;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
 }
 
 .fireplayer--audio .fireplayer__button {
@@ -509,9 +669,9 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     background: rgba(15, 23, 42, 0.16);
 }
 
-.fireplayer--audio .fireplayer__speed {
-    color: #334155;
-    background: rgba(15, 23, 42, 0.06);
+.fireplayer--audio .fireplayer__settings-menu .fireplayer__speed {
+    color: var(--fireplayer-text);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 [data-bs-theme="dark"] .fireplayer--audio {
@@ -570,7 +730,6 @@ body:has(.fireplayer.fireplayer--fullscreen) {
     }
 
     .fireplayer__controls {
-        grid-template-columns: auto minmax(3rem, 1fr) auto auto auto;
         gap: 0.3rem;
         min-height: 3.8rem;
         padding: 0.8rem 0.55rem 0.5rem;
@@ -578,18 +737,12 @@ body:has(.fireplayer.fireplayer--fullscreen) {
 
     .fireplayer__time--duration,
     .fireplayer__volume label,
-    .fireplayer__speed-wrap,
     .fireplayer__controls > [data-fp-action="pip"] {
         display: none !important;
     }
 
     .fireplayer__time--current {
         display: none;
-    }
-
-    .fireplayer__volume:hover label,
-    .fireplayer__volume:focus-within label {
-        width: 0;
     }
 
     .fireplayer__live-button {
@@ -605,13 +758,11 @@ body:has(.fireplayer.fireplayer--fullscreen) {
     }
 
     .fireplayer--audio .fireplayer__controls {
-        grid-template-columns: auto minmax(4rem, 1fr) auto;
         min-height: 4.8rem;
         padding: 0.8rem;
     }
 
     .fireplayer--audio .fireplayer__time,
-    .fireplayer--audio .fireplayer__speed-wrap,
     .fireplayer--audio .fireplayer__controls > [data-fp-action="pip"],
     .fireplayer--audio .fireplayer__controls > [data-fp-action="fullscreen"] {
         display: none !important;
@@ -622,6 +773,11 @@ body:has(.fireplayer.fireplayer--fullscreen) {
         left: 3.6rem;
         padding: 0.45rem 0.55rem;
         font-size: 0.68rem;
+    }
+
+    .fireplayer__settings-menu {
+        right: -0.35rem;
+        bottom: calc(100% + 0.45rem);
     }
 
     .fireplayer--audio .fireplayer__retry {

@@ -87,6 +87,12 @@ $hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="
     || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
 $canViewVideoStatus = can_view_video_diagnostics();
+$streamConfig = stream_config();
+$frontendStreamConfig = [
+    'readyTimeoutMs' => (int)$streamConfig['ready_timeout_seconds'] * 1000,
+    'readyIntervalMs' => (int)$streamConfig['ready_interval_ms'],
+    'httpTimeoutMs' => (int)$streamConfig['http_timeout_seconds'] * 1000,
+];
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
 $logoutAction = base_href('/logout');
 $pwaHeadData = pwa_head_data();
@@ -319,6 +325,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
     window.canViewVideoDiagnostics = window.canViewVideoStatus;
     document.documentElement.dataset.videoStatus = window.canViewVideoStatus ? '1' : '0';
+    window.hlsStreamConfig = <?= json_encode($frontendStreamConfig, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.firePlayerConfig = {
         assetBase: <?= json_encode(base_url('/assets/default'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
         hlsScriptUrl: <?= json_encode(theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js')), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
