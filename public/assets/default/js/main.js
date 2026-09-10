@@ -859,6 +859,10 @@ $(function(){
             const notificationAttr = notificationId > 0 ? ` data-notification-id="${notificationId}"` : '';
             const targetUrl = safeNotificationUrl(item.url);
             const key = escapeHtml(getNotificationKey(item));
+            const actionButtons = [
+                targetUrl ? `<a class="btn btn-sm btn-outline-secondary rounded-pill" href="${escapeHtml(targetUrl)}"${notificationAttr}><i class="ci-arrow-up-right me-1" aria-hidden="true"></i>${escapeHtml(notificationCenter.data('open-label') || 'Open')}</a>` : '',
+                notificationId > 0 ? `<button class="btn btn-sm btn-link text-decoration-none" type="button" data-notification-read${notificationAttr}>${escapeHtml(notificationCenter.data('mark-read-label') || 'Mark as read')}</button>` : '',
+            ].filter(Boolean).join('');
 
             html += `
                 <article class="list-group-item notification-feed-item px-3 py-3" data-notification-key="${key}">
@@ -871,12 +875,9 @@ $(function(){
                             </div>
                             <div class="fw-semibold mb-1">${escapeHtml(item.title || '')}</div>
                             <div class="notification-feed-item__text small text-body-secondary">${escapeHtml(item.text || '')}</div>
-                            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
-                                ${targetUrl ? `<a class="btn btn-sm btn-outline-secondary rounded-pill" href="${escapeHtml(targetUrl)}"${notificationAttr}><i class="ci-arrow-up-right me-1" aria-hidden="true"></i>${escapeHtml(notificationCenter.data('open-label') || 'Open')}</a>` : ''}
-                                ${notificationId > 0 ? `<button class="btn btn-sm btn-link text-decoration-none" type="button" data-notification-read${notificationAttr}>${escapeHtml(notificationCenter.data('mark-read-label') || 'Mark as read')}</button>` : ''}
-                            </div>
                         </div>
                     </div>
+                    ${actionButtons ? `<div class="notification-feed-item__actions d-flex flex-wrap align-items-center gap-2 mt-3">${actionButtons}</div>` : ''}
                 </article>
             `;
         });
@@ -1474,6 +1475,30 @@ $(function(){
 
     const escapeHtml = (value) => $('<div>').text(value == null ? '' : String(value)).html();
 
+    const formatToastTime = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) {
+            return '';
+        }
+
+        const normalized = raw.includes(' ') && !raw.includes('T')
+            ? raw.replace(' ', 'T')
+            : raw;
+        const date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+
+        try {
+            return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+                hour: '2-digit',
+                minute: '2-digit',
+            }).format(date);
+        } catch (error) {
+            return '';
+        }
+    };
+
     const getContainer = () => {
         let container = document.querySelector('[data-app-toast-container]');
         if (container) {
@@ -1543,22 +1568,22 @@ $(function(){
         const container = getContainer();
         const toast = document.createElement('div');
         const targetHref = String(payload.href || '#');
+        const formattedTime = formatToastTime(payload.time);
 
-        toast.className = 'toast app-toast--chat border-primary fade bg-white text-body shadow-sm';
+        toast.className = 'toast app-toast--chat border-primary fade shadow-sm';
         toast.setAttribute('role', 'alert');
         toast.setAttribute('aria-live', 'assertive');
         toast.setAttribute('aria-atomic', 'true');
-        toast.setAttribute('data-bs-theme', 'light');
 
         toast.innerHTML = `
-            <div class="toast-header bg-white text-body">
+            <div class="toast-header">
                 ${payload.avatar ? `<img src="${escapeHtml(payload.avatar)}" alt="" class="rounded-circle object-fit-cover border me-2" style="width: 36px; height: 36px;">` : ''}
-                <i class="ci-chat text-primary fs-base me-2"></i>
+                <i class="ci-chat text-primary fs-base me-2" aria-hidden="true"></i>
                 <span class="fw-semibold text-truncate">${escapeHtml(payload.title || variants.info.title)}</span>
-                <span class="small text-body-tertiary ms-2">${escapeHtml(payload.time || '')}</span>
+                ${formattedTime ? `<time class="small text-body-tertiary ms-2">${escapeHtml(formattedTime)}</time>` : ''}
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
-            <div class="toast-body me-2 bg-white text-body">
+            <div class="toast-body me-2">
                 ${escapeHtml(payload.message || '')}
             </div>
         `;

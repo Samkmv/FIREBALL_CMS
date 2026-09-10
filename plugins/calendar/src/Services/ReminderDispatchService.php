@@ -98,6 +98,49 @@ final class ReminderDispatchService
         return $stats;
     }
 
+    /**
+     * Runs the reminder worker from a normal web request at most once per interval.
+     *
+     * The CLI cron remains the reliable background worker, while this heartbeat
+     * covers installations that do not have a shared scheduler configured yet.
+     */
+    public function runThrottled(int $minimumInterval = 30): array
+    {
+        $minimumInterval = max(5, $minimumInterval);
+        $lockPath = CACHE . '/calendar-reminders-heartbeat.lock';
+        $directory = dirname($lockPath);
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0755, true);
+        }
+
+        $lock = @fopen($lockPath, 'c+');
+        if (!is_resource($lock) || !flock($lock, LOCK_EX | LOCK_NB)) {
+            if (is_resource($lock)) {
+                fclose($lock);
+            }
+            return ['candidates' => 0, 'deliveries' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 1];
+        }
+
+        try {
+            rewind($lock);
+            $lastRun = (int)trim((string)stream_get_contents($lock));
+            $now = time();
+            if ($lastRun > 0 && ($now - $lastRun) < $minimumInterval) {
+                return ['candidates' => 0, 'deliveries' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 1];
+            }
+
+            ftruncate($lock, 0);
+            rewind($lock);
+            fwrite($lock, (string)$now);
+            fflush($lock);
+
+            return $this->run();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
     private function claim(
         int $reminderId,
         int $eventId,

@@ -82,13 +82,22 @@ $assert(str_contains($routes, "'/admin/calendar'"), 'Calendar management should 
 $assert(str_contains($routes, "middleware(['auth', 'admin'])"), 'Calendar management routes should require an administrator.');
 $calendarView = (string)file_get_contents($pluginRoot . '/views/calendar.php');
 $assert(str_contains($calendarView, "'content_class' => 'fb-content--edge-workspace'"), 'Admin calendar should use the full-width workspace shell.');
+$plugin = (string)file_get_contents($pluginRoot . '/Plugin.php');
+$assert(str_contains($plugin, '/assets/default/vendor/flatpickr/flatpickr.min.css'), 'Calendar should load the Cartzilla Flatpickr stylesheet.');
+$assert(str_contains($plugin, '/assets/default/vendor/flatpickr/flatpickr.min.js'), 'Calendar should load the Cartzilla Flatpickr script.');
 $calendarJs = (string)file_get_contents($pluginRoot . '/assets/calendar.js');
 $assert(str_contains($calendarJs, 'function eventModal()'), 'Calendar modal should resolve Bootstrap lazily after theme scripts load.');
 $assert(!str_contains($calendarJs, 'const modal = window.bootstrap'), 'Calendar must not cache Bootstrap modal before Bootstrap is available.');
 $assert(str_contains($calendarJs, 'const canManage = Boolean(config.canManage);'), 'Public calendar compatibility view should remain read-only.');
+$assert(str_contains($calendarJs, 'function initDateTimePickers()'), 'Calendar should initialize Flatpickr date and time fields.');
+$assert(str_contains($calendarJs, 'setPickerValue'), 'Calendar should keep Flatpickr values synchronized with event data.');
 $calendarCss = (string)file_get_contents($pluginRoot . '/assets/calendar.css');
 $assert(str_contains($calendarCss, '.fb-calendar-modal > form'), 'Calendar modal form should have its own scrollable flex layout.');
 $assert(str_contains($calendarCss, 'background: transparent;'), 'Calendar switch should not render the oversized background pill.');
+$reminderService = (string)file_get_contents($pluginRoot . '/src/Services/ReminderDispatchService.php');
+$assert(str_contains($reminderService, 'runThrottled'), 'Calendar should expose a throttled web heartbeat fallback.');
+$notificationController = (string)file_get_contents(dirname($pluginRoot, 2) . '/app/Controllers/NotificationController.php');
+$assert(str_contains($notificationController, 'runCalendarReminderHeartbeat'), 'Notification polling should wake the calendar reminder worker.');
 
 $english = require $pluginRoot . '/lang/en.php';
 foreach (['ru', 'de', 'zh-cn'] as $locale) {

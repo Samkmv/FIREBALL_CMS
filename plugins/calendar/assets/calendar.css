@@ -635,6 +635,15 @@
     border-radius: .9rem;
 }
 
+.fb-calendar-picker-field > i {
+    z-index: 2;
+    pointer-events: none;
+}
+
+.fb-calendar-picker-field .flatpickr-input[readonly] {
+    cursor: pointer;
+}
+
 .fb-calendar-modal .fb-calendar-switch {
     display: inline-flex;
     width: max-content;

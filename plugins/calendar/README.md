@@ -14,6 +14,14 @@ The plugin publishes `calendar_dispatch_reminders` to the shared `fireball_sched
 * * * * * /usr/bin/php /absolute/path/to/FIREBALL_CMS/plugins/calendar/cron.php
 ```
 
+For the local MAMP installation, the equivalent entry is:
+
+```cron
+* * * * * /Applications/MAMP/bin/php/php8.2.0/bin/php /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/calendar/cron.php >> /Applications/MAMP/htdocs/FIREBALL_CMS/tmp/calendar-cron.log 2>&1
+```
+
+While an authenticated FIREBALL page is open, the notification feed also wakes the worker automatically (with a 30-second lock), so reminders still appear in the site notification center when no shared scheduler has been configured. The CLI worker is still required for delivery while every browser is closed, including background PWA Push.
+
 Delivery rows are unique per reminder, occurrence, and recipient, so overlapping or repeated worker runs do not send the same reminder twice. Failed deliveries are retried up to four times.
 
 ## Channels
