@@ -274,6 +274,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-toast-error-title="<?= htmlSC(return_translation('toast_error_title')) ?>"
     data-toast-info-title="<?= htmlSC(return_translation('toast_info_title')) ?>"
     data-toast-warning-title="<?= htmlSC(return_translation('toast_warning_title')) ?>"
+    data-toast-close-label="<?= htmlSC(return_translation('notification_close')) ?>"
     data-code-copy-label="<?= htmlSC(return_translation('code_copy_button')) ?>"
     data-code-copied-label="<?= htmlSC(return_translation('code_copied_button')) ?>"
     data-admin-table-error-title="<?= htmlSC(return_translation('admin_table_error_title')) ?>"

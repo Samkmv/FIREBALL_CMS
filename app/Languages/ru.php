@@ -94,6 +94,7 @@ return [
     'theme_404_title' => 'Страница не найдена',
     'notification_loading' => 'Загрузка уведомлений...',
     'notification_open' => 'Открыть',
+    'notification_close' => 'Закрыть',
     'notification_mark_read' => 'Отметить прочитанным',
     'notification_load_error' => 'Не удалось загрузить уведомления. Попробуйте ещё раз.',
     'notification_retry' => 'Повторить',

@@ -114,6 +114,10 @@ $adminLanguageSwitchPath = uri_without_lang() ?: '/';
             data-clear-success="<?= htmlSC(return_translation('notification_cleared')) ?>"
             data-empty-text="<?= htmlSC(return_translation('notification_empty')) ?>"
             data-chat-source-label="<?= htmlSC(return_translation('notification_source_chat')) ?>"
+            data-open-label="<?= htmlSC(return_translation('notification_open')) ?>"
+            data-mark-read-label="<?= htmlSC(return_translation('notification_mark_read')) ?>"
+            data-load-error="<?= htmlSC(return_translation('notification_load_error')) ?>"
+            data-retry-label="<?= htmlSC(return_translation('notification_retry')) ?>"
         >
             <button
                 type="button"

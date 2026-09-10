@@ -1292,6 +1292,8 @@ $(function(){
         : (window.bootstrap || null);
     const body = document.body;
 
+    const closeLabel = body.dataset.toastCloseLabel || 'Close';
+
     const config = {
         timeOut: 5000,
         newestOnTop: false,
@@ -1358,7 +1360,7 @@ $(function(){
                     <strong class="d-block mb-1">${escapeHtml(titleOverride || variant.title)}</strong>
                     <span>${escapeHtml(message)}</span>
                 </div>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
         `;
 
@@ -1408,7 +1410,7 @@ $(function(){
                 <i class="ci-chat text-primary fs-base me-2"></i>
                 <span class="fw-semibold text-truncate">${escapeHtml(payload.title || variants.info.title)}</span>
                 <span class="small text-body-tertiary ms-2">${escapeHtml(payload.time || '')}</span>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
             <div class="toast-body me-2 bg-white text-body">
                 ${escapeHtml(payload.message || '')}

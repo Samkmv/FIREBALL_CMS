@@ -94,6 +94,7 @@ return [
     'theme_404_title' => 'Seite nicht gefunden',
     'notification_loading' => 'Benachrichtigungen werden geladen...',
     'notification_open' => 'Öffnen',
+    'notification_close' => 'Schließen',
     'notification_mark_read' => 'Als gelesen markieren',
     'notification_load_error' => 'Benachrichtigungen konnten nicht geladen werden. Bitte erneut versuchen.',
     'notification_retry' => 'Erneut versuchen',

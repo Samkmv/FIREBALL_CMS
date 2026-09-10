@@ -94,6 +94,7 @@ return [
     'theme_404_title' => '页面未找到',
     'notification_loading' => '正在加载通知...',
     'notification_open' => '打开',
+    'notification_close' => '关闭',
     'notification_mark_read' => '标记为已读',
     'notification_load_error' => '无法加载通知，请重试。',
     'notification_retry' => '重试',
