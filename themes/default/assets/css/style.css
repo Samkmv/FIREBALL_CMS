@@ -54,7 +54,6 @@ body:not(.fb-admin-body) > header.navbar-sticky {
 /* Apple-style glass panels for public navigation and sidebars. */
 body:not(.fb-admin-body) #navbarNav,
 body:not(.fb-admin-body) #shoppingCart,
-body:not(.fb-admin-body) #blogSidebar,
 body:not(.fb-admin-body) #accountSidebar {
     background-color: rgba(255, 255, 255, .72) !important;
     border-color: rgba(24, 29, 37, .14);
@@ -67,8 +66,7 @@ body:not(.fb-admin-body) #navbarNav {
     border-right: 1px solid rgba(24, 29, 37, .14);
 }
 
-body:not(.fb-admin-body) #shoppingCart,
-body:not(.fb-admin-body) #blogSidebar {
+body:not(.fb-admin-body) #shoppingCart {
     border-left: 1px solid rgba(24, 29, 37, .14);
 }
 
@@ -82,7 +80,6 @@ body:not(.fb-admin-body) header.navbar-sticky form[data-search-suggest] .form-co
 
 [data-bs-theme="dark"] body:not(.fb-admin-body) #navbarNav,
 [data-bs-theme="dark"] body:not(.fb-admin-body) #shoppingCart,
-[data-bs-theme="dark"] body:not(.fb-admin-body) #blogSidebar,
 [data-bs-theme="dark"] body:not(.fb-admin-body) #accountSidebar {
     background-color: rgba(24, 29, 37, .72) !important;
     border-color: rgba(255, 255, 255, .12);
@@ -93,8 +90,7 @@ body:not(.fb-admin-body) header.navbar-sticky form[data-search-suggest] .form-co
     border-right-color: rgba(255, 255, 255, .12);
 }
 
-[data-bs-theme="dark"] body:not(.fb-admin-body) #shoppingCart,
-[data-bs-theme="dark"] body:not(.fb-admin-body) #blogSidebar {
+[data-bs-theme="dark"] body:not(.fb-admin-body) #shoppingCart {
     border-left-color: rgba(255, 255, 255, .12);
 }
 
@@ -107,7 +103,6 @@ body:not(.fb-admin-body) header.navbar-sticky form[data-search-suggest] .form-co
 @supports (background-color: color-mix(in srgb, transparent, transparent)) {
     body:not(.fb-admin-body) #navbarNav,
     body:not(.fb-admin-body) #shoppingCart,
-    body:not(.fb-admin-body) #blogSidebar,
     body:not(.fb-admin-body) #accountSidebar {
         background-color: color-mix(in srgb, var(--cz-body-bg) 74%, transparent) !important;
         border-color: color-mix(in srgb, currentColor 14%, transparent);
