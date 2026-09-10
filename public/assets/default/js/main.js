@@ -1579,7 +1579,7 @@ $(function(){
             <div class="toast-header">
                 ${payload.avatar ? `<img src="${escapeHtml(payload.avatar)}" alt="" class="rounded-circle object-fit-cover border me-2" style="width: 36px; height: 36px;">` : ''}
                 <i class="ci-chat text-primary fs-base me-2" aria-hidden="true"></i>
-                <span class="fw-semibold text-truncate">${escapeHtml(payload.title || variants.info.title)}</span>
+                <span class="fw-semibold app-toast--chat__title">${escapeHtml(payload.title || variants.info.title)}</span>
                 ${formattedTime ? `<time class="small text-body-tertiary ms-2">${escapeHtml(formattedTime)}</time>` : ''}
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
