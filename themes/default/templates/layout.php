@@ -440,6 +440,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script src="<?= base_url('/assets/default/js/fireplayer-audio.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-audio.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/fireplayer-hls.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-hls.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/fireplayer-live.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-live.js')) ?>"></script>
+<script src="<?= base_url('/assets/default/js/fireplayer-diagnostics.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-diagnostics.js')) ?>"></script>
 <script src="<?= base_url('/assets/default/js/fireplayer-init.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-init.js')) ?>"></script>
 <script src="<?= theme_asset('js/plyr-init.js') . '?v=' . filemtime(theme()->assetPath('js/plyr-init.js')) ?>"></script>
 <?php if ($isAdmin): ?>

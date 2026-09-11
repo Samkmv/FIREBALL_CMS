@@ -161,7 +161,7 @@
             reconnect: true, reconnectDelay: 2500, stallTimeout: 7000, liveEdgeTolerance: 4,
             startupTimeout: 30000, maxReconnectAttempts: 4,
             posterRefreshInterval: 5000, posterCacheBust: false, lazyStart: false,
-            rememberPosition: true, rememberVolume: true, keyboard: true, gestures: true,
+            rememberPosition: 'auto', rememberVolume: true, keyboard: true, gestures: true,
             probe: true, probeTimeout: 6000
         }, dataset, options || {});
     };
@@ -425,6 +425,7 @@
             this.root.firePlayer = this;
             this.root.dataset.firePlayerInitialized = 'true';
 
+            this._emit('init');
             this.ready = this.options.src ? this.load(this.options.src) : Promise.resolve(this);
             this.ready.catch(function () {});
         }
@@ -548,6 +549,7 @@
             this._listen(this.elements.volume, 'input', function () {
                 player.media.volume = numberValue(player.elements.volume.value, 1, 0, 1);
                 player.media.muted = player.media.volume === 0;
+                player._storeVolume();
             });
             this._listen(this.elements.speed, 'change', function () {
                 player.media.playbackRate = numberValue(player.elements.speed.value, 1, 0.25, 4);
@@ -623,9 +625,6 @@
             });
             this._listen(this.media, 'volumechange', function () {
                 player._syncVolume();
-                if (player.options.rememberVolume) {
-                    storage.set('volume', { volume: player.media.volume, muted: player.media.muted });
-                }
             });
             this._listen(this.media, 'ratechange', function () {
                 player.elements.speed.value = String(player.media.playbackRate);
@@ -716,6 +715,7 @@
             this.root.classList.add('fireplayer--loading');
             this.elements.retry.hidden = true;
             this.setStatus(t('detecting'), 'info');
+            this._emit('loadstart');
 
             // Known camera endpoints are prepared by the backend/HLS adapter, not a duplicate probe.
             const cameraSource = /\/stream-[^/]+\/index\.m3u8(?:[?#].*)?$/i.test(src);
@@ -734,12 +734,9 @@
             this.root.classList.add('fireplayer--' + info.mode);
             this.root.classList.toggle('fireplayer--live', info.mode === 'live' || info.mode === 'event');
             this.media.autoplay = false;
-            if (this.options.muted === true) {
-                this.media.muted = true;
-            } else if (!this.options.rememberVolume) {
-                this.media.muted = false;
-            }
+            this._restoreVolume();
             this.media.loop = Boolean(this.options.loop);
+            if (info.mode === 'live' || info.mode === 'event') { this.media.playbackRate = 1; }
             this.media.preload = this.options.preload || 'metadata';
             if (this.options.crossorigin) {
                 this.media.crossOrigin = this.options.crossorigin;
@@ -824,6 +821,7 @@
             this._setSettingsOpen(false);
             this._syncTimeline();
             this.setStatus('');
+            this._emit('unload');
             return this;
         }
 
@@ -927,6 +925,7 @@
         mute(force) {
             this.media.muted = typeof force === 'boolean' ? force : !this.media.muted;
             if (!this.media.muted && this.media.volume === 0) { this.media.volume = 1; }
+            this._storeVolume();
             return this;
         }
 
@@ -1102,6 +1101,8 @@
             if (!this.info || !['live', 'event', 'vod'].includes(mode)) {
                 return;
             }
+            const wasLive = this.info.mode === 'live' || this.info.mode === 'event';
+            if (!wasLive && (mode === 'live' || mode === 'event')) { this.media.playbackRate = 1; }
             ['live', 'event', 'vod'].forEach((name) => this.root.classList.toggle('fireplayer--' + name, name === mode));
             this.info.mode = mode;
             this.root.classList.toggle('fireplayer--live', mode === 'live' || mode === 'event');
@@ -1190,8 +1191,9 @@
             const isLive = Boolean(this.info && (this.info.mode === 'live' || this.info.mode === 'event'));
             this.elements.live.hidden = !isLive;
             this.elements.speed.parentElement.hidden = isLive;
-            this.elements.settings.hidden = false;
-            this.elements.settings.parentElement.hidden = false;
+            const hasSettings = Array.from(this.elements.settingsMenu.children).some(function (element) { return !element.hidden; });
+            this.elements.settings.hidden = !hasSettings;
+            this.elements.settings.parentElement.hidden = !hasSettings;
             if (this.elements.settings.hidden) {
                 this._setSettingsOpen(false);
             }
@@ -1205,7 +1207,10 @@
                 behind = Number.isFinite(edge) && edge - this.media.currentTime > Number(this.options.liveEdgeTolerance || 4);
             }
             this.elements.live.classList.toggle('is-behind', behind);
-            this.elements.live.querySelector('span').textContent = behind ? t('goLive') : t('live');
+            // Keep the button footprint stable; the full action remains available to assistive tech.
+            this.elements.live.querySelector('span').textContent = t('live');
+            this.elements.live.setAttribute('aria-label', behind ? t('goLive') : t('live'));
+            this.elements.live.setAttribute('title', behind ? t('goLive') : t('live'));
         }
 
         _syncCapabilities() {
@@ -1263,6 +1268,7 @@
                 event.preventDefault();
                 this.media.volume = Math.max(0, Math.min(1, this.media.volume + (key === 'arrowup' ? 0.05 : -0.05)));
                 this.media.muted = false;
+                this._storeVolume();
             } else if (/^[0-9]$/.test(key) && Number.isFinite(this.media.duration)) {
                 this.media.currentTime = this.media.duration * (Number(key) / 10);
             }
@@ -1293,9 +1299,24 @@
 
         _restoreVolume() {
             const saved = this.options.rememberVolume ? storage.get('volume', null) : null;
-            this.media.volume = saved && Number.isFinite(saved.volume) ? numberValue(saved.volume, 1, 0, 1) : 1;
-            this.media.muted = Boolean(this.options.muted || (saved && saved.muted));
+            // Older records also captured forced autoplay mute. Only explicit user choices
+            // in the new format may silence another player; retain legacy positive volume.
+            const userPreference = Boolean(saved && saved.version === 2);
+            const validVolume = saved && Number.isFinite(saved.volume) && (saved.volume > 0 || userPreference);
+            this.media.volume = validVolume ? numberValue(saved.volume, 1, 0, 1) : 1;
+            this.media.muted = Boolean(this.options.muted || (userPreference && saved.muted));
             this._syncVolume();
+        }
+
+        _storeVolume() {
+            if (this.options.rememberVolume) {
+                storage.set('volume', { version: 2, volume: this.media.volume, muted: this.media.muted });
+            }
+        }
+
+        _rememberPositionEnabled() {
+            return this.options.rememberPosition === true
+                || (this.options.rememberPosition === 'auto' && this.info && this.info.media !== 'audio');
         }
 
         _restorePosition() {
@@ -1307,7 +1328,7 @@
             }
             if (this._restoredPosition) { return; }
             this._restoredPosition = true;
-            if (!this.options.rememberPosition || !this.info || this.info.mode !== 'vod') {
+            if (!this._rememberPositionEnabled() || !this.info || this.info.mode !== 'vod') {
                 return;
             }
             const position = Number(storage.get(this._positionKey(), 0));
@@ -1317,7 +1338,7 @@
         }
 
         _storePosition(completed, force) {
-            if (!this.options.rememberPosition || !this.info || this.info.mode !== 'vod' || this.media.readyState < 1 || !this._restoredPosition) {
+            if (!this._rememberPositionEnabled() || !this.info || this.info.mode !== 'vod' || this.media.readyState < 1 || !this._restoredPosition) {
                 return;
             }
             if (!completed && !force && Date.now() - this._lastPositionStoreAt < 3000) {
@@ -1364,6 +1385,7 @@
             ++this._loadToken;
             this._teardownPlayback();
             this._clearListeners();
+            this._emit('destroy');
             this._events.clear();
             instances.delete(this.root);
             instances.delete(this.originalElement);
@@ -1420,7 +1442,7 @@
         }
     }
 
-    FirePlayer.version = '1.0.1';
+    FirePlayer.version = '1.0.3';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;

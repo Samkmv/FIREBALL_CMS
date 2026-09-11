@@ -7,7 +7,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
-const assets = ['fireplayer.js', 'fireplayer-video.js', 'fireplayer-audio.js', 'fireplayer-hls.js', 'fireplayer-live.js'];
+const assets = ['fireplayer.js', 'fireplayer-video.js', 'fireplayer-audio.js', 'fireplayer-hls.js', 'fireplayer-live.js', 'fireplayer-diagnostics.js'];
 let browser;
 let server;
 const checks = [];
@@ -30,12 +30,12 @@ const probeFixtures = {
             res.writeHead(req.method === 'HEAD' && fixture.headStatus ? fixture.headStatus : fixture.status || 200, { 'Content-Type': fixture.type });
             res.end(req.method === 'HEAD' ? '' : fixture.body);
         } else if (pathname === '/') {
-            res.setHeader('Content-Type', 'text/html');
-            res.end('<!doctype html><html lang="ru"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/public/assets/default/css/fireplayer.css"></head><body style="margin:50px;width:800px;min-height:1600px;background:#171c24"><main></main></body></html>');
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.end('<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/public/assets/default/css/fireplayer.css"><link rel="stylesheet" href="/public/assets/default/css/theme.min.css"><link rel="stylesheet" href="/public/assets/default/css/style.css"></head><body style="margin:50px;width:800px;min-height:1600px;background:#171c24;font:16px system-ui,sans-serif"><main class="post-content"></main></body></html>');
         } else if (pathname.startsWith('/public/assets/default/') || pathname.startsWith('/tests/fixtures/')) {
             const file = path.resolve(root, '.' + pathname);
             if (!file.startsWith(root + path.sep) || !fs.existsSync(file)) { res.writeHead(404); res.end(); return; }
-            res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'application/vnd.apple.mpegurl');
+            res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'application/vnd.apple.mpegurl');
             res.end(fs.readFileSync(file));
         } else { res.writeHead(404); res.end(); }
     });
@@ -123,11 +123,24 @@ const probeFixtures = {
     await page.keyboard.press('Tab'); await page.waitForTimeout(220);
     assert.equal(await panel.evaluate(node => getComputedStyle(node).opacity), '1', 'Keyboard focus reveals controls');
     await video.hover();
+    await page.evaluate(() => document.activeElement.blur());
     const widthBefore = await page.locator('[data-fp-seek]').evaluate(node => node.getBoundingClientRect().width);
     await page.locator('[data-fp-action="mute"]').hover(); await page.waitForTimeout(220);
     const widthAfter = await page.locator('[data-fp-seek]').evaluate(node => node.getBoundingClientRect().width);
     assert.equal(widthBefore, widthAfter, 'Volume hover must not shift timeline');
+    const volumeButtonBox = await page.locator('[data-fp-action="mute"]').boundingBox();
+    const volumePopup = page.locator('.fireplayer__volume label');
+    const volumePopupBox = await volumePopup.boundingBox();
+    assert.ok(volumeButtonBox.y - (volumePopupBox.y + volumePopupBox.height) >= 8, 'Volume popup must clear the speaker icon');
+    for (let y = volumeButtonBox.y + volumeButtonBox.height / 2; y > volumePopupBox.y + volumePopupBox.height / 2; y -= 2) {
+        await page.mouse.move(volumeButtonBox.x + volumeButtonBox.width / 2, y);
+    }
+    await page.waitForTimeout(220);
+    assert.equal(await volumePopup.evaluate(node => getComputedStyle(node).visibility), 'visible', 'Pointer can cross the gap to the volume slider');
+    await page.screenshot({ path: '/private/tmp/fireplayer-volume-desktop.png' });
     await page.locator('[data-fp-action="settings"]').click();
+    assert.equal(await page.locator('[data-fp-settings-menu]').evaluate(node => node.scrollHeight <= node.clientHeight + 1), true, 'Desktop settings must not have an unnecessary scrollbar');
+    assert.equal(await page.locator('.fireplayer__settings-label').first().textContent(), 'Скорость');
     await page.locator('[data-fp-speed]').selectOption('1.5');
     assert.equal(await page.evaluate(() => realPlayer.media.playbackRate), 1.5);
     await page.screenshot({ path: '/private/tmp/fireplayer-settings-desktop.png' });
@@ -138,6 +151,7 @@ const probeFixtures = {
     checks.push('desktop hover after click, keyboard, stable volume layout, speed and zoom');
 
     await page.evaluate(() => { realPlayer.setMode('live'); realPlayer._syncCapabilities(); });
+    assert.equal(await page.evaluate(() => realPlayer.media.playbackRate), 1, 'VOD speed must not leak into LIVE');
     assert.equal(await page.locator('[data-fp-live-badge]').count(), 0, 'Only timeline LIVE indicator is present');
     assert.equal(await page.locator('[data-fp-action="live"]').count(), 1);
     await page.screenshot({ path: '/private/tmp/fireplayer-live-desktop.png' });
@@ -155,10 +169,23 @@ const probeFixtures = {
         await audio.ready; await audio.play();
         await new Promise(resolve => setTimeout(resolve, 500));
         const result = { advanced: audio.media.currentTime > 0.2, duration: audio.media.duration === 4, clean: audio.elements.status.hidden && !audio.root.classList.contains('fireplayer--loading'), visible: getComputedStyle(audio.elements.controls).opacity === '1' };
-        audio.destroy(); URL.revokeObjectURL(source);
+        audio.pause(); audio.media.currentTime = 0; audio._syncTimeline();
+        window.realAudio = audio;
+        window.realAudioSource = source;
         return result;
     });
     assert.deepEqual(nativeAudio, { advanced: true, duration: true, clean: true, visible: true });
+    for (const theme of ['dark', 'light']) {
+        await page.evaluate(theme => { document.documentElement.dataset.bsTheme = theme; }, theme);
+        await page.locator('.fireplayer--audio').screenshot({ path: '/private/tmp/fireplayer-audio-' + theme + '.png' });
+        const audioTrack = await page.evaluate(() => {
+            const input = realAudio.elements.seek, style = getComputedStyle(input);
+            return { zero: input.value === '0' && input.style.getPropertyValue('--fireplayer-progress') === '0%',
+                noExtraBorder: style.borderTopWidth === '0px' && style.borderBottomWidth === '0px', noExtraShadow: style.boxShadow === 'none' };
+        });
+        for (const [name, passed] of Object.entries(audioTrack)) { assert.equal(passed, true, theme + ': ' + name); }
+    }
+    await page.evaluate(() => { realAudio.destroy(); URL.revokeObjectURL(realAudioSource); delete document.documentElement.dataset.bsTheme; });
     checks.push('real WAV decoding, audio time advances, duration, loading clears, controls visible');
 
     const mobileContext = await browser.newContext({ viewport: { width: 320, height: 720 }, hasTouch: true, isMobile: true });
@@ -195,9 +222,71 @@ const probeFixtures = {
     await mobile.waitForTimeout(2800);
     assert.equal(await mobile.locator('.fireplayer__controls').evaluate(node => getComputedStyle(node).opacity), '1', 'Settings stay visible while editing');
     await mobile.evaluate(() => mobilePlayer.setMode('live'));
+    const liveLayout = await mobile.evaluate(() => {
+        const p = mobilePlayer;
+        p.pause();
+        Object.defineProperty(p.media, 'seekable', { configurable: true, value: { length: 1, start: () => 0, end: () => 120 } });
+        p._syncTimeline();
+        p.setStatus('Повторное подключение…', 'warning');
+        const root = p.root.getBoundingClientRect(), seek = p.elements.seek.getBoundingClientRect(), live = p.elements.live.getBoundingClientRect();
+        const message = p.elements.status.getBoundingClientRect(), play = p.elements.playButtons[0].getBoundingClientRect();
+        return { longTimeline: seek.width >= root.width * 0.8, compactLive: live.width <= 80 && p.elements.live.textContent.trim() === 'LIVE',
+            liveAccessible: p.elements.live.getAttribute('aria-label') === 'Перейти в LIVE',
+            messageSeparate: message.bottom <= play.top || message.top >= play.bottom || message.right <= play.left || message.left >= play.right };
+    });
+    for (const [name, passed] of Object.entries(liveLayout)) { assert.equal(passed, true, name); }
     await mobile.screenshot({ path: '/private/tmp/fireplayer-live-mobile.png' });
+    await mobile.evaluate(() => {
+        mobilePlayer.setStatus(''); mobilePlayer._setSettingsOpen(false);
+        document.body.style.setProperty('min-height', '2500px', 'important');
+        document.querySelector('main').style.paddingTop = '200px';
+        window.scrollTo(0, 0);
+    });
+    const touchSession = await mobileContext.newCDPSession(mobile);
+    const swipe = async () => {
+        const rect = await mobile.locator('.fireplayer__stage').boundingBox();
+        const x = rect.x + rect.width * 0.25, y = rect.y + rect.height * 0.3;
+        await touchSession.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        for (let i = 1; i <= 8; i++) {
+            await touchSession.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - i * 12 }] });
+            await mobile.waitForTimeout(20);
+        }
+        await touchSession.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await mobile.waitForTimeout(200);
+        return mobile.evaluate(() => window.scrollY);
+    };
+    assert.ok(await swipe() > 20, 'A swipe starting on the video scrolls the page');
+    await mobile.evaluate(() => { window.scrollTo(0, 0); const range = mobilePlayer.elements.settingsMenu.querySelector('[data-fp-zoom-range]'); range.value = '2'; range.dispatchEvent(new Event('input', { bubbles: true })); });
+    await mobile.waitForTimeout(200);
+    assert.ok(await swipe() > 20, 'A swipe on a zoomed video still scrolls the page');
+    await touchSession.detach();
     await mobileContext.close();
     checks.push('320px touch layout, timed reveal/hide, settings stay open and inside player');
+    checks.push('compact LIVE with full-width narrow timeline, separate status, real page touch-scroll at 1x and 2x');
+
+    const loaderPage = await browser.newPage();
+    loaderPage.on('pageerror', error => errors.push('loader: ' + error.message));
+    await loaderPage.goto(origin);
+    for (const file of assets) { await loaderPage.addScriptTag({ url: origin + '/public/assets/default/js/' + file }); }
+    let scriptAttempts = 0;
+    await loaderPage.route('**/vendor/hls.js/hls.min.js', route => {
+        scriptAttempts += 1;
+        return scriptAttempts === 1 ? route.abort() : route.continue();
+    });
+    const loader = await loaderPage.evaluate(async () => {
+        const node = document.createElement('div'); document.querySelector('main').append(node);
+        const player = new FirePlayer(node, { src: '/detect/master.m3u8', probe: false, forceHlsJs: true });
+        await player.ready.catch(() => {});
+        const failed = player.root.classList.contains('fireplayer--error') && !player.elements.retry.hidden;
+        await player.load('/detect/master.m3u8');
+        const loaded = player.controller.engine === 'hls.js' && player.controller.hls instanceof Hls;
+        player.destroy();
+        return { failed, loaded };
+    });
+    assert.deepEqual(loader, { failed: true, loaded: true });
+    assert.equal(scriptAttempts, 2);
+    await loaderPage.close();
+    checks.push('bundled hls.js loader recovers after an actual failed script request');
 
     await page.evaluate(() => { realPlayer.destroy(); document.querySelector('main').innerHTML = ''; });
     await page.evaluate(() => {
@@ -241,6 +330,43 @@ const probeFixtures = {
             destroy() { this.destroyed = true; }
         };
     });
+    const preferences = await page.evaluate(async () => {
+        localStorage.setItem('fireplayer.volume', JSON.stringify({ volume: 0.6, muted: true }));
+        const song = makePlayer({ src: '/beginning.mp3', rememberPosition: 'auto' }); await song.ready;
+        localStorage.setItem('fireplayer.' + song._positionKey(), '42');
+        mediaState(song.media).readyState = 4;
+        song.media.dispatchEvent(new Event('loadedmetadata'));
+        const songStartsAtZero = song.media.currentTime === 0;
+        const oldAutoplayMuteIgnored = !song.media.muted && song.media.volume === 0.6;
+        song.destroy();
+        const video = makePlayer({ src: '/resume.mp4', rememberPosition: 'auto' }); await video.ready;
+        localStorage.setItem('fireplayer.' + video._positionKey(), '42'); mediaState(video.media).readyState = 4;
+        video.media.dispatchEvent(new Event('loadedmetadata'));
+        const videoStillResumes = video.media.currentTime === 42; video.destroy();
+        const audiobook = makePlayer({ src: '/audiobook.mp3', rememberPosition: true }); await audiobook.ready;
+        localStorage.setItem('fireplayer.' + audiobook._positionKey(), '42'); mediaState(audiobook.media).readyState = 4;
+        audiobook.media.dispatchEvent(new Event('loadedmetadata'));
+        const optInAudioResumes = audiobook.media.currentTime === 42; audiobook.destroy();
+        const saved = JSON.stringify({ version: 2, volume: 0.7, muted: false });
+        localStorage.setItem('fireplayer.volume', saved);
+        const camera = makePlayer({ src: '/hls/muted.m3u8', muted: true, autoplay: true }); await camera.ready;
+        camera.media.dispatchEvent(new Event('volumechange'));
+        const forcedMuteNotSaved = camera.media.muted && localStorage.getItem('fireplayer.volume') === saved;
+        camera.destroy();
+        const next = makePlayer({ src: '/audible.mp3' }); await next.ready;
+        const nextAudible = !next.media.muted && next.media.volume === 0.7;
+        next.mute(true);
+        const userMuteSaved = JSON.parse(localStorage.getItem('fireplayer.volume')).muted === true;
+        next.mute(false); next.destroy();
+        localStorage.setItem('fireplayer.volume', JSON.stringify({ volume: 0, muted: true }));
+        const legacyZero = makePlayer({ src: '/zero.mp3' }); await legacyZero.ready;
+        const silentLegacyReset = !legacyZero.media.muted && legacyZero.media.volume > 0; legacyZero.destroy();
+        localStorage.removeItem('fireplayer.volume');
+        return { songStartsAtZero, oldAutoplayMuteIgnored, videoStillResumes, optInAudioResumes, forcedMuteNotSaved, nextAudible, userMuteSaved, silentLegacyReset };
+    });
+    for (const [name, passed] of Object.entries(preferences)) { assert.equal(passed, true, name); }
+    checks.push('audio starts at zero by default, optional resume preserved, autoplay mute does not pollute user sound preferences');
+
     const stateTests = await page.evaluate(async () => {
         const p = makePlayer({ src: '/movie.mp4' }); await p.ready;
         const idleClean = p.elements.status.hidden;
@@ -404,6 +530,147 @@ const probeFixtures = {
     });
     for (const [name, passed] of Object.entries(lifecycle)) { assert.equal(passed, true, name); }
     checks.push('audio controls always visible, DOM move retained, removed player disposed');
+
+    const sessionOwnership = await page.evaluate(async () => {
+        const session = navigator.mediaSession;
+        const original = session.setActionHandler;
+        const handlers = new Map();
+        session.setActionHandler = (name, callback) => handlers.set(name, callback);
+        try {
+            const active = makePlayer({ src: '/active.mp3', title: 'Active track' }); await active.ready; await active.play();
+            const firstPlay = handlers.get('play');
+            const inactive = makePlayer({ src: '/inactive.mp3', title: 'Inactive track' }); await inactive.ready;
+            const notStolen = handlers.get('play') === firstPlay && session.metadata.title === 'Active track';
+            inactive.destroy();
+            const notErased = handlers.get('play') === firstPlay;
+            active.destroy();
+            return { notStolen, notErased, released: handlers.get('play') === null };
+        } finally { session.setActionHandler = original; }
+    });
+    for (const [name, passed] of Object.entries(sessionOwnership)) { assert.equal(passed, true, name); }
+    checks.push('media session belongs to the playing audio, inactive block disposal preserves its controls');
+
+    // Simulate the server permitting this module for the creator's page.
+    assert.equal(await page.locator('.fireplayer-diagnostics').count(), 0, 'No diagnostics on an ordinary page');
+    await page.evaluate(() => { window.canViewVideoDiagnostics = true; });
+    await page.addScriptTag({ url: origin + '/public/assets/default/js/fireplayer-diagnostics.js' });
+    await page.evaluate(() => { delete window.canViewVideoDiagnostics; });
+    const diagnostics = await page.evaluate(async () => {
+        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        const absentByDefault = !document.querySelector('.fireplayer-diagnostics');
+        window.canViewVideoDiagnostics = false;
+        const guest = makePlayer({ src: '/guest.mp4', diagnostics: true }); await guest.ready;
+        const guestHidden = !document.querySelector('.fireplayer-diagnostics');
+        guest.destroy();
+        window.canViewVideoDiagnostics = true;
+        const p = makePlayer({ src: 'https://username:PASSWORD@media.example/hls/index.m3u8?token=SECRET#PRIVATE' }); await p.ready;
+        const panel = p.root.nextElementSibling;
+        const creatorPanel = Boolean(panel && panel.matches('.fireplayer-diagnostics') && !panel.hidden);
+        Object.defineProperty(p.media, 'videoWidth', { configurable: true, value: 1920 });
+        Object.defineProperty(p.media, 'videoHeight', { configurable: true, value: 1080 });
+        Object.defineProperty(p.media, 'buffered', { configurable: true, value: { length: 1, start: () => 10, end: () => 20 } });
+        p.media.getVideoPlaybackQuality = () => ({ totalVideoFrames: 240, droppedVideoFrames: 2 });
+        p.controller.hls.currentLevel = 0;
+        p.controller.hls.levels = [{ bitrate: 2500000, width: 1920, height: 1080, videoCodec: 'avc1.42E01E', audioCodec: 'mp4a.40.2' }];
+        p.media.currentTime = 12;
+        await p.play(); p._emit('loadedmetadata'); await wait(50);
+        const liveMetrics = /1920.*1080/.test(panel.textContent) && /hls\.js/.test(panel.textContent)
+            && panel.querySelector('[data-fp-diagnostic-state]').getAttribute('data-fp-diagnostic-state') === 'playing';
+        mediaState(p.media).readyState = 2;
+        p.media.dispatchEvent(new Event('waiting')); await wait(260);
+        panel.dispatchEvent(new Event('toggle'));
+        const bufferingState = panel.querySelector('[data-fp-diagnostic-state]').getAttribute('data-fp-diagnostic-state') === 'loading';
+        mediaState(p.media).readyState = 4; p.media.dispatchEvent(new Event('playing'));
+        p._showError('failure', { name: 'NetworkError', message: 'https://username:PASSWORD@media.example/?token=SECRET#PRIVATE' });
+        const errorVisible = panel.querySelector('[data-fp-diagnostic-state]').getAttribute('data-fp-diagnostic-state') === 'error';
+        const safeDetails = !/PASSWORD|SECRET|PRIVATE|username|token=/.test(panel.textContent);
+        await p.reconnect('manual');
+        const reconnectCount = panel.querySelector('[data-fp-diagnostic="reconnects"]').textContent === '1';
+        await p.load('/new-source.mp4');
+        const sourceReset = panel.querySelector('[data-fp-diagnostic="reconnects"]').textContent === '0'
+            && !panel.textContent.includes('NetworkError');
+        p.unload();
+        const unloadHidden = panel.hidden;
+        await p.load('/after-unload.mp4');
+        const reused = p.root.nextElementSibling === panel && !panel.hidden;
+        const container = document.createElement('section'); document.body.append(container); container.append(p.root);
+        await wait(1100);
+        const moved = p.root.nextElementSibling === panel && panel.parentElement === container;
+        p.destroy();
+        const removed = !panel.isConnected;
+        container.remove();
+        const revokedPlayer = makePlayer({ src: '/revoke.mp4' }); await revokedPlayer.ready;
+        const revokedPanel = revokedPlayer.root.nextElementSibling;
+        window.canViewVideoDiagnostics = false;
+        revokedPlayer._emit('pause'); await wait(1100);
+        const revoked = !revokedPanel.isConnected || revokedPanel.hidden;
+        revokedPlayer.destroy(); delete window.canViewVideoDiagnostics;
+        return { absentByDefault, guestHidden, creatorPanel, liveMetrics, bufferingState, errorVisible, safeDetails, reconnectCount, sourceReset, unloadHidden, reused, moved, removed, revoked };
+    });
+    for (const [name, passed] of Object.entries(diagnostics)) { assert.equal(passed, true, name); }
+    checks.push('creator-only diagnostics, live metrics, secret-free details, source reset, move/unload/destroy cleanup');
+
+    await page.evaluate(async () => {
+        document.querySelector('main').replaceChildren();
+        window.canViewVideoDiagnostics = true;
+        const p = window.diagnosticsPreview = makePlayer({ src: '/hls/preview.m3u8' }); await p.ready;
+        Object.defineProperty(p.media, 'videoWidth', { configurable: true, value: 1920 });
+        Object.defineProperty(p.media, 'videoHeight', { configurable: true, value: 1080 });
+        Object.defineProperty(p.media, 'buffered', { configurable: true, value: { length: 1, start: () => 10, end: () => 20 } });
+        p.media.getVideoPlaybackQuality = () => ({ totalVideoFrames: 240, droppedVideoFrames: 2 });
+        p.controller.hls.currentLevel = 0;
+        p.controller.hls.levels = [{ bitrate: 2500000, videoCodec: 'avc1.42E01E', audioCodec: 'mp4a.40.2' }];
+        p.media.currentTime = 12; await p.play(); p._emit('loadedmetadata'); p.media.dispatchEvent(new Event('timeupdate'));
+    });
+    await page.locator('.fireplayer').hover();
+    await page.waitForTimeout(220);
+    const diagnosticsPlacement = await page.evaluate(() => {
+        const root = diagnosticsPreview.root.getBoundingClientRect();
+        const panel = diagnosticsPreview.root.nextElementSibling.getBoundingClientRect();
+        return panel.top >= root.bottom + 8 && panel.width <= root.width;
+    });
+    assert.equal(diagnosticsPlacement, true, 'Diagnostics sit below, not inside the video surface');
+    await page.locator('main').screenshot({ path: '/private/tmp/fireplayer-diagnostics-desktop.png' });
+    await page.locator('.fireplayer-diagnostics summary').click();
+    assert.equal(await page.locator('.fireplayer-diagnostics').evaluate(node => node.open), false);
+    await page.locator('.fireplayer-diagnostics summary').click();
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.addStyleTag({ content: 'body { margin:12px!important;width:calc(100% - 24px)!important; }' });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Diagnostics fit a narrow screen');
+    await page.locator('main').screenshot({ path: '/private/tmp/fireplayer-diagnostics-mobile.png' });
+    await page.evaluate(() => { diagnosticsPreview.destroy(); delete window.canViewVideoDiagnostics; });
+
+    const editorPage = await browser.newPage();
+    editorPage.on('pageerror', error => errors.push('editor: ' + error.message));
+    await editorPage.goto(origin);
+    for (const file of ['registry.js', 'sanitizer.js', 'history.js', 'importer.js', 'editor.js']) {
+        await editorPage.addScriptTag({ url: origin + '/public/assets/default/js/editor2/' + file });
+    }
+    const editorChecks = await editorPage.evaluate(() => {
+        const editor = Object.create(FireballEditor2.Editor.prototype);
+        editor.config = { labels: {}, previewStyleAssets: [] };
+        const block = (type, src, extra) => ({ id: type, type, data: Object.assign({ src }, extra), settings: {} });
+        const local = [block('video', '/movie.mp4'), block('video', '/camera/index.m3u8', { hls: true, autoplay: true }), block('audio', '/song.mp3')];
+        const embeds = ['https://youtu.be/test123', 'https://www.youtube.com/watch?v=test123', 'https://vimeo.com/123456'].map(src => block('video', src));
+        const parse = html => new DOMParser().parseFromString(html, 'text/html');
+        const canvasMedia = local.every(item => parse(editor.renderBlockContent(item)).querySelector('[data-fire-player]'));
+        const publishedMedia = local.every(item => parse(editor.serializePublicBlock(item)).querySelector('[data-fire-player]'));
+        const providerEmbeds = embeds.every(item => {
+            const dom = parse(editor.renderBlockContent(item));
+            return dom.querySelector('iframe') && !dom.querySelector('[data-fire-player]');
+        });
+        editor.state = { blocks: local };
+        const preview = parse(editor.previewDocumentHtml());
+        return {
+            canvasMedia, publishedMedia, providerEmbeds,
+            previewNative: preview.querySelectorAll('video[controls],audio[controls]').length === 3,
+            previewSafe: !preview.querySelector('[data-fire-player],script,[autoplay]'),
+            hlsSourceLink: Boolean(preview.querySelector('a[href="/camera/index.m3u8"]'))
+        };
+    });
+    for (const [name, passed] of Object.entries(editorChecks)) { assert.equal(passed, true, name); }
+    await editorPage.close();
+    checks.push('editor and published media use FirePlayer, provider embeds retained, script-free preview has native fallback');
     assert.deepEqual(errors, [], 'No uncaught browser exceptions');
     process.stdout.write(JSON.stringify({ status: 'ok', checks }, null, 2) + '\n');
 })().catch(error => {

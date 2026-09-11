@@ -17,6 +17,7 @@ $assets = [
     'audio' => $root . '/public/assets/default/js/fireplayer-audio.js',
     'hls' => $root . '/public/assets/default/js/fireplayer-hls.js',
     'live' => $root . '/public/assets/default/js/fireplayer-live.js',
+    'diagnostics' => $root . '/public/assets/default/js/fireplayer-diagnostics.js',
     'init' => $root . '/public/assets/default/js/fireplayer-init.js',
     'css' => $root . '/public/assets/default/css/fireplayer.css',
 ];
@@ -42,7 +43,7 @@ fireplayer_assert(str_contains($core, "'pointerleave'"), 'Pointer leave does not
 
 $css = (string)file_get_contents($assets['css']);
 fireplayer_assert(str_contains($css, '.fireplayer__settings-menu'), 'Video settings menu styles are missing.');
-fireplayer_assert(str_contains($css, 'bottom: 4.65rem'), 'Media status badge is not positioned above the timeline.');
+fireplayer_assert((bool)preg_match('/\.fireplayer__status\s*\{[^}]*top:\s*0\.8rem;/s', $css), 'Video status must sit above the center play button.');
 fireplayer_assert(str_contains($css, '.fireplayer:not(.fireplayer--touch):hover .fireplayer__controls'), 'Desktop hover does not reveal the control panel.');
 fireplayer_assert(str_contains($css, '.fireplayer.fireplayer--keyboard-focus .fireplayer__controls'), 'Keyboard users cannot reveal the control panel.');
 fireplayer_assert(!str_contains($css, '.fireplayer:focus-within .fireplayer__controls'), 'Mouse-click focus must not keep the control panel visible.');
@@ -65,7 +66,12 @@ foreach ([$root . '/app/Views/layouts/default.php', $root . '/themes/default/tem
     fireplayer_assert(str_contains($layout, 'fireplayer.js'), sprintf('FirePlayer core is not loaded by %s.', $layoutPath));
     fireplayer_assert(str_contains($layout, 'fireplayer-hls.js'), sprintf('FirePlayer HLS module is not loaded by %s.', $layoutPath));
     fireplayer_assert(str_contains($layout, 'fireplayer-init.js'), sprintf('FirePlayer bootstrap is not loaded by %s.', $layoutPath));
+    fireplayer_assert(str_contains($layout, 'fireplayer-diagnostics.js'), sprintf('Creator diagnostics are not loaded by %s.', $layoutPath));
+    fireplayer_assert(str_contains($layout, '$canViewVideoStatus = can_view_video_diagnostics();'), sprintf('Diagnostics permission is not server-controlled in %s.', $layoutPath));
 }
+
+$helpers = (string)file_get_contents($root . '/helpers/helpers.php');
+fireplayer_assert((bool)preg_match('/function can_view_video_diagnostics\(\): bool\s*\{\s*return check_creator\(\);\s*\}/', $helpers), 'Video diagnostics must remain creator-only.');
 
 foreach ([$root . '/public/assets/default/js/plyr-init.js', $root . '/themes/default/assets/js/plyr-init.js'] as $plyrPath) {
     $plyr = (string)file_get_contents($plyrPath);

@@ -148,9 +148,11 @@
             listen(stage, 'pointerdown', function (event) {
                 if (!player.options.gestures || interactive(event) || (event.pointerType === 'mouse' && event.button !== 0)) { return; }
                 if (!pointers.size) { dragged = false; }
-                pointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY, startedAt: Date.now() });
+                pointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY, startX: event.clientX, startY: event.clientY, startedAt: Date.now() });
                 if (event.pointerType === 'touch') { suppressClickUntil = Date.now() + 700; }
-                try { stage.setPointerCapture(event.pointerId); } catch (error) { /* Capture is optional. */ }
+                if (event.pointerType !== 'touch') {
+                    try { stage.setPointerCapture(event.pointerId); } catch (error) { /* Capture is optional. */ }
+                }
                 beginGesture();
             });
             listen(stage, 'pointermove', function (event) {
@@ -158,6 +160,12 @@
                 if (!pointer || !gesture) { return; }
                 pointer.clientX = event.clientX;
                 pointer.clientY = event.clientY;
+                // A finger on the video must still scroll/zoom the page. Only
+                // stationary touch taps belong to the player; mouse drag pans it.
+                if (event.pointerType === 'touch') {
+                    if (Math.hypot(event.clientX - pointer.startX, event.clientY - pointer.startY) > 5) { dragged = true; }
+                    return;
+                }
                 if (gesture.pinch && pointers.size >= 2) {
                     const pinch = pinchPoints();
                     scale = Math.max(1, Math.min(3, gesture.scale * pinch.distance / gesture.distance));
@@ -180,6 +188,11 @@
             const finishPointer = function (event) {
                 const pointer = pointers.get(event.pointerId);
                 if (!pointer) { return; }
+                if (event.type !== 'pointerup') {
+                    dragged = true;
+                    lastTapAt = 0;
+                    lastTapSide = '';
+                }
                 if (dragged || event.pointerType === 'touch') { suppressClickUntil = Date.now() + 700; }
                 if (event.type === 'pointerup' && !dragged && pointers.size === 1 && event.pointerType === 'touch' && Date.now() - pointer.startedAt < 500) {
                     registerTap(event);
@@ -196,7 +209,7 @@
             listen(window, 'resize', applyZoom);
             const resizeObserver = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(applyZoom) : null;
             if (resizeObserver) { resizeObserver.observe(stage); }
-            if (player.options.gestures) { stage.style.touchAction = 'none'; }
+            if (player.options.gestures) { stage.style.touchAction = 'pan-y pinch-zoom'; }
             player.root.classList.add('fireplayer--video-ready');
             applyZoom();
 
