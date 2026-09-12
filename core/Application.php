@@ -74,9 +74,12 @@ class Application
 
         if ($this->isInstalled() && $this->isUpdateInProgress()) {
             http_response_code(503);
-            header('Retry-After: 60');
+            header('Retry-After: 12');
             header('Content-Type: text/html; charset=utf-8');
-            exit('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maintenance</title><body style="font-family:sans-serif;padding:40px;text-align:center"><h1>FIREBALL CMS maintenance</h1><p>The site is being updated. Please try again shortly.</p></body></html>');
+            $this->prepareMaintenanceLanguage();
+            exit($this->view->render('errors/update', [
+                'retry_after' => 12,
+            ], false));
         }
 
         echo $this->router->dispatch();
@@ -106,6 +109,25 @@ class Application
         @unlink($lockPath);
 
         return false;
+    }
+
+    /**
+     * Загружает базовые переводы до маршрутизации, чтобы экран обновления
+     * оставался локализованным даже во время 503-ответа.
+     */
+    protected function prepareMaintenanceLanguage(): void
+    {
+        $routeLocale = null;
+        if (MULTILANGS) {
+            $firstSegment = strtok(trim($this->request->getPath(), '/'), '/');
+            if (is_string($firstSegment) && array_key_exists($firstSegment, LANGS)) {
+                $routeLocale = $firstSegment;
+            }
+        }
+
+        $locale = Localization::resolve($routeLocale, $this->request->getPath())['current_locale'];
+        app()->set('lang', LANGS[$locale] ?? LANGS[Localization::fallbackLocale()] ?? reset(LANGS));
+        Language::load(null);
     }
 
     public function isInstalled(): bool

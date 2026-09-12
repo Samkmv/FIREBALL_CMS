@@ -42,17 +42,99 @@ $router->get('/admin/camera-manager/sites/edit/(?P<id>\d+)/?', static function (
     ]));
 })->middleware(['auth', 'admin']);
 
+$router->get('/admin/camera-manager/sites/connection/(?P<id>\d+)/?', static function (): string {
+    $site = FireballPluginCameraManager::site((int)get_route_param('id'));
+    if ($site === null) {
+        abort();
+    }
+    $network = [];
+    $networkError = '';
+    try {
+        $network = FireballPluginCameraManager::networkConfiguration((int)$site['id']);
+    } catch (Throwable $exception) {
+        $networkError = $exception->getMessage();
+    }
+
+    return plugin_view('camera-manager', 'site-connection', FireballPluginCameraManager::viewData('sites', [
+        'title' => 'Подключение объекта ' . (string)$site['code'],
+        'site' => $site,
+        'network' => $network,
+        'network_error' => $networkError,
+        'diagnostic_jobs' => FireballPluginCameraManager::diagnosticJobs((int)$site['id']),
+        'cameras' => FireballPluginCameraManager::siteCameras((int)$site['id']),
+        'rtsp_profiles' => \Fireball\CameraManager\RtspUrlBuilder::PROFILE_LABELS,
+    ]));
+})->middleware(['auth', 'admin']);
+
 $router->post('/admin/camera-manager/sites/save', static function () use ($cameraManagerRedirect): never {
     $id = (int)request()->post('id', 0);
     try {
         $savedId = FireballPluginCameraManager::saveSite(request()->getData(), $id > 0 ? $id : null);
         session()->setFlash('success', 'Объект сохранён. Пароль RTSP в таблицах и логах не отображается.');
-        $cameraManagerRedirect('/admin/camera-manager/sites/edit/' . $savedId);
+        $cameraManagerRedirect($id > 0
+            ? '/admin/camera-manager/sites/edit/' . $savedId
+            : '/admin/camera-manager/sites/connection/' . $savedId);
     } catch (Throwable $exception) {
         log_error_details('Camera Manager site save failed', ['site_id' => $id], $exception);
         session()->setFlash('error', $exception->getMessage());
         $cameraManagerRedirect($id > 0 ? '/admin/camera-manager/sites/edit/' . $id : '/admin/camera-manager/sites/create');
     }
+})->middleware(['auth', 'admin']);
+
+$router->post('/admin/camera-manager/sites/diagnostics', static function () use ($cameraManagerRedirect): never {
+    $siteId = (int)request()->post('site_id', 0);
+    try {
+        FireballPluginCameraManager::queueSiteDiagnostics($siteId);
+        session()->setFlash('success', 'Диагностика поставлена в очередь. RTSP-агент выполнит только разрешённые проверки.');
+    } catch (Throwable $exception) {
+        log_error_details('Camera Manager site diagnostics queue failed', ['site_id' => $siteId], $exception);
+        session()->setFlash('error', $exception->getMessage());
+    }
+    $cameraManagerRedirect('/admin/camera-manager/sites/connection/' . $siteId);
+})->middleware(['auth', 'admin']);
+
+$router->post('/admin/camera-manager/sites/rtsp-probe', static function () use ($cameraManagerRedirect): never {
+    $siteId = (int)request()->post('site_id', 0);
+    try {
+        FireballPluginCameraManager::queueRtspProbe(
+            $siteId,
+            (int)request()->post('channel', 1),
+            (int)request()->post('subtype', 0)
+        );
+        session()->setFlash('success', 'RTSP auto-detect поставлен в очередь без выполнения LAN-запроса с SprintHost.');
+    } catch (Throwable $exception) {
+        log_error_details('Camera Manager RTSP probe queue failed', ['site_id' => $siteId], $exception);
+        session()->setFlash('error', $exception->getMessage());
+    }
+    $cameraManagerRedirect('/admin/camera-manager/sites/connection/' . $siteId . '#rtsp-detect');
+})->middleware(['auth', 'admin']);
+
+$router->post('/admin/camera-manager/sites/apply-rtsp-profile', static function () use ($cameraManagerRedirect): never {
+    $siteId = (int)request()->post('site_id', 0);
+    try {
+        $label = FireballPluginCameraManager::applyDetectedRtspProfile($siteId);
+        session()->setFlash('success', 'RTSP-профиль применён после подтверждения: ' . $label . '.');
+    } catch (Throwable $exception) {
+        session()->setFlash('error', $exception->getMessage());
+    }
+    $cameraManagerRedirect('/admin/camera-manager/sites/connection/' . $siteId . '#rtsp-detect');
+})->middleware(['auth', 'admin']);
+
+$router->get('/admin/camera-manager/sites/network-script/(?P<id>\d+)/(?P<kind>up|down)/?', static function (): never {
+    $siteId = (int)get_route_param('id');
+    $kind = (string)get_route_param('kind');
+    $network = FireballPluginCameraManager::networkConfiguration($siteId);
+    $contents = (string)($network['scripts'][$kind] ?? '');
+    $fileName = (string)($network['scripts'][$kind . '_name'] ?? '');
+    if ($contents === '' || preg_match('/^[a-zA-Z0-9._-]+\.sh$/', $fileName) !== 1) {
+        abort();
+    }
+    header('Content-Type: text/x-shellscript; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $fileName . '"');
+    header('Cache-Control: no-store, private, max-age=0');
+    header('X-Content-Type-Options: nosniff');
+    echo $contents;
+    exit;
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/camera-manager/cameras/create', static function (): string {
@@ -146,6 +228,7 @@ $router->get('/admin/camera-manager/preview', static function (): string {
     return plugin_view('camera-manager', 'preview', FireballPluginCameraManager::viewData('preview', [
         'title' => 'Предпросмотр конфигурации',
         'preview' => $preview,
+        'preview_rows' => FireballPluginCameraManager::publicationPreview(),
         'preview_error' => $error,
         'latest_publication' => FireballPluginCameraManager::latestPublication(),
     ]));

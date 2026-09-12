@@ -4,6 +4,124 @@ namespace Fireball\Subscriptions\Services;
 
 final class SubscriptionService
 {
+    public function syncUtilityAccess(int $userId, array $eligibility, ?int $preferredPlanId = null, ?int $actorId = null): ?array
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $isExcluded = empty($eligibility['eligible']) && (int)($eligibility['matched_exception_id'] ?? 0) > 0;
+        $exclusionId = $isExcluded ? (int)$eligibility['matched_exception_id'] : null;
+        $now = date('Y-m-d H:i:s');
+
+        db()->beginTransaction();
+        try {
+            $user = db()->query('SELECT id FROM users WHERE id = ? LIMIT 1 FOR UPDATE', [$userId])->getOne();
+            if (!$user) {
+                db()->commit();
+
+                return null;
+            }
+
+            $managed = db()->query(
+                'SELECT * FROM subscriptions WHERE user_id = ? AND utility_managed = 1 AND archived_at IS NULL ORDER BY id DESC FOR UPDATE',
+                [$userId]
+            )->get() ?: [];
+
+            if (!$isExcluded) {
+                foreach ($managed as $subscription) {
+                    if ((string)$subscription['status'] === 'disabled' && !empty($subscription['ends_at'])) {
+                        continue;
+                    }
+                    db()->query(
+                        "UPDATE subscriptions SET status = 'disabled', ends_at = ?, grace_ends_at = NULL, cancelled_at = ?, next_billing_at = NULL, auto_renew = 0, updated_at = ? WHERE id = ?",
+                        [$now, $now, $now, (int)$subscription['id']]
+                    );
+                    $this->event(
+                        'subscription.utility_access_disabled',
+                        (int)$subscription['id'], null, $userId, (string)$subscription['status'], 'disabled',
+                        ['address_exclusion_id' => (int)($subscription['address_exclusion_id'] ?? 0)],
+                        $actorId
+                    );
+                }
+                db()->commit();
+
+                return null;
+            }
+
+            $current = $managed[0] ?? null;
+            $planId = $this->resolveUtilityPlanId($userId, $preferredPlanId, $current);
+            if ($planId <= 0) {
+                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_utility_plan_missing'));
+            }
+
+            foreach (array_slice($managed, 1) as $duplicate) {
+                db()->query(
+                    "UPDATE subscriptions SET status = 'disabled', ends_at = ?, grace_ends_at = NULL, cancelled_at = ?, next_billing_at = NULL, auto_renew = 0, updated_at = ? WHERE id = ?",
+                    [$now, $now, $now, (int)$duplicate['id']]
+                );
+                $this->event(
+                    'subscription.utility_access_duplicate_disabled',
+                    (int)$duplicate['id'], null, $userId, (string)$duplicate['status'], 'disabled',
+                    ['address_exclusion_id' => (int)($duplicate['address_exclusion_id'] ?? 0)],
+                    $actorId
+                );
+            }
+
+            if ($current) {
+                $subscriptionId = (int)$current['id'];
+                $startsAt = (string)$current['status'] === 'active' && !empty($current['starts_at'])
+                    ? (string)$current['starts_at']
+                    : $now;
+                $changed = (string)$current['status'] !== 'active'
+                    || (int)$current['plan_id'] !== $planId
+                    || !empty($current['ends_at'])
+                    || (int)($current['address_exclusion_id'] ?? 0) !== $exclusionId
+                    || (string)$current['source'] !== 'external';
+                db()->query(
+                    "UPDATE subscriptions
+                     SET plan_id = ?, status = 'active', starts_at = ?, ends_at = NULL, grace_ends_at = NULL,
+                         cancelled_at = NULL, next_billing_at = NULL, auto_renew = 0, parent_payment_id = NULL,
+                         source = 'external', utility_managed = 1, address_exclusion_id = ?, updated_at = ?
+                     WHERE id = ?",
+                    [$planId, $startsAt, $exclusionId, $now, $subscriptionId]
+                );
+                if ($changed) {
+                    $this->event(
+                        'subscription.utility_access_activated',
+                        $subscriptionId, null, $userId, (string)$current['status'], 'active',
+                        ['plan_id' => $planId, 'address_exclusion_id' => $exclusionId],
+                        $actorId
+                    );
+                }
+            } else {
+                db()->query(
+                    "INSERT INTO subscriptions
+                        (user_id, plan_id, status, starts_at, ends_at, auto_renew, source, utility_managed, address_exclusion_id, created_at, updated_at)
+                     VALUES (?, ?, 'active', ?, NULL, 0, 'external', 1, ?, ?, ?)",
+                    [$userId, $planId, $now, $exclusionId, $now, $now]
+                );
+                $subscriptionId = (int)db()->getInsertId();
+                $this->event(
+                    'subscription.utility_access_activated',
+                    $subscriptionId, null, $userId, null, 'active',
+                    ['plan_id' => $planId, 'address_exclusion_id' => $exclusionId],
+                    $actorId
+                );
+            }
+
+            $result = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1', [$subscriptionId])->getOne();
+            db()->commit();
+
+            return is_array($result) ? $result : null;
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) {
+                db()->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
     public function activatePaidOrder(array $order, int $paymentId): array
     {
         $userId = (int)$order['user_id'];
@@ -29,15 +147,24 @@ final class SubscriptionService
         $current = db()->query(
             "SELECT * FROM subscriptions
              WHERE user_id = ? AND status IN ('active', 'grace_period', 'past_due', 'cancelled')
+               AND archived_at IS NULL
              ORDER BY ends_at DESC, id DESC LIMIT 1 FOR UPDATE",
             [$userId]
         )->getOne();
         $duration = $this->durationInterval((string)$terms['duration_unit'], (int)$terms['duration_value']);
         $consents = json_decode((string)($order['consent_snapshot'] ?? ''), true);
-        $autoRenew = !empty($terms['is_recurring'])
-            && (new SettingsService())->current()['recurring_enabled']
+        $autoRenew = !empty($terms['auto_renew_enabled'] ?? $terms['is_recurring'] ?? false)
             && !empty($consents['auto_renew'])
             && !empty($consents['recurring']);
+        $payment = db()->query('SELECT payment_type, subscription_id FROM subscription_payments WHERE id = ? LIMIT 1', [$paymentId])->getOne();
+        if (($payment['payment_type'] ?? '') === 'recurring') {
+            $renewalTarget = db()->query(
+                'SELECT auto_renew FROM subscriptions WHERE id = ? AND user_id = ? AND plan_id = ? LIMIT 1 FOR UPDATE',
+                [(int)($payment['subscription_id'] ?? 0), $userId, $planId]
+            )->getOne();
+            // A previously dispatched renewal may finish after opt-out. Honour the latest subscription preference.
+            $autoRenew = $autoRenew && !empty($renewalTarget['auto_renew']);
+        }
 
         if ($current && (int)$current['plan_id'] === $planId
             && (strtotime((string)$current['ends_at']) > $now->getTimestamp() || in_array((string)$current['status'], ['grace_period', 'past_due'], true))) {
@@ -91,37 +218,47 @@ final class SubscriptionService
 
     public function setAutoRenew(int $userId, bool $enabled): void
     {
-        $subscription = (new AccessService())->activeSubscription($userId);
-        if (!$subscription) {
-            throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_no_active_subscription'));
-        }
-        if ($enabled && !(new SettingsService())->current()['recurring_enabled']) {
-            throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_disabled'));
-        }
-        if ($enabled) {
-            $parent = db()->query(
-                'SELECT p.id, p.status, o.consent_snapshot, plans.is_recurring FROM subscription_payments p INNER JOIN subscription_orders o ON o.id = p.order_id INNER JOIN subscription_plans plans ON plans.id = p.plan_id WHERE p.id = ? AND p.status = ? LIMIT 1',
-                [(int)$subscription['parent_payment_id'], 'paid']
-            )->getOne();
-            $consents = json_decode((string)($parent['consent_snapshot'] ?? ''), true);
-            if (!$parent || empty($parent['is_recurring']) || empty($consents['recurring']) || empty($consents['auto_renew'])) {
-                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_checkout_required'));
+        db()->beginTransaction();
+        try {
+            $subscription = (new AccessService())->activeSubscription($userId, true);
+            if (!$subscription) {
+                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_no_active_subscription'));
             }
+            if (!empty($subscription['utility_managed'])) {
+                throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_error_utility_managed'));
+            }
+            if ($enabled) {
+                (new SubscriptionEligibilityService())->assertEligible($userId, 'auto_renew_enable');
+                $parent = db()->query(
+                    'SELECT p.id, p.status, o.consent_snapshot, o.plan_snapshot FROM subscription_payments p INNER JOIN subscription_orders o ON o.id = p.order_id WHERE p.id = ? AND p.status = ? LIMIT 1',
+                    [(int)$subscription['parent_payment_id'], 'paid']
+                )->getOne();
+                $consents = json_decode((string)($parent['consent_snapshot'] ?? ''), true);
+                $terms = json_decode((string)($parent['plan_snapshot'] ?? ''), true);
+                if (!$parent || empty($terms['auto_renew_enabled'] ?? $terms['is_recurring'] ?? false) || empty($consents['recurring']) || empty($consents['auto_renew'])) {
+                    throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_recurring_checkout_required'));
+                }
+            }
+            $now = date('Y-m-d H:i:s');
+            $status = $subscription['status'] === 'cancelled' ? 'active' : $subscription['status'];
+            $nextBillingAt = $enabled ? ($subscription['next_billing_at'] ?? $subscription['ends_at']) : null;
+            if ((bool)$subscription['auto_renew'] === $enabled && $subscription['next_billing_at'] === $nextBillingAt && $subscription['status'] === $status) {
+                db()->commit();
+                return;
+            }
+            db()->query(
+                'UPDATE subscriptions SET auto_renew = ?, cancelled_at = ?, next_billing_at = ?, status = ?, updated_at = ? WHERE id = ?',
+                [$enabled ? 1 : 0, $enabled ? null : ($subscription['cancelled_at'] ?? $now), $nextBillingAt, $status, $now, (int)$subscription['id']]
+            );
+            $this->event(
+                $enabled ? 'subscription.auto_renew_enabled' : 'subscription.auto_renew_disabled',
+                (int)$subscription['id'], null, $userId, (string)$subscription['status'], (string)$status
+            );
+            db()->commit();
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
         }
-        db()->query(
-            'UPDATE subscriptions SET auto_renew = ?, cancelled_at = ?, status = ?, updated_at = ? WHERE id = ?',
-            [
-                $enabled ? 1 : 0,
-                $enabled ? null : date('Y-m-d H:i:s'),
-                $enabled ? 'active' : 'cancelled',
-                date('Y-m-d H:i:s'),
-                (int)$subscription['id'],
-            ]
-        );
-        $this->event(
-            $enabled ? 'subscription.auto_renew_enabled' : 'subscription.auto_renew_disabled',
-            (int)$subscription['id'], null, $userId, (string)$subscription['status'], $enabled ? 'active' : 'cancelled'
-        );
     }
 
     public function grant(int $userId, int $planId, int $durationValue, string $durationUnit, int $actorId, string $comment = '', string $source = 'manual'): int
@@ -145,9 +282,12 @@ final class SubscriptionService
 
     public function updateManaged(int $subscriptionId, int $planId, string $status, string $endsAt, int $actorId): void
     {
-        $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1', [$subscriptionId])->getOne();
+        $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? AND archived_at IS NULL LIMIT 1', [$subscriptionId])->getOne();
         if (!$subscription || !db()->query('SELECT id FROM subscription_plans WHERE id = ? LIMIT 1', [$planId])->getOne()) {
             throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+        }
+        if (!empty($subscription['utility_managed'])) {
+            throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_error_utility_managed'));
         }
         $status = in_array($status, ['active', 'disabled'], true) ? $status : 'disabled';
         try {
@@ -157,7 +297,7 @@ final class SubscriptionService
         }
         $now = date('Y-m-d H:i:s');
         db()->query(
-            'UPDATE subscriptions SET plan_id = ?, status = ?, ends_at = ?, auto_renew = IF(? = \'active\', auto_renew, 0), next_billing_at = IF(? = \'active\', next_billing_at, NULL), updated_at = ? WHERE id = ?',
+            'UPDATE subscriptions SET plan_id = ?, status = ?, ends_at = ?, auto_renew = IF(? = \'active\', auto_renew, 0), next_billing_at = IF(? = \'active\', next_billing_at, NULL), updated_at = ? WHERE id = ? AND archived_at IS NULL',
             [$planId, $status, $end->format('Y-m-d H:i:s'), $status, $status, $now, $subscriptionId]
         );
         $this->event('subscription.updated_by_admin', $subscriptionId, null, (int)$subscription['user_id'], (string)$subscription['status'], $status, [
@@ -165,6 +305,92 @@ final class SubscriptionService
             'plan_id' => $planId,
             'ends_at' => $end->format(DATE_ATOM),
         ], $actorId);
+    }
+
+    public function archiveDisabledSubscription(int $subscriptionId, int $actorId): bool
+    {
+        if ($subscriptionId <= 0) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+        }
+
+        db()->beginTransaction();
+        try {
+            $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1 FOR UPDATE', [$subscriptionId])->getOne();
+            if (!$subscription) {
+                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+            }
+            // Check the current row, not the status or source submitted by the browser.
+            if ((string)$subscription['status'] !== 'disabled') {
+                throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_subscriber_delete_disabled_only'));
+            }
+            if (!empty($subscription['archived_at'])) {
+                db()->commit();
+                return false;
+            }
+            $now = date('Y-m-d H:i:s');
+            db()->query(
+                "UPDATE subscriptions SET archived_at = ?, auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ? AND status = 'disabled' AND archived_at IS NULL",
+                [$now, $now, $subscriptionId]
+            );
+            $this->event('subscriber.disabled_archived_by_admin', $subscriptionId, null, (int)$subscription['user_id'], 'disabled', 'archived', [
+                'source' => (string)($subscription['source'] ?? ''),
+            ], $actorId ?: null);
+            db()->commit();
+            return true;
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function archiveInactiveSubscriber(int $userId, int $actorId): int
+    {
+        if ($userId <= 0) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+        }
+
+        $now = date('Y-m-d H:i:s');
+        db()->beginTransaction();
+        try {
+            $active = db()->query(
+                "SELECT id FROM subscriptions
+                 WHERE user_id = ? AND archived_at IS NULL
+                   AND (
+                        (status IN ('active', 'cancelled') AND starts_at <= ? AND (ends_at IS NULL OR ends_at > ?))
+                        OR (status = 'grace_period' AND starts_at <= ? AND COALESCE(grace_ends_at, ends_at) > ?)
+                   )
+                 LIMIT 1 FOR UPDATE",
+                [$userId, $now, $now, $now, $now]
+            )->getOne();
+            if ($active) {
+                throw new \DomainException(\FireballPluginSubscriptions::t('subscriptions_subscriber_delete_active_error'));
+            }
+
+            $rows = db()->query(
+                'SELECT id FROM subscriptions WHERE user_id = ? AND archived_at IS NULL FOR UPDATE',
+                [$userId]
+            )->get() ?: [];
+            if ($rows === []) {
+                throw new \RuntimeException(\FireballPluginSubscriptions::t('subscriptions_error_subscription_not_found'));
+            }
+
+            db()->query(
+                'UPDATE subscriptions SET archived_at = ?, auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE user_id = ? AND archived_at IS NULL',
+                [$now, $now, $userId]
+            );
+            $count = count($rows);
+            $this->event('subscriber.archived_by_admin', null, null, $userId, null, 'archived', [
+                'subscription_count' => $count,
+            ], $actorId ?: null);
+            db()->commit();
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) {
+                db()->rollBack();
+            }
+            throw $exception;
+        }
+
+        return $count;
     }
 
     public function event(string $key, ?int $subscriptionId, ?int $paymentId, ?int $userId, ?string $oldStatus, ?string $newStatus, array $metadata = [], ?int $actorId = null): void
@@ -183,5 +409,43 @@ final class SubscriptionService
         $value = max(1, min(1200, $value));
 
         return new \DateInterval($unit === 'months' ? 'P' . $value . 'M' : 'P' . $value . 'D');
+    }
+
+    private function resolveUtilityPlanId(int $userId, ?int $preferredPlanId, ?array $current): int
+    {
+        if ($preferredPlanId !== null && $preferredPlanId > 0) {
+            $preferred = db()->query(
+                'SELECT id FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1',
+                [$preferredPlanId]
+            )->getOne();
+            if ($preferred) {
+                return (int)$preferred['id'];
+            }
+        }
+
+        if ($current && (int)($current['plan_id'] ?? 0) > 0) {
+            $existing = db()->query('SELECT id FROM subscription_plans WHERE id = ? LIMIT 1', [(int)$current['plan_id']])->getOne();
+            if ($existing) {
+                return (int)$existing['id'];
+            }
+        }
+
+        $previous = db()->query(
+            'SELECT p.id
+             FROM subscriptions s
+             INNER JOIN subscription_plans p ON p.id = s.plan_id
+             WHERE s.user_id = ? AND s.utility_managed = 0
+             ORDER BY s.created_at DESC, s.id DESC LIMIT 1',
+            [$userId]
+        )->getOne();
+        if ($previous) {
+            return (int)$previous['id'];
+        }
+
+        $fallback = db()->query(
+            'SELECT id FROM subscription_plans ORDER BY is_active DESC, is_public DESC, sort_order ASC, id ASC LIMIT 1'
+        )->getOne();
+
+        return (int)($fallback['id'] ?? 0);
     }
 }

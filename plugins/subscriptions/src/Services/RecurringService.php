@@ -10,13 +10,11 @@ final class RecurringService
 {
     public function processDue(int $limit = 25): array
     {
-        if (!(new SettingsService())->current()['recurring_enabled']) {
-            return ['initiated' => 0, 'failed' => 0];
-        }
         $limit = max(1, min(100, $limit));
         $rows = db()->query(
             "SELECT id FROM subscriptions
-             WHERE auto_renew = 1
+             WHERE archived_at IS NULL
+               AND auto_renew = 1
                AND status IN ('active', 'grace_period', 'past_due')
                AND next_billing_at IS NOT NULL
                AND next_billing_at <= NOW()
@@ -39,10 +37,25 @@ final class RecurringService
 
     public function initiate(int $subscriptionId): bool
     {
+        $preflight = db()->query('SELECT id, user_id, status, auto_renew, next_billing_at, archived_at FROM subscriptions WHERE id = ? LIMIT 1', [$subscriptionId])->getOne();
+        if (!$preflight || !empty($preflight['archived_at']) || empty($preflight['auto_renew']) || empty($preflight['next_billing_at'])
+            || !in_array($preflight['status'], ['active', 'grace_period', 'past_due'], true)) {
+            return false;
+        }
+        try {
+            (new SubscriptionEligibilityService())->assertEligible((int)$preflight['user_id'], 'recurring_preflight');
+        } catch (\DomainException) {
+            $this->blockRenewalForAddress($preflight);
+
+            return false;
+        }
+
+        $subscription = $preflight;
         db()->beginTransaction();
         try {
             $subscription = db()->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1 FOR UPDATE', [$subscriptionId])->getOne();
-            if (!$subscription || empty($subscription['auto_renew']) || empty($subscription['next_billing_at']) || strtotime((string)$subscription['next_billing_at']) > time()) {
+            if (!$subscription || !empty($subscription['archived_at']) || empty($subscription['auto_renew']) || empty($subscription['next_billing_at'])
+                || !in_array($subscription['status'], ['active', 'grace_period', 'past_due'], true) || strtotime((string)$subscription['next_billing_at']) > time()) {
                 db()->commit();
                 return false;
             }
@@ -68,14 +81,18 @@ final class RecurringService
             } catch (\Throwable) {
                 $snapshotJson = (string)($parentOrder['customer_snapshot'] ?? '{}');
             }
+            (new SubscriptionEligibilityService())->assertEligible((int)$subscription['user_id'], 'recurring_before_order');
             $invoiceId = $this->uniqueInvoiceId();
             $now = date('Y-m-d H:i:s');
+            $renewalPlanSnapshot = $plans->purchaseSnapshot($plan);
+            $renewalPlanSnapshot['auto_renew_enabled'] = !empty($subscription['auto_renew']);
+            $renewalPlanSnapshot['is_recurring'] = !empty($subscription['auto_renew']);
             db()->query(
                 "INSERT INTO subscription_orders (invoice_id, user_id, plan_id, subscription_id, amount_minor, currency, plan_snapshot, customer_snapshot, consent_snapshot, status, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)",
                 [
                     $invoiceId, (int)$subscription['user_id'], (int)$subscription['plan_id'], $subscriptionId,
                     (int)$plan['price_minor'], (string)$plan['currency'],
-                    json_encode($plans->purchaseSnapshot($plan), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+                    json_encode($renewalPlanSnapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
                     $snapshotJson,
                     (string)($parentOrder['consent_snapshot'] ?? '{}'), date('Y-m-d H:i:s', time() + 86400), $now, $now,
                 ]
@@ -95,6 +112,12 @@ final class RecurringService
             if (db()->inTransaction()) {
                 db()->rollBack();
             }
+            if ($exception instanceof \DomainException
+                && $exception->getMessage() === \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) {
+                $this->blockRenewalForAddress($subscription ?: $preflight);
+
+                return false;
+            }
             throw $exception;
         }
 
@@ -107,13 +130,60 @@ final class RecurringService
                 : null;
             $pendingStatus = $graceEnd !== null && strtotime($graceEnd) > time() ? 'grace_period' : 'past_due';
             db()->query('UPDATE subscription_payments SET provider_transaction = ?, updated_at = ? WHERE id = ?', [$response, date('Y-m-d H:i:s'), $paymentId]);
-            db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ?', [$pendingStatus, $graceEnd, date('Y-m-d H:i:s'), $subscriptionId]);
+            db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL', [$pendingStatus, $graceEnd, date('Y-m-d H:i:s'), $subscriptionId]);
             (new SubscriptionService())->event('payment.recurring_initiated', $subscriptionId, $paymentId, (int)$subscription['user_id'], null, 'pending', ['invoice_id' => $invoiceId]);
             return true;
         } catch (\Throwable $exception) {
-            $this->markFailed($subscription, $plan, $paymentId, $orderId, $exception);
+            if ($exception instanceof \Fireball\Subscriptions\Support\RecurringCancelledException) {
+                $now = date('Y-m-d H:i:s');
+                db()->query("UPDATE subscription_payments SET status = 'cancelled', error_message = ?, updated_at = ? WHERE id = ? AND status <> 'paid'", ['Auto-renew disabled before dispatch', $now, $paymentId]);
+                db()->query("UPDATE subscription_orders SET status = 'cancelled', updated_at = ? WHERE id = ? AND status <> 'paid'", [$now, $orderId]);
+                (new SubscriptionService())->event('payment.recurring_cancelled', $subscriptionId, $paymentId, (int)$subscription['user_id'], 'pending', 'cancelled');
+                return false;
+            }
+            if ($exception instanceof \DomainException
+                && $exception->getMessage() === \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) {
+                $this->markEligibilityBlocked($subscription, $paymentId, $orderId, $exception);
+            } else {
+                $this->markFailed($subscription, $plan, $paymentId, $orderId, $exception);
+            }
             throw $exception;
         }
+    }
+
+    private function markEligibilityBlocked(array $subscription, int $paymentId, int $orderId, \Throwable $exception): void
+    {
+        $now = date('Y-m-d H:i:s');
+        db()->query("UPDATE subscription_payments SET status = 'failed', error_message = ?, failed_at = ?, updated_at = ? WHERE id = ?", [mb_substr($exception->getMessage(), 0, 2000), $now, $now, $paymentId]);
+        db()->query("UPDATE subscription_orders SET status = 'failed', updated_at = ? WHERE id = ?", [$now, $orderId]);
+        db()->query('UPDATE subscriptions SET auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ?', [$now, (int)$subscription['id']]);
+        (new SubscriptionService())->event(
+            'subscription.auto_renew_blocked_by_address',
+            (int)$subscription['id'],
+            $paymentId,
+            (int)$subscription['user_id'],
+            (string)$subscription['status'],
+            (string)$subscription['status'],
+            ['reason' => SubscriptionEligibilityService::REASON_ADDRESS_INCLUDED_IN_UTILITIES]
+        );
+    }
+
+    private function blockRenewalForAddress(array $subscription): void
+    {
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            'UPDATE subscriptions SET auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ?',
+            [$now, (int)$subscription['id']]
+        );
+        (new SubscriptionService())->event(
+            'subscription.auto_renew_blocked_by_address',
+            (int)$subscription['id'],
+            null,
+            (int)$subscription['user_id'],
+            (string)$subscription['status'],
+            (string)$subscription['status'],
+            ['reason' => SubscriptionEligibilityService::REASON_ADDRESS_INCLUDED_IN_UTILITIES]
+        );
     }
 
     private function markFailed(array $subscription, array $plan, int $paymentId, int $orderId, \Throwable $exception): void
@@ -126,7 +196,7 @@ final class RecurringService
         $status = $graceEnd !== null && strtotime($graceEnd) > time() ? 'grace_period' : 'past_due';
         db()->query("UPDATE subscription_payments SET status = 'failed', error_message = ?, failed_at = ?, updated_at = ? WHERE id = ?", [mb_substr($exception->getMessage(), 0, 2000), $now, $now, $paymentId]);
         db()->query("UPDATE subscription_orders SET status = 'failed', updated_at = ? WHERE id = ?", [$now, $orderId]);
-        db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ?', [$status, $graceEnd, $now, (int)$subscription['id']]);
+        db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL', [$status, $graceEnd, $now, (int)$subscription['id']]);
         (new SubscriptionService())->event('payment.recurring_failed', (int)$subscription['id'], $paymentId, (int)$subscription['user_id'], (string)$subscription['status'], $status, ['error_class' => get_class($exception)]);
         try {
             notification_create([

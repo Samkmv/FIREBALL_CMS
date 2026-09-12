@@ -16,6 +16,10 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
     public function checkoutUrl(array $order, array $plan, array $profile): string
     {
+        (new \Fireball\Subscriptions\Services\SubscriptionEligibilityService())->assertEligible(
+            (int)($order['user_id'] ?? 0),
+            'gateway_checkout'
+        );
         $config = $this->settings->assertGatewayReady();
         $invoiceId = (string)(int)$order['invoice_id'];
         $outSum = Money::decimal((int)$order['amount_minor']);
@@ -41,7 +45,7 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
         $params['SignatureValue'] = $this->hash(implode(':', $signatureParts), $config['hash_algorithm']);
         $consents = json_decode((string)($order['consent_snapshot'] ?? ''), true);
-        if (!empty($config['recurring_enabled']) && !empty($plan['is_recurring'])
+        if (!empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false)
             && !empty($consents['recurring']) && !empty($consents['auto_renew'])) {
             $params['Recurring'] = 'true';
         }
@@ -70,10 +74,33 @@ final class RobokassaGateway implements PaymentGatewayInterface
 
     public function initiateRecurring(array $order, array $plan, array $parentPayment): string
     {
-        $config = $this->settings->assertGatewayReady();
-        if (empty($config['recurring_enabled'])) {
-            throw new \RuntimeException('Recurring payments are disabled.');
+        db()->beginTransaction();
+        try {
+            $subscription = db()->query(
+                'SELECT * FROM subscriptions WHERE id = ? AND user_id = ? AND plan_id = ? LIMIT 1 FOR UPDATE',
+                [(int)($order['subscription_id'] ?? 0), (int)($order['user_id'] ?? 0), (int)($order['plan_id'] ?? 0)]
+            )->getOne();
+            if (!$subscription || !empty($subscription['archived_at']) || empty($subscription['auto_renew'])
+                || empty($subscription['next_billing_at']) || !in_array($subscription['status'], ['active', 'grace_period', 'past_due'], true)) {
+                throw new \Fireball\Subscriptions\Support\RecurringCancelledException('Automatic renewal is no longer enabled.');
+            }
+            // Serialize the final dispatch with opt-out: cancellation wins if it acquired this lock first.
+            $response = $this->sendRecurring($order, $plan, $parentPayment);
+            db()->commit();
+            return $response;
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
         }
+    }
+
+    private function sendRecurring(array $order, array $plan, array $parentPayment): string
+    {
+        (new \Fireball\Subscriptions\Services\SubscriptionEligibilityService())->assertEligible(
+            (int)($order['user_id'] ?? 0),
+            'gateway_recurring'
+        );
+        $config = $this->settings->assertGatewayReady();
         $invoiceId = (string)(int)$order['invoice_id'];
         $outSum = Money::decimal((int)$order['amount_minor']);
         $signatureParts = [$config['merchant_login'], $outSum, $invoiceId, $config['password1']];

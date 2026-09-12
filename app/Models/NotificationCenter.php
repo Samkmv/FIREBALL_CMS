@@ -30,13 +30,13 @@ class NotificationCenter
     /**
      * Возвращает общую ленту непрочитанных уведомлений для пользователя.
      */
-    public function getFeedForUser(int $userId, bool $isAdmin, int $limit = 8): array
+    public function getFeedForUser(int $userId, bool $isAdmin, int $limit = 20, bool $checkUpdates = true): array
     {
         $limit = max(1, min(20, $limit));
         $chatUnreadCount = $this->chatMessages->getUnreadCountForUser($userId);
         $contactUnreadCount = $isAdmin ? $this->contactRequests->countUnread() : 0;
         $notificationUnreadCount = $this->notifications->unreadCountForUser($userId);
-        $updateItem = $isAdmin && check_creator() ? $this->getUpdateNotificationItem($userId) : null;
+        $updateItem = $isAdmin ? $this->getUpdateNotificationItem($userId, $checkUpdates) : null;
         $updateUnreadCount = $updateItem !== null ? 1 : 0;
 
         $chatItems = $this->chatMessages->getUnreadNotificationItemsForUser($userId, $limit);
@@ -84,6 +84,7 @@ class NotificationCenter
             'contact_unread_count' => $contactUnreadCount,
             'update_unread_count' => $updateUnreadCount,
             'plugin_unread_count' => count($pluginItems),
+            'dismissible_items' => array_merge($pluginItems, $updateItem !== null ? [$updateItem] : []),
             'items' => array_slice($items, 0, $limit),
         ];
     }
@@ -99,7 +100,7 @@ class NotificationCenter
 
         $feed = $this->getFeedForUser($userId, $isAdmin, 20);
         $generatedItems = array_values(array_filter(
-            (array)($feed['items'] ?? []),
+            (array)($feed['dismissible_items'] ?? []),
             static function (mixed $item): bool {
                 if (!is_array($item) || !empty($item['notification_id'])) {
                     return false;
@@ -130,11 +131,24 @@ class NotificationCenter
     }
 
     /**
-     * Добавляет уведомление о новой версии, если авто-проверка нашла обновление.
+     * Считает непрочитанные элементы для иконки PWA без внешней проверки обновлений.
      */
-    protected function getUpdateNotificationItem(int $userId): ?array
+    public function badgeCountForUser(int $userId, bool $isAdmin): int
     {
-        $payload = $this->updateCenter->checkForUpdatesIfStale();
+        if ($userId <= 0) return 0;
+
+        // A background badge refresh must not start a GitHub update check.
+        return (int)$this->getFeedForUser($userId, $isAdmin, 20, false)['total_unread_count'];
+    }
+
+    /**
+     * Добавляет уведомление о новой версии из проверки или сохранённого результата.
+     */
+    protected function getUpdateNotificationItem(int $userId, bool $checkUpdates = true): ?array
+    {
+        $payload = $checkUpdates
+            ? $this->updateCenter->checkForUpdatesIfStale()
+            : $this->updateCenter->getLastCheckPayload();
         if (!is_array($payload) || ($payload['status'] ?? '') !== 'ok' || empty($payload['update_available'])) {
             return null;
         }

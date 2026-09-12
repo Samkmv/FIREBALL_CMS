@@ -27,6 +27,8 @@ class NotificationController extends BaseController
      */
     public function feed()
     {
+        header('Cache-Control: private, no-store');
+        $this->runCalendarReminderHeartbeat();
         $currentUser = get_user();
         $feed = $this->notifications->getFeedForUser((int)$currentUser['id'], check_admin());
 
@@ -104,9 +106,23 @@ class NotificationController extends BaseController
             'notification_unread_count' => (int)($feed['notification_unread_count'] ?? 0),
             'chat_unread_count' => (int)$feed['chat_unread_count'],
             'contact_unread_count' => (int)$feed['contact_unread_count'],
+            'update_unread_count' => (int)($feed['update_unread_count'] ?? 0),
             'plugin_unread_count' => (int)($feed['plugin_unread_count'] ?? 0),
             'items' => $items,
         ]);
+    }
+
+    private function runCalendarReminderHeartbeat(): void
+    {
+        if (!class_exists(\Fireball\Calendar\Services\ReminderDispatchService::class)) {
+            return;
+        }
+
+        try {
+            (new \Fireball\Calendar\Services\ReminderDispatchService())->runThrottled();
+        } catch (\Throwable $exception) {
+            log_error_details('Calendar reminder heartbeat failed', [], $exception);
+        }
     }
 
     public function markRead(): void

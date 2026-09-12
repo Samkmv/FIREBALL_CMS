@@ -108,7 +108,7 @@ class AdminController extends BaseController
             log_error_details('Admin dashboard activity summary failed', [], $exception);
         }
 
-        $updateCenter = check_creator() ? $this->updateCenter->getDashboardData() : [];
+        $updateCenter = $this->updateCenter->getDashboardData();
         $engineRelease = require CONFIG . '/version.php';
         $freeBytes = @disk_free_space(ROOT);
         $formatBytes = static function (int|float|false $bytes): string {
@@ -761,8 +761,12 @@ class AdminController extends BaseController
      */
     public function userForm()
     {
+        $this->requireAdminAccess();
         $userId = (int)get_route_param('id', 0);
         $isEdit = $userId > 0;
+        if (!$isEdit && !Auth::hasRole('creator')) {
+            abort(return_translation('error_403_message'), 403);
+        }
 
         $user = $isEdit ? $this->users->findEditableUserById($userId) : [];
         if ($isEdit && !$user) {
@@ -828,6 +832,7 @@ class AdminController extends BaseController
      */
     public function userDelete()
     {
+        $this->requireAdminAccess();
         $userId = (int)request()->post('id');
         if ($userId <= 0) {
             response()->redirect(base_href('/admin/users'));
@@ -1856,9 +1861,10 @@ class AdminController extends BaseController
      */
     public function updates()
     {
-        $this->requireCreatorForUpdates();
+        $this->requireAdminAccess();
 
         if (request()->isPost()) {
+            $this->requireCreatorForUpdates();
             $data = $this->normalizeUpdateSettingsData(request()->getData());
             $errors = $this->validateUpdateSettingsData($data);
 
@@ -1888,7 +1894,7 @@ class AdminController extends BaseController
      */
     public function checkForUpdates()
     {
-        $this->requireCreatorForUpdates();
+        $this->requireAdminAccess();
 
         try {
             $result = $this->updateCenter->checkForUpdates();
@@ -1920,7 +1926,7 @@ class AdminController extends BaseController
      */
     public function runUpdate()
     {
-        $this->requireCreatorForUpdates();
+        $this->requireAdminAccess();
 
         try {
             $result = $this->updateCenter->runUpdate();
@@ -1954,6 +1960,13 @@ class AdminController extends BaseController
         }
 
         response()->redirect(base_href('/admin/updates'));
+    }
+
+    private function requireAdminAccess(): void
+    {
+        if (!Auth::isAdmin()) {
+            abort(return_translation('error_403_message'), 403);
+        }
     }
 
     private function requireCreatorForUpdates(): void

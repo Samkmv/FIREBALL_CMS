@@ -111,20 +111,23 @@ class NotificationService
             ], $exception);
         }
 
-        $pushResult = ['sent' => 0, 'failed' => 0, 'total' => 0, 'disabled' => true];
-        try {
-            $pushResult = (new PwaService())->send($this->pushPayload($notification), [
-                'user_id' => $notification['user_id'],
-                'notification_id' => $notification['id'],
-                'source' => $notification['source'],
-                'type' => $notification['type'],
-            ]);
-        } catch (\Throwable $exception) {
-            log_error_details('Notification push dispatch failed', [
-                'notification_id' => $notification['id'],
-                'user_id' => $notification['user_id'],
-                'source' => $notification['source'],
-            ], $exception);
+        $pushEnabled = !array_key_exists('push_notification', $payload) || (bool)$payload['push_notification'];
+        $pushResult = ['sent' => 0, 'failed' => 0, 'total' => 0, 'disabled' => !$pushEnabled];
+        if ($pushEnabled) {
+            try {
+                $pushResult = (new PwaService())->send($this->pushPayload($notification), [
+                    'user_id' => $notification['user_id'],
+                    'notification_id' => $notification['id'],
+                    'source' => $notification['source'],
+                    'type' => $notification['type'],
+                ]);
+            } catch (\Throwable $exception) {
+                log_error_details('Notification push dispatch failed', [
+                    'notification_id' => $notification['id'],
+                    'user_id' => $notification['user_id'],
+                    'source' => $notification['source'],
+                ], $exception);
+            }
         }
 
         return [

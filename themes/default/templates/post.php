@@ -53,8 +53,8 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
 
             <?php if (!empty($post['show_post_image'])): ?>
                 <figure class="figure w-100 py-3 py-md-4 mb-3">
-                    <div class="ratio" style="--cz-aspect-ratio: calc(560 / 856 * 100%)">
-                        <img src="<?= htmlSC($post['image_webp'] ?? $post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 991px) 100vw, 856px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-4" width="<?= (int)($post['image_width'] ?: 856) ?>" height="<?= (int)($post['image_height'] ?: 560) ?>" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async" style="object-fit: cover;">
+                    <div class="ratio post-cover-frame" style="--cz-aspect-ratio: calc(560 / 856 * 100%); position: relative; width: 100%; aspect-ratio: 856 / 560; overflow: hidden;">
+                        <img src="<?= htmlSC($post['image_webp'] ?? $post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 991px) 100vw, 856px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-4 post-cover-image" width="856" height="560" alt="<?= htmlSC($post['title']) ?>" loading="eager" fetchpriority="high" decoding="async" style="position: absolute; inset: 0; display: block; width: 100%; max-width: 100%; height: 100%; object-fit: cover;">
                     </div>
                 </figure>
             <?php endif; ?>

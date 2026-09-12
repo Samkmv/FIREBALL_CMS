@@ -31,7 +31,7 @@ $value = static fn(string $key, mixed $default = ''): mixed => $values[$key] ?? 
         </div>
         <hr class="my-4">
         <div class="row g-3">
-            <?php foreach ([['is_active', 'subscriptions_field_active', true], ['is_public', 'subscriptions_field_public', true], ['is_recurring', 'subscriptions_field_recurring', false]] as [$key, $label, $default]): ?>
+            <?php foreach ([['is_active', 'subscriptions_field_active', true], ['is_public', 'subscriptions_field_public', true], ['auto_renew_enabled', 'subscriptions_field_recurring', false]] as [$key, $label, $default]): ?>
                 <div class="col-md-6 col-xl-3"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= $value($key, $default) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div>
             <?php endforeach; ?>
             <div class="col-md-6 col-xl-3">

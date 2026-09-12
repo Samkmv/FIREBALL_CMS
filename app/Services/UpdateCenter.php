@@ -38,7 +38,7 @@ class UpdateCenter
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
         $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
         $channel = $this->resolveUpdateChannel($settings);
-        $lastCheck = $this->decodeLastCheck((string)($settings['updater_last_check_payload'] ?? ''));
+        $lastCheck = $this->lastCheckForChannel($settings);
         $storedCommit = $this->getStoredInstalledCommit($settings);
         $displayCommit = (string)($localGitState['commit_hash'] ?? '') !== ''
             ? (string)$localGitState['commit_hash']
@@ -54,7 +54,7 @@ class UpdateCenter
                 'channel' => $channel,
                 'source' => $channel === 'dev' ? 'main_branch' : 'github_releases',
                 'has_token' => trim((string)($settings['updater_github_token'] ?? '')) !== '',
-                'last_checked_at' => trim((string)($settings['updater_last_checked_at'] ?? '')),
+                'last_checked_at' => trim((string)($lastCheck['checked_at'] ?? '')),
                 'last_updated_at' => trim((string)($settings['updater_last_updated_at'] ?? '')),
                 'rollback_commit' => trim((string)($settings['updater_rollback_commit'] ?? '')),
             ],
@@ -274,7 +274,7 @@ class UpdateCenter
     {
         $settings = $this->siteSettings->all();
 
-        return $this->decodeLastCheck((string)($settings['updater_last_check_payload'] ?? ''));
+        return $this->lastCheckForChannel($settings);
     }
 
     /**
@@ -285,8 +285,8 @@ class UpdateCenter
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
-        $lastCheck = $this->decodeLastCheck((string)($settings['updater_last_check_payload'] ?? ''));
-        $lastCheckedAt = trim((string)($settings['updater_last_checked_at'] ?? ''));
+        $lastCheck = $this->lastCheckForChannel($settings);
+        $lastCheckedAt = trim((string)($lastCheck['checked_at'] ?? ''));
         $intervalSeconds = max(300, $intervalSeconds);
 
         if ($repository === '') {
@@ -840,6 +840,8 @@ class UpdateCenter
         $this->siteSettings->setMany([
             'updater_rollback_commit' => '',
             'updater_last_check_payload' => '',
+            'updater_last_check_payload_stable' => '',
+            'updater_last_check_payload_dev' => '',
             'updater_last_checked_at' => '',
         ]);
 
@@ -2690,6 +2692,12 @@ class UpdateCenter
      */
     protected function resolveUpdateChannel(array $settings): string
     {
+        // An administrator can only install published stable releases, even when
+        // the creator has configured Dev. Do not change the site's saved channel.
+        if (function_exists('get_user') && (get_user()['role'] ?? '') === 'admin') {
+            return 'stable';
+        }
+
         $channel = trim(mb_strtolower((string)($settings['update_channel'] ?? '')));
         if ($channel === '') {
             $configuredChannel = defined('UPDATE_CHANNEL') ? UPDATE_CHANNEL : getenv('UPDATE_CHANNEL');
@@ -2808,10 +2816,31 @@ class UpdateCenter
      */
     protected function persistLastCheck(array $payload): void
     {
+        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $channel = ($payload['channel'] ?? '') === 'dev' ? 'dev' : 'stable';
         $this->siteSettings->setMany([
-            'updater_last_check_payload' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'updater_last_check_payload' => $encoded,
+            'updater_last_check_payload_' . $channel => $encoded,
             'updater_last_checked_at' => (string)($payload['checked_at'] ?? date('Y-m-d H:i:s')),
         ]);
+    }
+
+    /**
+     * Не смешивает результаты проверок Stable и Dev между ролями и настройками.
+     */
+    protected function lastCheckForChannel(array $settings): ?array
+    {
+        $channel = $this->resolveUpdateChannel($settings);
+        // Keep the legacy key, but cache channels independently so simultaneous
+        // admin/creator feeds do not trigger a GitHub check every eight seconds.
+        foreach (['updater_last_check_payload', 'updater_last_check_payload_' . $channel] as $key) {
+            $payload = $this->decodeLastCheck((string)($settings[$key] ?? ''));
+            if (($payload['channel'] ?? '') !== $channel) continue;
+            if (!empty($payload['local_version']) && $payload['local_version'] !== ($this->engineRelease['version'] ?? '')) continue;
+            return $payload;
+        }
+
+        return null;
     }
 
     /**

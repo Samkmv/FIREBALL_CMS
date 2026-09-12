@@ -7,22 +7,21 @@ final class MaintenanceService
     public function run(): array
     {
         $now = date('Y-m-d H:i:s');
+        $payments = new PaymentService();
+        $stalePayments = $payments->expirePending();
+        $webhookRetries = $payments->retryFailedWebhooks();
         $recurring = (new RecurringService())->processDue();
         $activated = db()->query(
-            "UPDATE subscriptions SET status = 'active', updated_at = ? WHERE status = 'pending' AND starts_at <= ? AND ends_at > ?",
+            "UPDATE subscriptions SET status = 'active', updated_at = ? WHERE archived_at IS NULL AND status = 'pending' AND starts_at <= ? AND ends_at > ?",
             [$now, $now, $now]
         )->rowCount();
         $expired = db()->query(
-            "UPDATE subscriptions SET status = 'expired', auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE status IN ('active', 'cancelled', 'grace_period', 'past_due') AND COALESCE(grace_ends_at, ends_at) <= ?",
+            "UPDATE subscriptions SET status = 'expired', auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE archived_at IS NULL AND status IN ('active', 'cancelled', 'grace_period', 'past_due') AND COALESCE(grace_ends_at, ends_at) <= ?",
             [$now, $now]
-        )->rowCount();
-        $stalePayments = db()->query(
-            "UPDATE subscription_payments p INNER JOIN subscription_orders o ON o.id = p.order_id SET p.status = 'failed', p.failed_at = ?, p.error_message = 'Payment timeout', p.updated_at = ?, o.status = 'failed', o.updated_at = ? WHERE p.status IN ('created', 'pending') AND o.expires_at IS NOT NULL AND o.expires_at <= ?",
-            [$now, $now, $now, $now]
         )->rowCount();
         $notifications = $this->sendExpiryNotifications();
 
-        return compact('recurring', 'activated', 'expired', 'stalePayments', 'notifications');
+        return compact('recurring', 'activated', 'expired', 'stalePayments', 'webhookRetries', 'notifications');
     }
 
     private function sendExpiryNotifications(): int
@@ -32,7 +31,8 @@ final class MaintenanceService
                     DATEDIFF(s.ends_at, NOW()) AS days_left
              FROM subscriptions s
              INNER JOIN subscription_plans p ON p.id = s.plan_id
-             WHERE s.status IN ('active', 'cancelled')
+             WHERE s.archived_at IS NULL
+               AND s.status IN ('active', 'cancelled')
                AND DATEDIFF(s.ends_at, NOW()) IN (1, 3)"
         )->get() ?: [];
         $sent = 0;

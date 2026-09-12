@@ -247,6 +247,10 @@ editor2_assert(str_contains($serviceSource, "'button', 'editor_block_button', 'c
 editor2_assert(str_contains($editorStylesSource, '.fb-editor2__tool > .fb-editor2__tool-icon'), 'Text toolbar icons do not share one normalized size.');
 editor2_assert(str_contains($editorStylesSource, 'background-color: var(--fb-color-surface-elevated, var(--fb-editor-panel));'), 'The command palette can become transparent over editor content.');
 editor2_assert(str_contains($editorStylesSource, '.fb-editor2__dialog-head:focus-within'), 'The command search has no admin-style rounded focus state.');
+editor2_assert(
+    (bool)preg_match('/\.fb-editor2-block:hover,\s*\.fb-editor2-block\.is-active,\s*\.fb-editor2-block\.is-selected\s*\{[^}]*z-index:\s*10;/s', $editorStylesSource),
+    'The insert target can overlap and intercept clicks on the active block toolbar.'
+);
 editor2_assert(str_contains($registrySource, 'registerBlockType'), 'Public Block API is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_block_types'), 'Server block-type extension filter is missing.');
 editor2_assert(str_contains($serviceSource, 'fireball_editor_script_assets'), 'Editor asset extension filter is missing.');
@@ -278,6 +282,7 @@ echo json_encode([
     'command_palette_mobile' => true,
     'ios_focus_zoom_guard' => true,
     'semantic_svg_icons' => true,
+    'block_toolbar_layering' => true,
     'plugin_api' => true,
     'anchored_block_menu' => true,
     'wysiwyg_newsletter' => true,

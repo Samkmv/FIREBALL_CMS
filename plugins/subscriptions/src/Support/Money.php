@@ -12,7 +12,10 @@ final class Money
         }
 
         $value = str_replace(["\xc2\xa0", ' ', ','], ['', '', '.'], $value);
-        if (preg_match('/^(\d+)(?:\.(\d{1,2}))?$/', $value, $matches) !== 1) {
+        // Robokassa sends OutSum with six decimal places in live callbacks.
+        // Accept precision beyond kopecks only when every extra digit is zero,
+        // so the conversion remains exact and never silently rounds money.
+        if (preg_match('/^(\d+)(?:\.(\d{1,2})(?:0*))?$/', $value, $matches) !== 1) {
             throw new \InvalidArgumentException('Invalid money value.');
         }
 

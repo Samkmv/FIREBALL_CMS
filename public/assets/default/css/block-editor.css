@@ -1014,6 +1014,18 @@ body:has(.fb-editor-workspace) {
     scroll-margin: 130px;
 }
 
+/*
+ * Keep the selected block controls above the preceding block's full-width
+ * insert target. The active surface uses transform and therefore creates a
+ * stacking context; without lifting the whole block, the insert target can
+ * intercept clicks on the toolbar that sits above the card.
+ */
+.fb-editor2-block:hover,
+.fb-editor2-block.is-active,
+.fb-editor2-block.is-selected {
+    z-index: 10;
+}
+
 .fb-editor2-block.is-width-wide {
     width: min(112%, 1040px);
     margin-right: -6%;

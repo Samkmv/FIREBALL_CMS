@@ -6,14 +6,16 @@ use Fireball\Subscriptions\Controllers\PublicController as SubscriptionsPublicCo
 /** @var \FBL\Router $router */
 
 $router->get('/plugins/subscriptions/assets/(?P<file>[a-z0-9._-]+)', static function (): never {
-    if ((string)get_route_param('file') !== 'subscriptions.css') {
+    $file = (string)get_route_param('file');
+    $types = ['subscriptions.css' => 'text/css', 'profile-region.js' => 'application/javascript'];
+    if (!isset($types[$file])) {
         abort();
     }
-    $path = __DIR__ . '/assets/subscriptions.css';
+    $path = __DIR__ . '/assets/' . $file;
     if (!is_file($path)) {
         abort();
     }
-    header('Content-Type: text/css; charset=utf-8');
+    header('Content-Type: ' . $types[$file] . '; charset=utf-8');
     header('Cache-Control: public, max-age=3600');
     readfile($path);
     exit;
@@ -43,8 +45,18 @@ $router->post('/admin/subscriptions/plans/action', [SubscriptionsAdminController
 $router->get('/admin/subscriptions/subscribers', [SubscriptionsAdminController::class, 'subscribers'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/subscribers/grant', [SubscriptionsAdminController::class, 'grant'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/subscribers/update', [SubscriptionsAdminController::class, 'updateSubscriber'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/subscribers/delete', [SubscriptionsAdminController::class, 'deleteSubscriber'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/subscribers/delete-disabled', [SubscriptionsAdminController::class, 'deleteDisabledSubscriber'])->middleware(['auth', 'admin']);
+$router->get('/admin/subscriptions/exclusions', [SubscriptionsAdminController::class, 'exclusions'])->middleware(['auth', 'admin']);
+$router->get('/admin/subscriptions/exclusions/create', [SubscriptionsAdminController::class, 'exclusionForm'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/exclusions/create', [SubscriptionsAdminController::class, 'exclusionForm'])->middleware(['auth', 'admin']);
+$router->get('/admin/subscriptions/exclusions/edit/(?P<id>\d+)/?', [SubscriptionsAdminController::class, 'exclusionForm'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/exclusions/edit/(?P<id>\d+)/?', [SubscriptionsAdminController::class, 'exclusionForm'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/exclusions/delete', [SubscriptionsAdminController::class, 'deleteExclusion'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/payments', [SubscriptionsAdminController::class, 'payments'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/payments/clear', [SubscriptionsAdminController::class, 'clearPayments'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/payments/retry-webhook', [SubscriptionsAdminController::class, 'retryPaymentWebhook'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/payments/refresh', [SubscriptionsAdminController::class, 'refreshPayments'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/content', [SubscriptionsAdminController::class, 'contentAccess'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/content', [SubscriptionsAdminController::class, 'saveContentAccess'])->middleware(['auth', 'admin']);
 $router->get('/admin/subscriptions/profile-fields', [SubscriptionsAdminController::class, 'fields'])->middleware(['auth', 'admin']);

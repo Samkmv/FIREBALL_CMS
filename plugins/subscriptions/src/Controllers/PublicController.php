@@ -9,6 +9,7 @@ use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\CheckoutService;
 use Fireball\Subscriptions\Services\MediaTokenService;
 use Fireball\Subscriptions\Services\PaymentService;
+use Fireball\Subscriptions\Services\SubscriptionEligibilityService;
 use Fireball\Subscriptions\Services\SubscriptionService;
 use FBL\Pagination;
 
@@ -25,6 +26,7 @@ final class PublicController
     public function account(): string
     {
         $userId = $this->userId();
+        (new PaymentService())->expirePending($userId);
         $subscription = (new AccessService())->activeSubscription($userId);
         $paymentsPerPage = 15;
         $paymentsTotal = (int)db()->query(
@@ -62,10 +64,21 @@ final class PublicController
         $profiles = new ProfileRepository();
         if (request()->isPost()) {
             try {
-                $profiles->saveProfile($userId, request()->getData());
-                session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_profile_saved'));
                 $returnTo = trim((string)request()->post('return_to', ''));
-                if ($returnTo !== '' && str_starts_with($returnTo, base_href('/subscriptions/checkout/'))) {
+                $savedProfile = $profiles->saveProfile(
+                    $userId,
+                    request()->getData(),
+                    $this->checkoutPlanId($returnTo)
+                );
+                $eligible = !isset($savedProfile['eligibility']) || !empty($savedProfile['eligibility']['eligible']);
+                session()->setFlash(
+                    'success',
+                    \FireballPluginSubscriptions::t($eligible ? 'subscriptions_profile_saved' : 'subscriptions_address_included_in_utilities')
+                );
+                if (!$eligible) {
+                    response()->redirect(base_href('/account/subscription'));
+                }
+                if ($eligible && $returnTo !== '' && str_starts_with($returnTo, base_href('/subscriptions/checkout/'))) {
                     response()->redirect($returnTo);
                 }
             } catch (\Throwable $exception) {
@@ -85,6 +98,7 @@ final class PublicController
             'fields' => $profiles->fields(true),
             'completion' => $profiles->completion($profile),
             'form_data' => $formData,
+            'footer_scripts' => [base_href('/plugins/subscriptions/assets/profile-region.js?v=' . filemtime(__DIR__ . '/../../assets/profile-region.js'))],
         ]));
     }
 
@@ -104,12 +118,18 @@ final class PublicController
             session()->set('subscriptions.checkout_return', base_href('/subscriptions/checkout/' . $planId));
             response()->redirect(base_href('/profile/subscription-details'));
         }
+        try {
+            (new SubscriptionEligibilityService())->assertEligible($userId, 'checkout_view', $profile);
+        } catch (\DomainException $exception) {
+            $this->activateUtilityAccess($userId, $planId);
+            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities'));
+            response()->redirect(base_href('/account/subscription'));
+        }
 
         return plugin_view('subscriptions', 'public/checkout', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_checkout_title'),
             'plan' => $plan,
             'profile' => $profile,
-            'recurring_available' => (bool)(new \Fireball\Subscriptions\Services\SettingsService())->current()['recurring_enabled'],
         ]));
     }
 
@@ -122,20 +142,22 @@ final class PublicController
                 'offer' => !empty(request()->post('consent_offer')),
                 'privacy' => !empty(request()->post('consent_privacy')),
                 'recurring' => !empty(request()->post('consent_recurring')),
-                'auto_renew' => !empty(request()->post('auto_renew')),
                 'accepted_at' => date(DATE_ATOM),
                 'ip_hash' => hash('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? '') . '|' . $userId),
             ]);
             $this->redirectToRobokassa((string)$checkout['url']);
         } catch (\Throwable $exception) {
             log_error_details('Subscription checkout failed', ['user_id' => $userId, 'plan_id' => $planId], $exception);
+            if ($exception instanceof \DomainException && $exception->getMessage() === \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities')) {
+                $this->activateUtilityAccess($userId, $planId);
+                session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_address_included_in_utilities'));
+                response()->redirect(base_href('/account/subscription'));
+            }
             if (str_contains($exception->getMessage(), \FireballPluginSubscriptions::t('subscriptions_error_profile_incomplete'))) {
                 session()->setFlash('error', $exception->getMessage());
                 response()->redirect(base_href('/profile/subscription-details'));
             }
-            $message = $exception->getMessage() === \Fireball\Subscriptions\Services\SettingsService::CREDENTIALS_NOT_CONFIGURED
-                ? \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error')
-                : $exception->getMessage();
+            $message = $this->checkoutErrorMessage($exception);
             session()->setFlash('error', $message);
             response()->redirect(base_href('/subscriptions/checkout/' . $planId));
         }
@@ -178,6 +200,11 @@ final class PublicController
 
     public function fail(): string
     {
+        // FailURL is an unsigned browser return, not proof of a declined payment.
+        $userId = $this->userId(false);
+        if ($userId > 0) {
+            (new PaymentService())->expirePending($userId);
+        }
         return plugin_view('subscriptions', 'public/payment-result', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_payment_result_title'),
             'success' => false,
@@ -188,8 +215,14 @@ final class PublicController
     public function autoRenew(): never
     {
         try {
-            (new SubscriptionService())->setAutoRenew($this->userId(), !empty(request()->post('enabled')));
-            session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_auto_renew_saved'));
+            $userId = $this->userId();
+            $enabled = !empty(request()->post('enabled'));
+            (new SubscriptionService())->setAutoRenew($userId, $enabled);
+            $subscription = (new AccessService())->activeSubscription($userId);
+            $endsAt = ($subscription['status'] ?? '') === 'grace_period' ? ($subscription['grace_ends_at'] ?? $subscription['ends_at'] ?? null) : ($subscription['ends_at'] ?? null);
+            session()->setFlash('success', $enabled ? \FireballPluginSubscriptions::t('subscriptions_auto_renew_saved')
+                : ($endsAt ? str_replace(':date', date('d.m.Y', strtotime($endsAt)), \FireballPluginSubscriptions::t('subscriptions_auto_renew_cancelled_until'))
+                    : \FireballPluginSubscriptions::t('subscriptions_auto_renew_cancelled_access_retained')));
         } catch (\Throwable $exception) {
             session()->setFlash('error', $exception->getMessage());
         }
@@ -261,6 +294,69 @@ final class PublicController
         }
 
         return $id;
+    }
+
+    private function checkoutPlanId(string $returnTo): ?int
+    {
+        $path = parse_url($returnTo, PHP_URL_PATH);
+        if (!is_string($path) || preg_match('~/subscriptions/checkout/([1-9][0-9]*)/?$~', $path, $matches) !== 1) {
+            return null;
+        }
+
+        return (int)$matches[1];
+    }
+
+    private function activateUtilityAccess(int $userId, int $planId): void
+    {
+        $eligibility = (new SubscriptionEligibilityService())->evaluateUser($userId, null, true);
+        if (empty($eligibility['eligible'])) {
+            (new SubscriptionService())->syncUtilityAccess($userId, $eligibility, $planId);
+        }
+    }
+
+    private function checkoutErrorMessage(\Throwable $exception): string
+    {
+        $message = $exception->getMessage();
+        if ($message === \FireballPluginSubscriptions::t('subscriptions_error_recurring_disabled')) {
+            return $this->recurringUnavailableMessage();
+        }
+        if (str_starts_with($message, \Fireball\Subscriptions\Services\SettingsService::CREDENTIALS_NOT_CONFIGURED)) {
+            return $this->isAdministrativeUser()
+                ? \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error_detailed')
+                : \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error');
+        }
+
+        if ($this->isAdministrativeUser()) {
+            return str_replace(
+                [':type', ':error'],
+                [get_class($exception), $message],
+                \FireballPluginSubscriptions::t('subscriptions_checkout_error_detailed')
+            );
+        }
+
+        $safeCustomerMessages = [
+            \FireballPluginSubscriptions::t('subscriptions_error_plan_not_found'),
+            \FireballPluginSubscriptions::t('subscriptions_error_consents'),
+            \FireballPluginSubscriptions::t('subscriptions_error_recurring_consent'),
+        ];
+
+        return in_array($message, $safeCustomerMessages, true)
+            ? $message
+            : \FireballPluginSubscriptions::t('subscriptions_payment_configuration_error');
+    }
+
+    private function recurringUnavailableMessage(): string
+    {
+        return \FireballPluginSubscriptions::t(
+            $this->isAdministrativeUser()
+                ? 'subscriptions_error_recurring_disabled_detailed'
+                : 'subscriptions_recurring_unavailable_customer'
+        );
+    }
+
+    private function isAdministrativeUser(): bool
+    {
+        return in_array((string)(get_user()['role'] ?? ''), ['admin', 'creator'], true);
     }
 
     private function redirectToRobokassa(string $url): never

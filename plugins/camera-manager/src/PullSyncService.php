@@ -31,6 +31,16 @@ final class PullSyncService
         if ($action === 'report') {
             return $this->report($payload, $settings);
         }
+        if ($action === 'diagnostic_report') {
+            $accepted = (new DiagnosticJobService())->acceptReport($payload);
+
+            return [
+                'success' => true,
+                'protocol' => self::PROTOCOL_VERSION,
+                'accepted_job_id' => $accepted['accepted_job_id'],
+                'server_time' => gmdate('c'),
+            ];
+        }
 
         throw new RuntimeException('Unsupported synchronization action.');
     }
@@ -41,6 +51,15 @@ final class PullSyncService
         $desiredRevision = max(0, (int)$settings['pull_revision']);
         $now = date('Y-m-d H:i:s');
         \FireballPluginCameraManager::setSettingValue('pull_last_seen_at', $now);
+        $capabilities = is_array($payload['capabilities'] ?? null) ? $payload['capabilities'] : [];
+        $capabilities = array_values(array_intersect(
+            array_filter($capabilities, 'is_string'),
+            ['diagnostics_v1']
+        ));
+        \FireballPluginCameraManager::setSettingValue('pull_agent_capabilities', $capabilities);
+        $diagnosticJobs = in_array('diagnostics_v1', $capabilities, true)
+            ? (new DiagnosticJobService())->fetchForAgent()
+            : [];
 
         if ($desiredRevision === 0 || $currentRevision === $desiredRevision) {
             return [
@@ -48,6 +67,7 @@ final class PullSyncService
                 'protocol' => self::PROTOCOL_VERSION,
                 'changed' => false,
                 'revision' => $desiredRevision,
+                'diagnostic_jobs' => $diagnosticJobs,
                 'server_time' => gmdate('c'),
             ];
         }
@@ -81,6 +101,7 @@ final class PullSyncService
             'stream_count' => $streamCount,
             'managed_block' => $managedBlock,
             'managed_block_sha256' => $managedBlockHash,
+            'diagnostic_jobs' => $diagnosticJobs,
             'server_time' => gmdate('c'),
         ];
     }

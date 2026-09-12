@@ -187,11 +187,38 @@
     }
   };
 
+  let badgeQueue = Promise.resolve();
+  let badgeValue = null;
+  let badgeWorkerDirty = true;
+  const syncWorkerBadge = (value) => {
+    const worker = navigator.serviceWorker?.controller || window.FireballPwa.registration?.active;
+    if (!worker) return false;
+    try {
+      worker.postMessage({ type: 'SYNC_BADGE', count: value, user_id: currentUserId });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
   const setBadge = (count) => {
-    if (!('setAppBadge' in navigator) || !('clearAppBadge' in navigator)) return;
-    const value = Number.parseInt(count, 10) || 0;
-    if (value > 0) navigator.setAppBadge(value).catch(() => {});
-    else navigator.clearAppBadge().catch(() => {});
+    const numeric = Number(count);
+    if (count === null || !Number.isFinite(numeric)) return Promise.resolve();
+    const value = currentUserId > 0 ? Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(numeric))) : 0;
+    if (!isSecure || body.dataset.pwaEnabled !== '1') return Promise.resolve();
+    if (value !== badgeValue || badgeWorkerDirty) {
+      badgeValue = value;
+      // The worker also handles Android notification-dot cleanup. No permission prompt here.
+      badgeWorkerDirty = !syncWorkerBadge(value);
+    }
+    badgeQueue = badgeQueue.then(async () => {
+      try {
+        if (value === 0 && typeof navigator.clearAppBadge === 'function') await navigator.clearAppBadge();
+        else if (typeof navigator.setAppBadge === 'function') await navigator.setAppBadge(value);
+      } catch (error) {
+        // Unsupported OS, denied permission or an uninstalled PWA must not break the feed.
+      }
+    });
+    return badgeQueue;
   };
 
   const subscribePush = async () => {
@@ -350,6 +377,16 @@
   bindInstallPrompt();
   bindPwaLinks();
   bindPushButtons();
-  registerServiceWorker().then(syncPushStatus);
+  registerServiceWorker().then(() => {
+    if (badgeValue !== null) syncWorkerBadge(badgeValue);
+    return syncPushStatus();
+  });
+  if (currentUserId <= 0) setBadge(0);
+  navigator.serviceWorker?.addEventListener('message', (event) => {
+    if (event.data?.type === 'PWA_NOTIFICATIONS_CHANGED' && Number(event.data.user_id) === currentUserId) {
+      badgeWorkerDirty = true;
+      document.dispatchEvent(new CustomEvent('fireball:notifications-changed'));
+    }
+  });
   showIosHint();
 })();

@@ -1292,6 +1292,8 @@ $(function(){
         : (window.bootstrap || null);
     const body = document.body;
 
+    const closeLabel = body.dataset.toastCloseLabel || 'Close';
+
     const config = {
         timeOut: 5000,
         newestOnTop: false,
@@ -1326,6 +1328,30 @@ $(function(){
 
     const escapeHtml = (value) => $('<div>').text(value == null ? '' : String(value)).html();
 
+    const formatToastTime = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) {
+            return '';
+        }
+
+        const normalized = raw.includes(' ') && !raw.includes('T')
+            ? raw.replace(' ', 'T')
+            : raw;
+        const date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+
+        try {
+            return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+                hour: '2-digit',
+                minute: '2-digit',
+            }).format(date);
+        } catch (error) {
+            return '';
+        }
+    };
+
     const getContainer = () => {
         let container = document.querySelector('[data-app-toast-container]');
         if (container) {
@@ -1358,7 +1384,7 @@ $(function(){
                     <strong class="d-block mb-1">${escapeHtml(titleOverride || variant.title)}</strong>
                     <span>${escapeHtml(message)}</span>
                 </div>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
         `;
 
@@ -1395,22 +1421,22 @@ $(function(){
         const container = getContainer();
         const toast = document.createElement('div');
         const targetHref = String(payload.href || '#');
+        const formattedTime = formatToastTime(payload.time);
 
-        toast.className = 'toast app-toast--chat border-primary fade bg-white text-body shadow-sm';
+        toast.className = 'toast app-toast--chat border-primary fade shadow-sm';
         toast.setAttribute('role', 'alert');
         toast.setAttribute('aria-live', 'assertive');
         toast.setAttribute('aria-atomic', 'true');
-        toast.setAttribute('data-bs-theme', 'light');
 
         toast.innerHTML = `
-            <div class="toast-header bg-white text-body">
+            <div class="toast-header">
                 ${payload.avatar ? `<img src="${escapeHtml(payload.avatar)}" alt="" class="rounded-circle object-fit-cover border me-2" style="width: 36px; height: 36px;">` : ''}
-                <i class="ci-chat text-primary fs-base me-2"></i>
-                <span class="fw-semibold text-truncate">${escapeHtml(payload.title || variants.info.title)}</span>
-                <span class="small text-body-tertiary ms-2">${escapeHtml(payload.time || '')}</span>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <i class="ci-chat text-primary fs-base me-2" aria-hidden="true"></i>
+                <span class="fw-semibold app-toast--chat__title">${escapeHtml(payload.title || variants.info.title)}</span>
+                ${formattedTime ? `<time class="small text-body-tertiary ms-2">${escapeHtml(formattedTime)}</time>` : ''}
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
-            <div class="toast-body me-2 bg-white text-body">
+            <div class="toast-body me-2">
                 ${escapeHtml(payload.message || '')}
             </div>
         `;

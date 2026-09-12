@@ -23,7 +23,7 @@
             <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_media_ttl')) ?></label><input class="form-control" type="number" name="media_token_ttl" min="60" max="1800" value="<?= (int)$settings['media_token_ttl'] ?>"></div>
         </div>
         <div class="row g-3 mt-2">
-            <?php foreach ([['test_mode', 'subscriptions_test_mode'], ['recurring_enabled', 'subscriptions_recurring_enabled'], ['receipt_enabled', 'subscriptions_receipt_enabled']] as [$key, $label]): ?><div class="col-md-4"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= !empty($settings[$key]) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div><?php endforeach; ?>
+            <?php foreach ([['test_mode', 'subscriptions_test_mode'], ['receipt_enabled', 'subscriptions_receipt_enabled']] as [$key, $label]): ?><div class="col-md-4"><label class="form-check"><input class="form-check-input" type="checkbox" name="<?= $key ?>" value="1" <?= !empty($settings[$key]) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></span></label></div><?php endforeach; ?>
         </div>
         <div class="row g-3 mt-2">
             <?php $taxLabels = ['none' => 'subscriptions_receipt_tax_none', 'vat0' => 'subscriptions_receipt_tax_vat0', 'vat5' => 'subscriptions_receipt_tax_vat5', 'vat7' => 'subscriptions_receipt_tax_vat7', 'vat10' => 'subscriptions_receipt_tax_vat10', 'vat20' => 'subscriptions_receipt_tax_vat20']; ?>
@@ -34,6 +34,21 @@
             <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_receipt_object')) ?></label><select class="form-select" name="receipt_payment_object"><?php foreach ($objectLabels as $item => $label): ?><option value="<?= $item ?>" <?= $settings['receipt_payment_object'] === $item ? 'selected' : '' ?>><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></option><?php endforeach; ?></select></div>
         </div>
         <hr class="my-4">
+        <h2 class="h5 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_offer_settings')) ?></h2>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label" for="subscriptions-offer-page"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_offer_page')) ?></label>
+                <select class="form-select" id="subscriptions-offer-page" name="public_offer_page_id" data-select>
+                    <option value="0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_offer_use_url')) ?></option>
+                    <?php foreach (($offer_pages ?? []) as $offerPage): ?><option value="<?= (int)$offerPage['id'] ?>" <?= (int)$settings['public_offer_page_id'] === (int)$offerPage['id'] ? 'selected' : '' ?>><?= htmlSC((string)$offerPage['title']) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="subscriptions-offer-url"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_offer_url')) ?></label>
+                <input class="form-control" id="subscriptions-offer-url" name="public_offer_url" value="<?= htmlSC((string)$settings['public_offer_url']) ?>" placeholder="https://example.ru/offer.pdf">
+            </div>
+            <div class="col-12"><p class="form-text mb-0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_offer_settings_hint')) ?></p></div>
+        </div>
         <?php foreach (['result_url' => 'subscriptions_result_url', 'success_url' => 'subscriptions_success_url', 'fail_url' => 'subscriptions_fail_url'] as $key => $label): ?><div class="mb-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></label><input class="form-control font-monospace" value="<?= htmlSC((string)$settings[$key]) ?>" readonly></div><?php endforeach; ?>
         <button class="btn btn-dark rounded-pill" type="submit" name="save_robokassa_settings" value="1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button>
     </form>

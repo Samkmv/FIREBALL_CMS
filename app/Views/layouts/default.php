@@ -275,6 +275,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     data-toast-error-title="<?= htmlSC(return_translation('toast_error_title')) ?>"
     data-toast-info-title="<?= htmlSC(return_translation('toast_info_title')) ?>"
     data-toast-warning-title="<?= htmlSC(return_translation('toast_warning_title')) ?>"
+    data-toast-close-label="<?= htmlSC(return_translation('notification_close')) ?>"
     data-code-copy-label="<?= htmlSC(return_translation('code_copy_button')) ?>"
     data-code-copied-label="<?= htmlSC(return_translation('code_copied_button')) ?>"
     data-admin-table-error-title="<?= htmlSC(return_translation('admin_table_error_title')) ?>"
@@ -536,11 +537,17 @@ $postCategoryUrl = static function (?string $slug = null): string {
                     data-clear-success="<?= htmlSC(return_translation('notification_cleared')) ?>"
                     data-empty-text="<?= htmlSC(return_translation('notification_empty')) ?>"
                     data-chat-source-label="<?= htmlSC(return_translation('notification_source_chat')) ?>"
+                    data-open-label="<?= htmlSC(return_translation('notification_open')) ?>"
+                    data-mark-read-label="<?= htmlSC(return_translation('notification_mark_read')) ?>"
+                    data-load-error="<?= htmlSC(return_translation('notification_load_error')) ?>"
+                    data-retry-label="<?= htmlSC(return_translation('notification_retry')) ?>"
                 >
                     <button
                         type="button"
                         class="btn btn-icon fs-xl btn-outline-secondary border-0 rounded-circle animate-scale position-relative"
                         data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside"
+                        aria-controls="notification-feed-panel"
                         aria-expanded="false"
                         aria-label="<?= htmlSC(return_translation('tpl_notifications')) ?>"
                     >
@@ -551,14 +558,14 @@ $postCategoryUrl = static function (?string $slug = null): string {
                             data-notifications-badge
                         >0</span>
                     </button>
-                    <div class="dropdown-menu dropdown-menu-end p-0 overflow-hidden" style="--cz-dropdown-min-width: 24rem; max-width: min(24rem, calc(100vw - 2rem));">
-                        <div class="px-3 py-3 border-bottom bg-body d-flex align-items-center justify-content-between gap-3">
-                            <strong class="d-block"><?= print_translation('tpl_notifications') ?></strong>
+                    <div id="notification-feed-panel" class="dropdown-menu dropdown-menu-end p-0 notification-feed-panel">
+                        <div class="notification-feed-header px-3 py-3 border-bottom bg-body d-flex align-items-center justify-content-between gap-3">
+                            <strong id="notification-feed-title" class="d-block"><?= print_translation('tpl_notifications') ?></strong>
                             <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 d-none" data-notifications-clear>
                                 <i class="ci-trash me-1" aria-hidden="true"></i><?= print_translation('notification_clear_all') ?>
                             </button>
                         </div>
-                        <div class="list-group list-group-flush" data-notifications-list>
+                        <div class="list-group list-group-flush notification-feed-list" data-notifications-list tabindex="0" role="region" aria-labelledby="notification-feed-title" aria-busy="true">
                             <div class="px-3 py-3 text-body-secondary small"><?= print_translation('notification_loading') ?></div>
                         </div>
                     </div>

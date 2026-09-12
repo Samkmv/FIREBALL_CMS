@@ -20,7 +20,7 @@ try {
 }
 
 $coreUpdateAvailable = false;
-if (check_creator()) {
+if (check_admin()) {
     try {
         $coreUpdateState = (new \App\Services\UpdateCenter())->getLastCheckPayload();
         $coreUpdateAvailable = is_array($coreUpdateState)
@@ -113,7 +113,6 @@ $menuGroups = [
                 'href' => base_href('/admin/updates'),
                 'label' => return_translation('admin_nav_updates'),
                 'icon' => 'ci-refresh-cw',
-                'creator_only' => true,
                 'badge' => $coreUpdateAvailable ? '1' : '',
                 'badge_class' => 'fb-nav-badge fb-nav-badge-update',
                 'badge_title' => return_translation('admin_nav_core_update_available'),

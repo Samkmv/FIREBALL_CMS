@@ -31,6 +31,89 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* Apple-style glass navigation for the public site. Keep the admin topbar opaque. */
+body:not(.fb-admin-body) > header.navbar-sticky {
+    background-color: rgba(255, 255, 255, .86) !important;
+    border-bottom: 1px solid rgba(24, 29, 37, .1);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    backdrop-filter: saturate(180%) blur(18px);
+}
+
+[data-bs-theme="dark"] body:not(.fb-admin-body) > header.navbar-sticky {
+    background-color: rgba(24, 29, 37, .82) !important;
+    border-bottom-color: rgba(255, 255, 255, .1);
+}
+
+@supports (background-color: color-mix(in srgb, transparent, transparent)) {
+    body:not(.fb-admin-body) > header.navbar-sticky {
+        background-color: color-mix(in srgb, var(--cz-body-bg) 78%, transparent) !important;
+        border-bottom-color: color-mix(in srgb, currentColor 14%, transparent);
+    }
+}
+
+/* Apple-style glass panels for public navigation and sidebars. */
+body:not(.fb-admin-body) #navbarNav,
+body:not(.fb-admin-body) #shoppingCart,
+body:not(.fb-admin-body) #accountSidebar {
+    background-color: rgba(255, 255, 255, .72) !important;
+    border-color: rgba(24, 29, 37, .14);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    box-shadow: 0 18px 54px rgba(15, 23, 42, .16);
+}
+
+body:not(.fb-admin-body) #navbarNav {
+    border-right: 1px solid rgba(24, 29, 37, .14);
+}
+
+body:not(.fb-admin-body) #shoppingCart {
+    border-left: 1px solid rgba(24, 29, 37, .14);
+}
+
+body:not(.fb-admin-body) header.navbar-sticky form[data-search-suggest] .form-control {
+    background-color: rgba(255, 255, 255, .58) !important;
+    border-color: rgba(24, 29, 37, .16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .52), 0 1px 2px rgba(15, 23, 42, .06);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    backdrop-filter: saturate(180%) blur(16px);
+}
+
+[data-bs-theme="dark"] body:not(.fb-admin-body) #navbarNav,
+[data-bs-theme="dark"] body:not(.fb-admin-body) #shoppingCart,
+[data-bs-theme="dark"] body:not(.fb-admin-body) #accountSidebar {
+    background-color: rgba(24, 29, 37, .72) !important;
+    border-color: rgba(255, 255, 255, .12);
+    box-shadow: 0 18px 54px rgba(0, 0, 0, .28);
+}
+
+[data-bs-theme="dark"] body:not(.fb-admin-body) #navbarNav {
+    border-right-color: rgba(255, 255, 255, .12);
+}
+
+[data-bs-theme="dark"] body:not(.fb-admin-body) #shoppingCart {
+    border-left-color: rgba(255, 255, 255, .12);
+}
+
+[data-bs-theme="dark"] body:not(.fb-admin-body) header.navbar-sticky form[data-search-suggest] .form-control {
+    background-color: rgba(24, 29, 37, .56) !important;
+    border-color: rgba(255, 255, 255, .16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 1px 2px rgba(0, 0, 0, .16);
+}
+
+@supports (background-color: color-mix(in srgb, transparent, transparent)) {
+    body:not(.fb-admin-body) #navbarNav,
+    body:not(.fb-admin-body) #shoppingCart,
+    body:not(.fb-admin-body) #accountSidebar {
+        background-color: color-mix(in srgb, var(--cz-body-bg) 74%, transparent) !important;
+        border-color: color-mix(in srgb, currentColor 14%, transparent);
+    }
+
+    body:not(.fb-admin-body) header.navbar-sticky form[data-search-suggest] .form-control {
+        background-color: color-mix(in srgb, var(--cz-body-bg) 58%, transparent) !important;
+        border-color: color-mix(in srgb, currentColor 16%, transparent);
+    }
+}
+
 .site-brand {
     display: inline-flex;
     min-width: 0;
@@ -94,6 +177,54 @@ html {
 
 [data-search-suggest-results] {
     z-index: 1080 !important;
+}
+
+.notification-feed-panel {
+    --cz-dropdown-min-width: 0;
+    width: min(26rem, calc(100vw - 1.5rem));
+    max-height: min(38rem, calc(100vh - 6rem));
+    max-height: min(38rem, calc(100dvh - 6rem - env(safe-area-inset-bottom, 0px)));
+    overflow: hidden;
+}
+
+.notification-feed-panel.show {
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-feed-header {
+    flex: 0 0 auto;
+}
+
+.notification-feed-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+    overflow-anchor: none;
+}
+
+.notification-feed-item {
+    flex-shrink: 0;
+    overflow-wrap: anywhere;
+}
+
+.notification-feed-item__text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.notification-feed-item__meta {
+    flex-wrap: wrap;
+    row-gap: .35rem;
+}
+
+.notification-feed-list:focus-visible {
+    outline: 2px solid var(--cz-primary);
+    outline-offset: -2px;
 }
 
 form[data-post-form] .choices {
@@ -3059,6 +3190,113 @@ html.chat-viewport-fullscreen .chat-messages-surface {
 
     body:has(.admin-shell-mobile-toggle) .app-toast-stack {
         bottom: calc(4.75rem + env(safe-area-inset-bottom)) !important;
+    }
+}
+
+/* Roomier CMS-style chat notifications. */
+.app-toast-stack {
+    width: min(calc(100vw - 2rem), 28rem);
+}
+
+.app-toast-stack .toast.app-toast--chat {
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid rgba(13, 110, 253, .34) !important;
+    border-radius: 1.15rem !important;
+    background-color: rgba(255, 255, 255, .94) !important;
+    box-shadow: 0 1.25rem 3rem rgba(15, 23, 42, .2) !important;
+}
+
+.app-toast-stack .toast.app-toast--chat .toast-header {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    min-height: 4rem;
+    padding: .75rem 1rem !important;
+    background-color: rgba(13, 110, 253, .1) !important;
+    border-bottom: 1px solid rgba(13, 110, 253, .18) !important;
+    color: #174a92 !important;
+}
+
+.app-toast-stack .toast.app-toast--chat .toast-header img {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    flex: 0 0 2.75rem;
+    margin-right: 0 !important;
+    border-color: rgba(13, 110, 253, .32) !important;
+}
+
+.app-toast-stack .toast.app-toast--chat .toast-header .ci-chat {
+    flex: 0 0 auto;
+    margin-right: 0 !important;
+    color: #ff496f !important;
+    font-size: 1.35rem;
+}
+
+.app-toast-stack .toast.app-toast--chat .app-toast--chat__title {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    line-height: 1.3;
+}
+
+.app-toast-stack .toast.app-toast--chat .toast-header time {
+    flex: 0 0 auto;
+    margin-left: 0 !important;
+    white-space: nowrap;
+}
+
+.app-toast-stack .toast.app-toast--chat .toast-body {
+    margin-right: 0 !important;
+    padding: .9rem 1rem 1rem !important;
+    background-color: transparent !important;
+    color: #313b4a !important;
+    font-size: 1rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--chat {
+    border-color: rgba(83, 160, 255, .56) !important;
+    background-color: rgba(24, 34, 50, .96) !important;
+    box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, .34) !important;
+}
+
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--chat .toast-header {
+    background-color: rgba(42, 91, 153, .46) !important;
+    border-bottom-color: rgba(83, 160, 255, .24) !important;
+    color: #9bc9ff !important;
+}
+
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--chat .toast-header img {
+    border-color: rgba(147, 197, 253, .4) !important;
+}
+
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--chat .toast-body {
+    color: #e5edf8 !important;
+}
+
+@media (max-width: 575.98px) {
+    .app-toast-stack {
+        width: auto;
+    }
+
+    .app-toast-stack .toast.app-toast--chat .toast-header {
+        gap: .5rem;
+        padding: .7rem .8rem !important;
+    }
+
+    .app-toast-stack .toast.app-toast--chat .toast-header img {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        flex-basis: 2.5rem;
+    }
+
+    .app-toast-stack .toast.app-toast--chat .toast-body {
+        padding: .8rem .8rem .9rem !important;
+        font-size: .95rem;
     }
 }
 

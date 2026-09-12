@@ -1,4 +1,5 @@
 <?php
+$isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
 $formData = session()->get('form_data') ?: [];
 $updateCenter = $update_center ?? [];
 $updateConfig = $updateCenter['config'] ?? [];
@@ -10,7 +11,7 @@ $updaterRepository = $formData['updater_github_repository'] ?? ($settings['updat
 $updaterBranch = $formData['updater_github_branch'] ?? ($settings['updater_github_branch'] ?? ($updateConfig['branch'] ?? 'main'));
 $updaterToken = $formData['updater_github_token'] ?? '';
 $updaterChannel = $formData['update_channel'] ?? ($settings['update_channel'] ?? ($updateConfig['channel'] ?? 'stable'));
-$updaterChannel = $updaterChannel === 'dev' ? 'dev' : 'stable';
+$updaterChannel = $isCreator && $updaterChannel === 'dev' ? 'dev' : 'stable';
 $updaterChannelLabel = $updaterChannel === 'dev'
     ? return_translation('admin_update_channel_dev')
     : return_translation('admin_update_channel_stable');
@@ -38,8 +39,7 @@ if ($remoteReleaseDescription === '') {
 }
 $statusVariant = 'secondary';
 $statusLabel = return_translation('admin_update_status_unknown');
-$isCreator = (string)(get_user()['role'] ?? 'user') === 'creator';
-$canRollback = $isGitRepo
+$canRollback = $isCreator && $isGitRepo
     && !empty($updateLocal['git_available'])
     && trim((string)($updateConfig['rollback_commit'] ?? '')) !== '';
 $gitStatusLabel = !$isGitRepo
@@ -173,7 +173,7 @@ $statusIcon = match ($statusVariant) {
                 </div>
             <?php endif; ?>
 
-            <?php if ($isCreator): ?>
+            <?php if (check_admin()): ?>
                 <div class="admin-update-actions">
                     <form action="<?= base_href('/admin/settings/update-center/check') ?>" method="post">
                         <?= get_csrf_field() ?>
