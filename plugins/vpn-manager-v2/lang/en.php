@@ -908,4 +908,17 @@ return [
     'vpn_manager_v2_flash_sync_completed' => 'Synchronization completed.',
     'vpn_manager_v2_error_operation_generic' => 'The operation could not be completed.',
     'vpn_manager_v2_error_operation_status' => 'The operation status could not be retrieved.',
+
+    'vpn_manager_v2_happ_title' => 'Happ routing',
+    'vpn_manager_v2_happ_enabled' => 'Apply routing in Happ',
+    'vpn_manager_v2_happ_enabled_help' => 'Rules are sent to all active subscriptions when added or updated in Happ. To disable previously supplied routing, turn this off and keep the link in the field.',
+    'vpn_manager_v2_happ_link' => 'Routing link or JSON profile',
+    'vpn_manager_v2_happ_link_help' => 'Paste a happ://routing/add/… or happ://routing/onadd/… link from 3x-ui, or a JSON profile with a Name field. The saved link adds and activates the profile. The resulting link is limited to 4096 bytes. An empty field stops sending Happ settings.',
+    'vpn_manager_v2_happ_editor' => 'Open the Happ routing editor',
+    'vpn_manager_v2_happ_saved_link' => 'Saved rules (save the form to apply field changes):',
+    'vpn_manager_v2_happ_apply' => 'Apply in Happ',
+    'vpn_manager_v2_happ_copy' => 'Copy routing link',
+    'vpn_manager_v2_happ_profile_help' => 'Update the subscription in Happ to receive the rules automatically, or select Apply in Happ and choose the subscription. Reconnect the VPN after applying. Happ must be installed.',
+    'vpn_manager_v2_error_happ_routing' => 'Enter a valid Happ routing link or JSON profile with a Name and rule lists. The resulting link must not exceed 4096 bytes.',
+    'vpn_manager_v2_error_happ_routing_required' => 'Add a routing link or JSON profile to enable Happ routing.',
 ];

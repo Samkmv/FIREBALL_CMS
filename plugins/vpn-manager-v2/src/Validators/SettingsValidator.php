@@ -3,6 +3,7 @@
 namespace Fireball\VpnManagerV2\Validators;
 
 use Fireball\VpnManagerV2\DTO\VpnSettingsData;
+use Fireball\VpnManagerV2\Support\HappRoutingProfile;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
 
 final class SettingsValidator
@@ -33,6 +34,7 @@ final class SettingsValidator
         'mask_subscription_links',
         'public_account_enabled',
         'show_qr_in_profile',
+        'happ_routing_enabled',
     ];
 
     public function validate(array $input, array $current): VpnSettingsData
@@ -67,6 +69,16 @@ final class SettingsValidator
             $strict
         );
         $template = $this->template((string)($data['server_name_template'] ?? ''), $strict);
+
+        $routingEnabled = $this->boolean($data['happ_routing_enabled'] ?? false);
+        try {
+            $routingLink = (new HappRoutingProfile())->normalize($data['happ_routing_link'] ?? '');
+        } catch (\InvalidArgumentException) {
+            $routingLink = $this->invalid($strict, 'vpn_manager_v2_error_happ_routing', '');
+        }
+        if ($routingEnabled && $routingLink === '') {
+            $routingEnabled = $this->invalid($strict, 'vpn_manager_v2_error_happ_routing_required', false);
+        }
 
         return new VpnSettingsData(
             $serviceName,
@@ -103,6 +115,8 @@ final class SettingsValidator
             $this->boolean($data['mask_subscription_links'] ?? false),
             $this->boolean($data['public_account_enabled'] ?? false),
             $this->boolean($data['show_qr_in_profile'] ?? false),
+            $routingEnabled,
+            $routingLink,
         );
     }
 

@@ -908,4 +908,17 @@ return [
     'vpn_manager_v2_flash_sync_completed' => 'Synchronisierung abgeschlossen.',
     'vpn_manager_v2_error_operation_generic' => 'Der Vorgang konnte nicht abgeschlossen werden.',
     'vpn_manager_v2_error_operation_status' => 'Der Vorgangsstatus konnte nicht abgerufen werden.',
+
+    'vpn_manager_v2_happ_title' => 'Happ-Routing',
+    'vpn_manager_v2_happ_enabled' => 'Routing in Happ anwenden',
+    'vpn_manager_v2_happ_enabled_help' => 'Die Regeln werden beim Hinzufügen oder Aktualisieren an alle aktiven Abonnements in Happ gesendet. Zum Deaktivieren zuvor übertragener Regeln diesen Schalter ausschalten und den Link im Feld behalten.',
+    'vpn_manager_v2_happ_link' => 'Routing-Link oder JSON-Profil',
+    'vpn_manager_v2_happ_link_help' => 'Fügen Sie einen happ://routing/add/…- oder happ://routing/onadd/…-Link aus 3x-ui oder ein JSON-Profil mit dem Feld Name ein. Der gespeicherte Link fügt das Profil hinzu und aktiviert es. Maximal 4096 Bytes für den fertigen Link. Ein leeres Feld beendet die Übertragung der Happ-Einstellungen.',
+    'vpn_manager_v2_happ_editor' => 'Happ-Routing-Editor öffnen',
+    'vpn_manager_v2_happ_saved_link' => 'Gespeicherte Regeln (Feldänderungen erst nach dem Speichern):',
+    'vpn_manager_v2_happ_apply' => 'In Happ anwenden',
+    'vpn_manager_v2_happ_copy' => 'Routing-Link kopieren',
+    'vpn_manager_v2_happ_profile_help' => 'Aktualisieren Sie das Abonnement in Happ, um die Regeln automatisch zu erhalten, oder wählen Sie In Happ anwenden und dann das Abonnement. Verbinden Sie das VPN anschließend neu. Happ muss installiert sein.',
+    'vpn_manager_v2_error_happ_routing' => 'Geben Sie einen gültigen Happ-Routing-Link oder ein JSON-Profil mit Name und Regellisten ein. Der fertige Link darf 4096 Bytes nicht überschreiten.',
+    'vpn_manager_v2_error_happ_routing_required' => 'Fügen Sie einen Routing-Link oder ein JSON-Profil hinzu, um Happ-Routing zu aktivieren.',
 ];

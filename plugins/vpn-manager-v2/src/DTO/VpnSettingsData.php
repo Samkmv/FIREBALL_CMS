@@ -33,6 +33,8 @@ final readonly class VpnSettingsData
         public bool $maskSubscriptionLinks,
         public bool $publicAccountEnabled,
         public bool $showQrInProfile,
+        public bool $happRoutingEnabled = false,
+        public string $happRoutingLink = '',
     ) {
     }
 
@@ -67,6 +69,8 @@ final readonly class VpnSettingsData
             'mask_subscription_links' => $this->maskSubscriptionLinks,
             'public_account_enabled' => $this->publicAccountEnabled,
             'show_qr_in_profile' => $this->showQrInProfile,
+            'happ_routing_enabled' => $this->happRoutingEnabled,
+            'happ_routing_link' => $this->happRoutingLink,
         ];
     }
 }

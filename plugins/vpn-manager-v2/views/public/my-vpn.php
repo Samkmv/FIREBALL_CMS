@@ -7,6 +7,10 @@ $selected = is_array($selectedSubscription ?? null) ? $selectedSubscription : nu
 $servers = is_array($servers ?? null) ? $servers : [];
 $instructions = is_array($instructions ?? null) ? $instructions : [];
 $subscriptionUrl = trim((string)($subscriptionUrl ?? ''));
+$happRoutingLink = (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->activeLink([
+    'happ_routing_enabled' => true,
+    'happ_routing_link' => $happRoutingLink ?? '',
+]);
 $subscriptionQr = (string)($subscriptionQr ?? '');
 $linkReady = !empty($linkReady) && $subscriptionUrl !== '';
 $localSubscriptionUrl = !empty($localSubscriptionUrl);
@@ -286,6 +290,15 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                         <?php endif; ?>
                     </div>
                 </div>
+
+                <?php if ($linkReady && $happRoutingLink !== ''): ?>
+                    <section class="border rounded-5 p-4 mb-4">
+                        <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_title')) ?></h2>
+                        <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_profile_help')) ?></p>
+                        <?php $routingLink = $happRoutingLink; ?>
+                        <?php require __DIR__ . '/../partials/happ-routing-link.php'; ?>
+                    </section>
+                <?php endif; ?>
 
                 <div class="alert alert-info rounded-4 d-flex align-items-start gap-3 mb-4" data-vpn-v2-refresh-hint>
                     <i class="ci-info fs-5 mt-1" aria-hidden="true"></i>

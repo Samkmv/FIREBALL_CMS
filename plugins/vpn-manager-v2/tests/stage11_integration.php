@@ -130,10 +130,10 @@ try {
         db()->query(
             'INSERT INTO vpn_v2_subscriptions
                 (user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes, device_limit,
-                 subscription_token, revision, config_updated_at, created_by, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 2, ?, 1, ?, ?, ?, ?)',
+                 subscription_token, subscription_token_hash, revision, config_updated_at, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 2, ?, ?, 1, ?, ?, ?, ?)',
             [(int)$user['id'], $planId, 'active', date('Y-m-d H:i:s', time() - 3600), $expiresAt,
-                20 * (1024 ** 3), $token, $now, (int)$admin['id'], $now, $now]
+                20 * (1024 ** 3), $token, hash('sha256', $token), $now, (int)$admin['id'], $now, $now]
         );
         $subscriptionId = (int)db()->getInsertId();
         $tokens[] = $token;
@@ -258,6 +258,47 @@ try {
         && $finalSave['settings']['support_name'] === 'Reloaded Support',
         'Settings cache invalidation or read-after-write failed.');
 
+    // Routing changes use the same subscription URL and invalidate both cached formats.
+    $beforeRouting = $endpoint->respond($active['token']);
+    $payload['happ_routing_enabled'] = '1';
+    $payload['happ_routing_link'] = '{"Name":"Stage 11 Happ","GlobalProxy":"true","DirectSites":["domain:example.org"]}';
+    $routingSaved = $service->save($payload);
+    $routingLink = $routingSaved['settings']['happ_routing_link'];
+    $routed = $endpoint->respond($active['token'], 'base64', $beforeRouting->headers['ETag']);
+    $assert($routed->status === 200 && $routed->headers['ETag'] !== $beforeRouting->headers['ETag']
+        && ($routed->headers['routing'] ?? '') === $routingLink
+        && ($routed->headers['routing-enable'] ?? '') === 'true'
+        && $routed->body === $beforeRouting->body && $routed->configCount === $beforeRouting->configCount,
+        'Routing did not update metadata/ETag or changed VPN connection entries.');
+    $cachedRouting = $endpoint->respond($active['token']);
+    $assert($cachedRouting->cacheHit && ($cachedRouting->headers['routing'] ?? '') === $routingLink,
+        'Cached subscription lost routing headers.');
+    $plainRouting = $endpoint->respond($active['token'], 'plain');
+    $assert($plainRouting->headers['routing'] === $routingLink
+        && $plainRouting->body === base64_decode($routed->body, true), 'Plain routing response differs.');
+    $notModifiedRouting = $endpoint->respond($active['token'], 'base64', $routed->headers['ETag']);
+    $assert($notModifiedRouting->status === 304 && $notModifiedRouting->headers['routing'] === $routingLink,
+        'Unmodified response lost routing metadata.');
+    $profileRouting = (new ProfileVpnService())->dashboard((int)$user['id'], (int)$active['id']);
+    $assert($profileRouting['happRoutingLink'] === $routingLink, 'Active profile is missing its Happ link.');
+    $expiredRouting = $endpoint->respond($expired['token']);
+    $assert(!isset($expiredRouting->headers['routing']), 'Expired subscription exposes routing metadata.');
+    $payload['happ_routing_link'] = '{"Name":"Stage 11 Happ","GlobalProxy":"true","DirectSites":["domain:updated.example.org"]}';
+    $service->save($payload);
+    $updatedRouting = $endpoint->respond($active['token'], 'base64', $routed->headers['ETag']);
+    $assert($updatedRouting->status === 200 && $updatedRouting->headers['routing'] !== $routingLink,
+        'Changing only routing rules returned stale data.');
+    $payload['happ_routing_enabled'] = '0';
+    $service->save($payload);
+    $routingOff = $endpoint->respond($active['token'], 'base64', $updatedRouting->headers['ETag']);
+    $assert($routingOff->status === 200 && $routingOff->headers['routing'] === 'happ://routing/off'
+        && $routingOff->headers['routing-enable'] === '0', 'Disabling routing was not delivered.');
+    $profileRoutingOff = (new ProfileVpnService())->dashboard((int)$user['id'], (int)$active['id']);
+    $assert($profileRoutingOff['happRoutingLink'] === '', 'Disabled routing link is still exposed.');
+    $payload['happ_routing_link'] = '';
+    $service->save($payload);
+    $assert(!isset($endpoint->respond($active['token'])->headers['routing']), 'Cleared routing is still sent.');
+
     $payload['public_account_enabled'] = '0';
     $payload['show_qr_in_profile'] = '0';
     $service->save($payload);
@@ -302,6 +343,7 @@ try {
             'server_secrets_unchanged' => true,
             'customer_account_toggle' => true,
             'profile_qr_toggle' => true,
+            'happ_routing_settings_headers_cache_etag_profile' => true,
         ],
         'transaction_rolled_back' => true,
     ], JSON_UNESCAPED_SLASHES), PHP_EOL;

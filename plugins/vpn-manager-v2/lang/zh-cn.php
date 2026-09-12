@@ -908,4 +908,17 @@ return [
     'vpn_manager_v2_flash_sync_completed' => '同步已完成。',
     'vpn_manager_v2_error_operation_generic' => '无法完成操作。',
     'vpn_manager_v2_error_operation_status' => '无法获取操作状态。',
+
+    'vpn_manager_v2_happ_title' => 'Happ 路由',
+    'vpn_manager_v2_happ_enabled' => '在 Happ 中应用路由',
+    'vpn_manager_v2_happ_enabled_help' => '在 Happ 中添加或更新时，规则会发送给所有有效订阅。若要停用之前下发的路由，请关闭此开关并保留字段中的链接。',
+    'vpn_manager_v2_happ_link' => '路由链接或 JSON 配置',
+    'vpn_manager_v2_happ_link_help' => '粘贴来自 3x-ui 的 happ://routing/add/… 或 happ://routing/onadd/… 链接，或包含 Name 字段的 JSON 配置。保存后的链接会添加并启用配置。生成的链接最多 4096 字节。留空将停止发送 Happ 设置。',
+    'vpn_manager_v2_happ_editor' => '打开 Happ 路由编辑器',
+    'vpn_manager_v2_happ_saved_link' => '已保存的规则（请保存表单以应用字段更改）：',
+    'vpn_manager_v2_happ_apply' => '在 Happ 中应用',
+    'vpn_manager_v2_happ_copy' => '复制路由链接',
+    'vpn_manager_v2_happ_profile_help' => '在 Happ 中更新订阅即可自动获取规则，或点击“在 Happ 中应用”并选择订阅。应用后请重新连接 VPN。需要安装 Happ。',
+    'vpn_manager_v2_error_happ_routing' => '请输入有效的 Happ 路由链接或包含 Name 和规则列表的 JSON 配置。生成的链接不得超过 4096 字节。',
+    'vpn_manager_v2_error_happ_routing_required' => '请添加路由链接或 JSON 配置以启用 Happ 路由。',
 ];

@@ -143,6 +143,9 @@ final class ProfileVpnService
             'servers' => $servers,
             'subscriptionUrl' => $subscriptionUrl,
             'subscriptionQr' => $subscriptionQr,
+            'happRoutingLink' => $linkReady && $subscriptionUrl !== ''
+                ? (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->activeLink($settings)
+                : '',
             'linkReady' => $linkReady && $subscriptionUrl !== '',
             'localSubscriptionUrl' => $localUrl,
             'serviceName' => (string)$settings['service_name'],

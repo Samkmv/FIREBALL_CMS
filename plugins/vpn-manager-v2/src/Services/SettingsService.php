@@ -16,6 +16,8 @@ final class SettingsService
         'global_show_flags',
         'profile_info_text',
         'support_url',
+        'happ_routing_enabled',
+        'happ_routing_link',
     ];
     private const SECRET_MARKERS = ['password', 'secret', 'token', 'cookie', 'authorization'];
 
@@ -60,6 +62,8 @@ final class SettingsService
             'mask_subscription_links' => true,
             'public_account_enabled' => true,
             'show_qr_in_profile' => true,
+            'happ_routing_enabled' => false,
+            'happ_routing_link' => '',
         ];
     }
 

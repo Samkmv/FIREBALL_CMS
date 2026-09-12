@@ -130,6 +130,32 @@ $switch = static function (string $key, string $label, string $help = '') use ($
         </div>
     </section>
 
+    <section class="border rounded-5 p-3 p-md-4 mb-4" id="happ-routing">
+        <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_title')) ?></h2>
+        <div class="vstack gap-3">
+            <?= $switch('happ_routing_enabled',
+                FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_enabled'),
+                FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_enabled_help')) ?>
+            <div>
+                <label class="form-label" for="vpnV2HappRoutingLink"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_link')) ?></label>
+                <textarea class="form-control font-monospace" id="vpnV2HappRoutingLink" name="happ_routing_link"
+                          rows="4" maxlength="65536" spellcheck="false" aria-describedby="vpnV2HappRoutingHelp"
+                          placeholder="happ://routing/onadd/…"><?= htmlSC((string)($settings['happ_routing_link'] ?? '')) ?></textarea>
+                <div class="form-text" id="vpnV2HappRoutingHelp"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_link_help')) ?></div>
+            </div>
+            <div>
+                <a href="https://routing.happ.su/" target="_blank" rel="noopener noreferrer">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_editor')) ?>
+                </a>
+            </div>
+            <?php $routingLink = (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->activeLink($settings); ?>
+            <?php if ($routingLink !== ''): ?>
+                <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_saved_link')) ?></div>
+                <?php require __DIR__ . '/../partials/happ-routing-link.php'; ?>
+            <?php endif; ?>
+        </div>
+    </section>
+
     <section class="border rounded-5 p-3 p-md-4 mb-4">
         <div class="d-flex align-items-center gap-2 mb-3">
             <i class="ci-refresh-cw fs-4 text-body-secondary" aria-hidden="true"></i>

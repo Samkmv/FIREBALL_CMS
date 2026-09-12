@@ -47,7 +47,7 @@ final class VpnSubscriptionMetadataService
             $headers['support-url'] = $supportUrl;
         }
 
-        return $headers;
+        return array_replace($headers, (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->headers($settings));
     }
 
     private function timestamp(mixed $value): ?int
