@@ -1,7 +1,7 @@
 {
   "name": "Camera Manager",
   "slug": "camera-manager",
-  "version": "1.3.2",
+  "version": "1.3.3",
 
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
