@@ -1010,6 +1010,12 @@ body:has(.fireplayer.fireplayer--fullscreen) {
     }
 }
 
+@container (max-width: 360px) {
+    .fireplayer--live .fireplayer__time--current {
+        display: none;
+    }
+}
+
 @supports not (container-type: inline-size) {
     @media (max-width: 600px) {
         .fireplayer__controls,
@@ -1044,6 +1050,12 @@ body:has(.fireplayer.fireplayer--fullscreen) {
             top: 44%;
             width: 3.5rem;
             height: 3.5rem;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .fireplayer--live .fireplayer__time--current {
+            display: none;
         }
     }
 }

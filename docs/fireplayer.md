@@ -1,4 +1,4 @@
-# FirePlayer 1.0.2
+# FirePlayer 1.0.3
 
 FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD, and HLS LIVE. New content uses `.fire-player` or `[data-fire-player]`; legacy video/audio inside post content is upgraded automatically while chat and background media remain on their own paths.
 
@@ -15,11 +15,15 @@ FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD,
 
 FirePlayer recognizes file extensions, `Content-Type`, and HLS manifest markers. `#EXT-X-ENDLIST` selects VOD; a rolling playlist selects LIVE. Safari/iOS use native HLS when available, while other supported browsers load the bundled hls.js engine.
 
-Video controls include a styled settings button with playback-speed choices and zoom (1–3×), plus drag/pinch panning. Loading and reconnect messages are shown in a compact status badge directly above the timeline. LIVE appears only next to the timeline.
+Video controls include a styled settings button with playback-speed choices and zoom (1–3×), plus mouse-drag panning. Loading and reconnect messages use a compact badge at the top left of video; audio messages occupy their own row above the controls. Neither covers the play button. LIVE appears only next to the timeline, in a fixed-width button; its tooltip and accessible label explain how to return to the live edge. In narrow player containers, the timeline gets a full-width row above the buttons.
 
 On a desktop, the video panel appears while the pointer is over the player and disappears when it leaves, including after clicking a control. Keyboard focus keeps the controls accessible. Touch reveals the panel temporarily during playback; an open settings menu stays visible. Audio controls are always visible.
 
+One-finger vertical swipes over video scroll the page, including when video zoom is enabled. Pinch gestures use native page zoom; video zoom remains available in settings. Stationary side double-taps seek video, while a scroll or cancelled gesture does not seek.
+
 The volume popup clears the speaker button with a hover-safe gap and shares the settings menu surface. Settings only scroll when space is limited, using a thin themed scrollbar.
+
+Only explicit volume/mute choices are saved as sound preferences. Muted camera autoplay does not silence subsequent players. Legacy mute values that could have been saved by autoplay are ignored; intentional mute choices saved by this version are respected. An explicit `muted: true` still takes precedence, and browsers may block autoplay with sound.
 
 ## Creator diagnostics
 
@@ -66,7 +70,8 @@ const info = await FirePlayer.detect('/camera/index.m3u8');
 - `mode`: `auto`, `vod`, `live`, or `event`.
 - `autoplay`, `muted`, `loop`, `poster`, `preload`.
 - `reconnect`, `reconnectDelay`, `stallTimeout`, `startupTimeout` (30 seconds by default), `maxReconnectAttempts` (4), `liveEdgeTolerance`.
-- `rememberVolume`, `rememberPosition`, `keyboard`, `gestures`.
+- `rememberVolume`, `keyboard`, `gestures`.
+- `rememberPosition`: `'auto'` by default (video resumes, audio starts at zero). Set `true` to resume audio as well, for example for audiobooks, or `false` to disable position persistence.
 - `streamId` identifies a managed camera; `/stream-ID/index.m3u8` URLs are recognized automatically. Managed cameras always require `/api/streams/wake` to return `ready: true` before attachment, including reconnect. `lazyStart` remains accepted for legacy markup compatibility.
 
 Camera Manager uses a single lazy modal player. Closing the modal unloads the HLS engine, so hidden cameras do not continue downloading segments.
@@ -90,6 +95,6 @@ node tests/fireplayer_browser.js
 
 The browser suite requires Node.js, Playwright and its Chromium binary. When dependencies are installed outside the repository, configure `NODE_PATH` and `PLAYWRIGHT_BROWSERS_PATH`. Missing dependencies or a missing browser fail the suite rather than reporting success. Playwright 1.48.2/Chromium is used on the macOS 13 test host.
 
-The suite generates local WebM/WAV media for real playback checks, and uses deterministic media/HLS doubles for startup races, failed readiness, retry and decoder errors. It also checks HTTP source detection, the bundled hls.js script loader after a failed request, desktop/touch controls, audio session ownership, creator diagnostics permissions/cleanup, and editor/public/preview rendering. The volume popup gap, pointer transition, unnecessary desktop scrolling and narrow-screen diagnostics layout are covered by browser assertions.
+The suite contains 17 check groups. It generates local WebM/WAV media for real playback checks, and uses deterministic media/HLS doubles for startup races, failed readiness, retry and decoder errors. It also checks HTTP source detection, the bundled hls.js script loader after a failed request, desktop/touch controls, audio session ownership, creator diagnostics permissions/cleanup, and editor/public/preview rendering. Browser assertions cover the volume popup gap, pointer transition, unnecessary desktop scrolling, narrow-screen diagnostics, compact LIVE controls, separate status messages, page scrolling at video zoom 1×/2×, audio starting at zero, sound preferences, and audio timeline styling in light/dark themes with the CMS stylesheets loaded.
 
 This does not certify Safari/iPhone, actual camera connectivity, server-side stream readiness, or HLS decoding against a real segment feed; those require a deployment/device smoke test.

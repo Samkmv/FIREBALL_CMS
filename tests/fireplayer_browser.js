@@ -224,13 +224,17 @@ const probeFixtures = {
     await mobile.evaluate(() => mobilePlayer.setMode('live'));
     const liveLayout = await mobile.evaluate(() => {
         const p = mobilePlayer;
+        p._setSettingsOpen(false);
         p.pause();
         Object.defineProperty(p.media, 'seekable', { configurable: true, value: { length: 1, start: () => 0, end: () => 120 } });
         p._syncTimeline();
         p.setStatus('Повторное подключение…', 'warning');
         const root = p.root.getBoundingClientRect(), seek = p.elements.seek.getBoundingClientRect(), live = p.elements.live.getBoundingClientRect();
         const message = p.elements.status.getBoundingClientRect(), play = p.elements.playButtons[0].getBoundingClientRect();
+        const actions = [...p.elements.controls.querySelectorAll('button')].filter(button => button.getBoundingClientRect().width > 0);
+        const buttonCenters = actions.map(button => { const rect = button.getBoundingClientRect(); return rect.top + rect.height / 2; });
         return { longTimeline: seek.width >= root.width * 0.8, compactLive: live.width <= 80 && p.elements.live.textContent.trim() === 'LIVE',
+            buttonsShareRow: Math.max(...buttonCenters) - Math.min(...buttonCenters) < 2,
             liveAccessible: p.elements.live.getAttribute('aria-label') === 'Перейти в LIVE',
             messageSeparate: message.bottom <= play.top || message.top >= play.bottom || message.right <= play.left || message.left >= play.right };
     });
@@ -339,6 +343,14 @@ const probeFixtures = {
         const songStartsAtZero = song.media.currentTime === 0;
         const oldAutoplayMuteIgnored = !song.media.muted && song.media.volume === 0.6;
         song.destroy();
+        const declarativeNode = document.createElement('div');
+        declarativeNode.dataset.rememberPosition = 'auto';
+        document.querySelector('main').append(declarativeNode);
+        const declarativeSong = new FirePlayer(declarativeNode, { src: '/declarative.mp3', probe: false }); await declarativeSong.ready;
+        localStorage.setItem('fireplayer.' + declarativeSong._positionKey(), '42'); mediaState(declarativeSong.media).readyState = 4;
+        declarativeSong.media.dispatchEvent(new Event('loadedmetadata'));
+        const declarativeAutoStartsAtZero = declarativeSong.media.currentTime === 0 && declarativeSong.options.rememberPosition === 'auto';
+        declarativeSong.destroy();
         const video = makePlayer({ src: '/resume.mp4', rememberPosition: 'auto' }); await video.ready;
         localStorage.setItem('fireplayer.' + video._positionKey(), '42'); mediaState(video.media).readyState = 4;
         video.media.dispatchEvent(new Event('loadedmetadata'));
@@ -362,7 +374,7 @@ const probeFixtures = {
         const legacyZero = makePlayer({ src: '/zero.mp3' }); await legacyZero.ready;
         const silentLegacyReset = !legacyZero.media.muted && legacyZero.media.volume > 0; legacyZero.destroy();
         localStorage.removeItem('fireplayer.volume');
-        return { songStartsAtZero, oldAutoplayMuteIgnored, videoStillResumes, optInAudioResumes, forcedMuteNotSaved, nextAudible, userMuteSaved, silentLegacyReset };
+        return { songStartsAtZero, declarativeAutoStartsAtZero, oldAutoplayMuteIgnored, videoStillResumes, optInAudioResumes, forcedMuteNotSaved, nextAudible, userMuteSaved, silentLegacyReset };
     });
     for (const [name, passed] of Object.entries(preferences)) { assert.equal(passed, true, name); }
     checks.push('audio starts at zero by default, optional resume preserved, autoplay mute does not pollute user sound preferences');

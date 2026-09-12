@@ -132,7 +132,11 @@
         assignBoolean('reconnect', data.reconnect, true);
         assignBoolean('lazyStart', data.lazyStart !== undefined ? data.lazyStart : data.hlsLazyStart, false);
         assignBoolean('posterCacheBust', data.posterCacheBust, false);
-        assignBoolean('rememberPosition', data.rememberPosition, true);
+        if (data.rememberPosition === 'auto') {
+            result.rememberPosition = 'auto';
+        } else {
+            assignBoolean('rememberPosition', data.rememberPosition, true);
+        }
         assignBoolean('rememberVolume', data.rememberVolume, true);
         assignBoolean('probe', data.probe, true);
         assignBoolean('playsinline', data.playsinline, true);
