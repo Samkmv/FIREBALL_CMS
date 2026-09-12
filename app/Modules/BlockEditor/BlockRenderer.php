@@ -261,15 +261,16 @@ final class BlockRenderer
         $ratio = in_array((string)($data['aspectRatio'] ?? '16:9'), ['16:9', '4:3', '1:1', '9:16'], true)
             ? (string)$data['aspectRatio']
             : '16:9';
-        $videoAttributes = (!array_key_exists('controls', $data) || !empty($data['controls']) ? ' controls' : '') .
-            (!empty($data['autoplay']) ? ' autoplay' : '') .
-            (!empty($data['muted']) || !empty($data['autoplay']) ? ' muted' : '') .
-            (!empty($data['loop']) ? ' loop' : '');
+        $playerAttributes = ' class="fire-player" data-fire-player data-src="' . htmlSC($src) . '" data-media="video"' .
+            ' data-aspect-ratio="' . htmlSC($ratio) . '"' .
+            ' data-controls="' . (!array_key_exists('controls', $data) || !empty($data['controls']) ? 'true' : 'false') . '"' .
+            ' data-autoplay="' . (!empty($data['autoplay']) ? 'true' : 'false') . '"' .
+            ' data-muted="' . (!empty($data['muted']) || !empty($data['autoplay']) ? 'true' : 'false') . '"' .
+            ' data-loop="' . (!empty($data['loop']) ? 'true' : 'false') . '"' .
+            ($poster !== '' ? ' data-poster="' . htmlSC($poster) . '"' : '') .
+            (!empty($data['hls']) ? ' data-protocol="hls"' : '');
 
-        return '<figure data-aspect-ratio="' . htmlSC($ratio) . '"><video' . $videoAttributes . ' preload="metadata" src="' . htmlSC($src) . '"' .
-            ($poster !== '' ? ' poster="' . htmlSC($poster) . '"' : '') .
-            (!empty($data['hls']) ? ' data-hls="1"' : '') .
-            '></video>' .
+        return '<figure data-aspect-ratio="' . htmlSC($ratio) . '"><div' . $playerAttributes . '></div>' .
             ($caption !== '' ? '<figcaption>' . htmlSC($caption) . '</figcaption>' : '') .
             '</figure>';
     }
@@ -277,21 +278,14 @@ final class BlockRenderer
     private function audio(array $data): string
     {
         $src = trim((string)($data['src'] ?? ''));
-        if ($src === '') {
+        if ($src === '' || !is_safe_content_url($src)) {
             return '';
         }
 
         $caption = trim((string)($data['caption'] ?? ''));
-        $audioOptions = htmlSC('{"controls":["play","progress","current-time","duration","mute","volume"]}');
-        $audio = '<div data-plyr-player-wrap="" data-plyr-media="audio" data-plyr-lazy="true"><audio controls preload="metadata" data-plyr-player="" data-plyr-options="' . $audioOptions . '">' .
-            '<source src="' . htmlSC($src) . '" type="' . htmlSC($this->audioMimeType($src)) . '">' .
-            '</audio></div>';
-
-        if ($caption !== '') {
-            $audio .= '<p>' . htmlSC($caption) . '</p>';
-        }
-
-        return $audio;
+        return '<figure><div class="fire-player" data-fire-player data-src="' . htmlSC($src) . '" data-media="audio"></div>' .
+            ($caption !== '' ? '<figcaption>' . htmlSC($caption) . '</figcaption>' : '') .
+            '</figure>';
     }
 
     private function table(array $data): string

@@ -41,6 +41,7 @@ final class BlockEditorService
             base_url('/assets/default/icons/cartzilla-icons.min.css'),
             base_url('/assets/default/css/theme.min.css'),
             base_url('/assets/default/css/style.css?v=' . filemtime(WWW . '/assets/default/css/style.css')),
+            base_url('/assets/default/css/fireplayer.css?v=' . filemtime(WWW . '/assets/default/css/fireplayer.css')),
         ];
 
         return array_values((array)apply_filters('fireball_editor_preview_style_assets', $assets));
