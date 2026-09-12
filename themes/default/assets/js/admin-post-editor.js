@@ -3164,7 +3164,9 @@ function initPostEditor() {
                 return '<iframe src="' + escapeAttr(embedUrl) + '" allowfullscreen loading="lazy"></iframe>';
             }
 
-            return '<video controls playsinline' + (block.data.poster ? ' poster="' + escapeAttr(block.data.poster) + '"' : '') + '><source src="' + escapeAttr(block.data.src) + '" type="' + escapeAttr(getVideoMimeType(block.data.src)) + '"></video>';
+            return '<div class="fire-player" data-fire-player data-src="' + escapeAttr(block.data.src) + '" data-media="video"' +
+                (block.data.poster ? ' data-poster="' + escapeAttr(block.data.poster) + '"' : '') +
+                (getVideoMimeType(block.data.src) === 'application/vnd.apple.mpegurl' ? ' data-protocol="hls"' : '') + '></div>';
         }
 
         return '<div class="fb-post-block__placeholder-text">' + escapeHtml(labels.sourceLink) + '</div>';
@@ -3581,8 +3583,9 @@ function initPostEditor() {
                 const poster = String(block.data.poster || '').trim();
                 const mimeType = getVideoMimeType(src);
                 const isHls = mimeType === 'application/vnd.apple.mpegurl';
-                return '<div data-plyr-player-wrap="" data-plyr-lazy="true"><video controls playsinline webkit-playsinline preload="metadata" data-plyr-player=""' + (isHls ? ' data-hls-src="' + escapeAttr(src) + '"' : '') + (poster ? ' poster="' + escapeAttr(poster) + '"' : '') + '>' + (isHls ? '' : '<source src="' + escapeAttr(src) + '" type="' + escapeAttr(mimeType) + '">') + '</video></div>' +
-                    (caption ? '<p>' + escapeHtml(caption) + '</p>' : '');
+                return '<figure><div class="fire-player" data-fire-player data-src="' + escapeAttr(src) + '" data-media="video"' +
+                    (isHls ? ' data-protocol="hls"' : '') + (poster ? ' data-poster="' + escapeAttr(poster) + '"' : '') + '></div>' +
+                    (caption ? '<figcaption>' + escapeHtml(caption) + '</figcaption>' : '') + '</figure>';
             }
 
             if (block.type === 'html') {
@@ -3783,7 +3786,7 @@ function initPostEditor() {
                 return;
             }
 
-            if (tag === 'img' || tag === 'figure') {
+            if (tag === 'img' || (tag === 'figure' && node.querySelector('img'))) {
                 flushTextBuffer();
                 blocks.push(parseImageBlock(node));
                 return;
@@ -3920,8 +3923,12 @@ function initPostEditor() {
     function parseVideoBlock(node) {
         let source = '';
         let poster = '';
+        const firePlayer = node.matches('[data-fire-player]') ? node : node.querySelector('[data-fire-player]');
 
-        if (node.matches('iframe')) {
+        if (firePlayer) {
+            source = String(firePlayer.getAttribute('data-src') || '');
+            poster = String(firePlayer.getAttribute('data-poster') || '');
+        } else if (node.matches('iframe')) {
             source = String(node.getAttribute('src') || '');
         } else if (node.querySelector('iframe')) {
             source = String(node.querySelector('iframe').getAttribute('src') || '');
@@ -3935,13 +3942,14 @@ function initPostEditor() {
         return createImportedBlock('video', {
             src: source,
             poster: poster,
-            caption: ''
+            caption: node.querySelector('figcaption') ? String(node.querySelector('figcaption').textContent || '').trim() : ''
         });
     }
 
     function isVideoBlockCandidate(node) {
         const tag = node.tagName ? node.tagName.toLowerCase() : '';
-        if (tag === 'video' || node.matches('[data-plyr-player-wrap]') || node.querySelector('video, [data-plyr-player-wrap]')) {
+        const firePlayer = node.matches('[data-fire-player]') ? node : node.querySelector('[data-fire-player]');
+        if ((firePlayer && firePlayer.getAttribute('data-media') !== 'audio') || tag === 'video' || node.matches('[data-plyr-player-wrap]') || node.querySelector('video, [data-plyr-player-wrap]')) {
             return true;
         }
 

@@ -15,7 +15,9 @@
     ]);
     const allowedAttributes = new Set([
         'allow', 'allowfullscreen', 'alt', 'aria-label', 'cite', 'colspan', 'controls', 'datetime', 'height',
-        'data-hls-src', 'href', 'lang', 'loading', 'open', 'poster', 'preload', 'rel', 'rowspan',
+        'data-aspect-ratio', 'data-autoplay', 'data-controls', 'data-fire-player', 'data-hls-src',
+        'data-loop', 'data-media', 'data-muted', 'data-poster', 'data-protocol', 'data-src',
+        'href', 'lang', 'loading', 'open', 'poster', 'preload', 'rel', 'rowspan',
         'scope', 'src', 'start', 'style', 'target', 'title', 'type', 'width'
     ]);
     const allowedStyles = new Set([
@@ -162,8 +164,8 @@
                     element.removeAttribute(attribute.name);
                     return;
                 }
-                if (name === 'href' || name === 'src' || name === 'poster' || name === 'data-hls-src') {
-                    value = safeUrl(value, (name === 'src' || name === 'poster') && tag === 'img');
+                if (name === 'href' || name === 'src' || name === 'poster' || name === 'data-hls-src' || name === 'data-src' || name === 'data-poster') {
+                    value = safeUrl(value, ((name === 'src' || name === 'poster') && tag === 'img') || name === 'data-poster');
                     if (!value) {
                         element.removeAttribute(attribute.name);
                         return;
