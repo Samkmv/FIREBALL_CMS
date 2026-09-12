@@ -14,8 +14,8 @@
 
 $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
 $canViewPaidVideos = (bool)apply_filters('public_video_access_allowed', true, get_user() ?: []);
-$heroStream = 'https://5e0add8153fcd.streamlock.net:1936/vedetta/via-della-scala.stream/chunklist_w1359048502.m3u8?utm_source=chatgpt.com';
-//$heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
+//$heroStream = 'https://5e0add8153fcd.streamlock.net:1936/vedetta/via-della-scala.stream/chunklist_w1359048502.m3u8?utm_source=chatgpt.com';
+$heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
 $heroHlsScript = theme_asset('vendor/hls.js/hls.min.js') . '?v=' . filemtime(theme()->assetPath('vendor/hls.js/hls.min.js'));
 $homeCityCategories = array_values(array_filter(
     (new \App\Models\Post())->getNavigationCategories(),
