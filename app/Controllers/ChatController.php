@@ -368,6 +368,7 @@ class ChatController extends BaseController
     {
         $currentUserId = (int)get_user()['id'];
         $this->users->touchPresence($currentUserId);
+        session()->close();
 
         response()->json([
             'status' => true,

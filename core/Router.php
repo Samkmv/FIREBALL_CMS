@@ -13,6 +13,9 @@ class Router
     protected Request $request;
     protected Response $response;
     protected array $routes = [];
+    protected array $staticRoutes = [];
+    protected array $dynamicRoutes = [];
+    protected string $langPattern;
     public array $route_params = [];
 
     /**
@@ -22,6 +25,8 @@ class Router
     {
         $this->request = $request;
         $this->response = $response;
+        $codes = array_keys(LANGS);
+        $this->langPattern = $codes ? implode('|', array_map(static fn(string $code): string => preg_quote($code, '#'), $codes)) : '[a-z]+';
     }
 
     /**
@@ -37,8 +42,19 @@ class Router
             $method = [strtoupper($method)];
         }
 
+        $langPattern = $this->langPattern;
+        $pattern = MULTILANGS
+            ? ($path === '' ? "#^/(?:(?P<lang>{$langPattern})/?)?$#" : "#^/(?:(?P<lang>{$langPattern})/)?{$path}/?$#")
+            : ($path === '' ? "#^/?$#" : "#^/{$path}/?$#");
+        $index = count($this->routes);
+        if (preg_match('/^[a-zA-Z0-9_\/-]*$/', $path)) {
+            $this->staticRoutes['/' . $path][] = $index;
+        } else {
+            $this->dynamicRoutes[] = $index;
+        }
         $this->routes[] = [
             'path' => "/$path",
+            'pattern' => $pattern,
             'callback' => $callback,
             'middleware' => [],
             'method' => $method,
@@ -110,25 +126,16 @@ class Router
     {
 
         $allowed_methods = [];
-        $langCodes = array_keys(LANGS);
-        $langPattern = $langCodes ? implode('|', array_map(static fn(string $code): string => preg_quote($code, '#'), $langCodes)) : '[a-z]+';
-
-        foreach ($this->routes as $route) {
-            $routePath = trim($route['path'], '/');
-
-            if (MULTILANGS) {
-                if ($routePath === '') {
-                    $pattern = "#^/(?:(?P<lang>{$langPattern})/?)?$#";
-                } else {
-                    $pattern = "#^/(?:(?P<lang>{$langPattern})/)?{$routePath}/?$#";
-                }
-            } else {
-                if ($routePath === '') {
-                    $pattern = "#^/?$#";
-                } else {
-                    $pattern = "#^/{$routePath}/?$#";
-                }
-            }
+        $segments = explode('/', trim($path, '/'));
+        if (MULTILANGS && isset($segments[0]) && array_key_exists($segments[0], LANGS)) {
+            array_shift($segments);
+        }
+        $lookupPath = '/' . implode('/', $segments);
+        $candidates = array_merge($this->dynamicRoutes, $this->staticRoutes[$lookupPath] ?? []);
+        sort($candidates, SORT_NUMERIC); // Preserve original registration priority and 405 behavior.
+        foreach ($candidates as $index) {
+            $route = $this->routes[$index];
+            $pattern = $route['pattern'];
 
             if (preg_match($pattern, "/{$path}", $matches)) {
 

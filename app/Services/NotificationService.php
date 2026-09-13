@@ -259,6 +259,10 @@ class NotificationService
 
     public function ensureTables(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if ($this->schemaReady) {
             return;
         }

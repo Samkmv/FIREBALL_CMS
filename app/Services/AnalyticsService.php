@@ -16,7 +16,6 @@ final class AnalyticsService
 
     public function __construct(?AnalyticsRepository $repository = null)
     {
-        $this->loadGeoIpReader();
         $this->repository = $repository ?: new AnalyticsRepository();
     }
 
@@ -66,6 +65,9 @@ final class AnalyticsService
 
         $userAgent = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
         $referer = $this->limitString((string)($payload['referer'] ?? ($_SERVER['HTTP_REFERER'] ?? '')), 2048);
+        // Landing attribution is persisted before slow GeoIP/file work.
+        session()->close();
+        $this->loadGeoIpReader();
         $geo = $this->resolveGeo($ip);
 
         $this->repository->insertVisit([

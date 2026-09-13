@@ -17,6 +17,10 @@ class SiteSetting
      */
     public function ensureTableExists(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }
@@ -67,7 +71,6 @@ class SiteSetting
             return self::$cache = $cached;
         }
 
-        $this->ensureTableExists();
         $rows = db()->query("SELECT setting_key, setting_value FROM {$this->table}")->get() ?: [];
 
         self::$cache = [];
@@ -100,28 +103,33 @@ class SiteSetting
      */
     public function setMany(array $settings): void
     {
-        $this->ensureTableExists();
 
+        if ($settings === []) return;
+        $values = [];
+        $params = [];
+        $now = date('Y-m-d H:i:s');
         foreach ($settings as $key => $value) {
-            db()->query(
-                "INSERT INTO {$this->table} (setting_key, setting_value, updated_at)
-                 VALUES (?, ?, ?)
-                 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = VALUES(updated_at)",
-                [
-                    $key,
-                    trim((string)$value),
-                    date('Y-m-d H:i:s'),
-                ]
-            );
+            $values[] = '(?, ?, ?)';
+            array_push($params, $key, trim((string)$value), $now);
         }
+        db()->query(
+            "INSERT INTO {$this->table} (setting_key, setting_value, updated_at) VALUES " . implode(', ', $values)
+            . ' ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = VALUES(updated_at)',
+            $params
+        );
 
         self::clearPublicCache();
     }
 
     public static function clearPublicCache(): void
     {
+        \App\Services\PublicLayoutContext::invalidate();
         self::$cache = null;
+        if (isset(\FBL\Application::$app) && app()->theme !== null) {
+            app()->theme->invalidateRuntime();
+        }
         cache()->remove('site_settings:all');
+        cache()->remove('session:policy');
 
         if (class_exists(\App\Widgets\Menu\Menu::class)) {
             \App\Widgets\Menu\Menu::clearCache();

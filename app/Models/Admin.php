@@ -19,6 +19,10 @@ class Admin
      */
     public function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }

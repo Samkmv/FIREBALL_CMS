@@ -2,149 +2,146 @@
 
 namespace FBL;
 
-/**
- * Простой файловый кэш для временного хранения данных по ключу.
- */
+/** Request memory → optional APCu → atomic file cache. */
 class Cache
 {
     private const DEFAULT_TTL = 3600;
+    private static array $memory = [];
+    private static ?string $generation = null;
 
-    /**
-     * Сохраняет данные в кэш на указанное количество секунд.
-     */
+    private function namespace(): string
+    {
+        self::$generation ??= trim((string)@file_get_contents(CACHE . '/.generation')) ?: 'initial';
+        return 'fireball:' . hash('sha256', CACHE) . ':' . self::$generation . ':';
+    }
+
+    private function apcu(): bool
+    {
+        return function_exists('apcu_enabled') && apcu_enabled();
+    }
+
+    private function rotateGeneration(): void
+    {
+        // Also invalidates other SAPIs (CLI/FPM) and hosts sharing the file cache.
+        $generation = bin2hex(random_bytes(12));
+        $this->writeFile(CACHE . '/.generation', $generation);
+        self::$generation = $generation;
+    }
+
     public function set($key, $data, $seconds = 3600): void
     {
-        $seconds = (int)$seconds;
-        if ($seconds <= 0) {
-            // Safety fallback: invalid TTL values should not create immediately stale cache entries.
-            $seconds = self::DEFAULT_TTL;
-        }
-
-        Localization::debug('cache_set', [
-            'cache_key' => (string)$key,
-            'ttl' => $seconds,
-        ]);
-
-        $content['data'] = $data;
-        $content['end_time'] = time() + $seconds;
-
-        $cache_file = CACHE . '/' . md5($key) . '.txt';
-        if (!is_dir(CACHE) && !@mkdir(CACHE, 0755, true) && !is_dir(CACHE)) {
-            log_error_details('Cache write error', [
-                'Key' => $key,
-                'Cache Directory' => CACHE,
-                'Reason' => 'Unable to create cache directory',
-            ]);
-            return;
-        }
-
-        if (file_put_contents($cache_file, serialize($content), LOCK_EX) === false) {
-            log_error_details('Cache write error', [
-                'Key' => $key,
-                'Cache File' => $cache_file,
-                'Cache Directory Writable' => is_writable(CACHE) ? 'yes' : 'no',
-            ]);
+        $started = PerformanceProfiler::begin();
+        try {
+            $seconds = (int)$seconds > 0 ? (int)$seconds : self::DEFAULT_TTL;
+            $id = md5((string)$key);
+            $payload = serialize(['data' => $data, 'end_time' => time() + $seconds]);
+            self::$memory[$id] = $payload;
+            $this->writeFile(CACHE . '/' . $id . '.txt', $payload);
+            $this->rotateGeneration();
+            // Use the same safe serialization contract on all three layers.
+            self::$memory[$id] = $payload;
+            if ($this->apcu()) {
+                apcu_store($this->namespace() . $id, $payload, min(600, $seconds + 1));
+            }
+        } catch (\RuntimeException $exception) {
+            // Unwritable optional cache must not turn a public request into a 500.
+            log_error_details('Cache write error', [], $exception);
+        } finally {
+            PerformanceProfiler::end('cache', $started);
         }
     }
 
-    /**
-     * Возвращает данные из кэша, если запись существует и ещё не истекла.
-     */
     public function get($key, $default = null)
     {
-        $cache_file = CACHE . '/' . md5($key) . '.txt';
-
-        if (file_exists($cache_file)) {
-            $rawContent = file_get_contents($cache_file);
-            if ($rawContent === false) {
-                Localization::debug('cache_read_error', ['cache_key' => (string)$key]);
-                log_error_details('Cache read error', [
-                    'Key' => $key,
-                    'Cache File' => $cache_file,
-                ]);
+        $started = PerformanceProfiler::begin();
+        try {
+            $id = md5((string)$key);
+            if (array_key_exists($id, self::$memory)) {
+                PerformanceProfiler::count('cache_l1_hits');
+                $payload = self::$memory[$id];
+            } else {
+                $payload = false;
+                if ($this->apcu()) {
+                    $payload = apcu_fetch($this->namespace() . $id);
+                }
+                if (!is_string($payload)) {
+                    PerformanceProfiler::count('cache_file_reads');
+                    $payload = @file_get_contents(CACHE . '/' . $id . '.txt');
+                }
+                self::$memory[$id] = $payload;
+            }
+            if (!is_string($payload)) {
                 return $default;
             }
-
-            $content = @unserialize($rawContent, ['allowed_classes' => false]);
-            if (!is_array($content) || !array_key_exists('end_time', $content)) {
-                Localization::debug('cache_payload_error', ['cache_key' => (string)$key]);
-                log_error_details('Cache payload error', [
-                    'Key' => $key,
-                    'Cache File' => $cache_file,
-                ]);
-                $this->deleteFile($cache_file, $key);
+            $entry = @unserialize($payload, ['allowed_classes' => false]);
+            if (!is_array($entry) || !array_key_exists('data', $entry)
+                || (int)($entry['end_time'] ?? 0) < time()) {
+                self::$memory[$id] = false;
                 return $default;
             }
-
-            $endTime = (int)$content['end_time'];
-            if ($endTime > 0 && time() <= $endTime) {
-                Localization::debug('cache_get_hit', ['cache_key' => (string)$key]);
-                return $content['data'];
+            if ($this->apcu() && !apcu_exists($this->namespace() . $id)) {
+                apcu_store($this->namespace() . $id, $payload, min(600, max(1, (int)$entry['end_time'] - time() + 1)));
             }
-
-            Localization::debug('cache_get_expired', ['cache_key' => (string)$key]);
-            $this->deleteFile($cache_file, $key);
+            return $entry['data'];
+        } finally {
+            PerformanceProfiler::end('cache', $started);
         }
-
-        Localization::debug('cache_get_miss', ['cache_key' => (string)$key]);
-        return $default;
     }
 
-    /**
-     * Удаляет запись из кэша по ключу.
-     */
     public function remove($key): void
     {
-        Localization::debug('cache_remove', ['cache_key' => (string)$key]);
-        $cache_file = CACHE . '/' . md5($key) . '.txt';
-
-        if (file_exists($cache_file)) {
-            $this->deleteFile($cache_file, $key);
+        $id = md5((string)$key);
+        unset(self::$memory[$id]);
+        if ($this->apcu()) {
+            apcu_delete($this->namespace() . $id);
         }
+        $path = CACHE . '/' . $id . '.txt';
+        if (is_file($path) && !@unlink($path)) {
+            throw new \RuntimeException('Unable to invalidate file cache.');
+        }
+        $this->rotateGeneration();
     }
 
-    /**
-     * Полностью очищает файловый кэш и возвращает количество удалённых cache-файлов.
-     */
     public function clear(): int
     {
-        if (!is_dir(CACHE)) {
-            return 0;
-        }
-
+        self::$memory = [];
         $deleted = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator(CACHE, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
-
-        foreach ($iterator as $item) {
-            $path = $item->getPathname();
-            if ($item->isDir()) {
-                @rmdir($path);
-                continue;
-            }
-
-            // Keep repository sentinels and local access rules intact while clearing runtime cache payloads.
-            if (in_array($item->getFilename(), ['.gitkeep', '.htaccess'], true)) {
-                continue;
-            }
-
-            if (@unlink($path)) {
-                $deleted++;
+        if (is_dir(CACHE)) {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator(CACHE, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($iterator as $item) {
+                if ($item->isDir()) {
+                    @rmdir($item->getPathname());
+                } elseif (!in_array($item->getFilename(), ['.gitkeep', '.htaccess', '.generation'], true)) {
+                    if (@unlink($item->getPathname())) {
+                        $deleted++;
+                    }
+                }
             }
         }
-
+        $this->rotateGeneration();
         return $deleted;
     }
 
-    private function deleteFile(string $path, string $key = ''): void
+    private function writeFile(string $path, string $content): void
     {
-        if (!@unlink($path)) {
-            log_error_details('Cache delete error', [
-                'Key' => $key,
-                'Cache File' => $path,
-            ]);
+        if (!is_dir(CACHE) && !@mkdir(CACHE, 0755, true) && !is_dir(CACHE)) {
+            throw new \RuntimeException('Unable to create cache directory.');
+        }
+        $temporary = tempnam(CACHE, '.cache-');
+        if ($temporary === false) {
+            throw new \RuntimeException('Unable to create cache file.');
+        }
+        try {
+            if (file_put_contents($temporary, $content, LOCK_EX) === false || !@rename($temporary, $path)) {
+                throw new \RuntimeException('Unable to write cache file.');
+            }
+        } finally {
+            if (is_file($temporary)) {
+                @unlink($temporary);
+            }
         }
     }
 }

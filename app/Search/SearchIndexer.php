@@ -19,6 +19,10 @@ final class SearchIndexer
 
     public function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if ($this->schemaReady) {
             return;
         }

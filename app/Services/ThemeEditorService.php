@@ -842,6 +842,10 @@ class ThemeEditorService
 
     protected function log(string $action, string $slug, string $path = '', array $context = []): void
     {
+        if (in_array($action, ['save', 'create_file', 'create_directory', 'rename', 'delete', 'replace_image', 'restore', 'copy_theme'], true)) {
+            \FBL\AssetManifest::invalidate();
+            cache()->remove('languages:packs:v1');
+        }
         $user = get_user() ?: [];
         $payload = [
             'created_at' => gmdate('c'),

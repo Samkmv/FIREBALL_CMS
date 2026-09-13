@@ -29,11 +29,19 @@ class ThemeManager
     protected string $themesPath;
     protected ?array $activeTheme = null;
     protected ThemeAssets $themeAssets;
+    protected array $themeMetadata = [];
 
     public function __construct(?string $themesPath = null)
     {
         $this->themesPath = rtrim($themesPath ?: ROOT . '/themes', '/');
         // Keep ThemeManager as the public facade while moving asset path logic into a focused service.
+        $this->themeAssets = new ThemeAssets();
+    }
+
+    public function invalidateRuntime(): void
+    {
+        $this->activeTheme = null;
+        $this->themeMetadata = [];
         $this->themeAssets = new ThemeAssets();
     }
 
@@ -83,7 +91,6 @@ class ThemeManager
 
         try {
             $settings = new SiteSetting();
-            $settings->ensureTableExists();
             $current = trim($settings->get('active_theme', self::DEFAULT_THEME));
             if ($current === '') {
                 $settings->setMany(['active_theme' => self::DEFAULT_THEME]);
@@ -515,6 +522,7 @@ class ThemeManager
 
     public function render($template, $data = []): string
     {
+        $renderStarted = PerformanceProfiler::begin();
         unset($data['this']);
 
         $theme = $this->getActiveTheme();
@@ -541,7 +549,9 @@ class ThemeManager
         ob_start();
         require $layoutFile;
 
-        return $this->injectCmsComponents((string)ob_get_clean());
+        $html = $this->injectCmsComponents((string)ob_get_clean());
+        PerformanceProfiler::end('render', $renderStarted);
+        return $html;
     }
 
     protected function injectCmsComponents(string $html): string
@@ -1029,6 +1039,10 @@ class ThemeManager
 
     protected function logThemeAction(string $event, array $context = []): void
     {
+        if (in_array($event, ['theme_activated', 'theme_imported'], true)) {
+            AssetManifest::invalidate();
+            $this->invalidateRuntime();
+        }
         $line = '[' . date('Y-m-d H:i:s') . '] ' . $event;
         if ($context) {
             $line .= ' ' . (json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '{}');
@@ -1220,6 +1234,9 @@ class ThemeManager
 
     protected function loadTheme(string $slug): ?array
     {
+        if (array_key_exists($slug, $this->themeMetadata)) {
+            return $this->themeMetadata[$slug];
+        }
         if (!$this->isValidSlug($slug)) {
             return null;
         }
@@ -1247,7 +1264,7 @@ class ThemeManager
             return null;
         }
 
-        return [
+        return $this->themeMetadata[$slug] = [
             'name' => trim((string)($data['name'] ?? $slug)) ?: $slug,
             'slug' => $slug,
             'version' => trim((string)($data['version'] ?? '')),

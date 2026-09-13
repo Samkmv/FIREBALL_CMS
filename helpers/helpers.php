@@ -252,6 +252,17 @@ function theme_asset($path): string
     return theme()->asset($path);
 }
 
+function asset_versioned_url(string $url, string $localPath): string
+{
+    return \FBL\AssetManifest::url($url, $localPath);
+}
+
+function theme_asset_versioned(string $path): string
+{
+    $url = theme_asset($path);
+    return $path === '' || $url === '' ? $url : asset_versioned_url($url, theme()->assetPath($path));
+}
+
 function renderCookieConsent(): string
 {
     return (new \App\Components\CookieConsent())->render();

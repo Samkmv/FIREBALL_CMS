@@ -4,6 +4,7 @@ namespace App\Services\Themes;
 
 final class ThemeAssets
 {
+    private array $files = [];
     public function asset(string $path, array $theme, ?array $defaultTheme = null): string
     {
         if (trim($path) === '') {
@@ -51,13 +52,16 @@ final class ThemeAssets
     private function assetFile(array $theme, string $path): ?string
     {
         $file = rtrim((string)$theme['path'], '/') . '/assets/' . $path;
+        if (array_key_exists($file, $this->files)) {
+            return $this->files[$file];
+        }
         $realFile = realpath($file);
         $realBase = realpath(rtrim((string)$theme['path'], '/') . '/assets');
         if ($realFile === false || $realBase === false || !$this->isInside($realFile, $realBase) || !is_file($realFile)) {
-            return null;
+            return $this->files[$file] = null;
         }
 
-        return $realFile;
+        return $this->files[$file] = $realFile;
     }
 
     private function safePath(string $path): ?string

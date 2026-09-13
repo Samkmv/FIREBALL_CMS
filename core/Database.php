@@ -14,13 +14,18 @@ class Database
     /**
      * Создаёт подключение к базе данных по настройкам проекта.
      */
-    public function __construct()
+    public function __construct(?\PDO $connection = null)
     {
+        if ($connection !== null) {
+            $this->connection = $connection;
+            return;
+        }
         $dsn = "mysql:host=" . DB_SETTINGS['host'] . ";dbname=" . DB_SETTINGS['database'] . ";charset=" . DB_SETTINGS['charset'];
         if (!empty(DB_SETTINGS['port'])) {
             $dsn .= ";port=" . (int)DB_SETTINGS['port'];
         }
 
+        $connectionStarted = PerformanceProfiler::begin();
         try {
             $this->connection = new \PDO($dsn, DB_SETTINGS['username'], DB_SETTINGS['password'], DB_SETTINGS['options']);
         } catch (\PDOException $e) {
@@ -35,6 +40,8 @@ class Database
             abort('Database connection error!', 500);
         }
 
+        PerformanceProfiler::count('pdo_connections');
+        PerformanceProfiler::end('db_connect', $connectionStarted);
         return $this;
     }
 
@@ -43,6 +50,7 @@ class Database
      */
     public function query(string $query, array $params = []): static
     {
+        $queryStarted = PerformanceProfiler::begin();
         try {
             $this->stmt = $this->connection->prepare($query);
             $this->stmt->execute($params);
@@ -53,6 +61,8 @@ class Database
                 'Param Keys' => array_map('strval', array_keys($params)),
             ], $e);
             throw $e;
+        } finally {
+            PerformanceProfiler::sql($query, $queryStarted);
         }
 
         return $this;

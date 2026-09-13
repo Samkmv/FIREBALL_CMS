@@ -6,6 +6,7 @@ use App\Models\SiteSetting;
 
 final class ConfigService
 {
+    private ?array $local = null;
     private const SETTING_KEY_MAP = [
         'SITE_NAME' => ['site_name', 'site_title'],
         'APP_URL' => ['app_url', 'site_url'],
@@ -85,6 +86,7 @@ final class ConfigService
 
     public function localConfig(): array
     {
+        if ($this->local !== null) return $this->local;
         $path = CONFIG . '/config.local.php';
         if (!is_file($path)) {
             return [];
@@ -92,6 +94,6 @@ final class ConfigService
 
         $config = require $path;
 
-        return is_array($config) ? $config : [];
+        return $this->local = is_array($config) ? $config : [];
     }
 }

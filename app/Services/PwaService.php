@@ -186,12 +186,8 @@ class PwaService
         $publicDir = ($source['kind'] ?? 'default') === 'default' ? '/assets/default/pwa' : '/uploads/pwa';
         $targetDir = WWW . $publicDir;
 
+        // Raster generation belongs to syncIcons() on settings/upload operations.
         if (!$this->iconSetComplete($targetDir)) {
-            $this->generateRasterIcons((string)$source['path'], $targetDir);
-        }
-
-        if (!$this->iconSetComplete($targetDir)) {
-            $this->generateRasterIcons(WWW . '/assets/img/fbl_logo.png', WWW . '/assets/default/pwa');
             $publicDir = '/assets/default/pwa';
             $targetDir = WWW . $publicDir;
         }
@@ -237,6 +233,7 @@ class PwaService
             $this->generateRasterIcons((string)$source['path'], $target);
         }
 
+        \FBL\AssetManifest::invalidate();
         $this->settings->setMany(['pwa_cache_version' => (string)time()]);
     }
 
@@ -244,7 +241,7 @@ class PwaService
     {
         $icons = $this->icons();
         $payload = [
-            'cacheName' => 'fireball-pwa-' . $this->cacheVersion(),
+            'cacheName' => 'fireball-pwa-v2-' . $this->cacheVersion(),
             'offlineUrl' => base_url('/offline'),
             'homeUrl' => base_url('/'),
             'defaultTitle' => $this->appName(),
@@ -252,6 +249,8 @@ class PwaService
             'icon' => $icons['sizes'][192] ?? $icons['apple']['src'] ?? base_url('/assets/img/fbl_logo.png'),
             'badge' => $icons['sizes'][72] ?? $icons['favicon']['src'] ?? base_url('/assets/img/fbl_logo.png'),
             'statusUrl' => base_url('/api/pwa/status'),
+            'basePath' => rtrim((string)parse_url(base_url('/'), PHP_URL_PATH), '/'),
+            'locales' => array_keys(LANGS),
             'privatePrefixes' => [
                 base_url('/admin'),
                 base_url('/login'),
@@ -276,19 +275,53 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith("fireball-pwa-") && key !== FIREBALL_PWA.cacheName).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
 });
 
+const safeStaticResponse = (response) => response && response.ok && response.type === "basic"
+  && !response.redirected && !/(?:private|no-store)/i.test(response.headers.get("Cache-Control") || "");
+const storeStatic = async (cache, request, response) => {
+  if (!safeStaticResponse(response)) return;
+  await cache.put(request, response.clone());
+  const keys = await cache.keys();
+  const removable = keys.filter((key) => key.url !== FIREBALL_PWA.offlineUrl);
+  if (removable.length > 150) await Promise.all(removable.slice(0, removable.length - 150).map((key) => cache.delete(key)));
+};
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET") return;
-
+  if (request.method !== "GET" || request.headers.has("Range")) return;
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
-
-  const isPrivate = FIREBALL_PWA.privatePrefixes.some((prefix) => request.url.indexOf(prefix) === 0);
-  if (isPrivate) return;
-
+  let path = url.pathname;
+  const base = FIREBALL_PWA.basePath;
+  if (base && (path === base || path.startsWith(base + "/"))) path = path.slice(base.length) || "/";
+  const segments = path.split("/").filter(Boolean);
+  if (FIREBALL_PWA.locales.includes(segments[0])) segments.shift();
+  const privateRoots = ["admin", "api", "login", "logout", "register", "forgot-password", "reset-password", "profile", "chat", "notifications", "cart", "checkout", "orders"];
+  if (privateRoots.includes(segments[0]) || (segments[0] === "search" && segments[1] === "suggest")) return;
+  if (/\.(?:m3u8|ts|m4s|mpd|mp4|webm|mp3|aac|ogg)(?:$|\/)/i.test(path)) return;
   if (request.mode === "navigate") {
+    // HTML contains CSRF/user/locale state. Only the dedicated offline page is stored.
     event.respondWith(fetch(request).catch(() => caches.match(FIREBALL_PWA.offlineUrl)));
+    return;
   }
+  const staticPath = /^\/(?:assets\/|themes\/[^/]+\/assets\/|uploads\/)/.test(path);
+  if (!staticPath) return;
+  const versioned = /^[a-f0-9]{8,64}$/i.test(url.searchParams.get("v") || "")
+    && /\.(?:css|js|woff2?|ttf|otf|eot|png|jpe?g|webp|avif|gif|svg|ico)$/i.test(path);
+  const image = /\.(?:png|jpe?g|webp|avif|gif|svg|ico)$/i.test(path);
+  if (!versioned && !image) return;
+  event.respondWith((async () => {
+    const cache = await caches.open(FIREBALL_PWA.cacheName);
+    const cached = await cache.match(request);
+    if (versioned && cached) return cached;
+    const update = fetch(request).then(async (response) => {
+      await storeStatic(cache, request, response);
+      return response;
+    });
+    if (cached) {
+      event.waitUntil(update.catch(() => undefined));
+      return cached;
+    }
+    return update;
+  })());
 });
 
 let fireballBadgeQueue = Promise.resolve();
@@ -416,6 +449,10 @@ self.addEventListener("sync", () => {});
 
     public function ensureTables(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if ($this->schemaReady) {
             return;
         }
@@ -1423,7 +1460,7 @@ self.addEventListener("sync", () => {});
 
     protected function withVersion(string $url, ?string $path = null): string
     {
-        $version = $path && is_file($path) ? (string)filemtime($path) : $this->cacheVersion();
+        $version = $path ? \FBL\AssetManifest::version($path) : $this->cacheVersion();
 
         return $url . (str_contains($url, '?') ? '&' : '?') . 'v=' . rawurlencode($version);
     }
@@ -1460,8 +1497,8 @@ self.addEventListener("sync", () => {});
         }
 
         $settings['icon_source_path'] = (string)($source['path'] ?? '');
-        $settings['icon_source_mtime'] = is_file((string)($source['path'] ?? '')) ? (string)filemtime((string)$source['path']) : '';
-        $settings['startup_mtime'] = $startup !== null && is_file($startup) ? (string)filemtime($startup) : '';
+        $settings['icon_source_version'] = \FBL\AssetManifest::version((string)($source['path'] ?? ''));
+        $settings['startup_version'] = $startup !== null ? \FBL\AssetManifest::version($startup) : '';
 
         return substr(hash('sha256', json_encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)), 0, 16);
     }

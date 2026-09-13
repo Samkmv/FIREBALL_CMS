@@ -105,6 +105,10 @@ class Analytics
      */
     protected function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }

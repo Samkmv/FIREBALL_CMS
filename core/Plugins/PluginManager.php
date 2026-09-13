@@ -15,6 +15,7 @@ final class PluginManager
     private bool $booted = false;
     private array $loadErrors = [];
     private ?string $bootingPluginSlug = null;
+    private array $settingsCache = [];
 
     public function __construct(?string $pluginsPath = null)
     {
@@ -27,24 +28,15 @@ final class PluginManager
             return;
         }
 
+        $pluginStarted = \FBL\PerformanceProfiler::begin();
         $this->booted = true;
-        $this->ensureSchema();
-
-        foreach ($this->activePluginRows() as $row) {
-            $slug = (string)$row['slug'];
-            $path = $this->pluginPath($slug);
-            if ($path === null) {
-                $this->recordError($slug, 'Plugin directory is missing.');
-                continue;
-            }
-
+        foreach ($this->runtimeDescriptors() as $metadata) {
+            $slug = (string)$metadata['slug'];
             try {
-                $metadata = $this->readMetadata($path);
-                if ($this->shouldRunPendingMigrations($row, $metadata)
-                    && $this->hasPendingMigrations($metadata)) {
-                    $this->runMigrations($metadata);
+                // Validate executable paths at use time, including symlink changes after caching.
+                if ($this->pluginPath($slug) !== $metadata['path']) {
+                    throw new \RuntimeException('Plugin directory changed. Refresh the runtime manifest.');
                 }
-                $this->syncInstalledMetadata($row, $metadata);
                 $this->registerPluginLanguage($metadata);
                 $plugin = $this->loadPluginInstance($metadata);
                 $this->bootPluginInstance($slug, $plugin);
@@ -53,6 +45,48 @@ final class PluginManager
                 $this->recordError($slug, 'Plugin boot failed.', $exception);
             }
         }
+        \FBL\PerformanceProfiler::end('plugins', $pluginStarted);
+    }
+
+    private function manifestKey(): string
+    {
+        return 'plugins:runtime:v1:' . hash('sha256', $this->pluginsPath);
+    }
+
+    public function invalidateRuntimeManifest(): void
+    {
+        cache()->remove($this->manifestKey());
+    }
+
+    private function runtimeDescriptors(): array
+    {
+        $cached = cache()->get($this->manifestKey());
+        if (is_array($cached) && !(defined('DEBUG') && DEBUG)) {
+            return $cached;
+        }
+        $descriptors = [];
+        foreach ($this->activePluginRows() as $row) {
+            $slug = (string)$row['slug'];
+            try {
+                $metadata = $this->validMetadataBySlug($slug);
+                $metadata['_language_directory'] = is_dir($metadata['path'] . '/lang') ? $metadata['path'] . '/lang' : null;
+                $descriptors[] = $metadata;
+            } catch (Throwable $exception) {
+                $this->recordError($slug, 'Plugin metadata error.', $exception);
+            }
+        }
+        cache()->set($this->manifestKey(), $descriptors, 86400);
+        return $descriptors;
+    }
+
+    /** Explicit CMS/plugin maintenance only. Plugin objects are never cached. */
+    public function migrateInstalledPlugins(): void
+    {
+        foreach ($this->installedRows() as $row) {
+            $this->completeUpdate((string)$row['slug']);
+        }
+        \App\Services\SchemaManifest::rebuild();
+        $this->invalidateRuntimeManifest();
     }
 
     public function all(): array
@@ -99,7 +133,8 @@ final class PluginManager
      */
     public function completeUpdate(string $slug): array
     {
-        $this->ensureSchema();
+        $this->invalidateRuntimeManifest();
+        \App\Services\SchemaMigration::run(fn() => $this->ensureSchema());
         $row = $this->pluginRow($slug);
         if ($row === null) {
             throw new \RuntimeException('Plugin is not installed.');
@@ -111,12 +146,15 @@ final class PluginManager
         }
         $this->syncInstalledMetadata($row, $metadata);
 
+        \App\Services\SchemaManifest::rebuild();
+        $this->invalidateRuntimeManifest();
         return $metadata;
     }
 
     public function install(string $slug): void
     {
-        $this->ensureSchema();
+        $this->invalidateRuntimeManifest();
+        \App\Services\SchemaMigration::run(fn() => $this->ensureSchema());
         $metadata = $this->validMetadataBySlug($slug);
         $now = date('Y-m-d H:i:s');
 
@@ -143,11 +181,13 @@ final class PluginManager
             );
 
             $this->runMigrations($metadata);
-            $this->loadPluginInstance($metadata)->install();
+            \App\Services\SchemaMigration::run(fn() => $this->loadPluginInstance($metadata)->install());
 
             if (db()->inTransaction()) {
                 db()->commit();
             }
+            \App\Services\SchemaManifest::rebuild();
+            $this->invalidateRuntimeManifest();
         } catch (Throwable $exception) {
             if (db()->inTransaction()) {
                 try {
@@ -163,6 +203,7 @@ final class PluginManager
 
     public function activate(string $slug): void
     {
+        $this->invalidateRuntimeManifest();
         $this->ensureSchema();
         $metadata = $this->validMetadataBySlug($slug);
         if ($this->pluginRow($slug) === null) {
@@ -171,21 +212,22 @@ final class PluginManager
 
         try {
             $row = $this->pluginRow($slug);
-            if (is_array($row) && $this->shouldRunPendingMigrations($row, $metadata)
-                && $this->hasPendingMigrations($metadata)) {
+            if (is_array($row) && $this->hasPendingMigrations($metadata)) {
                 $this->runMigrations($metadata);
             }
             if (is_array($row)) {
                 $this->syncInstalledMetadata($row, $metadata);
             }
             $plugin = $this->loadPluginInstance($metadata);
-            $plugin->activate();
+            \App\Services\SchemaMigration::run(fn() => $plugin->activate());
             db()->query(
                 "UPDATE plugins
                  SET status = 'active', activated_at = ?, deactivated_at = NULL, updated_at = ?
                  WHERE slug = ?",
                 [date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $slug]
             );
+            \App\Services\SchemaManifest::rebuild();
+            $this->invalidateRuntimeManifest();
             $this->bootPluginInstance($slug, $plugin);
             if (function_exists('search_indexer')) {
                 foreach (search_registry()->namesByOwner($slug) as $providerName) {
@@ -200,6 +242,7 @@ final class PluginManager
 
     public function deactivate(string $slug): void
     {
+        $this->invalidateRuntimeManifest();
         $this->ensureSchema();
         $metadata = $this->validMetadataBySlug($slug);
         if ($this->pluginRow($slug) === null) {
@@ -227,12 +270,14 @@ final class PluginManager
     {
         $this->ensureSchema();
         $this->assertSlug($pluginSlug);
-        $row = db()->query(
-            'SELECT setting_value FROM plugin_settings WHERE plugin_slug = ? AND setting_key = ? LIMIT 1',
-            [$pluginSlug, $key]
-        )->getOne();
-
-        if (!$row) {
+        if (!array_key_exists($pluginSlug, $this->settingsCache)) {
+            $this->settingsCache[$pluginSlug] = [];
+            foreach (db()->query('SELECT setting_key, setting_value FROM plugin_settings WHERE plugin_slug = ?', [$pluginSlug])->get() ?: [] as $item) {
+                $this->settingsCache[$pluginSlug][(string)$item['setting_key']] = $item;
+            }
+        }
+        $row = $this->settingsCache[$pluginSlug][$key] ?? null;
+        if ($row === null) {
             return $default;
         }
 
@@ -245,6 +290,7 @@ final class PluginManager
     {
         $this->ensureSchema();
         $this->assertSlug($pluginSlug);
+        unset($this->settingsCache[$pluginSlug]);
         $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         db()->query(
             "INSERT INTO plugin_settings (plugin_slug, setting_key, setting_value, updated_at)
@@ -460,8 +506,8 @@ final class PluginManager
 
     private function registerPluginLanguage(array $metadata): void
     {
-        $langDir = (string)($metadata['path'] ?? '') . '/lang';
-        if (!is_dir($langDir)) {
+        $langDir = $metadata['_language_directory'] ?? ((string)($metadata['path'] ?? '') . '/lang');
+        if (array_key_exists('_language_directory', $metadata) ? $metadata['_language_directory'] === null : !is_dir($langDir)) {
             return;
         }
 
@@ -557,19 +603,6 @@ final class PluginManager
         return array_diff($files, array_column($applied, 'migration')) !== [];
     }
 
-    private function shouldRunPendingMigrations(array $row, array $metadata): bool
-    {
-        if (!empty($metadata['auto_migrate'])) {
-            return true;
-        }
-
-        return version_compare(
-            (string)($metadata['version'] ?? '0.0.0'),
-            (string)($row['version'] ?? '0.0.0'),
-            '>'
-        );
-    }
-
     private function syncInstalledMetadata(array $row, array $metadata): void
     {
         $values = [
@@ -591,6 +624,7 @@ final class PluginManager
                         $metadata['slug'],
                     ]
                 );
+                $this->invalidateRuntimeManifest();
                 break;
             }
         }
@@ -598,6 +632,10 @@ final class PluginManager
 
     private function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if ($this->schemaReady) {
             return;
         }
@@ -669,6 +707,7 @@ final class PluginManager
             }
 
             $this->assertSlug($slug);
+            $this->invalidateRuntimeManifest();
             db()->query('DELETE FROM plugin_settings WHERE plugin_slug = ?', [$slug]);
             db()->query('DELETE FROM plugin_migrations WHERE plugin_slug = ?', [$slug]);
             db()->query('DELETE FROM plugins WHERE slug = ?', [$slug]);

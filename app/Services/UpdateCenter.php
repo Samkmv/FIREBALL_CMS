@@ -2138,33 +2138,9 @@ class UpdateCenter
 
     protected function runPendingMigrations(): void
     {
-        $dir = ROOT . '/database/migrations';
-        if (!is_dir($dir)) {
-            return;
-        }
-
-        db()->query(
-            'CREATE TABLE IF NOT EXISTS update_migrations (
-                id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-                migration VARCHAR(255) NOT NULL,
-                executed_at DATETIME NOT NULL,
-                PRIMARY KEY (id),
-                UNIQUE KEY migration (migration)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-        );
-
-        foreach (glob($dir . '/*.sql') ?: [] as $file) {
-            $name = basename($file);
-            $exists = (int)db()->query('SELECT COUNT(*) FROM update_migrations WHERE migration = ?', [$name])->getColumn() > 0;
-            if ($exists) {
-                continue;
-            }
-
-            $sql = trim((string)file_get_contents($file));
-            if ($sql !== '') {
-                (new SqlFileRunner())->executeDatabase($sql);
-            }
-            db()->query('INSERT INTO update_migrations (migration, executed_at) VALUES (?, ?)', [$name, date('Y-m-d H:i:s')]);
+        (new MigrationRunner())->run();
+        if (app()->plugins !== null) {
+            app()->plugins->migrateInstalledPlugins();
         }
     }
 
@@ -2217,15 +2193,8 @@ class UpdateCenter
 
     protected function clearRuntimeCache(): void
     {
-        if (!is_dir(CACHE)) {
-            return;
-        }
-
-        foreach (glob(CACHE . '/*') ?: [] as $file) {
-            if (is_file($file)) {
-                @unlink($file);
-            }
-        }
+        cache()->clear();
+        SiteSetting::clearPublicCache();
     }
 
     protected function acquireUpdateLock()

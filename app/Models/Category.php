@@ -15,6 +15,10 @@ class Category
 
     public function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }
@@ -139,6 +143,10 @@ class Category
 
     public function syncLegacyPostCategories(string $postsTable): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         $oldCategoryExists = (bool)db()->query("SHOW COLUMNS FROM {$postsTable} LIKE 'category'")->getColumn();
         if ($oldCategoryExists) {
             $categories = db()->query(
@@ -222,19 +230,10 @@ class Category
             return $columns;
         }
 
-        $columns = ['name_ru', 'name_en'];
-        try {
-            $rows = db()->query("SHOW COLUMNS FROM {$this->table}")->get() ?: [];
-            foreach ($rows as $row) {
-                $field = (string)($row['Field'] ?? '');
-                if (preg_match('/^name_[a-z0-9_]+$/', $field)) {
-                    $columns[] = $field;
-                }
-            }
-        } catch (\Throwable) {
-        }
-
-        return $columns = array_values(array_unique($columns));
+        return $columns = array_values(array_filter(
+            \App\Services\SchemaManifest::columns($this->table) ?: ['name_ru', 'name_en'],
+            static fn(string $field): bool => (bool)preg_match('/^name_[a-z0-9_]+$/', $field)
+        ));
     }
 
     protected function categoryGroupBySql(string $alias = ''): string

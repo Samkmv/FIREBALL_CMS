@@ -23,6 +23,11 @@ final class LanguagePackService
             return $this->packs;
         }
 
+        $cached = cache()->get('languages:packs:v1');
+        if (is_array($cached) && !(defined('DEBUG') && DEBUG)) {
+            return $this->packs = $cached;
+        }
+
         $this->packs = [
             self::DEFAULT_PACK => [
                 'id' => self::DEFAULT_PACK,
@@ -56,7 +61,14 @@ final class LanguagePackService
             }
         }
 
+        cache()->set('languages:packs:v1', $this->packs, 86400);
         return $this->packs;
+    }
+
+    public function invalidate(): void
+    {
+        $this->packs = null;
+        cache()->remove('languages:packs:v1');
     }
 
     public function activeId(): string

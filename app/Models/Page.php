@@ -37,6 +37,7 @@ class Page extends Model
 
     public static function clearPublicCache(): void
     {
+        \App\Services\PublicLayoutContext::invalidate();
         self::$runtimeCache = [];
         cache()->set('pages:public_version', (string)microtime(true), 31536000);
         cache()->remove('pages:menu:header');
@@ -59,6 +60,10 @@ class Page extends Model
      */
     public function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }

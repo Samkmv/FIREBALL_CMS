@@ -226,44 +226,38 @@ class Session
 
     protected function loadSessionSettings(): array
     {
-        if (
-            !defined('INSTALLED_LOCK')
-            || !is_file(INSTALLED_LOCK)
-            || !defined('DB_SETTINGS')
-            || empty(DB_SETTINGS['database'])
-        ) {
-            return [];
+        // Set by settings writes and the explicit migration. No database connection here.
+        $settings = cache()->get('session:policy');
+        return is_array($settings) ? $settings : [
+            self::SESSION_LIFETIME_SETTING_KEY => defined('SESSION_LIFETIME') ? SESSION_LIFETIME : self::MAX_LIFETIME_SECONDS,
+        ];
+    }
+
+    public function applySettings(array $settings): void
+    {
+        $lifetime = $this->normalizeLifetimeSeconds($settings[self::SESSION_LIFETIME_SETTING_KEY] ?? '')
+            ?? (($this->normalizeLifetimeHours($settings[self::ADMIN_SESSION_SETTING_KEY] ?? '') ?? 12) * 3600);
+        $policy = array_intersect_key($settings, array_flip([self::SESSION_LIFETIME_SETTING_KEY, self::ADMIN_SESSION_SETTING_KEY]));
+        if (cache()->get('session:policy') !== $policy) {
+            cache()->set('session:policy', $policy, self::MAX_LIFETIME_SECONDS);
         }
-
-        try {
-            $pdo = new \PDO($this->buildDsn(), DB_SETTINGS['username'] ?? '', DB_SETTINGS['password'] ?? '', DB_SETTINGS['options'] ?? []);
-            $stmt = $pdo->prepare(
-                'SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN (?, ?)'
-            );
-            $stmt->execute([self::SESSION_LIFETIME_SETTING_KEY, self::ADMIN_SESSION_SETTING_KEY]);
-
-            $settings = [];
-            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-                $settings[(string)$row['setting_key']] = (string)$row['setting_value'];
-            }
-
-            return $settings;
-        } catch (\Throwable) {
-            return [];
+        if ($lifetime !== $this->lifetimeSeconds && session_status() === PHP_SESSION_ACTIVE) {
+            // Reopen the same session so PHP's garbage collector sees the real lifetime.
+            session_write_close();
+            $this->lifetimeSeconds = $lifetime;
+            $this->cookieParams = $this->buildCookieParams($lifetime);
+            $this->configureSession($lifetime, $this->cookieParams);
+            session_start();
+            $this->refreshCookie();
         }
     }
 
-    protected function buildDsn(): string
+    /** Use only after the endpoint has finished all session writes. */
+    public function close(): void
     {
-        $dsn = 'mysql:host=' . (DB_SETTINGS['host'] ?? '127.0.0.1')
-            . ';dbname=' . (DB_SETTINGS['database'] ?? '')
-            . ';charset=' . (DB_SETTINGS['charset'] ?? 'utf8mb4');
-
-        if (!empty(DB_SETTINGS['port'])) {
-            $dsn .= ';port=' . (int)DB_SETTINGS['port'];
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
         }
-
-        return $dsn;
     }
 
     protected function normalizeLifetimeSeconds($value): ?int

@@ -46,6 +46,8 @@ if (is_file($vendorAutoload)) {
     });
 }
 
+\FBL\PerformanceProfiler::start($start_framework);
+
 require_once HELPERS . '/helpers.php';
 
 if (!headers_sent()) {
@@ -77,6 +79,8 @@ if (class_exists(\Whoops\Run::class)) {
     });
 }
 
+$bootstrapStarted = \FBL\PerformanceProfiler::begin();
 $app = new \FBL\Application();
 require_once CONFIG . '/routes.php';
+\FBL\PerformanceProfiler::end('bootstrap', $bootstrapStarted);
 $app->run();

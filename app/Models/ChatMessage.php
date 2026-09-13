@@ -20,6 +20,10 @@ class ChatMessage
      */
     public function ensureTableExists(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }

@@ -44,6 +44,10 @@ final class MaintenanceLogService
 
     public function ensureLogTable(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         db()->query(
             'CREATE TABLE IF NOT EXISTS ' . self::LOG_TABLE . ' (
                 id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,

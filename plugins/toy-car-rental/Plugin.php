@@ -10,6 +10,7 @@ final class FireballPluginToyCarRental implements PluginInterface
     public function install(): void
     {
         self::ensureDatabaseSchema();
+        self::ensureRideSchema();
 
         foreach (self::defaultSettings() as $key => $value) {
             if (plugin_setting(self::SLUG, $key, null) === null) {
@@ -26,6 +27,7 @@ final class FireballPluginToyCarRental implements PluginInterface
     public function activate(): void
     {
         self::ensureDatabaseSchema();
+        self::ensureRideSchema();
         fireball_event('toy_rental.activated', ['slug' => self::SLUG]);
     }
 
@@ -36,12 +38,6 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public function boot(): void
     {
-        try {
-            self::ensureDatabaseSchema();
-        } catch (Throwable $exception) {
-            log_error_details('Toy rental schema check failed', [], $exception);
-        }
-
         add_filter('admin_menu', function (array $menu): array {
             $menu[] = [
                 'group' => 'applications',
@@ -305,7 +301,6 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function startRide(array $data): void
     {
-        self::ensureRideSchema();
 
         $carId = (int)($data['car_id'] ?? 0);
         $car = self::car($carId);
@@ -384,7 +379,6 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function completeRide(int $rideId, array $data = []): void
     {
-        self::ensureRideSchema();
 
         $ride = db()->query(
             "SELECT * FROM toy_rental_rides WHERE id = ? AND status IN ('active', 'overdue') LIMIT 1",
@@ -431,7 +425,6 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function markRidePaid(int $rideId, array $data = []): void
     {
-        self::ensureRideSchema();
 
         $ride = db()->query(
             "SELECT * FROM toy_rental_rides WHERE id = ? AND status = 'completed' AND payment_status = 'unpaid' LIMIT 1",
@@ -459,7 +452,6 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function history(array $filters = []): array
     {
-        self::ensureRideSchema();
 
         $where = [];
         $params = [];
@@ -523,7 +515,6 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function todayStats(): array
     {
-        self::ensureRideSchema();
         self::markOverdueRides();
         $start = date('Y-m-d 00:00:00');
         $end = date('Y-m-d 00:00:00', strtotime('+1 day'));
@@ -595,7 +586,6 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function markOverdueRides(): int
     {
-        self::ensureRideSchema();
 
         $now = date('Y-m-d H:i:s');
         $newlyOverdue = db()->query(
@@ -857,7 +847,6 @@ final class FireballPluginToyCarRental implements PluginInterface
             $runner->executeDatabase($sql);
         }
 
-        self::ensureRideSchema();
     }
 
     private static function tableExists(string $table): bool

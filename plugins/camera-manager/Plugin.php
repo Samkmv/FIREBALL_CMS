@@ -1045,6 +1045,9 @@ final class FireballPluginCameraManager implements PluginInterface
 
     private static function ensureDatabaseSchema(): void
     {
+        if (class_exists(\App\Services\SchemaMigration::class) && !\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
         static $ensured = false;
         if ($ensured) {
             return;

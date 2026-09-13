@@ -307,6 +307,10 @@ final class Localization
 
     protected static function ensureUserLocaleColumns(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$userLocaleSchemaReady) {
             return;
         }

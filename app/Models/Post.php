@@ -35,6 +35,7 @@ class Post extends Model
 
     public static function clearPublicCache(): void
     {
+        \App\Services\PublicLayoutContext::invalidate();
         self::$runtimeCache = [];
         (new PostPublicCache())->clear();
     }
@@ -424,6 +425,10 @@ class Post extends Model
      */
     protected function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }

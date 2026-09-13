@@ -11,6 +11,10 @@ final class AnalyticsRepository
 
     public function ensureSchema(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }
@@ -416,6 +420,6 @@ final class AnalyticsRepository
 
     private function tableExists(string $table): bool
     {
-        return (bool)db()->query("SHOW TABLES LIKE ?", [$table])->getColumn();
+        return \App\Services\SchemaManifest::hasTable($table);
     }
 }

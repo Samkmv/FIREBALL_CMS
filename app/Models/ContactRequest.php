@@ -17,6 +17,10 @@ class ContactRequest
      */
     public function ensureTableExists(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         db()->query(
             "CREATE TABLE IF NOT EXISTS {$this->table} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

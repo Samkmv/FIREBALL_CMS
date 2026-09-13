@@ -989,64 +989,82 @@ $(function(){
         });
     });
 
-    const pollNotificationFeed = () => {
-        if (!notificationCenter.length) {
-            return;
-        }
+    const notificationPollInterval = 45000;
+    let notificationPollDelay = notificationPollInterval;
+    let notificationPollTimer = null;
+    let notificationPollInFlight = false;
+    let notificationLastPoll = 0;
+    let notificationPollingStopped = false;
+    const notificationPollUrl = notificationCenter.length
+        ? notificationCenter.data('feed-url')
+        : unreadBadges.first().data('unread-url');
+    const notificationScope = `fireball:notifications:${baseUrl}:${bodyDataset.pwaAuthUserId || '0'}:${document.documentElement.lang}:${notificationCenter.length ? 'feed' : 'unread'}`;
+    let notificationChannel = null;
+    try {
+        notificationChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(notificationScope) : null;
+    } catch (_) { /* Some private browsing modes disable channels. */ }
 
-        const feedUrl = notificationCenter.data('feed-url');
-        if (!feedUrl) {
-            return;
-        }
-
-        $.ajax({
-            url: sameOriginUrl(feedUrl),
-            method: 'GET',
-            dataType: 'json',
-            success: function (response) {
-                applyNotificationFeed(response);
-            }
-        });
+    const applyPollResponse = (response) => {
+        if (!response || !response.status) return;
+        notificationLastPoll = Date.now();
+        if (notificationCenter.length) applyNotificationFeed(response);
+        else updateUnreadBadges(response.unread_count || 0);
     };
-
-    const pollUnreadCount = () => {
-        if (!unreadBadges.length) {
-            return;
-        }
-
-        const unreadUrl = unreadBadges.first().data('unread-url');
-        if (!unreadUrl) {
-            return;
-        }
-
-        $.ajax({
-            url: sameOriginUrl(unreadUrl),
-            method: 'GET',
-            dataType: 'json',
-            success: function (response) {
-                if (!response || !response.status) {
-                    return;
-                }
-
-                updateUnreadBadges(response.unread_count || 0);
-            }
-        });
-    };
-
-    if (notificationCenter.length) {
-        pollNotificationFeed();
-        setInterval(pollNotificationFeed, 8000);
-    } else if (unreadBadges.length) {
-        pollUnreadCount();
-        setInterval(pollUnreadCount, 8000);
+    if (notificationChannel) {
+        notificationChannel.onmessage = (event) => {
+            if (event.data?.type === 'update') applyPollResponse(event.data.response);
+        };
     }
-
+    const scheduleNotificationPoll = () => {
+        clearTimeout(notificationPollTimer);
+        if (!document.hidden && !notificationPollingStopped && notificationPollUrl) {
+            notificationPollTimer = setTimeout(() => requestNotificationPoll(false), notificationPollDelay);
+        }
+    };
+    const requestNotificationPoll = async (force = false) => {
+        if (document.hidden || notificationPollingStopped || notificationPollInFlight || !notificationPollUrl) return;
+        notificationPollInFlight = true;
+        const perform = async () => {
+            // A response from another visible tab satisfies this tab's fallback poll.
+            if (Date.now() - notificationLastPoll < (force ? 1500 : notificationPollInterval - 1000)) return;
+            try {
+                const response = await $.ajax({ url: sameOriginUrl(notificationPollUrl), method: 'GET', dataType: 'json', timeout: 15000 });
+                if (!response?.status) throw new Error('Invalid notification response');
+                notificationPollDelay = notificationPollInterval;
+                applyPollResponse(response);
+                notificationChannel?.postMessage({ type: 'update', response });
+            } catch (error) {
+                notificationPollDelay = Math.min(notificationPollDelay * 2, 300000);
+                if (error?.status === 401 || error?.status === 403) notificationPollingStopped = true;
+            }
+        };
+        try {
+            if (notificationChannel && navigator.locks?.request) {
+                // Only one tab performs the network request; followers receive its result.
+                await navigator.locks.request(notificationScope, { ifAvailable: true }, async (lock) => {
+                    if (lock) await perform();
+                });
+            } else {
+                await perform();
+            }
+        } finally {
+            notificationPollInFlight = false;
+            scheduleNotificationPoll();
+        }
+    };
+    const pollNotificationFeed = () => requestNotificationPoll(true);
+    const pollUnreadCount = () => requestNotificationPoll(true);
+    if (notificationPollUrl) requestNotificationPoll(false);
+    document.addEventListener('visibilitychange', () => {
+        clearTimeout(notificationPollTimer);
+        if (!document.hidden) requestNotificationPoll(true);
+    });
+    document.addEventListener('fireball:notifications-changed', () => requestNotificationPoll(true));
+    window.addEventListener('pagehide', () => clearTimeout(notificationPollTimer));
+    window.addEventListener('pageshow', () => requestNotificationPoll(true));
     $(document).on('chat:unread-updated', function (_, count) {
         updateUnreadBadges(count);
-
-        if (notificationCenter.length) {
-            pollNotificationFeed();
-        }
+        if (notificationCenter.length) requestNotificationPoll(true);
     });
 
     $('[data-slug-source]').each(function () {

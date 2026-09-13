@@ -220,19 +220,7 @@ final class InstallService
 
     private function runMigrationFiles(PDO $pdo): void
     {
-        $runner = new SqlFileRunner();
-        foreach (glob(ROOT . '/database/migrations/*.sql') ?: [] as $file) {
-            $name = basename($file);
-            $check = $pdo->prepare('SELECT COUNT(*) FROM update_migrations WHERE migration = ?');
-            $check->execute([$name]);
-            if ((int)$check->fetchColumn() > 0) {
-                continue;
-            }
-
-            $runner->executePdo($pdo, (string)file_get_contents($file));
-            $insert = $pdo->prepare('INSERT INTO update_migrations (migration, executed_at) VALUES (?, ?)');
-            $insert->execute([$name, date('Y-m-d H:i:s')]);
-        }
+        (new MigrationRunner())->run(new \FBL\Database($pdo));
     }
 
     private function insertSiteSettings(PDO $pdo, array $site, string $locale, string $now): void

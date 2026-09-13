@@ -32,6 +32,10 @@ class User
      */
     public function ensureUsersTableExists(): void
     {
+        if (!\App\Services\SchemaMigration::isRunning()) {
+            return;
+        }
+
         if (self::$schemaReady) {
             return;
         }
@@ -2295,7 +2299,7 @@ class User
     {
         $this->assertDatabaseIdentifier($table);
 
-        return (bool)db()->query('SHOW TABLES LIKE ?', [$table])->getColumn();
+        return \App\Services\SchemaManifest::hasTable($table);
     }
 
     protected function columnExists(string $table, string $column): bool
@@ -2303,7 +2307,7 @@ class User
         $this->assertDatabaseIdentifier($table);
         $this->assertDatabaseIdentifier($column);
 
-        return (bool)db()->query("SHOW COLUMNS FROM {$table} LIKE ?", [$column])->getColumn();
+        return in_array($column, \App\Services\SchemaManifest::columns($table), true);
     }
 
     protected function assertDatabaseIdentifier(string $identifier): void

@@ -76,7 +76,9 @@ final class SettingsRepository
 
     public function assertStorageReady(): void
     {
-        $table = (int)db()->query(
+        $table = class_exists(\App\Services\SchemaManifest::class)
+            ? (int)\App\Services\SchemaManifest::hasTable('plugin_settings')
+            : (int)db()->query(
             "SELECT COUNT(*) FROM information_schema.TABLES
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_settings'"
         )->getColumn();

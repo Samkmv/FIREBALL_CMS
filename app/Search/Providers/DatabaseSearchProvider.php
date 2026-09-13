@@ -12,6 +12,6 @@ abstract class DatabaseSearchProvider extends AbstractSearchProvider
             return false;
         }
 
-        return (bool)db()->query('SHOW TABLES LIKE ?', [$table])->getColumn();
+        return \App\Services\SchemaManifest::hasTable($table);
     }
 }

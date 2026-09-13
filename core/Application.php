@@ -36,7 +36,7 @@ class Application
     /**
      * Создаёт основные сервисы приложения и подготавливает окружение для текущего запроса.
      */
-    public function __construct()
+    public function __construct(bool $bootServices = true)
     {
         self::$app = $this;
         $this->uri = (string)($_SERVER['REQUEST_URI'] ?? '/');
@@ -44,12 +44,12 @@ class Application
         $this->response = new Response();
         $this->router = new Router($this->request, $this->response);
         $this->view = new View(LAYOUT);
-        $this->session = new Session();
         $this->cache = new Cache();
+        $this->session = new Session();
         $this->hooks = new HookManager();
         $this->events = new EventManager();
         $this->generateCSRFToken();
-        if ($this->isInstalled()) {
+        if ($bootServices && $this->isInstalled()) {
             $this->bootInstalledServices();
         }
     }
@@ -82,7 +82,13 @@ class Application
             ], false));
         }
 
-        echo $this->router->dispatch();
+        $dispatchStarted = PerformanceProfiler::begin();
+        try {
+            $result = $this->router->dispatch();
+        } finally {
+            PerformanceProfiler::end('router', $dispatchStarted);
+        }
+        echo $result;
     }
 
     protected function isUpdateInProgress(): bool
@@ -135,35 +141,36 @@ class Application
         return ($this->inspectInstallation()['state'] ?? '') === 'installed';
     }
 
-    public function inspectInstallation(): array
+    /** Fast path: no SQL or recovery writes during an ordinary request. */
+    public function inspectInstallation(bool $deep = false): array
     {
-        if ($this->installationStatus !== null) {
+        if (!$deep && $this->installationStatus !== null) {
             return $this->installationStatus;
         }
-
         $hasLock = is_file(INSTALLED_LOCK);
         $hasLocalConfig = is_file(CONFIG . '/config.local.php');
         if (!$hasLock && !$hasLocalConfig) {
             return $this->installationStatus = ['state' => 'not_installed', 'errors' => []];
         }
-
         $errors = [];
         if (!$hasLocalConfig) {
             $errors[] = 'Missing config/config.local.php.';
         }
-
-        if ($hasLocalConfig) {
-            $errors = array_merge($errors, $this->validateInstalledDatabase());
+        foreach (['host', 'database', 'username', 'charset'] as $key) {
+            if (trim((string)(DB_SETTINGS[$key] ?? '')) === '') {
+                $errors[] = 'Missing database configuration: ' . $key . '.';
+            }
         }
-
-        if (!$hasLock && $errors === []) {
-            $this->createLegacyInstalledLock();
-            $hasLock = is_file(INSTALLED_LOCK);
+        if ($deep && $errors === []) {
+            $errors = $this->validateInstalledDatabase();
+            if (!$hasLock && $errors === []) {
+                $this->createLegacyInstalledLock();
+                $hasLock = is_file(INSTALLED_LOCK);
+            }
         }
         if (!$hasLock) {
-            $errors[] = 'Missing storage/installed.lock.';
+            $errors[] = 'Missing storage/installed.lock. Run bin/cms.php diagnose to validate a legacy installation.';
         }
-
         return $this->installationStatus = $errors === []
             ? ['state' => 'installed', 'errors' => []]
             : ['state' => 'broken', 'errors' => array_values(array_unique($errors))];
@@ -173,39 +180,23 @@ class Application
     {
         $errors = [];
         try {
-            if (trim((string)(DB_SETTINGS['database'] ?? '')) === '') {
-                return ['Database name is missing in config/config.local.php.'];
-            }
-
-            $dsn = 'mysql:host=' . DB_SETTINGS['host'] . ';dbname=' . DB_SETTINGS['database'] . ';charset=' . DB_SETTINGS['charset'];
-            if (!empty(DB_SETTINGS['port'])) {
-                $dsn .= ';port=' . (int)DB_SETTINGS['port'];
-            }
-
-            $pdo = new \PDO($dsn, DB_SETTINGS['username'], DB_SETTINGS['password'], DB_SETTINGS['options']);
+            $this->db ??= new Database();
             foreach (['users', 'user_roles', 'site_settings'] as $table) {
-                $statement = $pdo->prepare(
-                    'SELECT COUNT(*)
-                     FROM information_schema.TABLES
-                     WHERE TABLE_SCHEMA = DATABASE()
-                       AND TABLE_NAME = ?'
-                );
-                $statement->execute([$table]);
-                if ((int)$statement->fetchColumn() === 0) {
+                $exists = (int)$this->db->query(
+                    'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+                    [$table]
+                )->getColumn();
+                if (!$exists) {
                     $errors[] = 'Missing required database table: ' . $table . '.';
                 }
             }
-
-            if ($errors === []) {
-                $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'creator'");
-                if ((int)$stmt->fetchColumn() === 0) {
-                    $errors[] = 'Creator account is missing.';
-                }
+            if ($errors === [] && !(int)$this->db->query("SELECT COUNT(*) FROM users WHERE role = 'creator'")->getColumn()) {
+                $errors[] = 'Creator account is missing.';
             }
         } catch (\Throwable $exception) {
-            $errors[] = 'Database connection failed: ' . $exception->getMessage();
+            log_error_details('Installation diagnostic failed', [], $exception);
+            $errors[] = 'Database validation failed. See the private application log.';
         }
-
         return $errors;
     }
 
@@ -265,6 +256,7 @@ class Application
             $this->set('search.registry', $registry);
             $this->set('search.indexer', new SearchIndexer($registry));
         }
+        $this->session->applySettings((new \App\Models\SiteSetting())->all());
         Auth::setUser();
     }
 
