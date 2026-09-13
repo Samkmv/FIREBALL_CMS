@@ -253,6 +253,7 @@ final class SearchIndexer
         return $counts;
     }
 
+    /** Explicit periodic maintenance for providers without content-write hooks. Never called by search(). */
     public function ensureProvidersIndexed(): void
     {
         $this->ensureSchema();
@@ -274,14 +275,18 @@ final class SearchIndexer
     private function replaceTokens(int $searchIndexId, array $fields): void
     {
         db()->query('DELETE FROM search_index_tokens WHERE search_index_id = ?', [$searchIndexId]);
+        $rows = [];
         foreach ($fields as $fieldName => $value) {
             foreach (SearchNormalizer::tokens((string)$value, 1) as $token) {
-                db()->query(
-                    'INSERT IGNORE INTO search_index_tokens (search_index_id, token, field_name)
-                     VALUES (?, ?, ?)',
-                    [$searchIndexId, mb_substr($token, 0, 191, 'UTF-8'), $fieldName]
-                );
+                $rows[] = [$searchIndexId, mb_substr($token, 0, 191, 'UTF-8'), $fieldName];
             }
+        }
+        foreach (array_chunk($rows, 250) as $chunk) {
+            db()->query(
+                'INSERT IGNORE INTO search_index_tokens (search_index_id, token, field_name) VALUES '
+                . implode(', ', array_fill(0, count($chunk), '(?, ?, ?)')),
+                array_merge(...$chunk)
+            );
         }
     }
 

@@ -1,0 +1,1127 @@
+{
+  "summary": {
+    "routes": 22,
+    "homepage_median_ms": 66.71,
+    "homepage_queries": [
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12
+    ],
+    "search_queries": 4,
+    "css_js_count": 13
+  },
+  "routes": {
+    "/": {
+      "durations_ms": {
+        "app": 106.95695877075195,
+        "cache": 5.383014678955078,
+        "db_connect": 2.1369457244873047,
+        "db": 3.4322738647460938,
+        "plugins": 13.310909271240234,
+        "bootstrap": 32.196044921875,
+        "render": 23.40102195739746,
+        "router": 60.32681465148926
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 74,
+        "sql_queries": 14,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/posts": {
+      "durations_ms": {
+        "app": 67.8870677947998,
+        "cache": 3.5784244537353516,
+        "db_connect": 0.9429454803466797,
+        "db": 6.50787353515625,
+        "plugins": 12.25590705871582,
+        "bootstrap": 23.661136627197266,
+        "render": 12.35508918762207,
+        "router": 37.94407844543457
+      },
+      "counts": {
+        "cache_file_reads": 10,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 26,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 40654,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/posts?category=demo": {
+      "durations_ms": {
+        "app": 62.669992446899414,
+        "cache": 4.247903823852539,
+        "db_connect": 0.4630088806152344,
+        "db": 13.046026229858398,
+        "plugins": 9.435176849365234,
+        "bootstrap": 18.687963485717773,
+        "render": 8.420944213867188,
+        "router": 38.861989974975586
+      },
+      "counts": {
+        "cache_file_reads": 12,
+        "pdo_connections": 1,
+        "cache_l1_hits": 78,
+        "sql_queries": 27,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 41135,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/posts/tehnicheskaya-zapis-dlya-razrabotchikov": {
+      "durations_ms": {
+        "app": 89.48802947998047,
+        "cache": 2.6543140411376953,
+        "db_connect": 0.492095947265625,
+        "db": 22.2015380859375,
+        "plugins": 23.34880828857422,
+        "bootstrap": 37.758827209472656,
+        "render": 14.492988586425781,
+        "router": 42.88601875305176
+      },
+      "counts": {
+        "cache_file_reads": 11,
+        "pdo_connections": 1,
+        "cache_l1_hits": 83,
+        "sql_queries": 13,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 200,
+      "html_bytes": 46138,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/plyr/plyr.css?v=c96a7fff7cac0a7f65ff",
+        "http://localhost:8888/assets/default/css/fireplayer.css?v=355c429402862e93797e",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/vendor/plyr/plyr.polyfilled.js?v=7f228fef1e4583cf4967",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/fireplayer.js?v=fb2df215678b282e837d",
+        "http://localhost:8888/assets/default/js/fireplayer-video.js?v=e8e2325044b87a0f9cfd",
+        "http://localhost:8888/assets/default/js/fireplayer-audio.js?v=b8f060659924e01ce26c",
+        "http://localhost:8888/assets/default/js/fireplayer-hls.js?v=be3a7508aa7b9e8e1ffc",
+        "http://localhost:8888/assets/default/js/fireplayer-live.js?v=c78df11cddfbe9ca986f",
+        "http://localhost:8888/assets/default/js/fireplayer-diagnostics.js?v=8bf1556aad1a470a7b22",
+        "http://localhost:8888/assets/default/js/fireplayer-init.js?v=d9f98a5002df0933c5aa",
+        "http://localhost:8888/themes/default/assets/js/plyr-init.js?v=d2ad16d3288d2405ec11",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/contacts": {
+      "durations_ms": {
+        "app": 52.92105674743652,
+        "cache": 4.934072494506836,
+        "db_connect": 0.5621910095214844,
+        "db": 1.4655590057373047,
+        "plugins": 9.54294204711914,
+        "bootstrap": 19.936084747314453,
+        "router": 27.05693244934082
+      },
+      "counts": {
+        "cache_file_reads": 6,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 3,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 39807,
+      "assets": [
+        "http://localhost:8888/assets/default/js/theme-switcher.js?v=048d500ca58e3a5fb56d",
+        "http://localhost:8888/assets/default/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/assets/default/vendor/choices.js/choices.min.css?v=834b801c2f9849e892d9",
+        "http://localhost:8888/assets/default/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/assets/default/css/style.css?v=b434fa84efa602ea2d5f",
+        "http://localhost:8888/assets/default/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/assets/default/vendor/choices.js/choices.min.js?v=2c400d1c9cfb8acd49b3",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/assets/default/js/contact.js?v=1782153705",
+        "http://localhost:8888/assets/default/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/assets/default/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/password-field.js?v=e0b3ed79ffe58058b254",
+        "http://localhost:8888/assets/default/js/select-init.js?v=797713687d569c50d894",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/assets/default/js/main.js?v=45f15fb3dcb1be840eaa"
+      ]
+    },
+    "/support": {
+      "durations_ms": {
+        "app": 53.88307571411133,
+        "cache": 1.028299331665039,
+        "db_connect": 0.35500526428222656,
+        "db": 10.267496109008789,
+        "plugins": 10.32114028930664,
+        "bootstrap": 20.50185203552246,
+        "router": 26.77297592163086
+      },
+      "counts": {
+        "cache_file_reads": 6,
+        "pdo_connections": 1,
+        "cache_l1_hits": 70,
+        "sql_queries": 14,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 56063,
+      "assets": [
+        "http://localhost:8888/assets/default/js/theme-switcher.js?v=048d500ca58e3a5fb56d",
+        "http://localhost:8888/assets/default/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/assets/default/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/assets/default/css/style.css?v=b434fa84efa602ea2d5f",
+        "http://localhost:8888/assets/default/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/assets/default/js/contact.js?v=1782153705",
+        "http://localhost:8888/assets/default/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/assets/default/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/password-field.js?v=e0b3ed79ffe58058b254",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/assets/default/js/main.js?v=45f15fb3dcb1be840eaa"
+      ]
+    },
+    "/search?q=Техническая": {
+      "durations_ms": {
+        "app": 63.94004821777344,
+        "cache": 1.0950565338134766,
+        "db_connect": 0.9620189666748047,
+        "db": 3.7240982055664062,
+        "plugins": 12.603044509887695,
+        "bootstrap": 29.34408187866211,
+        "render": 10.425806045532227,
+        "router": 27.265071868896484
+      },
+      "counts": {
+        "cache_file_reads": 6,
+        "pdo_connections": 1,
+        "cache_l1_hits": 69,
+        "sql_queries": 4,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 200,
+      "html_bytes": 37099,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/search/suggest?q=Техническая": {
+      "durations_ms": {
+        "app": 48.75588417053223,
+        "cache": 1.001119613647461,
+        "db_connect": 2.9201507568359375,
+        "db": 4.420995712280273,
+        "plugins": 13.253927230834961,
+        "bootstrap": 26.06511116027832
+      },
+      "counts": {
+        "cache_file_reads": 4,
+        "pdo_connections": 1,
+        "cache_l1_hits": 1,
+        "sql_queries": 4,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 200,
+      "html_bytes": 532,
+      "assets": []
+    },
+    "/en/posts": {
+      "durations_ms": {
+        "app": 123.9159107208252,
+        "cache": 20.816326141357422,
+        "db_connect": 6.722211837768555,
+        "db": 16.501426696777344,
+        "plugins": 13.039112091064453,
+        "bootstrap": 34.134864807128906,
+        "render": 37.361860275268555,
+        "router": 84.56683158874512
+      },
+      "counts": {
+        "cache_file_reads": 15,
+        "pdo_connections": 1,
+        "cache_l1_hits": 76,
+        "sql_queries": 31,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 40221,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/de/posts": {
+      "durations_ms": {
+        "app": 84.90800857543945,
+        "cache": 8.68844985961914,
+        "db_connect": 0.5681514739990234,
+        "db": 10.483741760253906,
+        "plugins": 12.072086334228516,
+        "bootstrap": 23.472070693969727,
+        "render": 16.402006149291992,
+        "router": 54.41117286682129
+      },
+      "counts": {
+        "cache_file_reads": 15,
+        "pdo_connections": 1,
+        "cache_l1_hits": 76,
+        "sql_queries": 31,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 40407,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/zh-cn/posts": {
+      "durations_ms": {
+        "app": 88.33599090576172,
+        "cache": 11.998653411865234,
+        "db_connect": 0.3688335418701172,
+        "db": 13.828516006469727,
+        "plugins": 9.673118591308594,
+        "bootstrap": 19.10400390625,
+        "render": 20.09296417236328,
+        "router": 58.73298645019531
+      },
+      "counts": {
+        "cache_file_reads": 15,
+        "pdo_connections": 1,
+        "cache_l1_hits": 76,
+        "sql_queries": 31,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 40321,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/not-a-real-page-optimization-check": {
+      "durations_ms": {
+        "app": 94.84410285949707,
+        "cache": 3.087282180786133,
+        "db_connect": 7.134199142456055,
+        "db": 2.2017955780029297,
+        "plugins": 30.005931854248047,
+        "bootstrap": 52.80900001525879,
+        "render": 12.636899948120117
+      },
+      "counts": {
+        "cache_file_reads": 8,
+        "pdo_connections": 1,
+        "cache_l1_hits": 69,
+        "sql_queries": 3,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 404,
+      "html_bytes": 39410,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    "/login": {
+      "durations_ms": {
+        "app": 104.82406616210938,
+        "cache": 2.6628971099853516,
+        "db_connect": 1.2249946594238281,
+        "db": 6.287574768066406,
+        "plugins": 31.248807907104492,
+        "bootstrap": 54.019927978515625,
+        "router": 41.40901565551758
+      },
+      "counts": {
+        "cache_file_reads": 6,
+        "pdo_connections": 1,
+        "cache_l1_hits": 70,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 37031,
+      "assets": [
+        "http://localhost:8888/assets/default/js/theme-switcher.js?v=048d500ca58e3a5fb56d",
+        "http://localhost:8888/assets/default/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/assets/default/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/assets/default/css/style.css?v=b434fa84efa602ea2d5f",
+        "http://localhost:8888/assets/default/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/assets/default/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/assets/default/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/password-field.js?v=e0b3ed79ffe58058b254",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/assets/default/js/main.js?v=45f15fb3dcb1be840eaa"
+      ]
+    },
+    "/register": {
+      "durations_ms": {
+        "app": 69.60606575012207,
+        "cache": 1.9867420196533203,
+        "db_connect": 1.6720294952392578,
+        "db": 1.5680789947509766,
+        "plugins": 15.71512222290039,
+        "bootstrap": 33.48994255065918,
+        "router": 27.404069900512695
+      },
+      "counts": {
+        "cache_file_reads": 8,
+        "pdo_connections": 1,
+        "cache_l1_hits": 70,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 40049,
+      "assets": [
+        "http://localhost:8888/assets/default/js/theme-switcher.js?v=048d500ca58e3a5fb56d",
+        "http://localhost:8888/assets/default/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/assets/default/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/assets/default/css/style.css?v=b434fa84efa602ea2d5f",
+        "http://localhost:8888/assets/default/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/assets/default/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/assets/default/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/password-field.js?v=e0b3ed79ffe58058b254",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/assets/default/js/main.js?v=45f15fb3dcb1be840eaa"
+      ]
+    },
+    "/reset-password": {
+      "durations_ms": {
+        "app": 50.96101760864258,
+        "cache": 0.47898292541503906,
+        "db_connect": 0.4189014434814453,
+        "db": 3.6041736602783203,
+        "plugins": 16.113996505737305,
+        "bootstrap": 32.31000900268555
+      },
+      "counts": {
+        "cache_file_reads": 4,
+        "pdo_connections": 1,
+        "cache_l1_hits": 1,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 302,
+      "html_bytes": 0,
+      "assets": []
+    },
+    "/profile": {
+      "durations_ms": {
+        "app": 45.33886909484863,
+        "cache": 0.408172607421875,
+        "db_connect": 2.6040077209472656,
+        "db": 7.6751708984375,
+        "plugins": 19.27018165588379,
+        "bootstrap": 30.508041381835938
+      },
+      "counts": {
+        "cache_file_reads": 4,
+        "pdo_connections": 1,
+        "cache_l1_hits": 1,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 302,
+      "html_bytes": 0,
+      "assets": []
+    },
+    "/admin": {
+      "durations_ms": {
+        "app": 40.8320426940918,
+        "cache": 1.0631084442138672,
+        "db_connect": 0.3490447998046875,
+        "db": 0.7259845733642578,
+        "plugins": 11.523962020874023,
+        "bootstrap": 25.20012855529785
+      },
+      "counts": {
+        "cache_file_reads": 4,
+        "pdo_connections": 1,
+        "cache_l1_hits": 1,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 302,
+      "html_bytes": 0,
+      "assets": []
+    },
+    "/notifications/feed": {
+      "durations_ms": {
+        "app": 46.18406295776367,
+        "cache": 0.4925727844238281,
+        "db_connect": 0.2980232238769531,
+        "db": 0.9341239929199219,
+        "plugins": 15.690088272094727,
+        "bootstrap": 33.51187705993652
+      },
+      "counts": {
+        "cache_file_reads": 4,
+        "pdo_connections": 1,
+        "cache_l1_hits": 1,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 302,
+      "html_bytes": 0,
+      "assets": []
+    },
+    "/chat/unread-count": {
+      "durations_ms": {
+        "app": 41.18013381958008,
+        "cache": 0.4420280456542969,
+        "db_connect": 0.3650188446044922,
+        "db": 1.64794921875,
+        "plugins": 15.869855880737305,
+        "bootstrap": 27.032852172851562
+      },
+      "counts": {
+        "cache_file_reads": 4,
+        "pdo_connections": 1,
+        "cache_l1_hits": 1,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 302,
+      "html_bytes": 0,
+      "assets": []
+    },
+    "/manifest.webmanifest": {
+      "durations_ms": {
+        "app": 35.03894805908203,
+        "cache": 0.47135353088378906,
+        "db_connect": 1.0459423065185547,
+        "db": 1.4078617095947266,
+        "plugins": 10.102987289428711,
+        "bootstrap": 19.677162170410156
+      },
+      "counts": {
+        "cache_file_reads": 5,
+        "pdo_connections": 1,
+        "cache_l1_hits": 13,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 200,
+      "html_bytes": 2536,
+      "assets": []
+    },
+    "/sw.js": {
+      "durations_ms": {
+        "app": 47.80316352844238,
+        "cache": 0.8382797241210938,
+        "db_connect": 1.5528202056884766,
+        "db": 0.8559226989746094,
+        "plugins": 16.302108764648438,
+        "bootstrap": 30.03692626953125
+      },
+      "counts": {
+        "cache_file_reads": 5,
+        "pdo_connections": 1,
+        "cache_l1_hits": 14,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 200,
+      "html_bytes": 9202,
+      "assets": []
+    },
+    "/offline": {
+      "durations_ms": {
+        "app": 36.949872970581055,
+        "cache": 1.0211467742919922,
+        "db_connect": 2.660989761352539,
+        "db": 0.7140636444091797,
+        "plugins": 8.948087692260742,
+        "bootstrap": 20.180940628051758,
+        "router": 11.065959930419922
+      },
+      "counts": {
+        "cache_file_reads": 6,
+        "pdo_connections": 1,
+        "cache_l1_hits": 70,
+        "sql_queries": 2,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 6291456,
+      "status": 200,
+      "html_bytes": 34771,
+      "assets": [
+        "http://localhost:8888/assets/default/js/theme-switcher.js?v=048d500ca58e3a5fb56d",
+        "http://localhost:8888/assets/default/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/assets/default/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/assets/default/css/style.css?v=b434fa84efa602ea2d5f",
+        "http://localhost:8888/assets/default/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/assets/default/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/assets/default/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/assets/default/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/password-field.js?v=e0b3ed79ffe58058b254",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/assets/default/js/main.js?v=45f15fb3dcb1be840eaa"
+      ]
+    }
+  },
+  "homepage_samples": [
+    {
+      "durations_ms": {
+        "app": 45.33886909484863,
+        "cache": 1.1229515075683594,
+        "db_connect": 2.5949478149414062,
+        "db": 2.0012855529785156,
+        "plugins": 8.961915969848633,
+        "bootstrap": 19.903182983398438,
+        "render": 7.731199264526367,
+        "router": 20.55811882019043
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 12,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    {
+      "durations_ms": {
+        "app": 66.70689582824707,
+        "cache": 1.2810230255126953,
+        "db_connect": 0.44989585876464844,
+        "db": 10.067462921142578,
+        "plugins": 18.27716827392578,
+        "bootstrap": 26.726961135864258,
+        "render": 10.771036148071289,
+        "router": 34.57999229431152
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 12,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    {
+      "durations_ms": {
+        "app": 56.272029876708984,
+        "cache": 1.3289451599121094,
+        "db_connect": 0.4620552062988281,
+        "db": 4.558563232421875,
+        "plugins": 12.228965759277344,
+        "bootstrap": 21.85201644897461,
+        "render": 10.854959487915039,
+        "router": 27.729034423828125
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 12,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    {
+      "durations_ms": {
+        "app": 95.35598754882812,
+        "cache": 3.3745765686035156,
+        "db_connect": 0.3859996795654297,
+        "db": 10.406494140625,
+        "plugins": 26.272058486938477,
+        "bootstrap": 36.930084228515625,
+        "render": 19.1500186920166,
+        "router": 52.60300636291504
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 12,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    {
+      "durations_ms": {
+        "app": 50.889015197753906,
+        "cache": 1.7828941345214844,
+        "db_connect": 0.28777122497558594,
+        "db": 3.3528804779052734,
+        "plugins": 11.00015640258789,
+        "bootstrap": 20.723819732666016,
+        "render": 10.35308837890625,
+        "router": 25.40111541748047
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 12,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    {
+      "durations_ms": {
+        "app": 69.5199966430664,
+        "cache": 1.3756752014160156,
+        "db_connect": 1.0211467742919922,
+        "db": 7.229804992675781,
+        "plugins": 18.19300651550293,
+        "bootstrap": 32.49716758728027,
+        "render": 9.016990661621094,
+        "router": 30.154943466186523
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 12,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    },
+    {
+      "durations_ms": {
+        "app": 85.26611328125,
+        "cache": 3.5228729248046875,
+        "db_connect": 0.3590583801269531,
+        "db": 6.898403167724609,
+        "plugins": 11.771917343139648,
+        "bootstrap": 22.909164428710938,
+        "render": 26.760101318359375,
+        "router": 55.28593063354492
+      },
+      "counts": {
+        "cache_file_reads": 9,
+        "pdo_connections": 1,
+        "cache_l1_hits": 73,
+        "sql_queries": 12,
+        "ddl_queries": 0,
+        "schema_queries": 0
+      },
+      "peak_memory_bytes": 8388608,
+      "status": 200,
+      "html_bytes": 73823,
+      "assets": [
+        "http://localhost:8888/themes/default/assets/js/theme-switcher.js?v=202ac9a8fa06973e404f",
+        "http://localhost:8888/themes/default/assets/icons/cartzilla-icons.min.css?v=5455c99847460de57106",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.css?v=8b35c6364fba567362c8",
+        "http://localhost:8888/themes/default/assets/css/theme.min.css?v=504a70fca846bfc9883d",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.css?v=47dd690f8f315bea076e",
+        "http://localhost:8888/themes/default/assets/css/style.css?v=39cc7c7d5b555a6c8c35",
+        "http://localhost:8888/themes/default/assets/js/jquery-3.7.1.min.js?v=fc9a93dd241f6b045cbf",
+        "http://localhost:8888/themes/default/assets/vendor/swiper/swiper-bundle.min.js?v=c299105643c20d687154",
+        "http://localhost:8888/themes/default/assets/vendor/toastr/toastr.min.js?v=280eace8efddee54b149",
+        "http://localhost:8888/themes/default/assets/js/bootstrap-guard.js?v=ee800bbe2ed7eaffc18b",
+        "http://localhost:8888/themes/default/assets/js/theme.min.js?v=c2f48e9f41d064ec6dd3",
+        "http://localhost:8888/assets/default/js/pwa.js?v=3357ede621657833f8e2",
+        "http://localhost:8888/themes/default/assets/js/main.js?v=21ee11bbc80dadeb02ae"
+      ]
+    }
+  ],
+  "asset_comparison": {
+    "summary": {
+      "css": {
+        "after_count": 5,
+        "before_count": 7,
+        "after_gzip_bytes": 79934,
+        "before_gzip_bytes": 89758
+      },
+      "js": {
+        "after_count": 8,
+        "before_count": 17,
+        "after_gzip_bytes": 127440,
+        "before_gzip_bytes": 210204
+      }
+    },
+    "files": [
+      {
+        "path": "/themes/default/assets/js/theme-switcher.js",
+        "bytes": 803,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/icons/cartzilla-icons.min.css",
+        "bytes": 2721,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/vendor/swiper/swiper-bundle.min.css",
+        "bytes": 4852,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/css/theme.min.css",
+        "bytes": 45550,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/vendor/toastr/toastr.min.css",
+        "bytes": 2836,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/css/style.css",
+        "bytes": 23975,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/js/jquery-3.7.1.min.js",
+        "bytes": 30362,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/vendor/swiper/swiper-bundle.min.js",
+        "bytes": 42074,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/vendor/toastr/toastr.min.js",
+        "bytes": 1986,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/js/bootstrap-guard.js",
+        "bytes": 302,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/js/theme.min.js",
+        "bytes": 34940,
+        "removed": false
+      },
+      {
+        "path": "/assets/default/js/pwa.js",
+        "bytes": 3945,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/js/main.js",
+        "bytes": 13028,
+        "removed": false
+      },
+      {
+        "path": "/themes/default/assets/vendor/plyr/plyr.css",
+        "bytes": 5179,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/css/fireplayer.css",
+        "bytes": 4645,
+        "removed": true
+      },
+      {
+        "path": "/themes/default/assets/vendor/plyr/plyr.polyfilled.js",
+        "bytes": 34981,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/js/fireplayer.js",
+        "bytes": 15096,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/js/fireplayer-video.js",
+        "bytes": 3233,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/js/fireplayer-audio.js",
+        "bytes": 828,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/js/fireplayer-hls.js",
+        "bytes": 4067,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/js/fireplayer-live.js",
+        "bytes": 1304,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/js/fireplayer-diagnostics.js",
+        "bytes": 3584,
+        "removed": true
+      },
+      {
+        "path": "/assets/default/js/fireplayer-init.js",
+        "bytes": 1831,
+        "removed": true
+      },
+      {
+        "path": "/themes/default/assets/js/plyr-init.js",
+        "bytes": 17840,
+        "removed": true
+      }
+    ]
+  },
+  "measurement_notes": [
+    "Local CLI PHP with MAMP MySQL; not a browser TTFB benchmark.",
+    "Asset comparison reconstructs previous inclusion list against current local files; gzip HTTP body bytes exclude headers, images, fonts and HLS traffic.",
+    "No reliable before-benchmark exists for the earliest optimization stage."
+  ]
+}

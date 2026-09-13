@@ -1382,7 +1382,12 @@ $(function () {
         }
     };
 
+    let messagesRequest = null;
+    let chatPollDelay = 4000;
+    let chatNextPollAt = 0;
+
     const loadMessages = (options = {}) => {
+        if (options.poll && (document.hidden || messagesRequest || Date.now() < chatNextPollAt)) return;
         const contactId = activeContactId();
         if (!contactId) {
             return;
@@ -1390,18 +1395,25 @@ $(function () {
 
         const requestId = ++state.messagesRequestId;
 
-        $.ajax({
+        messagesRequest?.abort();
+        messagesRequest = $.ajax({
             url: fetchUrl,
             method: 'GET',
             dataType: 'json',
+            timeout: 15000,
             data: { user_id: contactId },
             success: function (response) {
                 if (requestId !== state.messagesRequestId || contactId !== activeContactId()) {
                     return;
                 }
+                chatPollDelay = 4000;
+                chatNextPollAt = Date.now() + chatPollDelay;
                 applyPayload(response, options);
             },
             error: function (request) {
+                if (request.statusText === 'abort') return;
+                chatPollDelay = Math.min(chatPollDelay * 2, 60000);
+                chatNextPollAt = Date.now() + chatPollDelay;
                 if (requestId !== state.messagesRequestId || contactId !== activeContactId()) {
                     return;
                 }
@@ -1423,6 +1435,9 @@ $(function () {
                         </div>
                     `);
                 }
+            },
+            complete: function () {
+                if (requestId === state.messagesRequestId) messagesRequest = null;
             }
         });
     };
@@ -2049,7 +2064,7 @@ $(function () {
     });
     setInterval(function () {
         if (document.visibilityState === 'visible') {
-            loadMessages();
+            loadMessages({ poll: true });
         }
     }, 4000);
 });

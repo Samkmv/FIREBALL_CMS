@@ -2142,6 +2142,7 @@ class UpdateCenter
         if (app()->plugins !== null) {
             app()->plugins->migrateInstalledPlugins();
         }
+        SearchMaintenance::rebuild(null, search_registry());
     }
 
     protected function ensureUpdateLogTable(): void

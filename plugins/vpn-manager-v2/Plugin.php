@@ -28,7 +28,7 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
-final class FireballPluginVpnManagerV2 implements PluginInterface
+final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\PluginMigrationInterface
 {
     public const SLUG = 'vpn-manager-v2';
 
@@ -59,9 +59,13 @@ final class FireballPluginVpnManagerV2 implements PluginInterface
         fireball_event('vpn_manager_v2.deactivated', ['slug' => self::SLUG]);
     }
 
-    public function boot(): void
+    public function migrateSchema(): void
     {
         (new VpnV2SchemaUpgradeService())->ensureCurrent();
+    }
+
+    public function boot(): void
+    {
 
         add_filter('admin_user_delete_blockers', [self::class, 'userDeleteBlockers']);
         add_action('admin_user_deleting', [self::class, 'deleteUserData']);

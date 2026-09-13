@@ -113,6 +113,8 @@ final class InstallService
             $configPromoted = true;
             $this->writeInstalledLock($temporaryLock, $site, $admin, $locale);
             $pdo->commit();
+            \App\Models\SiteSetting::clearPublicCache();
+            SearchMaintenance::rebuild(new \FBL\Database($pdo));
 
             if (!@rename($temporaryLock, INSTALLED_LOCK)) {
                 throw new \RuntimeException('Unable to activate installed.lock.');

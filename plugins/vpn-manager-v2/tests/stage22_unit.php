@@ -194,6 +194,7 @@ $reflection = new ReflectionClass(FireballPluginToyCarRental::class);
 $ensureToySchema = $reflection->getMethod('ensureDatabaseSchema');
 $ensureToySchema->setAccessible(true);
 $ensureToySchema->invoke(null);
+$reflection->getMethod('ensureRideSchema')->invoke(null);
 $toyDb = $GLOBALS['schema_recovery_db'];
 $assert(isset($toyDb->tables['toy_rental_cars'], $toyDb->tables['toy_rental_rides']),
     'Toy Car Rental did not recreate its missing base tables.');
@@ -207,10 +208,10 @@ $toyBillingMigration = (string)file_get_contents(
     dirname($pluginRoot) . '/toy-car-rental/migrations/003_add_billing_fields_to_toy_rental_rides.sql'
 );
 $assert(substr_count($vpnPlugin, '(new VpnV2SchemaUpgradeService())->ensureCurrent();') >= 3,
-    'VPN schema recovery is not invoked during install, activation and boot.');
+    'VPN schema recovery is not invoked during install, activation and explicit maintenance.');
 $assert(str_contains($toyPlugin, 'public function activate(): void')
-    && substr_count($toyPlugin, 'self::ensureDatabaseSchema();') >= 3,
-    'Toy Car Rental schema recovery is not invoked during install, activation and boot.');
+    && substr_count($toyPlugin, 'self::ensureDatabaseSchema();') >= 2,
+    'Toy Car Rental schema recovery is not invoked during install, activation and explicit maintenance.');
 $assert(substr_count($toyBillingMigration, 'information_schema.COLUMNS') === 4
     && substr_count($toyBillingMigration, "'SELECT 1'") === 4,
     'The Toy Car Rental billing migration is not safe to replay after partial schema recovery.');
@@ -220,10 +221,10 @@ echo json_encode([
     'cases' => [
         'vpn_migration_journal_preserved',
         'partial_vpn_schema_replay',
-        'vpn_install_activate_boot_recovery',
+        'vpn_install_activate_maintenance_recovery',
         'toy_base_table_recovery',
         'toy_billing_column_recovery',
         'toy_idempotent_billing_migration',
-        'toy_install_activate_boot_recovery',
+        'toy_install_activate_recovery',
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), PHP_EOL;

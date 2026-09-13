@@ -1,13 +1,8 @@
 <?php
 
-$postNavigationCategories = array_values(array_filter(
-    (new \App\Models\Post())->getNavigationCategories(),
-    static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
-));
-$pageNavigationModel = new \App\Models\Page();
-$headerPageLinks = $pageNavigationModel->getMenuPages('header');
-$footerPageLinks = $pageNavigationModel->getMenuPages('footer');
-$legalInformationLinks = $pageNavigationModel->getLegalInformationMenu();
+$requiredAssets = \App\Services\FrontendAssets::requirements((string)$this->content, (array)($assets ?? []));
+extract((new \App\Services\PublicLayoutContext())->navigation(), EXTR_SKIP);
+$defaultAsset = static fn(string $path): string => asset_versioned_url(base_url($path), WWW . $path);
 $currentPostCategorySlug = trim((string)request()->get('category', ''));
 $siteTitle = site_setting('site_title', SITE_NAME);
 $siteDescription = site_setting('site_description', '');
@@ -198,7 +193,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?= pwa_head_tags() ?>
 
     <!-- Theme switcher (color modes) -->
-    <script src="<?= base_url('/assets/default/js/theme-switcher.js?v=' . filemtime(WWW . '/assets/default/js/theme-switcher.js')) ?>"></script>
+    <script src="<?= $defaultAsset('/assets/default/js/theme-switcher.js') ?>"></script>
     <?php if ($isAdminArea): ?>
         <script>
             (() => {
@@ -214,16 +209,28 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php endif; ?>
 
     <!-- Font icons -->
-    <link rel="preload" href="<?= base_url('/assets/default/icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
-    <link rel="stylesheet" href="<?= base_url('/assets/default/icons/cartzilla-icons.min.css') ?>">
+    <link rel="preload" href="<?= $defaultAsset('/assets/default/icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/icons/cartzilla-icons.min.css') ?>">
 
     <!-- Vendor styles -->
-    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/choices.js/choices.min.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/simplebar/simplebar.min.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/swiper/swiper-bundle.min.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/plyr/plyr.css?v=' . filemtime(WWW . '/assets/default/vendor/plyr/plyr.css')) ?>">
-    <link rel="stylesheet" href="<?= base_url('/assets/default/css/fireplayer.css?v=' . filemtime(WWW . '/assets/default/css/fireplayer.css')) ?>">
-    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/highlight.js/styles/atom-one-dark.min.css') ?>">
+<?php if ($isAdminArea || !empty($requiredAssets['choices'])): ?>
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/choices.js/choices.min.css') ?>">
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['simplebar'])): ?>
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/simplebar/simplebar.min.css') ?>">
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['swiper'])): ?>
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/swiper/swiper-bundle.min.css') ?>">
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/plyr/plyr.css') ?>">
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/fireplayer.css') ?>">
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['highlight'])): ?>
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/highlight.js/styles/atom-one-dark.min.css') ?>">
+<?php endif; ?>
 
     <?php if (!empty($styles)): ?>
         <?php foreach ($styles as $style): ?>
@@ -234,13 +241,13 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php endif; ?>
 
     <!-- Bootstrap + Theme styles -->
-    <link rel="stylesheet" href="<?= base_url('/assets/default/css/theme.min.css') ?>" id="theme-styles">
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/theme.min.css') ?>" id="theme-styles">
 
     <!-- Customs styles -->
-    <link rel="stylesheet" href="<?= base_url('/assets/default/vendor/toastr/toastr.min.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('/assets/default/css/style.css?v=' . filemtime(WWW . '/assets/default/css/style.css')) ?>">
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/toastr/toastr.min.css') ?>">
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/style.css') ?>">
     <?php if ($isAdminArea): ?>
-        <link rel="stylesheet" href="<?= base_url('/assets/default/css/admin-ui.css?v=' . filemtime(WWW . '/assets/default/css/admin-ui.css')) ?>">
+        <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/admin-ui.css') ?>">
     <?php endif; ?>
     <?php if (!$canViewVideoStatus): ?>
         <style id="fb-video-status-privacy">
@@ -842,7 +849,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     window.hlsStreamConfig = <?= json_encode($frontendStreamConfig, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.firePlayerConfig = {
         assetBase: <?= json_encode(base_url('/assets/default'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
-        hlsScriptUrl: <?= json_encode(base_url('/assets/default/vendor/hls.js/hls.min.js?v=' . filemtime(WWW . '/assets/default/vendor/hls.js/hls.min.js')), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
+        hlsScriptUrl: <?= json_encode($defaultAsset('/assets/default/vendor/hls.js/hls.min.js'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
     };
     if (!window.canViewVideoStatus) {
         (function () {
@@ -907,11 +914,15 @@ $postCategoryUrl = static function (?string $slug = null): string {
         })();
     }
 </script>
-<script src="<?= base_url('/assets/default/js/jquery-3.7.1.min.js') ?>"></script>
+<script src="<?= $defaultAsset('/assets/default/js/jquery-3.7.1.min.js') ?>"></script>
 
 <!-- Vendor scripts -->
-<script src="<?= base_url('/assets/default/vendor/choices.js/choices.min.js') ?>"></script>
-<script src="<?= base_url('/assets/default/vendor/simplebar/simplebar.min.js') ?>"></script>
+<?php if ($isAdminArea || !empty($requiredAssets['choices'])): ?>
+<script src="<?= $defaultAsset('/assets/default/vendor/choices.js/choices.min.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['simplebar'])): ?>
+<script src="<?= $defaultAsset('/assets/default/vendor/simplebar/simplebar.min.js') ?>"></script>
+<?php endif; ?>
 <script>
     if (window.Choices && !window.Choices.__fireballHardened) {
         const FireballChoicesBase = window.Choices;
@@ -929,10 +940,16 @@ $postCategoryUrl = static function (?string $slug = null): string {
         window.Choices = FireballChoices;
     }
 </script>
-<script src="<?= base_url('/assets/default/vendor/swiper/swiper-bundle.min.js') ?>"></script>
-<script src="<?= base_url('/assets/default/vendor/toastr/toastr.min.js') ?>"></script>
-<script src="<?= base_url('/assets/default/vendor/plyr/plyr.polyfilled.js?v=' . filemtime(WWW . '/assets/default/vendor/plyr/plyr.polyfilled.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/vendor/highlight.js/highlight.min.js') ?>"></script>
+<?php if ($isAdminArea || !empty($requiredAssets['swiper'])): ?>
+<script src="<?= $defaultAsset('/assets/default/vendor/swiper/swiper-bundle.min.js') ?>"></script>
+<?php endif; ?>
+<script src="<?= $defaultAsset('/assets/default/vendor/toastr/toastr.min.js') ?>"></script>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/vendor/plyr/plyr.polyfilled.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['highlight'])): ?>
+<script src="<?= $defaultAsset('/assets/default/vendor/highlight.js/highlight.min.js') ?>"></script>
+<?php endif; ?>
 
 <?php if (!empty($footer_scripts)): ?>
     <?php foreach ($footer_scripts as $footer_script): ?>
@@ -943,28 +960,46 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php endif; ?>
 
 <!-- Bootstrap + Theme scripts -->
-<script src="<?= base_url('/assets/default/js/bootstrap-guard.js?v=' . filemtime(WWW . '/assets/default/js/bootstrap-guard.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/theme.min.js') ?>"></script>
+<script src="<?= $defaultAsset('/assets/default/js/bootstrap-guard.js') ?>"></script>
+<script src="<?= $defaultAsset('/assets/default/js/theme.min.js') ?>"></script>
 
 <!-- Customs scripts -->
-<script src="<?= base_url('/assets/default/js/password-field.js?v=' . filemtime(WWW . '/assets/default/js/password-field.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/select-init.js?v=' . filemtime(WWW . '/assets/default/js/select-init.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/fireplayer.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/fireplayer-video.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-video.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/fireplayer-audio.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-audio.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/fireplayer-hls.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-hls.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/fireplayer-live.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-live.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/fireplayer-diagnostics.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-diagnostics.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/fireplayer-init.js?v=' . filemtime(WWW . '/assets/default/js/fireplayer-init.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/plyr-init.js?v=' . filemtime(WWW . '/assets/default/js/plyr-init.js')) ?>"></script>
-<script src="<?= base_url('/assets/default/js/pwa.js?v=' . filemtime(WWW . '/assets/default/js/pwa.js')) ?>"></script>
-<?php if ($isAdminArea): ?>
-    <script src="<?= base_url('/assets/default/js/admin-delete-modal.js?v=' . filemtime(WWW . '/assets/default/js/admin-delete-modal.js')) ?>"></script>
-    <script src="<?= base_url('/assets/default/js/datatable.js?v=' . filemtime(WWW . '/assets/default/js/datatable.js')) ?>"></script>
+<script src="<?= $defaultAsset('/assets/default/js/password-field.js') ?>"></script>
+<?php if ($isAdminArea || !empty($requiredAssets['choices'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/select-init.js') ?>"></script>
 <?php endif; ?>
-<script src="<?= base_url('/assets/default/js/main.js?v=' . filemtime(WWW . '/assets/default/js/main.js')) ?>"></script>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/fireplayer.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/fireplayer-video.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/fireplayer-audio.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/fireplayer-hls.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/fireplayer-live.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/fireplayer-diagnostics.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/fireplayer-init.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<script src="<?= $defaultAsset('/assets/default/js/plyr-init.js') ?>"></script>
+<?php endif; ?>
+<script src="<?= $defaultAsset('/assets/default/js/pwa.js') ?>"></script>
 <?php if ($isAdminArea): ?>
-    <script src="<?= base_url('/assets/default/js/admin-ui.js?v=' . filemtime(WWW . '/assets/default/js/admin-ui.js')) ?>"></script>
+    <script src="<?= $defaultAsset('/assets/default/js/admin-delete-modal.js') ?>"></script>
+    <script src="<?= $defaultAsset('/assets/default/js/datatable.js') ?>"></script>
+<?php endif; ?>
+<script src="<?= $defaultAsset('/assets/default/js/main.js') ?>"></script>
+<?php if ($isAdminArea): ?>
+    <script src="<?= $defaultAsset('/assets/default/js/admin-ui.js') ?>"></script>
 <?php endif; ?>
 
 

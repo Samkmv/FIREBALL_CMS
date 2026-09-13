@@ -84,6 +84,7 @@ class ChatController extends BaseController
         }
 
         $this->chatMessages->markConversationAsRead($currentUserId, $contactId);
+        session()->close();
         response()->json($this->buildConversationPayload($currentUserId, $contactId));
     }
 
@@ -100,6 +101,7 @@ class ChatController extends BaseController
             response()->text('', 404);
         }
 
+        session()->close();
         try {
             (new ChatMediaStorage())->stream(
                 (string)$attachment['path'],

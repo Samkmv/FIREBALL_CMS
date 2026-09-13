@@ -279,10 +279,12 @@ const safeStaticResponse = (response) => response && response.ok && response.typ
   && !response.redirected && !/(?:private|no-store)/i.test(response.headers.get("Cache-Control") || "");
 const storeStatic = async (cache, request, response) => {
   if (!safeStaticResponse(response)) return;
-  await cache.put(request, response.clone());
-  const keys = await cache.keys();
-  const removable = keys.filter((key) => key.url !== FIREBALL_PWA.offlineUrl);
-  if (removable.length > 150) await Promise.all(removable.slice(0, removable.length - 150).map((key) => cache.delete(key)));
+  try {
+    await cache.put(request, response.clone());
+    const keys = await cache.keys();
+    const removable = keys.filter((key) => key.url !== FIREBALL_PWA.offlineUrl);
+    if (removable.length > 150) await Promise.all(removable.slice(0, removable.length - 150).map((key) => cache.delete(key)));
+  } catch (_) { /* Quota or storage restrictions must not discard a successful network response. */ }
 };
 self.addEventListener("fetch", (event) => {
   const request = event.request;
@@ -309,8 +311,11 @@ self.addEventListener("fetch", (event) => {
   const image = /\.(?:png|jpe?g|webp|avif|gif|svg|ico)$/i.test(path);
   if (!versioned && !image) return;
   event.respondWith((async () => {
-    const cache = await caches.open(FIREBALL_PWA.cacheName);
-    const cached = await cache.match(request);
+    let cache, cached;
+    try {
+      cache = await caches.open(FIREBALL_PWA.cacheName);
+      cached = await cache.match(request);
+    } catch (_) { return fetch(request); }
     if (versioned && cached) return cached;
     const update = fetch(request).then(async (response) => {
       await storeStatic(cache, request, response);

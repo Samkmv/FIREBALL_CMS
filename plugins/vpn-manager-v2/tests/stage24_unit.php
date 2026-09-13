@@ -21,7 +21,7 @@ $reconciliationMigration = (string)file_get_contents(
 );
 
 $assert(substr_count($pluginSource, 'VpnV2SchemaUpgradeService())->ensureCurrent()') >= 3,
-    'Install, activation and boot do not all verify the VPN V2 schema.');
+    'Install, activation and explicit maintenance do not all verify the VPN V2 schema.');
 $assert(str_contains($repositorySource, "'vpn_v2_reconcile_operations'"),
     'The reconciliation queue table is absent from the required-table inventory.');
 $assert(str_contains($repositorySource, 'public function missingTables(): array'),

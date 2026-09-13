@@ -32,7 +32,7 @@ final class SearchEngine
             return $this->emptyResult($query, $normalizedQuery);
         }
 
-        $this->indexer->ensureProvidersIndexed();
+        // Index maintenance runs on content writes and explicit install/update/CLI operations.
         $candidateIds = $this->candidateIds($tokens);
         if ($candidateIds === []) {
             return $this->emptyResult($query, $normalizedQuery, $tokens);

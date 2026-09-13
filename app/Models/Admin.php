@@ -640,6 +640,9 @@ class Admin
             [$name, $id, $id]
         );
         Post::clearPublicCache();
+        foreach (db()->query("SELECT id FROM {$this->postsTable} WHERE category_id = ?", [$id])->get() ?: [] as $post) {
+            search_sync_entity('posts', (int)$post['id']);
+        }
     }
 
     /**

@@ -22,6 +22,9 @@ try {
         $executed = (new \App\Services\MigrationRunner())->run();
         $app->plugins = new \FBL\Plugins\PluginManager();
         $app->plugins->migrateInstalledPlugins();
+        $app->bootInstalledServices();
+        require CONFIG . '/routes.php';
+        \App\Services\SearchMaintenance::rebuild(null, search_registry());
         echo 'Applied migrations: ' . count($executed) . PHP_EOL;
         foreach ($executed as $name) {
             echo $name . PHP_EOL;
@@ -35,9 +38,7 @@ try {
     if ($command === 'search:reindex') {
         $app->bootInstalledServices();
         require CONFIG . '/routes.php';
-        foreach (search_registry()->names() as $name) {
-            search_indexer()->reindexProvider($name);
-        }
+        \App\Services\SearchMaintenance::rebuild(null, search_registry());
         echo "Search index refreshed.\n";
         exit;
     }

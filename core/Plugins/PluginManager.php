@@ -141,9 +141,7 @@ final class PluginManager
         }
 
         $metadata = $this->validMetadataBySlug($slug);
-        if ($this->hasPendingMigrations($metadata)) {
-            $this->runMigrations($metadata);
-        }
+        $this->runMigrations($metadata);
         $this->syncInstalledMetadata($row, $metadata);
 
         \App\Services\SchemaManifest::rebuild();
@@ -534,6 +532,12 @@ final class PluginManager
 
     private function runMigrations(array $metadata): void
     {
+        $plugin = $this->loadPluginInstance($metadata);
+        if ($plugin instanceof PluginMigrationInterface) {
+            \App\Services\SchemaMigration::run(fn() => $plugin->migrateSchema());
+            return;
+        }
+
         $migrationsPath = $metadata['path'] . '/migrations';
         if (!is_dir($migrationsPath)) {
             return;
