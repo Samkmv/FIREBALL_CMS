@@ -427,9 +427,11 @@ class Page extends Model
             ]
         );
 
+        $id = (int)db()->getInsertId();
         self::clearPublicCache();
+        search_sync_entity('pages', $id);
 
-        return (int)db()->getInsertId();
+        return $id;
     }
 
     /**
@@ -471,6 +473,7 @@ class Page extends Model
             ]
         );
         self::clearPublicCache();
+        search_sync_entity('pages', $id);
     }
 
     /**
@@ -481,6 +484,7 @@ class Page extends Model
         $this->ensureSchema();
         db()->query("DELETE FROM {$this->table} WHERE id = ?", [$id]);
         self::clearPublicCache();
+        search_remove_entity('pages', $id);
     }
 
     /**
@@ -503,6 +507,7 @@ class Page extends Model
             [$nextStatus, date('Y-m-d H:i:s'), $id]
         );
         self::clearPublicCache();
+        search_sync_entity('pages', $id);
 
         return $nextStatus;
     }

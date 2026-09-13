@@ -4,9 +4,9 @@ $results = (array)($results ?? []);
 $total = (int)($total ?? count($results));
 ?>
 
-<main class="container py-4 py-md-5">
+<main class="fb-search-page container py-4 py-md-5">
     <div class="mx-auto" style="max-width: 960px">
-        <section class="border rounded-5 p-4 p-md-5 mb-4 mb-lg-5">
+        <section class="fb-search-panel fb-search-panel--heading p-4 p-md-5 mb-4">
             <h1 class="h3 mb-3"><?= print_translation('search_index_heading') ?></h1>
             <form action="<?= base_href('/search') ?>" method="get" class="position-relative">
                 <input
@@ -34,11 +34,11 @@ $total = (int)($total ?? count($results));
 
         <?php if ($query !== ''): ?>
             <?php if ($results): ?>
-                <section class="d-flex flex-column gap-3" aria-label="<?= htmlSC(return_translation('search_index_found')) ?>">
+                <section class="fb-search-results d-flex flex-column gap-2" aria-label="<?= htmlSC(return_translation('search_index_found')) ?>">
                     <?php foreach ($results as $result): ?>
-                        <article class="fb-search-result border rounded-5 p-4 p-md-5">
+                        <article class="fb-search-result fb-search-panel p-3 p-md-4">
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                <span class="badge rounded-pill text-body-emphasis bg-body-tertiary border">
+                                <span class="fb-search-type badge rounded-pill">
                                     <?= htmlSC((string)($result['type_label'] ?? $result['type'] ?? '')) ?>
                                 </span>
                                 <?php if (trim((string)($result['subtitle'] ?? '')) !== ''): ?>
@@ -58,14 +58,14 @@ $total = (int)($total ?? count($results));
                                 </p>
                             <?php endif; ?>
 
-                            <a class="btn btn-outline-secondary btn-sm rounded-pill" href="<?= htmlSC((string)($result['url'] ?? '#')) ?>">
+                            <a class="fb-search-open btn btn-sm rounded-pill" href="<?= htmlSC((string)($result['url'] ?? '#')) ?>">
                                 <?= print_translation('search_index_open') ?>
                             </a>
                         </article>
                     <?php endforeach; ?>
                 </section>
             <?php else: ?>
-                <section class="border rounded-5 p-5 text-center">
+                <section class="fb-search-panel p-5 text-center">
                     <h2 class="h5 mb-2"><?= print_translation('search_index_empty') ?></h2>
                     <p class="text-body-secondary mb-0"><?= print_translation('search_index_empty_desc') ?></p>
                 </section>

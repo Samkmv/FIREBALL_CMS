@@ -6,6 +6,7 @@ namespace App\Services;
 final class SchemaManifest
 {
     private static ?array $tables = null;
+    private static array $presence = [];
 
     public static function columns(string $table): array
     {
@@ -18,7 +19,20 @@ final class SchemaManifest
 
     public static function hasTable(string $table): bool
     {
-        return self::columns($table) !== [];
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+            throw new \InvalidArgumentException('Invalid database identifier.');
+        }
+        if (self::columns($table) !== []) return true;
+        if (array_key_exists($table, self::$presence)) return self::$presence[$table];
+        // A missing/outdated manifest is not evidence that application data is absent.
+        // Probe without reading rows, changing schema or consulting information_schema.
+        try {
+            db()->query("SELECT 1 FROM `{$table}` LIMIT 0");
+            return self::$presence[$table] = true;
+        } catch (\PDOException $exception) {
+            if ((string)$exception->getCode() !== '42S02') throw $exception;
+            return self::$presence[$table] = false;
+        }
     }
 
     public static function rebuild(): void
@@ -34,6 +48,7 @@ final class SchemaManifest
                 throw new \RuntimeException('Unable to write schema manifest.');
             }
             self::$tables = $tables;
+            self::$presence = [];
         } finally {
             if (is_string($temporary) && is_file($temporary)) {
                 @unlink($temporary);

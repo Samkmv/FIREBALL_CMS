@@ -19,6 +19,9 @@ $(function(){
     let unreadBadgesReady = false;
     let lastUnreadTotal = 0;
     let notificationsReady = false;
+    let notificationFeedRequest = null;
+    let notificationFeedGeneration = 0;
+    let notificationMutations = 0;
     const applyImageFallback = (image) => {
         const fallbackSource = image?.getAttribute?.('data-image-fallback');
         if (!fallbackSource || image.dataset.imageFallbackApplied === 'true') {
@@ -945,6 +948,11 @@ $(function(){
         }
     };
 
+    const beginNotificationMutation = () => {
+        notificationMutations++;
+        invalidateNotificationPoll();
+    };
+
     notificationClearButton.on('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -956,6 +964,7 @@ $(function(){
         }
 
         notificationClearButton.prop('disabled', true);
+        beginNotificationMutation();
         $.ajax({
             url: sameOriginUrl(clearUrl),
             method: 'POST',
@@ -983,18 +992,29 @@ $(function(){
                 }
             },
             complete: function () {
+                notificationMutations--;
                 notificationClearButton.prop('disabled', false);
-                setTimeout(pollNotificationFeed, 250);
+                setTimeout(refreshNotificationPoll, 250);
             },
         });
     });
 
+    const showNotificationFeedError = () => {
+        // Preserve already loaded items while the connection is unavailable.
+        if (notificationsReady) return;
+        notificationList.html(`<div class="px-3 py-3 small" role="status">${escapeHtml(notificationCenter.data('load-error') || 'Unable to load notifications.')}<button type="button" class="btn btn-sm btn-outline-secondary d-block mt-2" data-notifications-retry>${escapeHtml(notificationCenter.data('retry-label') || 'Retry')}</button></div>`);
+    };
+
+    // Fallback polling is shared by visible tabs; mutations always invalidate old responses.
     const notificationPollInterval = 45000;
     let notificationPollDelay = notificationPollInterval;
     let notificationPollTimer = null;
     let notificationPollInFlight = false;
     let notificationLastPoll = 0;
+    let notificationInvalidatedAt = 0;
+    let notificationRefreshPending = false;
     let notificationPollingStopped = false;
+    let notificationPageActive = true;
     const notificationPollUrl = notificationCenter.length
         ? notificationCenter.data('feed-url')
         : unreadBadges.first().data('unread-url');
@@ -1002,69 +1022,123 @@ $(function(){
     let notificationChannel = null;
     try {
         notificationChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(notificationScope) : null;
-    } catch (_) { /* Some private browsing modes disable channels. */ }
-
-    const applyPollResponse = (response) => {
-        if (!response || !response.status) return;
+    } catch (_) { /* Channels are optional, including in private browsing. */ }
+    const broadcastNotification = (message) => {
+        try { notificationChannel?.postMessage(message); } catch (_) { /* Polling still works without a channel. */ }
+    };
+    const applyPollResponse = (response, startedAt) => {
+        if (!response?.status || notificationMutations > 0 || startedAt <= notificationInvalidatedAt) return;
         notificationLastPoll = Date.now();
+        notificationPollDelay = notificationPollInterval;
         if (notificationCenter.length) applyNotificationFeed(response);
         else updateUnreadBadges(response.unread_count || 0);
     };
-    if (notificationChannel) {
-        notificationChannel.onmessage = (event) => {
-            if (event.data?.type === 'update') applyPollResponse(event.data.response);
-        };
-    }
     const scheduleNotificationPoll = () => {
         clearTimeout(notificationPollTimer);
-        if (!document.hidden && !notificationPollingStopped && notificationPollUrl) {
+        if (notificationPageActive && !document.hidden && !notificationPollingStopped && notificationPollUrl) {
             notificationPollTimer = setTimeout(() => requestNotificationPoll(false), notificationPollDelay);
         }
     };
+    const invalidateNotificationPoll = () => {
+        notificationInvalidatedAt = Date.now();
+        notificationRefreshPending = true;
+        notificationLastPoll = 0;
+        notificationFeedGeneration++;
+        notificationFeedRequest?.abort();
+    };
+    if (notificationChannel) {
+        notificationChannel.onmessage = (event) => {
+            if (event.data?.type === 'update') {
+                applyPollResponse(event.data.response, Number(event.data.startedAt || 0));
+            } else if (event.data?.type === 'invalidate') {
+                invalidateNotificationPoll();
+                requestNotificationPoll(true);
+            }
+        };
+    }
     const requestNotificationPoll = async (force = false) => {
-        if (document.hidden || notificationPollingStopped || notificationPollInFlight || !notificationPollUrl) return;
+        if (!notificationPageActive || document.hidden || notificationPollingStopped || notificationPollInFlight
+            || notificationMutations > 0 || !notificationPollUrl) return;
         notificationPollInFlight = true;
         const perform = async () => {
-            // A response from another visible tab satisfies this tab's fallback poll.
+            // Visibility may change while the browser grants the cross-tab lock.
+            if (!notificationPageActive || document.hidden || notificationMutations > 0) return;
             if (Date.now() - notificationLastPoll < (force ? 1500 : notificationPollInterval - 1000)) return;
+            const generation = notificationFeedGeneration;
+            const startedAt = Math.max(Date.now(), notificationInvalidatedAt + 1);
+            notificationRefreshPending = false;
+            notificationList.attr('aria-busy', 'true');
             try {
-                const response = await $.ajax({ url: sameOriginUrl(notificationPollUrl), method: 'GET', dataType: 'json', timeout: 15000 });
+                notificationFeedRequest = $.ajax({ url: sameOriginUrl(notificationPollUrl), method: 'GET', dataType: 'json', cache: false, timeout: 15000 });
+                const response = await notificationFeedRequest;
+                if (generation !== notificationFeedGeneration) return;
                 if (!response?.status) throw new Error('Invalid notification response');
-                notificationPollDelay = notificationPollInterval;
-                applyPollResponse(response);
-                notificationChannel?.postMessage({ type: 'update', response });
+                applyPollResponse(response, startedAt);
+                broadcastNotification({ type: 'update', response, startedAt });
             } catch (error) {
+                if (generation !== notificationFeedGeneration || error?.statusText === 'abort') return;
                 notificationPollDelay = Math.min(notificationPollDelay * 2, 300000);
                 if (error?.status === 401 || error?.status === 403) notificationPollingStopped = true;
+                if (notificationCenter.length) showNotificationFeedError();
+            } finally {
+                notificationFeedRequest = null;
+                notificationList.attr('aria-busy', 'false');
             }
         };
         try {
             if (notificationChannel && navigator.locks?.request) {
-                // Only one tab performs the network request; followers receive its result.
                 await navigator.locks.request(notificationScope, { ifAvailable: true }, async (lock) => {
                     if (lock) await perform();
                 });
             } else {
                 await perform();
             }
+        } catch (_) {
+            // A browser may expose Web Locks but deny access to them.
+            await perform();
         } finally {
             notificationPollInFlight = false;
-            scheduleNotificationPoll();
+            if (notificationRefreshPending && notificationPageActive && !document.hidden && notificationMutations === 0) {
+                clearTimeout(notificationPollTimer);
+                notificationPollTimer = setTimeout(pollNotificationFeed, 0);
+            } else {
+                scheduleNotificationPoll();
+            }
         }
     };
     const pollNotificationFeed = () => requestNotificationPoll(true);
     const pollUnreadCount = () => requestNotificationPoll(true);
+    const refreshNotificationPoll = () => {
+        invalidateNotificationPoll();
+        broadcastNotification({ type: 'invalidate' });
+        // Let an aborted request release its lock before refreshing the feed.
+        setTimeout(pollNotificationFeed, 0);
+    };
+    notificationList.on('click', '[data-notifications-retry]', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        pollNotificationFeed();
+    });
+    notificationCenter.on('shown.bs.dropdown', pollNotificationFeed);
     if (notificationPollUrl) requestNotificationPoll(false);
     document.addEventListener('visibilitychange', () => {
         clearTimeout(notificationPollTimer);
         if (!document.hidden) requestNotificationPoll(true);
     });
-    document.addEventListener('fireball:notifications-changed', () => requestNotificationPoll(true));
-    window.addEventListener('pagehide', () => clearTimeout(notificationPollTimer));
-    window.addEventListener('pageshow', () => requestNotificationPoll(true));
+    document.addEventListener('fireball:notifications-changed', refreshNotificationPoll);
+    window.addEventListener('online', pollNotificationFeed);
+    window.addEventListener('focus', pollNotificationFeed);
+    window.addEventListener('pagehide', () => {
+        notificationPageActive = false;
+        clearTimeout(notificationPollTimer);
+    });
+    window.addEventListener('pageshow', () => {
+        notificationPageActive = true;
+        requestNotificationPoll(true);
+    });
     $(document).on('chat:unread-updated', function (_, count) {
         updateUnreadBadges(count);
-        if (notificationCenter.length) requestNotificationPoll(true);
+        if (notificationCenter.length) refreshNotificationPoll();
     });
 
     $('[data-slug-source]').each(function () {
@@ -1145,16 +1219,16 @@ $(function(){
         const renderItems = (items, emptyText) => {
             if (!items.length) {
                 results.html(
-                    `<div class="search-suggest-menu bg-body border rounded-4 shadow-sm p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
+                    `<div class="search-suggest-menu search-suggest-menu--empty p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
                 ).removeClass('d-none');
                 return;
             }
 
-            let html = '<div class="search-suggest-menu bg-body border rounded-4 shadow-sm">';
+            let html = '<div class="search-suggest-menu">';
 
             items.forEach((item) => {
                 html += `
-                    <a class="search-suggest-menu__item d-block w-100 text-decoration-none text-reset px-3 py-2 border-bottom" href="${escapeHtml(item.url)}">
+                    <a class="search-suggest-menu__item d-block w-100 text-decoration-none text-reset px-3 py-3" href="${escapeHtml(item.url)}">
                         <div class="search-suggest-menu__meta d-flex align-items-start justify-content-between flex-wrap gap-1 gap-sm-3 mb-1">
                             <div class="fs-xs text-body-tertiary text-uppercase">${escapeHtml(item.type_label)}</div>
                             <div class="fs-xs text-body-tertiary text-sm-end">${escapeHtml(item.meta)}</div>

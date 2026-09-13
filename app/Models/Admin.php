@@ -373,9 +373,11 @@ class Admin
                 'is_published' => !empty($data['is_published']) ? 1 : 0,
             ]
         );
+        $id = (int)db()->getInsertId();
         Post::clearPublicCache();
+        search_sync_entity('posts', $id);
 
-        return (int)db()->getInsertId();
+        return $id;
     }
 
     /**
@@ -427,6 +429,7 @@ class Admin
             ]
         );
         Post::clearPublicCache();
+        search_sync_entity('posts', $id);
     }
 
     /**
@@ -437,6 +440,7 @@ class Admin
         $this->ensureSchema();
         db()->query("DELETE FROM {$this->postsTable} WHERE id = ?", [$id]);
         Post::clearPublicCache();
+        search_remove_entity('posts', $id);
     }
 
     /**
@@ -483,6 +487,7 @@ class Admin
         }
 
         Post::clearPublicCache();
+        search_sync_entity('posts', $id);
 
         return $nextStatus;
     }

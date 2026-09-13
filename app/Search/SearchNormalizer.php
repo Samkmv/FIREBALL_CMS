@@ -33,7 +33,8 @@ final class SearchNormalizer
             $tokens[$token] = true;
         }
 
-        return array_keys($tokens);
+        // PHP casts numeric array keys to integers; consumers expect string tokens.
+        return array_map('strval', array_keys($tokens));
     }
 
     /**

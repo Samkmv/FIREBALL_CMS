@@ -73,6 +73,7 @@ class SearchController extends BaseController
      */
     public function suggest(): void
     {
+        header('Cache-Control: private, no-store');
         $query = $this->query();
         if (mb_strlen(trim(preg_replace('/[^\p{L}\p{N}]+/u', '', $query) ?? ''), 'UTF-8') < $this->config->minimumQueryLength()) {
             response()->json([

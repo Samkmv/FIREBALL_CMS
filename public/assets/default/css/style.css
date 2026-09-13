@@ -114,6 +114,47 @@ body:not(.fb-admin-body) header.navbar-sticky form[data-search-suggest] .form-co
     }
 }
 
+/* The mobile category list shares the drawer's glass surface. */
+body:not(.fb-admin-body) #categoriesMenu .dropdown-menu {
+    background-color: rgba(226, 232, 240, .55);
+    border-color: rgba(82, 96, 113, .28);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    backdrop-filter: saturate(180%) blur(18px);
+}
+
+[data-bs-theme="dark"] body:not(.fb-admin-body) #categoriesMenu .dropdown-menu {
+    background-color: rgba(51, 61, 76, .55);
+    border-color: rgba(255, 255, 255, .16);
+}
+
+/* Light glass needs its own opaque ink and control edges over page content. */
+:root:not([data-bs-theme="dark"]) body:not(.fb-admin-body) :is(#navbarNav, #shoppingCart, #accountSidebar) {
+    background-color: rgba(255, 255, 255, .94) !important;
+}
+
+:root:not([data-bs-theme="dark"]) body:not(.fb-admin-body) :is(#navbarNav, #shoppingCart, #accountSidebar, #blogSidebar) :is(.text-body-secondary, .text-body-tertiary, .text-muted) {
+    color: #526071 !important;
+}
+
+:root:not([data-bs-theme="dark"]) body:not(.fb-admin-body) :is(#navbarNav, #shoppingCart, #accountSidebar, #blogSidebar) .btn-outline-secondary {
+    --cz-btn-color: #263344;
+    --cz-btn-bg: rgba(255, 255, 255, .8);
+    --cz-btn-border-color: #8793a2;
+    --cz-btn-hover-color: #18212f;
+    --cz-btn-hover-bg: #e2e8f0;
+    --cz-btn-hover-border-color: #526071;
+    --cz-btn-active-color: #fff;
+    --cz-btn-active-bg: #263344;
+    --cz-btn-active-border-color: #263344;
+    --cz-btn-focus-shadow-rgb: 82, 96, 113;
+}
+
+@media (max-width: 991.98px) {
+    :root:not([data-bs-theme="dark"]) body:not(.fb-admin-body) #blogSidebar {
+        --blog-sidebar-glass-bg: rgba(255, 255, 255, .94);
+    }
+}
+
 .site-brand {
     display: inline-flex;
     min-width: 0;

@@ -1,0 +1,21 @@
+[2026-09-13 13:36:01] Database connection error
+Request URI: /
+Request Method: GET
+Remote IP: 127.0.0.1
+Exception: PDOException
+Message: SQLSTATE[HY000] [2002] Operation not permitted
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 30
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(30): PDO->__construct('mysql:host=loca...', 'root', Object(SensitiveParameterValue), Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(241): FBL\Database->__construct()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(53): FBL\Application->bootInstalledServices()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(83): FBL\Application->__construct()
+#4 /private/tmp/fireball-profile-request.php(23): require('/Applications/M...')
+#5 {main}
+Driver: mysql
+Host: localhost
+Port: 3306
+Database: fbl
+Username: root
+DSN: mysql:host=localhost;dbname=fbl;charset=utf8mb4;port=3306
+========================================================================

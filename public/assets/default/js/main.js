@@ -1014,9 +1014,7 @@ $(function(){
 
     const beginNotificationMutation = () => {
         notificationMutations++;
-        notificationFeedGeneration++;
-        notificationFeedRequest?.abort();
-        notificationFeedRequest = null;
+        invalidateNotificationPoll();
     };
 
     notificationClearButton.on('click', function (event) {
@@ -1061,7 +1059,7 @@ $(function(){
             complete: function () {
                 notificationMutations--;
                 notificationClearButton.prop('disabled', false);
-                setTimeout(pollNotificationFeed, 250);
+                setTimeout(refreshNotificationPoll, 250);
             },
         });
     });
@@ -1102,105 +1100,151 @@ $(function(){
                     return;
                 }
 
-                setTimeout(pollNotificationFeed, 250);
+                setTimeout(refreshNotificationPoll, 250);
             },
         });
     });
 
-    const pollNotificationFeed = () => {
-        if (!notificationCenter.length || notificationFeedRequest || notificationMutations > 0 || document.hidden) {
-            return;
-        }
-
-        const feedUrl = notificationCenter.data('feed-url');
-        if (!feedUrl) {
-            return;
-        }
-
-        const generation = notificationFeedGeneration;
-        notificationList.attr('aria-busy', 'true');
-        notificationFeedRequest = $.ajax({
-            url: sameOriginUrl(feedUrl),
-            method: 'GET',
-            dataType: 'json',
-            cache: false,
-            timeout: 15000,
-            success: function (response) {
-                if (generation !== notificationFeedGeneration) return;
-                if (!response || !response.status) {
-                    showNotificationFeedError();
-                    return;
-                }
-                applyNotificationFeed(response);
-            },
-            error: function (_, status) {
-                if (status !== 'abort' && generation === notificationFeedGeneration) showNotificationFeedError();
-            },
-            complete: function () {
-                if (generation === notificationFeedGeneration) notificationFeedRequest = null;
-                notificationList.attr('aria-busy', 'false');
-            }
-        });
-    };
-
     const showNotificationFeedError = () => {
-        // Keep already loaded notifications when the connection is temporarily lost.
-        if (renderedNotificationHtml !== null) return;
+        // Preserve already loaded items while the connection is unavailable.
+        if (notificationsReady) return;
         notificationList.html(`<div class="px-3 py-3 small" role="status">${escapeHtml(notificationCenter.data('load-error') || 'Unable to load notifications.')}<button type="button" class="btn btn-sm btn-outline-secondary d-block mt-2" data-notifications-retry>${escapeHtml(notificationCenter.data('retry-label') || 'Retry')}</button></div>`);
     };
 
+    // Fallback polling is shared by visible tabs; mutations always invalidate old responses.
+    const notificationPollInterval = 45000;
+    let notificationPollDelay = notificationPollInterval;
+    let notificationPollTimer = null;
+    let notificationPollInFlight = false;
+    let notificationLastPoll = 0;
+    let notificationInvalidatedAt = 0;
+    let notificationRefreshPending = false;
+    let notificationPollingStopped = false;
+    let notificationPageActive = true;
+    const notificationPollUrl = notificationCenter.length
+        ? notificationCenter.data('feed-url')
+        : unreadBadges.first().data('unread-url');
+    const notificationScope = `fireball:notifications:${baseUrl}:${bodyDataset.pwaAuthUserId || '0'}:${document.documentElement.lang}:${notificationCenter.length ? 'feed' : 'unread'}`;
+    let notificationChannel = null;
+    try {
+        notificationChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(notificationScope) : null;
+    } catch (_) { /* Channels are optional, including in private browsing. */ }
+    const broadcastNotification = (message) => {
+        try { notificationChannel?.postMessage(message); } catch (_) { /* Polling still works without a channel. */ }
+    };
+    const applyPollResponse = (response, startedAt) => {
+        if (!response?.status || notificationMutations > 0 || startedAt <= notificationInvalidatedAt) return;
+        notificationLastPoll = Date.now();
+        notificationPollDelay = notificationPollInterval;
+        if (notificationCenter.length) applyNotificationFeed(response);
+        else updateUnreadBadges(response.unread_count || 0);
+    };
+    const scheduleNotificationPoll = () => {
+        clearTimeout(notificationPollTimer);
+        if (notificationPageActive && !document.hidden && !notificationPollingStopped && notificationPollUrl) {
+            notificationPollTimer = setTimeout(() => requestNotificationPoll(false), notificationPollDelay);
+        }
+    };
+    const invalidateNotificationPoll = () => {
+        notificationInvalidatedAt = Date.now();
+        notificationRefreshPending = true;
+        notificationLastPoll = 0;
+        notificationFeedGeneration++;
+        notificationFeedRequest?.abort();
+    };
+    if (notificationChannel) {
+        notificationChannel.onmessage = (event) => {
+            if (event.data?.type === 'update') {
+                applyPollResponse(event.data.response, Number(event.data.startedAt || 0));
+            } else if (event.data?.type === 'invalidate') {
+                invalidateNotificationPoll();
+                requestNotificationPoll(true);
+            }
+        };
+    }
+    const requestNotificationPoll = async (force = false) => {
+        if (!notificationPageActive || document.hidden || notificationPollingStopped || notificationPollInFlight
+            || notificationMutations > 0 || !notificationPollUrl) return;
+        notificationPollInFlight = true;
+        const perform = async () => {
+            // Visibility may change while the browser grants the cross-tab lock.
+            if (!notificationPageActive || document.hidden || notificationMutations > 0) return;
+            if (Date.now() - notificationLastPoll < (force ? 1500 : notificationPollInterval - 1000)) return;
+            const generation = notificationFeedGeneration;
+            const startedAt = Math.max(Date.now(), notificationInvalidatedAt + 1);
+            notificationRefreshPending = false;
+            notificationList.attr('aria-busy', 'true');
+            try {
+                notificationFeedRequest = $.ajax({ url: sameOriginUrl(notificationPollUrl), method: 'GET', dataType: 'json', cache: false, timeout: 15000 });
+                const response = await notificationFeedRequest;
+                if (generation !== notificationFeedGeneration) return;
+                if (!response?.status) throw new Error('Invalid notification response');
+                applyPollResponse(response, startedAt);
+                broadcastNotification({ type: 'update', response, startedAt });
+            } catch (error) {
+                if (generation !== notificationFeedGeneration || error?.statusText === 'abort') return;
+                notificationPollDelay = Math.min(notificationPollDelay * 2, 300000);
+                if (error?.status === 401 || error?.status === 403) notificationPollingStopped = true;
+                if (notificationCenter.length) showNotificationFeedError();
+            } finally {
+                notificationFeedRequest = null;
+                notificationList.attr('aria-busy', 'false');
+            }
+        };
+        try {
+            if (notificationChannel && navigator.locks?.request) {
+                await navigator.locks.request(notificationScope, { ifAvailable: true }, async (lock) => {
+                    if (lock) await perform();
+                });
+            } else {
+                await perform();
+            }
+        } catch (_) {
+            // A browser may expose Web Locks but deny access to them.
+            await perform();
+        } finally {
+            notificationPollInFlight = false;
+            if (notificationRefreshPending && notificationPageActive && !document.hidden && notificationMutations === 0) {
+                clearTimeout(notificationPollTimer);
+                notificationPollTimer = setTimeout(pollNotificationFeed, 0);
+            } else {
+                scheduleNotificationPoll();
+            }
+        }
+    };
+    const pollNotificationFeed = () => requestNotificationPoll(true);
+    const pollUnreadCount = () => requestNotificationPoll(true);
+    const refreshNotificationPoll = () => {
+        invalidateNotificationPoll();
+        broadcastNotification({ type: 'invalidate' });
+        // Let an aborted request release its lock before refreshing the feed.
+        setTimeout(pollNotificationFeed, 0);
+    };
     notificationList.on('click', '[data-notifications-retry]', function (event) {
         event.preventDefault();
         event.stopPropagation();
         pollNotificationFeed();
     });
-
     notificationCenter.on('shown.bs.dropdown', pollNotificationFeed);
+    if (notificationPollUrl) requestNotificationPoll(false);
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) pollNotificationFeed();
+        clearTimeout(notificationPollTimer);
+        if (!document.hidden) requestNotificationPoll(true);
     });
-    window.addEventListener('focus', pollNotificationFeed);
+    document.addEventListener('fireball:notifications-changed', refreshNotificationPoll);
     window.addEventListener('online', pollNotificationFeed);
-    document.addEventListener('fireball:notifications-changed', pollNotificationFeed);
-
-    const pollUnreadCount = () => {
-        if (!unreadBadges.length) {
-            return;
-        }
-
-        const unreadUrl = unreadBadges.first().data('unread-url');
-        if (!unreadUrl) {
-            return;
-        }
-
-        $.ajax({
-            url: sameOriginUrl(unreadUrl),
-            method: 'GET',
-            dataType: 'json',
-            success: function (response) {
-                if (!response || !response.status) {
-                    return;
-                }
-
-                updateUnreadBadges(response.unread_count || 0);
-            }
-        });
-    };
-
-    if (notificationCenter.length) {
-        pollNotificationFeed();
-        setInterval(pollNotificationFeed, 8000);
-    } else if (unreadBadges.length) {
-        pollUnreadCount();
-        setInterval(pollUnreadCount, 8000);
-    }
-
+    window.addEventListener('focus', pollNotificationFeed);
+    window.addEventListener('pagehide', () => {
+        notificationPageActive = false;
+        clearTimeout(notificationPollTimer);
+    });
+    window.addEventListener('pageshow', () => {
+        notificationPageActive = true;
+        requestNotificationPoll(true);
+    });
     $(document).on('chat:unread-updated', function (_, count) {
         updateUnreadBadges(count);
-
-        if (notificationCenter.length) {
-            pollNotificationFeed();
-        }
+        if (notificationCenter.length) refreshNotificationPoll();
     });
 
     $('[data-slug-source]').each(function () {
