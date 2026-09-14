@@ -1070,3 +1070,14 @@ body:has(.fireplayer.fireplayer--fullscreen) {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Retain the preview until playing / advancing frames, even if Safari clears its native poster. */
+.fireplayer__poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+.fireplayer__poster[hidden] { display: none !important; }

@@ -1851,6 +1851,11 @@ function initPostEditor() {
         return JSON.parse(JSON.stringify(data || {}));
     }
 
+    function resolveVideoPoster(src, poster) {
+        return window.FirePlayer && window.FirePlayer.resolvePoster
+            ? window.FirePlayer.resolvePoster(src, {poster: poster}) : String(poster || '').trim();
+    }
+
     function escapeHtml(value) {
         const div = document.createElement('div');
         div.textContent = String(value == null ? '' : value);
@@ -3366,7 +3371,7 @@ function initPostEditor() {
             }
 
             return '<div class="fire-player" data-fire-player data-src="' + escapeAttr(block.data.src) + '" data-media="video"' +
-                (block.data.poster ? ' data-poster="' + escapeAttr(block.data.poster) + '"' : '') +
+                (resolveVideoPoster(block.data.src, block.data.poster) ? ' data-poster="' + escapeAttr(resolveVideoPoster(block.data.src, block.data.poster)) + '"' : '') +
                 (getVideoMimeType(block.data.src) === 'application/vnd.apple.mpegurl' ? ' data-protocol="hls"' : '') + '></div>';
         }
 
@@ -4102,7 +4107,7 @@ function initPostEditor() {
                         (caption ? '<p>' + escapeHtml(caption) + '</p>' : '');
                 }
 
-                const poster = String(block.data.poster || '').trim();
+                const poster = resolveVideoPoster(src, block.data.poster);
                 const mimeType = getVideoMimeType(src);
                 const isHls = mimeType === 'application/vnd.apple.mpegurl';
                 return '<figure><div class="fire-player" data-fire-player data-src="' + escapeAttr(src) + '" data-media="video"' +

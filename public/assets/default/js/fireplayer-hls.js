@@ -85,12 +85,8 @@
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
             || (/Safari/.test(agent) && !/Chrome|Chromium|CriOS|Edg|OPR|FxiOS|YaBrowser/.test(agent));
     };
-    const inferStreamId = function (source) {
-        const match = String(source || '').match(/\/stream-([^/]+)\/index\.m3u8(?:[?#].*)?$/i);
-        return match ? match[1] : '';
-    };
     const wakeStream = async function (source, options, signal) {
-        const streamId = options.streamId || inferStreamId(source);
+        const streamId = options.streamId || window.FirePlayer.inferStreamId(source);
         if (!streamId) { return; }
         if (typeof window.fetch !== 'function') {
             throw new Error('Camera readiness checks require Fetch support.');
@@ -149,6 +145,29 @@
         let retryTimer = null;
         let reconnectPromise = null;
         let hls = null;
+        let Hls = null;
+        let useNative = options.forceHlsJs !== true && player._hlsEnginePreference !== 'hls.js' && isAppleBrowser() && canPlayNatively(media);
+        let started = false;
+        let startPromise = null;
+        let nativeTimer = null;
+        let switchPromise = null;
+        let fallbackAttempted = false;
+        let nativeRetried = false;
+        let hasPlayed = false;
+        let lastNativeTime = media.currentTime || 0;
+        let lastNativeProgress = Date.now();
+        const nativeBudget = boundedNumber(options.nativeStartupTimeout, 7500, 1000, 30000);
+        const diagnostic = function (event, detail) {
+            if (window.canViewVideoDiagnostics === true) { player._emit(event, detail); }
+        };
+        const onPlaying = function () {
+            if (!active() || media.paused) { return; }
+            hasPlayed = true;
+            lastNativeTime = media.currentTime || 0;
+            lastNativeProgress = Date.now();
+        };
+        const resetNativeClock = function () { lastNativeProgress = Date.now(); lastNativeTime = media.currentTime || 0; };
+
         let mediaRecoveries = 0;
         let lastHealthyTime = media.currentTime || 0;
         const active = function () {
@@ -171,12 +190,17 @@
             if (destroyed) { return; }
             destroyed = true;
             clearRetry();
+            window.clearInterval(nativeTimer);
+            media.removeEventListener('playing', onPlaying);
+            document.removeEventListener('visibilitychange', resetNativeClock);
             if (loadSignal) { loadSignal.removeEventListener('abort', cleanup); }
             if (lifetime) { lifetime.abort(); }
             media.removeEventListener('timeupdate', onProgress);
             if (hls) { hls.destroy(); hls = null; }
         };
         media.addEventListener('timeupdate', onProgress);
+        media.addEventListener('playing', onPlaying);
+        document.addEventListener('visibilitychange', resetNativeClock);
         if (loadSignal) {
             loadSignal.addEventListener('abort', cleanup, { once: true });
             if (loadSignal.aborted) { cleanup(); }
@@ -200,28 +224,6 @@
         };
 
         try {
-            await wake();
-            let Hls = null;
-            let useNative = options.forceHlsJs !== true && isAppleBrowser() && canPlayNatively(media);
-            if (!useNative) {
-                try {
-                    Hls = await waitWithSignal(loadHls(), signal);
-                } catch (error) {
-                    assertActive();
-                    if (options.forceHlsJs === true || !canPlayNatively(media)) { throw error; }
-                    useNative = true;
-                }
-                assertActive();
-                if (!useNative && typeof Hls.isSupported === 'function' && !Hls.isSupported()) {
-                    if (options.forceHlsJs === true || !canPlayNatively(media)) {
-                        cleanup();
-                        return { handled: false };
-                    }
-                    useNative = true;
-                }
-            }
-            assertActive();
-
             const reportFatal = function (error) {
                 if (active()) { player._showError(window.FirePlayer.translate('failed'), error); }
             };
@@ -297,7 +299,91 @@
                     attachHls();
                 }
             };
+            const resume = function () {
+                if (active() && player._playRequested) {
+                    player._playPromise = null;
+                    player._playMedia(token).catch(function () {});
+                }
+            };
+            const resetNative = function () {
+                // Invalidate pending native play promises without losing user intent.
+                player._recoverMedia(function () {
+                    media.pause();
+                    media.removeAttribute('src');
+                    media.load();
+                });
+            };
+            const retryNative = function () {
+                nativeRetried = true;
+                resetNative();
+                prepare();
+                resetNativeClock();
+                resume();
+            };
+            const switchToHls = function (reason) {
+                if (!active() || !useNative || switchPromise || fallbackAttempted) { return; }
+                fallbackAttempted = true;
+                diagnostic('startuptimeout', { reason: reason });
+                resetNative();
+                switchPromise = (async function () {
+                    try {
+                        Hls = await waitWithSignal(loadHls(), signal);
+                        assertActive();
+                        if (typeof Hls !== 'function' || typeof Hls.isSupported !== 'function' || Hls.isSupported() !== true) {
+                            throw new Error('Hls.js is unavailable on this device.');
+                        }
+                        useNative = false;
+                        window.clearInterval(nativeTimer);
+                        nativeTimer = null;
+                        player._hlsEnginePreference = 'hls.js';
+                        prepare();
+                        diagnostic('nativefallback', { reason: reason });
+                        diagnostic('enginechange', { from: 'native', to: 'hls.js', reason: reason });
+                        resume();
+                    } catch (error) {
+                        if (!active() || error.name === 'AbortError') { return; }
+                        // Unsupported old iOS keeps native retry + the final startup deadline.
+                        if (useNative) { retryNative(); }
+                        else {
+                            if (hls) { hls.destroy(); hls = null; }
+                            reportFatal(error);
+                        }
+                    }
+                })().finally(function () { switchPromise = null; });
+            };
+            const nativeHealthCheck = function () {
+                if (!active() || !started || !useNative || switchPromise) { return; }
+                if (!player._playRequested || document.hidden || media.seeking || media.ended
+                    || player._reconnectPromise || reconnectPromise || player.root.classList.contains('fireplayer--error')) {
+                    resetNativeClock();
+                    return;
+                }
+                const now = Date.now();
+                const current = media.currentTime || 0;
+                if (!media.paused && current > lastNativeTime + 0.02) {
+                    hasPlayed = true;
+                    nativeRetried = false;
+                    lastNativeProgress = now;
+                }
+                lastNativeTime = current;
+                const live = player.info && (player.info.mode === 'live' || player.info.mode === 'event');
+                const budget = hasPlayed ? boundedNumber(options.stallTimeout, 7000, 1000, 30000) : nativeBudget;
+                if (now - lastNativeProgress < budget || (hasPlayed && !live)) { return; }
+                if (!hasPlayed) {
+                    if (!fallbackAttempted) { switchToHls('startup-timeout'); }
+                } else if (!nativeRetried && player.options.reconnect) {
+                    retryNative();
+                } else if (!fallbackAttempted && player.options.reconnect) {
+                    switchToHls('stall-timeout');
+                }
+                // When MSE is unavailable, a stalled native stream still needs a bounded
+                // final failure instead of a forever-loading state after metadata events.
+                if (fallbackAttempted && !switchPromise && nativeRetried && now - lastNativeProgress >= budget) {
+                    reportFatal(new Error('Native playback did not recover.'));
+                }
+            };
             const reconnect = function () {
+                if (!started) { return start(); }
                 if (reconnectPromise) { return reconnectPromise; }
                 clearRetry();
                 reconnectPromise = (async function () {
@@ -308,14 +394,54 @@
                     mediaRecoveries = 0;
                     lastHealthyTime = media.currentTime || 0;
                     prepare();
+                    resetNativeClock();
                 })().finally(function () { reconnectPromise = null; });
                 return reconnectPromise;
             };
-            prepare();
+            const start = function () {
+                if (started) { return Promise.resolve(); }
+                if (startPromise) { return startPromise; }
+                startPromise = (async function () {
+                    await wake();
+                    if (!useNative) {
+                        try {
+                            Hls = await waitWithSignal(loadHls(), signal);
+                        } catch (error) {
+                            assertActive();
+                            if (options.forceHlsJs === true || player._hlsEnginePreference === 'hls.js' || !canPlayNatively(media)) { throw error; }
+                            useNative = true;
+                        }
+                        assertActive();
+                        if (!useNative && (typeof Hls !== 'function' || typeof Hls.isSupported !== 'function' || Hls.isSupported() !== true)) {
+                            if (options.forceHlsJs === true || player._hlsEnginePreference === 'hls.js' || !canPlayNatively(media)) {
+                                throw new Error('HLS playback is not supported.');
+                            }
+                            useNative = true;
+                        }
+                    }
+                    assertActive();
+
+                    prepare();
+                    started = true;
+                    resetNativeClock();
+                    if (useNative) { nativeTimer = window.setInterval(nativeHealthCheck, 500); }
+                })().catch(function (error) {
+                    cleanup();
+                    // A deferred start already published its controller. Let Retry rebuild
+                    // a fresh adapter after a wake/loader error instead of reusing an aborted one.
+                    if (player.controller && player.controller.start === start) { player.controller = null; }
+                    throw error;
+                });
+                return startPromise;
+            };
+            if (!(options.lazyStart || options.preload === 'none') || player._playRequested || options.autoplay) { await start(); }
             return {
                 handled: true,
                 controller: {
-                    engine: useNative ? 'native' : 'hls.js',
+                    get engine() { return useNative ? 'native' : 'hls.js'; },
+                    get managesNativeRecovery() { return useNative || Boolean(switchPromise); },
+                    get started() { return started; },
+                    start: start,
                     get hls() { return hls; },
                     get liveSyncPosition() { return liveSyncPosition(); },
                     reconnect: reconnect

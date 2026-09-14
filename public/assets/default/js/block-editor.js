@@ -1877,9 +1877,11 @@ function initPostEditor() {
     }
 
     function normalizeVideoData(data) {
+        const src = firstDataValue(data, ['src', 'url', 'source', 'video', 'videoUrl', 'file', 'fileUrl', 'hlsSrc', 'hlsUrl']);
+        const poster = firstDataValue(data, ['poster', 'posterUrl', 'image', 'thumbnail']);
         return {
-            src: firstDataValue(data, ['src', 'url', 'source', 'video', 'videoUrl', 'file', 'fileUrl', 'hlsSrc', 'hlsUrl']),
-            poster: firstDataValue(data, ['poster', 'posterUrl', 'image', 'thumbnail']),
+            src: src,
+            poster: window.FirePlayer && window.FirePlayer.resolvePoster ? window.FirePlayer.resolvePoster(src, {poster: poster}) : poster,
             caption: firstDataValue(data, ['caption', 'title', 'description'])
         };
     }

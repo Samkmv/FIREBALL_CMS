@@ -58,7 +58,9 @@ for (const mode of ['vod', 'live']) {
  const media = element({src:'https://example.test/stream.m3u8', 'data-mode':mode, poster:'poster.jpg'});
  const wrapper = element({});
  const document = {querySelectorAll:()=>[media], createElement:()=>wrapper};
- vm.runInNewContext(upgrade + '\nupgradeLegacyContentMedia(document);', {document, Element:class {}});
+ const context = vm.createContext({document, Element:class {}, URL, window:{location:{href:'https://example.test/'}}});
+ vm.runInContext(readFileSync(new URL('../public/assets/default/js/fireplayer.js', import.meta.url),'utf8'), context);
+ vm.runInContext(upgrade + '\nupgradeLegacyContentMedia(document);', context);
  check(wrapper.attrs['data-mode']===mode && wrapper.attrs['data-protocol']==='hls', 'Legacy HLS mode survives upgrade: '+mode);
  check(wrapper.attrs['data-poster']==='poster.jpg', 'Legacy poster survives module selection');
 }
