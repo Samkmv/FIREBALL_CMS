@@ -800,9 +800,9 @@
             this._lastPlaybackTime = 0;
             this.info = null;
             this.root.classList.remove('fireplayer--ready', 'fireplayer--ended', 'fireplayer--playing', 'fireplayer--reconnecting', 'fireplayer--error', 'fireplayer--live', 'fireplayer--event', 'fireplayer--vod');
-            this.root.classList.toggle('fireplayer--loading', this._playRequested);
+            this.root.classList.add('fireplayer--loading');
             this.elements.retry.hidden = true;
-            this.setStatus(this._playRequested ? t('detecting') : '', 'info');
+            this.setStatus(t('detecting'), 'info');
             this._emit('loadstart');
 
             // Known camera endpoints are prepared by the backend/HLS adapter, not a duplicate probe.
@@ -817,7 +817,7 @@
             this.info = info;
             if ((info.media === 'audio') !== (this.media instanceof HTMLAudioElement)) {
                 this._render(info.media);
-                this.root.classList.toggle('fireplayer--loading', this._playRequested);
+                this.root.classList.add('fireplayer--loading');
             }
             this.root.classList.add('fireplayer--' + info.mode);
             this.root.classList.toggle('fireplayer--live', info.mode === 'live' || info.mode === 'event');
@@ -838,7 +838,7 @@
             this.elements.controls.hidden = this.options.controls === false;
             this.root.setAttribute('aria-label', this.options.title || t(info.media));
             this._syncLiveUi();
-            this.setStatus(this._playRequested ? (info.protocol === 'hls' ? t('connecting') : t('loading')) : '', 'info');
+            this.setStatus(info.protocol === 'hls' ? t('connecting') : t('loading'), 'info');
 
             const adapter = adapters.get(info.protocol);
             let adapterResult = null;
@@ -944,8 +944,6 @@
             }
             const token = this._loadToken;
             this._playRequested = true;
-            this.root.classList.add('fireplayer--loading');
-            this.setStatus(t('loading'), 'info');
             if (!this._sourcePrepared) { await this.ready; }
             if (token !== this._loadToken || this._destroyed || !this._playRequested) { return this; }
             await this._playMedia(token);
