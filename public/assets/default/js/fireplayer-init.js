@@ -46,7 +46,7 @@
         });
 
         mediaElements.forEach(function (media) {
-            if (media.hasAttribute('data-player-native') || media.closest('.fireplayer, .fire-player, [data-fire-player]')) {
+            if (media.closest('.fireplayer, .fire-player, [data-fire-player]')) {
                 return;
             }
 
@@ -58,7 +58,7 @@
             const legacyWrap = media.closest('[data-plyr-player-wrap]');
             const wrapper = legacyWrap || document.createElement('div');
             const type = media.tagName.toLowerCase() === 'audio' ? 'audio' : 'video';
-            const poster = window.FirePlayer.resolvePoster(src, { poster: wrapper.getAttribute('data-poster') || '' }, media);
+            const poster = media.getAttribute('poster') || media.getAttribute('data-poster') || '';
             const hlsSource = media.getAttribute('data-hls-src') || '';
             const options = legacyOptions(media);
             const hlsOptions = options.hls && typeof options.hls === 'object' ? options.hls : {};
@@ -85,12 +85,6 @@
             setDefaultAttribute(wrapper, 'data-aspect-ratio', media.getAttribute('data-aspect-ratio') || options.ratio);
             setDefaultAttribute(wrapper, 'data-lazy-start', options.hlsLazyStart !== undefined ? options.hlsLazyStart : hlsOptions.lazyStart);
             setDefaultAttribute(wrapper, 'data-poster-cache-bust', options.posterCacheBust !== undefined ? options.posterCacheBust : hlsOptions.posterCacheBust);
-            const live = (wrapper.getAttribute('data-mode') || 'auto') !== 'vod'
-                && (hlsSource || /\.m3u8(?:$|[?#])/i.test(src));
-            if (live && poster && wrapper.getAttribute('data-autoplay') !== 'true') {
-                wrapper.setAttribute('data-preload', 'none');
-                wrapper.setAttribute('data-lazy-start', 'true');
-            }
             if (poster) {
                 setDefaultAttribute(wrapper, 'data-poster', poster);
             }

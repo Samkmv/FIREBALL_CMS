@@ -11,10 +11,10 @@
         }
         try {
             const url = new URL(poster, window.location.href);
-            url.searchParams.set('_fireplayer', String(Math.floor(Date.now() / 30000)));
+            url.searchParams.set('_fireplayer', String(Date.now()));
             return url.href;
         } catch (error) {
-            return poster + (poster.includes('?') ? '&' : '?') + '_fireplayer=' + Math.floor(Date.now() / 30000);
+            return poster + (poster.includes('?') ? '&' : '?') + '_fireplayer=' + Date.now();
         }
     };
 
@@ -46,7 +46,6 @@
 
             const healthCheck = function () {
                 if (!isLive() || !player._playRequested || player.media.ended || player.media.seeking || document.hidden || !player.options.reconnect
-                    || (player.controller && player.controller.managesNativeRecovery)
                     || player._reconnectPromise || player.root.classList.contains('fireplayer--error')) {
                     lastTime = player.media.currentTime || 0;
                     lastAdvanceAt = Date.now();
@@ -71,12 +70,10 @@
             };
 
             const refreshPoster = function () {
-                if (!isLive() || !(player.media instanceof HTMLVideoElement) || !player.options.poster || !player.options.posterCacheBust || !player.media.paused || player._hasPlayableFrame || document.hidden) {
+                if (!isLive() || !(player.media instanceof HTMLVideoElement) || !player.options.poster || !player.options.posterCacheBust || !player.media.paused) {
                     return;
                 }
-                const rect = player.root.getBoundingClientRect();
-                if (rect.bottom <= 0 || rect.top >= window.innerHeight || rect.width <= 0) { return; }
-                player._updatePoster(cacheBustedPoster(player.options.poster));
+                player.media.poster = cacheBustedPoster(player.options.poster);
             };
 
             const onVisibility = function () {

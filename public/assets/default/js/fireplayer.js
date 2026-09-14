@@ -98,42 +98,6 @@
         return source ? source.getAttribute('src') || '' : '';
     };
 
-    // Shared by legacy embeds, the player and the HLS wake adapter.
-    const inferStreamId = function (source) {
-        try {
-            const path = new URL(String(source || ''), window.location.href).pathname;
-            const match = path.match(/\/stream-([^/]+)\/index\.m3u8$/i);
-            return match ? match[1] : '';
-        } catch (error) { return ''; }
-    };
-    const posterUrl = function (value) {
-        if (typeof value !== 'string' || !value.trim() || /^(undefined|null)$/i.test(value.trim())) { return ''; }
-        try {
-            const url = new URL(value.trim(), window.location.href);
-            return /^(https?:|blob:)$/.test(url.protocol) || /^data:image\//i.test(value) ? value.trim() : '';
-        } catch (error) { return ''; }
-    };
-    const resolvePoster = function (source, options, media) {
-        options = options || {};
-        const explicit = [options.poster, media && media.getAttribute('poster'), media && media.getAttribute('data-poster')];
-        for (const value of explicit) { const url = posterUrl(value); if (url) { return url; } }
-        const cfg = window.firePlayerConfig || {};
-        const frontend = window.hlsStreamConfig || {};
-        const id = options.streamId || inferStreamId(source);
-        const metadata = (cfg.streams || {})[source] || (cfg.streams || {})[id]
-            || (frontend.streams || {})[source] || (frontend.streams || {})[id] || {};
-        const known = posterUrl(metadata.poster || metadata.posterUrl || metadata.poster_url);
-        if (known) { return known; }
-        if (!id) { return ''; }
-        const template = cfg.posterUrlTemplate || frontend.posterUrlTemplate;
-        if (typeof template === 'string') { return posterUrl(template.replace(/\{id\}/g, id)); }
-        // Camera Manager publishes /stream-ID/index.m3u8 and sibling /tn-ID.jpg.
-        // Infer only this established path contract; never assume a media domain.
-        if (!inferStreamId(source)) { return ''; }
-        try { return posterUrl(new URL('../tn-' + id + '.jpg', new URL(source, window.location.href)).href); }
-        catch (error) { return ''; }
-    };
-
     const parseDataset = function (element) {
         if (!(element instanceof Element)) {
             return {};
@@ -177,7 +141,7 @@
         assignBoolean('probe', data.probe, true);
         assignBoolean('playsinline', data.playsinline, true);
         assignBoolean('forceHlsJs', data.forceHlsJs, false);
-        ['probeTimeout', 'reconnectDelay', 'stallTimeout', 'liveEdgeTolerance', 'posterRefreshInterval', 'startupTimeout', 'nativeStartupTimeout', 'maxReconnectAttempts'].forEach(function (key) {
+        ['probeTimeout', 'reconnectDelay', 'stallTimeout', 'liveEdgeTolerance', 'posterRefreshInterval', 'startupTimeout', 'maxReconnectAttempts'].forEach(function (key) {
             if (data[key] !== undefined && Number.isFinite(Number(data[key]))) {
                 result[key] = Number(data[key]);
             }
@@ -190,7 +154,7 @@
         const media = element instanceof HTMLMediaElement ? element : element.querySelector('video, audio');
         const dataset = Object.assign({}, parseDataset(element), parseDataset(media));
         const mediaType = media instanceof HTMLAudioElement ? 'audio' : (media instanceof HTMLVideoElement ? 'video' : 'auto');
-        const merged = Object.assign({
+        return Object.assign({
             src: sourceFromMedia(media), poster: media ? media.getAttribute('poster') || '' : '',
             media: mediaType, protocol: 'auto', mode: 'auto', title: '', controls: true,
             autoplay: media ? media.autoplay : false, muted: media ? media.muted : false,
@@ -199,15 +163,11 @@
             crossorigin: media ? media.getAttribute('crossorigin') || '' : '',
             contentType: media && media.querySelector('source[type]') ? media.querySelector('source[type]').type : '',
             reconnect: true, reconnectDelay: 2500, stallTimeout: 7000, liveEdgeTolerance: 4,
-            startupTimeout: 30000, nativeStartupTimeout: (window.firePlayerConfig || {}).nativeStartupTimeout || 7500, maxReconnectAttempts: 4,
+            startupTimeout: 30000, maxReconnectAttempts: 4,
             posterRefreshInterval: 5000, posterCacheBust: false, lazyStart: false,
             rememberPosition: 'auto', rememberVolume: true, keyboard: true, gestures: true,
             probe: true, probeTimeout: 6000
         }, dataset, options || {});
-        merged.poster = resolvePoster(merged.src, Object.assign({}, merged, {
-            poster: (!(element instanceof HTMLMediaElement) && element.getAttribute('data-poster')) || (options || {}).poster || ''
-        }), media);
-        return merged;
     };
 
     const inferFromMime = function (contentType, result) {
@@ -461,7 +421,6 @@
             this._loadingTimer = null;
             this._startupTimer = null;
             this._lastPlaybackTime = 0;
-            this._hasPlayableFrame = false;
             this._restoredPosition = false;
             this._render(this.options.media === 'audio' ? 'audio' : 'video');
 
@@ -512,12 +471,6 @@
             stage.className = 'fireplayer__stage';
             stage.dataset.fpStage = '';
             stage.appendChild(media);
-            const poster = document.createElement('img');
-            poster.className = 'fireplayer__poster';
-            poster.alt = '';
-            poster.hidden = true;
-            poster.setAttribute('aria-hidden', 'true');
-            stage.appendChild(poster);
             stage.insertAdjacentHTML('beforeend',
                 '<div class="fireplayer__shade" aria-hidden="true"></div>' +
                 '<button class="fireplayer__center-play" type="button" data-fp-action="play" aria-label="' + t('play') + '">' + icons.play + '</button>' +
@@ -546,7 +499,6 @@
             this.media = media;
             this.elements = {
                 stage: stage,
-                poster: poster,
                 controls: controls,
                 status: stage.querySelector('[data-fp-status]'),
                 retry: stage.querySelector('[data-fp-action="retry"]'),
@@ -565,32 +517,6 @@
             };
             this.elements.controls.hidden = this.options.controls === false;
             this._bindUi();
-            this._listen(poster, 'load', () => { poster.hidden = this._hasPlayableFrame; });
-            this._listen(poster, 'error', () => {
-                poster.hidden = true;
-                this._failedPoster = poster.getAttribute('src');
-                this.media.removeAttribute('poster');
-            });
-            this._updatePoster(this.options.poster);
-        }
-
-        _updatePoster(value) {
-            const url = posterUrl(value);
-            const image = this.elements.poster;
-            if (!(this.media instanceof HTMLVideoElement) || !url || this._failedPoster === url) {
-                this.media.removeAttribute('poster');
-                image.hidden = true;
-                image.removeAttribute('src');
-                return;
-            }
-            if (this.media.getAttribute('poster') !== url) { this.media.poster = url; }
-            if (image.getAttribute('src') !== url) { image.setAttribute('src', url); }
-            image.hidden = this._hasPlayableFrame || !image.complete || !image.naturalWidth;
-        }
-
-        _markPlayableFrame() {
-            this._hasPlayableFrame = true;
-            if (this.elements.poster) { this.elements.poster.hidden = true; }
         }
 
         _listen(element, eventName, callback, options) {
@@ -672,7 +598,6 @@
                 player.root.classList.add('fireplayer--playing');
                 player._playRequested = true;
                 player._settleLoading(true);
-                player._markPlayableFrame();
                 player._emit('playing');
             });
             ['waiting', 'stalled'].forEach(function (eventName) {
@@ -721,16 +646,10 @@
             this._listen(this.media, 'timeupdate', function () {
                 const current = player.media.currentTime;
                 if (!player.media.error && !player.media.paused && !player.media.seeking && current > player._lastPlaybackTime + 0.02) {
-                    player._markPlayableFrame();
                     player._settleLoading(true);
                 }
                 player._lastPlaybackTime = current;
                 player._storePosition(false);
-            });
-            this._listen(document, 'visibilitychange', function () {
-                window.clearTimeout(player._startupTimer);
-                player._startupTimer = null;
-                if (!document.hidden && player._playRequested && (!player._hasPlayableFrame || player._recoveringMedia)) { player._armStartupTimeout(player._loadToken); }
             });
             this._listen(document, 'fullscreenchange', function () { player._syncFullscreen(); });
             this._listen(document, 'webkitfullscreenchange', function () { player._syncFullscreen(); });
@@ -789,9 +708,6 @@
             this._storePosition(false, true);
             this._teardownPlayback();
             this.options = Object.assign({}, this.options, overrides || {}, { src: src });
-            this._hasPlayableFrame = false;
-            this.options.poster = resolvePoster(src, this.options);
-            this._updatePoster(this.options.poster);
             this._loadAbortController = typeof AbortController === 'function' ? new AbortController() : null;
             this._playRequested = Boolean(this.options.autoplay);
             this._reconnectAttempts = 0;
@@ -806,7 +722,7 @@
             this._emit('loadstart');
 
             // Known camera endpoints are prepared by the backend/HLS adapter, not a duplicate probe.
-            const cameraSource = Boolean(inferStreamId(src));
+            const cameraSource = /\/stream-[^/]+\/index\.m3u8(?:[?#].*)?$/i.test(src);
             const info = await detect(src, Object.assign({}, this.options, {
                 probe: cameraSource ? false : this.options.probe,
                 signal: this._loadAbortController ? this._loadAbortController.signal : undefined
@@ -832,7 +748,7 @@
                 this.media.removeAttribute('crossorigin');
             }
             if (this.media instanceof HTMLVideoElement) {
-                this._updatePoster(this.options.poster);
+                this.media.poster = this.options.poster || '';
                 this._originalTracks.forEach((track) => this.media.appendChild(track.cloneNode(true)));
             }
             this.elements.controls.hidden = this.options.controls === false;
@@ -951,15 +867,6 @@
         }
 
         _playMedia(token) {
-            if (this.controller && this.controller.start && !this.controller.started) {
-                return this.controller.start().then(() => {
-                    if (token === this._loadToken && !this._destroyed && this._playRequested) { return this._playMedia(token); }
-                    return this;
-                }).catch((error) => {
-                    if (token === this._loadToken && !this._destroyed && error.name !== 'AbortError') { this._showError(t('failed'), error); }
-                    throw error;
-                });
-            }
             if (this._playPromise) { return this._playPromise; }
             const media = this.media;
             const attemptId = ++this._playAttemptId;
@@ -972,6 +879,7 @@
                 if (token !== this._loadToken || attemptId !== this._playAttemptId || this._destroyed || media !== this.media) { return this; }
                 if (!media.paused && !media.ended) {
                     this.root.classList.add('fireplayer--playing');
+                    this._settleLoading(true);
                 }
                 this._syncPlayButtons();
                 return this;
@@ -1141,9 +1049,7 @@
 
         _settleLoading(recovered) {
             if (this.root.classList.contains('fireplayer--error') && !recovered) { return; }
-            window.clearTimeout(this._loadingTimer);
-            this._loadingTimer = null;
-            if (recovered || !this._playRequested) { window.clearTimeout(this._startupTimer); this._startupTimer = null; }
+            this._clearLoadingTimers();
             this.root.classList.remove('fireplayer--loading', 'fireplayer--reconnecting');
             if (recovered) {
                 this.root.classList.remove('fireplayer--error');
@@ -1541,8 +1447,6 @@
     }
 
     FirePlayer.version = '1.0.3';
-    FirePlayer.inferStreamId = inferStreamId;
-    FirePlayer.resolvePoster = resolvePoster;
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;
