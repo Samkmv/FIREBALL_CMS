@@ -115,6 +115,7 @@ final class InstallService
             $pdo->commit();
             \App\Models\SiteSetting::clearPublicCache();
             SearchMaintenance::rebuild(new \FBL\Database($pdo));
+            \FBL\AssetManifest::rebuild();
 
             if (!@rename($temporaryLock, INSTALLED_LOCK)) {
                 throw new \RuntimeException('Unable to activate installed.lock.');

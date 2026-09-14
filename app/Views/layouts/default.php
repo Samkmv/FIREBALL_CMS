@@ -209,7 +209,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php endif; ?>
 
     <!-- Font icons -->
-    <link rel="preload" href="<?= $defaultAsset('/assets/default/icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
     <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/icons/cartzilla-icons.min.css') ?>">
 
     <!-- Vendor styles -->
@@ -971,19 +970,19 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
 <script src="<?= $defaultAsset('/assets/default/js/fireplayer.js') ?>"></script>
 <?php endif; ?>
-<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player_video'])): ?>
 <script src="<?= $defaultAsset('/assets/default/js/fireplayer-video.js') ?>"></script>
 <?php endif; ?>
-<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player_audio'])): ?>
 <script src="<?= $defaultAsset('/assets/default/js/fireplayer-audio.js') ?>"></script>
 <?php endif; ?>
-<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player_hls'])): ?>
 <script src="<?= $defaultAsset('/assets/default/js/fireplayer-hls.js') ?>"></script>
 <?php endif; ?>
-<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<?php if ($isAdminArea || !empty($requiredAssets['player_live'])): ?>
 <script src="<?= $defaultAsset('/assets/default/js/fireplayer-live.js') ?>"></script>
 <?php endif; ?>
-<?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
+<?php if ($canViewVideoStatus && ($isAdminArea || !empty($requiredAssets['player']))): ?>
 <script src="<?= $defaultAsset('/assets/default/js/fireplayer-diagnostics.js') ?>"></script>
 <?php endif; ?>
 <?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>

@@ -25,10 +25,15 @@ try {
         $app->bootInstalledServices();
         require CONFIG . '/routes.php';
         \App\Services\SearchMaintenance::rebuild(null, search_registry());
+        \FBL\AssetManifest::rebuild();
         echo 'Applied migrations: ' . count($executed) . PHP_EOL;
         foreach ($executed as $name) {
             echo $name . PHP_EOL;
         }
+        exit;
+    }
+    if ($command === 'assets:rebuild') {
+        echo 'Versioned assets: ' . \FBL\AssetManifest::rebuild() . PHP_EOL;
         exit;
     }
     if ($command === 'cache:clear') {
@@ -38,11 +43,11 @@ try {
     if ($command === 'search:reindex') {
         $app->bootInstalledServices();
         require CONFIG . '/routes.php';
-        \App\Services\SearchMaintenance::rebuild(null, search_registry());
+        \App\Services\SearchMaintenance::rebuild(null, search_registry(), in_array('--allow-empty', $argv, true));
         echo "Search index refreshed.\n";
         exit;
     }
-    echo "Usage: php bin/cms.php diagnose|migrate|cache:clear|search:reindex\n";
+    echo "Usage: php bin/cms.php diagnose|migrate|cache:clear|assets:rebuild|search:reindex [--allow-empty]\n";
 } catch (Throwable $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
     exit(1);

@@ -27,3 +27,8 @@ storage/logs/*
 !storage/logs/.gitkeep
 !storage/logs/.htaccess
 storage/chat-media/*
+
+# Deployment-local content versions, published by assets:rebuild.
+storage/asset-manifest.json
+storage/asset-manifest.lock
+storage/.assets-*

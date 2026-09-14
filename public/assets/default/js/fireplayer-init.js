@@ -72,6 +72,7 @@
             wrapper.setAttribute('data-fire-player', '');
             wrapper.setAttribute('data-src', src);
             wrapper.setAttribute('data-media', type);
+            setDefaultAttribute(wrapper, 'data-mode', media.getAttribute('data-mode') || options.mode);
             setDefaultAttribute(wrapper, 'data-controls', options.controls !== undefined ? options.controls !== false : media.hasAttribute('controls'));
             setDefaultAttribute(wrapper, 'data-autoplay', options.autoplay !== undefined ? options.autoplay : media.autoplay);
             setDefaultAttribute(wrapper, 'data-muted', options.muted !== undefined ? options.muted : media.muted || media.defaultMuted);

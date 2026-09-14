@@ -1,0 +1,312 @@
+{
+  "/": {
+    "durations_ms": {
+      "app": 83.94598960876465,
+      "cache": 0.84686279296875,
+      "db_connect": 0.9360313415527344,
+      "db": 8.117198944091797,
+      "plugins": 18.165111541748047,
+      "bootstrap": 35.643815994262695,
+      "render": 12.794017791748047,
+      "router": 38.437843322753906
+    },
+    "counts": {
+      "cache_file_reads": 8,
+      "pdo_connections": 1,
+      "cache_l1_hits": 2,
+      "sql_queries": 12,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 8388608,
+    "status": 200,
+    "html_bytes": 73653
+  },
+  "/contacts": {
+    "durations_ms": {
+      "app": 50.31991004943848,
+      "cache": 0.438690185546875,
+      "db_connect": 0.43511390686035156,
+      "db": 4.069089889526367,
+      "plugins": 13.391971588134766,
+      "bootstrap": 23.720979690551758,
+      "router": 20.371198654174805
+    },
+    "counts": {
+      "cache_file_reads": 5,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 3,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 8388608,
+    "status": 200,
+    "html_bytes": 39644
+  },
+  "/posts/tehnicheskaya-zapis-dlya-razrabotchikov": {
+    "durations_ms": {
+      "app": 67.01993942260742,
+      "cache": 0.6325244903564453,
+      "db_connect": 6.908893585205078,
+      "db": 3.721475601196289,
+      "plugins": 12.758970260620117,
+      "bootstrap": 30.570030212402344,
+      "render": 13.37885856628418,
+      "router": 31.27288818359375
+    },
+    "counts": {
+      "cache_file_reads": 10,
+      "pdo_connections": 1,
+      "cache_l1_hits": 4,
+      "sql_queries": 13,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 200,
+    "html_bytes": 45855
+  },
+  "/category/demo": {
+    "durations_ms": {
+      "app": 60.40000915527344,
+      "cache": 0.6861686706542969,
+      "db_connect": 0.28896331787109375,
+      "db": 10.251522064208984,
+      "plugins": 12.980937957763672,
+      "bootstrap": 20.922183990478516,
+      "render": 11.802911758422852,
+      "router": 31.8300724029541
+    },
+    "counts": {
+      "cache_file_reads": 7,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 12,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 200,
+    "html_bytes": 35071
+  },
+  "/search?q=test": {
+    "durations_ms": {
+      "app": 49.581050872802734,
+      "cache": 0.5152225494384766,
+      "db_connect": 0.9658336639404297,
+      "db": 0.9918212890625,
+      "plugins": 11.91091537475586,
+      "bootstrap": 27.261018753051758,
+      "render": 6.811857223510742,
+      "router": 15.42806625366211
+    },
+    "counts": {
+      "cache_file_reads": 5,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 3,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 200,
+    "html_bytes": 35121
+  },
+  "/login": {
+    "durations_ms": {
+      "app": 52.084922790527344,
+      "cache": 0.7176399230957031,
+      "db_connect": 0.30922889709472656,
+      "db": 0.6747245788574219,
+      "plugins": 11.818170547485352,
+      "bootstrap": 21.544933319091797,
+      "router": 20.646095275878906
+    },
+    "counts": {
+      "cache_file_reads": 5,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 2,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 8388608,
+    "status": 200,
+    "html_bytes": 36868
+  },
+  "/admin": {
+    "durations_ms": {
+      "app": 43.923139572143555,
+      "cache": 0.46706199645996094,
+      "db_connect": 7.955789566040039,
+      "db": 2.696990966796875,
+      "plugins": 14.215946197509766,
+      "bootstrap": 32.57417678833008
+    },
+    "counts": {
+      "cache_file_reads": 4,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 2,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 302,
+    "html_bytes": 0
+  },
+  "/profile/vpn-v2": {
+    "durations_ms": {
+      "app": 148.76985549926758,
+      "cache": 2.0728111267089844,
+      "db_connect": 0.4119873046875,
+      "db": 3.9811134338378906,
+      "plugins": 31.10814094543457,
+      "bootstrap": 67.7189826965332
+    },
+    "counts": {
+      "cache_file_reads": 4,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 2,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 302,
+    "html_bytes": 0
+  },
+  "/notifications/feed": {
+    "durations_ms": {
+      "app": 62.077999114990234,
+      "cache": 0.7073879241943359,
+      "db_connect": 3.2351016998291016,
+      "db": 2.4292469024658203,
+      "plugins": 19.690990447998047,
+      "bootstrap": 34.85608100891113
+    },
+    "counts": {
+      "cache_file_reads": 4,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 2,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 302,
+    "html_bytes": 0
+  },
+  "/en": {
+    "durations_ms": {
+      "app": 118.41392517089844,
+      "cache": 12.684345245361328,
+      "db_connect": 2.6161670684814453,
+      "db": 10.84756851196289,
+      "plugins": 15.002012252807617,
+      "bootstrap": 32.06896781921387,
+      "render": 22.58896827697754,
+      "router": 79.26702499389648
+    },
+    "counts": {
+      "cache_file_reads": 12,
+      "pdo_connections": 1,
+      "cache_l1_hits": 7,
+      "sql_queries": 18,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 8388608,
+    "status": 200,
+    "html_bytes": 71921
+  },
+  "/de": {
+    "durations_ms": {
+      "app": 102.14591026306152,
+      "cache": 19.807815551757812,
+      "db_connect": 2.7599334716796875,
+      "db": 7.353305816650391,
+      "plugins": 11.37399673461914,
+      "bootstrap": 26.720046997070312,
+      "render": 36.06986999511719,
+      "router": 68.77803802490234
+    },
+    "counts": {
+      "cache_file_reads": 12,
+      "pdo_connections": 1,
+      "cache_l1_hits": 7,
+      "sql_queries": 18,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 8388608,
+    "status": 200,
+    "html_bytes": 72351
+  },
+  "/zh-cn": {
+    "durations_ms": {
+      "app": 267.3978805541992,
+      "cache": 24.45244789123535,
+      "db_connect": 9.081840515136719,
+      "db": 24.196863174438477,
+      "plugins": 34.97505187988281,
+      "bootstrap": 104.45594787597656,
+      "render": 48.80881309509277,
+      "router": 145.74408531188965
+    },
+    "counts": {
+      "cache_file_reads": 12,
+      "pdo_connections": 1,
+      "cache_l1_hits": 7,
+      "sql_queries": 18,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 8388608,
+    "status": 200,
+    "html_bytes": 71860
+  },
+  "/manifest.webmanifest": {
+    "durations_ms": {
+      "app": 85.69788932800293,
+      "cache": 3.454446792602539,
+      "db_connect": 0.4420280456542969,
+      "db": 1.0638236999511719,
+      "plugins": 24.084806442260742,
+      "bootstrap": 50.86207389831543
+    },
+    "counts": {
+      "cache_file_reads": 4,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 2,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 200,
+    "html_bytes": 2536
+  },
+  "/sw.js": {
+    "durations_ms": {
+      "app": 48.146963119506836,
+      "cache": 0.9407997131347656,
+      "db_connect": 0.3428459167480469,
+      "db": 0.9138584136962891,
+      "plugins": 18.923044204711914,
+      "bootstrap": 29.797077178955078
+    },
+    "counts": {
+      "cache_file_reads": 4,
+      "pdo_connections": 1,
+      "cache_l1_hits": 1,
+      "sql_queries": 2,
+      "ddl_queries": 0,
+      "schema_queries": 0
+    },
+    "peak_memory_bytes": 6291456,
+    "status": 200,
+    "html_bytes": 9202
+  }
+}

@@ -193,7 +193,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <script src="<?= theme_asset_versioned('js/theme-switcher.js') ?>"></script>
 
     <!-- Font icons -->
-    <link rel="preload" href="<?= theme_asset_versioned('icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin="">
     <link rel="stylesheet" href="<?= theme_asset_versioned('icons/cartzilla-icons.min.css') ?>">
 
     <!-- Vendor styles -->
@@ -457,19 +456,19 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php if (!empty($requiredAssets['player'])): ?>
 <script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer.js'), WWW . '/assets/default/js/fireplayer.js') ?>"></script>
 <?php endif; ?>
-<?php if (!empty($requiredAssets['player'])): ?>
+<?php if (!empty($requiredAssets['player_video'])): ?>
 <script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-video.js'), WWW . '/assets/default/js/fireplayer-video.js') ?>"></script>
 <?php endif; ?>
-<?php if (!empty($requiredAssets['player'])): ?>
+<?php if (!empty($requiredAssets['player_audio'])): ?>
 <script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-audio.js'), WWW . '/assets/default/js/fireplayer-audio.js') ?>"></script>
 <?php endif; ?>
-<?php if (!empty($requiredAssets['player'])): ?>
+<?php if (!empty($requiredAssets['player_hls'])): ?>
 <script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-hls.js'), WWW . '/assets/default/js/fireplayer-hls.js') ?>"></script>
 <?php endif; ?>
-<?php if (!empty($requiredAssets['player'])): ?>
+<?php if (!empty($requiredAssets['player_live'])): ?>
 <script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-live.js'), WWW . '/assets/default/js/fireplayer-live.js') ?>"></script>
 <?php endif; ?>
-<?php if (!empty($requiredAssets['player'])): ?>
+<?php if ($canViewVideoStatus && (!empty($requiredAssets['player']))): ?>
 <script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-diagnostics.js'), WWW . '/assets/default/js/fireplayer-diagnostics.js') ?>"></script>
 <?php endif; ?>
 <?php if (!empty($requiredAssets['player'])): ?>

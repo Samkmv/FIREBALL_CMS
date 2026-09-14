@@ -20,6 +20,27 @@ final class FrontendAssets
         ] as $name => $pattern) {
             if (preg_match($pattern, $name === 'player' ? $playerHtml : $html)) $assets[$name] = true;
         }
+        if (!empty($assets['player'])) {
+            $all = ['player_video'=>true, 'player_audio'=>true, 'player_hls'=>true, 'player_live'=>true];
+            if (in_array('player', $requested, true)) return $assets + $all;
+            preg_match_all('/<(video|audio)\b([^>]*)(?:>(.*?)<\/\1\s*>|>)/is', $playerHtml, $media, PREG_SET_ORDER);
+            // Manual/dynamic players and unclassified legacy wrappers retain the full bundle.
+            if (!$media || preg_match('/data-fire-player-manual/i', $playerHtml)) return $assets + $all;
+            $outsideMedia = str_replace(array_column($media, 0), '', $playerHtml);
+            if (preg_match('/data-(?:fire-player|fireplayer|plyr)|class=["\'][^"\']*fire-player/i', $outsideMedia)) return $assets + $all;
+            foreach ($media as $element) {
+                $markup = $element[0];
+                if (preg_match('/data-plyr-options/i', $markup)) return $assets + $all;
+                $assets['player_' . strtolower($element[1])] = true;
+                if (preg_match('/\.m3u8\b|mpegurl|data-hls-src|data-protocol=["\']hls/i', $markup)) {
+                    $assets['player_hls'] = true;
+                    // Auto-detected HLS can be live; only explicit VOD can omit live recovery.
+                    if (!preg_match('/data-mode=["\']vod["\']/i', $markup)) $assets['player_live'] = true;
+                } elseif (!preg_match('/\.(?:mp4|webm|ogv|mov|mp3|m4a|ogg|oga|wav|flac|aac)\b|type=["\'](?:video|audio)\//i', $markup)) {
+                    return $assets + $all;
+                }
+            }
+        }
         return $assets;
     }
 }

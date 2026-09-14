@@ -46,4 +46,20 @@ h=sw({quota:true});check((await h.request('/assets/app.js?v=12345678')).ok,'Quot
 h=sw({denied:true});check((await h.request('/assets/app.js?v=12345678')).ok,'Denied storage preserves network response');
 h=sw({private:true});await h.request('/assets/app.js?v=12345678');check(h.puts===0,'Personalized responses are not cached');
 h=sw({offline:true});check(await h.request('/posts',{navigate:true})==='offline','Navigation has offline fallback');
+// Exercise the legacy upgrade using the real initializer: its explicit mode must
+// reach the generated wrapper when the layout omits the live module for VOD.
+const initializer = readFileSync(new URL('../public/assets/default/js/fireplayer-init.js', import.meta.url), 'utf8');
+const upgrade = initializer.slice(initializer.indexOf('    const legacyOptions'), initializer.indexOf('    const initialize'));
+for (const mode of ['vod', 'live']) {
+ const element = attrs => ({attrs, classList:{add(){}}, appendChild(){}, parentNode:{insertBefore(){}},
+   tagName:'VIDEO', closest:()=>null, querySelector:()=>null,
+   getAttribute(name){return this.attrs[name] ?? null;}, hasAttribute(name){return name in this.attrs;},
+   setAttribute(name,value){this.attrs[name]=value;}, removeAttribute(name){delete this.attrs[name];}});
+ const media = element({src:'https://example.test/stream.m3u8', 'data-mode':mode, poster:'poster.jpg'});
+ const wrapper = element({});
+ const document = {querySelectorAll:()=>[media], createElement:()=>wrapper};
+ vm.runInNewContext(upgrade + '\nupgradeLegacyContentMedia(document);', {document, Element:class {}});
+ check(wrapper.attrs['data-mode']===mode && wrapper.attrs['data-protocol']==='hls', 'Legacy HLS mode survives upgrade: '+mode);
+ check(wrapper.attrs['data-poster']==='poster.jpg', 'Legacy poster survives module selection');
+}
 console.log(`Background requests: ${checks} checks passed.`);

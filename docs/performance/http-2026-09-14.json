@@ -1,0 +1,92 @@
+[
+  {
+    "route": "/",
+    "method": "GET",
+    "status": 200,
+    "ttfb_ms": 173.833,
+    "total_ms": 174.761,
+    "response_bytes": 73653,
+    "profiler": null
+  },
+  {
+    "route": "/contacts",
+    "method": "GET",
+    "status": 200,
+    "ttfb_ms": 198.51,
+    "total_ms": 199.329,
+    "response_bytes": 39644,
+    "profiler": null
+  },
+  {
+    "route": "/posts/tehnicheskaya-zapis-dlya-razrabotchikov",
+    "method": "GET",
+    "status": 200,
+    "ttfb_ms": 204.091,
+    "total_ms": 205.203,
+    "response_bytes": 45855,
+    "profiler": null
+  },
+  {
+    "route": "/category/demo",
+    "method": "GET",
+    "status": 200,
+    "ttfb_ms": 192.342,
+    "total_ms": 194.685,
+    "response_bytes": 35071,
+    "profiler": null
+  },
+  {
+    "route": "/search?q=test",
+    "method": "GET",
+    "status": 200,
+    "ttfb_ms": 154.95600000000002,
+    "total_ms": 158.329,
+    "response_bytes": 35121,
+    "profiler": null
+  },
+  {
+    "route": "/login",
+    "method": "GET",
+    "status": 200,
+    "ttfb_ms": 220.645,
+    "total_ms": 221.59599999999998,
+    "response_bytes": 36868,
+    "profiler": null
+  },
+  {
+    "route": "/admin",
+    "method": "GET",
+    "status": 302,
+    "ttfb_ms": 105.849,
+    "total_ms": 106.26299999999999,
+    "response_bytes": 0,
+    "profiler": null
+  },
+  {
+    "route": "/profile/vpn-v2",
+    "method": "GET",
+    "status": 302,
+    "ttfb_ms": 123.046,
+    "total_ms": 123.221,
+    "response_bytes": 0,
+    "profiler": null
+  },
+  {
+    "route": "/notifications/feed",
+    "method": "GET",
+    "status": 302,
+    "ttfb_ms": 63.123,
+    "total_ms": 63.31399999999999,
+    "response_bytes": 0,
+    "profiler": null
+  },
+  {
+    "route": "/api/analytics/track",
+    "method": "POST",
+    "status": 200,
+    "ttfb_ms": 74.199,
+    "total_ms": 74.686,
+    "response_bytes": 21,
+    "profiler": null
+  }
+]

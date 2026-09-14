@@ -12,7 +12,7 @@ use FBL\Database;
 /** Full index builds belong to installation, updates and explicit CLI maintenance. */
 final class SearchMaintenance
 {
-    public static function rebuild(?Database $database = null, ?SearchRegistry $registry = null): array
+    public static function rebuild(?Database $database = null, ?SearchRegistry $registry = null, bool $allowEmpty = false): array
     {
         $previous = app()->db;
         app()->db = $database ?? $previous;
@@ -21,7 +21,7 @@ final class SearchMaintenance
             if (!$registry->has($name)) $registry->registerProvider($name, $provider);
         }
         try {
-            return (new SearchIndexer($registry))->reindexAll();
+            return (new SearchIndexer($registry))->reindexAll($allowEmpty);
         } finally {
             app()->db = $previous;
         }

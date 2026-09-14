@@ -193,8 +193,10 @@ final class SearchIndexer
     public function removeProvider(string $providerName): void
     {
         $this->ensureSchema();
-        $ids = db()->query('SELECT id FROM search_index WHERE provider = ?', [$providerName])->get() ?: [];
-        $this->removeRows(array_map(static fn(array $row): int => (int)$row['id'], $ids));
+        do {
+            $ids = db()->query('SELECT id FROM search_index WHERE provider = ? LIMIT 500', [$providerName])->get() ?: [];
+            $this->removeRows(array_map(static fn(array $row): int => (int)$row['id'], $ids));
+        } while (count($ids) === 500);
         db()->query('DELETE FROM search_index_state WHERE provider = ?', [$providerName]);
     }
 
@@ -208,46 +210,75 @@ final class SearchIndexer
         }
     }
 
-    public function reindexProvider(string $providerName): int
+    public function reindexProvider(string $providerName, bool $allowEmpty = false): int
     {
         $this->ensureSchema();
         $provider = $this->registry->provider($providerName);
 
-        db()->beginTransaction();
+        // Disk-backed staging bounds memory to one document and leaves the old index
+        // untouched if enumeration fails, including generators failing after a yield.
+        $staging = tmpfile();
+        if ($staging === false) throw new \RuntimeException('Unable to stage search documents.');
+        $count = 0;
         try {
-            $this->removeProvider($providerName);
-            $count = 0;
             foreach ($provider->getDocuments() as $document) {
                 if (!$document instanceof SearchDocument) {
                     throw new \RuntimeException('Search providers must yield SearchDocument instances.');
                 }
-                $this->save($providerName, $document);
+                $payload = serialize($document);
+                $record = pack('N', strlen($payload)) . $payload;
+                if (fwrite($staging, $record) !== strlen($record)) throw new \RuntimeException('Unable to stage search document.');
                 $count++;
             }
-            db()->query(
-                'INSERT INTO search_index_state (provider, indexed_at, document_count)
-                 VALUES (?, ?, ?)
-                 ON DUPLICATE KEY UPDATE indexed_at = VALUES(indexed_at), document_count = VALUES(document_count)',
-                [$providerName, date('Y-m-d H:i:s'), $count]
-            );
-            if (db()->inTransaction()) {
-                db()->commit();
+            if (!$count && !$allowEmpty && (int)db()->query(
+                'SELECT COUNT(*) FROM search_index WHERE provider = ?', [$providerName]
+            )->getColumn() > 0) {
+                throw new \RuntimeException('Suspicious empty search provider: ' . $providerName . '. Confirm authoritative emptiness with allowEmpty.');
             }
+            if (db()->inTransaction()) throw new \RuntimeException('Search rebuild requires its own transaction.');
+            rewind($staging);
+            db()->beginTransaction();
+            try {
+                $this->removeProvider($providerName);
+                for ($i = 0; $i < $count; $i++) {
+                    $header = fread($staging, 4);
+                    if (strlen($header) !== 4) throw new \RuntimeException('Truncated search staging header.');
+                    $length = unpack('Nlength', $header)['length'];
+                    $payload = '';
+                    while (strlen($payload) < $length) {
+                        $chunk = fread($staging, $length - strlen($payload));
+                        if ($chunk === false || $chunk === '') throw new \RuntimeException('Truncated search staging document.');
+                        $payload .= $chunk;
+                    }
+                    $document = unserialize($payload, ['allowed_classes' => true]);
+                    if (!$document instanceof SearchDocument) throw new \RuntimeException('Invalid staged search document.');
+                    $this->save($providerName, $document);
+                }
+                db()->query(
+                    'INSERT INTO search_index_state (provider, indexed_at, document_count)
+                     VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE indexed_at = VALUES(indexed_at), document_count = VALUES(document_count)',
+                    [$providerName, date('Y-m-d H:i:s'), $count]
+                );
+                if (db()->inTransaction()) {
+                    db()->commit();
+                }
 
-            return $count;
-        } catch (Throwable $exception) {
-            if (db()->inTransaction()) {
-                db()->rollBack();
+                return $count;
+            } catch (Throwable $exception) {
+                if (db()->inTransaction()) db()->rollBack();
+                throw $exception;
             }
-            throw $exception;
+        } finally {
+            fclose($staging);
         }
     }
 
-    public function reindexAll(): array
+    public function reindexAll(bool $allowEmpty = false): array
     {
         $counts = [];
         foreach ($this->registry->names() as $providerName) {
-            $counts[$providerName] = $this->reindexProvider($providerName);
+            $counts[$providerName] = $this->reindexProvider($providerName, $allowEmpty);
         }
 
         return $counts;

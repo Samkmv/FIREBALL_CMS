@@ -2196,6 +2196,7 @@ class UpdateCenter
     {
         cache()->clear();
         SiteSetting::clearPublicCache();
+        \FBL\AssetManifest::rebuild();
     }
 
     protected function acquireUpdateLock()

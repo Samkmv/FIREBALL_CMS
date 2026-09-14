@@ -145,6 +145,7 @@ final class PluginManager
         $this->syncInstalledMetadata($row, $metadata);
 
         \App\Services\SchemaManifest::rebuild();
+        \FBL\AssetManifest::rebuild();
         $this->invalidateRuntimeManifest();
         return $metadata;
     }
@@ -185,6 +186,7 @@ final class PluginManager
                 db()->commit();
             }
             \App\Services\SchemaManifest::rebuild();
+            \FBL\AssetManifest::rebuild();
             $this->invalidateRuntimeManifest();
         } catch (Throwable $exception) {
             if (db()->inTransaction()) {
@@ -225,6 +227,7 @@ final class PluginManager
                 [date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $slug]
             );
             \App\Services\SchemaManifest::rebuild();
+            \FBL\AssetManifest::rebuild();
             $this->invalidateRuntimeManifest();
             $this->bootPluginInstance($slug, $plugin);
             if (function_exists('search_indexer')) {

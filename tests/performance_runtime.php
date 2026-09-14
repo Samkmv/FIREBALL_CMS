@@ -2,9 +2,18 @@
 
 declare(strict_types=1);
 
+// Deterministic L2 double when the CLI has no APCu extension. Real file revisions
+// and request resets exercise independent worker snapshots without requiring FPM.
+if (!function_exists('apcu_enabled')) {
+    function apcu_enabled(): bool { return $GLOBALS['test_apcu_enabled'] ?? false; }
+    function apcu_store($key, $value, $ttl = 0): bool { $GLOBALS['test_apcu'][$key] = [$value, time() + $ttl]; return true; }
+    function apcu_fetch($key): mixed { $entry = $GLOBALS['test_apcu'][$key] ?? null; return $entry && $entry[1] >= time() ? $entry[0] : false; }
+    function apcu_exists($key): bool { return apcu_fetch($key) !== false; }
+}
 $root = dirname(__DIR__);
-define('CACHE', sys_get_temp_dir() . '/fireball-cache-test-' . bin2hex(random_bytes(5)));
-define('STORAGE', CACHE . '/storage');
+$temporary = sys_get_temp_dir() . '/fireball-cache-test-' . bin2hex(random_bytes(5));
+define('CACHE', $temporary . '/cache');
+define('STORAGE', $temporary . '/storage');
 mkdir(STORAGE, 0700, true);
 require $root . '/config/config.php';
 require $root . '/vendor/autoload.php';
@@ -56,13 +65,82 @@ try {
     $assert(isset(App\Services\FrontendAssets::requirements('<video data-player-native></video>', ['player'])['player']), 'Explicit player overrides native detection');
 
     $file = CACHE . '/asset.js';
+    $manifestMemory = new ReflectionProperty(FBL\AssetManifest::class, 'versions');
+    $assert(FBL\AssetManifest::version($file) === '', 'Missing manifest degrades without hashing');
+    file_put_contents(STORAGE . '/asset-manifest.json', '{broken');
+    $manifestMemory->setValue(null, null);
+    $assert(FBL\AssetManifest::version($file) === '', 'Invalid manifest degrades without hashing');
     file_put_contents($file, 'first');
+    FBL\AssetManifest::rebuild([$file]);
     $version1 = FBL\AssetManifest::version($file);
+    $assert($version1 === substr(hash('sha256', 'first'), 0, 20), 'Manifest uses content versions');
+    $hashes = FBL\PerformanceProfiler::snapshot()['counts']['asset_hashes'];
     file_put_contents($file, 'second');
     $assert(FBL\AssetManifest::version($file) === $version1, 'Production versions use manifest');
-    FBL\AssetManifest::invalidate();
-    $assert(FBL\AssetManifest::version($file) !== $version1, 'Asset edit invalidation refreshes version');
+    $assert(FBL\AssetManifest::url('/a?x=1#top', $file) === '/a?x=1&v=' . $version1 . '#top', 'Version URL preserves query and fragment');
+    $manifestCopy = file_get_contents(STORAGE . '/asset-manifest.json');
+    $cache->clear();
+    $assert(file_get_contents(STORAGE . '/asset-manifest.json') === $manifestCopy, 'Cache clear preserves persistent manifest');
+    $manifestMemory->setValue(null, null);
+    $assert(FBL\AssetManifest::version($file) === $version1, 'Reload reads persisted version');
+    $assert(FBL\PerformanceProfiler::snapshot()['counts']['asset_hashes'] === $hashes, 'Lookups never hash');
+    file_put_contents($file, 'second');
+    FBL\AssetManifest::rebuild([$file]);
+    $assert(FBL\AssetManifest::version($file) !== $version1, 'Explicit rebuild refreshes version');
+    $assert(glob(STORAGE . '/.assets-*') === [], 'Atomic publication leaves no temporary files');
+    $published = file_get_contents(STORAGE . '/asset-manifest.json');
+    try { FBL\AssetManifest::rebuild([$file, new stdClass()]); } catch (Throwable) {}
+    $assert(file_get_contents(STORAGE . '/asset-manifest.json') === $published, 'Failed rebuild preserves published manifest');
+    foreach ([
+        '<audio src="a.mp3"></audio>' => ['player_audio'],
+        '<video src="a.mp4"></video>' => ['player_video'],
+        '<video src="a.m3u8" data-mode="vod"></video>' => ['player_video', 'player_hls'],
+        '<video src="a.m3u8" data-mode="live"></video>' => ['player_video', 'player_hls', 'player_live'],
+    ] as $markup => $modules) {
+        $detected = App\Services\FrontendAssets::requirements($markup);
+        foreach (['player_audio', 'player_video', 'player_hls', 'player_live'] as $module) {
+            $assert(isset($detected[$module]) === in_array($module, $modules, true), 'Correct module: ' . $markup . ' / ' . $module);
+        }
+    }
+    $assert(count(App\Services\FrontendAssets::requirements('', ['player'])) === 5, 'Explicit player keeps every module');
+    $cache->set('A', 1);
+    $cache->set('B', 2);
+    $generation = @file_get_contents(CACHE . '/.generation');
+    $revisionB = file_get_contents(CACHE . '/' . md5('B') . '.rev');
+    $cache->set('A', 3);
+    $cache->remove('A');
+    $assert(@file_get_contents(CACHE . '/.generation') === $generation, 'Key writes do not rotate global generation');
+    $assert(file_get_contents(CACHE . '/' . md5('B') . '.rev') === $revisionB, 'Other key revision survives set and remove');
+    $memory->setValue(null, []);
+    $assert((new FBL\Cache())->get('B') === 2, 'New request retains unrelated key');
+    $cache->clear();
+    $assert(file_get_contents(CACHE . '/.generation') !== $generation, 'Clear rotates global generation');
 
+    $GLOBALS['test_apcu_enabled'] = true;
+    if (apcu_enabled()) {
+        $newRequest = static function () use ($memory): void {
+            $memory->setValue(null, []);
+            (new ReflectionProperty(FBL\Cache::class, 'generation'))->setValue(null, null);
+        };
+        $cache->set('l2-a', 'old');
+        $cache->set('l2-b', 'retained');
+        $newRequest();
+        $assert($cache->get('l2-a') === 'old' && $cache->get('l2-b') === 'retained', 'Other worker warms L2');
+        $cache->set('l2-a', 'new');
+        $newRequest();
+        $reads = FBL\PerformanceProfiler::snapshot()['counts']['cache_file_reads'] ?? 0;
+        $assert($cache->get('l2-a') === 'new' && $cache->get('l2-b') === 'retained', 'L2 revisions see changed A and unchanged B');
+        $assert((FBL\PerformanceProfiler::snapshot()['counts']['cache_file_reads'] ?? 0) === $reads, 'Updating A preserves B L2 hit');
+        $cache->remove('l2-a');
+        $newRequest();
+        $assert($cache->get('l2-a', 'miss') === 'miss', 'Removed key cannot resurrect stale L2');
+        $reads = FBL\PerformanceProfiler::snapshot()['counts']['cache_file_reads'] ?? 0;
+        $assert($cache->get('l2-b') === 'retained' && (FBL\PerformanceProfiler::snapshot()['counts']['cache_file_reads'] ?? 0) === $reads, 'Removing A preserves B L2 hit');
+        $cache->clear();
+        $newRequest();
+        $assert($cache->get('l2-b', 'miss') === 'miss', 'Clear makes old worker L2 namespace unreachable');
+    }
+    $GLOBALS['test_apcu_enabled'] = false;
     foreach ([App\Models\User::class=>'ensureUsersTableExists', App\Models\Page::class=>'ensureSchema', App\Models\Post::class=>'ensureSchema', App\Models\SiteSetting::class=>'ensureTableExists', App\Models\Admin::class=>'ensureSchema', App\Repositories\AnalyticsRepository::class=>'ensureSchema', App\Services\PwaService::class=>'ensureTables', App\Services\NotificationService::class=>'ensureTables', FBL\Plugins\PluginManager::class=>'ensureSchema'] as $class=>$method) {
         // No database is available: any runtime SQL would fail this test.
         (new ReflectionMethod($class, $method))->invoke(new $class());
@@ -131,7 +209,7 @@ try {
     echo "Performance runtime: {$checks} checks passed.\n";
 } finally {
     $app->session->close();
-    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(CACHE, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($temporary, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($iterator as $entry) $entry->isDir() ? rmdir($entry->getPathname()) : unlink($entry->getPathname());
-    rmdir(CACHE);
+    rmdir($temporary);
 }
