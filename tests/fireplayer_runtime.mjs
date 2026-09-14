@@ -193,4 +193,14 @@ for(const agent of [false]) {
  h.player._playRequested=true;await assert.rejects(h.player.controller.start());
  check(h.player.controller===null, 'Failed deferred wake permits a fresh adapter on Retry');
 }
+{
+ const h=runtime();let release;let plays=0;let loading=false;
+ h.player.ready=new Promise(resolve=>{release=resolve;});h.player._sourcePrepared=false;h.player._playRequested=false;
+ h.player.root.classList.add=key=>{if(key==='fireplayer--loading')loading=true;};
+ h.player._playMedia=async()=>{plays++;};
+ const pending=h.FirePlayer.prototype.play.call(h.player);
+ check(h.player._playRequested && loading && plays===0, 'First click is accepted immediately while source is preparing');
+ h.player._sourcePrepared=true;release();await pending;
+ check(plays===1, 'Queued first click plays once when preparation finishes');
+}
 console.log(`FirePlayer runtime: ${checks} checks passed.`);
