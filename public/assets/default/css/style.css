@@ -33,22 +33,49 @@ body {
 
 /* Apple-style glass navigation for the public site. Keep the admin topbar opaque. */
 body:not(.fb-admin-body) > header.navbar-sticky {
-    background-color: rgba(255, 255, 255, .86) !important;
+    background: transparent !important;
     border-bottom: 1px solid rgba(24, 29, 37, .1);
+    /* Keep dropdowns outside a filtered ancestor (notably Safari/iOS). */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+body:not(.fb-admin-body) > header.navbar-sticky::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: rgba(255, 255, 255, .86);
     -webkit-backdrop-filter: saturate(180%) blur(18px);
     backdrop-filter: saturate(180%) blur(18px);
 }
 
 [data-bs-theme="dark"] body:not(.fb-admin-body) > header.navbar-sticky {
-    background-color: rgba(24, 29, 37, .82) !important;
     border-bottom-color: rgba(255, 255, 255, .1);
 }
 
+[data-bs-theme="dark"] body:not(.fb-admin-body) > header.navbar-sticky::before {
+    background: rgba(24, 29, 37, .82);
+}
+
 @supports (background-color: color-mix(in srgb, transparent, transparent)) {
-    body:not(.fb-admin-body) > header.navbar-sticky {
-        background-color: color-mix(in srgb, var(--cz-body-bg) 78%, transparent) !important;
-        border-bottom-color: color-mix(in srgb, currentColor 14%, transparent);
+    body:not(.fb-admin-body) > header.navbar-sticky::before {
+        background: color-mix(in srgb, var(--cz-body-bg) 78%, transparent);
     }
+}
+
+/* The single mobile search action stays above the input's glass layer. */
+#searchBar .search-submit {
+    z-index: 2;
+    color: #475569;
+}
+[data-bs-theme="dark"] #searchBar .search-submit {
+    color: #e2e8f0;
+}
+#searchBar .search-submit:hover,
+#searchBar .search-submit:focus-visible {
+    color: var(--cz-emphasis-color, var(--cz-body-color));
 }
 
 /* Apple-style glass panels for public navigation and sidebars. */
@@ -7103,4 +7130,18 @@ body.is-site-fullscreen .plyr * {
     min-width: 0;
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+/* Public search suggestions use the navigation glass in the fallback layout too. */
+body:not(.fb-admin-body) .search-suggest-menu {
+    background: rgba(255, 255, 255, .86) !important;
+    border: 1px solid rgba(24, 29, 37, .12);
+    border-radius: 1.5rem;
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    box-shadow: 0 16px 44px rgba(15, 23, 42, .08);
+}
+[data-bs-theme="dark"] body:not(.fb-admin-body) .search-suggest-menu {
+    background: rgba(24, 29, 37, .86) !important;
+    border-color: rgba(255, 255, 255, .12);
 }

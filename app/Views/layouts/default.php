@@ -668,20 +668,19 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <div class="collapse d-md-none" id="searchBar">
         <div class="container pt-2 pb-3">
             <form action="<?= base_href('/search') ?>" method="get" class="position-relative" data-search-suggest data-suggest-url="<?= base_href('/search/suggest') ?>">
-                <i class="ci-search position-absolute top-50 translate-middle-y d-flex fs-lg ms-3"></i>
+                <button type="submit" class="search-submit btn btn-icon btn-ghost fs-lg border-0 position-absolute top-50 start-0 translate-middle-y rounded-circle ms-1" aria-label="<?= print_translation('tpl_menu_search') ?>">
+                    <i class="ci-search" aria-hidden="true"></i>
+                </button>
                 <input
                     type="search"
                     name="q"
                     value="<?= htmlSC((string)request()->get('q', '')) ?>"
-                    class="form-control form-icon-start rounded-pill pe-5"
+                    class="form-control form-icon-start rounded-pill"
                     placeholder="<?= print_translation('tpl_menu_search') ?>"
                     data-autofocus="collapse"
                     autocomplete="off"
                     data-search-suggest-input
                 >
-                <button type="submit" class="btn btn-icon btn-ghost fs-lg btn-secondary border-0 position-absolute top-50 end-0 translate-middle-y rounded-circle me-2" aria-label="Search button">
-                    <i class="ci-search"></i>
-                </button>
                 <div class="position-absolute top-100 start-0 end-0 mt-2 d-none z-3" data-search-suggest-results></div>
             </form>
         </div>
