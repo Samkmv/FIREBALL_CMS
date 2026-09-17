@@ -107,35 +107,6 @@
         return match ? match[1] : '';
     };
 
-    const inferHlsPoster = function (source) {
-        if (!source) {
-            return '';
-        }
-
-        try {
-            const url = new URL(source, window.location.href);
-
-            if (!/\/stream-[^/]+\/index\.m3u8$/i.test(url.pathname)) {
-                return '';
-            }
-
-            url.pathname = url.pathname.replace(
-                /\/stream-([^/]+)\/index\.m3u8$/i,
-                '/tn-$1.jpg'
-            );
-            url.search = '';
-            url.hash = '';
-
-            return url.href;
-        } catch (error) {
-            const match = String(source).match(
-                /^(.*\/)stream-([^/]+)\/index\.m3u8(?:[?#].*)?$/i
-            );
-
-            return match ? (match[1] + 'tn-' + match[2] + '.jpg') : '';
-        }
-    };
-
     const isManagedStreamSource = function (source, options) {
         return Boolean((options && options.streamId) || managedStreamIdFromSource(source));
     };
@@ -203,7 +174,7 @@
         const media = element instanceof HTMLMediaElement ? element : element.querySelector('video, audio');
         const dataset = Object.assign({}, parseDataset(element), parseDataset(media));
         const mediaType = media instanceof HTMLAudioElement ? 'audio' : (media instanceof HTMLVideoElement ? 'video' : 'auto');
-        const merged = Object.assign({
+        return Object.assign({
             src: sourceFromMedia(media), poster: media ? media.getAttribute('poster') || '' : '',
             media: mediaType, protocol: 'auto', mode: 'auto', title: '', controls: true,
             autoplay: media ? media.autoplay : false, muted: media ? media.muted : false,
@@ -217,14 +188,6 @@
             rememberPosition: 'auto', rememberVolume: true, keyboard: true, gestures: true,
             probe: true, probeTimeout: 6000
         }, dataset, options || {});
-
-        // Explicit poster/data-poster always wins.
-        // Only infer a poster when none was provided.
-        if (!merged.poster && merged.src) {
-            merged.poster = inferHlsPoster(merged.src);
-        }
-
-        return merged;
     };
 
     const inferFromMime = function (contentType, result) {
@@ -1552,7 +1515,7 @@
         }
     }
 
-    FirePlayer.version = '1.0.5';
+    FirePlayer.version = '1.0.4';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;
