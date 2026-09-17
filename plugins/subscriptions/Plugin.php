@@ -123,17 +123,14 @@ final class FireballPluginSubscriptions implements PluginInterface
     public static function dashboardWidgets(array $widgets, array $context = []): array
     {
         try {
+            $activeSql = \Fireball\Subscriptions\Support\SubscriptionStatus::activeSql();
             $active = (int)db()->query(
-                "SELECT COUNT(*) FROM subscriptions
-                 WHERE archived_at IS NULL
-                   AND status IN ('active', 'grace_period', 'cancelled')
-                   AND starts_at <= NOW() AND (ends_at IS NULL OR COALESCE(grace_ends_at, ends_at) > NOW())"
+                "SELECT COUNT(*) FROM subscriptions s WHERE {$activeSql}"
             )->getColumn();
             $expiring = (int)db()->query(
-                "SELECT COUNT(*) FROM subscriptions
-                 WHERE archived_at IS NULL
-                   AND status IN ('active', 'cancelled')
-                   AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)"
+                "SELECT COUNT(*) FROM subscriptions s WHERE {$activeSql}
+                   AND s.status IN ('active', 'cancelled')
+                   AND s.ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)"
             )->getColumn();
             $failed = (int)db()->query(
                 "SELECT COUNT(*) FROM subscription_payments WHERE status = 'failed'"

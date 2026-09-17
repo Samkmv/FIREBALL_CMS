@@ -46,6 +46,7 @@
 
             const healthCheck = function () {
                 if (!isLive() || !player._playRequested || player.media.ended || player.media.seeking || document.hidden || !player.options.reconnect
+                    || (window.navigator && window.navigator.onLine === false)
                     || player._reconnectPromise || player.root.classList.contains('fireplayer--error')) {
                     lastTime = player.media.currentTime || 0;
                     lastAdvanceAt = Date.now();

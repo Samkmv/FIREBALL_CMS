@@ -18,6 +18,12 @@ $sourceLabels = [
     'external' => FireballPluginSubscriptions::t('subscriptions_source_external'),
     'robokassa' => 'Robokassa',
 ];
+$statusClasses = [
+    'active' => 'text-bg-success',
+    'pending' => 'text-bg-info',
+    'grace_period' => 'text-bg-warning',
+    'past_due' => 'text-bg-danger',
+];
 $rows = [];
 $mobileCards = [];
 $renderAttributes = static function (array $attributes): string {
@@ -69,9 +75,10 @@ $renderActions = static function (array $actions) use ($renderAttributes): strin
 };
 
 foreach ($subscriptions as $subscription) {
-    $statusKey = (string)($subscription['status'] ?? '');
+    $storedStatusKey = (string)($subscription['status'] ?? '');
+    $statusKey = (string)($subscription['effective_status'] ?? $storedStatusKey);
     $isUtilityManaged = !empty($subscription['utility_managed']);
-    $status = '<span class="badge rounded-pill ' . ($statusKey === 'active' ? 'text-bg-success' : 'text-bg-secondary') . '">' . htmlSC($statusLabels[$statusKey] ?? $statusKey) . '</span>';
+    $status = '<span class="badge rounded-pill ' . ($statusClasses[$statusKey] ?? 'text-bg-secondary') . '">' . htmlSC($statusLabels[$statusKey] ?? $statusKey) . '</span>';
     $user = htmlSC((string)$subscription['user_name']) . '<div class="small text-body-secondary">' . htmlSC((string)$subscription['user_email']) . '</div>';
     $endsAtLabel = empty($subscription['ends_at'])
         ? FireballPluginSubscriptions::t('subscriptions_indefinite')
@@ -84,7 +91,7 @@ foreach ($subscriptions as $subscription) {
         'data-subscription-id' => (int)$subscription['id'],
         'data-subscription-user' => (string)$subscription['user_name'],
         'data-subscription-plan-id' => (int)$subscription['plan_id'],
-        'data-subscription-status' => $statusKey,
+        'data-subscription-status' => $storedStatusKey,
         'data-subscription-ends-at' => empty($subscription['ends_at']) ? '' : date('Y-m-d\TH:i', strtotime((string)$subscription['ends_at']) ?: time()),
     ];
     $detailsAttributes = [
@@ -112,7 +119,7 @@ foreach ($subscriptions as $subscription) {
             'attributes' => $editAttributes,
         ];
     }
-    $deleteDisabledOnly = $statusKey === 'disabled';
+    $deleteDisabledOnly = $storedStatusKey === 'disabled';
     if ($deleteDisabledOnly || !empty($subscription['can_archive_subscriber'])) {
         $deleteFormAttributes = [
             'data-admin-delete-form' => true,
@@ -214,7 +221,7 @@ foreach ($subscriptions as $subscription) {
 
     <?php foreach ($subscriptions as $subscription): ?>
         <?php
-        $subscriptionStatusKey = (string)($subscription['status'] ?? '');
+        $subscriptionStatusKey = (string)($subscription['effective_status'] ?? $subscription['status'] ?? '');
         $subscriptionSource = $sourceLabels[(string)($subscription['source'] ?? '')] ?? (string)($subscription['source'] ?? '');
         $subscriptionEndsAt = empty($subscription['ends_at'])
             ? FireballPluginSubscriptions::t('subscriptions_indefinite')

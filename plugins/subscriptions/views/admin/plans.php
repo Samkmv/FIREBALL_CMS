@@ -51,19 +51,33 @@ foreach ($plans as $plan) {
         ? ' <span class="badge rounded-pill text-primary bg-primary-subtle"><i class="ci-star-filled me-1"></i>'
             . htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_popular')) . '</span>'
         : '';
+    $actions = $planActions($plan);
 
     ob_start();
     ?>
-    <div class="d-inline-flex flex-wrap justify-content-end gap-1">
-        <a class="btn btn-sm btn-outline-secondary" href="<?= base_href('/admin/subscriptions/plans/edit/' . $id) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_edit')) ?></a>
-        <?php foreach ([['toggle_active', 'subscriptions_toggle'], ['toggle_public', 'subscriptions_visibility'], ['clone', 'subscriptions_clone']] as [$action, $label]): ?>
-            <form action="<?= base_href('/admin/subscriptions/plans/action') ?>" method="post">
-                <?= get_csrf_field() ?>
-                <input type="hidden" name="id" value="<?= $id ?>">
-                <input type="hidden" name="action" value="<?= htmlSC($action) ?>">
-                <button class="btn btn-sm btn-outline-secondary" type="submit"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></button>
-            </form>
-        <?php endforeach; ?>
+    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false">
+            <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_actions')) ?>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
+            <?php foreach ($actions as $action): ?>
+                <?php if (($action['type'] ?? 'link') === 'form'): ?>
+                    <form action="<?= htmlSC((string)$action['action']) ?>" method="post">
+                        <?= get_csrf_field() ?>
+                        <?php foreach ($action['hidden'] as $name => $value): ?><input type="hidden" name="<?= htmlSC((string)$name) ?>" value="<?= htmlSC((string)$value) ?>"><?php endforeach; ?>
+                        <button class="dropdown-item d-flex align-items-center gap-2" type="submit">
+                            <i class="<?= htmlSC((string)$action['icon']) ?>" aria-hidden="true"></i>
+                            <span><?= htmlSC((string)$action['label']) ?></span>
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <a class="dropdown-item d-flex align-items-center gap-2" href="<?= htmlSC((string)$action['href']) ?>">
+                        <i class="<?= htmlSC((string)$action['icon']) ?>" aria-hidden="true"></i>
+                        <span><?= htmlSC((string)$action['label']) ?></span>
+                    </a>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
     </div>
     <?php
     $desktopActions = (string)ob_get_clean();
@@ -87,7 +101,7 @@ foreach ($plans as $plan) {
             ['html' => $status],
             $popularBadge !== '' ? ['html' => $popularBadge] : null,
         ])),
-        'actions' => $planActions($plan),
+        'actions' => $actions,
         'extra_fields' => [
             ['label' => FireballPluginSubscriptions::t('subscriptions_field_price'), 'value' => (string)$plan['price_display']],
             ['label' => FireballPluginSubscriptions::t('subscriptions_field_duration'), 'value' => $duration],

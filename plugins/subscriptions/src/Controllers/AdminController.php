@@ -9,17 +9,19 @@ use Fireball\Subscriptions\Repositories\AddressExclusionRepository;
 use Fireball\Subscriptions\Services\SettingsService;
 use Fireball\Subscriptions\Services\PaymentService;
 use Fireball\Subscriptions\Services\SubscriptionService;
+use Fireball\Subscriptions\Support\SubscriptionStatus;
 
 final class AdminController
 {
     public function dashboard(): string
     {
+        $activeSql = SubscriptionStatus::activeSql();
         $stats = [
-            'active' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'grace_period', 'cancelled') AND starts_at <= NOW() AND (ends_at IS NULL OR COALESCE(grace_ends_at, ends_at) > NOW())")->getColumn(),
-            'expiring' => (int)db()->query("SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL AND status IN ('active', 'cancelled') AND ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)")->getColumn(),
+            'active' => (int)db()->query("SELECT COUNT(*) FROM subscriptions s WHERE {$activeSql}")->getColumn(),
+            'expiring' => (int)db()->query("SELECT COUNT(*) FROM subscriptions s WHERE {$activeSql} AND s.status IN ('active', 'cancelled') AND s.ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)")->getColumn(),
         ] + (new PaymentService())->visibleHistoryStats();
         $byPlan = db()->query(
-            "SELECT p.name, COUNT(s.id) AS total FROM subscription_plans p LEFT JOIN subscriptions s ON s.plan_id = p.id AND s.archived_at IS NULL AND s.status IN ('active', 'grace_period', 'cancelled') AND (s.ends_at IS NULL OR s.ends_at > NOW()) GROUP BY p.id, p.name ORDER BY total DESC, p.name"
+            "SELECT p.name, COUNT(s.id) AS total FROM subscription_plans p LEFT JOIN subscriptions s ON s.plan_id = p.id AND {$activeSql} GROUP BY p.id, p.name ORDER BY total DESC, p.name"
         )->get() ?: [];
 
         return $this->view('admin/dashboard', 'overview', [
@@ -89,6 +91,7 @@ final class AdminController
 
     public function subscribers(): string
     {
+        $effectiveStatusSql = SubscriptionStatus::effectiveSql();
         $search = trim((string)request()->get('q', ''));
         $status = trim((string)request()->get('status', ''));
         $where = ['s.archived_at IS NULL'];
@@ -99,7 +102,7 @@ final class AdminController
             $params = [$like, $like];
         }
         if (in_array($status, ['active', 'disabled', 'pending', 'cancelled', 'grace_period', 'past_due', 'expired'], true)) {
-            $where[] = 's.status = ?';
+            $where[] = '(' . $effectiveStatusSql . ') = ?';
             $params[] = $status;
         } else {
             $status = '';
@@ -109,7 +112,7 @@ final class AdminController
         $pagination = new \FBL\Pagination($total, 20);
         $offset = $pagination->getOffset();
         $rows = db()->query(
-            "SELECT s.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name,
+            "SELECT s.*, {$effectiveStatusSql} AS effective_status, u.name AS user_name, u.email AS user_email, p.name AS plan_name,
                     NOT EXISTS (
                         SELECT 1 FROM subscriptions active_s
                         WHERE active_s.user_id = s.user_id AND active_s.archived_at IS NULL

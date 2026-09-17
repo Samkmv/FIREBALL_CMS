@@ -20,6 +20,8 @@
             fullscreen: 'Полный экран', exitFullscreen: 'Выйти из полного экрана', live: 'LIVE',
             goLive: 'Перейти в LIVE', detecting: 'Определяем источник…', connecting: 'Подключение…',
             loading: 'Загрузка медиа…', reconnecting: 'Повторное подключение…',
+            waking: 'Запуск камеры…', offline: 'Нет подключения к интернету',
+            readyToPlay: 'Нажмите Play для начала воспроизведения',
             unsupported: 'Этот формат не поддерживается браузером', failed: 'Не удалось воспроизвести медиа',
             retry: 'Повторить', audio: 'Аудиоплеер', video: 'Видеоплеер'
         },
@@ -28,6 +30,8 @@
             seek: 'Seek', speed: 'Speed', settings: 'Settings', pip: 'Picture in Picture', fullscreen: 'Fullscreen',
             exitFullscreen: 'Exit fullscreen', live: 'LIVE', goLive: 'Go live', detecting: 'Detecting source…',
             connecting: 'Connecting…', loading: 'Loading media…', reconnecting: 'Reconnecting…',
+            waking: 'Starting camera…', offline: 'No internet connection',
+            readyToPlay: 'Press Play to start playback',
             unsupported: 'This format is not supported by the browser', failed: 'Unable to play media',
             retry: 'Retry', audio: 'Audio player', video: 'Video player'
         }
@@ -96,6 +100,22 @@
         }
         const source = media.querySelector('source[src]');
         return source ? source.getAttribute('src') || '' : '';
+    };
+
+    const managedStreamIdFromSource = function (source) {
+        const match = String(source || '').match(/\/stream-([^/]+)\/index\.m3u8(?:[?#].*)?$/i);
+        return match ? match[1] : '';
+    };
+
+    const isManagedStreamSource = function (source, options) {
+        return Boolean((options && options.streamId) || managedStreamIdFromSource(source));
+    };
+
+    const shouldLazyStart = function (source, options) {
+        if (!source || (options && options.autoplay)) {
+            return false;
+        }
+        return Boolean((options && options.lazyStart === true) || isManagedStreamSource(source, options));
     };
 
     const parseDataset = function (element) {
@@ -422,7 +442,10 @@
             this._startupTimer = null;
             this._lastPlaybackTime = 0;
             this._restoredPosition = false;
+            this._lazySourcePending = false;
             this._render(this.options.media === 'audio' ? 'audio' : 'video');
+            this._lazySourcePending = shouldLazyStart(this.options.src, this.options);
+            this.root.classList.toggle('fireplayer--lazy', this._lazySourcePending);
 
             instances.set(this.root, this);
             instances.set(element, this);
@@ -430,7 +453,7 @@
             this.root.dataset.firePlayerInitialized = 'true';
 
             this._emit('init');
-            this.ready = this.options.src ? this.load(this.options.src) : Promise.resolve(this);
+            this.ready = this.options.src && !this._lazySourcePending ? this.load(this.options.src) : Promise.resolve(this);
             this.ready.catch(function () {});
         }
 
@@ -455,6 +478,7 @@
             if (media instanceof HTMLVideoElement) {
                 media.playsInline = this.options.playsinline !== false;
                 media.setAttribute('webkit-playsinline', '');
+                if (this.options.poster) { media.poster = this.options.poster; }
             }
 
             this.root.className = this.root.className
@@ -595,6 +619,7 @@
             this._listen(this.media, 'playing', function () {
                 if (player._destroyed || player.media.paused) { return; }
                 player._recoveringMedia = false;
+                player.root.classList.remove('fireplayer--awaiting-gesture', 'fireplayer--offline');
                 player.root.classList.add('fireplayer--playing');
                 player._playRequested = true;
                 player._settleLoading(true);
@@ -653,6 +678,21 @@
             });
             this._listen(document, 'fullscreenchange', function () { player._syncFullscreen(); });
             this._listen(document, 'webkitfullscreenchange', function () { player._syncFullscreen(); });
+            this._listen(window, 'offline', function () {
+                if (!player.info || player.info.protocol !== 'hls' || !player._playRequested) { return; }
+                player.root.classList.add('fireplayer--offline');
+                player._clearLoadingTimers();
+                player.setStatus(t('offline'), 'warning');
+                player._emit('offline');
+            });
+            this._listen(window, 'online', function () {
+                if (!player.root.classList.contains('fireplayer--offline')) { return; }
+                player.root.classList.remove('fireplayer--offline');
+                player._emit('online');
+                if (player.info && player.info.protocol === 'hls' && player._playRequested && player._sourcePrepared) {
+                    player.reconnect('online').catch(function () {});
+                }
+            });
             this._listen(this.root, 'keydown', function (event) { player._handleKey(event); });
             this._listen(this.root, 'pointerdown', function (event) {
                 player.root.classList.toggle('fireplayer--touch', event.pointerType === 'touch');
@@ -690,13 +730,13 @@
         }
 
         async load(source, overrides) {
-            const pending = this._loadSource(source, overrides);
+            const pending = this._loadSource(source, overrides, false);
             this.ready = pending;
             pending.catch(function () {});
             return pending;
         }
 
-        async _loadSource(source, overrides) {
+        async _loadSource(source, overrides, preservePlayIntent) {
             if (this._destroyed) {
                 throw new Error('FirePlayer instance was destroyed.');
             }
@@ -704,12 +744,15 @@
             if (!src) {
                 throw new Error('FirePlayer requires a media source.');
             }
+            const requestedPlay = Boolean(preservePlayIntent && this._playRequested);
             const token = ++this._loadToken;
             this._storePosition(false, true);
             this._teardownPlayback();
             this.options = Object.assign({}, this.options, overrides || {}, { src: src });
+            this._lazySourcePending = false;
+            this.root.classList.remove('fireplayer--lazy', 'fireplayer--awaiting-gesture', 'fireplayer--offline');
             this._loadAbortController = typeof AbortController === 'function' ? new AbortController() : null;
-            this._playRequested = Boolean(this.options.autoplay);
+            this._playRequested = requestedPlay || Boolean(this.options.autoplay);
             this._reconnectAttempts = 0;
             this._restoredPosition = false;
             this._resumePosition = null;
@@ -770,6 +813,11 @@
                 if (token !== this._loadToken || this._destroyed) {
                     return this;
                 }
+                if (error && error.name === 'AbortError') {
+                    this.root.classList.remove('fireplayer--loading', 'fireplayer--reconnecting');
+                    this.setStatus('');
+                    return this;
+                }
                 this._showError(t('failed'), error);
                 throw error;
             }
@@ -820,7 +868,8 @@
             ++this._loadToken;
             this._teardownPlayback();
             this.info = null;
-            this.root.classList.remove('fireplayer--ready', 'fireplayer--playing', 'fireplayer--loading', 'fireplayer--reconnecting', 'fireplayer--error', 'fireplayer--ended', 'fireplayer--live', 'fireplayer--event', 'fireplayer--vod');
+            this._lazySourcePending = false;
+            this.root.classList.remove('fireplayer--ready', 'fireplayer--playing', 'fireplayer--loading', 'fireplayer--reconnecting', 'fireplayer--error', 'fireplayer--ended', 'fireplayer--live', 'fireplayer--event', 'fireplayer--vod', 'fireplayer--lazy', 'fireplayer--offline', 'fireplayer--awaiting-gesture');
             this.elements.retry.hidden = true;
             this._setSettingsOpen(false);
             this._syncTimeline();
@@ -858,10 +907,19 @@
             if (!this.options.src) {
                 throw new Error('FirePlayer has no source.');
             }
-            const token = this._loadToken;
             this._playRequested = true;
-            if (!this._sourcePrepared) { await this.ready; }
-            if (token !== this._loadToken || this._destroyed || !this._playRequested) { return this; }
+            if (!this._sourcePrepared) {
+                if (this._lazySourcePending) {
+                    const pending = this._loadSource(this.options.src, null, true);
+                    this.ready = pending;
+                    pending.catch(function () {});
+                    await pending;
+                } else {
+                    await this.ready;
+                }
+            }
+            const token = this._loadToken;
+            if (this._destroyed || !this._playRequested || !this._sourcePrepared) { return this; }
             await this._playMedia(token);
             return this;
         }
@@ -888,6 +946,8 @@
                 if (error.name === 'NotAllowedError') {
                     this._playRequested = false;
                     this._settleLoading();
+                    this.root.classList.add('fireplayer--awaiting-gesture');
+                    this.setStatus(t('readyToPlay'), 'info');
                     this._emit('autoplayblocked', { error: error });
                 } else { this._showError(t('failed'), error); }
                 throw error;
@@ -899,10 +959,19 @@
         }
 
         pause() {
+            const cancelLazyLoad = !this._sourcePrepared && this._loadAbortController
+                && shouldLazyStart(this.options.src, this.options);
             this._playRequested = false;
             this._recoveringMedia = false;
             ++this._playAttemptId;
             this._playPromise = null;
+            if (cancelLazyLoad) {
+                this._loadAbortController.abort();
+                this._lazySourcePending = true;
+                this.root.classList.add('fireplayer--lazy');
+                this.root.classList.remove('fireplayer--loading', 'fireplayer--reconnecting');
+                this.setStatus('');
+            }
             this.media.pause();
             this._settleLoading();
             return this;
@@ -1052,7 +1121,7 @@
             this._clearLoadingTimers();
             this.root.classList.remove('fireplayer--loading', 'fireplayer--reconnecting');
             if (recovered) {
-                this.root.classList.remove('fireplayer--error');
+                this.root.classList.remove('fireplayer--error', 'fireplayer--offline', 'fireplayer--awaiting-gesture');
                 this._reconnectAttempts = 0;
             }
             this.elements.retry.hidden = true;
@@ -1446,7 +1515,7 @@
         }
     }
 
-    FirePlayer.version = '1.0.3';
+    FirePlayer.version = '1.0.4';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;

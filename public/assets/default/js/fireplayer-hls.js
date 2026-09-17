@@ -4,6 +4,7 @@
     if (!window.FirePlayer) { return; }
 
     let hlsLoaderPromise = null;
+    const wakeRequests = new Map();
     const config = function () {
         return window.firePlayerConfig && typeof window.firePlayerConfig === 'object' ? window.firePlayerConfig : {};
     };
@@ -95,45 +96,69 @@
         if (typeof window.fetch !== 'function') {
             throw new Error('Camera readiness checks require Fetch support.');
         }
-        const frontend = window.hlsStreamConfig && typeof window.hlsStreamConfig === 'object' ? window.hlsStreamConfig : {};
-        // The final backend pass may probe manifest + segment with HEAD/GET fallbacks.
-        const timeout = boundedNumber(frontend.readyTimeoutMs, 30000, 1000, 120000)
-            + boundedNumber(frontend.readyIntervalMs, 1500, 500, 10000)
-            + (boundedNumber(frontend.httpTimeoutMs, 5000, 1000, 15000) * 4) + 2000;
-        const controller = typeof AbortController === 'function' ? new AbortController() : null;
-        let timedOut = false;
-        const onAbort = function () { if (controller) { controller.abort(); } };
         if (signal && signal.aborted) { throw abortError(); }
-        if (signal) { signal.addEventListener('abort', onAbort, { once: true }); }
-        let timer = null;
-        try {
-            const request = (async function () {
-                const response = await window.fetch((typeof window.baseUrl === 'string' ? window.baseUrl : (typeof baseUrl === 'string' ? baseUrl : '')) + '/api/streams/wake', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ stream_id: streamId, hls_url: source }),
-                    signal: controller ? controller.signal : signal
-                });
-                const payload = await response.json().catch(function () { return {}; });
-                if (!response.ok || payload.success === false || payload.ready !== true) {
-                    throw new Error('Camera stream is not ready (HTTP ' + response.status + ').');
+
+        let entry = wakeRequests.get(streamId);
+        if (!entry) {
+            const frontend = window.hlsStreamConfig && typeof window.hlsStreamConfig === 'object' ? window.hlsStreamConfig : {};
+            // The backend may probe both the manifest and its first segment.
+            const timeout = boundedNumber(frontend.readyTimeoutMs, 30000, 1000, 120000)
+                + boundedNumber(frontend.readyIntervalMs, 1500, 500, 10000)
+                + (boundedNumber(frontend.httpTimeoutMs, 5000, 1000, 15000) * 4) + 2000;
+            const controller = typeof AbortController === 'function' ? new AbortController() : null;
+            entry = { controller: controller, consumers: 0, settled: false, promise: null };
+            const currentEntry = entry;
+            entry.promise = (async function () {
+                let timer = null;
+                let timedOut = false;
+                try {
+                    const request = (async function () {
+                        const response = await window.fetch((typeof window.baseUrl === 'string' ? window.baseUrl : (typeof baseUrl === 'string' ? baseUrl : '')) + '/api/streams/wake', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ stream_id: streamId, hls_url: source }),
+                            signal: controller ? controller.signal : undefined
+                        });
+                        const payload = await response.json().catch(function () { return {}; });
+                        if (!response.ok || payload.success === false || payload.ready !== true) {
+                            throw new Error('Camera stream is not ready (HTTP ' + response.status + ').');
+                        }
+                    })();
+                    const deadline = new Promise(function (_, reject) {
+                        timer = window.setTimeout(function () {
+                            timedOut = true;
+                            if (controller) { controller.abort(); }
+                            reject(new Error('Camera readiness check timed out.'));
+                        }, timeout);
+                    });
+                    await Promise.race([request, deadline]);
+                } catch (error) {
+                    if (timedOut) { throw new Error('Camera readiness check timed out.'); }
+                    throw error;
+                } finally {
+                    window.clearTimeout(timer);
                 }
-            })();
-            const deadline = new Promise(function (_, reject) {
-                timer = window.setTimeout(function () {
-                    timedOut = true;
-                    onAbort();
-                    reject(new Error('Camera readiness check timed out.'));
-                }, timeout);
+            })().finally(function () {
+                currentEntry.settled = true;
+                if (wakeRequests.get(streamId) === currentEntry) {
+                    wakeRequests.delete(streamId);
+                }
             });
-            await waitWithSignal(Promise.race([request, deadline]), signal);
-        } catch (error) {
-            if (timedOut) { throw new Error('Camera readiness check timed out.'); }
-            throw error;
+            // A player may disappear while the shared wake is still unwinding.
+            entry.promise.catch(function () {});
+            wakeRequests.set(streamId, entry);
+        }
+
+        entry.consumers += 1;
+        try {
+            await waitWithSignal(entry.promise, signal);
         } finally {
-            window.clearTimeout(timer);
-            if (signal) { signal.removeEventListener('abort', onAbort); }
+            entry.consumers = Math.max(0, entry.consumers - 1);
+            if (!entry.settled && entry.consumers === 0 && entry.controller) {
+                if (wakeRequests.get(streamId) === entry) { wakeRequests.delete(streamId); }
+                entry.controller.abort();
+            }
         }
     };
 
@@ -183,9 +208,12 @@
         }
         const wake = async function () {
             assertActive();
+            const streamId = options.streamId || inferStreamId(source);
             try {
+                if (streamId) { player.setStatus(window.FirePlayer.translate('waking'), 'info'); }
                 await wakeStream(source, options, signal);
                 assertActive();
+                if (streamId) { player.setStatus(window.FirePlayer.translate('connecting'), 'info'); }
             } catch (error) {
                 if (active() && error.name !== 'AbortError') { player._emit('wakeerror', { error: error }); }
                 throw error;
@@ -228,13 +256,27 @@
             const scheduleReconnect = function (error) {
                 if (!active() || reconnectPromise || player._reconnectPromise || retryTimer !== null) { return; }
                 if (!player.options.reconnect) { reportFatal(error); return; }
+                if (window.navigator && window.navigator.onLine === false) {
+                    player.root.classList.add('fireplayer--offline');
+                    player.setStatus(window.FirePlayer.translate('offline'), 'warning');
+                    return;
+                }
                 player.setStatus(window.FirePlayer.translate('reconnecting'), 'warning');
+                const baseDelay = boundedNumber(player.options.reconnectDelay, 2500, 500, 30000);
+                const attempt = Math.max(0, Number(player._reconnectAttempts || 0));
+                const delay = Math.min(15000, baseDelay * Math.pow(2, Math.min(attempt, 3)));
+                const jitter = Math.round(delay * 0.15 * Math.random());
                 retryTimer = window.setTimeout(function () {
                     retryTimer = null;
                     if (!active()) { return; }
                     if (!player.options.reconnect) { reportFatal(error); return; }
+                    if (window.navigator && window.navigator.onLine === false) {
+                        player.root.classList.add('fireplayer--offline');
+                        player.setStatus(window.FirePlayer.translate('offline'), 'warning');
+                        return;
+                    }
                     player.reconnect('network').catch(reportFatal);
-                }, boundedNumber(player.options.reconnectDelay, 2500, 500, 30000));
+                }, delay + jitter);
             };
             const attachHls = function () {
                 const instance = new Hls(Object.assign({
