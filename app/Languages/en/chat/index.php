@@ -71,6 +71,13 @@ return [
     'chat_file_upload_error' => 'Could not upload file.',
     'chat_file_size_error' => 'File exceeds the configured upload limit.',
     'chat_file_type_error' => 'Allowed types include images, music, video, documents and archives: JPG, PNG, WebP, GIF, BMP, MP3, WAV, OGG, M4A, FLAC, AAC, MP4, WEBM, MOV, AVI, MKV, MPEG, MPG, PDF, TXT, CSV, DOC, DOCX, XLS, XLSX, PPT, PPTX, RTF, ODT, ODS, ODP, MD, JSON, XML, ZIP, RAR and 7Z. Executable files are blocked.',
+    // FIREBALL_CHAT21_REPLY
+    'chat_action_reply' => 'Reply',
+    'chat_reply_you' => 'You',
+    'chat_reply_attachment' => 'Attachment',
+    'chat_reply_deleted' => 'Original message is unavailable',
+    'chat_reply_cancel' => 'Cancel reply',
+    'chat_reply_invalid' => 'You cannot reply to this message. Refresh the conversation and try again.',
     'chat_action_delete' => 'Delete',
     'chat_action_more' => 'Actions',
     'chat_selection_mode' => 'Select',

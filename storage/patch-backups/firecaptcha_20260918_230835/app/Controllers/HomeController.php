@@ -1,0 +1,409 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Models\ContactRequest;
+use App\Models\ContactSubject;
+use App\Models\Page;
+use App\Models\Post;
+use App\Models\SiteSetting;
+use App\Models\Support;
+use App\Services\NotificationService;
+use FBL\Theme;
+use FBL\RateLimiter;
+
+/**
+ * Обрабатывает главную страницу и страницу контактов сайта.
+ */
+class HomeController extends BaseController
+{
+
+    protected ContactRequest $contactRequests;
+    protected ContactSubject $contactSubjects;
+    protected Page $pages;
+    protected Post $posts;
+    protected SiteSetting $siteSettings;
+    protected Support $support;
+
+    /**
+     * Инициализирует модели, используемые на публичных страницах контроллера.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->contactRequests = new ContactRequest();
+        $this->contactSubjects = new ContactSubject();
+        $this->pages = new Page();
+        $this->posts = new Post();
+        $this->siteSettings = new SiteSetting();
+        $this->support = new Support();
+    }
+
+    /**
+     * Формирует данные для главной страницы с товарами, категориями и постами.
+     */
+    public function index()
+    {
+        $homepageType = $this->siteSettings->get('homepage_type', 'default');
+
+        if ($homepageType === 'page') {
+            $page = $this->pages->findPublishedById((int)$this->siteSettings->get('homepage_page_id', '0'));
+            if ($page) {
+                return $this->renderPageHomepage($page);
+            }
+        }
+
+        if ($homepageType === 'posts') {
+            return $this->renderPostsHomepage();
+        }
+
+        return $this->renderDefaultHomepage();
+    }
+
+    /**
+     * Renders the original system homepage.
+     */
+    protected function renderDefaultHomepage(): string
+    {
+        $featured_posts = $this->filterPublicPosts($this->posts->getHomeFeaturedPosts(10));
+
+        return Theme::render('home', [
+            'title' => return_translation('home_index_title'),
+            'sales_products' => [],
+            'root_categories' => [],
+            'featured_posts' => $featured_posts,
+        ]);
+    }
+
+    /**
+     * Renders a CMS page as the site root while keeping canonical URL at "/".
+     */
+    protected function renderPageHomepage(array $page): string
+    {
+        $filteredPage = apply_filters('public_page_before_render', $page, get_user() ?: []);
+        if (is_array($filteredPage)) {
+            $page = $filteredPage;
+        }
+
+        return Theme::render('page', [
+            'title' => $page['title'],
+            'page' => $page,
+            'seo_title' => $page['meta_title'] !== '' ? $page['meta_title'] : $page['title'],
+            'seo_description' => $page['meta_description'],
+            'seo_canonical' => base_href('/'),
+        ]);
+    }
+
+    /**
+     * Renders a latest-posts feed as the site root.
+     */
+    protected function renderPostsHomepage(): string
+    {
+        $limit = max(1, min(100, (int)$this->siteSettings->get('posts_per_page', '10')));
+        $posts = $this->posts->getLatestPublishedPosts($limit);
+        $sidebarData = $this->posts->getSidebarData();
+
+        return Theme::render('posts', [
+            'title' => return_translation('posts_index_title'),
+            'posts' => $this->filterPublicPosts($posts),
+            'total_posts' => count($posts),
+            'pagination' => null,
+            'current_category' => null,
+            'current_category_label' => null,
+            'categories' => $sidebarData['categories'],
+            'trending_posts' => $this->filterPublicPosts((array)$sidebarData['trending_posts']),
+            'seo_title' => return_translation('posts_index_title'),
+            'seo_canonical' => base_href('/'),
+        ]);
+    }
+
+    private function filterPublicPosts(array $posts): array
+    {
+        $filtered = apply_filters('public_posts_before_render', $posts, get_user() ?: []);
+
+        return is_array($filtered) ? array_values($filtered) : [];
+    }
+
+    /**
+     * Показывает страницу контактов и обрабатывает отправку формы обратной связи.
+     */
+    public function contacts()
+    {
+        if (request()->isPost()) {
+            $data = $this->normalizeContactData(request()->getData());
+            $errors = $this->validateContactData($data, requirePrivacy: true);
+            $rateKey = 'contacts|' . client_ip();
+            if (!RateLimiter::attempt($rateKey, 3, 600)) {
+                $errors['message'][] = return_translation('contacts_form_rate_limited');
+            }
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                session()->setFlash('error', return_translation('contacts_form_error'));
+                response()->redirect(base_href('/contacts'));
+            }
+
+            $requestId = $this->contactRequests->create($data);
+            $this->notifyAdminsAboutContactRequest($requestId, $data, 'contacts');
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('contacts_form_success'));
+            response()->redirect(base_href('/contacts'));
+        }
+
+        return view('home/contacts', [
+            'title' => return_translation('contacts_page_title'),
+            'contact_subjects' => $this->getContactSubjectOptions(),
+            'privacy_policy_url' => $this->getPrivacyPolicyUrl(),
+            'footer_scripts' => [
+                base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
+            ],
+        ]);
+    }
+
+    public function support()
+    {
+        if ($this->siteSettings->get('support_public_enabled', '1') !== '1') {
+            abort();
+        }
+
+        $search = trim((string)request()->get('q', ''));
+        $supportSubjectOptions = $this->getSupportSubjectOptions();
+
+        if (request()->isPost()) {
+            $data = $this->normalizeContactData(request()->getData());
+            $errors = $this->validateContactData($data, $supportSubjectOptions, 'support_validation_category', false);
+            $rateKey = 'support|' . client_ip();
+            if (!RateLimiter::attempt($rateKey, 3, 600)) {
+                $errors['message'][] = return_translation('contacts_form_rate_limited');
+            }
+
+            if (!empty($errors)) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                session()->setFlash('error', return_translation('contacts_form_error'));
+                response()->redirect($this->supportQuestionFormRedirectUrl());
+            }
+
+            $requestId = $this->contactRequests->create($data);
+            $this->notifyAdminsAboutContactRequest($requestId, $data, 'support');
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('support_question_success'));
+            response()->redirect($this->supportQuestionFormRedirectUrl());
+        }
+
+        return view('home/support', [
+            'title' => return_translation('support_page_title'),
+            'search' => $search,
+            'faq_items' => $this->support->getPublishedFaq(10, $search),
+            'kb_categories' => $this->support->getPublishedKbCategoriesWithArticles(5, $search),
+            'support_categories' => $supportSubjectOptions,
+            'footer_scripts' => [
+                base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
+            ],
+        ]);
+    }
+
+    public function supportArticle()
+    {
+        if ($this->siteSettings->get('support_public_enabled', '1') !== '1') {
+            abort();
+        }
+
+        $article = $this->support->findPublishedKbArticleBySlug((string)get_route_param('slug', ''));
+        if (!$article) {
+            abort();
+        }
+
+        $this->support->recordKbArticleView((int)$article['id']);
+
+        return view('home/support_article', [
+            'title' => (string)$article['title'],
+            'article' => $article,
+            'related_articles' => $this->support->getRelatedPublishedKbArticles($article, 8),
+            'footer_scripts' => [
+                base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
+            ],
+        ]);
+    }
+
+    public function supportArticleFeedback(): void
+    {
+        if ($this->siteSettings->get('support_public_enabled', '1') !== '1') {
+            response()->json(['status' => 'error'], 404);
+        }
+
+        $articleId = (int)request()->post('article_id', 0);
+        $vote = (string)request()->post('vote', '');
+        if ($articleId <= 0 || !in_array($vote, ['helpful', 'not_helpful'], true)) {
+            response()->json(['status' => 'error'], 422);
+        }
+
+        $article = $this->support->findPublishedKbArticleById($articleId);
+        if (!$article) {
+            response()->json(['status' => 'error'], 404);
+        }
+
+        $visitorKey = $this->supportFeedbackVisitorKey((string)request()->post('visitor_key', ''));
+        $result = $this->support->voteKbArticle($articleId, $visitorKey, $vote === 'helpful');
+
+        response()->json([
+            'status' => 'success',
+            'recorded' => (bool)$result['recorded'],
+            'already_voted' => (bool)$result['already_voted'],
+            'stats' => $result['stats'],
+        ]);
+    }
+
+    protected function supportQuestionFormRedirectUrl(): string
+    {
+        $path = (string)(parse_url(base_href('/support'), PHP_URL_PATH) ?: '/support');
+
+        return $path . '#support-question-form';
+    }
+
+    protected function supportFeedbackVisitorKey(string $visitorKey): string
+    {
+        $visitorKey = trim($visitorKey);
+        if ($visitorKey !== '' && preg_match('/^[a-zA-Z0-9._:-]{16,128}$/', $visitorKey)) {
+            return hash('sha256', 'support-feedback|' . $visitorKey);
+        }
+
+        return hash('sha256', 'support-feedback|' . client_ip() . '|' . (string)($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    }
+
+    protected function notifyAdminsAboutContactRequest(int $requestId, array $data, string $source): void
+    {
+        if ($requestId <= 0) {
+            return;
+        }
+
+        try {
+            NotificationService::createForAdmins([
+                'title' => (string)($data['subject'] ?? return_translation('notification_request_fallback_subject')),
+                'message' => str_replace(':name', (string)($data['name'] ?? ''), return_translation('notification_request_from')),
+                'type' => 'contact_request',
+                'action_url' => '/admin/contact-requests',
+                'source' => $source,
+                'priority' => 'normal',
+                'metadata' => [
+                    'request_id' => $requestId,
+                    'phone' => (string)($data['phone'] ?? ''),
+                ],
+                'store_unread' => false,
+            ]);
+        } catch (\Throwable $exception) {
+            log_error_details('Contact request notification dispatch failed', [
+                'request_id' => $requestId,
+                'source' => $source,
+            ], $exception);
+        }
+    }
+
+    /**
+     * Нормализует данные формы контактов перед валидацией и сохранением.
+     */
+    protected function normalizeContactData(array $data): array
+    {
+        return [
+            'name' => trim((string)($data['name'] ?? '')),
+            'email' => mb_strtolower(trim((string)($data['email'] ?? ''))),
+            'phone' => $this->normalizeContactPhone((string)($data['phone'] ?? '')),
+            'subject' => trim((string)($data['subject'] ?? '')),
+            'message' => trim((string)($data['message'] ?? '')),
+            'privacy_accepted' => (string)($data['privacy_accepted'] ?? '') === '1' ? '1' : '0',
+        ];
+    }
+
+    /**
+     * Проверяет обязательные поля и форматы контактов в форме обращения.
+     */
+    protected function validateContactData(
+        array $data,
+        ?array $allowedSubjects = null,
+        string $subjectErrorKey = 'contacts_validation_subject',
+        bool $requirePhone = true,
+        bool $requirePrivacy = false
+    ): array
+    {
+        $errors = [];
+        $allowedSubjects = $allowedSubjects ?? $this->getContactSubjectOptions();
+
+        if ($data['name'] === '') {
+            $errors['name'][] = return_translation('contacts_validation_name');
+        } elseif (mb_strlen($data['name']) > 120) {
+            $errors['name'][] = return_translation('contacts_validation_name_length');
+        }
+
+        if ($data['email'] === '') {
+            $errors['email'][] = return_translation('contacts_validation_email');
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'][] = return_translation('contacts_validation_email_invalid');
+        } elseif (mb_strlen($data['email']) > 254) {
+            $errors['email'][] = return_translation('contacts_validation_email_invalid');
+        }
+
+        if ($requirePhone && $data['phone'] === '') {
+            $errors['phone'][] = return_translation('contacts_validation_phone');
+        } elseif ($data['phone'] !== '' && !$this->isValidContactPhone($data['phone'])) {
+            $errors['phone'][] = return_translation('contacts_validation_phone_invalid');
+        }
+
+        if ($data['subject'] === '' || !in_array($data['subject'], $allowedSubjects, true)) {
+            $errors['subject'][] = return_translation($subjectErrorKey);
+        }
+
+        if ($data['message'] === '') {
+            $errors['message'][] = return_translation('contacts_validation_message');
+        } elseif (mb_strlen($data['message']) > 10000) {
+            $errors['message'][] = return_translation('contacts_validation_message_length');
+        }
+
+        if ($requirePrivacy && ($data['privacy_accepted'] ?? '0') !== '1') {
+            $errors['privacy_accepted'][] = return_translation('contacts_validation_privacy_required');
+        }
+
+        return $errors;
+    }
+
+    protected function normalizeContactPhone(string $phone): string
+    {
+        $phone = preg_replace('/\p{C}+/u', '', trim($phone)) ?? '';
+        $phone = preg_replace('/\s+/u', ' ', $phone) ?? $phone;
+
+        return mb_substr($phone, 0, 50);
+    }
+
+    protected function isValidContactPhone(string $phone): bool
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        return mb_strlen($phone) <= 50
+            && strlen($digits) >= 5
+            && preg_match('/^[0-9+\-\s().]+$/u', $phone) === 1;
+    }
+
+    protected function getContactSubjectOptions(): array
+    {
+        return $this->contactSubjects->getActiveNames();
+    }
+
+    protected function getPrivacyPolicyUrl(): string
+    {
+        $pageId = (int)$this->siteSettings->get('cookie_policy_page_id', '0');
+        $page = $pageId > 0 ? $this->pages->findPublishedById($pageId) : false;
+
+        return $page ? (string)$page['url'] : '';
+    }
+
+    protected function getSupportSubjectOptions(): array
+    {
+        return array_values(array_filter(array_map(
+            static fn(array $category): string => trim((string)($category['name'] ?? '')),
+            $this->support->getKbCategories()
+        )));
+    }
+
+}

@@ -71,6 +71,13 @@ return [
     'chat_file_upload_error' => '无法上传文件。',
     'chat_file_size_error' => '文件超过了配置的上传限制。',
     'chat_file_type_error' => '允许的文件类型包括图片、音乐、视频、文档和压缩包：JPG、PNG、WebP、GIF、BMP、MP3、WAV、OGG、M4A、FLAC、AAC、MP4、WEBM、MOV、AVI、MKV、MPEG、MPG、PDF、TXT、CSV、DOC、DOCX、XLS、XLSX、PPT、PPTX、RTF、ODT、ODS、ODP、MD、JSON、XML、ZIP、RAR 和 7Z。禁止可执行文件。',
+    // FIREBALL_CHAT21_REPLY
+    'chat_action_reply' => '回复',
+    'chat_reply_you' => '你',
+    'chat_reply_attachment' => '附件',
+    'chat_reply_deleted' => '原消息不可用',
+    'chat_reply_cancel' => '取消回复',
+    'chat_reply_invalid' => '无法回复此消息。请刷新会话后重试。',
     'chat_action_delete' => '删除',
     'chat_action_more' => '操作',
     'chat_selection_mode' => '选择',

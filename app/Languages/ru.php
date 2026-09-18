@@ -1798,4 +1798,12 @@ return [
     'editor_block_button' => 'Кнопка',
     'editor_block_embed' => 'Встраиваемый контент',
     'editor_embed_url_hint' => 'Вставьте поддерживаемую ссылку в настройках блока',
+    // FireCAPTCHA
+    'firecaptcha_title' => 'Небольшая проверка безопасности',
+    'firecaptcha_prompt' => 'Разожгите огонь: выберите подходящий символ.',
+    'firecaptcha_hint' => 'Обычным посетителям эта проверка не показывается.',
+    'firecaptcha_validation_required' => 'Пройдите проверку FireCAPTCHA и отправьте форму ещё раз.',
+    'firecaptcha_form_error' => 'Нужна небольшая проверка безопасности.',
+    'firecaptcha_honeypot_label' => 'Не заполняйте это поле',
+
 ];

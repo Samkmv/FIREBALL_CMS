@@ -1,0 +1,49 @@
+{
+  "patch_id": "fireball-chat21-reply-20260918",
+  "files": [
+    {
+      "path": "app/Models/ChatMessage.php",
+      "changed": true
+    },
+    {
+      "path": "app/Controllers/ChatController.php",
+      "changed": true
+    },
+    {
+      "path": "app/Views/themes/default/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "public/assets/default/js/chat.js",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/js/chat.js",
+      "changed": true
+    },
+    {
+      "path": "public/assets/default/css/style.css",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/css/style.css",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/ru/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/en/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/de/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/zh-cn/chat/index.php",
+      "changed": true
+    }
+  ]
+}

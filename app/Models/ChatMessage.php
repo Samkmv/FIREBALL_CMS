@@ -4,12 +4,17 @@ namespace App\Models;
 
 use App\Services\ChatCipher;
 use App\Services\ChatMediaStorage;
+use App\Services\ConversationService;
+use App\Services\ChatReceiptService;
+use App\Services\ChatAttachmentService;
 
 /**
  * Хранит сообщения чата, вложения, аудит и производные данные для списков диалогов.
  */
 class ChatMessage
 {
+    // FIREBALL_CHAT21_REPLY
+    // FIREBALL_CHAT2_MODEL
 
     protected string $table = 'chat_messages';
     protected string $auditTable = 'chat_audit_logs';
@@ -80,19 +85,24 @@ class ChatMessage
     /**
      * Сохраняет новое сообщение чата с шифрованием текста и метаданными вложения.
      */
-    public function create(int $senderId, int $receiverId, string $message, ?array $attachment = null, array $meta = []): int
+    public function create(int $senderId, int $receiverId, string $message, ?array $attachment = null, array $meta = [], ?int $replyToId = null): int
     {
         $this->ensureTableExists();
+        $conversationService = new ConversationService();
+        $conversationId = $conversationService->ensureDirectConversation($senderId, $receiverId);
         $encryptedMessage = ChatCipher::encrypt($message);
+        $encryptionKeyId = $message === '' ? null : ChatCipher::currentKeyId();
 
         db()->query(
             "INSERT INTO {$this->table}
-             (sender_id, receiver_id, message_ciphertext, attachment_path, attachment_name, attachment_type, attachment_size, sender_ip, sender_user_agent, is_read, deleted_at, deleted_by, deleted_reason, created_at)
-             VALUES (:sender_id, :receiver_id, :message_ciphertext, :attachment_path, :attachment_name, :attachment_type, :attachment_size, :sender_ip, :sender_user_agent, :is_read, NULL, NULL, NULL, :created_at)",
+             (conversation_id, sender_id, receiver_id, message_ciphertext, encryption_key_id, attachment_path, attachment_name, attachment_type, attachment_size, sender_ip, sender_user_agent, is_read, delivered_at, edited_at, reply_to_id, deleted_at, deleted_by, deleted_reason, created_at)
+             VALUES (:conversation_id, :sender_id, :receiver_id, :message_ciphertext, :encryption_key_id, :attachment_path, :attachment_name, :attachment_type, :attachment_size, :sender_ip, :sender_user_agent, :is_read, NULL, NULL, :reply_to_id, NULL, NULL, NULL, :created_at)",
             [
+                'conversation_id' => $conversationId,
                 'sender_id' => $senderId,
                 'receiver_id' => $receiverId,
                 'message_ciphertext' => $encryptedMessage,
+                'encryption_key_id' => $encryptionKeyId,
                 'attachment_path' => $attachment['path'] ?? null,
                 'attachment_name' => $attachment['name'] ?? null,
                 'attachment_type' => $attachment['type'] ?? null,
@@ -100,15 +110,20 @@ class ChatMessage
                 'sender_ip' => $this->normalizeIpAddress((string)($meta['ip'] ?? '')),
                 'sender_user_agent' => $this->normalizeUserAgent((string)($meta['user_agent'] ?? '')),
                 'is_read' => 0,
+                'reply_to_id' => ($replyToId !== null && $replyToId > 0) ? $replyToId : null,
                 'created_at' => date('Y-m-d H:i:s'),
             ]
         );
 
-        return (int)db()->getInsertId();
+        $messageId = (int)db()->getInsertId();
+        $conversationService->touchMessage($conversationId, $messageId);
+        (new ChatAttachmentService())->registerLegacyAttachment($messageId, $attachment);
+        return $messageId;
     }
 
     /**
      * Возвращает сообщения диалога между двумя пользователями.
+     * В Chat 2.1 также возвращает безопасный preview сообщения, на которое дан ответ.
      */
     public function getConversationMessages(int $firstUserId, int $secondUserId, int $limit = 100): array
     {
@@ -116,14 +131,40 @@ class ChatMessage
         $limit = max(1, min(300, $limit));
 
         $messages = db()->query(
-            "SELECT id, sender_id, receiver_id, message_ciphertext, attachment_path, attachment_name, attachment_type, attachment_size, sender_ip, sender_user_agent, is_read, created_at
-             FROM {$this->table}
-             WHERE deleted_at IS NULL
+            "SELECT
+                m.id,
+                m.sender_id,
+                m.receiver_id,
+                m.message_ciphertext,
+                m.attachment_path,
+                m.attachment_name,
+                m.attachment_type,
+                m.attachment_size,
+                m.sender_ip,
+                m.sender_user_agent,
+                m.is_read,
+                m.created_at,
+                m.reply_to_id,
+                r.id AS reply_id,
+                r.sender_id AS reply_sender_id,
+                r.message_ciphertext AS reply_message_ciphertext,
+                r.attachment_name AS reply_attachment_name,
+                r.attachment_type AS reply_attachment_type,
+                r.deleted_at AS reply_deleted_at
+             FROM {$this->table} m
+             LEFT JOIN {$this->table} r
+               ON r.id = m.reply_to_id
+              AND (
+                    (r.sender_id = m.sender_id AND r.receiver_id = m.receiver_id)
+                    OR
+                    (r.sender_id = m.receiver_id AND r.receiver_id = m.sender_id)
+              )
+             WHERE m.deleted_at IS NULL
                AND (
-                    (sender_id = :first_user_id AND receiver_id = :second_user_id)
-                    OR (sender_id = :second_user_id AND receiver_id = :first_user_id)
+                    (m.sender_id = :first_user_id AND m.receiver_id = :second_user_id)
+                    OR (m.sender_id = :second_user_id AND m.receiver_id = :first_user_id)
                )
-             ORDER BY id DESC
+             ORDER BY m.id DESC
              LIMIT {$limit}",
             [
                 'first_user_id' => $firstUserId,
@@ -134,6 +175,29 @@ class ChatMessage
         $messages = array_reverse($messages);
 
         return array_map(static function (array $message): array {
+            $replyToId = (int)($message['reply_to_id'] ?? 0);
+            $reply = null;
+
+            if ($replyToId > 0) {
+                $replyExists = (int)($message['reply_id'] ?? 0) > 0;
+                $replyDeleted = $replyExists && !empty($message['reply_deleted_at']);
+
+                $reply = [
+                    'id' => $replyToId,
+                    'sender_id' => $replyExists ? (int)($message['reply_sender_id'] ?? 0) : 0,
+                    'message' => ($replyExists && !$replyDeleted)
+                        ? ChatCipher::decrypt((string)($message['reply_message_ciphertext'] ?? ''))
+                        : '',
+                    'attachment_name' => ($replyExists && !$replyDeleted)
+                        ? (string)($message['reply_attachment_name'] ?? '')
+                        : '',
+                    'attachment_type' => ($replyExists && !$replyDeleted)
+                        ? (string)($message['reply_attachment_type'] ?? '')
+                        : '',
+                    'deleted' => !$replyExists || $replyDeleted,
+                ];
+            }
+
             return [
                 'id' => (int)$message['id'],
                 'sender_id' => (int)$message['sender_id'],
@@ -141,9 +205,53 @@ class ChatMessage
                 'message' => ChatCipher::decrypt((string)$message['message_ciphertext']),
                 'attachment' => self::normalizeAttachment($message),
                 'is_read' => (int)$message['is_read'],
+                'reply_to_id' => $replyToId > 0 ? $replyToId : null,
+                'reply' => $reply,
                 'created_at' => (string)$message['created_at'],
             ];
         }, $messages);
+    }
+
+    /**
+     * Проверяет, что сообщение для ответа существует и принадлежит этому direct-диалогу.
+     */
+    public function getReplyTargetForConversation(
+        int $messageId,
+        int $firstUserId,
+        int $secondUserId
+    ): ?array {
+        if ($messageId <= 0 || $firstUserId <= 0 || $secondUserId <= 0) {
+            return null;
+        }
+
+        $this->ensureTableExists();
+
+        $message = db()->query(
+            "SELECT id, sender_id, receiver_id
+             FROM {$this->table}
+             WHERE id = :message_id
+               AND deleted_at IS NULL
+               AND (
+                    (sender_id = :first_user_id AND receiver_id = :second_user_id)
+                    OR (sender_id = :second_user_id AND receiver_id = :first_user_id)
+               )
+             LIMIT 1",
+            [
+                'message_id' => $messageId,
+                'first_user_id' => $firstUserId,
+                'second_user_id' => $secondUserId,
+            ]
+        )->getOne();
+
+        if (!$message) {
+            return null;
+        }
+
+        return [
+            'id' => (int)$message['id'],
+            'sender_id' => (int)$message['sender_id'],
+            'receiver_id' => (int)$message['receiver_id'],
+        ];
     }
 
     /**
@@ -233,6 +341,10 @@ class ChatMessage
                 'current_user_id' => $currentUserId,
             ]
         );
+        $conversationId = (new ConversationService())->findDirectConversationId($currentUserId, $contactId);
+        if ($conversationId !== null) {
+            (new ChatReceiptService())->markConversationRead($conversationId, $currentUserId);
+        }
     }
 
     /**

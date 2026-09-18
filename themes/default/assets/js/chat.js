@@ -59,6 +59,7 @@ $(function () {
     syncMobileFullscreen();
 
     const fetchUrl = String(chatApp.data('fetch-url') || '');
+    const streamUrl = String(chatApp.data('stream-url') || '');
     const sendUrl = String(chatApp.data('send-url') || '');
     const deleteUrl = String(chatApp.data('delete-url') || '');
     const clearUrl = String(chatApp.data('clear-url') || '');
@@ -93,6 +94,11 @@ $(function () {
     const form = chatApp.find('[data-chat-form]');
     const userIdInput = form.find('[data-chat-user-id]');
     const messageInput = form.find('[data-chat-message-input]');
+    const replyInput = form.find('[data-chat-reply-to-id]');
+    const replyPreview = form.find('[data-chat-reply-preview]');
+    const replyAuthor = form.find('[data-chat-reply-author]');
+    const replyText = form.find('[data-chat-reply-text]');
+    const replyCancelButton = form.find('[data-chat-reply-cancel]');
     const attachmentInput = form.find('[data-chat-attachment]');
     const siteFileInput = form.find('[data-chat-site-file-input]');
     const recordVoiceButton = form.find('[data-chat-record-voice]');
@@ -168,6 +174,7 @@ $(function () {
         discardVoiceRecording: false,
         voiceRequestId: 0,
         messagesLoadErrorShown: false,
+        replyTo: null,
         canModerate: String(chatApp.data('can-moderate')) === '1',
         canBulkDelete: String(chatApp.data('can-bulk-delete')) === '1',
         canClearChat: String(chatApp.data('can-clear-chat')) === '1',
@@ -389,7 +396,11 @@ $(function () {
         Number(item.is_read) || 0,
         item.created_at || '',
         item.message || '',
-        item.attachment && item.attachment.url ? item.attachment.url : ''
+        item.attachment && item.attachment.url ? item.attachment.url : '',
+        Number(item.reply_to_id) || 0,
+        item.reply && item.reply.message ? item.reply.message : '',
+        item.reply && item.reply.attachment_name ? item.reply.attachment_name : '',
+        item.reply && item.reply.deleted ? 1 : 0
     ].join(':')).join('|');
 
     const isNearBottom = (element, threshold = 24) => (
@@ -1156,6 +1167,84 @@ $(function () {
             .prop('disabled', selectedCount === 0);
     };
 
+    // FIREBALL_CHAT21_REPLY
+    const replyPreviewText = (item) => {
+        if (!item) return '';
+        const text = String(item.message || '').trim();
+        if (text !== '') return text.length > 160 ? `${text.slice(0, 157)}...` : text;
+        if (item.attachment && item.attachment.name) return String(item.attachment.name);
+        return String(chatApp.data('reply-attachment-text') || 'Attachment');
+    };
+
+    const clearReply = () => {
+        state.replyTo = null;
+        replyInput.val('');
+        replyPreview.addClass('d-none');
+        replyAuthor.text('');
+        replyText.text('');
+    };
+
+    const beginReply = (item) => {
+        if (!item || !Number(item.id)) return;
+
+        const currentUserId = Number(window.__chatAppState && window.__chatAppState.currentUserId) || 0;
+        const senderIsMe = Number(item.sender_id) === currentUserId;
+        const contactName = String(
+            getContactButtons().filter('.active').first().data('user-name')
+            || currentName.text()
+            || ''
+        ).trim();
+
+        state.replyTo = {
+            id: Number(item.id),
+            sender_id: Number(item.sender_id) || 0,
+            message: String(item.message || ''),
+            attachment: item.attachment || null,
+        };
+
+        replyInput.val(String(state.replyTo.id));
+        replyAuthor.text(senderIsMe ? String(chatApp.data('reply-you-text') || 'You') : contactName);
+        replyText.text(replyPreviewText(item));
+        replyPreview.removeClass('d-none');
+        messageInput.trigger('focus');
+    };
+
+    const renderReplyQuote = (reply, currentUserId) => {
+        if (!reply || !Number(reply.id)) return '';
+
+        const deleted = Boolean(reply.deleted);
+        const senderIsMe = Number(reply.sender_id) === Number(currentUserId);
+        const contactName = String(
+            getContactButtons().filter('.active').first().data('user-name')
+            || currentName.text()
+            || ''
+        ).trim();
+
+        const author = deleted
+            ? ''
+            : (senderIsMe ? String(chatApp.data('reply-you-text') || 'You') : contactName);
+
+        let preview = deleted
+            ? String(chatApp.data('reply-deleted-text') || 'Original message is unavailable')
+            : String(reply.message || '').trim();
+
+        if (!deleted && preview === '' && reply.attachment_name) preview = String(reply.attachment_name);
+        if (!deleted && preview === '') preview = String(chatApp.data('reply-attachment-text') || 'Attachment');
+        if (preview.length > 160) preview = `${preview.slice(0, 157)}...`;
+
+        return `
+            <button
+                type="button"
+                class="chat-message-reply-quote"
+                data-chat-reply-jump="${Number(reply.id)}"
+                title="${escapeHtml(String(chatApp.data('action-reply-text') || 'Reply'))}"
+            >
+                ${author ? `<strong class="chat-message-reply-quote__author">${escapeHtml(author)}</strong>` : ''}
+                <span class="chat-message-reply-quote__text">${escapeHtml(preview)}</span>
+            </button>
+        `;
+    };
+
     const renderMessages = (messages, currentUserId, options = {}) => {
         const box = messagesBox[0];
         const force = Boolean(options.force);
@@ -1211,9 +1300,11 @@ $(function () {
                 : '';
             const attachment = renderAttachment(item.attachment, { standaloneMedia: mediaOnly });
             const isSelected = state.selectedIds.has(Number(item.id));
-            const canShowActions = state.canModerate && !state.selectionMode;
+            const canShowActions = !state.selectionMode;
             const canShowCheckbox = state.selectionMode && state.canBulkDelete;
             const actionDeleteText = escapeHtml(chatApp.data('action-delete-text') || 'Delete');
+            const actionReplyText = escapeHtml(chatApp.data('action-reply-text') || 'Reply');
+            const replyQuote = renderReplyQuote(item.reply, currentUserId);
             const timestamp = escapeHtml(formatMessageTime(item.created_at));
             const dateTime = escapeHtml(String(item.created_at || '').replace(' ', 'T'));
             const avatarHtml = mine
@@ -1232,6 +1323,7 @@ $(function () {
                     ${canShowCheckbox ? `<input type="checkbox" class="form-check-input chat-message-select" data-chat-message-select value="${Number(item.id) || 0}" ${isSelected ? 'checked' : ''}>` : ''}
                     <div class="chat-message-stack ${canShowActions ? 'has-actions' : ''}">
                         <div class="chat-message-bubble ${mine ? 'chat-message-bubble--mine' : 'chat-message-bubble--theirs'} ${mediaOnly ? 'chat-message-bubble--media-only' : ''}">
+                            ${replyQuote}
                             ${messageText}
                             ${attachment}
                             <div class="chat-message-meta-text">
@@ -1241,9 +1333,15 @@ $(function () {
                         </div>
                         ${canShowActions ? `
                             <div class="chat-message-actions">
-                                <button type="button" class="chat-message-delete-btn" data-chat-delete-message="${Number(item.id) || 0}" title="${actionDeleteText}" aria-label="${actionDeleteText}">
-                                    <i class="ci-trash" aria-hidden="true"></i>
+                                <!-- FIREBALL_CHAT21_REPLY_UI_FIX_V2 -->
+                                <button type="button" class="chat-message-reply-btn" data-chat-reply-message="${Number(item.id) || 0}" title="${actionReplyText}" aria-label="${actionReplyText}">
+                                    <i class="ci-arrow-left" aria-hidden="true"></i>
                                 </button>
+                                ${state.canModerate ? `
+                                    <button type="button" class="chat-message-delete-btn" data-chat-delete-message="${Number(item.id) || 0}" title="${actionDeleteText}" aria-label="${actionDeleteText}">
+                                        <i class="ci-trash" aria-hidden="true"></i>
+                                    </button>
+                                ` : ''}
                             </div>
                         ` : ''}
                     </div>
@@ -1382,6 +1480,49 @@ $(function () {
         }
     };
 
+    // FIREBALL_CHAT2_FOUNDATION
+    let chatEventSource = null;
+    let chatRealtimeConnected = false;
+
+    const stopChatRealtime = () => {
+        chatRealtimeConnected = false;
+        if (chatEventSource) {
+            chatEventSource.close();
+            chatEventSource = null;
+        }
+    };
+
+    const startChatRealtime = () => {
+        const contactId = activeContactId();
+        if (!streamUrl || !contactId || typeof window.EventSource === 'undefined' || document.hidden) {
+            chatRealtimeConnected = false;
+            return;
+        }
+        stopChatRealtime();
+        const url = new URL(streamUrl, window.location.href);
+        url.searchParams.set('user_id', String(contactId));
+        const source = new window.EventSource(url.toString(), {withCredentials: true});
+        chatEventSource = source;
+        source.addEventListener('open', () => {
+            if (chatEventSource === source) chatRealtimeConnected = true;
+        });
+        source.addEventListener('chat', (event) => {
+            if (chatEventSource !== source) return;
+            let payload = {};
+            try { payload = JSON.parse(event.data || '{}'); } catch (error) { return; }
+            if (Number(payload.contact_id) !== activeContactId()) return;
+            if (!messagesRequest) loadMessages({force: true});
+        });
+        source.addEventListener('error', () => {
+            if (chatEventSource === source) chatRealtimeConnected = false;
+        });
+    };
+
+    const restartChatRealtime = () => {
+        stopChatRealtime();
+        startChatRealtime();
+    };
+
     let messagesRequest = null;
     let chatPollDelay = 4000;
     let chatNextPollAt = 0;
@@ -1460,12 +1601,14 @@ $(function () {
         state.selectedIds.clear();
         syncSelectionControls();
         messageInput.val('');
+        clearReply();
         resizeMessageInput();
         messageSearchInput.val('');
         stopVoiceRecording(false);
         clearPendingAttachment();
         window.__chatAppState = { activeContactId: activeContactId() };
         $(document).trigger('chat:active-contact-changed', [activeContactId()]);
+        restartChatRealtime();
 
         if (offcanvas) {
             offcanvas.hide();
@@ -1537,6 +1680,7 @@ $(function () {
                 }
 
                 messageInput.val('');
+                clearReply();
                 resizeMessageInput();
                 clearPendingAttachment();
                 state.messagesRequestId += 1;
@@ -1811,6 +1955,40 @@ $(function () {
         setActiveContact($(this));
     });
 
+    chatApp.on('click', '[data-chat-reply-message]', function () {
+        const messageId = Number($(this).data('chat-reply-message')) || 0;
+        if (!messageId) return;
+        const item = state.messages.find((message) => Number(message.id) === messageId);
+        if (item) beginReply(item);
+    });
+
+    chatApp.on('click', '[data-chat-reply-jump]', function () {
+        const messageId = Number($(this).data('chat-reply-jump')) || 0;
+        if (!messageId) return;
+
+        if (currentSearchQuery() !== '') {
+            messageSearchInput.val('');
+            state.renderedSignature = '';
+            renderMessages(
+                state.messages,
+                Number(window.__chatAppState && window.__chatAppState.currentUserId || 0),
+                {force: true}
+            );
+        }
+
+        const target = messagesBox.find(`[data-message-id="${messageId}"]`).first();
+        if (!target.length) return;
+
+        target[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+        target.addClass('is-reply-target');
+        window.setTimeout(() => target.removeClass('is-reply-target'), 1400);
+    });
+
+    replyCancelButton.on('click', function () {
+        clearReply();
+        messageInput.trigger('focus');
+    });
+
     chatApp.on('click', '[data-chat-delete-message]', function () {
         const messageId = Number($(this).data('chat-delete-message')) || 0;
         if (!messageId) {
@@ -2048,6 +2226,7 @@ $(function () {
     $(document).trigger('chat:active-contact-changed', [activeContactId()]);
 
     loadMessages({ stickToBottom: true });
+    startChatRealtime();
     applyContactFilter();
     syncSelectionControls();
     resizeMessageInput();
@@ -2056,14 +2235,18 @@ $(function () {
     }
     window.addEventListener('pagehide', function () {
         stopVoiceRecording(false);
+        stopChatRealtime();
     });
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {
+            startChatRealtime();
             loadMessages();
+        } else {
+            stopChatRealtime();
         }
     });
     setInterval(function () {
-        if (document.visibilityState === 'visible') {
+        if (document.visibilityState === 'visible' && !chatRealtimeConnected) {
             loadMessages({ poll: true });
         }
     }, 4000);

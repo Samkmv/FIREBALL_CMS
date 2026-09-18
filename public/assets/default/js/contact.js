@@ -3,6 +3,45 @@ document.addEventListener('DOMContentLoaded', function () {
     const feedbackBlocks = document.querySelectorAll('[data-support-feedback]');
 
     forms.forEach(function (form) {
+        const jsField = form.querySelector('[data-firecaptcha-js]');
+        const interactionsField = form.querySelector('[data-firecaptcha-interactions]');
+        const captchaOptions = form.querySelectorAll('[data-firecaptcha-option]');
+        let interactions = 0;
+
+        if (jsField) {
+            jsField.value = '1';
+        }
+
+        const registerInteraction = function () {
+            interactions = Math.min(5000, interactions + 1);
+            if (interactionsField) {
+                interactionsField.value = String(interactions);
+            }
+        };
+
+        ['pointerdown', 'keydown', 'focusin', 'change'].forEach(function (eventName) {
+            form.addEventListener(eventName, registerInteraction, {passive: true});
+        });
+
+        captchaOptions.forEach(function (option) {
+            const input = option.querySelector('input[type="radio"]');
+            if (!input) {
+                return;
+            }
+
+            input.addEventListener('change', function () {
+                captchaOptions.forEach(function (item) {
+                    item.classList.remove('btn-dark', 'text-white', 'border-dark');
+                    item.classList.add('btn-outline-secondary');
+                });
+
+                if (input.checked) {
+                    option.classList.remove('btn-outline-secondary');
+                    option.classList.add('btn-dark', 'text-white', 'border-dark');
+                }
+            });
+        });
+
         form.addEventListener('submit', function (event) {
             if (!form.checkValidity()) {
                 event.preventDefault();

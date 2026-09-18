@@ -81,6 +81,13 @@ $contactBlocks = [
 ];
 $visibleContactBlocks = array_values(array_filter($contactBlocks, static fn(array $block): bool => (bool)$block['is_visible']));
 $hasSupportBlock = $contactsSupportTitle !== '' || $contactsSupportText !== '';
+
+// FIRECAPTCHA_PATCH_V1
+$fireCaptchaState = is_array($firecaptcha ?? null) ? $firecaptcha : [];
+$fireCaptchaRequired = !empty($fireCaptchaState['required']);
+$fireCaptchaChallenge = is_array($fireCaptchaState['challenge'] ?? null)
+    ? $fireCaptchaState['challenge']
+    : null;
 ?>
 <main class="content-wrapper">
     <div class="container py-5 mb-2 mb-sm-3 mb-md-4 mb-lg-5 mt-lg-3 mt-xl-4">
@@ -92,6 +99,14 @@ $hasSupportBlock = $contactsSupportTitle !== '' || $contactsSupportText !== '';
             <div class="col bg-body-tertiary py-5 px-4 px-xl-5">
                 <form class="needs-validation py-md-2 px-md-1 px-lg-3 mx-lg-3" action="<?= base_href('/contacts') ?>" method="post" novalidate data-contact-form>
                     <?= get_csrf_field() ?>
+                    <!-- FIRECAPTCHA_PATCH_V1: invisible telemetry + honeypot -->
+                    <input type="hidden" name="firecaptcha_nonce" value="<?= htmlSC((string)($fireCaptchaState['nonce'] ?? '')) ?>">
+                    <input type="hidden" name="firecaptcha_js" value="0" data-firecaptcha-js>
+                    <input type="hidden" name="firecaptcha_interactions" value="0" data-firecaptcha-interactions>
+                    <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+                        <label for="firecaptcha-website"><?= print_translation('firecaptcha_honeypot_label') ?></label>
+                        <input type="text" id="firecaptcha-website" name="firecaptcha_website" value="" tabindex="-1" autocomplete="off">
+                    </div>
                     <div class="position-relative mb-4">
                         <label for="name" class="form-label"><?= print_translation('contacts_form_name') ?> *</label>
                         <input type="text" class="form-control form-control-lg rounded-pill <?= get_validation_class('name') ?>" id="name" name="name" value="<?= old('name') ?>" required>
@@ -141,6 +156,38 @@ $hasSupportBlock = $contactsSupportTitle !== '' || $contactsSupportText !== '';
                         <div class="invalid-feedback"><?= print_translation('contacts_validation_privacy_required') ?></div>
                         <?= get_errors('privacy_accepted') ?>
                     </div>
+                    <?php if ($fireCaptchaRequired && is_array($fireCaptchaChallenge)): ?>
+                        <div class="border rounded-4 p-3 p-sm-4 mb-4 bg-body" data-firecaptcha-challenge>
+                            <input type="hidden" name="firecaptcha_challenge" value="<?= htmlSC((string)($fireCaptchaChallenge['id'] ?? '')) ?>">
+
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <div class="fs-2 lh-1" aria-hidden="true">🔥</div>
+                                <div>
+                                    <div class="fw-semibold"><?= print_translation('firecaptcha_title') ?></div>
+                                    <div class="small text-body-secondary"><?= print_translation('firecaptcha_prompt') ?></div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 pt-2" role="group" aria-label="<?= htmlSC(return_translation('firecaptcha_prompt')) ?>">
+                                <?php foreach ((array)($fireCaptchaChallenge['items'] ?? []) as $item): ?>
+                                    <label class="btn btn-outline-secondary rounded-4 px-3 py-2 fs-3" data-firecaptcha-option>
+                                        <input
+                                            class="visually-hidden"
+                                            type="radio"
+                                            name="firecaptcha_answer"
+                                            value="<?= htmlSC((string)($item['token'] ?? '')) ?>"
+                                            required
+                                        >
+                                        <span aria-hidden="true"><?= htmlSC((string)($item['symbol'] ?? '')) ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <div class="small text-body-secondary mt-2"><?= print_translation('firecaptcha_hint') ?></div>
+                            <?= get_errors('firecaptcha') ?>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="pt-2">
                         <button type="submit" class="btn btn-lg btn-dark rounded-pill"><?= print_translation('contacts_form_submit') ?></button>
                     </div>

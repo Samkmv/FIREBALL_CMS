@@ -1792,4 +1792,12 @@ return [
     'editor_block_button' => 'Schaltfläche',
     'editor_block_embed' => 'Eingebetteter Inhalt',
     'editor_embed_url_hint' => 'Fügen Sie in den Blockeinstellungen eine unterstützte URL ein',
+    // FireCAPTCHA
+    'firecaptcha_title' => 'Kurze Sicherheitsprüfung',
+    'firecaptcha_prompt' => 'Entzünden Sie das Feuer: Wählen Sie das passende Symbol.',
+    'firecaptcha_hint' => 'Normale Besucher sehen diese Prüfung nicht.',
+    'firecaptcha_validation_required' => 'Schließen Sie die FireCAPTCHA-Prüfung ab und senden Sie das Formular erneut.',
+    'firecaptcha_form_error' => 'Eine kurze Sicherheitsprüfung ist erforderlich.',
+    'firecaptcha_honeypot_label' => 'Dieses Feld leer lassen',
+
 ];

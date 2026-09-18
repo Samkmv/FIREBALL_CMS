@@ -1798,4 +1798,12 @@ return [
     'editor_block_button' => 'Button',
     'editor_block_embed' => 'Embedded content',
     'editor_embed_url_hint' => 'Paste a supported URL in block settings',
+    // FireCAPTCHA
+    'firecaptcha_title' => 'Quick security check',
+    'firecaptcha_prompt' => 'Light the fire: choose the matching symbol.',
+    'firecaptcha_hint' => 'Regular visitors do not see this check.',
+    'firecaptcha_validation_required' => 'Complete the FireCAPTCHA check and submit the form again.',
+    'firecaptcha_form_error' => 'A quick security check is required.',
+    'firecaptcha_honeypot_label' => 'Leave this field empty',
+
 ];

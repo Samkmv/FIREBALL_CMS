@@ -1,0 +1,13 @@
+{
+  "patch_id": "fireball-chat21-reply-ui-fix-20260919",
+  "files": [
+    {
+      "path": "public/assets/default/css/style.css",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/css/style.css",
+      "changed": true
+    }
+  ]
+}

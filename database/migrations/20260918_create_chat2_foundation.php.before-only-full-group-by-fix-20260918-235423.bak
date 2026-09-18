@@ -1,0 +1,166 @@
+<?php
+// FIREBALL_CHAT2_FOUNDATION
+// Additive Chat 2.0 migration. Existing ciphertext is never rewritten.
+return static function (): void {
+    $columnExists = static function (string $table, string $column): bool {
+        return (bool)db()->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+            [$table, $column]
+        )->getColumn();
+    };
+    $indexExists = static function (string $table, string $index): bool {
+        return (bool)db()->query(
+            "SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
+            [$table, $index]
+        )->getColumn();
+    };
+
+    (new \App\Models\ChatMessage())->ensureTableExists();
+
+    db()->query("CREATE TABLE IF NOT EXISTS chat_conversations (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        type VARCHAR(20) NOT NULL DEFAULT 'direct',
+        direct_key VARCHAR(64) NULL,
+        title VARCHAR(190) NULL,
+        created_by INT(10) UNSIGNED NULL,
+        last_message_id BIGINT UNSIGNED NULL,
+        created_at DATETIME NOT NULL,
+        updated_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY direct_key (direct_key),
+        KEY type_updated (type, updated_at),
+        KEY created_by (created_by),
+        KEY last_message_id (last_message_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    db()->query("CREATE TABLE IF NOT EXISTS chat_members (
+        conversation_id BIGINT UNSIGNED NOT NULL,
+        user_id INT(10) UNSIGNED NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'member',
+        last_read_message_id BIGINT UNSIGNED NULL,
+        muted_until DATETIME NULL,
+        joined_at DATETIME NOT NULL,
+        PRIMARY KEY (conversation_id, user_id),
+        KEY user_conversation (user_id, conversation_id),
+        KEY muted_until (muted_until)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    db()->query("CREATE TABLE IF NOT EXISTS chat_receipts (
+        message_id BIGINT UNSIGNED NOT NULL,
+        user_id INT(10) UNSIGNED NOT NULL,
+        delivered_at DATETIME NULL,
+        read_at DATETIME NULL,
+        PRIMARY KEY (message_id, user_id),
+        KEY user_read (user_id, read_at),
+        KEY user_delivered (user_id, delivered_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    db()->query("CREATE TABLE IF NOT EXISTS chat_reactions (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        message_id BIGINT UNSIGNED NOT NULL,
+        user_id INT(10) UNSIGNED NOT NULL,
+        reaction VARCHAR(40) NOT NULL,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY message_user_reaction (message_id, user_id, reaction),
+        KEY message_id (message_id),
+        KEY user_id (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    db()->query("CREATE TABLE IF NOT EXISTS chat_attachments (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        message_id BIGINT UNSIGNED NOT NULL,
+        path VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NULL,
+        mime_type VARCHAR(120) NULL,
+        size INT(10) UNSIGNED NULL,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY message_path (message_id, path(191)),
+        KEY message_id (message_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $columns = [
+        'conversation_id' => "ALTER TABLE chat_messages ADD COLUMN conversation_id BIGINT UNSIGNED NULL AFTER id",
+        'encryption_key_id' => "ALTER TABLE chat_messages ADD COLUMN encryption_key_id VARCHAR(32) NULL AFTER message_ciphertext",
+        'reply_to_id' => "ALTER TABLE chat_messages ADD COLUMN reply_to_id BIGINT UNSIGNED NULL AFTER encryption_key_id",
+        'delivered_at' => "ALTER TABLE chat_messages ADD COLUMN delivered_at DATETIME NULL AFTER is_read",
+        'edited_at' => "ALTER TABLE chat_messages ADD COLUMN edited_at DATETIME NULL AFTER delivered_at",
+    ];
+    foreach ($columns as $column => $sql) {
+        if (!$columnExists('chat_messages', $column)) {
+            db()->query($sql);
+        }
+    }
+
+    $indexes = [
+        'conversation_id' => "ALTER TABLE chat_messages ADD KEY conversation_id (conversation_id)",
+        'conversation_created' => "ALTER TABLE chat_messages ADD KEY conversation_created (conversation_id, created_at, id)",
+        'reply_to_id' => "ALTER TABLE chat_messages ADD KEY reply_to_id (reply_to_id)",
+        'encryption_key_id' => "ALTER TABLE chat_messages ADD KEY encryption_key_id (encryption_key_id)",
+    ];
+    foreach ($indexes as $index => $sql) {
+        if (!$indexExists('chat_messages', $index)) {
+            db()->query($sql);
+        }
+    }
+
+    db()->query("INSERT INTO chat_conversations
+        (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
+        SELECT 'direct',
+               CONCAT(LEAST(sender_id, receiver_id), ':', GREATEST(sender_id, receiver_id)),
+               NULL,
+               LEAST(sender_id, receiver_id),
+               MAX(id), MIN(created_at), MAX(created_at)
+        FROM chat_messages
+        WHERE sender_id > 0 AND receiver_id > 0 AND sender_id <> receiver_id
+        GROUP BY LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id)
+        ON DUPLICATE KEY UPDATE
+            last_message_id = GREATEST(COALESCE(chat_conversations.last_message_id, 0), COALESCE(VALUES(last_message_id), 0)),
+            updated_at = GREATEST(chat_conversations.updated_at, VALUES(updated_at))");
+
+    db()->query("UPDATE chat_messages m
+        INNER JOIN chat_conversations c
+          ON c.type = 'direct'
+         AND c.direct_key = CONCAT(LEAST(m.sender_id, m.receiver_id), ':', GREATEST(m.sender_id, m.receiver_id))
+        SET m.conversation_id = c.id
+        WHERE m.conversation_id IS NULL
+          AND m.sender_id > 0 AND m.receiver_id > 0 AND m.sender_id <> m.receiver_id");
+
+    db()->query("INSERT IGNORE INTO chat_members
+        (conversation_id, user_id, role, last_read_message_id, muted_until, joined_at)
+        SELECT conversation_id, sender_id, 'member', NULL, NULL, MIN(created_at)
+        FROM chat_messages WHERE conversation_id IS NOT NULL
+        GROUP BY conversation_id, sender_id");
+
+    db()->query("INSERT IGNORE INTO chat_members
+        (conversation_id, user_id, role, last_read_message_id, muted_until, joined_at)
+        SELECT conversation_id, receiver_id, 'member', NULL, NULL, MIN(created_at)
+        FROM chat_messages WHERE conversation_id IS NOT NULL
+        GROUP BY conversation_id, receiver_id");
+
+    db()->query("INSERT IGNORE INTO chat_attachments
+        (message_id, path, name, mime_type, size, created_at)
+        SELECT id, attachment_path, attachment_name, attachment_type, attachment_size, created_at
+        FROM chat_messages
+        WHERE attachment_path IS NOT NULL AND attachment_path <> ''");
+
+    // Historical exact read time was never stored; created_at is an import baseline only.
+    db()->query("INSERT INTO chat_receipts (message_id, user_id, delivered_at, read_at)
+        SELECT id, receiver_id, created_at, created_at
+        FROM chat_messages WHERE is_read = 1 AND deleted_at IS NULL
+        ON DUPLICATE KEY UPDATE
+            delivered_at = COALESCE(chat_receipts.delivered_at, VALUES(delivered_at)),
+            read_at = COALESCE(chat_receipts.read_at, VALUES(read_at))");
+
+    db()->query("UPDATE chat_members cm
+        INNER JOIN (
+            SELECT conversation_id, receiver_id AS user_id, MAX(id) AS last_read_message_id
+            FROM chat_messages
+            WHERE is_read = 1 AND deleted_at IS NULL AND conversation_id IS NOT NULL
+            GROUP BY conversation_id, receiver_id
+        ) r ON r.conversation_id = cm.conversation_id AND r.user_id = cm.user_id
+        SET cm.last_read_message_id = r.last_read_message_id");
+};

@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\SiteSetting;
 use App\Models\Support;
 use App\Services\NotificationService;
+use App\Services\FireCaptchaService;
 use FBL\Theme;
 use FBL\RateLimiter;
 
@@ -126,21 +127,37 @@ class HomeController extends BaseController
 
     /**
      * Показывает страницу контактов и обрабатывает отправку формы обратной связи.
+     * FIRECAPTCHA_PATCH_V1: adaptive FireCAPTCHA is invisible for low-risk visitors.
      */
     public function contacts()
     {
+        $fireCaptcha = new FireCaptchaService();
+
         if (request()->isPost()) {
-            $data = $this->normalizeContactData(request()->getData());
+            $requestData = request()->getData();
+            $data = $this->normalizeContactData($requestData);
             $errors = $this->validateContactData($data, requirePrivacy: true);
-            $rateKey = 'contacts|' . client_ip();
-            if (!RateLimiter::attempt($rateKey, 3, 600)) {
-                $errors['message'][] = return_translation('contacts_form_rate_limited');
+
+            if (empty($errors)) {
+                $captchaResult = $fireCaptcha->verify('contacts', $requestData);
+                if (!(bool)($captchaResult['passed'] ?? false)) {
+                    $errors['firecaptcha'][] = return_translation('firecaptcha_validation_required');
+                }
+            }
+
+            if (empty($errors)) {
+                $rateKey = 'contacts|' . client_ip();
+                if (!RateLimiter::attempt($rateKey, 3, 600)) {
+                    $errors['message'][] = return_translation('contacts_form_rate_limited');
+                }
             }
 
             if (!empty($errors)) {
                 session()->set('form_data', $data);
                 session()->set('form_errors', $errors);
-                session()->setFlash('error', return_translation('contacts_form_error'));
+                session()->setFlash('error', return_translation(
+                    isset($errors['firecaptcha']) ? 'firecaptcha_form_error' : 'contacts_form_error'
+                ));
                 response()->redirect(base_href('/contacts'));
             }
 
@@ -156,6 +173,7 @@ class HomeController extends BaseController
             'title' => return_translation('contacts_page_title'),
             'contact_subjects' => $this->getContactSubjectOptions(),
             'privacy_policy_url' => $this->getPrivacyPolicyUrl(),
+            'firecaptcha' => $fireCaptcha->prepare('contacts'),
             'footer_scripts' => [
                 base_url('/assets/default/js/contact.js?v=' . filemtime(WWW . '/assets/default/js/contact.js')),
             ],

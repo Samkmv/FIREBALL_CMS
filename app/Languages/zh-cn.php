@@ -1792,4 +1792,12 @@ return [
     'editor_block_button' => '按钮',
     'editor_block_embed' => '嵌入内容',
     'editor_embed_url_hint' => '请在区块设置中粘贴受支持的 URL',
+    // FireCAPTCHA
+    'firecaptcha_title' => '快速安全验证',
+    'firecaptcha_prompt' => '点燃火焰：请选择正确的符号。',
+    'firecaptcha_hint' => '普通访客不会看到此验证。',
+    'firecaptcha_validation_required' => '请完成 FireCAPTCHA 验证后再次提交表单。',
+    'firecaptcha_form_error' => '需要进行一次快速安全验证。',
+    'firecaptcha_honeypot_label' => '请勿填写此字段',
+
 ];

@@ -71,6 +71,13 @@ return [
     'chat_file_upload_error' => 'Не удалось загрузить файл.',
     'chat_file_size_error' => 'Файл превышает настроенный лимит загрузки.',
     'chat_file_type_error' => 'Разрешены изображения, музыка, видео, документы и архивы: JPG, PNG, WebP, GIF, BMP, MP3, WAV, OGG, M4A, FLAC, AAC, MP4, WEBM, MOV, AVI, MKV, MPEG, MPG, PDF, TXT, CSV, DOC, DOCX, XLS, XLSX, PPT, PPTX, RTF, ODT, ODS, ODP, MD, JSON, XML, ZIP, RAR и 7Z. Исполняемые файлы запрещены.',
+    // FIREBALL_CHAT21_REPLY
+    'chat_action_reply' => 'Ответить',
+    'chat_reply_you' => 'Вы',
+    'chat_reply_attachment' => 'Вложение',
+    'chat_reply_deleted' => 'Исходное сообщение недоступно',
+    'chat_reply_cancel' => 'Отменить ответ',
+    'chat_reply_invalid' => 'Нельзя ответить на это сообщение. Обновите диалог и попробуйте ещё раз.',
     'chat_action_delete' => 'Удалить',
     'chat_action_more' => 'Действия',
     'chat_selection_mode' => 'Выделение',

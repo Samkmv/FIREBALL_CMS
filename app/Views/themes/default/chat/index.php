@@ -1,3 +1,271 @@
+
+<style id="fireball-chat-reply-ui-v2">
+/* FIREBALL_CHAT21_REPLY_UI_FIX_V2 */
+
+[data-chat-app] .chat-composer-reply {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 30px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 0 8px !important;
+    padding: 8px 9px 8px 12px !important;
+    border: 1px solid rgba(148, 163, 184, .16) !important;
+    border-left: 3px solid var(--cz-primary, #4d8dff) !important;
+    border-radius: 10px !important;
+    background: rgba(77, 141, 255, .075) !important;
+    box-shadow: none !important;
+}
+
+[data-chat-app] .chat-composer-reply.d-none {
+    display: none !important;
+}
+
+[data-chat-app] .chat-composer-reply__body {
+    display: block !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+[data-chat-app] .chat-composer-reply__author {
+    display: block !important;
+    margin: 0 0 2px !important;
+    color: #74a8ff !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+[data-chat-app] .chat-composer-reply__text {
+    display: block !important;
+    margin: 0 !important;
+    color: var(--cz-body-color) !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    opacity: .72 !important;
+}
+
+[data-chat-app] .chat-composer-reply__cancel {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    color: var(--cz-body-color) !important;
+    box-shadow: none !important;
+    outline: none !important;
+    opacity: .62 !important;
+}
+
+[data-chat-app] .chat-composer-reply__cancel:hover,
+[data-chat-app] .chat-composer-reply__cancel:focus,
+[data-chat-app] .chat-composer-reply__cancel:focus-visible {
+    background: rgba(148, 163, 184, .12) !important;
+    color: var(--cz-body-color) !important;
+    box-shadow: none !important;
+    outline: none !important;
+    opacity: 1 !important;
+}
+
+[data-chat-app] .chat-message-reply-quote {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 0 6px !important;
+    padding: 6px 8px 6px 10px !important;
+    border: 0 !important;
+    border-left: 3px solid rgba(255, 255, 255, .42) !important;
+    border-radius: 7px !important;
+    background: rgba(255, 255, 255, .09) !important;
+    color: inherit !important;
+    font: inherit !important;
+    text-align: left !important;
+    text-decoration: none !important;
+    line-height: 1.2 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    cursor: pointer !important;
+}
+
+[data-chat-app] .chat-message-row--theirs .chat-message-reply-quote {
+    border-left-color: rgba(116, 168, 255, .68) !important;
+    background: rgba(116, 168, 255, .075) !important;
+}
+
+[data-chat-app] .chat-message-reply-quote:hover,
+[data-chat-app] .chat-message-reply-quote:focus,
+[data-chat-app] .chat-message-reply-quote:focus-visible {
+    background: rgba(255, 255, 255, .14) !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+[data-chat-app] .chat-message-reply-quote__author {
+    display: block !important;
+    max-width: 100% !important;
+    margin: 0 0 2px !important;
+    overflow: hidden !important;
+    color: inherit !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    opacity: .82 !important;
+}
+
+[data-chat-app] .chat-message-reply-quote__text {
+    display: block !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    color: inherit !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    opacity: .72 !important;
+}
+
+[data-chat-app] .chat-message-actions {
+    position: absolute !important;
+    top: 50% !important;
+    z-index: 5 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 3px !important;
+    margin: 0 !important;
+    border: 1px solid rgba(148, 163, 184, .15) !important;
+    border-radius: 999px !important;
+    background: rgba(20, 27, 38, .94) !important;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, .18) !important;
+    transform: translateY(-50%) scale(.96) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+[data-chat-app] .chat-message-row--mine .chat-message-actions {
+    right: calc(100% + 7px) !important;
+    left: auto !important;
+}
+
+[data-chat-app] .chat-message-row--theirs .chat-message-actions {
+    left: calc(100% + 7px) !important;
+    right: auto !important;
+}
+
+[data-chat-app] .chat-message-row:hover .chat-message-actions,
+[data-chat-app] .chat-message-row:focus-within .chat-message-actions {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(-50%) scale(1) !important;
+}
+
+[data-chat-app] .chat-message-reply-btn,
+[data-chat-app] .chat-message-delete-btn {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 27px !important;
+    min-width: 27px !important;
+    height: 27px !important;
+    min-height: 27px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    color: #c7d0dc !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+[data-chat-app] .chat-message-reply-btn:hover,
+[data-chat-app] .chat-message-reply-btn:focus,
+[data-chat-app] .chat-message-reply-btn:focus-visible {
+    background: rgba(77, 141, 255, .20) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+[data-chat-app] .chat-message-delete-btn:hover,
+[data-chat-app] .chat-message-delete-btn:focus,
+[data-chat-app] .chat-message-delete-btn:focus-visible {
+    background: rgba(255, 77, 87, .18) !important;
+    color: #ff6c75 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+[data-chat-app] .chat-message-reply-btn i,
+[data-chat-app] .chat-message-delete-btn i {
+    margin: 0 !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+}
+
+[data-chat-app] .chat-message-row.is-reply-target .chat-message-bubble {
+    outline: 2px solid rgba(77, 141, 255, .75) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px rgba(77, 141, 255, .10) !important;
+}
+
+@media (max-width: 767.98px) {
+    [data-chat-app] .chat-message-actions {
+        position: static !important;
+        justify-content: flex-end !important;
+        margin-top: 3px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    [data-chat-app] .chat-message-row--theirs .chat-message-actions {
+        justify-content: flex-start !important;
+    }
+
+    [data-chat-app] .chat-message-reply-btn,
+    [data-chat-app] .chat-message-delete-btn {
+        width: 26px !important;
+        min-width: 26px !important;
+        height: 26px !important;
+        min-height: 26px !important;
+        background: rgba(148, 163, 184, .09) !important;
+    }
+}
+</style>
+
 <main class="content-wrapper">
     <?php
     $contactsByGroup = ['admins' => [], 'clients' => []];
@@ -153,6 +421,7 @@
                 class="chat-app-shell"
                 data-chat-app
                 data-fetch-url="<?= htmlSC($chat_fetch_url) ?>"
+                data-stream-url="<?= htmlSC($chat_stream_url ?? '') ?>"
                 data-send-url="<?= htmlSC($chat_send_url) ?>"
                 data-delete-url="<?= htmlSC($chat_delete_url) ?>"
                 data-clear-url="<?= htmlSC($chat_clear_url) ?>"
@@ -200,6 +469,11 @@
                 data-delete-messages-text="<?= htmlSC(return_translation('chat_messages_deleted')) ?>"
                 data-clear-chat-text="<?= htmlSC(return_translation('chat_conversation_cleared')) ?>"
                 data-action-delete-text="<?= htmlSC(return_translation('chat_action_delete')) ?>"
+                data-action-reply-text="<?= htmlSC(return_translation('chat_action_reply')) ?>"
+                data-reply-you-text="<?= htmlSC(return_translation('chat_reply_you')) ?>"
+                data-reply-attachment-text="<?= htmlSC(return_translation('chat_reply_attachment')) ?>"
+                data-reply-deleted-text="<?= htmlSC(return_translation('chat_reply_deleted')) ?>"
+                data-reply-cancel-text="<?= htmlSC(return_translation('chat_reply_cancel')) ?>"
                 data-confirm-delete-message-text="<?= htmlSC(return_translation('chat_confirm_delete_message')) ?>"
                 data-confirm-delete-messages-text="<?= htmlSC(return_translation('chat_confirm_delete_messages')) ?>"
                 data-confirm-clear-chat-text="<?= htmlSC(return_translation('chat_confirm_clear_chat')) ?>"
@@ -346,6 +620,7 @@
                                 <form data-chat-form enctype="multipart/form-data">
                                     <?= get_csrf_field() ?>
                                     <input type="hidden" name="user_id" value="<?= (int)$active_contact['id'] ?>" data-chat-user-id>
+                                    <input type="hidden" name="reply_to_id" value="" data-chat-reply-to-id>
                                     <input class="visually-hidden position-absolute" type="text" id="chatSiteFileSelection" data-chat-site-file-input>
 
                                     <div class="chat-composer" data-chat-dropzone>
@@ -354,6 +629,23 @@
                                                 <div class="fw-semibold mb-1"><?= print_translation('chat_attachment_drop_title') ?></div>
                                                 <div class="small text-body-secondary"><?= print_translation('chat_attachment_drop_subtitle') ?></div>
                                             </div>
+                                        </div>
+
+                                        <!-- FIREBALL_CHAT21_REPLY -->
+                                        <div class="chat-composer-reply d-none" data-chat-reply-preview>
+                                            <div class="chat-composer-reply__body min-w-0">
+                                                <strong class="chat-composer-reply__author text-truncate" data-chat-reply-author></strong>
+                                                <span class="chat-composer-reply__text text-truncate" data-chat-reply-text></span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                class="chat-composer-reply__cancel btn btn-sm btn-outline-secondary rounded-circle"
+                                                data-chat-reply-cancel
+                                                title="<?= htmlSC(return_translation('chat_reply_cancel')) ?>"
+                                                aria-label="<?= htmlSC(return_translation('chat_reply_cancel')) ?>"
+                                            >
+                                                <i class="ci-close" aria-hidden="true"></i>
+                                            </button>
                                         </div>
 
                                         <div class="chat-composer__row">

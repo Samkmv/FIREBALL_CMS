@@ -1,0 +1,14 @@
+{
+  "app/Controllers/ChatController.php": "a1503c144b7c7b835fc25de72b6e3743072a1e815af3011ae197916499687b5f",
+  "app/Models/ChatMessage.php": "1dde1e6e8e05494ad04ee6e1cc9cc080b374b47401acc5e6ffd4c885b42b6ff7",
+  "app/Services/ChatCipher.php": "4a8e7bfc783b7b73a309d27f86232409861e2d1340c7312da60084cff33ab10d",
+  "config/routes.php": "1d49048dda9d6ce26507cc6453eadc72bb5771a14be26952d5529619ea4d4582",
+  "app/Views/themes/default/chat/index.php": "2e5b4baeeb076e8f15ad4152b9c093b3e77653c15fda280a1846abe17e325f94",
+  "public/assets/default/js/chat.js": "5ffc864ee9776d7ecd9f77e6be4fbb6f7a0fdda36708aada8aebac9add40c9fe",
+  "themes/default/assets/js/chat.js": "303a0110ba3e08055c56cdb7c072277348ebdf6056d427531c9ac53fc08bba5b",
+  "database/migrations/20260918_create_chat2_foundation.php": "965364b9ad0c30e5086e8e261757eda7358522305d9873e86f47b2b607d539c4",
+  "app/Services/ConversationService.php": "ee56a901c6e77bac50d70411232c49ef7d405f1ccaf9214cffa9fa03d41254e7",
+  "app/Services/ChatReceiptService.php": "ad3eaf3d24aea2313d5c1dabdefc10586541e7962d5810a77264af4c706b3553",
+  "app/Services/ChatAttachmentService.php": "866ba2b3cdab3e7517d70b13dc938fa417bd2c2ef0355fcca0ccf28c6e293f2f",
+  "app/Services/ChatRealtimeService.php": "9b5765e47f89c87aa43885de71c3c180092c8da2bb7f4cbe38eeba4086df862b"
+}

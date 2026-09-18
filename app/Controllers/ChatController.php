@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\ChatMessage;
 use App\Models\User;
 use App\Services\ChatMediaStorage;
+use App\Services\ChatRealtimeService;
 use App\Services\NotificationService;
 use App\Services\SafeUploadService;
 use App\Services\UploadSettings;
@@ -16,6 +17,8 @@ use FBL\Language;
  */
 class ChatController extends BaseController
 {
+    // FIREBALL_CHAT21_REPLY
+    // FIREBALL_CHAT2_CONTROLLER
 
     protected ChatMessage $chatMessages;
     protected User $users;
@@ -54,6 +57,7 @@ class ChatController extends BaseController
             'contacts' => $contacts,
             'active_contact' => $activeContact,
             'chat_fetch_url' => base_href('/chat/messages'),
+            'chat_stream_url' => base_href('/chat/stream'),
             'chat_send_url' => base_href('/chat/send'),
             'chat_delete_url' => base_href('/chat/messages/delete'),
             'chat_clear_url' => base_href('/chat/conversation/clear'),
@@ -126,6 +130,7 @@ class ChatController extends BaseController
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->post('user_id');
         $message = trim((string)request()->post('message'));
+        $replyToId = max(0, (int)request()->post('reply_to_id'));
         $files = $this->getAttachmentFiles();
         $siteAttachmentPaths = $this->getSiteAttachmentPaths();
         $this->users->touchPresence($currentUserId);
@@ -162,6 +167,14 @@ class ChatController extends BaseController
             ], 403);
         }
 
+        if ($replyToId > 0
+            && !$this->chatMessages->getReplyTargetForConversation($replyToId, $currentUserId, $contactId)) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_reply_invalid'),
+            ], 422);
+        }
+
         $attachments = [];
         $database = db();
         $ownsTransaction = !$database->inTransaction();
@@ -181,11 +194,18 @@ class ChatController extends BaseController
             }
 
             if (empty($attachments)) {
-                $this->chatMessages->create($currentUserId, $contactId, $message, null, $requestContext);
+                $this->chatMessages->create($currentUserId, $contactId, $message, null, $requestContext, $replyToId);
             } else {
                 foreach ($attachments as $index => $attachment) {
                     $text = $index === 0 ? $message : '';
-                    $this->chatMessages->create($currentUserId, $contactId, $text, $attachment, $requestContext);
+                    $this->chatMessages->create(
+                        $currentUserId,
+                        $contactId,
+                        $text,
+                        $attachment,
+                        $requestContext,
+                        $index === 0 ? $replyToId : null
+                    );
                 }
             }
 
@@ -361,6 +381,20 @@ class ChatController extends BaseController
             'deleted_count' => $deletedCount,
             'message' => return_translation('chat_audit_cleared'),
         ]);
+    }
+
+
+    /** SSE realtime for the active direct conversation. */
+    public function stream()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $contactId = (int)request()->get('user_id');
+        $this->users->touchPresence($currentUserId);
+        if (!$this->isAllowedContact($currentUserId, $contactId)) {
+            response()->text('', 403);
+        }
+        session()->close();
+        (new ChatRealtimeService())->streamDirectConversation($currentUserId, $contactId);
     }
 
     /**
