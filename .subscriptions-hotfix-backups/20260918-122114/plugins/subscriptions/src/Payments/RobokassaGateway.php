@@ -48,8 +48,6 @@ final class RobokassaGateway implements PaymentGatewayInterface
         if (!empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false)
             && !empty($consents['recurring']) && !empty($consents['auto_renew'])) {
             $params['Recurring'] = 'true';
-            // Robokassa recurring charges require the parent payment to be completed by bank card.
-            $params['IncCurrLabel'] = 'BankCard';
         }
 
         return self::PAYMENT_URL . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);

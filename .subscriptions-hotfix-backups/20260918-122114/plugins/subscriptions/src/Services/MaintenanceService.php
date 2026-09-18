@@ -16,7 +16,7 @@ final class MaintenanceService
             [$now, $now, $now]
         )->rowCount();
         $expired = db()->query(
-            "UPDATE subscriptions SET status = 'expired', auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE archived_at IS NULL AND status IN ('active', 'cancelled', 'grace_period', 'past_due') AND COALESCE(grace_ends_at, ends_at) <= ? AND NOT EXISTS (SELECT 1 FROM subscription_payments rp WHERE rp.subscription_id = subscriptions.id AND rp.payment_type = 'recurring' AND rp.billing_period_start = subscriptions.next_billing_at AND (rp.status IN ('created', 'pending') OR (rp.status = 'failed' AND (SELECT COUNT(*) FROM subscription_events re WHERE re.payment_id = rp.id AND re.event_key = 'payment.recurring_failed') < 3)))",
+            "UPDATE subscriptions SET status = 'expired', auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE archived_at IS NULL AND status IN ('active', 'cancelled', 'grace_period', 'past_due') AND COALESCE(grace_ends_at, ends_at) <= ?",
             [$now, $now]
         )->rowCount();
         $notifications = $this->sendExpiryNotifications();

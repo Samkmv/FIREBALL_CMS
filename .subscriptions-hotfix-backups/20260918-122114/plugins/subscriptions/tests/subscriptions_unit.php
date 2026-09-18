@@ -147,7 +147,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.3.7', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.3.6', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -415,7 +415,6 @@ $recurringOrder = [
 ];
 parse_str((string)parse_url($gateway->checkoutUrl($recurringOrder, ['name' => 'Test plan', 'is_recurring' => 1], ['email' => 'buyer@example.test']), PHP_URL_QUERY), $recurringQuery);
 assertSameValue('true', $recurringQuery['Recurring'] ?? '', 'A recurring plan with explicit consent must register recurring billing without a second global switch');
-assertSameValue('BankCard', $recurringQuery['IncCurrLabel'] ?? '', 'A recurring parent checkout must use a bank card');
 $recurringOrder['consent_snapshot'] = json_encode(['recurring' => true, 'auto_renew' => false]);
 parse_str((string)parse_url($gateway->checkoutUrl($recurringOrder, ['name' => 'Test plan', 'is_recurring' => 1], ['email' => 'buyer@example.test']), PHP_URL_QUERY), $manualQuery);
 assertTrueValue(!isset($manualQuery['Recurring']), 'Manual checkout must not register recurring billing');

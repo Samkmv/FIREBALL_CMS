@@ -156,25 +156,14 @@ final class SubscriptionService
         $autoRenew = !empty($terms['auto_renew_enabled'] ?? $terms['is_recurring'] ?? false)
             && !empty($consents['auto_renew'])
             && !empty($consents['recurring']);
-        $payment = db()->query(
-            'SELECT payment_type, subscription_id, parent_payment_id FROM subscription_payments WHERE id = ? LIMIT 1',
-            [$paymentId]
-        )->getOne();
-        $paymentType = (string)($payment['payment_type'] ?? 'initial');
-        $parentPaymentId = $paymentId;
-
-        if ($paymentType === 'recurring') {
+        $payment = db()->query('SELECT payment_type, subscription_id FROM subscription_payments WHERE id = ? LIMIT 1', [$paymentId])->getOne();
+        if (($payment['payment_type'] ?? '') === 'recurring') {
             $renewalTarget = db()->query(
-                'SELECT auto_renew, parent_payment_id FROM subscriptions WHERE id = ? AND user_id = ? AND plan_id = ? LIMIT 1 FOR UPDATE',
+                'SELECT auto_renew FROM subscriptions WHERE id = ? AND user_id = ? AND plan_id = ? LIMIT 1 FOR UPDATE',
                 [(int)($payment['subscription_id'] ?? 0), $userId, $planId]
             )->getOne();
             // A previously dispatched renewal may finish after opt-out. Honour the latest subscription preference.
             $autoRenew = $autoRenew && !empty($renewalTarget['auto_renew']);
-            $parentPaymentId = (int)($renewalTarget['parent_payment_id'] ?? $payment['parent_payment_id'] ?? 0);
-        }
-
-        if ($autoRenew && $parentPaymentId <= 0) {
-            throw new \RuntimeException('A recurring parent payment is required for automatic renewal.');
         }
 
         if ($current && (int)$current['plan_id'] === $planId
@@ -187,11 +176,11 @@ final class SubscriptionService
             $subscriptionId = (int)$current['id'];
             $oldStatus = (string)$current['status'];
             db()->query(
-                "UPDATE subscriptions SET status = 'active', source = 'robokassa', ends_at = ?, grace_ends_at = NULL, auto_renew = ?, next_billing_at = ?, parent_payment_id = ?, updated_at = ? WHERE id = ?",
+                "UPDATE subscriptions SET status = 'active', source = 'robokassa', ends_at = ?, grace_ends_at = NULL, auto_renew = ?, next_billing_at = ?, parent_payment_id = COALESCE(parent_payment_id, ?), updated_at = ? WHERE id = ?",
                 [
                     $endsAt->format('Y-m-d H:i:s'), $autoRenew ? 1 : 0,
                     $autoRenew ? $endsAt->format('Y-m-d H:i:s') : null,
-                    $parentPaymentId, $now->format('Y-m-d H:i:s'), $subscriptionId,
+                    $paymentId, $now->format('Y-m-d H:i:s'), $subscriptionId,
                 ]
             );
             $event = 'subscription.renewed';
@@ -208,7 +197,7 @@ final class SubscriptionService
                 [
                     $userId, $planId, $status, $startsAt->format('Y-m-d H:i:s'), $endsAt->format('Y-m-d H:i:s'),
                     $autoRenew ? 1 : 0, $autoRenew ? $endsAt->format('Y-m-d H:i:s') : null,
-                    $parentPaymentId, 'robokassa', $now->format('Y-m-d H:i:s'), $now->format('Y-m-d H:i:s'),
+                    $paymentId, 'robokassa', $now->format('Y-m-d H:i:s'), $now->format('Y-m-d H:i:s'),
                 ]
             );
             $subscriptionId = (int)db()->getInsertId();
