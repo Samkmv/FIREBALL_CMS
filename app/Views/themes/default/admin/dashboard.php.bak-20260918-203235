@@ -67,27 +67,6 @@ $statCards = [
         'meta' => return_translation('admin_dashboard_team'),
     ],
     [
-        'label' => return_translation('admin_stat_posts'),
-        'value' => (int)($stats['posts'] ?? 0),
-        'icon' => 'ci-file-text',
-        'variant' => 'is-purple',
-        'href' => base_href('/admin/posts'),
-    ],
-    [
-        'label' => return_translation('admin_stat_categories'),
-        'value' => (int)($stats['categories'] ?? 0),
-        'icon' => 'ci-folder',
-        'variant' => 'is-green',
-        'href' => base_href('/admin/categories'),
-    ],
-    [
-        'label' => return_translation('admin_stat_pages'),
-        'value' => (int)($stats['pages'] ?? 0),
-        'icon' => 'ci-file',
-        'variant' => 'is-blue',
-        'href' => base_href('/admin/pages'),
-    ],
-    [
         'label' => return_translation('admin_dashboard_update_version'),
         'value' => $installedVersion,
         'icon' => $hasUpdate ? 'ci-download' : 'ci-refresh-cw',
