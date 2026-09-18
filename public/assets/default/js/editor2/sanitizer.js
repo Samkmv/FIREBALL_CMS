@@ -17,13 +17,48 @@
         'allow', 'allowfullscreen', 'alt', 'aria-label', 'cite', 'colspan', 'controls', 'datetime', 'height',
         'data-aspect-ratio', 'data-autoplay', 'data-controls', 'data-fire-player', 'data-hls-src',
         'data-loop', 'data-media', 'data-muted', 'data-poster', 'data-protocol', 'data-src',
-        'href', 'lang', 'loading', 'open', 'poster', 'preload', 'rel', 'rowspan',
-        'scope', 'src', 'start', 'style', 'target', 'title', 'type', 'width'
+        'frameborder', 'href', 'lang', 'loading', 'open', 'poster', 'preload', 'referrerpolicy', 'rel', 'rowspan',
+        'sandbox', 'scope', 'scrolling', 'src', 'start', 'style', 'target', 'title', 'type', 'width'
     ]);
     const allowedStyles = new Set([
         'background-color', 'color', 'font-family', 'font-size', 'font-style',
         'font-weight', 'letter-spacing', 'line-height', 'margin-left', 'text-align',
         'text-decoration', 'text-decoration-line', 'text-indent', 'vertical-align'
+    ]);
+
+    // FIREBALL_HTML_BLOCK_EXTERNAL_IFRAME_V1
+    // HTML block is intentionally more expressive than rich-text blocks,
+    // but still excludes executable CSS such as url(), expression() and scripts.
+    const allowedHtmlBlockStyles = new Set([
+        ...allowedStyles,
+        'aspect-ratio',
+        'background',
+        'border',
+        'border-bottom',
+        'border-color',
+        'border-left',
+        'border-radius',
+        'border-right',
+        'border-style',
+        'border-top',
+        'border-width',
+        'box-sizing',
+        'display',
+        'height',
+        'max-height',
+        'max-width',
+        'min-height',
+        'min-width',
+        'margin',
+        'margin-bottom',
+        'margin-right',
+        'margin-top',
+        'padding',
+        'padding-bottom',
+        'padding-left',
+        'padding-right',
+        'padding-top',
+        'width'
     ]);
 
     function escapeHtml(value) {
@@ -51,8 +86,9 @@
         }
     }
 
-    function sanitizeStyle(styleText) {
+    function sanitizeStyle(styleText, htmlBlock) {
         const clean = [];
+        const allowed = htmlBlock ? allowedHtmlBlockStyles : allowedStyles;
         String(styleText || '').split(';').forEach(function (declaration) {
             const separator = declaration.indexOf(':');
             if (separator === -1) {
@@ -60,7 +96,7 @@
             }
             const property = declaration.slice(0, separator).trim().toLowerCase();
             const value = declaration.slice(separator + 1).trim();
-            if (!allowedStyles.has(property) || !value) {
+            if (!allowed.has(property) || !value) {
                 return;
             }
             if (/(?:expression\s*\(|(?:java|vb)script\s*:|url\s*\()/i.test(value)) {
@@ -92,21 +128,36 @@
         });
     }
 
-    function isTrustedIframeUrl(value) {
+    function isTrustedIframeUrl(value, allowHtmlBlockExternal) {
         const safe = safeUrl(value, false);
         if (!safe) {
             return false;
         }
         try {
-            const host = new URL(safe, window.location.origin).hostname.toLowerCase().replace(/^www\./, '');
-            const trusted = host === 'youtube.com'
+            const parsed = new URL(safe, window.location.origin);
+            const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+            const trustedProvider = host === 'youtube.com'
                 || host === 'm.youtube.com'
                 || host === 'youtube-nocookie.com'
                 || host === 'youtu.be'
                 || host === 'vimeo.com'
                 || host === 'player.vimeo.com';
+
+            // Rich-text stays restricted to known providers.
+            // The dedicated HTML block may embed any HTTPS provider, plus
+            // same-origin HTTP URLs during local development.
+            const trustedHtmlBlockEmbed = Boolean(allowHtmlBlockExternal) && (
+                parsed.protocol === 'https:'
+                || parsed.origin === window.location.origin
+            );
+            const trusted = trustedProvider || trustedHtmlBlockEmbed;
+
             return typeof api.applyFilters === 'function'
-                ? Boolean(api.applyFilters('sanitize:iframe', trusted, { url: safe, host: host }))
+                ? Boolean(api.applyFilters('sanitize:iframe', trusted, {
+                    url: safe,
+                    host: host,
+                    htmlBlock: Boolean(allowHtmlBlockExternal)
+                }))
                 : trusted;
         } catch (error) {
             return false;
@@ -146,7 +197,10 @@
                     return;
                 }
             }
-            if (tag === 'iframe' && !isTrustedIframeUrl(element.getAttribute('src') || '')) {
+            if (tag === 'iframe' && !isTrustedIframeUrl(
+                element.getAttribute('src') || '',
+                settings.htmlBlock
+            )) {
                 element.remove();
                 return;
             }
@@ -173,7 +227,7 @@
                     element.setAttribute(name, value);
                 }
                 if (name === 'style') {
-                    value = sanitizeStyle(value);
+                    value = sanitizeStyle(value, settings.htmlBlock);
                     if (value) {
                         element.setAttribute('style', value);
                     } else {

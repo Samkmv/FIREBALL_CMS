@@ -1378,6 +1378,20 @@ body:has(.fb-editor-workspace) {
     border-radius: 8px;
 }
 
+/* FIREBALL_HTML_BLOCK_EXTERNAL_IFRAME_V1 */
+.fb-editor2-html__preview iframe {
+    display: block;
+    max-width: 100%;
+    border: 0;
+}
+
+.fb-editor2-html__preview img,
+.fb-editor2-html__preview video {
+    max-width: 100%;
+    height: auto;
+}
+
+
 .fb-editor2-divider {
     display: flex;
     align-items: center;
