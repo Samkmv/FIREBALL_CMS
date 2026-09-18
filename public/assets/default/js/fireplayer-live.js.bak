@@ -62,30 +62,10 @@
                 }
                 const stalledFor = Date.now() - lastAdvanceAt;
                 const cooldown = Date.now() - lastReconnectAt;
-                const threshold = hasAdvanced
-                    ? Number(player.options.stallTimeout || 7000)
-                    : Number(player.options.startupTimeout || 30000);
-
-                const reconnectBase = Math.max(500, Number(player.options.reconnectDelay || 2500));
-                const reconnectAttempt = Math.max(0, Number(player._reconnectAttempts || 0));
-                const recoveryCooldown = Math.min(
-                    30000,
-                    Math.max(
-                        Number(player.options.stallTimeout || 7000),
-                        reconnectBase * Math.pow(2, Math.min(reconnectAttempt, 3))
-                    )
-                );
-
-                if (stalledFor >= threshold && cooldown >= recoveryCooldown) {
+                const threshold = hasAdvanced ? Number(player.options.stallTimeout || 7000) : Number(player.options.startupTimeout || 30000);
+                if (stalledFor >= threshold && cooldown >= Number(player.options.stallTimeout || 7000)) {
                     lastReconnectAt = Date.now();
                     lastAdvanceAt = Date.now();
-
-                    player._emit('recovery', {
-                        reason: 'stall',
-                        stage: 'live-health-check',
-                        attempt: reconnectAttempt + 1
-                    });
-
                     player.reconnect('stall').catch(function () {});
                 }
             };

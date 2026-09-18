@@ -22,6 +22,7 @@
             loading: 'Загрузка медиа…', reconnecting: 'Повторное подключение…',
             waking: 'Запуск камеры…', offline: 'Нет подключения к интернету',
             readyToPlay: 'Нажмите Play для начала воспроизведения',
+            unavailable: 'Камера временно недоступна',
             unsupported: 'Этот формат не поддерживается браузером', failed: 'Не удалось воспроизвести медиа',
             retry: 'Повторить', audio: 'Аудиоплеер', video: 'Видеоплеер'
         },
@@ -32,6 +33,7 @@
             connecting: 'Connecting…', loading: 'Loading media…', reconnecting: 'Reconnecting…',
             waking: 'Starting camera…', offline: 'No internet connection',
             readyToPlay: 'Press Play to start playback',
+            unavailable: 'Camera is temporarily unavailable',
             unsupported: 'This format is not supported by the browser', failed: 'Unable to play media',
             retry: 'Retry', audio: 'Audio player', video: 'Video player'
         }
@@ -1099,7 +1101,12 @@
             this._playPromise = null;
             this._recoveringMedia = false;
             if (++this._reconnectAttempts > Number(this.options.maxReconnectAttempts || 4)) {
-                this._showError(t('failed'), new Error('Reconnect attempts exhausted.'));
+                const error = new Error('Reconnect attempts exhausted.');
+                error.code = 'RECOVERY_EXHAUSTED';
+                this._showError(
+                    isManagedStreamSource(this.options.src, this.options) ? t('unavailable') : t('failed'),
+                    error
+                );
                 return this;
             }
             if (this.info.mode === 'vod' && Number.isFinite(this.media.currentTime)) { this._resumePosition = this.media.currentTime; }
@@ -1552,7 +1559,7 @@
         }
     }
 
-    FirePlayer.version = '1.0.5';
+    FirePlayer.version = '1.0.6';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;

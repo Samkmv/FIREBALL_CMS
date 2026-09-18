@@ -175,9 +175,6 @@
         let reconnectPromise = null;
         let hls = null;
         let mediaRecoveries = 0;
-        let networkRecoveries = 0;
-        let softReconnects = 0;
-        let lastWakeAt = 0;
         let lastHealthyTime = media.currentTime || 0;
         const active = function () {
             return !destroyed && !player._destroyed && player._loadToken === token
@@ -192,10 +189,7 @@
             const current = media.currentTime || 0;
             if (active() && !media.paused && !media.seeking && Math.abs(current - lastHealthyTime) >= 2) {
                 mediaRecoveries = 0;
-                networkRecoveries = 0;
-                softReconnects = 0;
                 lastHealthyTime = current;
-                player._emit('recovered', { protocol: 'hls' });
             }
         };
         const cleanup = function () {
@@ -212,24 +206,14 @@
             loadSignal.addEventListener('abort', cleanup, { once: true });
             if (loadSignal.aborted) { cleanup(); }
         }
-        const wake = async function (force) {
+        const wake = async function () {
             assertActive();
             const streamId = options.streamId || inferStreamId(source);
-            const wakeCooldown = 15000;
-
-            if (streamId && !force && lastWakeAt && Date.now() - lastWakeAt < wakeCooldown) {
-                player._emit('recovery', { reason: 'wake-cooldown', stage: 'wake-skipped' });
-                return;
-            }
-
             try {
                 if (streamId) { player.setStatus(window.FirePlayer.translate('waking'), 'info'); }
                 await wakeStream(source, options, signal);
                 assertActive();
-                if (streamId) {
-                    lastWakeAt = Date.now();
-                    player.setStatus(window.FirePlayer.translate('connecting'), 'info');
-                }
+                if (streamId) { player.setStatus(window.FirePlayer.translate('connecting'), 'info'); }
             } catch (error) {
                 if (active() && error.name !== 'AbortError') { player._emit('wakeerror', { error: error }); }
                 throw error;
@@ -244,7 +228,7 @@
         };
 
         try {
-            await wake(true);
+            await wake();
             let Hls = null;
             let useNative = options.forceHlsJs !== true && isAppleBrowser() && canPlayNatively(media);
             if (!useNative) {
@@ -269,7 +253,7 @@
             const reportFatal = function (error) {
                 if (active()) { player._showError(window.FirePlayer.translate('failed'), error); }
             };
-            const scheduleReconnect = function (error, instance) {
+            const scheduleReconnect = function (error) {
                 if (!active() || reconnectPromise || player._reconnectPromise || retryTimer !== null) { return; }
                 if (!player.options.reconnect) { reportFatal(error); return; }
                 if (window.navigator && window.navigator.onLine === false) {
@@ -277,20 +261,11 @@
                     player.setStatus(window.FirePlayer.translate('offline'), 'warning');
                     return;
                 }
-
-                const localRecovery = Boolean(
-                    instance && hls === instance && networkRecoveries < 1
-                    && typeof instance.startLoad === 'function'
-                );
-                if (localRecovery) { networkRecoveries += 1; }
-
                 player.setStatus(window.FirePlayer.translate('reconnecting'), 'warning');
                 const baseDelay = boundedNumber(player.options.reconnectDelay, 2500, 500, 30000);
-                const attempt = localRecovery ? 0 : Math.max(0, Number(player._reconnectAttempts || 0));
-                const delayBase = localRecovery ? Math.min(baseDelay, 1500) : baseDelay;
-                const delay = Math.min(15000, delayBase * Math.pow(2, Math.min(attempt, 3)));
+                const attempt = Math.max(0, Number(player._reconnectAttempts || 0));
+                const delay = Math.min(15000, baseDelay * Math.pow(2, Math.min(attempt, 3)));
                 const jitter = Math.round(delay * 0.15 * Math.random());
-
                 retryTimer = window.setTimeout(function () {
                     retryTimer = null;
                     if (!active()) { return; }
@@ -300,22 +275,6 @@
                         player.setStatus(window.FirePlayer.translate('offline'), 'warning');
                         return;
                     }
-
-                    if (localRecovery && hls === instance) {
-                        try {
-                            player._emit('recovery', {
-                                reason: 'network',
-                                stage: 'hls-start-load',
-                                attempt: networkRecoveries
-                            });
-                            instance.startLoad(-1);
-                            return;
-                        } catch (recoveryError) {
-                            player.reconnect('network').catch(reportFatal);
-                            return;
-                        }
-                    }
-
                     player.reconnect('network').catch(reportFatal);
                 }, delay + jitter);
             };
@@ -354,60 +313,19 @@
                 });
                 instance.on(Hls.Events.ERROR, function (event, data) {
                     if (!current() || !data || !data.fatal) { return; }
-
                     const error = new Error(data.details || 'Fatal HLS error');
-                    const details = String(data.details || '');
-
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        error.code = /frag|segment/i.test(details)
-                            ? 'HLS_SEGMENT_ERROR'
-                            : (/manifest|level/i.test(details) ? 'HLS_MANIFEST_ERROR' : 'HLS_NETWORK_ERROR');
-                    } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                        error.code = 'HLS_MEDIA_ERROR';
-                    } else {
-                        error.code = 'HLS_FATAL_ERROR';
-                    }
-
-                    player._emit('hlserror', {
-                        code: error.code,
-                        details: details,
-                        fatal: true
-                    });
-
                     if (!player.options.reconnect) { reportFatal(error); return; }
-
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        scheduleReconnect(error, instance);
+                        scheduleReconnect(error);
                     } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                         if (reconnectPromise || player._reconnectPromise || retryTimer !== null) { return; }
-
                         mediaRecoveries += 1;
-
-                        if (mediaRecoveries > 2) {
-                            player.reconnect('media').catch(reportFatal);
-                            return;
-                        }
-
+                        if (mediaRecoveries > 2) { reportFatal(error); return; }
                         try {
-                            if (mediaRecoveries === 2 && typeof instance.swapAudioCodec === 'function') {
-                                instance.swapAudioCodec();
-                            }
-
-                            player._emit('recovery', {
-                                reason: 'media',
-                                stage: 'recover-media-error',
-                                attempt: mediaRecoveries
-                            });
-
-                            player._recoverMedia(function () {
-                                instance.recoverMediaError();
-                            });
-                        } catch (recoveryError) {
-                            player.reconnect('media').catch(reportFatal);
-                        }
-                    } else {
-                        reportFatal(error);
-                    }
+                            if (mediaRecoveries === 2 && typeof instance.swapAudioCodec === 'function') { instance.swapAudioCodec(); }
+                            player._recoverMedia(function () { instance.recoverMediaError(); });
+                        } catch (recoveryError) { reportFatal(recoveryError); }
+                    } else { reportFatal(error); }
                 });
                 instance.attachMedia(media);
             };
@@ -421,49 +339,18 @@
                     attachHls();
                 }
             };
-            const reconnect = function (reason) {
+            const reconnect = function () {
                 if (reconnectPromise) { return reconnectPromise; }
                 clearRetry();
-
                 reconnectPromise = (async function () {
                     assertActive();
-
-                    const reconnectReason = reason || 'unknown';
-                    const streamId = options.streamId || inferStreamId(source);
-                    const managedStream = Boolean(streamId);
-
                     if (hls) { hls.stopLoad(); }
-
-                    let shouldWake = reconnectReason === 'manual';
-
-                    if (!shouldWake && managedStream) {
-                        softReconnects += 1;
-                        shouldWake = softReconnects >= 2;
-                    }
-
-                    if (shouldWake) {
-                        await wake(reconnectReason === 'manual');
-                        assertActive();
-
-                        if (managedStream) {
-                            softReconnects = 0;
-                        }
-                    }
-
+                    await wake();
+                    assertActive();
                     mediaRecoveries = 0;
-                    networkRecoveries = 0;
                     lastHealthyTime = media.currentTime || 0;
-
-                    player._emit('recovery', {
-                        reason: reconnectReason,
-                        stage: shouldWake ? 'wake-rebuild' : 'soft-rebuild'
-                    });
-
                     prepare();
-                })().finally(function () {
-                    reconnectPromise = null;
-                });
-
+                })().finally(function () { reconnectPromise = null; });
                 return reconnectPromise;
             };
             prepare();
