@@ -17,6 +17,27 @@
         error.name = 'AbortError';
         return error;
     };
+    const nativeHlsError = function (code, message, cause) {
+        const error = new Error(message || code || 'Native HLS error');
+        error.name = 'NativeHlsError';
+        error.code = code || 'NATIVE_HLS_ERROR';
+        if (cause) { error.cause = cause; }
+        return error;
+    };
+    const delayWithSignal = function (milliseconds, signal) {
+        return new Promise(function (resolve, reject) {
+            let timer = null;
+            const finish = function (error) {
+                if (timer !== null) { window.clearTimeout(timer); timer = null; }
+                if (signal) { signal.removeEventListener('abort', onAbort); }
+                if (error) { reject(error); } else { resolve(); }
+            };
+            const onAbort = function () { finish(abortError()); };
+            if (signal && signal.aborted) { onAbort(); return; }
+            if (signal) { signal.addEventListener('abort', onAbort, { once: true }); }
+            timer = window.setTimeout(function () { finish(); }, Math.max(0, Number(milliseconds) || 0));
+        });
+    };
     const waitWithSignal = function (promise, signal) {
         if (!signal) { return promise; }
         return new Promise(function (resolve, reject) {
@@ -202,6 +223,7 @@
             if (destroyed) { return; }
             destroyed = true;
             clearRetry();
+            if (player._loadToken === token) { player._nativeHlsPreparing = false; }
             if (loadSignal) { loadSignal.removeEventListener('abort', cleanup); }
             if (lifetime) { lifetime.abort(); }
             media.removeEventListener('timeupdate', onProgress);
@@ -219,7 +241,7 @@
 
             if (streamId && !force && lastWakeAt && Date.now() - lastWakeAt < wakeCooldown) {
                 player._emit('recovery', { reason: 'wake-cooldown', stage: 'wake-skipped' });
-                return;
+                return false;
             }
 
             try {
@@ -230,6 +252,7 @@
                     lastWakeAt = Date.now();
                     player.setStatus(window.FirePlayer.translate('connecting'), 'info');
                 }
+                return Boolean(streamId);
             } catch (error) {
                 if (active() && error.name !== 'AbortError') { player._emit('wakeerror', { error: error }); }
                 throw error;
@@ -411,11 +434,105 @@
                 });
                 instance.attachMedia(media);
             };
-            const prepare = function () {
+            const waitForNativeReady = function () {
+                const timeout = Math.min(15000, boundedNumber(options.startupTimeout, 30000, 3000, 120000));
+
+                return new Promise(function (resolve, reject) {
+                    let settled = false;
+                    let timer = null;
+                    const events = ['loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough'];
+
+                    const cleanupWait = function () {
+                        if (timer !== null) { window.clearTimeout(timer); timer = null; }
+                        events.forEach(function (eventName) { media.removeEventListener(eventName, onReady); });
+                        media.removeEventListener('error', onError);
+                        if (signal) { signal.removeEventListener('abort', onAbort); }
+                    };
+                    const finish = function (error) {
+                        if (settled) { return; }
+                        settled = true;
+                        cleanupWait();
+                        if (error) { reject(error); } else { resolve(); }
+                    };
+                    const onAbort = function () { finish(abortError()); };
+                    const onError = function () {
+                        const mediaError = media.error;
+                        const message = mediaError && mediaError.message
+                            ? mediaError.message
+                            : 'Safari could not prepare the native HLS source.';
+                        finish(nativeHlsError('NATIVE_HLS_MEDIA_ERROR', message, mediaError));
+                    };
+                    const onReady = function () {
+                        if (!active()) { finish(abortError()); return; }
+                        if (!media.error && media.readyState >= 1) { finish(); }
+                    };
+
+                    if (signal && signal.aborted) { onAbort(); return; }
+                    if (signal) { signal.addEventListener('abort', onAbort, { once: true }); }
+                    events.forEach(function (eventName) { media.addEventListener(eventName, onReady); });
+                    media.addEventListener('error', onError, { once: true });
+                    timer = window.setTimeout(function () {
+                        finish(nativeHlsError(
+                            'NATIVE_HLS_TIMEOUT',
+                            'Safari did not recognize the native HLS source before the timeout.'
+                        ));
+                    }, timeout);
+
+                    if (media.error) { onError(); return; }
+                    onReady();
+                });
+            };
+
+            const prepareNative = async function (reason) {
+                const maxAttempts = 2;
+                player._nativeHlsPreparing = true;
+
+                try {
+                    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+                        assertActive();
+                        if (attempt > 1) {
+                            await delayWithSignal(500 * attempt, signal);
+                            assertActive();
+                        }
+
+                        try {
+                            media.removeAttribute('src');
+                            try { media.load(); } catch (error) {}
+                            media.src = source;
+                            media.load();
+
+                            player._emit('recovery', {
+                                reason: reason || 'native-prepare',
+                                stage: attempt === 1 ? 'native-attach' : 'native-reattach',
+                                attempt: attempt
+                            });
+
+                            await waitForNativeReady();
+                            assertActive();
+                            return;
+                        } catch (error) {
+                            if (error && error.name === 'AbortError') { throw error; }
+                            player._emit('nativehlserror', {
+                                code: error && error.code ? error.code : 'NATIVE_HLS_ERROR',
+                                attempt: attempt
+                            });
+                            if (attempt >= maxAttempts) {
+                                try { media.removeAttribute('src'); media.load(); } catch (cleanupError) {}
+                                throw error;
+                            }
+                        }
+                    }
+                } finally {
+                    if (player._loadToken === token && !player._destroyed) {
+                        player._nativeHlsPreparing = false;
+                    }
+                }
+            };
+
+            const prepare = async function (reason) {
                 assertActive();
                 if (useNative) {
-                    media.src = source;
-                    media.load();
+                    await prepareNative(reason);
                 } else {
                     if (hls) { hls.destroy(); hls = null; }
                     attachHls();
@@ -441,11 +558,12 @@
                         shouldWake = softReconnects >= 2;
                     }
 
+                    let didWake = false;
                     if (shouldWake) {
-                        await wake(reconnectReason === 'manual');
+                        didWake = await wake(reconnectReason === 'manual');
                         assertActive();
 
-                        if (managedStream) {
+                        if (managedStream && didWake) {
                             softReconnects = 0;
                         }
                     }
@@ -456,17 +574,17 @@
 
                     player._emit('recovery', {
                         reason: reconnectReason,
-                        stage: shouldWake ? 'wake-rebuild' : 'soft-rebuild'
+                        stage: didWake ? 'wake-rebuild' : 'soft-rebuild'
                     });
 
-                    prepare();
+                    await prepare(reconnectReason);
                 })().finally(function () {
                     reconnectPromise = null;
                 });
 
                 return reconnectPromise;
             };
-            prepare();
+            await prepare('initial');
             return {
                 handled: true,
                 controller: {

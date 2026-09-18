@@ -473,6 +473,8 @@
             this._playPromise = null;
             this._playAttemptId = 0;
             this._recoveringMedia = false;
+            this._nativeHlsPreparing = false;
+            this._nativePlayRecoveries = 0;
             this._sourcePrepared = false;
             this._loadAbortController = null;
             this._reconnectPromise = null;
@@ -658,6 +660,8 @@
             this._listen(this.media, 'playing', function () {
                 if (player._destroyed || player.media.paused) { return; }
                 player._recoveringMedia = false;
+                player._nativeHlsPreparing = false;
+                player._nativePlayRecoveries = 0;
                 player.root.classList.remove('fireplayer--awaiting-gesture', 'fireplayer--offline');
                 player.root.classList.add('fireplayer--playing');
                 player._playRequested = true;
@@ -857,7 +861,11 @@
                     this.setStatus('');
                     return this;
                 }
-                this._showError(t('failed'), error);
+                const nativeHlsFailure = error && /^NATIVE_HLS_/.test(String(error.code || ''));
+                this._showError(
+                    nativeHlsFailure && isManagedStreamSource(this.options.src, this.options) ? t('unavailable') : t('failed'),
+                    error
+                );
                 throw error;
             }
             if (token !== this._loadToken || this._destroyed) {
@@ -923,6 +931,8 @@
             this._playPromise = null;
             ++this._playAttemptId;
             this._recoveringMedia = false;
+            this._nativeHlsPreparing = false;
+            this._nativePlayRecoveries = 0;
             this._reconnectPromise = null;
             if (this._loadAbortController) { this._loadAbortController.abort(); }
             this._loadAbortController = null;
@@ -982,13 +992,48 @@
                 return this;
             }).catch((error) => {
                 if (token !== this._loadToken || attemptId !== this._playAttemptId || this._destroyed || error.name === 'AbortError') { return this; }
+
                 if (error.name === 'NotAllowedError') {
                     this._playRequested = false;
                     this._settleLoading();
                     this.root.classList.add('fireplayer--awaiting-gesture');
                     this.setStatus(t('readyToPlay'), 'info');
                     this._emit('autoplayblocked', { error: error });
-                } else { this._showError(t('failed'), error); }
+                    throw error;
+                }
+
+                const recoverableNativeHls = error.name === 'NotSupportedError'
+                    && this.info
+                    && this.info.protocol === 'hls'
+                    && this.controller
+                    && this.controller.engine === 'native'
+                    && this.options.reconnect
+                    && this._playRequested;
+
+                if (recoverableNativeHls) {
+                    this._nativePlayRecoveries += 1;
+                    if (this._nativePlayRecoveries <= 2) {
+                        this.root.classList.add('fireplayer--reconnecting');
+                        this.setStatus(t('reconnecting'), 'warning');
+                        this._emit('recovery', {
+                            reason: 'native-play',
+                            stage: 'play-not-supported',
+                            attempt: this._nativePlayRecoveries
+                        });
+                        return this.reconnect('native-play');
+                    }
+
+                    const nativeError = new Error(error.message || 'Native HLS playback was rejected.');
+                    nativeError.name = 'NativeHlsError';
+                    nativeError.code = 'NATIVE_HLS_NOT_SUPPORTED';
+                    this._showError(
+                        isManagedStreamSource(this.options.src, this.options) ? t('unavailable') : t('failed'),
+                        nativeError
+                    );
+                    throw nativeError;
+                }
+
+                this._showError(t('failed'), error);
                 throw error;
             }).finally(() => {
                 if (this._playPromise === pending) { this._playPromise = null; }
@@ -1002,6 +1047,7 @@
                 && shouldLazyStart(this.options.src, this.options);
             this._playRequested = false;
             this._recoveringMedia = false;
+            this._nativePlayRecoveries = 0;
             ++this._playAttemptId;
             this._playPromise = null;
             if (cancelLazyLoad) {
@@ -1239,6 +1285,7 @@
 
         _handleMediaError() {
             if (this._destroyed || !this.info || !this.media.error || this.media.error.code === 1) { return; }
+            if (this._nativeHlsPreparing) { return; }
             if (this.root.classList.contains('fireplayer--reconnecting') || this.root.classList.contains('fireplayer--error')) {
                 return;
             }
@@ -1559,7 +1606,7 @@
         }
     }
 
-    FirePlayer.version = '1.0.6';
+    FirePlayer.version = '1.0.7';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;
