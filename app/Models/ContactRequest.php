@@ -11,6 +11,8 @@ class ContactRequest
 {
 
     protected string $table = 'contact_requests';
+    protected string $messagesTable = 'contact_request_messages';
+    // FIREBALL_SUPPORT_HISTORY_PATCH_V1
 
     /**
      * Создаёт таблицу заявок и недостающие поля, если схема ещё не готова.
@@ -80,7 +82,19 @@ class ContactRequest
             ]
         );
 
-        return (int)db()->getInsertId();
+        $requestId = (int)db()->getInsertId();
+
+        $this->addConversationMessage($requestId, [
+            'sender_type' => 'requester',
+            'sender_name' => trim((string)$data['name']),
+            'sender_email' => mb_strtolower(trim((string)$data['email'])),
+            'recipient_email' => '',
+            'subject' => trim((string)$data['subject']),
+            'message' => trim((string)$data['message']),
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $requestId;
     }
 
     /**
@@ -331,6 +345,12 @@ class ContactRequest
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         if ($action === 'delete') {
+            if ($this->conversationTableExists()) {
+                db()->query(
+                    "DELETE FROM {$this->messagesTable} WHERE request_id IN ({$placeholders})",
+                    $ids
+                );
+            }
             db()->query("DELETE FROM {$this->table} WHERE id IN ({$placeholders})", $ids);
             return count($ids);
         }
@@ -353,6 +373,114 @@ class ContactRequest
         return 0;
     }
 
+
+    /**
+     * Возвращает сообщения переписки по заявке в хронологическом порядке.
+     */
+    public function getConversation(int $requestId): array
+    {
+        $this->ensureTableExists();
+        if ($requestId <= 0 || !$this->conversationTableExists()) {
+            return [];
+        }
+
+        return db()->query(
+            "SELECT id, request_id, sender_type, sender_user_id, sender_name,
+                    sender_email, recipient_email, subject, message, created_at
+             FROM {$this->messagesTable}
+             WHERE request_id = ?
+             ORDER BY created_at ASC, id ASC",
+            [$requestId]
+        )->get() ?: [];
+    }
+
+    /**
+     * Сохраняет успешно отправленный ответ администратора в историю заявки.
+     */
+    public function addAdminReply(int $requestId, array $data): bool
+    {
+        if ($requestId <= 0 || !$this->conversationTableExists()) {
+            return false;
+        }
+
+        return $this->addConversationMessage($requestId, [
+            'sender_type' => 'admin',
+            'sender_user_id' => (int)($data['sender_user_id'] ?? 0) ?: null,
+            'sender_name' => (string)($data['sender_name'] ?? ''),
+            'sender_email' => (string)($data['sender_email'] ?? ''),
+            'recipient_email' => (string)($data['recipient_email'] ?? ''),
+            'subject' => (string)($data['subject'] ?? ''),
+            'message' => (string)($data['message'] ?? ''),
+            'created_at' => (string)($data['created_at'] ?? date('Y-m-d H:i:s')),
+        ]);
+    }
+
+    /**
+     * Добавляет сообщение в историю заявки.
+     */
+    protected function addConversationMessage(int $requestId, array $data): bool
+    {
+        if ($requestId <= 0 || !$this->conversationTableExists()) {
+            return false;
+        }
+
+        $message = trim((string)($data['message'] ?? ''));
+        if ($message === '') {
+            return false;
+        }
+
+        $senderType = (string)($data['sender_type'] ?? 'requester');
+        if (!in_array($senderType, ['requester', 'admin'], true)) {
+            $senderType = 'requester';
+        }
+
+        db()->query(
+            "INSERT INTO {$this->messagesTable}
+             (request_id, sender_type, sender_user_id, sender_name, sender_email,
+              recipient_email, subject, message, created_at)
+             VALUES
+             (:request_id, :sender_type, :sender_user_id, :sender_name, :sender_email,
+              :recipient_email, :subject, :message, :created_at)",
+            [
+                'request_id' => $requestId,
+                'sender_type' => $senderType,
+                'sender_user_id' => isset($data['sender_user_id']) && (int)$data['sender_user_id'] > 0
+                    ? (int)$data['sender_user_id']
+                    : null,
+                'sender_name' => mb_substr(trim((string)($data['sender_name'] ?? '')), 0, 150),
+                'sender_email' => mb_substr(mb_strtolower(trim((string)($data['sender_email'] ?? ''))), 0, 190),
+                'recipient_email' => mb_substr(mb_strtolower(trim((string)($data['recipient_email'] ?? ''))), 0, 190),
+                'subject' => mb_substr(trim((string)($data['subject'] ?? '')), 0, 190),
+                'message' => $message,
+                'created_at' => (string)($data['created_at'] ?? date('Y-m-d H:i:s')),
+            ]
+        );
+
+        return true;
+    }
+
+    /**
+     * Проверяет наличие таблицы истории без изменения схемы во время обычного запроса.
+     */
+    protected function conversationTableExists(): bool
+    {
+        static $exists = null;
+        if ($exists !== null) {
+            return $exists;
+        }
+
+        try {
+            $exists = (bool)db()->query(
+                "SHOW TABLES LIKE ?",
+                [$this->messagesTable]
+            )->getColumn();
+        } catch (\Throwable) {
+            $exists = false;
+        }
+
+        return $exists;
+    }
+
     /**
      * Удаляет заявку по идентификатору.
      */
@@ -362,6 +490,13 @@ class ContactRequest
 
         if ($id <= 0) {
             return;
+        }
+
+        if ($this->conversationTableExists()) {
+            db()->query(
+                "DELETE FROM {$this->messagesTable} WHERE request_id = ?",
+                [$id]
+            );
         }
 
         db()->query(

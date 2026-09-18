@@ -225,6 +225,24 @@ CREATE TABLE IF NOT EXISTS contact_requests (
     KEY is_viewed (is_viewed)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+CREATE TABLE IF NOT EXISTS contact_request_messages (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    request_id BIGINT UNSIGNED NOT NULL,
+    sender_type VARCHAR(20) NOT NULL,
+    sender_user_id INT(10) UNSIGNED NULL,
+    sender_name VARCHAR(150) NULL,
+    sender_email VARCHAR(190) NULL,
+    recipient_email VARCHAR(190) NULL,
+    subject VARCHAR(190) NOT NULL DEFAULT '',
+    message MEDIUMTEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    KEY request_created (request_id, created_at, id),
+    KEY sender_user_id (sender_user_id),
+    KEY sender_type (sender_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS contact_subjects (
     id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(190) NOT NULL,

@@ -283,11 +283,32 @@ class AdminController extends BaseController
                 response()->redirect(base_href('/admin/support/requests/reply/' . $requestId));
             }
 
+            $currentUser = get_user() ?: [];
+            $senderName = trim((string)($currentUser['name'] ?? ''));
+            if ($senderName === '') {
+                $senderName = trim((string)($currentUser['login'] ?? ''));
+            }
+
+            $historySaved = $this->contactRequests->addAdminReply($requestId, [
+                'sender_user_id' => (int)($currentUser['id'] ?? 0),
+                'sender_name' => $senderName !== '' ? $senderName : 'Support',
+                'sender_email' => (string)($currentUser['email'] ?? ''),
+                'recipient_email' => (string)$contactRequest['email'],
+                'subject' => $subject,
+                'message' => $message,
+            ]);
+            if (!$historySaved) {
+                log_error_details('Support reply history was not saved', [
+                    'Request ID' => $requestId,
+                    'Recipient' => (string)$contactRequest['email'],
+                ]);
+            }
+
             $this->contactRequests->updateStatus($requestId, 'in_work');
             session()->remove('form_data');
             session()->remove('form_errors');
             session()->setFlash('success', return_translation('admin_support_reply_sent'));
-            response()->redirect(base_href('/admin/support/requests'));
+            response()->redirect(base_href('/admin/support/requests/reply/' . $requestId));
         }
 
         if ($replyToken === '') {
@@ -301,6 +322,7 @@ class AdminController extends BaseController
         return view('admin/contact_request_reply', [
             'title' => return_translation('admin_support_reply_title'),
             'contact_request' => $contactRequest,
+            'conversation' => $this->contactRequests->getConversation($requestId),
             'form_data' => $formData,
             'reply_token' => $replyToken,
         ]);
