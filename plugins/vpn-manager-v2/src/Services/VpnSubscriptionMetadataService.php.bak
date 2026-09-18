@@ -6,9 +6,17 @@ final class VpnSubscriptionMetadataService
 {
     public function profileTitle(array $subscription, array $settings): string
     {
-        // Keep the profile title stable. Expiration is still exposed through
-        // subscription-userinfo and remains fully enforced by the endpoint.
-        return trim((string)($settings['subscription_name'] ?? 'VPN V2')) ?: 'VPN V2';
+        $name = trim((string)($settings['subscription_name'] ?? 'VPN V2')) ?: 'VPN V2';
+        $expiresAt = $this->timestamp($subscription['expires_at'] ?? null);
+        if ($expiresAt === null) {
+            return $name;
+        }
+
+        return sprintf(
+            \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_profile_title_until'),
+            $name,
+            date('d.m.Y', $expiresAt)
+        );
     }
 
     public function headers(array $subscription, array $settings, array $traffic = []): array

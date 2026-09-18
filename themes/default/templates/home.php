@@ -82,7 +82,6 @@ $featuredCount = count($popularCameras);
                 autoplay
                 playsinline
                 preload="auto"
-                crossorigin="anonymous"
             ></video>
             <?php endif; ?>
         </div>
@@ -340,41 +339,56 @@ $featuredCount = count($popularCameras);
     const setHeroStatus = () => {};
     const clearHeroStatus = () => {};
     const updateHeroDebug = () => {};
+    // FIREBALL_HERO_PATCH_2026_09: resilient hls.js loader
     let heroHlsPromise = null;
-    const loadHeroHls = () => new Promise((resolve, reject) => {
+    const loadHeroHls = () => {
         if (typeof window.Hls === 'function') {
-            resolve(window.Hls);
-            return;
+            return Promise.resolve(window.Hls);
         }
         if (heroHlsPromise) {
-            return heroHlsPromise.then(resolve, reject);
+            return heroHlsPromise;
         }
 
-        heroHlsPromise = new Promise((loadResolve, loadReject) => {
-            const existing = document.querySelector('script[data-home-hero-hls]');
-            if (existing) {
-                existing.addEventListener('load', () => typeof window.Hls === 'function'
-                    ? loadResolve(window.Hls)
-                    : loadReject(new Error('HLS is unavailable')), { once: true });
-                existing.addEventListener('error', loadReject, { once: true });
-                return;
-            }
+        // Если предыдущая попытка оборвалась, старый <script> уже бесполезен.
+        const staleScript = document.querySelector('script[data-home-hero-hls]');
+        if (staleScript) {
+            staleScript.remove();
+        }
 
+        heroHlsPromise = new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = heroHlsScript;
             script.async = true;
             script.dataset.homeHeroHls = 'true';
+
             setHeroStatus(homeVideoText('connecting'));
             updateHeroDebug({ hlsState: 'loading_hls_script' });
-            script.onload = () => typeof window.Hls === 'function'
-                ? loadResolve(window.Hls)
-                : loadReject(new Error('HLS is unavailable'));
-            script.onerror = loadReject;
-            document.head.appendChild(script);
-        });
 
-        heroHlsPromise.then(resolve, reject);
-    });
+            script.onload = () => {
+                if (typeof window.Hls === 'function') {
+                    resolve(window.Hls);
+                    return;
+                }
+
+                script.remove();
+                reject(new Error('HLS is unavailable'));
+            };
+
+            script.onerror = () => {
+                script.remove();
+                reject(new Error('Failed to load hls.js'));
+            };
+
+            document.head.appendChild(script);
+        })
+            .catch((error) => {
+                // Важно: разрешаем следующую попытку загрузить hls.js заново.
+                heroHlsPromise = null;
+                throw error;
+            });
+
+        return heroHlsPromise;
+    };
     let heroHls = null;
     let heroPlayPromise = null;
     let heroPlaybackStarted = false;
@@ -417,6 +431,9 @@ $featuredCount = count($popularCameras);
             document.removeEventListener('pointerdown', retryOnGesture);
             document.removeEventListener('keydown', retryOnGesture);
             heroGestureFallbackBound = false;
+
+            // Явное действие пользователя должно обходить исчерпанный autoplay retry limit.
+            heroPlayAttempts = 0;
             playHeroVideo();
         };
         document.addEventListener('pointerdown', retryOnGesture, { passive: true });
@@ -658,6 +675,9 @@ $featuredCount = count($popularCameras);
                     hlsState: 'init_failed',
                     errorType: error && error.message ? error.message : 'hls_init_failed',
                 });
+
+                // Сетевой сбой при загрузке hls.js не должен требовать перезагрузки страницы.
+                scheduleHeroRecovery(true);
             });
     };
     const scheduleHeroInit = () => {
@@ -742,6 +762,26 @@ $featuredCount = count($popularCameras);
                 updateHeroDebug({ hlsState: 'playing' });
             }
         }, heroHealthInterval);
+
+        window.addEventListener('online', () => {
+            heroPlayAttempts = 0;
+            updateHeroDebug({ hlsState: 'network_online', errorType: '' });
+
+            if (heroHls) {
+                try {
+                    heroHls.startLoad(-1);
+                } catch (error) {
+                    scheduleHeroRecovery(true);
+                    return;
+                }
+
+                playHeroVideo();
+                return;
+            }
+
+            heroInitialized = false;
+            initializeHeroVideo();
+        });
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
