@@ -127,7 +127,10 @@ $(function () {
 
     const fetchUrl = String(chatApp.data('fetch-url') || '');
     const streamUrl = String(chatApp.data('stream-url') || '');
+    const typingUrl = String(chatApp.data('typing-url') || '');
     const sendUrl = String(chatApp.data('send-url') || '');
+    const editUrl = String(chatApp.data('edit-url') || '');
+    const reactUrl = String(chatApp.data('react-url') || '');
     const deleteUrl = String(chatApp.data('delete-url') || '');
     const clearUrl = String(chatApp.data('clear-url') || '');
     const auditUrl = String(chatApp.data('audit-url') || '');
@@ -156,6 +159,7 @@ $(function () {
     const currentAvatar = chatApp.find('[data-chat-current-avatar]');
     const currentAvatarPresence = chatApp.find('[data-chat-current-presence]');
     const currentStatus = chatApp.find('[data-chat-current-status]');
+    const typingIndicator = chatApp.find('[data-chat-typing-indicator]');
     const messageSearchInput = chatApp.find('[data-chat-message-search]');
     const messageSearchResults = chatApp.find('[data-chat-message-search-results]');
     const selectionCountBadge = chatApp.find('[data-chat-selection-count]');
@@ -167,6 +171,9 @@ $(function () {
     const replyAuthor = form.find('[data-chat-reply-author]');
     const replyText = form.find('[data-chat-reply-text]');
     const replyCancelButton = form.find('[data-chat-reply-cancel]');
+    const editPreview = form.find('[data-chat-edit-preview]');
+    const editOriginal = form.find('[data-chat-edit-original]');
+    const editCancelButton = form.find('[data-chat-edit-cancel]');
     const attachmentInput = form.find('[data-chat-attachment]');
     const siteFileInput = form.find('[data-chat-site-file-input]');
     const recordVoiceButton = form.find('[data-chat-record-voice]');
@@ -243,6 +250,13 @@ $(function () {
         voiceRequestId: 0,
         messagesLoadErrorShown: false,
         replyTo: null,
+        editing: null,
+        reactionRequestPending: false,
+        openReactionMessageId: 0,
+        localTyping: false,
+        remoteTyping: false,
+        typingLastSentAt: 0,
+        typingStopTimer: null,
         canModerate: String(chatApp.data('can-moderate')) === '1',
         canBulkDelete: String(chatApp.data('can-bulk-delete')) === '1',
         canClearChat: String(chatApp.data('can-clear-chat')) === '1',
@@ -462,13 +476,18 @@ $(function () {
         Number(item.id) || 0,
         Number(item.sender_id) || 0,
         Number(item.is_read) || 0,
+        item.delivery_status || 'sent',
+        item.delivered_at || '',
+        item.read_at || '',
         item.created_at || '',
+        item.edited_at || '',
         item.message || '',
         item.attachment && item.attachment.url ? item.attachment.url : '',
         Number(item.reply_to_id) || 0,
         item.reply && item.reply.message ? item.reply.message : '',
         item.reply && item.reply.attachment_name ? item.reply.attachment_name : '',
-        item.reply && item.reply.deleted ? 1 : 0
+        item.reply && item.reply.deleted ? 1 : 0,
+        JSON.stringify(item.reactions || [])
     ].join(':')).join('|');
 
     const isNearBottom = (element, threshold = 24) => (
@@ -1261,6 +1280,7 @@ $(function () {
 
     const beginReply = (item) => {
         if (!item || !Number(item.id)) return;
+        if (state.editing) clearEdit({restoreDraft: true});
 
         const currentUserId = Number(window.__chatAppState && window.__chatAppState.currentUserId) || 0;
         const senderIsMe = Number(item.sender_id) === currentUserId;
@@ -1320,6 +1340,380 @@ $(function () {
         `;
     };
 
+    // FIREBALL_CHAT21_EDIT
+    const clearEdit = (options = {}) => {
+        const restoreDraft = Boolean(options.restoreDraft);
+        const clearInput = Boolean(options.clearInput);
+        const previousDraft = state.editing ? String(state.editing.draft || '') : '';
+
+        state.editing = null;
+        form.removeClass('is-editing');
+        editPreview.addClass('d-none');
+        editOriginal.text('');
+        form.find('[data-chat-attachment], [data-file-manager-open], [data-chat-record-voice]').prop('disabled', false);
+
+        if (restoreDraft) {
+            messageInput.val(previousDraft);
+        } else if (clearInput) {
+            messageInput.val('');
+        }
+
+        resizeMessageInput();
+    };
+
+    const beginEdit = (item) => {
+        if (!item || !Number(item.id)) return;
+
+        const currentUserId = Number(window.__chatAppState && window.__chatAppState.currentUserId) || 0;
+        const messageText = String(item.message || '');
+
+        if (Number(item.sender_id) !== currentUserId || messageText.trim() === '') {
+            return;
+        }
+
+        if (state.editing) {
+            clearEdit({restoreDraft: true});
+        }
+
+        clearReply();
+        stopVoiceRecording(false);
+        clearPendingAttachment();
+
+        state.editing = {
+            id: Number(item.id),
+            draft: String(messageInput.val() || ''),
+            original: messageText,
+            hasAttachment: Boolean(item.attachment),
+        };
+
+        form.addClass('is-editing');
+        editOriginal.text(messageText);
+        editPreview.removeClass('d-none');
+        form.find('[data-chat-attachment], [data-file-manager-open], [data-chat-record-voice]').prop('disabled', true);
+
+        messageInput.val(messageText);
+        resizeMessageInput();
+        messageInput.trigger('focus');
+
+        const input = messageInput[0];
+        if (input && typeof input.setSelectionRange === 'function') {
+            const length = String(input.value || '').length;
+            input.setSelectionRange(length, length);
+        }
+    };
+
+    const saveEditedMessage = () => {
+        if (!state.editing || sendButton.prop('disabled')) return;
+
+        const editing = state.editing;
+        const contactId = activeContactId();
+        const text = String(messageInput.val() || '').trim();
+
+        if (text === '' && !editing.hasAttachment) {
+            showFlashAlert(
+                'error',
+                chatApp.data('edit-message-required-text')
+                    || chatApp.data('message-required-text')
+                    || 'Message is required.'
+            );
+            return;
+        }
+
+        stopLocalTyping(contactId, true);
+
+        $.ajax({
+            url: editUrl,
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
+                user_id: contactId,
+                message_id: editing.id,
+                message: text,
+            },
+            beforeSend: function () {
+                sendButton.prop('disabled', true);
+            },
+            success: function (response) {
+                if (!response.status) {
+                    showFlashAlert('error', response.message || '');
+                    return;
+                }
+
+                clearEdit({clearInput: true});
+                state.messagesRequestId += 1;
+
+                if (contactId === activeContactId()) {
+                    applyPayload(response, {force: true});
+                } else {
+                    loadMessages({force: true});
+                }
+            },
+            error: function (request) {
+                const message = request.responseJSON && request.responseJSON.message
+                    ? request.responseJSON.message
+                    : (chatApp.data('edit-error-text') || 'Could not edit the message.');
+                showFlashAlert('error', message);
+            },
+            complete: function () {
+                sendButton.prop('disabled', false);
+            }
+        });
+    };
+
+    // FIREBALL_CHAT21_REACTIONS
+    const allowedReactions = ['👍', '❤️', '😂', '😮', '😢'];
+
+    const reactionUsersText = (group) => {
+        const users = Array.isArray(group && group.users) ? group.users : [];
+        return users
+            .map((user) => String(user && user.name || '').trim())
+            .filter(Boolean)
+            .join(', ');
+    };
+
+    const renderReactionSummary = (reactions, messageId) => {
+        const groups = Array.isArray(reactions) ? reactions : [];
+        if (!groups.length) return '';
+
+        return `
+            <div class="chat-message-reactions">
+                ${groups.map((group) => {
+                    const reaction = String(group.reaction || '');
+                    const count = Number(group.count) || 0;
+                    const names = reactionUsersText(group);
+                    const mineClass = group.me ? ' is-mine' : '';
+                    const title = names
+                        ? `${reaction} ${names}`
+                        : String(chatApp.data('reaction-users-text') || 'Reactions');
+
+                    return `
+                        <button
+                            type="button"
+                            class="chat-reaction-chip${mineClass}"
+                            data-chat-reaction-chip
+                            data-message-id="${Number(messageId) || 0}"
+                            data-reaction="${escapeHtml(reaction)}"
+                            title="${escapeHtml(title)}"
+                            aria-label="${escapeHtml(title)}"
+                        >
+                            <span class="chat-reaction-chip__emoji" aria-hidden="true">${escapeHtml(reaction)}</span>
+                            <span class="chat-reaction-chip__count">${count}</span>
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    };
+
+    const renderReactionPicker = (reactions, messageId) => {
+        const groups = Array.isArray(reactions) ? reactions : [];
+        const selected = groups.find((group) => Boolean(group.me));
+        const selectedReaction = selected ? String(selected.reaction || '') : '';
+
+        const details = groups
+            .map((group) => {
+                const names = reactionUsersText(group);
+                if (!names) return '';
+                return `<div><span aria-hidden="true">${escapeHtml(group.reaction || '')}</span> ${escapeHtml(names)}</div>`;
+            })
+            .filter(Boolean)
+            .join('');
+
+        return `
+            <div class="chat-reaction-picker d-none" data-chat-reaction-picker data-message-id="${Number(messageId) || 0}">
+                <div class="chat-reaction-picker__choices">
+                    ${allowedReactions.map((reaction) => `
+                        <button
+                            type="button"
+                            class="chat-reaction-choice ${selectedReaction === reaction ? 'is-selected' : ''}"
+                            data-chat-reaction-choice
+                            data-message-id="${Number(messageId) || 0}"
+                            data-reaction="${escapeHtml(reaction)}"
+                            title="${escapeHtml(String(chatApp.data('action-react-text') || 'React'))}"
+                            aria-label="${escapeHtml(String(chatApp.data('action-react-text') || 'React'))}: ${escapeHtml(reaction)}"
+                        >${escapeHtml(reaction)}</button>
+                    `).join('')}
+                </div>
+                <div class="chat-reaction-picker__users">${details}</div>
+            </div>
+        `;
+    };
+    const closeReactionPickers = (exceptMessageId = 0) => {
+        chatApp.find('[data-chat-reaction-picker]').each(function () {
+            const picker = $(this);
+            const messageId = Number(picker.data('message-id')) || 0;
+
+            if (!exceptMessageId || messageId !== Number(exceptMessageId)) {
+                picker.addClass('d-none');
+            }
+        });
+
+        if (!exceptMessageId) {
+            state.openReactionMessageId = 0;
+        }
+    };
+
+
+    const toggleReaction = (messageId, reaction) => {
+        messageId = Number(messageId) || 0;
+        reaction = String(reaction || '');
+
+        if (!messageId || !allowedReactions.includes(reaction) || state.reactionRequestPending) {
+            return;
+        }
+
+        const contactId = activeContactId();
+
+        $.ajax({
+            url: reactUrl,
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
+                user_id: contactId,
+                message_id: messageId,
+                reaction: reaction,
+            },
+            beforeSend: function () {
+                state.reactionRequestPending = true;
+            },
+            success: function (response) {
+                if (!response.status) {
+                    showFlashAlert('error', response.message || '');
+                    return;
+                }
+
+                closeReactionPickers();
+                state.messagesRequestId += 1;
+
+                if (contactId === activeContactId()) {
+                    applyPayload(response, {force: true});
+                } else {
+                    loadMessages({force: true});
+                }
+            },
+            error: function (request) {
+                const message = request.responseJSON && request.responseJSON.message
+                    ? request.responseJSON.message
+                    : (chatApp.data('reaction-error-text') || 'Could not update reaction.');
+                showFlashAlert('error', message);
+            },
+            complete: function () {
+                state.reactionRequestPending = false;
+            }
+        });
+    };
+
+    // FIREBALL_CHAT22_RECEIPTS
+    const renderDeliveryChecks = (item) => {
+        const status = String(item && item.delivery_status || 'sent');
+        const isRead = status === 'read';
+        const isDelivered = status === 'delivered' || isRead;
+
+        const label = isRead
+            ? String(chatApp.data('status-read-text') || 'Read')
+            : (isDelivered
+                ? String(chatApp.data('status-delivered-text') || 'Delivered')
+                : String(chatApp.data('status-sent-text') || 'Sent'));
+
+        const stateClass = isRead
+            ? 'chat-message-checks--read'
+            : (isDelivered
+                ? 'chat-message-checks--delivered'
+                : 'chat-message-checks--sent');
+
+        const icons = isDelivered
+            ? '<i class="ci-check"></i><i class="ci-check"></i>'
+            : '<i class="ci-check"></i>';
+
+        return `
+            <span
+                class="chat-message-checks ${stateClass}"
+                title="${escapeHtml(label)}"
+                aria-label="${escapeHtml(label)}"
+            >${icons}</span>
+        `;
+    };
+
+    // FIREBALL_CHAT24_TYPING
+    const applyRemoteTyping = (isTyping) => {
+        const active = Boolean(isTyping);
+        state.remoteTyping = active;
+
+        typingIndicator
+            .toggleClass('d-none', !active)
+            .toggleClass('d-inline-flex', active);
+
+        currentStatus.toggleClass('d-none', active);
+    };
+
+    const clearTypingStopTimer = () => {
+        if (state.typingStopTimer) {
+            window.clearTimeout(state.typingStopTimer);
+            state.typingStopTimer = null;
+        }
+    };
+
+    const sendTypingState = (isTyping, options = {}) => {
+        const contactId = Number(options.contactId) || activeContactId();
+        const force = Boolean(options.force);
+        const now = Date.now();
+
+        if (!typingUrl || !contactId) return;
+
+        if (isTyping && !force && (now - state.typingLastSentAt) < 1400) {
+            return;
+        }
+
+        if (isTyping) {
+            state.typingLastSentAt = now;
+            state.localTyping = true;
+        } else {
+            state.localTyping = false;
+            state.typingLastSentAt = 0;
+        }
+
+        $.ajax({
+            url: typingUrl,
+            method: 'POST',
+            dataType: 'json',
+            global: false,
+            data: {
+                needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
+                user_id: contactId,
+                typing: isTyping ? 1 : 0,
+            }
+        });
+    };
+
+    const stopLocalTyping = (contactId = 0, force = false) => {
+        clearTypingStopTimer();
+
+        if (state.localTyping || force) {
+            sendTypingState(false, {
+                contactId: Number(contactId) || activeContactId(),
+                force: true,
+            });
+        }
+    };
+
+    const updateLocalTyping = () => {
+        clearTypingStopTimer();
+
+        const value = String(messageInput.val() || '');
+        if (value.trim() === '' || document.hidden) {
+            stopLocalTyping();
+            return;
+        }
+
+        sendTypingState(true);
+
+        state.typingStopTimer = window.setTimeout(() => {
+            stopLocalTyping();
+        }, 2400);
+    };
+
     const renderMessages = (messages, currentUserId, options = {}) => {
         const box = messagesBox[0];
         const force = Boolean(options.force);
@@ -1362,10 +1756,7 @@ $(function () {
             const dayKey = getMessageDayKey(item.created_at);
             const previousDayKey = previousItem ? getMessageDayKey(previousItem.created_at) : '';
             const dayLabel = formatMessageDate(item.created_at);
-            const readIcon = Number(item.is_read) === 1
-                ? '<span class="chat-message-checks" aria-hidden="true"><i class="ci-check"></i><i class="ci-check"></i></span>'
-                : '<span class="chat-message-checks" aria-hidden="true"><i class="ci-check"></i></span>';
-            const checks = mine ? readIcon : '';
+            const checks = mine ? renderDeliveryChecks(item) : '';
             const avatar = escapeHtml(getContactButtons().filter('.active').first().data('user-avatar') || currentAvatar.attr('src') || '');
             const messageValue = String(item.message || '').trim();
             const hasText = messageValue !== '';
@@ -1379,7 +1770,16 @@ $(function () {
             const canShowCheckbox = state.selectionMode && state.canBulkDelete;
             const actionDeleteText = escapeHtml(chatApp.data('action-delete-text') || 'Delete');
             const actionReplyText = escapeHtml(chatApp.data('action-reply-text') || 'Reply');
+            const actionEditText = escapeHtml(chatApp.data('action-edit-text') || 'Edit');
+            const actionReactText = escapeHtml(chatApp.data('action-react-text') || 'React');
+            const editLabelText = escapeHtml(chatApp.data('edit-label-text') || 'edited');
+            const canEditMessage = mine && hasText;
+            const editedLabel = item.edited_at
+                ? `<span class="chat-message-edited">${editLabelText}</span>`
+                : '';
             const replyQuote = renderReplyQuote(item.reply, currentUserId);
+            const reactionsMarkup = renderReactionSummary(item.reactions, item.id);
+            const reactionPickerMarkup = renderReactionPicker(item.reactions, item.id);
             const timestamp = escapeHtml(formatMessageTime(item.created_at));
             const dateTime = escapeHtml(String(item.created_at || '').replace(' ', 'T'));
             const avatarHtml = mine
@@ -1403,15 +1803,26 @@ $(function () {
                             ${attachment}
                             <div class="chat-message-meta-text">
                                 <time datetime="${dateTime}" title="${escapeHtml(item.created_at || '')}">${timestamp}</time>
+                                ${editedLabel}
                                 ${checks}
                             </div>
                         </div>
+                        ${reactionsMarkup}
+                        ${reactionPickerMarkup}
                         ${canShowActions ? `
                             <div class="chat-message-actions">
                                 <!-- FIREBALL_CHAT21_REPLY_UI_FIX_V2 -->
                                 <button type="button" class="chat-message-reply-btn" data-chat-reply-message="${Number(item.id) || 0}" title="${actionReplyText}" aria-label="${actionReplyText}">
                                     <i class="ci-arrow-left" aria-hidden="true"></i>
                                 </button>
+                                <button type="button" class="chat-message-reaction-btn" data-chat-reaction-open="${Number(item.id) || 0}" title="${actionReactText}" aria-label="${actionReactText}">
+                                    <i class="ci-smile" aria-hidden="true"></i>
+                                </button>
+                                ${canEditMessage ? `
+                                    <button type="button" class="chat-message-edit-btn" data-chat-edit-message="${Number(item.id) || 0}" title="${actionEditText}" aria-label="${actionEditText}">
+                                        <i class="ci-edit-2" aria-hidden="true"></i>
+                                    </button>
+                                ` : ''}
                                 ${state.canModerate ? `
                                     <button type="button" class="chat-message-delete-btn" data-chat-delete-message="${Number(item.id) || 0}" title="${actionDeleteText}" aria-label="${actionDeleteText}">
                                         <i class="ci-trash" aria-hidden="true"></i>
@@ -1426,6 +1837,20 @@ $(function () {
 
         messagesBox.html(html);
         initializeVoicePlayers();
+
+        // FIREBALL_CHAT31_REACTION_PICKER_FIX_V2
+        // Forced realtime render can rebuild the reaction picker DOM.
+        if (state.openReactionMessageId) {
+            const restoredPicker = chatApp.find(
+                `[data-chat-reaction-picker][data-message-id="${state.openReactionMessageId}"]`
+            ).first();
+
+            if (restoredPicker.length) {
+                restoredPicker.removeClass('d-none');
+            } else {
+                state.openReactionMessageId = 0;
+            }
+        }
         state.renderedSignature = signature;
 
         if (!box) {
@@ -1556,11 +1981,41 @@ $(function () {
     };
 
     // FIREBALL_CHAT2_FOUNDATION
+    // FIREBALL_CHAT23_REALTIME
     let chatEventSource = null;
     let chatRealtimeConnected = false;
+    let chatRealtimeRefreshPending = false;
+
+    const applyRealtimePresence = (payload) => {
+        if (!payload || typeof payload.is_online === 'undefined') return;
+
+        const isOnline = Boolean(payload.is_online);
+        const contactId = activeContactId();
+        const contactButton = getContactButtons()
+            .filter(`[data-user-id="${contactId}"]`)
+            .first();
+
+        contactButton
+            .attr('data-user-online', isOnline ? '1' : '0')
+            .data('user-online', isOnline ? 1 : 0);
+
+        updateCurrentContactPresence(isOnline);
+    };
+
+    const scheduleRealtimeRefresh = () => {
+        if (document.hidden || messagesRequest) {
+            chatRealtimeRefreshPending = true;
+            return;
+        }
+
+        chatRealtimeRefreshPending = false;
+        loadMessages({force: true, realtime: true});
+    };
 
     const stopChatRealtime = () => {
         chatRealtimeConnected = false;
+        chatRealtimeRefreshPending = false;
+
         if (chatEventSource) {
             chatEventSource.close();
             chatEventSource = null;
@@ -1569,27 +2024,63 @@ $(function () {
 
     const startChatRealtime = () => {
         const contactId = activeContactId();
+
         if (!streamUrl || !contactId || typeof window.EventSource === 'undefined' || document.hidden) {
             chatRealtimeConnected = false;
             return;
         }
+
         stopChatRealtime();
+
         const url = new URL(streamUrl, window.location.href);
         url.searchParams.set('user_id', String(contactId));
+
         const source = new window.EventSource(url.toString(), {withCredentials: true});
         chatEventSource = source;
+
         source.addEventListener('open', () => {
-            if (chatEventSource === source) chatRealtimeConnected = true;
+            if (chatEventSource === source) {
+                chatRealtimeConnected = true;
+            }
         });
+
         source.addEventListener('chat', (event) => {
             if (chatEventSource !== source) return;
+
             let payload = {};
-            try { payload = JSON.parse(event.data || '{}'); } catch (error) { return; }
+            try {
+                payload = JSON.parse(event.data || '{}');
+            } catch (error) {
+                return;
+            }
+
             if (Number(payload.contact_id) !== activeContactId()) return;
-            if (!messagesRequest) loadMessages({force: true});
+
+            const changes = Array.isArray(payload.changes)
+                ? payload.changes
+                : ['messages'];
+
+            if (changes.includes('presence')) {
+                applyRealtimePresence(payload.presence || {});
+            }
+
+            if (changes.includes('typing')) {
+                applyRemoteTyping(Boolean(payload.typing && payload.typing.is_typing));
+            }
+
+            if (
+                changes.includes('messages')
+                || changes.includes('reactions')
+                || changes.includes('receipts')
+            ) {
+                scheduleRealtimeRefresh();
+            }
         });
+
         source.addEventListener('error', () => {
-            if (chatEventSource === source) chatRealtimeConnected = false;
+            if (chatEventSource === source) {
+                chatRealtimeConnected = false;
+            }
         });
     };
 
@@ -1653,12 +2144,23 @@ $(function () {
                 }
             },
             complete: function () {
-                if (requestId === state.messagesRequestId) messagesRequest = null;
+                if (requestId === state.messagesRequestId) {
+                    messagesRequest = null;
+                }
+
+                if (chatRealtimeRefreshPending && chatRealtimeConnected && !document.hidden && !messagesRequest) {
+                    chatRealtimeRefreshPending = false;
+                    window.setTimeout(scheduleRealtimeRefresh, 0);
+                }
             }
         });
     };
 
     const setActiveContact = (button) => {
+        const previousContactId = activeContactId();
+        stopLocalTyping(previousContactId, true);
+        applyRemoteTyping(false);
+
         const contactId = Number(button.data('user-id')) || 0;
         getContactButtons().removeClass('active');
         getContactButtons().filter(`[data-user-id="${contactId}"]`).addClass('active');
@@ -1674,9 +2176,12 @@ $(function () {
         state.renderedSignature = '';
         state.selectionMode = false;
         state.selectedIds.clear();
+        state.openReactionMessageId = 0;
+        closeReactionPickers();
         syncSelectionControls();
         messageInput.val('');
         clearReply();
+        clearEdit({clearInput: true});
         resizeMessageInput();
         messageSearchInput.val('');
         stopVoiceRecording(false);
@@ -1697,12 +2202,19 @@ $(function () {
             return;
         }
 
+        if (state.editing) {
+            saveEditedMessage();
+            return;
+        }
+
         const contactId = activeContactId();
         const text = String(messageInput.val() || '').trim();
         if (text === '' && !state.pendingFiles.length && !state.pendingSiteAttachments.length) {
             showFlashAlert('error', chatApp.data('message-required-text') || 'Message is required.');
             return;
         }
+
+        stopLocalTyping(contactId, true);
 
         const payload = new FormData(form[0]);
         payload.delete('attachment[]');
@@ -2029,6 +2541,67 @@ $(function () {
         event.preventDefault();
         setActiveContact($(this));
     });
+    chatApp.on('click', '[data-chat-reaction-open]', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const messageId = Number($(this).data('chat-reaction-open')) || 0;
+        if (!messageId) return;
+
+        const picker = chatApp.find(
+            `[data-chat-reaction-picker][data-message-id="${messageId}"]`
+        ).first();
+
+        const shouldOpen = picker.hasClass('d-none');
+
+        closeReactionPickers(messageId);
+
+        if (shouldOpen) {
+            state.openReactionMessageId = messageId;
+            picker.removeClass('d-none');
+        } else {
+            state.openReactionMessageId = 0;
+            picker.addClass('d-none');
+        }
+    });
+
+
+    chatApp.on('click', '[data-chat-reaction-choice]', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleReaction(
+            Number($(this).data('message-id')) || 0,
+            String($(this).data('reaction') || '')
+        );
+    });
+
+    chatApp.on('click', '[data-chat-reaction-chip]', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleReaction(
+            Number($(this).data('message-id')) || 0,
+            String($(this).data('reaction') || '')
+        );
+    });
+
+    $(document).on('click', function (event) {
+        if (!$(event.target).closest('[data-chat-reaction-picker], [data-chat-reaction-open]').length) {
+            closeReactionPickers();
+        }
+    });
+
+    chatApp.on('click', '[data-chat-edit-message]', function () {
+        const messageId = Number($(this).data('chat-edit-message')) || 0;
+        if (!messageId) return;
+
+        const item = state.messages.find((message) => Number(message.id) === messageId);
+        if (item) beginEdit(item);
+    });
+
+    editCancelButton.on('click', function () {
+        clearEdit({restoreDraft: true});
+        messageInput.trigger('focus');
+    });
 
     chatApp.on('click', '[data-chat-reply-message]', function () {
         const messageId = Number($(this).data('chat-reply-message')) || 0;
@@ -2162,6 +2735,7 @@ $(function () {
 
     messageInput.on('input', function () {
         resizeMessageInput();
+        updateLocalTyping();
     });
 
     window.addEventListener('resize', resizeMessageInput);
@@ -2297,6 +2871,41 @@ $(function () {
         openConfirmation();
     });
 
+    // FIREBALL_CHAT30_GROUPS
+    $(document).on('submit', '[data-chat-create-group-form]', function (event) {
+        event.preventDefault();
+
+        const groupForm = $(this);
+        const submit = groupForm.find('button[type="submit"]');
+
+        $.ajax({
+            url: String(groupForm.attr('action') || ''),
+            method: 'POST',
+            dataType: 'json',
+            data: groupForm.serialize(),
+            beforeSend: function () {
+                submit.prop('disabled', true);
+            },
+            success: function (response) {
+                if (!response.status || !response.url) {
+                    showFlashAlert('error', response.message || '');
+                    return;
+                }
+
+                window.location.href = String(response.url);
+            },
+            error: function (request) {
+                const message = request.responseJSON && request.responseJSON.message
+                    ? request.responseJSON.message
+                    : 'Could not create group.';
+                showFlashAlert('error', message);
+            },
+            complete: function () {
+                submit.prop('disabled', false);
+            }
+        });
+    });
+
     window.__chatAppState = { activeContactId: activeContactId(), currentUserId: 0 };
     $(document).trigger('chat:active-contact-changed', [activeContactId()]);
 
@@ -2309,20 +2918,27 @@ $(function () {
         recordVoiceButton.prop('disabled', true).attr('title', chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.');
     }
     window.addEventListener('pagehide', function () {
+        stopLocalTyping(activeContactId(), true);
         stopVoiceRecording(false);
         stopChatRealtime();
     });
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {
             startChatRealtime();
-            loadMessages();
+            loadMessages({force: true});
         } else {
+            stopLocalTyping(activeContactId(), true);
+            applyRemoteTyping(false);
             stopChatRealtime();
         }
     });
     setInterval(function () {
-        if (document.visibilityState === 'visible' && !chatRealtimeConnected) {
-            loadMessages({ poll: true });
+        if (
+            document.visibilityState === 'visible'
+            && !chatRealtimeConnected
+            && !chatRealtimeRefreshPending
+        ) {
+            loadMessages({poll: true});
         }
     }, 4000);
 });

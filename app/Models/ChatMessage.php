@@ -13,6 +13,9 @@ use App\Services\ChatAttachmentService;
  */
 class ChatMessage
 {
+    // FIREBALL_CHAT22_RECEIPTS
+    // FIREBALL_CHAT21_REACTIONS
+    // FIREBALL_CHAT21_EDIT
     // FIREBALL_CHAT21_REPLY
     // FIREBALL_CHAT2_MODEL
 
@@ -143,7 +146,11 @@ class ChatMessage
                 m.sender_ip,
                 m.sender_user_agent,
                 m.is_read,
+                m.delivered_at,
+                m.edited_at,
                 m.created_at,
+                cr.delivered_at AS receipt_delivered_at,
+                cr.read_at AS receipt_read_at,
                 m.reply_to_id,
                 r.id AS reply_id,
                 r.sender_id AS reply_sender_id,
@@ -159,6 +166,9 @@ class ChatMessage
                     OR
                     (r.sender_id = m.receiver_id AND r.receiver_id = m.sender_id)
               )
+             LEFT JOIN chat_receipts cr
+               ON cr.message_id = m.id
+              AND cr.user_id = m.receiver_id
              WHERE m.deleted_at IS NULL
                AND (
                     (m.sender_id = :first_user_id AND m.receiver_id = :second_user_id)
@@ -174,9 +184,25 @@ class ChatMessage
 
         $messages = array_reverse($messages);
 
-        return array_map(static function (array $message): array {
+        $normalized = array_map(static function (array $message): array {
             $replyToId = (int)($message['reply_to_id'] ?? 0);
             $reply = null;
+
+            // FIREBALL_CHAT22_RECEIPTS
+            $receiptDeliveredAt = trim((string)($message['receipt_delivered_at'] ?? ''));
+            $receiptReadAt = trim((string)($message['receipt_read_at'] ?? ''));
+            $messageDeliveredAt = trim((string)($message['delivered_at'] ?? ''));
+
+            $deliveredAt = $receiptDeliveredAt !== ''
+                ? $receiptDeliveredAt
+                : $messageDeliveredAt;
+
+            $readAt = $receiptReadAt;
+            $isRead = (int)($message['is_read'] ?? 0) === 1 || $readAt !== '';
+
+            $deliveryStatus = $isRead
+                ? 'read'
+                : ($deliveredAt !== '' ? 'delivered' : 'sent');
 
             if ($replyToId > 0) {
                 $replyExists = (int)($message['reply_id'] ?? 0) > 0;
@@ -204,12 +230,282 @@ class ChatMessage
                 'receiver_id' => (int)$message['receiver_id'],
                 'message' => ChatCipher::decrypt((string)$message['message_ciphertext']),
                 'attachment' => self::normalizeAttachment($message),
-                'is_read' => (int)$message['is_read'],
+                'is_read' => $isRead ? 1 : 0,
+                'delivery_status' => $deliveryStatus,
+                'delivered_at' => $deliveredAt !== '' ? $deliveredAt : null,
+                'read_at' => $readAt !== '' ? $readAt : null,
+                'edited_at' => !empty($message['edited_at']) ? (string)$message['edited_at'] : null,
                 'reply_to_id' => $replyToId > 0 ? $replyToId : null,
                 'reply' => $reply,
                 'created_at' => (string)$message['created_at'],
             ];
         }, $messages);
+
+        $reactionMap = $this->getReactionsForMessages(
+            array_column($normalized, 'id'),
+            $firstUserId
+        );
+
+        foreach ($normalized as &$item) {
+            $item['reactions'] = $reactionMap[(int)$item['id']] ?? [];
+        }
+        unset($item);
+
+        return $normalized;
+    }
+
+    /**
+     * Редактирует текст только собственного сообщения в direct-диалоге.
+     * Вложение, reply_to_id и receipts не изменяются.
+     */
+    /**
+     * Добавляет, меняет или снимает реакцию текущего пользователя.
+     * На одном сообщении у пользователя может быть только одна активная реакция.
+     */
+    public function toggleReaction(
+        int $messageId,
+        int $userId,
+        int $contactId,
+        string $reaction
+    ): array {
+        $allowed = ['👍', '❤️', '😂', '😮', '😢'];
+        if (
+            $messageId <= 0
+            || $userId <= 0
+            || $contactId <= 0
+            || !in_array($reaction, $allowed, true)
+        ) {
+            return ['status' => false, 'reason' => 'invalid'];
+        }
+
+        $this->ensureTableExists();
+
+        $message = db()->query(
+            "SELECT id
+             FROM {$this->table}
+             WHERE id = :message_id
+               AND deleted_at IS NULL
+               AND (
+                    (sender_id = :user_id_a AND receiver_id = :contact_id_a)
+                    OR
+                    (sender_id = :contact_id_b AND receiver_id = :user_id_b)
+               )
+             LIMIT 1",
+            [
+                'message_id' => $messageId,
+                'user_id_a' => $userId,
+                'contact_id_a' => $contactId,
+                'contact_id_b' => $contactId,
+                'user_id_b' => $userId,
+            ]
+        )->getOne();
+
+        if (!$message) {
+            return ['status' => false, 'reason' => 'invalid'];
+        }
+
+        $current = db()->query(
+            "SELECT reaction
+             FROM chat_reactions
+             WHERE message_id = ? AND user_id = ?
+             ORDER BY id DESC
+             LIMIT 1",
+            [$messageId, $userId]
+        )->getOne();
+
+        $currentReaction = trim((string)($current['reaction'] ?? ''));
+        $database = db();
+        $ownsTransaction = !$database->inTransaction();
+
+        try {
+            if ($ownsTransaction) {
+                $database->beginTransaction();
+            }
+
+            db()->query(
+                "DELETE FROM chat_reactions
+                 WHERE message_id = ? AND user_id = ?",
+                [$messageId, $userId]
+            );
+
+            $active = false;
+            if ($currentReaction !== $reaction) {
+                db()->query(
+                    "INSERT INTO chat_reactions
+                        (message_id, user_id, reaction, created_at)
+                     VALUES (?, ?, ?, ?)",
+                    [$messageId, $userId, $reaction, date('Y-m-d H:i:s')]
+                );
+                $active = true;
+            }
+
+            if ($ownsTransaction) {
+                $database->commit();
+            }
+
+            return [
+                'status' => true,
+                'active' => $active,
+                'reaction' => $reaction,
+            ];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    /**
+     * Собирает агрегированные реакции для набора сообщений без N+1 запросов.
+     */
+    protected function getReactionsForMessages(array $messageIds, int $currentUserId): array
+    {
+        $messageIds = array_values(array_unique(array_filter(array_map('intval', $messageIds))));
+        if (empty($messageIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
+        $rows = db()->query(
+            "SELECT
+                r.id,
+                r.message_id,
+                r.user_id,
+                r.reaction,
+                r.created_at,
+                COALESCE(NULLIF(u.name, ''), CONCAT('#', r.user_id)) AS user_name
+             FROM chat_reactions r
+             LEFT JOIN users u ON u.id = r.user_id
+             WHERE r.message_id IN ({$placeholders})
+             ORDER BY r.id ASC",
+            $messageIds
+        )->get() ?: [];
+
+        $allowedOrder = ['👍', '❤️', '😂', '😮', '😢'];
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $messageId = (int)($row['message_id'] ?? 0);
+            $reaction = (string)($row['reaction'] ?? '');
+            $userId = (int)($row['user_id'] ?? 0);
+
+            if ($messageId <= 0 || !in_array($reaction, $allowedOrder, true)) {
+                continue;
+            }
+
+            if (!isset($grouped[$messageId][$reaction])) {
+                $grouped[$messageId][$reaction] = [
+                    'reaction' => $reaction,
+                    'count' => 0,
+                    'me' => false,
+                    'users' => [],
+                ];
+            }
+
+            $grouped[$messageId][$reaction]['count']++;
+            if ($userId === $currentUserId) {
+                $grouped[$messageId][$reaction]['me'] = true;
+            }
+
+            $grouped[$messageId][$reaction]['users'][] = [
+                'id' => $userId,
+                'name' => (string)($row['user_name'] ?? ('#' . $userId)),
+            ];
+        }
+
+        $result = [];
+        foreach ($grouped as $messageId => $byReaction) {
+            $ordered = [];
+            foreach ($allowedOrder as $reaction) {
+                if (isset($byReaction[$reaction])) {
+                    $ordered[] = $byReaction[$reaction];
+                }
+            }
+            $result[(int)$messageId] = $ordered;
+        }
+
+        return $result;
+    }
+
+    public function editOwnMessage(
+        int $messageId,
+        int $senderId,
+        int $contactId,
+        string $message
+    ): array {
+        if ($messageId <= 0 || $senderId <= 0 || $contactId <= 0) {
+            return ['status' => false, 'reason' => 'not_found'];
+        }
+
+        $this->ensureTableExists();
+        $message = trim($message);
+
+        $row = db()->query(
+            "SELECT id, message_ciphertext, attachment_path, edited_at
+             FROM {$this->table}
+             WHERE id = :message_id
+               AND sender_id = :sender_id
+               AND receiver_id = :receiver_id
+               AND deleted_at IS NULL
+             LIMIT 1",
+            [
+                'message_id' => $messageId,
+                'sender_id' => $senderId,
+                'receiver_id' => $contactId,
+            ]
+        )->getOne();
+
+        if (!$row) {
+            return ['status' => false, 'reason' => 'not_found'];
+        }
+
+        $hasAttachment = trim((string)($row['attachment_path'] ?? '')) !== '';
+        if ($message === '' && !$hasAttachment) {
+            return ['status' => false, 'reason' => 'message_required'];
+        }
+
+        $currentText = ChatCipher::decrypt((string)($row['message_ciphertext'] ?? ''));
+        if ($currentText === $message) {
+            return [
+                'status' => true,
+                'changed' => false,
+                'edited_at' => (string)($row['edited_at'] ?? ''),
+            ];
+        }
+
+        $editedAt = date('Y-m-d H:i:s');
+        $encryptedMessage = ChatCipher::encrypt($message);
+        $encryptionKeyId = $message === '' ? null : ChatCipher::currentKeyId();
+
+        db()->query(
+            "UPDATE {$this->table}
+             SET message_ciphertext = :message_ciphertext,
+                 encryption_key_id = :encryption_key_id,
+                 edited_at = :edited_at
+             WHERE id = :message_id
+               AND sender_id = :sender_id
+               AND receiver_id = :receiver_id
+               AND deleted_at IS NULL",
+            [
+                'message_ciphertext' => $encryptedMessage,
+                'encryption_key_id' => $encryptionKeyId,
+                'edited_at' => $editedAt,
+                'message_id' => $messageId,
+                'sender_id' => $senderId,
+                'receiver_id' => $contactId,
+            ]
+        );
+
+        if (db()->rowCount() < 1) {
+            return ['status' => false, 'reason' => 'not_found'];
+        }
+
+        return [
+            'status' => true,
+            'changed' => true,
+            'edited_at' => $editedAt,
+        ];
     }
 
     /**

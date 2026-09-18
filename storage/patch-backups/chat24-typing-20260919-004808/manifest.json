@@ -1,0 +1,65 @@
+{
+  "patch_id": "fireball-chat24-typing-20260919",
+  "files": [
+    {
+      "path": "config/routes.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "app/Controllers/ChatController.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "app/Services/ChatRealtimeService.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "app/Views/themes/default/chat/index.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "public/assets/default/js/chat.js",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "themes/default/assets/js/chat.js",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "app/Languages/ru/chat/index.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "app/Languages/en/chat/index.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "app/Languages/de/chat/index.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "app/Languages/zh-cn/chat/index.php",
+      "changed": true,
+      "existed": true
+    },
+    {
+      "path": "database/migrations/20260919_create_chat_typing_states.php",
+      "changed": true,
+      "existed": false
+    },
+    {
+      "path": "app/Services/ChatTypingService.php",
+      "changed": true,
+      "existed": false
+    }
+  ]
+}

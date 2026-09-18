@@ -77,9 +77,21 @@ $app->router->get('/chat', [ChatController::class, 'index'])->middleware(['auth'
 $app->router->get('/chat/messages', [ChatController::class, 'messages'])->middleware(['auth']);
 // FIREBALL_CHAT2_ROUTE
 $app->router->get('/chat/stream', [ChatController::class, 'stream'])->middleware(['auth']);
+// FIREBALL_CHAT24_TYPING_ROUTE
+$app->router->post('/chat/typing', [ChatController::class, 'typing'])->middleware(['auth']);
+// FIREBALL_CHAT30_GROUPS_ROUTE
+$app->router->post('/chat/groups/create', [ChatController::class, 'createGroup'])->middleware(['auth']);
+$app->router->get('/chat/group', [ChatController::class, 'group'])->middleware(['auth']);
+$app->router->get('/chat/group/messages', [ChatController::class, 'groupMessages'])->middleware(['auth']);
+$app->router->post('/chat/group/send', [ChatController::class, 'groupSend'])->middleware(['auth']);
+$app->router->get('/chat/group/stream', [ChatController::class, 'groupStream'])->middleware(['auth']);
 $app->router->get('/chat/media/(?P<id>\d+)/?', [ChatController::class, 'media'])->middleware(['auth']);
 $app->router->get('/chat/unread-count', [ChatController::class, 'unreadCount'])->middleware(['auth']);
 $app->router->post('/chat/send', [ChatController::class, 'send'])->middleware(['auth']);
+// FIREBALL_CHAT21_EDIT_ROUTE
+$app->router->post('/chat/messages/edit', [ChatController::class, 'editMessage'])->middleware(['auth']);
+// FIREBALL_CHAT21_REACTIONS_ROUTE
+$app->router->post('/chat/messages/react', [ChatController::class, 'reactMessage'])->middleware(['auth']);
 $app->router->post('/chat/messages/delete', [ChatController::class, 'deleteMessages'])->middleware(['auth']);
 $app->router->post('/chat/conversation/clear', [ChatController::class, 'clearConversation'])->middleware(['auth']);
 $app->router->get('/chat/conversation/audit', [ChatController::class, 'audit'])->middleware(['auth']);

@@ -1,0 +1,13 @@
+{
+  "patch_id": "fireball-chat31-reaction-picker-fix-v2-20260919",
+  "files": [
+    {
+      "path": "public/assets/default/js/chat.js",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/js/chat.js",
+      "changed": true
+    }
+  ]
+}

@@ -6,6 +6,10 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use App\Services\ChatMediaStorage;
 use App\Services\ChatRealtimeService;
+use App\Services\ChatTypingService;
+use App\Services\ConversationService;
+use App\Services\GroupChatService;
+use App\Services\GroupChatRealtimeService;
 use App\Services\NotificationService;
 use App\Services\SafeUploadService;
 use App\Services\UploadSettings;
@@ -17,6 +21,10 @@ use FBL\Language;
  */
 class ChatController extends BaseController
 {
+    // FIREBALL_CHAT30_GROUPS
+    // FIREBALL_CHAT24_TYPING
+    // FIREBALL_CHAT21_REACTIONS
+    // FIREBALL_CHAT21_EDIT
     // FIREBALL_CHAT21_REPLY
     // FIREBALL_CHAT2_CONTROLLER
 
@@ -58,7 +66,14 @@ class ChatController extends BaseController
             'active_contact' => $activeContact,
             'chat_fetch_url' => base_href('/chat/messages'),
             'chat_stream_url' => base_href('/chat/stream'),
+            'chat_typing_url' => base_href('/chat/typing'),
+            'chat_groups' => (new GroupChatService())->listForUser($currentUserId),
+            'chat_group_candidates' => $contacts,
+            'chat_group_create_url' => base_href('/chat/groups/create'),
+            'chat_group_url' => base_href('/chat/group'),
             'chat_send_url' => base_href('/chat/send'),
+            'chat_edit_url' => base_href('/chat/messages/edit'),
+            'chat_react_url' => base_href('/chat/messages/react'),
             'chat_delete_url' => base_href('/chat/messages/delete'),
             'chat_clear_url' => base_href('/chat/conversation/clear'),
             'chat_audit_url' => base_href('/chat/conversation/audit'),
@@ -239,6 +254,129 @@ class ChatController extends BaseController
     }
 
     /**
+     * Переключает реакцию текущего пользователя на сообщении.
+     */
+    public function reactMessage()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $contactId = (int)request()->post('user_id');
+        $messageId = max(0, (int)request()->post('message_id'));
+        $reaction = trim((string)request()->post('reaction'));
+        $this->users->touchPresence($currentUserId);
+
+        if (!$this->isAllowedContact($currentUserId, $contactId)) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_access_denied'),
+            ], 403);
+        }
+
+        try {
+            $result = $this->chatMessages->toggleReaction(
+                $messageId,
+                $currentUserId,
+                $contactId,
+                $reaction
+            );
+        } catch (\Throwable $exception) {
+            log_error_details('Chat reaction toggle failed', [
+                'message_id' => $messageId,
+                'user_id' => $currentUserId,
+                'contact_id' => $contactId,
+                'reaction' => $reaction,
+            ], $exception);
+
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_reaction_error'),
+            ], 422);
+        }
+
+        if (empty($result['status'])) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_reaction_invalid'),
+            ], 422);
+        }
+
+        $payload = $this->buildConversationPayload($currentUserId, $contactId);
+        $payload['reaction_active'] = !empty($result['active']);
+        $payload['reaction'] = (string)($result['reaction'] ?? '');
+        $payload['reaction_message_id'] = $messageId;
+
+        response()->json($payload);
+    }
+
+    /**
+     * Редактирует текст собственного сообщения.
+     */
+    public function editMessage()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $contactId = (int)request()->post('user_id');
+        $messageId = max(0, (int)request()->post('message_id'));
+        $message = trim((string)request()->post('message'));
+        $this->users->touchPresence($currentUserId);
+
+        if ($messageId <= 0) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_edit_invalid'),
+            ], 422);
+        }
+
+        if (mb_strlen($message) > 2000) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_message_too_long'),
+            ], 422);
+        }
+
+        if (!$this->isAllowedContact($currentUserId, $contactId)) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_access_denied'),
+            ], 403);
+        }
+
+        try {
+            $result = $this->chatMessages->editOwnMessage(
+                $messageId,
+                $currentUserId,
+                $contactId,
+                $message
+            );
+        } catch (\Throwable $exception) {
+            log_error_details('Chat message edit failed', [
+                'message_id' => $messageId,
+                'sender_id' => $currentUserId,
+                'receiver_id' => $contactId,
+            ], $exception);
+
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_edit_error'),
+            ], 422);
+        }
+
+        if (empty($result['status'])) {
+            $reason = (string)($result['reason'] ?? '');
+            response()->json([
+                'status' => false,
+                'message' => $reason === 'message_required'
+                    ? return_translation('chat_edit_message_required')
+                    : return_translation('chat_edit_invalid'),
+            ], $reason === 'message_required' ? 422 : 403);
+        }
+
+        $payload = $this->buildConversationPayload($currentUserId, $contactId);
+        $payload['edited_message_id'] = $messageId;
+        $payload['message'] = return_translation('chat_message_edited');
+
+        response()->json($payload);
+    }
+
+    /**
      * Мягко удаляет одно или несколько сообщений.
      */
     public function deleteMessages()
@@ -383,6 +521,242 @@ class ChatController extends BaseController
         ]);
     }
 
+
+    /**
+     * Создаёт новый групповой диалог из доступных текущему пользователю контактов.
+     */
+    public function createGroup()
+    {
+        $currentUser = get_user();
+        $currentUserId = (int)$currentUser['id'];
+        $title = trim((string)request()->post('title'));
+        $rawMemberIds = $_POST['member_ids'] ?? [];
+        $memberIds = is_array($rawMemberIds) ? $rawMemberIds : [$rawMemberIds];
+
+        if (mb_strlen($title) < 2 || mb_strlen($title) > 100) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_group_name_invalid'),
+            ], 422);
+        }
+
+        $allowedContacts = $this->chatMessages->getContactsForUser(
+            $currentUserId,
+            $this->isPrivilegedChatUser()
+        );
+        $allowedIds = array_map(
+            static fn (array $contact): int => (int)$contact['id'],
+            $allowedContacts
+        );
+
+        $memberIds = array_values(array_unique(array_filter(array_map(
+            'intval',
+            $memberIds
+        ))));
+        $memberIds = array_values(array_intersect($memberIds, $allowedIds));
+
+        if (count($memberIds) < 2) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_group_min_members'),
+            ], 422);
+        }
+
+        try {
+            $conversationId = (new GroupChatService())->createGroup(
+                $currentUserId,
+                $title,
+                $memberIds
+            );
+        } catch (\Throwable $exception) {
+            log_error_details('Group chat create failed', [
+                'creator_id' => $currentUserId,
+                'member_ids' => $memberIds,
+            ], $exception);
+
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_group_create_error'),
+            ], 422);
+        }
+
+        response()->json([
+            'status' => true,
+            'conversation_id' => $conversationId,
+            'url' => base_href('/chat/group?conversation_id=' . $conversationId),
+        ]);
+    }
+
+    /**
+     * Показывает отдельный интерфейс группового диалога.
+     */
+    public function group()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $conversationId = (int)request()->get('conversation_id');
+        $groups = new GroupChatService();
+        $group = $groups->getForUser($conversationId, $currentUserId);
+
+        if (!$group) {
+            response()->text('', 404);
+        }
+
+        $groups->markRead($conversationId, $currentUserId);
+
+        return view('chat/group', [
+            'title' => (string)$group['title'],
+            'group' => $group,
+            'members' => $groups->getMembers($conversationId),
+            'chat_index_url' => base_href('/chat'),
+            'chat_group_messages_url' => base_href('/chat/group/messages'),
+            'chat_group_send_url' => base_href('/chat/group/send'),
+            'chat_group_stream_url' => base_href('/chat/group/stream'),
+            'footer_scripts' => [
+                base_url('/assets/default/js/chat-group.js?v=' . filemtime(
+                    WWW . '/assets/default/js/chat-group.js'
+                )),
+            ],
+        ]);
+    }
+
+    /**
+     * Возвращает сообщения группового диалога и отмечает их прочитанными.
+     */
+    public function groupMessages()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $conversationId = (int)request()->get('conversation_id');
+        $groups = new GroupChatService();
+
+        if (!$groups->isMember($conversationId, $currentUserId)) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_group_access_denied'),
+            ], 403);
+        }
+
+        $groups->markRead($conversationId, $currentUserId);
+
+        response()->json([
+            'status' => true,
+            'messages' => $groups->getMessages(
+                $conversationId,
+                $currentUserId
+            ),
+        ]);
+    }
+
+    /**
+     * Отправляет текстовое сообщение в групповой диалог.
+     */
+    public function groupSend()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $conversationId = (int)request()->post('conversation_id');
+        $message = trim((string)request()->post('message'));
+        $groups = new GroupChatService();
+
+        if (!$groups->isMember($conversationId, $currentUserId)) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_group_access_denied'),
+            ], 403);
+        }
+
+        if ($message === '' || mb_strlen($message) > 2000) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_message_required'),
+            ], 422);
+        }
+
+        try {
+            $groups->createMessage(
+                $conversationId,
+                $currentUserId,
+                $message,
+                [
+                    'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+                    'user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
+                ]
+            );
+            $groups->markRead($conversationId, $currentUserId);
+        } catch (\Throwable $exception) {
+            log_error_details('Group chat send failed', [
+                'conversation_id' => $conversationId,
+                'sender_id' => $currentUserId,
+            ], $exception);
+
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_group_send_error'),
+            ], 422);
+        }
+
+        response()->json([
+            'status' => true,
+            'messages' => $groups->getMessages(
+                $conversationId,
+                $currentUserId
+            ),
+        ]);
+    }
+
+    /**
+     * SSE для активного группового диалога.
+     */
+    public function groupStream()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $conversationId = (int)request()->get('conversation_id');
+        $groups = new GroupChatService();
+
+        if (!$groups->isMember($conversationId, $currentUserId)) {
+            response()->text('', 403);
+        }
+
+        $this->users->touchPresence($currentUserId);
+        session()->close();
+
+        (new GroupChatRealtimeService())->stream(
+            $currentUserId,
+            $conversationId
+        );
+    }
+
+    /**
+     * Обновляет краткоживущее состояние "печатает" для direct-диалога.
+     */
+    public function typing()
+    {
+        $currentUserId = (int)get_user()['id'];
+        $contactId = (int)request()->post('user_id');
+        $isTyping = (int)request()->post('typing') === 1;
+        $this->users->touchPresence($currentUserId);
+
+        if (!$this->isAllowedContact($currentUserId, $contactId)) {
+            response()->json([
+                'status' => false,
+                'message' => return_translation('chat_access_denied'),
+            ], 403);
+        }
+
+        $conversationId = (new ConversationService())->ensureDirectConversation(
+            $currentUserId,
+            $contactId
+        );
+
+        $updated = (new ChatTypingService())->setTyping(
+            $conversationId,
+            $currentUserId,
+            $isTyping
+        );
+
+        response()->json([
+            'status' => $updated,
+            'typing' => $isTyping && $updated,
+        ], $updated ? 200 : 503);
+    }
 
     /** SSE realtime for the active direct conversation. */
     public function stream()

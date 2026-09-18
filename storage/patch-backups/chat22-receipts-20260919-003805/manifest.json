@@ -1,0 +1,46 @@
+{
+  "patch_id": "fireball-chat22-receipts-20260919",
+  "created_at": "2026-09-19T00:38:05",
+  "files": [
+    {
+      "path": "app/Services/ChatReceiptService.php",
+      "changed": true
+    },
+    {
+      "path": "app/Services/ChatRealtimeService.php",
+      "changed": true
+    },
+    {
+      "path": "app/Models/ChatMessage.php",
+      "changed": true
+    },
+    {
+      "path": "app/Views/themes/default/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "public/assets/default/js/chat.js",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/js/chat.js",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/ru/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/en/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/de/chat/index.php",
+      "changed": true
+    },
+    {
+      "path": "app/Languages/zh-cn/chat/index.php",
+      "changed": true
+    }
+  ]
+}

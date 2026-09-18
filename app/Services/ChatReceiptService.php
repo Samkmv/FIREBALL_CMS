@@ -16,6 +16,17 @@ final class ChatReceiptService
                 read_at = VALUES(read_at)",
             [$userId, $now, $now, $conversationId, $userId]
         );
+        // FIREBALL_CHAT22_RECEIPTS
+        // Read logically implies delivered; keep legacy message field synchronized.
+        db()->query(
+            "UPDATE chat_messages
+             SET delivered_at = COALESCE(delivered_at, ?)
+             WHERE conversation_id = ?
+               AND receiver_id = ?
+               AND deleted_at IS NULL
+               AND delivered_at IS NULL",
+            [$now, $conversationId, $userId]
+        );
         $last = (int)db()->query(
             "SELECT COALESCE(MAX(id), 0) FROM chat_messages
              WHERE conversation_id = ? AND receiver_id = ? AND is_read = 1 AND deleted_at IS NULL",
@@ -44,8 +55,12 @@ final class ChatReceiptService
             [$userId, $now, $conversationId, $userId]
         );
         db()->query(
-            "UPDATE chat_messages SET delivered_at = COALESCE(delivered_at, ?)
-             WHERE conversation_id = ? AND receiver_id = ? AND deleted_at IS NULL",
+            "UPDATE chat_messages
+             SET delivered_at = ?
+             WHERE conversation_id = ?
+               AND receiver_id = ?
+               AND deleted_at IS NULL
+               AND delivered_at IS NULL",
             [$now, $conversationId, $userId]
         );
     }

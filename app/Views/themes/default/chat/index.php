@@ -266,6 +266,358 @@
 }
 </style>
 
+
+<style id="fireball-chat-edit-ui">
+/* FIREBALL_CHAT21_EDIT */
+[data-chat-app] .chat-composer-edit {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 8px 9px;
+    border: 1px solid rgba(148, 163, 184, .16);
+    border-left: 3px solid #f59e0b;
+    border-radius: 10px;
+    background: rgba(245, 158, 11, .075);
+}
+[data-chat-app] .chat-composer-edit.d-none { display: none !important; }
+[data-chat-app] .chat-composer-edit__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(245, 158, 11, .12);
+    color: #f59e0b;
+}
+[data-chat-app] .chat-composer-edit__body {
+    min-width: 0;
+    overflow: hidden;
+}
+[data-chat-app] .chat-composer-edit__title {
+    display: block;
+    margin: 0 0 2px;
+    color: #f59e0b;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.15;
+}
+[data-chat-app] .chat-composer-edit__text {
+    display: block;
+    overflow: hidden;
+    color: var(--cz-body-color);
+    font-size: 13px;
+    line-height: 1.25;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: .72;
+}
+[data-chat-app] .chat-composer-edit__cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--cz-body-color);
+    box-shadow: none;
+    opacity: .62;
+}
+[data-chat-app] .chat-composer-edit__cancel:hover,
+[data-chat-app] .chat-composer-edit__cancel:focus-visible {
+    background: rgba(148, 163, 184, .12);
+    opacity: 1;
+}
+[data-chat-app] form.is-editing .chat-composer__actions,
+[data-chat-app] form.is-editing .chat-pending-attachment,
+[data-chat-app] form.is-editing .chat-voice-recorder,
+[data-chat-app] form.is-editing .chat-composer-reply {
+    display: none !important;
+}
+
+/* FIREBALL_CHAT21_EDIT_UI_FIX */
+[data-chat-app] form.is-editing .chat-composer__row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+[data-chat-app] form.is-editing .chat-composer__message {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+}
+
+[data-chat-app] form.is-editing .chat-composer__submit {
+    justify-self: end !important;
+    align-self: center !important;
+    margin: 0 !important;
+}
+
+[data-chat-app] form.is-editing .chat-composer__meta {
+    margin-top: 10px !important;
+}
+
+@media (max-width: 767.98px) {
+    [data-chat-app] form.is-editing .chat-composer__row {
+        gap: 10px !important;
+    }
+}
+
+[data-chat-app] .chat-message-edit-btn {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    min-width: 27px;
+    height: 27px;
+    min-height: 27px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #c7d0dc;
+    font-size: 13px;
+    line-height: 1;
+    box-shadow: none;
+    outline: none;
+}
+[data-chat-app] .chat-message-edit-btn:hover,
+[data-chat-app] .chat-message-edit-btn:focus-visible {
+    background: rgba(245, 158, 11, .18);
+    color: #ffd089;
+}
+[data-chat-app] .chat-message-edit-btn i {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1;
+}
+[data-chat-app] .chat-message-edited {
+    margin-left: 4px;
+    font-size: .68rem;
+    opacity: .58;
+}
+@media (max-width: 767.98px) {
+    [data-chat-app] .chat-composer-edit {
+        grid-template-columns: 28px minmax(0, 1fr) 28px;
+        padding: 7px 8px;
+    }
+    [data-chat-app] .chat-message-edit-btn {
+        width: 26px;
+        min-width: 26px;
+        height: 26px;
+        min-height: 26px;
+        background: rgba(148, 163, 184, .09);
+        color: inherit;
+    }
+}
+</style>
+
+
+<style id="fireball-chat-reactions-ui">
+/* FIREBALL_CHAT21_REACTIONS */
+[data-chat-app] .chat-message-reactions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+[data-chat-app] .chat-message-row--mine .chat-message-reactions { justify-content: flex-end; }
+[data-chat-app] .chat-message-row--theirs .chat-message-reactions { justify-content: flex-start; }
+[data-chat-app] .chat-reaction-chip {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
+    padding: 2px 7px;
+    border: 1px solid rgba(148, 163, 184, .16);
+    border-radius: 999px;
+    background: rgba(148, 163, 184, .08);
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1;
+    box-shadow: none;
+}
+[data-chat-app] .chat-reaction-chip:hover,
+[data-chat-app] .chat-reaction-chip:focus-visible {
+    border-color: rgba(116, 168, 255, .42);
+    background: rgba(116, 168, 255, .12);
+}
+[data-chat-app] .chat-reaction-chip.is-mine {
+    border-color: rgba(77, 141, 255, .48);
+    background: rgba(77, 141, 255, .16);
+}
+[data-chat-app] .chat-reaction-chip__emoji { font-size: 14px; }
+[data-chat-app] .chat-reaction-chip__count { font-size: 11px; font-weight: 600; opacity: .72; }
+[data-chat-app] .chat-message-reaction-btn {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    min-width: 27px;
+    height: 27px;
+    min-height: 27px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #c7d0dc;
+    font-size: 13px;
+    line-height: 1;
+    box-shadow: none;
+    outline: none;
+}
+[data-chat-app] .chat-message-reaction-btn:hover,
+[data-chat-app] .chat-message-reaction-btn:focus-visible {
+    background: rgba(116, 168, 255, .16);
+    color: #fff;
+}
+[data-chat-app] .chat-reaction-picker {
+    display: block;
+    width: max-content;
+    max-width: min(320px, calc(100vw - 40px));
+    margin-top: 5px;
+    padding: 6px;
+    border: 1px solid rgba(148, 163, 184, .16);
+    border-radius: 12px;
+    background: rgba(20, 27, 38, .96);
+    color: #e7edf6;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+}
+[data-chat-app] .chat-message-row--mine .chat-reaction-picker { margin-left: auto; }
+[data-chat-app] .chat-message-row--theirs .chat-reaction-picker { margin-right: auto; }
+[data-chat-app] .chat-reaction-picker.d-none { display: none !important; }
+[data-chat-app] .chat-reaction-picker__choices { display: flex; align-items: center; gap: 3px; }
+[data-chat-app] .chat-reaction-choice {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 19px;
+    line-height: 1;
+}
+[data-chat-app] .chat-reaction-choice:hover,
+[data-chat-app] .chat-reaction-choice:focus-visible,
+[data-chat-app] .chat-reaction-choice.is-selected { background: rgba(77, 141, 255, .2); }
+[data-chat-app] .chat-reaction-picker__users {
+    display: grid;
+    gap: 3px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(148, 163, 184, .12);
+    font-size: 11px;
+    line-height: 1.25;
+    color: #aeb9c8;
+}
+[data-chat-app] .chat-reaction-picker__users:empty { display: none; }
+@media (max-width: 767.98px) {
+    [data-chat-app] .chat-message-reaction-btn {
+        width: 26px;
+        min-width: 26px;
+        height: 26px;
+        min-height: 26px;
+        background: rgba(148, 163, 184, .09);
+        color: inherit;
+    }
+    [data-chat-app] .chat-reaction-picker { max-width: min(290px, calc(100vw - 28px)); }
+}
+</style>
+
+
+<style id="fireball-chat-receipts-ui">
+/* FIREBALL_CHAT22_RECEIPTS */
+[data-chat-app] .chat-message-checks {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    min-width: 14px;
+    margin-left: 2px;
+    line-height: 1;
+    vertical-align: middle;
+    color: currentColor;
+    opacity: .62;
+}
+[data-chat-app] .chat-message-checks i {
+    display: inline-block;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1;
+}
+[data-chat-app] .chat-message-checks i + i {
+    margin-left: -5px;
+}
+[data-chat-app] .chat-message-checks--sent,
+[data-chat-app] .chat-message-checks--delivered {
+    color: currentColor;
+    opacity: .56;
+}
+[data-chat-app] .chat-message-checks--read {
+    color: #8fc2ff;
+    opacity: 1;
+}
+[data-chat-app] .chat-message-checks--read i {
+    filter: drop-shadow(0 0 2px rgba(77, 141, 255, .2));
+}
+</style>
+
+
+<style id="fireball-chat-typing-ui">
+/* FIREBALL_CHAT24_TYPING */
+[data-chat-app] .chat-current-typing {
+    color: var(--cz-primary, #4d8dff);
+    font-weight: 500;
+}
+[data-chat-app] .chat-current-typing__dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 2px;
+}
+[data-chat-app] .chat-current-typing__dots span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: fireball-chat-typing-dot 1.1s infinite ease-in-out;
+}
+[data-chat-app] .chat-current-typing__dots span:nth-child(2) { animation-delay: .15s; }
+[data-chat-app] .chat-current-typing__dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes fireball-chat-typing-dot {
+    0%, 60%, 100% { transform: translateY(0); opacity: .35; }
+    30% { transform: translateY(-2px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-chat-app] .chat-current-typing__dots span {
+        animation: none;
+        opacity: .75;
+    }
+}
+</style>
+
 <main class="content-wrapper">
     <?php
     $contactsByGroup = ['admins' => [], 'clients' => []];
@@ -281,7 +633,7 @@
 
     $chatPermissions = is_array($chat_permissions ?? null) ? $chat_permissions : [];
 
-    $renderChatSidebar = static function () use ($contactsByGroup, $contactGroupTitles, $active_contact) {
+    $renderChatSidebar = static function () use ($contactsByGroup, $contactGroupTitles, $active_contact, $chat_groups, $chat_group_url) {
         ?>
         <div class="chat-sidebar">
             <div class="chat-sidebar__head">
@@ -318,6 +670,59 @@
                 </div>
             </div>
             <div class="chat-sidebar__body">
+                <!-- FIREBALL_CHAT30_GROUPS -->
+                <div class="px-3 pt-3">
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary rounded-pill w-100"
+                        data-bs-toggle="modal"
+                        data-bs-target="#chatCreateGroupModal"
+                    >
+                        <i class="ci-plus me-2" aria-hidden="true"></i>
+                        <?= print_translation('chat_group_create') ?>
+                    </button>
+                </div>
+
+                <?php if (!empty($chat_groups)): ?>
+                    <div class="chat-contact-group border-bottom mt-3">
+                        <div class="chat-contact-group__head d-flex align-items-center justify-content-between gap-2">
+                            <div class="small text-uppercase fw-semibold text-body-secondary">
+                                <?= print_translation('chat_groups_title') ?>
+                            </div>
+                            <span class="badge rounded-pill text-body-emphasis bg-body-tertiary px-2">
+                                <?= count($chat_groups) ?>
+                            </span>
+                        </div>
+                        <div class="list-group list-group-flush chat-contact-list">
+                            <?php foreach ($chat_groups as $group): ?>
+                                <a
+                                    href="<?= htmlSC($chat_group_url) ?>?conversation_id=<?= (int)$group['id'] ?>"
+                                    class="list-group-item list-group-item-action chat-contact-item"
+                                >
+                                    <span class="d-flex align-items-center gap-3 min-w-0">
+                                        <span class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
+                                            <i class="ci-users" aria-hidden="true"></i>
+                                        </span>
+                                        <span class="min-w-0 flex-grow-1">
+                                            <span class="d-flex align-items-start justify-content-between gap-2">
+                                                <span class="d-block text-truncate fw-semibold">
+                                                    <?= htmlSC($group['title']) ?>
+                                                </span>
+                                                <span class="badge text-bg-danger rounded-pill flex-shrink-0 <?= (int)($group['unread_count'] ?? 0) > 0 ? '' : 'd-none' ?>">
+                                                    <?= (int)($group['unread_count'] ?? 0) ?>
+                                                </span>
+                                            </span>
+                                            <span class="small text-body-secondary">
+                                                <?= (int)$group['member_count'] ?> <?= print_translation('chat_group_members_short') ?>
+                                            </span>
+                                        </span>
+                                    </span>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <?php foreach ($contactsByGroup as $groupKey => $groupContacts): ?>
                     <?php if (empty($groupContacts)): ?>
                         <?php continue; ?>
@@ -422,7 +827,10 @@
                 data-chat-app
                 data-fetch-url="<?= htmlSC($chat_fetch_url) ?>"
                 data-stream-url="<?= htmlSC($chat_stream_url ?? '') ?>"
+                data-typing-url="<?= htmlSC($chat_typing_url ?? '') ?>"
                 data-send-url="<?= htmlSC($chat_send_url) ?>"
+                data-edit-url="<?= htmlSC($chat_edit_url) ?>"
+                data-react-url="<?= htmlSC($chat_react_url) ?>"
                 data-delete-url="<?= htmlSC($chat_delete_url) ?>"
                 data-clear-url="<?= htmlSC($chat_clear_url) ?>"
                 data-audit-url="<?= htmlSC($chat_audit_url) ?>"
@@ -470,6 +878,17 @@
                 data-clear-chat-text="<?= htmlSC(return_translation('chat_conversation_cleared')) ?>"
                 data-action-delete-text="<?= htmlSC(return_translation('chat_action_delete')) ?>"
                 data-action-reply-text="<?= htmlSC(return_translation('chat_action_reply')) ?>"
+                data-action-edit-text="<?= htmlSC(return_translation('chat_action_edit')) ?>"
+                data-action-react-text="<?= htmlSC(return_translation('chat_action_react')) ?>"
+                data-reaction-users-text="<?= htmlSC(return_translation('chat_reaction_users')) ?>"
+                data-reaction-error-text="<?= htmlSC(return_translation('chat_reaction_error')) ?>"
+                data-status-sent-text="<?= htmlSC(return_translation('chat_status_sent')) ?>"
+                data-status-delivered-text="<?= htmlSC(return_translation('chat_status_delivered')) ?>"
+                data-status-read-text="<?= htmlSC(return_translation('chat_status_read')) ?>"
+                data-typing-text="<?= htmlSC(return_translation('chat_typing')) ?>"
+                data-edit-label-text="<?= htmlSC(return_translation('chat_edit_label')) ?>"
+                data-edit-message-required-text="<?= htmlSC(return_translation('chat_edit_message_required')) ?>"
+                data-edit-error-text="<?= htmlSC(return_translation('chat_edit_error')) ?>"
                 data-reply-you-text="<?= htmlSC(return_translation('chat_reply_you')) ?>"
                 data-reply-attachment-text="<?= htmlSC(return_translation('chat_reply_attachment')) ?>"
                 data-reply-deleted-text="<?= htmlSC(return_translation('chat_reply_deleted')) ?>"
@@ -541,6 +960,10 @@
                                                 <span class="d-inline-flex align-items-center gap-1 flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'text-success' : 'text-body-secondary' ?>" data-chat-current-status>
                                                     <span class="rounded-circle d-inline-block flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'bg-success' : 'bg-secondary' ?>" style="width: 8px; height: 8px;"></span>
                                                     <span><?= !empty($active_contact['is_online']) ? print_translation('chat_status_online') : print_translation('chat_status_offline') ?></span>
+                                                </span>
+                                                <span class="chat-current-typing d-none align-items-center gap-1 flex-shrink-0" data-chat-typing-indicator aria-live="polite">
+                                                    <span><?= print_translation('chat_typing') ?></span>
+                                                    <span class="chat-current-typing__dots" aria-hidden="true"><span></span><span></span><span></span></span>
                                                 </span>
                                             </div>
                                         </div>
@@ -629,6 +1052,26 @@
                                                 <div class="fw-semibold mb-1"><?= print_translation('chat_attachment_drop_title') ?></div>
                                                 <div class="small text-body-secondary"><?= print_translation('chat_attachment_drop_subtitle') ?></div>
                                             </div>
+                                        </div>
+
+                                        <!-- FIREBALL_CHAT21_EDIT -->
+                                        <div class="chat-composer-edit d-none" data-chat-edit-preview>
+                                            <span class="chat-composer-edit__icon" aria-hidden="true">
+                                                <i class="ci-edit-2"></i>
+                                            </span>
+                                            <div class="chat-composer-edit__body">
+                                                <strong class="chat-composer-edit__title"><?= print_translation('chat_edit_title') ?></strong>
+                                                <span class="chat-composer-edit__text" data-chat-edit-original></span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                class="chat-composer-edit__cancel"
+                                                data-chat-edit-cancel
+                                                title="<?= htmlSC(return_translation('chat_edit_cancel')) ?>"
+                                                aria-label="<?= htmlSC(return_translation('chat_edit_cancel')) ?>"
+                                            >
+                                                <i class="ci-close" aria-hidden="true"></i>
+                                            </button>
                                         </div>
 
                                         <!-- FIREBALL_CHAT21_REPLY -->
@@ -841,6 +1284,74 @@
                                 <?= print_translation('chat_action_delete') ?>
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIREBALL_CHAT30_GROUPS -->
+            <div class="modal fade" id="chatCreateGroupModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content border-0 rounded-5 overflow-hidden">
+                        <form
+                            action="<?= htmlSC($chat_group_create_url) ?>"
+                            method="post"
+                            data-chat-create-group-form
+                        >
+                            <?= get_csrf_field() ?>
+                            <div class="modal-header border-0 px-4 pt-4 pb-2">
+                                <div>
+                                    <h2 class="h5 mb-1"><?= print_translation('chat_group_create') ?></h2>
+                                    <p class="small text-body-secondary mb-0"><?= print_translation('chat_group_create_hint') ?></p>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"></button>
+                            </div>
+                            <div class="modal-body px-4 py-3">
+                                <label class="form-label" for="chatGroupTitle"><?= print_translation('chat_group_name') ?></label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="chatGroupTitle"
+                                    name="title"
+                                    minlength="2"
+                                    maxlength="100"
+                                    required
+                                >
+
+                                <div class="form-label mt-4"><?= print_translation('chat_group_members') ?></div>
+                                <div class="border rounded-4 overflow-hidden">
+                                    <?php foreach ($chat_group_candidates as $candidate): ?>
+                                        <label class="d-flex align-items-center gap-3 px-3 py-2 border-bottom">
+                                            <input
+                                                type="checkbox"
+                                                class="form-check-input mt-0"
+                                                name="member_ids[]"
+                                                value="<?= (int)$candidate['id'] ?>"
+                                            >
+                                            <img
+                                                src="<?= get_user_avatar($candidate['avatar'] ?? null, 'sm') ?>"
+                                                alt=""
+                                                class="rounded-circle border object-fit-cover"
+                                                style="width: 34px; height: 34px;"
+                                            >
+                                            <span class="min-w-0">
+                                                <strong class="d-block text-truncate"><?= htmlSC($candidate['name']) ?></strong>
+                                                <span class="small text-body-secondary"><?= htmlSC(get_user_role_label((string)($candidate['role'] ?? 'user'))) ?></span>
+                                            </span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div class="form-text"><?= print_translation('chat_group_min_members') ?></div>
+                            </div>
+                            <div class="modal-footer border-0 px-4 pb-4 pt-2">
+                                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
+                                    <?= print_translation('admin_btn_cancel') ?>
+                                </button>
+                                <button type="submit" class="btn btn-primary rounded-pill">
+                                    <i class="ci-plus me-2" aria-hidden="true"></i>
+                                    <?= print_translation('chat_group_create_submit') ?>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
