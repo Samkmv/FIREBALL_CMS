@@ -18,7 +18,6 @@ class Database
     {
         if ($connection !== null) {
             $this->connection = $connection;
-            $this->enforceUtf8mb4Connection();
             return;
         }
         $dsn = "mysql:host=" . DB_SETTINGS['host'] . ";dbname=" . DB_SETTINGS['database'] . ";charset=" . DB_SETTINGS['charset'];
@@ -29,7 +28,6 @@ class Database
         $connectionStarted = PerformanceProfiler::begin();
         try {
             $this->connection = new \PDO($dsn, DB_SETTINGS['username'], DB_SETTINGS['password'], DB_SETTINGS['options']);
-            $this->enforceUtf8mb4Connection();
         } catch (\PDOException $e) {
             log_error_details('Database connection error', [
                 'Driver' => DB_SETTINGS['driver'] ?? 'mysql',
@@ -50,21 +48,6 @@ class Database
     /**
      * Подготавливает и выполняет SQL-запрос с параметрами.
      */
-    /**
-     * Forces the PDO session to use full 4-byte UTF-8.
-     *
-     * Some hosting MySQL configurations can downgrade connection/session
-     * encoding to legacy utf8 (utf8mb3) even when application tables use
-     * utf8mb4. That corrupts emoji and supplementary Unicode characters.
-     */
-    private function enforceUtf8mb4Connection(): void
-    {
-        // FIREBALL_DB_UTF8MB4_CONNECTION
-        $this->connection->exec(
-            "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-        );
-    }
-
     public function query(string $query, array $params = []): static
     {
         $queryStarted = PerformanceProfiler::begin();
