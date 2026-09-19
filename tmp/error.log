@@ -863,3 +863,118 @@ SQL: INSERT INTO chat_conversations
 Param Count: 0
 Param Keys: []
 ========================================================================
+[2026-09-19 09:53:46] Unhandled application exception
+Request URI: /notifications/feed?_=1789800070896
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Undefined constant "ß"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
+Line: 15
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(26): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(22): App\Models\NotificationCenter->__construct()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\NotificationController->__construct()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-19 09:53:48] Unhandled application exception
+Request URI: /admin/updates
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Undefined constant "ß"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
+Line: 15
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#6 {main}
+========================================================================
+[2026-09-19 09:53:54] Unhandled application exception
+Request URI: /admin/updates
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Undefined constant "ß"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
+Line: 15
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#6 {main}
+========================================================================
+[2026-09-19 09:53:58] Unhandled application exception
+Request URI: /notifications/feed?_=1789800070897
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Undefined constant "ß"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
+Line: 15
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(26): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(22): App\Models\NotificationCenter->__construct()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\NotificationController->__construct()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-19 09:54:01] Unhandled application exception
+Request URI: /admin/updates
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Undefined constant "ß"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
+Line: 15
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#6 {main}
+========================================================================
+[2026-09-19 09:54:07] Unhandled application exception
+Request URI: /notifications/feed?_=1789800070898
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Undefined constant "ß"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
+Line: 15
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(26): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(22): App\Models\NotificationCenter->__construct()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\NotificationController->__construct()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-19 09:54:09] Unhandled application exception
+Request URI: /admin
+Request Method: GET
+Remote IP: ::1
+Exception: Error
+Message: Undefined constant "ß"
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
+Line: 15
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#6 {main}
+========================================================================
