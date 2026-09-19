@@ -1,6 +1,0 @@
-{
-  "patch_id": "fireball-chat21-edit-ui-fix-20260919",
-  "files": [
-    "app/Views/themes/default/chat/index.php"
-  ]
-}
