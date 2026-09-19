@@ -69,5 +69,3 @@ $router->post('/admin/subscriptions/profile-fields/delete', [SubscriptionsAdminC
 $router->get('/admin/subscriptions/settings', [SubscriptionsAdminController::class, 'settings'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/settings', [SubscriptionsAdminController::class, 'saveSettings'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/settings/save', [SubscriptionsAdminController::class, 'saveSettings'])->middleware(['auth', 'admin']);
-$router->post('/admin/subscriptions/address-catalog/import', [SubscriptionsAdminController::class, 'addressCatalogImport'])->middleware(['auth', 'admin']);
-$router->post('/admin/subscriptions/address-catalog/clear', [SubscriptionsAdminController::class, 'addressCatalogClear'])->middleware(['auth', 'admin']);

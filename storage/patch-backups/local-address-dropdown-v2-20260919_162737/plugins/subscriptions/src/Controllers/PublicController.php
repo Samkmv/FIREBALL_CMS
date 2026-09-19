@@ -102,8 +102,7 @@ final class PublicController
             'fields' => $profiles->fields(true),
             'completion' => $profiles->completion($profile),
             'form_data' => $formData,
-            // FIREBALL_LOCAL_ADDRESS_PUBLIC_DROPDOWN_V2
-            'address_suggestions_enabled' => true,
+            'address_suggestions_enabled' => $addressService->configured(),
             'address_suggest_url' => base_href('/profile/subscription-address/suggest'),
             'footer_scripts' => [base_href('/plugins/subscriptions/assets/profile-region.js?v=' . filemtime(__DIR__ . '/../../assets/profile-region.js'))],
         ]));

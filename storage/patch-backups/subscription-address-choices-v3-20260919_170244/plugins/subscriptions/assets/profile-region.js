@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    // FIREBALL_SUBSCRIPTIONS_ADDRESS_CHOICES_FIX_V3
+    // FIREBALL_SUBSCRIPTIONS_ADDRESS_CHOICES_FIX_V2
 
     const normalizeCountry = (value) => String(value)
         .toLowerCase()
@@ -33,7 +33,7 @@
     }
 
     function waitForChoices(callback, attempts) {
-        attempts = Number.isFinite(attempts) ? attempts : 100;
+        attempts = Number.isFinite(attempts) ? attempts : 80;
 
         if (typeof window.Choices !== 'undefined') {
             callback();
@@ -66,18 +66,19 @@
             const russian = root.querySelector('[data-region-russian]');
             const foreign = root.querySelector('[data-region-foreign]');
 
-            let instance = null;
+            let choices = null;
 
-            if (select && !select.closest('.choices')) {
-                instance = new window.Choices(select, Object.assign({
-                    allowHTML: false,
-                    shouldSort: false,
-                    removeItemButton: false,
-                    itemSelectText: '',
-                    classNames: { containerInner: 'form-select' }
-                }, parseJson(select.dataset.select || '{}', {})));
-
-                select.dataset.selectEnhanced = '1';
+            if (select && typeof window.Choices !== 'undefined') {
+                if (!select.closest('.choices')) {
+                    choices = new window.Choices(select, Object.assign({
+                        allowHTML: false,
+                        shouldSort: false,
+                        removeItemButton: false,
+                        itemSelectText: '',
+                        classNames: { containerInner: 'form-select' }
+                    }, parseJson(select.dataset.select || '{}', {})));
+                    select.dataset.selectEnhanced = '1';
+                }
             }
 
             function syncCountry() {
@@ -89,8 +90,8 @@
                 if (select) select.disabled = !useDirectory;
                 if (input) input.disabled = useDirectory;
 
-                if (instance) {
-                    useDirectory ? instance.enable() : instance.disable();
+                if (choices) {
+                    useDirectory ? choices.enable() : choices.disable();
                 }
 
                 if (form) {
@@ -110,6 +111,10 @@
     }
 
     function initAddressChoices() {
+        if (typeof window.Choices === 'undefined') {
+            return;
+        }
+
         document.querySelectorAll('form[data-subscriptions-address-form]').forEach(function (form) {
             if (form.dataset.addressChoicesInitialized === '1') {
                 return;
@@ -164,57 +169,47 @@
                     : String(state.manual.value || '').trim();
             }
 
-            function searchInput(state) {
-                const container = state.select.closest('.choices');
-
-                return container
-                    ? container.querySelector('.choices__input--cloned')
-                    : null;
-            }
-
-            function restoreSearch(state, query) {
+            function openDropdown(state) {
                 window.requestAnimationFrame(function () {
-                    const input = searchInput(state);
-
-                    if (input) {
-                        input.value = query;
-                        input.dispatchEvent(new Event('input', { bubbles: false }));
-                        input.focus({ preventScroll: true });
+                    if (state.instance) {
+                        try {
+                            state.instance.showDropdown();
+                        } catch (_) {}
                     }
 
-                    try {
-                        state.instance.showDropdown();
-                    } catch (_) {}
+                    const container = state.select.closest('.choices');
+                    const input = container
+                        ? container.querySelector('.choices__input--cloned')
+                        : null;
+
+                    if (input && document.activeElement !== input) {
+                        input.focus({ preventScroll: true });
+                    }
                 });
             }
 
-            function setChoices(state, items, query) {
-                state.suppressSearch = true;
-
-                try {
-                    state.instance.setChoices(items, 'value', 'label', true);
-                } finally {
-                    window.setTimeout(function () {
-                        state.suppressSearch = false;
-                    }, 0);
+            function replaceChoices(state, items, keepOpen) {
+                if (!state.instance) {
+                    return;
                 }
 
-                if (typeof query === 'string' && query !== '') {
-                    restoreSearch(state, query);
+                state.instance.setChoices(items, 'value', 'label', true);
+
+                if (keepOpen) {
+                    openDropdown(state);
                 }
             }
 
-            function showStatus(state, label, query) {
-                setChoices(state, [{
+            function showStatus(state, label) {
+                replaceChoices(state, [{
                     value: '__status__',
                     label: label,
                     disabled: true
-                }], query);
+                }], true);
             }
 
             function resetState(type) {
                 const state = states[type];
-
                 if (!state) {
                     return;
                 }
@@ -228,12 +223,12 @@
                 state.manual.value = '';
                 state.lastQuery = '';
 
-                setChoices(state, [{
+                replaceChoices(state, [{
                     value: '',
                     label: state.placeholder,
                     selected: true,
                     placeholder: true
-                }], '');
+                }], false);
             }
 
             function clearAfter(type) {
@@ -251,11 +246,6 @@
 
             async function loadSuggestions(state, query) {
                 query = String(query || '').trim();
-
-                if (state.suppressSearch) {
-                    return;
-                }
-
                 const minimum = state.type === 'house' ? 1 : 2;
 
                 if (
@@ -275,17 +265,16 @@
                 state.controller = new AbortController();
                 const requestId = ++state.requestId;
 
-                showStatus(state, texts.searching, query);
+                showStatus(state, texts.searching);
 
                 try {
                     const url = new URL(endpoint, window.location.origin);
-
                     url.searchParams.set('type', state.type);
                     url.searchParams.set('q', query);
                     url.searchParams.set('country', country ? String(country.value || '') : '');
                     url.searchParams.set('region', regionValue());
-                    url.searchParams.set('city', state.type === 'city' ? '' : valueOf('city'));
-                    url.searchParams.set('street', state.type === 'house' ? valueOf('street') : '');
+                    url.searchParams.set('city', valueOf('city'));
+                    url.searchParams.set('street', valueOf('street'));
 
                     const response = await window.fetch(url.toString(), {
                         method: 'GET',
@@ -310,11 +299,11 @@
                         : [];
 
                     if (!suggestions.length) {
-                        showStatus(state, texts.noResults, query);
+                        showStatus(state, texts.noResults);
                         return;
                     }
 
-                    setChoices(
+                    replaceChoices(
                         state,
                         suggestions.map(function (suggestion) {
                             return {
@@ -325,7 +314,7 @@
                                 }
                             };
                         }),
-                        query
+                        true
                     );
                 } catch (error) {
                     if (error && error.name === 'AbortError') {
@@ -336,43 +325,12 @@
                         return;
                     }
 
-                    showStatus(state, texts.noResults, query);
+                    showStatus(state, texts.noResults);
                 }
-            }
-
-            function bindSearchBox(state) {
-                const input = searchInput(state);
-
-                if (!input || input.dataset.localAddressBound === '1') {
-                    return;
-                }
-
-                input.dataset.localAddressBound = '1';
-
-                const schedule = debounce(function () {
-                    loadSuggestions(state, input.value);
-                }, 180);
-
-                input.addEventListener('input', function () {
-                    if (state.suppressSearch) {
-                        return;
-                    }
-
-                    schedule();
-                });
-
-                input.addEventListener('keyup', function () {
-                    if (state.suppressSearch) {
-                        return;
-                    }
-
-                    schedule();
-                });
             }
 
             ['city', 'street', 'house'].forEach(function (type) {
                 const root = form.querySelector('[data-address-field="' + type + '"]');
-
                 if (!root) {
                     return;
                 }
@@ -386,12 +344,9 @@
                     return;
                 }
 
-                if (select.closest('.choices')) {
-                    return;
-                }
-
                 const state = {
                     type: type,
+                    root: root,
                     select: select,
                     manual: manual,
                     russianWrap: russianWrap,
@@ -401,11 +356,14 @@
                     controller: null,
                     requestId: 0,
                     russian: true,
-                    lastQuery: '',
-                    suppressSearch: false
+                    lastQuery: ''
                 };
 
                 states[type] = state;
+
+                if (select.closest('.choices')) {
+                    return;
+                }
 
                 const config = Object.assign({
                     allowHTML: false,
@@ -431,53 +389,43 @@
                 state.instance = new window.Choices(select, config);
                 select.dataset.selectEnhanced = '1';
 
-                bindSearchBox(state);
-
-                const container = select.closest('.choices');
-
-                if (container) {
-                    container.addEventListener('click', function () {
-                        bindSearchBox(state);
-                    }, true);
-
-                    container.addEventListener('focusin', function () {
-                        bindSearchBox(state);
-                    });
-                }
-
-                select.addEventListener('showDropdown', function () {
-                    bindSearchBox(state);
-
-                    const input = searchInput(state);
-
-                    if (input && state.lastQuery !== '') {
-                        input.value = state.lastQuery;
-                    }
-                });
+                const schedule = debounce(function (query) {
+                    loadSuggestions(state, query);
+                }, 180);
 
                 select.addEventListener('search', function (event) {
-                    if (state.suppressSearch) {
-                        return;
-                    }
-
                     const query = event && event.detail
                         ? String(event.detail.value || '')
                         : '';
 
-                    loadSuggestions(state, query);
+                    schedule(query);
+                });
+
+                select.addEventListener('showDropdown', function () {
+                    const container = select.closest('.choices');
+                    const searchInput = container
+                        ? container.querySelector('.choices__input--cloned')
+                        : null;
+
+                    if (!searchInput || searchInput.dataset.addressBound === '1') {
+                        return;
+                    }
+
+                    searchInput.dataset.addressBound = '1';
+
+                    searchInput.addEventListener('input', function () {
+                        schedule(searchInput.value);
+                    });
                 });
 
                 select.addEventListener('choice', function (event) {
-                    const choice = event && event.detail
-                        ? event.detail.choice
-                        : null;
+                    const choice = event && event.detail ? event.detail.choice : null;
 
                     if (!choice || String(choice.value || '') === '__status__') {
                         return;
                     }
 
                     clearAfter(type);
-                    state.lastQuery = '';
 
                     if (
                         type === 'house'
@@ -493,8 +441,8 @@
             function setRussianMode(russian) {
                 Object.keys(states).forEach(function (type) {
                     const state = states[type];
-
                     state.russian = russian;
+
                     state.russianWrap.hidden = !russian;
                     state.foreignWrap.hidden = russian;
                     state.select.disabled = !russian;

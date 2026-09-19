@@ -7,7 +7,6 @@ use Fireball\Subscriptions\Repositories\ProfileRepository;
 use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 use Fireball\Subscriptions\Repositories\AddressExclusionRepository;
 use Fireball\Subscriptions\Services\SettingsService;
-use Fireball\Subscriptions\Services\AddressSuggestionService;
 use Fireball\Subscriptions\Services\PaymentService;
 use Fireball\Subscriptions\Services\SubscriptionService;
 use Fireball\Subscriptions\Support\SubscriptionStatus;
@@ -482,7 +481,6 @@ final class AdminController
             'title' => \FireballPluginSubscriptions::t('subscriptions_admin_settings'),
             'settings' => $settings->current(),
             'offer_pages' => (new \Fireball\Subscriptions\Services\PublicOfferService())->pages(),
-            'address_catalog_stats' => (new AddressSuggestionService())->stats(),
         ]);
     }
 
@@ -501,10 +499,11 @@ final class AdminController
                 $database->rollBack();
             }
             log_error_details('Subscription settings save failed', [
-                'Submitted keys' => array_values(array_diff(array_keys($data), ['password1', 'password2', 'needCSRFToken'])),
+                'Submitted keys' => array_values(array_diff(array_keys($data), ['password1', 'password2', 'dadata_token', 'needCSRFToken'])),
                 'Merchant login provided' => trim((string)($data['merchant_login'] ?? '')) !== '',
                 'Password 1 provided' => (string)($data['password1'] ?? '') !== '',
                 'Password 2 provided' => (string)($data['password2'] ?? '') !== '',
+                'DaData token provided' => trim((string)($data['dadata_token'] ?? '')) !== '',
             ], $exception);
             $messageKey = str_starts_with($exception->getMessage(), SettingsService::CREDENTIALS_NOT_CONFIGURED)
                 ? 'subscriptions_settings_credentials_missing'
@@ -516,47 +515,6 @@ final class AdminController
 
         response()->redirect(base_href('/admin/subscriptions/settings'));
     }
-
-    public function addressCatalogImport(): never
-    {
-        try {
-            $file = is_array($_FILES['address_catalog'] ?? null)
-                ? $_FILES['address_catalog']
-                : [];
-
-            $result = (new AddressSuggestionService())->importUploaded(
-                $file,
-                !empty(request()->post('replace_catalog'))
-            );
-
-            session()->setFlash(
-                'success',
-                'Локальный справочник импортирован. Строк: '
-                . (int)$result['processed']
-                . ', пропущено: '
-                . (int)$result['skipped']
-            );
-        } catch (\Throwable $exception) {
-            log_error_details('Local address catalog import failed', [], $exception);
-            session()->setFlash('error', $exception->getMessage());
-        }
-
-        response()->redirect(base_href('/admin/subscriptions/settings'));
-    }
-
-    public function addressCatalogClear(): never
-    {
-        try {
-            (new AddressSuggestionService())->clear();
-            session()->setFlash('success', 'Локальный справочник адресов очищен.');
-        } catch (\Throwable $exception) {
-            log_error_details('Local address catalog clear failed', [], $exception);
-            session()->setFlash('error', $exception->getMessage());
-        }
-
-        response()->redirect(base_href('/admin/subscriptions/settings'));
-    }
-
 
     private function attachSubscriberDetails(array $subscriptions, ProfileRepository $profiles): array
     {

@@ -4,8 +4,6 @@ $customValues = array_replace((array)($profile['custom_values'] ?? []), (array)(
 $returnTo = (string)($form_data['return_to'] ?? session()->get('subscriptions.checkout_return', ''));
 session()->remove('subscriptions.checkout_return');
 ?>
-<!-- FIREBALL_SUBSCRIPTIONS_PROFILE_DIRECT_CSS_V1 -->
-<link rel="stylesheet" href="<?= htmlSC(base_href('/plugins/subscriptions/assets/subscriptions.css?v=' . filemtime(__DIR__ . '/../../assets/subscriptions.css'))) ?>">
 <section class="container py-5 subscriptions-public">
     <div class="row justify-content-center"><div class="col-xl-9">
         <?php get_alerts(); ?>
@@ -40,57 +38,20 @@ session()->remove('subscriptions.checkout_return');
                             <?php if ($field['is_system'] && $key === 'region'): ?>
                                 <?php require __DIR__ . '/region-field.php'; ?>
                             <?php elseif ($field['is_system'] && in_array($key, ['city', 'street', 'house'], true)): ?>
-                                <?php
-                                // FIREBALL_SUBSCRIPTIONS_ADDRESS_CHOICES_V1
-                                $addressSearchConfig = [
-                                    'searchEnabled' => true,
-                                    'searchChoices' => false,
-                                    'searchFloor' => 1,
-                                    'searchResultLimit' => 12,
-                                    'shouldSort' => false,
-                                    'itemSelectText' => '',
-                                    'allowHTML' => false,
-                                    'removeItemButton' => false,
-                                    'placeholder' => true,
-                                    'placeholderValue' => (string)$field['placeholder'],
-                                ];
-                                ?>
-                                <div
-                                    class="subscriptions-address-choice"
-                                    data-address-field="<?= htmlSC($key) ?>"
-                                >
-                                    <div data-address-russian-field>
-                                        <select
-                                            class="form-select"
-                                            name="<?= htmlSC($name) ?>"
-                                            data-select="<?= htmlSC(json_encode($addressSearchConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
-                                            data-address-select="<?= htmlSC($key) ?>"
-                                            data-address-placeholder="<?= htmlSC((string)$field['placeholder']) ?>"
-                                            <?= $field['is_required'] ? 'required' : '' ?>
-                                        >
-                                            <option value=""><?= htmlSC((string)$field['placeholder']) ?></option>
-                                            <?php if ((string)$fieldValue !== ''): ?>
-                                                <option value="<?= htmlSC((string)$fieldValue) ?>" selected>
-                                                    <?= htmlSC((string)$fieldValue) ?>
-                                                </option>
-                                            <?php endif; ?>
-                                        </select>
-                                    </div>
-
-                                    <div data-address-foreign-field hidden>
-                                        <input
-                                            class="form-control"
-                                            type="text"
-                                            name="<?= htmlSC($name) ?>"
-                                            value="<?= htmlSC((string)$fieldValue) ?>"
-                                            placeholder="<?= htmlSC((string)$field['placeholder']) ?>"
-                                            autocomplete="address-level2"
-                                            data-address-manual="<?= htmlSC($key) ?>"
-                                            disabled
-                                            <?= $field['is_required'] ? 'required' : '' ?>
-                                        >
-                                    </div>
-
+                                <div class="subscriptions-address-autocomplete" data-address-field="<?= htmlSC($key) ?>">
+                                    <input
+                                        class="form-control"
+                                        type="text"
+                                        name="<?= htmlSC($name) ?>"
+                                        value="<?= htmlSC((string)$fieldValue) ?>"
+                                        placeholder="<?= htmlSC((string)$field['placeholder']) ?>"
+                                        autocomplete="off"
+                                        data-address-input="<?= htmlSC($key) ?>"
+                                        aria-autocomplete="list"
+                                        aria-expanded="false"
+                                        <?= $field['is_required'] ? 'required' : '' ?>
+                                    >
+                                    <div class="subscriptions-address-suggestions" data-address-suggestions hidden role="listbox"></div>
                                     <div class="form-text">
                                         <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_' . $key . '_suggest_hint')) ?>
                                     </div>
@@ -118,3 +79,6 @@ session()->remove('subscriptions.checkout_return');
         </form>
     </div></div>
 </section>
+<!-- FIREBALL_SUBSCRIPTIONS_PROFILE_DIRECT_JS_V1 -->
+<script src="<?= htmlSC(base_href('/plugins/subscriptions/assets/profile-region.js?v=' . filemtime(__DIR__ . '/../../assets/profile-region.js'))) ?>"></script>
+

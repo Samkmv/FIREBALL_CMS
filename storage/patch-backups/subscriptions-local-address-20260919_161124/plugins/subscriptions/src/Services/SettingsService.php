@@ -8,7 +8,7 @@ final class SettingsService
 {
     public const SLUG = 'subscriptions';
     public const CREDENTIALS_NOT_CONFIGURED = 'Robokassa credentials are not configured.';
-    private const SECRET_KEYS = ['password1', 'password2'];
+    private const SECRET_KEYS = ['password1', 'password2', 'dadata_token'];
 
     public function defaults(): array
     {
@@ -16,6 +16,8 @@ final class SettingsService
             'merchant_login' => '',
             'password1' => '',
             'password2' => '',
+            'dadata_enabled' => false,
+            'dadata_token' => '',
             'hash_algorithm' => 'sha256',
             'test_mode' => true,
             'currency' => 'RUB',
@@ -64,7 +66,7 @@ final class SettingsService
         $settings['payment_timeout_minutes'] = max(5, min(10080, (int)$settings['payment_timeout_minutes']));
         $settings['media_token_ttl'] = max(60, min(1800, (int)$settings['media_token_ttl']));
         $settings['public_offer_page_id'] = max(0, (int)$settings['public_offer_page_id']);
-        foreach (['test_mode', 'recurring_enabled', 'receipt_enabled'] as $flag) {
+        foreach (['test_mode', 'recurring_enabled', 'receipt_enabled', 'dadata_enabled'] as $flag) {
             $settings[$flag] = (bool)$settings[$flag];
         }
 
@@ -80,8 +82,12 @@ final class SettingsService
         $password2 = (string)($data['password2'] ?? '') !== ''
             ? (string)$data['password2']
             : (string)$current['password2'];
+        $dadataToken = trim((string)($data['dadata_token'] ?? '')) !== ''
+            ? trim((string)$data['dadata_token'])
+            : trim((string)$current['dadata_token']);
         $settings = [
             'merchant_login' => mb_substr(trim((string)($data['merchant_login'] ?? '')), 0, 190),
+            'dadata_enabled' => !empty($data['dadata_enabled']),
             'hash_algorithm' => $this->algorithm((string)($data['hash_algorithm'] ?? 'sha256')),
             'test_mode' => !empty($data['test_mode']),
             'currency' => strtoupper(trim((string)($data['currency'] ?? 'RUB'))),
@@ -108,6 +114,9 @@ final class SettingsService
         if (preg_match('/^[A-Z]{3}$/', $settings['currency']) !== 1) {
             throw new \InvalidArgumentException('Currency must be a three-letter ISO code.');
         }
+        if ($settings['dadata_enabled'] && $dadataToken === '') {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_dadata_token_required'));
+        }
         if ($settings['merchant_login'] === '' || $password1 === '' || $password2 === '') {
             throw new \InvalidArgumentException(self::CREDENTIALS_NOT_CONFIGURED);
         }
@@ -117,6 +126,7 @@ final class SettingsService
         }
         $this->persist('password1', SecretCipher::encrypt($password1));
         $this->persist('password2', SecretCipher::encrypt($password2));
+        $this->persist('dadata_token', SecretCipher::encrypt($dadataToken));
 
         $saved = $this->current(true);
         $mismatches = [];
@@ -124,6 +134,9 @@ final class SettingsService
             if ((string)$saved[$key] !== (string)$expected) {
                 $mismatches[] = $key;
             }
+        }
+        if ($settings['dadata_enabled'] && (string)$saved['dadata_token'] !== $dadataToken) {
+            $mismatches[] = 'dadata_token';
         }
         if ($mismatches !== []) {
             throw new \RuntimeException(self::CREDENTIALS_NOT_CONFIGURED . ' Verification failed: ' . implode(', ', $mismatches));

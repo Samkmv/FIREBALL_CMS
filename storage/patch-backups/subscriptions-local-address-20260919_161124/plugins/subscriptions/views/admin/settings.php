@@ -34,6 +34,32 @@
             <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_receipt_object')) ?></label><select class="form-select" name="receipt_payment_object"><?php foreach ($objectLabels as $item => $label): ?><option value="<?= $item ?>" <?= $settings['receipt_payment_object'] === $item ? 'selected' : '' ?>><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></option><?php endforeach; ?></select></div>
         </div>
         <hr class="my-4">
+        <h2 class="h5 mb-2"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_suggestions_title')) ?></h2>
+        <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_suggestions_admin_hint')) ?></p>
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <label class="form-check">
+                    <input class="form-check-input" type="checkbox" name="dadata_enabled" value="1" <?= !empty($settings['dadata_enabled']) ? 'checked' : '' ?>>
+                    <span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_suggestions_enable')) ?></span>
+                </label>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_dadata_token')) ?></label>
+                <input
+                    class="form-control"
+                    type="password"
+                    name="dadata_token"
+                    value=""
+                    autocomplete="new-password"
+                    placeholder="<?= !empty($settings['dadata_token_configured']) ? '••••••••••••' : '' ?>"
+                >
+                <div class="form-text">
+                    <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_dadata_token_hint')) ?>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
         <h2 class="h5 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_offer_settings')) ?></h2>
         <div class="row g-3 mb-4">
             <div class="col-md-6">
@@ -52,59 +78,4 @@
         <?php foreach (['result_url' => 'subscriptions_result_url', 'success_url' => 'subscriptions_success_url', 'fail_url' => 'subscriptions_fail_url'] as $key => $label): ?><div class="mb-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></label><input class="form-control font-monospace" value="<?= htmlSC((string)$settings[$key]) ?>" readonly></div><?php endforeach; ?>
         <button class="btn btn-dark rounded-pill" type="submit" name="save_robokassa_settings" value="1"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_save')) ?></button>
     </form>
-
-    <?php $addressStats = (array)($address_catalog_stats ?? []); ?>
-    <div class="card border-0 shadow-sm mt-4" data-local-address-catalog>
-        <div class="card-body p-4">
-            <h2 class="h5 mb-2">Локальный справочник адресов</h2>
-            <p class="text-body-secondary mb-2">
-                Города, улицы и дома ищутся только в локальной базе FIREBALL CMS.
-                Внешние API и платные сервисы не используются.
-            </p>
-            <p class="small fw-semibold mb-3">
-                Записей: <?= (int)($addressStats['rows'] ?? 0) ?>
-                · городов: <?= (int)($addressStats['cities'] ?? 0) ?>
-                · улиц: <?= (int)($addressStats['streets'] ?? 0) ?>
-            </p>
-
-            <form
-                method="post"
-                action="<?= htmlSC(base_href('/admin/subscriptions/address-catalog/import')) ?>"
-                enctype="multipart/form-data"
-                class="row g-3 align-items-end"
-            >
-                <?= get_csrf_field() ?>
-                <div class="col-lg-7">
-                    <label class="form-label">CSV-файл справочника</label>
-                    <input class="form-control" type="file" name="address_catalog" accept=".csv,.txt,.tsv,text/csv,text/plain" required>
-                    <div class="form-text">
-                        Колонки: region, city, street, house, postal_code.
-                        Обязательны region и city.
-                    </div>
-                </div>
-                <div class="col-lg-3">
-                    <label class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="replace_catalog" value="1">
-                        <span class="form-check-label">Заменить текущий справочник</span>
-                    </label>
-                </div>
-                <div class="col-lg-2">
-                    <button class="btn btn-dark w-100" type="submit">Импортировать</button>
-                </div>
-            </form>
-
-            <?php if ((int)($addressStats['rows'] ?? 0) > 0): ?>
-                <form
-                    method="post"
-                    action="<?= htmlSC(base_href('/admin/subscriptions/address-catalog/clear')) ?>"
-                    class="mt-3"
-                >
-                    <?= get_csrf_field() ?>
-                    <button class="btn btn-outline-danger btn-sm" type="submit">
-                        Очистить справочник
-                    </button>
-                </form>
-            <?php endif; ?>
-        </div>
-    </div>
 <?php require __DIR__ . '/shell-close.php'; ?>

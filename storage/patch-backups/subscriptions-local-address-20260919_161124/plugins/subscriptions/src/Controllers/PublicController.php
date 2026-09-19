@@ -94,7 +94,7 @@ final class PublicController
         $formData = (array)session()->get('subscriptions.profile_data', []);
         session()->remove('subscriptions.profile_data');
 
-        $addressService = new AddressSuggestionService();
+        $addressSettings = (new SettingsService())->current();
 
         return plugin_view('subscriptions', 'public/profile', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_profile_title'),
@@ -102,8 +102,8 @@ final class PublicController
             'fields' => $profiles->fields(true),
             'completion' => $profiles->completion($profile),
             'form_data' => $formData,
-            // FIREBALL_LOCAL_ADDRESS_PUBLIC_DROPDOWN_V2
-            'address_suggestions_enabled' => true,
+            'address_suggestions_enabled' => !empty($addressSettings['dadata_enabled'])
+                && !empty($addressSettings['dadata_token_configured']),
             'address_suggest_url' => base_href('/profile/subscription-address/suggest'),
             'footer_scripts' => [base_href('/plugins/subscriptions/assets/profile-region.js?v=' . filemtime(__DIR__ . '/../../assets/profile-region.js'))],
         ]));
@@ -132,7 +132,7 @@ final class PublicController
                 'suggestions' => $suggestions,
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (\Throwable $exception) {
-            log_error_details('Local subscription address suggestions failed', [
+            log_error_details('Subscription address suggestions failed', [
                 'type' => $type,
                 'query_length' => mb_strlen($query),
                 'user_id' => $this->userId(false),

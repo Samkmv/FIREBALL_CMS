@@ -118,3 +118,6 @@ session()->remove('subscriptions.checkout_return');
         </form>
     </div></div>
 </section>
+<!-- FIREBALL_SUBSCRIPTIONS_PROFILE_DIRECT_JS_V1 -->
+<script src="<?= htmlSC(base_href('/plugins/subscriptions/assets/profile-region.js?v=' . filemtime(__DIR__ . '/../../assets/profile-region.js'))) ?>"></script>
+

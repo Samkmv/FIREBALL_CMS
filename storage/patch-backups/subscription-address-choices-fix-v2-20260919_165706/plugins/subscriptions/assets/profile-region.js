@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    // FIREBALL_SUBSCRIPTIONS_ADDRESS_CHOICES_FIX_V3
+    // FIREBALL_SUBSCRIPTIONS_ADDRESS_CHOICES_JS_V1
 
     const normalizeCountry = (value) => String(value)
         .toLowerCase()
@@ -32,32 +32,12 @@
         };
     }
 
-    function waitForChoices(callback, attempts) {
-        attempts = Number.isFinite(attempts) ? attempts : 100;
-
-        if (typeof window.Choices !== 'undefined') {
-            callback();
-            return;
-        }
-
-        if (attempts <= 0) {
-            return;
-        }
-
-        window.setTimeout(function () {
-            waitForChoices(callback, attempts - 1);
-        }, 50);
-    }
-
     function initRegions() {
         document.querySelectorAll('[data-subscriptions-region]').forEach(function (root) {
             const form = root.closest('form');
             const country = form ? form.querySelector('[name="country"]') : null;
 
-            if (root.dataset.regionInitialized === '1') {
-                return;
-            }
-
+            if (root.dataset.regionInitialized === '1') return;
             root.dataset.regionInitialized = '1';
 
             const aliases = parseJson(root.dataset.countryAliases || '[]', []).map(normalizeCountry);
@@ -66,17 +46,17 @@
             const russian = root.querySelector('[data-region-russian]');
             const foreign = root.querySelector('[data-region-foreign]');
 
-            let instance = null;
-
-            if (select && !select.closest('.choices')) {
-                instance = new window.Choices(select, Object.assign({
+            const choices = window.Choices && select && !select.closest('.choices')
+                ? new window.Choices(select, Object.assign({
                     allowHTML: false,
                     shouldSort: false,
                     removeItemButton: false,
                     itemSelectText: '',
                     classNames: { containerInner: 'form-select' }
-                }, parseJson(select.dataset.select || '{}', {})));
+                }, parseJson(select.dataset.select || '{}', {})))
+                : null;
 
+            if (choices && select) {
                 select.dataset.selectEnhanced = '1';
             }
 
@@ -84,13 +64,13 @@
                 const key = normalizeCountry(country ? country.value : root.dataset.countryValue);
                 const useDirectory = key === '' || aliases.includes(key);
 
-                if (russian) russian.hidden = !useDirectory;
-                if (foreign) foreign.hidden = useDirectory;
-                if (select) select.disabled = !useDirectory;
-                if (input) input.disabled = useDirectory;
+                russian.hidden = !useDirectory;
+                foreign.hidden = useDirectory;
+                select.disabled = !useDirectory;
+                input.disabled = useDirectory;
 
-                if (instance) {
-                    useDirectory ? instance.enable() : instance.disable();
+                if (choices) {
+                    useDirectory ? choices.enable() : choices.disable();
                 }
 
                 if (form) {
@@ -111,15 +91,10 @@
 
     function initAddressChoices() {
         document.querySelectorAll('form[data-subscriptions-address-form]').forEach(function (form) {
-            if (form.dataset.addressChoicesInitialized === '1') {
-                return;
-            }
+            if (form.dataset.addressChoicesInitialized === '1') return;
+            form.dataset.addressChoicesInitialized = '1';
 
-            const endpoint = String(form.dataset.addressSuggestUrl || '').trim();
-            if (!endpoint) {
-                return;
-            }
-
+            const endpoint = String(form.dataset.addressSuggestUrl || '');
             const regionRoot = form.querySelector('[data-subscriptions-region]');
             const country = form.querySelector('[name="country"]');
             const regionSelect = regionRoot ? regionRoot.querySelector('[data-region-select]') : null;
@@ -164,60 +139,22 @@
                     : String(state.manual.value || '').trim();
             }
 
-            function searchInput(state) {
-                const container = state.select.closest('.choices');
-
-                return container
-                    ? container.querySelector('.choices__input--cloned')
-                    : null;
+            function replaceChoices(state, items) {
+                if (!state.instance) return;
+                state.instance.setChoices(items, 'value', 'label', true);
             }
 
-            function restoreSearch(state, query) {
-                window.requestAnimationFrame(function () {
-                    const input = searchInput(state);
-
-                    if (input) {
-                        input.value = query;
-                        input.dispatchEvent(new Event('input', { bubbles: false }));
-                        input.focus({ preventScroll: true });
-                    }
-
-                    try {
-                        state.instance.showDropdown();
-                    } catch (_) {}
-                });
-            }
-
-            function setChoices(state, items, query) {
-                state.suppressSearch = true;
-
-                try {
-                    state.instance.setChoices(items, 'value', 'label', true);
-                } finally {
-                    window.setTimeout(function () {
-                        state.suppressSearch = false;
-                    }, 0);
-                }
-
-                if (typeof query === 'string' && query !== '') {
-                    restoreSearch(state, query);
-                }
-            }
-
-            function showStatus(state, label, query) {
-                setChoices(state, [{
+            function showStatus(state, label) {
+                replaceChoices(state, [{
                     value: '__status__',
                     label: label,
                     disabled: true
-                }], query);
+                }]);
             }
 
             function resetState(type) {
                 const state = states[type];
-
-                if (!state) {
-                    return;
-                }
+                if (!state) return;
 
                 if (state.controller) {
                     state.controller.abort();
@@ -226,14 +163,15 @@
 
                 state.select.value = '';
                 state.manual.value = '';
-                state.lastQuery = '';
 
-                setChoices(state, [{
-                    value: '',
-                    label: state.placeholder,
-                    selected: true,
-                    placeholder: true
-                }], '');
+                if (state.instance) {
+                    replaceChoices(state, [{
+                        value: '',
+                        label: state.placeholder,
+                        selected: true,
+                        placeholder: true
+                    }]);
+                }
             }
 
             function clearAfter(type) {
@@ -251,22 +189,16 @@
 
             async function loadSuggestions(state, query) {
                 query = String(query || '').trim();
-
-                if (state.suppressSearch) {
-                    return;
-                }
-
                 const minimum = state.type === 'house' ? 1 : 2;
 
                 if (
-                    !state.russian
+                    !endpoint
+                    || !state.russian
                     || !isRussianAddress()
                     || query.length < minimum
                 ) {
                     return;
                 }
-
-                state.lastQuery = query;
 
                 if (state.controller) {
                     state.controller.abort();
@@ -275,17 +207,16 @@
                 state.controller = new AbortController();
                 const requestId = ++state.requestId;
 
-                showStatus(state, texts.searching, query);
+                showStatus(state, texts.searching);
 
                 try {
                     const url = new URL(endpoint, window.location.origin);
-
                     url.searchParams.set('type', state.type);
                     url.searchParams.set('q', query);
                     url.searchParams.set('country', country ? String(country.value || '') : '');
                     url.searchParams.set('region', regionValue());
-                    url.searchParams.set('city', state.type === 'city' ? '' : valueOf('city'));
-                    url.searchParams.set('street', state.type === 'house' ? valueOf('street') : '');
+                    url.searchParams.set('city', valueOf('city'));
+                    url.searchParams.set('street', valueOf('street'));
 
                     const response = await window.fetch(url.toString(), {
                         method: 'GET',
@@ -310,11 +241,11 @@
                         : [];
 
                     if (!suggestions.length) {
-                        showStatus(state, texts.noResults, query);
+                        showStatus(state, texts.noResults);
                         return;
                     }
 
-                    setChoices(
+                    replaceChoices(
                         state,
                         suggestions.map(function (suggestion) {
                             return {
@@ -324,74 +255,31 @@
                                     postal_code: String(suggestion.postal_code || '')
                                 }
                             };
-                        }),
-                        query
+                        })
                     );
                 } catch (error) {
                     if (error && error.name === 'AbortError') {
                         return;
                     }
 
-                    if (requestId !== state.requestId) {
-                        return;
-                    }
-
-                    showStatus(state, texts.noResults, query);
+                    showStatus(state, texts.noResults);
                 }
-            }
-
-            function bindSearchBox(state) {
-                const input = searchInput(state);
-
-                if (!input || input.dataset.localAddressBound === '1') {
-                    return;
-                }
-
-                input.dataset.localAddressBound = '1';
-
-                const schedule = debounce(function () {
-                    loadSuggestions(state, input.value);
-                }, 180);
-
-                input.addEventListener('input', function () {
-                    if (state.suppressSearch) {
-                        return;
-                    }
-
-                    schedule();
-                });
-
-                input.addEventListener('keyup', function () {
-                    if (state.suppressSearch) {
-                        return;
-                    }
-
-                    schedule();
-                });
             }
 
             ['city', 'street', 'house'].forEach(function (type) {
                 const root = form.querySelector('[data-address-field="' + type + '"]');
-
-                if (!root) {
-                    return;
-                }
+                if (!root) return;
 
                 const select = root.querySelector('[data-address-select="' + type + '"]');
                 const manual = root.querySelector('[data-address-manual="' + type + '"]');
                 const russianWrap = root.querySelector('[data-address-russian-field]');
                 const foreignWrap = root.querySelector('[data-address-foreign-field]');
 
-                if (!select || !manual || !russianWrap || !foreignWrap) {
-                    return;
-                }
-
-                if (select.closest('.choices')) {
-                    return;
-                }
+                if (!select || !manual || !russianWrap || !foreignWrap) return;
 
                 const state = {
                     type: type,
+                    root: root,
                     select: select,
                     manual: manual,
                     russianWrap: russianWrap,
@@ -400,84 +288,53 @@
                     instance: null,
                     controller: null,
                     requestId: 0,
-                    russian: true,
-                    lastQuery: '',
-                    suppressSearch: false
+                    russian: true
                 };
 
                 states[type] = state;
 
-                const config = Object.assign({
-                    allowHTML: false,
-                    shouldSort: false,
-                    searchEnabled: true,
-                    searchChoices: false,
-                    searchFloor: 1,
-                    searchResultLimit: 12,
-                    removeItemButton: false,
-                    itemSelectText: '',
-                    noResultsText: texts.noResults,
-                    noChoicesText: texts.noResults,
-                    classNames: {
-                        containerInner: 'form-select'
-                    }
-                }, parseJson(select.dataset.select || '{}', {}));
+                if (window.Choices) {
+                    const config = Object.assign({
+                        allowHTML: false,
+                        shouldSort: false,
+                        searchEnabled: true,
+                        searchChoices: false,
+                        searchFloor: 1,
+                        searchResultLimit: 12,
+                        removeItemButton: false,
+                        itemSelectText: '',
+                        noResultsText: texts.noResults,
+                        noChoicesText: texts.noResults,
+                        classNames: {
+                            containerInner: 'form-select'
+                        }
+                    }, parseJson(select.dataset.select || '{}', {}));
 
-                config.classNames = Object.assign(
-                    { containerInner: 'form-select' },
-                    config.classNames || {}
-                );
+                    config.classNames = Object.assign(
+                        { containerInner: 'form-select' },
+                        config.classNames || {}
+                    );
 
-                state.instance = new window.Choices(select, config);
-                select.dataset.selectEnhanced = '1';
-
-                bindSearchBox(state);
-
-                const container = select.closest('.choices');
-
-                if (container) {
-                    container.addEventListener('click', function () {
-                        bindSearchBox(state);
-                    }, true);
-
-                    container.addEventListener('focusin', function () {
-                        bindSearchBox(state);
-                    });
+                    state.instance = new window.Choices(select, config);
+                    select.dataset.selectEnhanced = '1';
                 }
 
-                select.addEventListener('showDropdown', function () {
-                    bindSearchBox(state);
-
-                    const input = searchInput(state);
-
-                    if (input && state.lastQuery !== '') {
-                        input.value = state.lastQuery;
-                    }
-                });
+                const schedule = debounce(function (query) {
+                    loadSuggestions(state, query);
+                }, 180);
 
                 select.addEventListener('search', function (event) {
-                    if (state.suppressSearch) {
-                        return;
-                    }
-
-                    const query = event && event.detail
-                        ? String(event.detail.value || '')
-                        : '';
-
-                    loadSuggestions(state, query);
+                    schedule(event.detail ? event.detail.value : '');
                 });
 
                 select.addEventListener('choice', function (event) {
-                    const choice = event && event.detail
-                        ? event.detail.choice
-                        : null;
+                    const choice = event.detail ? event.detail.choice : null;
 
                     if (!choice || String(choice.value || '') === '__status__') {
                         return;
                     }
 
                     clearAfter(type);
-                    state.lastQuery = '';
 
                     if (
                         type === 'house'
@@ -493,8 +350,8 @@
             function setRussianMode(russian) {
                 Object.keys(states).forEach(function (type) {
                     const state = states[type];
-
                     state.russian = russian;
+
                     state.russianWrap.hidden = !russian;
                     state.foreignWrap.hidden = russian;
                     state.select.disabled = !russian;
@@ -504,7 +361,15 @@
                         russian ? state.instance.enable() : state.instance.disable();
                     }
 
-                    if (!russian && state.manual.value === '' && state.select.value !== '') {
+                    if (russian && state.select.value === '' && state.manual.value !== '') {
+                        const value = state.manual.value;
+
+                        replaceChoices(state, [{
+                            value: value,
+                            label: value,
+                            selected: true
+                        }]);
+                    } else if (!russian && state.manual.value === '' && state.select.value !== '') {
                         state.manual.value = state.select.value;
                     }
                 });
@@ -549,21 +414,17 @@
             if (regionInput) {
                 regionInput.addEventListener('change', resetHierarchy);
             }
-
-            form.dataset.addressChoicesInitialized = '1';
         });
     }
 
-    function start() {
-        waitForChoices(function () {
-            initRegions();
-            initAddressChoices();
-        });
+    function init() {
+        initRegions();
+        initAddressChoices();
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start, { once: true });
+        document.addEventListener('DOMContentLoaded', init, { once: true });
     } else {
-        start();
+        init();
     }
 })();
