@@ -2,13 +2,10 @@
 
 namespace Fireball\VpnManagerV2\Controllers\Admin;
 
-use FBL\Pagination;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
-use Fireball\VpnManagerV2\Repositories\ConfigurationSyncRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Services\ConnectionEditingService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
-use Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService;
 use Fireball\VpnManagerV2\Services\VpnFlowResolver;
 use Fireball\VpnManagerV2\Support\Permissions;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
@@ -19,38 +16,10 @@ final class ConnectionController
     {
         Permissions::authorize(Permissions::VIEW);
 
-        // FIREBALL_VPN_CONNECTIONS_REMOTE_CLEANUP_PAGINATION_V1
-        // Дочищаем старые missing_remote, которые раньше действительно
-        // существовали в 3x-ui, но уже отсутствуют там.
-        $cleanupRepository = new ConfigurationSyncRepository();
-        $cleanedSubscriptionIds = $cleanupRepository->archiveConfirmedMissingRemoteNodes();
-        if ($cleanedSubscriptionIds !== []) {
-            $revisions = new VpnSubscriptionRevisionService();
-            foreach ($cleanedSubscriptionIds as $subscriptionId) {
-                try {
-                    $revisions->touchConfig((int)$subscriptionId);
-                } catch (\Throwable $exception) {
-                    log_error_details(
-                        'VPN Manager V2 remote-deleted connection revision update failed',
-                        [
-                            'Subscription' => (int)$subscriptionId,
-                            'Error Class' => get_class($exception),
-                        ],
-                        $exception
-                    );
-                }
-            }
-        }
-
-        $repository = new SubscriptionRepository();
-        $total = $repository->countConnections();
-        $pagination = new Pagination($total, 20);
-
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/connections', \FireballPluginVpnManagerV2::viewData('connections', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_connections_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_connections_subtitle'),
-            'connections' => $repository->connectionsPage(20, $pagination->getOffset()),
-            'pagination' => $pagination,
+            'connections' => (new SubscriptionRepository())->connections(),
         ]));
     }
 

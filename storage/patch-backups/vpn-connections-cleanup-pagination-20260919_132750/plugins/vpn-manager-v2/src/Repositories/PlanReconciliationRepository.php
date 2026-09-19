@@ -242,7 +242,7 @@ final class PlanReconciliationRepository
         return db()->query(
             'SELECT id, subscription_id, server_id, inbound_id, remote_client_id, client_uuid,
                     encrypted_client_credential,
-                    client_email, client_sub_id, protocol, network, security, flow, status, sync_status,
+                    client_email, client_sub_id, protocol, network, security, flow, status,
                     desired_enabled, is_obsolete, traffic_limit_bytes, traffic_used_bytes,
                     upload_bytes, download_bytes, traffic_synced_at, traffic_sync_status,
                     last_sync_at, last_error, created_at, updated_at

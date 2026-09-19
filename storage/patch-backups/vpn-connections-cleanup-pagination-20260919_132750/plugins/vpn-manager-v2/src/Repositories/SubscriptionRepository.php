@@ -378,22 +378,6 @@ final class SubscriptionRepository
 
     public function connections(): array
     {
-        return $this->connectionsPage(10000, 0);
-    }
-
-    public function countConnections(): int
-    {
-        return (int)db()->query(
-            "SELECT COUNT(*) FROM vpn_v2_subscription_nodes n
-             WHERE n.status NOT IN ('deleted', 'deleting')"
-        )->getColumn();
-    }
-
-    public function connectionsPage(int $limit = 20, int $offset = 0): array
-    {
-        $limit = max(1, min(100, $limit));
-        $offset = max(0, $offset);
-
         return db()->query(
             'SELECT n.id, n.subscription_id, n.server_id, n.inbound_id,
                     CASE WHEN n.remote_client_id IS NULL OR n.remote_client_id = "" THEN NULL
@@ -412,9 +396,7 @@ final class SubscriptionRepository
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id
-             WHERE n.status NOT IN (\'deleted\', \'deleting\')
-             ORDER BY n.id ASC
-             LIMIT ' . $limit . ' OFFSET ' . $offset
+             ORDER BY n.id ASC'
         )->get() ?: [];
     }
 

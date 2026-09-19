@@ -61,7 +61,6 @@ final class ConfigurationSyncService
                 'matched' => 0,
                 'changed' => 0,
                 'missing' => 0,
-                'deleted' => 0,
                 'conflicts' => 0,
                 'queued' => 0,
                 'unmanaged' => 0,
@@ -87,27 +86,6 @@ final class ConfigurationSyncService
                 }
                 if (!is_array($match['remote'])) {
                     $counts['missing']++;
-
-                    // Раньше подтверждённый клиент, исчезнувший из успешной
-                    // инвентаризации 3x-ui, считается удалённым на стороне 3x-ui.
-                    if ($this->wasConfirmedRemote($node)) {
-                        if ($repository->archiveRemoteDeletedNode($node, $operationId)) {
-                            $counts['deleted']++;
-                            $changedSubscriptions[(int)$node['subscription_id']] = true;
-                        }
-                        $this->log(
-                            $node,
-                            $source,
-                            $operationId,
-                            'remote_deleted',
-                            $started,
-                            'client_deleted_remote'
-                        );
-                        continue;
-                    }
-
-                    // Никогда не подтверждённые узлы остаются provisioning-ошибкой
-                    // и по-прежнему могут быть восстановлены автоматически.
                     $repository->markMissingRemote($node, $operationId);
                     if ($this->shouldRestore($node)) {
                         ($this->operations ?? new OperationQueueRepository())->enqueue(
@@ -466,13 +444,6 @@ final class ConfigurationSyncService
             || (int)($client['totalGB'] ?? 0) !== max(0, $limit)
             || (int)($client['limitIp'] ?? 0) !== max(0, (int)$node['device_limit'])
             || (bool)($client['enable'] ?? false) !== $enabled;
-    }
-
-    private function wasConfirmedRemote(array $node): bool
-    {
-        return !empty($node['last_seen_remote_at'])
-            || trim((string)($node['last_remote_hash'] ?? '')) !== ''
-            || trim((string)($node['lkg_snapshot_hash'] ?? '')) !== '';
     }
 
     private function shouldRestore(array $node): bool

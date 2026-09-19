@@ -13,30 +13,6 @@
     }
     admin.dataset.fbReady = 'true';
 
-    // FIREBALL_ADMIN_SKIP_LINK_SCROLL_DISMISS
-    // Skip link должен быть виден только пока он реально используется с клавиатуры.
-    // Прокрутка мышью/трекпадом/касанием не снимает focus автоматически,
-    // поэтому после такого взаимодействия убираем focus вручную.
-    const skipLink = document.querySelector('.fb-skip-link');
-    if (skipLink) {
-        skipLink.setAttribute('data-fb-skip-link-scroll-dismiss', '1');
-
-        const dismissSkipLink = () => {
-            if (document.activeElement === skipLink) {
-                skipLink.blur();
-            }
-        };
-
-        window.addEventListener('scroll', dismissSkipLink, { passive: true });
-        document.addEventListener('wheel', dismissSkipLink, { passive: true });
-        document.addEventListener('touchstart', dismissSkipLink, { passive: true });
-        document.addEventListener('pointerdown', (event) => {
-            if (event.target !== skipLink) {
-                dismissSkipLink();
-            }
-        }, { passive: true });
-    }
-
     const storage = {
         get(key, fallback = null) {
             try {

@@ -258,15 +258,6 @@ final class VpnPlanSubscriptionReconciler
         $missing = [];
         foreach ($repository->activePlanNodes((int)$subscription['plan_id']) as $planNode) {
             $node = $existing[$this->key($planNode)] ?? null;
-
-            // Клиент, удалённый вручную непосредственно из 3x-ui, не должен
-            // автоматически появляться снова при плановом reconciliation.
-            if ($node !== null
-                && (string)$node['status'] === 'deleted'
-                && (string)($node['sync_status'] ?? '') === 'remote_deleted') {
-                continue;
-            }
-
             if ($node === null || in_array((string)$node['status'], [
                 'creating', 'create_failed', 'deleted', 'delete_failed',
             ], true)) {

@@ -5,7 +5,6 @@ use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 use Fireball\VpnManagerV2\Support\LocalizedValue;
 
 $connections = is_array($connections ?? null) ? $connections : [];
-$pagination = $pagination ?? null;
 $rows = [];
 $mobileCards = [];
 foreach ($connections as $connection) {
@@ -105,11 +104,5 @@ foreach ($connections as $connection) {
         'empty_text' => FireballPluginVpnManagerV2::t('vpn_manager_v2_empty_connections'),
     ]) ?>
 </div>
-
-<?php if ($pagination && (int)($pagination['total_pages'] ?? 1) > 1): ?>
-    <div class="d-flex justify-content-center mt-4">
-        <?= $pagination ?>
-    </div>
-<?php endif; ?>
 
 <?= view()->renderPartial('admin/shell_close') ?>
