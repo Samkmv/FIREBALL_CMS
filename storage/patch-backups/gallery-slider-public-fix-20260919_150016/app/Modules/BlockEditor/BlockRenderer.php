@@ -34,77 +34,8 @@ final class BlockRenderer
             return sanitize_content_html($html);
         }
 
-        // FIREBALL_LEGACY_GALLERY_SLIDER_UPGRADE_V1
-        // Если embedded state отсутствует, Editor 2 всё равно сохраняет
-        // fallback-разметку data-fb-gallery / data-fb-slider. Преобразуем её
-        // в актуальный публичный Gallery/Swiper renderer, чтобы GLightbox и
-        // Slider работали даже у старых/санитизированных записей.
-        $content = $this->upgradeLegacyMediaBlocks($content);
-
         // Старые записи и обычный HTML продолжают работать как раньше.
         return sanitize_content_html($content);
-    }
-
-    private function upgradeLegacyMediaBlocks(string $content): string
-    {
-        return preg_replace_callback(
-            '~<div\b[^>]*\bdata-fb-(gallery|slider)\s*=\s*(?:"1"|\'1\'|1)[^>]*>(.*?)</div>~is',
-            function (array $match): string {
-                $type = strtolower((string)($match[1] ?? 'gallery'));
-                $inner = (string)($match[2] ?? '');
-                $items = [];
-
-                if (preg_match_all(
-                    '~<figure\b[^>]*>\s*<img\b([^>]*)>\s*(?:<figcaption\b[^>]*>(.*?)</figcaption>)?\s*</figure>~is',
-                    $inner,
-                    $figures,
-                    PREG_SET_ORDER
-                )) {
-                    foreach ($figures as $figure) {
-                        $attributes = (string)($figure[1] ?? '');
-                        $src = $this->legacyHtmlAttribute($attributes, 'src');
-
-                        if ($src === '' || !is_safe_content_url($src, true)) {
-                            continue;
-                        }
-
-                        $items[] = [
-                            'src' => $src,
-                            'alt' => $this->legacyHtmlAttribute($attributes, 'alt'),
-                            'caption' => trim(strip_tags(html_entity_decode(
-                                (string)($figure[2] ?? ''),
-                                ENT_QUOTES | ENT_HTML5,
-                                'UTF-8'
-                            ))),
-                        ];
-                    }
-                }
-
-                if ($items === []) {
-                    return $match[0];
-                }
-
-                return $this->gallery(['items' => $items], $type);
-            },
-            $content
-        ) ?? $content;
-    }
-
-    private function legacyHtmlAttribute(string $attributes, string $name): string
-    {
-        if (!preg_match(
-            '~(?:^|\\s)' . preg_quote($name, '~') . '\\s*=\\s*(["\\\'])(.*?)\\1~is',
-            $attributes,
-            $match
-        )) {
-            return '';
-        }
-
-        return trim(html_entity_decode(
-            (string)($match[2] ?? ''),
-            ENT_QUOTES | ENT_HTML5,
-            'UTF-8'
-        ));
     }
 
     private function decodeEditorDocument(string $content): ?array
@@ -380,12 +311,9 @@ final class BlockRenderer
 
             $galleryId = 'fb-product-gallery-' . $gallerySequence;
 
-            // FIREBALL_GALLERY_3_COL_DESKTOP_V2
-            // Gallery занимает всю ширину контентной колонки:
-            // mobile = 2 изображения, md+ = 3 изображения в ряд.
             $html =
-                '<div class="w-100 pb-4 pb-md-0 mb-2 mb-sm-3 mb-md-0">' .
-                '<div class="row row-cols-2 row-cols-md-3 g-3 g-sm-4 g-md-3 g-lg-4">';
+                '<div class="col-md-7 col-xl-8 pb-4 pb-md-0 mb-2 mb-sm-3 mb-md-0">' .
+                '<div class="row row-cols-2 g-3 g-sm-4 g-md-3 g-lg-4">';
 
             foreach ($images as $image) {
                 $captionAttr = $image['caption'] !== ''
