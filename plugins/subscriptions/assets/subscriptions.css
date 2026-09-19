@@ -1255,3 +1255,246 @@
         max-height: 15rem;
     }
 }
+
+/* FIREBALL_SUBSCRIPTIONS_ADDRESS_DROPDOWN_CMS_FINAL_V1 */
+
+/*
+ * Финальный внешний вид локальных адресных подсказок.
+ * Логику autocomplete не меняет.
+ */
+.subscriptions-address-autocomplete {
+    position: relative;
+    z-index: auto;
+}
+
+.subscriptions-address-autocomplete:focus-within {
+    z-index: 1085;
+}
+
+.subscriptions-address-autocomplete .subscriptions-address-suggestions {
+    position: absolute;
+    z-index: 1090;
+    top: calc(2.75rem + .35rem);
+    right: 0;
+    left: 0;
+
+    display: block;
+    max-height: 17.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    margin: 0;
+    padding: .375rem;
+
+    border: 1px solid var(--bs-border-color);
+    border-radius: .75rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+
+    box-shadow:
+        0 .75rem 2rem rgba(0, 0, 0, .18),
+        0 .125rem .35rem rgba(0, 0, 0, .08);
+
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.subscriptions-address-autocomplete .subscriptions-address-suggestions[hidden] {
+    display: none !important;
+}
+
+.subscriptions-address-autocomplete .subscriptions-address-suggestion {
+    appearance: none;
+    -webkit-appearance: none;
+
+    display: flex;
+    width: 100%;
+    min-height: 2.5rem;
+    align-items: center;
+
+    margin: 0;
+    padding: .625rem .75rem;
+
+    border: 0;
+    border-radius: .5rem;
+    outline: 0;
+
+    background: transparent;
+    color: var(--bs-body-color);
+
+    font: inherit;
+    font-size: .875rem;
+    font-weight: 400;
+    line-height: 1.4;
+    text-align: left;
+    text-decoration: none;
+
+    cursor: pointer;
+    transition:
+        background-color .15s ease,
+        color .15s ease;
+}
+
+/* Убираем декоративные точки из предыдущих вариантов dropdown. */
+.subscriptions-address-autocomplete .subscriptions-address-suggestion::before {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    content: none !important;
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion + .subscriptions-address-suggestion {
+    margin-top: .125rem;
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion:hover,
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion:focus-visible,
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion.is-active {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-emphasis-color);
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion.is-active {
+    box-shadow: inset 0 0 0 1px var(--bs-border-color);
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion.is-status {
+    min-height: 2.35rem;
+    color: var(--bs-secondary-color);
+    cursor: default;
+    user-select: none;
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion.is-status:hover {
+    background: transparent;
+    color: var(--bs-secondary-color);
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestion__label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Тонкая полоса прокрутки в стиле интерфейса CMS. */
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestions {
+    scrollbar-width: thin;
+    scrollbar-color:
+        var(--bs-border-color)
+        transparent;
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestions::-webkit-scrollbar {
+    width: .45rem;
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestions::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.subscriptions-address-autocomplete
+.subscriptions-address-suggestions::-webkit-scrollbar-thumb {
+    border: .1rem solid transparent;
+    border-radius: 1rem;
+    background: var(--bs-border-color);
+    background-clip: padding-box;
+}
+
+/* На мобильном список немного ниже и компактнее. */
+@media (max-width: 767.98px) {
+    .subscriptions-address-autocomplete .subscriptions-address-suggestions {
+        top: calc(2.75rem + .3rem);
+        max-height: 14rem;
+        border-radius: .625rem;
+    }
+
+    .subscriptions-address-autocomplete .subscriptions-address-suggestion {
+        min-height: 2.75rem;
+        padding: .7rem .75rem;
+    }
+}
+
+/* FIREBALL_SUBSCRIPTIONS_ADDRESS_BOOTSTRAP_DROPDOWN_CSS_V1 */
+.subscriptions-address-autocomplete {
+    position: relative;
+}
+
+.subscriptions-address-autocomplete > .subscriptions-address-suggestions.dropdown-menu {
+    position: absolute;
+    z-index: 1095;
+    top: calc(100% + .25rem);
+    right: 0;
+    left: 0;
+    width: 100%;
+    min-width: 100%;
+    max-height: 18rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin: 0;
+}
+
+.subscriptions-address-autocomplete > .subscriptions-address-suggestions.dropdown-menu[hidden] {
+    display: none !important;
+}
+
+.subscriptions-address-autocomplete > .subscriptions-address-suggestions.dropdown-menu.show {
+    display: block;
+}
+
+.subscriptions-address-autocomplete .dropdown-item.subscriptions-address-suggestion {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    font: inherit;
+    text-align: inherit;
+    white-space: nowrap;
+}
+
+.subscriptions-address-autocomplete .dropdown-item.subscriptions-address-suggestion::before {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    content: none !important;
+}
+
+.subscriptions-address-autocomplete .dropdown-item.subscriptions-address-suggestion.active,
+.subscriptions-address-autocomplete .dropdown-item.subscriptions-address-suggestion.is-active {
+    color: var(--bs-dropdown-link-active-color);
+    background-color: var(--bs-dropdown-link-active-bg);
+}
+
+.subscriptions-address-autocomplete .dropdown-item-text.subscriptions-address-suggestion.is-status {
+    display: block;
+    min-height: 0;
+    background: transparent;
+    color: var(--bs-secondary-color);
+}
+
+.subscriptions-address-autocomplete .subscriptions-address-suggestion__label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .subscriptions-address-autocomplete > .subscriptions-address-suggestions.dropdown-menu {
+        max-height: 14rem;
+    }
+}
