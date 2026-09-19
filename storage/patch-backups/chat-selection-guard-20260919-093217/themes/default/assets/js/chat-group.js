@@ -54,40 +54,8 @@ $(function () {
         ].join(':'))
         .join('|');
 
-    // FIREBALL_CHAT_SELECTION_GUARD
-    let deferredGroupMessages = null;
-    let deferredGroupForceBottom = false;
-
-    const groupSelectionNodeInsideMessages = (node) => {
-        if (!node || !box[0]) return false;
-        const element = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
-        return Boolean(element && (element === box[0] || box[0].contains(element)));
-    };
-
-    const hasGroupMessageTextSelection = () => {
-        const selection = window.getSelection ? window.getSelection() : null;
-        if (!selection || selection.isCollapsed || selection.rangeCount === 0 || String(selection.toString() || '') === '') return false;
-        return groupSelectionNodeInsideMessages(selection.anchorNode) || groupSelectionNodeInsideMessages(selection.focusNode);
-    };
-
-    const flushDeferredGroupRender = () => {
-        if (!Array.isArray(deferredGroupMessages) || hasGroupMessageTextSelection()) return;
-        const messages = deferredGroupMessages;
-        const forceBottom = deferredGroupForceBottom;
-        deferredGroupMessages = null;
-        deferredGroupForceBottom = false;
-        render(messages, forceBottom);
-    };
-
     const render = (messages, forceBottom = false) => {
         messages = Array.isArray(messages) ? messages : [];
-        if (hasGroupMessageTextSelection()) {
-            deferredGroupMessages = messages;
-            deferredGroupForceBottom = deferredGroupForceBottom || Boolean(forceBottom);
-            return;
-        }
-
-
         const nextSignature = signature(messages);
 
         if (nextSignature === renderedSignature && !forceBottom) return;
@@ -274,15 +242,6 @@ $(function () {
 
         event.preventDefault();
         form.trigger('submit');
-    });
-
-    // FIREBALL_CHAT_SELECTION_GUARD
-    document.addEventListener('selectionchange', function () {
-        window.setTimeout(flushDeferredGroupRender, 0);
-    });
-
-    box.on('mouseup touchend keyup', function () {
-        window.setTimeout(flushDeferredGroupRender, 0);
     });
 
     window.addEventListener('pagehide', stopRealtime);

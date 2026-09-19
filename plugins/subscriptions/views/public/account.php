@@ -150,10 +150,86 @@ foreach ($payments as $payment) {
             <footer class="subscriptions-account-card__actions">
                 <?php if (!$isUtilityManaged): ?><a class="btn btn-dark rounded-pill subscriptions-account-card__renew" href="<?= base_href('/subscriptions/checkout/' . (int)$subscription['plan_id']) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_renew')) ?><i class="ci-arrow-right ms-2" aria-hidden="true"></i></a><?php endif; ?>
                 <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/profile/subscription-details') ?>"><i class="ci-user me-2" aria-hidden="true"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_profile_title')) ?></a>
-                <?php if ($autoRenew): ?><form action="<?= base_href('/account/subscription/auto-renew') ?>" method="post"><?= get_csrf_field() ?><input type="hidden" name="enabled" value="0"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_disable_auto_renew')) ?></button></form><?php endif; ?>
+                <?php if ($autoRenew): ?>
+                    <button
+                        class="btn btn-outline-secondary rounded-pill"
+                        type="button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#subscriptionsCancelAutoRenewModal"
+                    >
+                        <i class="ci-x-circle me-2" aria-hidden="true"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_disable_auto_renew')) ?>
+                    </button>
+                <?php endif; ?>
             </footer>
         </article>
     <?php else: ?><div class="alert alert-info"><h2 class="h5"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_no_subscription_title')) ?></h2><p><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_no_subscription_message')) ?></p><a class="btn btn-dark rounded-pill" href="<?= base_href('/subscriptions/plans') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_view_plans')) ?></a></div><?php endif; ?>
+
+
+    <?php if ($autoRenew): ?>
+        <!-- FIREBALL_SUBSCRIPTION_CANCEL_MODAL_V1 -->
+        <div
+            class="modal fade"
+            id="subscriptionsCancelAutoRenewModal"
+            tabindex="-1"
+            aria-labelledby="subscriptionsCancelAutoRenewModalLabel"
+            aria-hidden="true"
+        >
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 rounded-5 shadow-lg overflow-hidden">
+                    <div class="modal-body p-4 p-md-5">
+                        <div class="d-flex align-items-start gap-3 mb-4">
+                            <span
+                                class="d-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle bg-warning-subtle text-warning-emphasis"
+                                style="width: 3.5rem; height: 3.5rem;"
+                                aria-hidden="true"
+                            >
+                                <i class="ci-alert-triangle fs-3"></i>
+                            </span>
+                            <div>
+                                <h2 class="h5 mb-2" id="subscriptionsCancelAutoRenewModalLabel">
+                                    <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel_auto_renew_modal_title')) ?>
+                                </h2>
+                                <p class="text-body-secondary mb-0">
+                                    <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel_auto_renew_modal_message')) ?>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="rounded-4 bg-body-tertiary p-3 mb-4">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="ci-info text-body-secondary mt-1" aria-hidden="true"></i>
+                                <div class="small">
+                                    <strong class="d-block mb-1"><?= htmlSC((string)$subscription['plan_name']) ?></strong>
+                                    <span class="text-body-secondary">
+                                        <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_auto_renew_cancel_hint')) ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-column flex-sm-row justify-content-end gap-2">
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary rounded-pill"
+                                data-bs-dismiss="modal"
+                            >
+                                <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel_auto_renew_modal_keep')) ?>
+                            </button>
+
+                            <form action="<?= base_href('/account/subscription/auto-renew') ?>" method="post" class="m-0">
+                                <?= get_csrf_field() ?>
+                                <input type="hidden" name="enabled" value="0">
+                                <button class="btn btn-warning rounded-pill w-100" type="submit">
+                                    <i class="ci-x-circle me-2" aria-hidden="true"></i>
+                                    <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_cancel_auto_renew_modal_confirm')) ?>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <h2 class="h5 mt-5 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payment_history')) ?></h2>
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>

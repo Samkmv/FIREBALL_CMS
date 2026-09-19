@@ -1639,45 +1639,7 @@ $(function () {
         }, 2400);
     };
 
-    // FIREBALL_CHAT_SELECTION_GUARD
-    let messageRenderDeferred = false;
-    let deferredRenderCurrentUserId = 0;
-    let deferredRenderOptions = {};
-
-    const selectionNodeInsideMessages = (node) => {
-        if (!node || !messagesBox[0]) return false;
-        const element = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
-        return Boolean(element && (element === messagesBox[0] || messagesBox[0].contains(element)));
-    };
-
-    const hasMessageTextSelection = () => {
-        const selection = window.getSelection ? window.getSelection() : null;
-        if (!selection || selection.isCollapsed || selection.rangeCount === 0 || String(selection.toString() || '') === '') return false;
-        return selectionNodeInsideMessages(selection.anchorNode) || selectionNodeInsideMessages(selection.focusNode);
-    };
-
-    const flushDeferredMessageRender = () => {
-        if (!messageRenderDeferred || hasMessageTextSelection()) return;
-        const currentUserId = deferredRenderCurrentUserId;
-        const options = {...(deferredRenderOptions || {}), force: true};
-        messageRenderDeferred = false;
-        deferredRenderCurrentUserId = 0;
-        deferredRenderOptions = {};
-        renderMessages(state.messages, currentUserId, options);
-        if (typeof chatRealtimeRefreshPending !== 'undefined' && chatRealtimeRefreshPending && typeof scheduleRealtimeRefresh === 'function') {
-            window.setTimeout(scheduleRealtimeRefresh, 0);
-        }
-    };
-
     const renderMessages = (messages, currentUserId, options = {}) => {
-        if (hasMessageTextSelection()) {
-            messageRenderDeferred = true;
-            deferredRenderCurrentUserId = Number(currentUserId) || 0;
-            deferredRenderOptions = {...(options || {})};
-            return;
-        }
-
-
         const box = messagesBox[0];
         const force = Boolean(options.force);
         const filteredMessages = filterMessages();
@@ -1966,11 +1928,7 @@ $(function () {
     };
 
     const scheduleRealtimeRefresh = () => {
-        if (
-            document.hidden
-            || messagesRequest
-            || hasMessageTextSelection()
-        ) {
+        if (document.hidden || messagesRequest) {
             chatRealtimeRefreshPending = true;
             return;
         }
@@ -2884,15 +2842,6 @@ $(function () {
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function' || typeof window.MediaRecorder === 'undefined') {
         recordVoiceButton.prop('disabled', true).attr('title', chatApp.data('voice-unsupported-text') || 'Voice recording is not supported.');
     }
-    // FIREBALL_CHAT_SELECTION_GUARD
-    document.addEventListener('selectionchange', function () {
-        window.setTimeout(flushDeferredMessageRender, 0);
-    });
-
-    messagesBox.on('mouseup touchend keyup', function () {
-        window.setTimeout(flushDeferredMessageRender, 0);
-    });
-
     window.addEventListener('pagehide', function () {
         stopLocalTyping(activeContactId(), true);
         stopVoiceRecording(false);

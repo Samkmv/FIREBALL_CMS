@@ -1,0 +1,22 @@
+{
+  "patch_id": "fireball-chat-selection-guard-20260919",
+  "created_at": "2026-09-19T09:32:17",
+  "files": [
+    {
+      "path": "public/assets/default/js/chat.js",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/js/chat.js",
+      "changed": true
+    },
+    {
+      "path": "public/assets/default/js/chat-group.js",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/js/chat-group.js",
+      "changed": true
+    }
+  ]
+}
