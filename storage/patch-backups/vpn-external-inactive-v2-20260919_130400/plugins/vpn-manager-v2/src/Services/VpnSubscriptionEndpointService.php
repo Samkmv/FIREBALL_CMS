@@ -44,7 +44,7 @@ final class VpnSubscriptionEndpointService
             // Если эта подписка отдавала активные внешние источники,
             // HTTP 404/410 не подходит: VPN-клиент может оставить старые URI.
             // Успешный пустой payload позволяет заменить старый набор на пустой.
-            if ($this->hasExternalSources($subscription)) {
+            if ($this->hasActiveExternalSources($subscription)) {
                 return $this->inactiveExternalCleanupResponse($format, $headers);
             }
 
@@ -59,7 +59,7 @@ final class VpnSubscriptionEndpointService
         }
         $effective = $dependencies->calculateEffectiveStatus($subscription);
         if ($effective['effective_status'] !== 'active' || !$this->started($subscription)) {
-            if ($this->hasExternalSources($subscription)) {
+            if ($this->hasActiveExternalSources($subscription)) {
                 return $this->inactiveExternalCleanupResponse($format, $headers);
             }
 
@@ -156,7 +156,7 @@ final class VpnSubscriptionEndpointService
      * Проверка дерева намеренно не зависит от effective_status родителя:
      * этот метод вызывается как раз тогда, когда родитель уже expired/suspended.
      */
-    private function hasExternalSources(array $subscription): bool
+    private function hasActiveExternalSources(array $subscription): bool
     {
         $rootId = (int)($subscription['id'] ?? 0);
         if ($rootId <= 0) {
@@ -175,7 +175,7 @@ final class VpnSubscriptionEndpointService
             }
             $visited[$subscriptionId] = true;
 
-            if ($external->itemsForParent($subscriptionId) !== []) {
+            if ($external->configCountForParent($subscriptionId) > 0) {
                 return true;
             }
 
@@ -204,24 +204,17 @@ final class VpnSubscriptionEndpointService
         string $format,
         array $headers
     ): SubscriptionEndpointResponse {
-        // FIREBALL_VPN_EXTERNAL_INACTIVE_TOMBSTONE_V2
-        // Нельзя отдавать полностью пустую подписку: некоторые клиенты
-        // считают её ошибкой ("There are no server links") и сохраняют
-        // старые реальные серверы. Поэтому отдаём один заведомо нерабочий,
-        // но синтаксически валидный VLESS URI. Успешное обновление заменит
-        // старые внешние конфиги этой подписки на заглушку.
         $headers['Cache-Control'] = 'private, no-store, must-revalidate';
         $headers['X-Fireball-VPN-Status'] = 'inactive';
 
-        $placeholder = 'vless://00000000-0000-4000-8000-000000000000@192.0.2.1:1?encryption=none&security=none&type=tcp#%E2%9B%94%20VPN%20subscription%20inactive';
-        $plain = $placeholder . "\n";
+        $plain = "\n";
         $body = $format === 'base64' ? base64_encode($plain) : $plain;
 
         return new SubscriptionEndpointResponse(
             200,
             $body,
             $headers,
-            1,
+            0,
             false
         );
     }

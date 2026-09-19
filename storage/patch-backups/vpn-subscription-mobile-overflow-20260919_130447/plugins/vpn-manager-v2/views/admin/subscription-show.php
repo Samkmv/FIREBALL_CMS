@@ -101,114 +101,7 @@ foreach ($nodes as $node) {
 <?= view()->renderPartial('admin/shell_open', ['title' => $title ?? '', 'subtitle' => $subtitle ?? '']) ?>
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
-<style>
-.vpn-v2-subscription-show {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-}
-
-.vpn-v2-subscription-show,
-.vpn-v2-subscription-show > *,
-.vpn-v2-subscription-show .row,
-.vpn-v2-subscription-show .row > [class*="col-"] {
-    min-width: 0;
-}
-
-.vpn-v2-subscription-show .table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.vpn-v2-subscription-show input,
-.vpn-v2-subscription-show select,
-.vpn-v2-subscription-show textarea,
-.vpn-v2-subscription-show .form-control,
-.vpn-v2-subscription-show .form-select {
-    max-width: 100%;
-    min-width: 0;
-}
-
-.vpn-v2-subscription-show .vpn-v2-min-w-0 {
-    min-width: 0 !important;
-}
-
-@media (max-width: 767.98px) {
-    .vpn-v2-subscription-show {
-        overflow-x: clip;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-subscription-actions > a,
-    .vpn-v2-subscription-show .vpn-v2-subscription-actions > form {
-        max-width: 100%;
-        min-width: 0;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-subscription-actions .btn {
-        max-width: 100%;
-        white-space: normal;
-        text-align: left;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-dependency-controls {
-        flex-direction: column !important;
-        align-items: stretch !important;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-dependency-controls > .form-select,
-    .vpn-v2-subscription-show .vpn-v2-dependency-controls > .btn {
-        width: 100%;
-        max-width: 100%;
-        min-width: 0;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-dependency-controls > .btn {
-        white-space: normal !important;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-order-heading {
-        flex-wrap: wrap !important;
-        align-items: flex-start !important;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-order-heading > * {
-        min-width: 0;
-        max-width: 100%;
-    }
-
-    .vpn-v2-subscription-show .vpn-v2-order-heading .btn {
-        white-space: normal;
-    }
-
-    .vpn-v2-subscription-show [data-vpn-v2-connection-order-item] {
-        min-width: 0;
-        max-width: 100%;
-    }
-
-    .vpn-v2-subscription-show [data-vpn-v2-connection-order-item] .flex-grow-1,
-    .vpn-v2-subscription-show [data-vpn-v2-connection-order-item] .text-truncate {
-        min-width: 0;
-    }
-
-    .vpn-v2-subscription-show dd,
-    .vpn-v2-subscription-show .form-text,
-    .vpn-v2-subscription-show .small,
-    .vpn-v2-subscription-show code {
-        overflow-wrap: anywhere;
-        word-break: break-word;
-    }
-
-    .vpn-v2-subscription-show .table-responsive > .table {
-        margin-bottom: 0;
-    }
-}
-</style>
-
-<div class="vpn-v2-subscription-show" data-vpn-v2-subscription-show>
-
-<div class="d-flex flex-wrap gap-2 mb-3 vpn-v2-subscription-actions">
+<div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(AdminTableState::append('/admin/plugins/vpn-manager-v2/subscriptions', $returnQuery)) ?>">
         <i class="ci-arrow-left" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_back_to_subscriptions')) ?>
     </a>
@@ -288,7 +181,7 @@ foreach ($nodes as $node) {
 </div>
 
 <div class="border rounded-5 p-3 p-md-4 mb-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3 vpn-v2-order-heading">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
         <div><span class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_id')) ?></span> <strong>#<?= $subscriptionId ?></strong></div>
         <?= ProvisioningStatus::badge((string)($subscription['status'] ?? '')) ?>
     </div>
@@ -362,7 +255,7 @@ foreach ($nodes as $node) {
 </div>
 
 <section class="border rounded-5 p-3 p-md-4 mb-4" id="vpnV2Dependencies">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3 vpn-v2-order-heading">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
         <div>
             <h2 class="h5 mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_dependencies_title')) ?></h2>
             <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_dependencies_help')) ?></div>
@@ -402,8 +295,8 @@ foreach ($nodes as $node) {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="d-flex flex-column flex-sm-row gap-2 vpn-v2-dependency-controls">
-                        <select class="form-select flex-grow-1 vpn-v2-min-w-0" name="ownership_type" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_type')) ?>">
+                    <div class="d-flex gap-2">
+                        <select class="form-select" name="ownership_type" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_type')) ?>">
                             <option value="shared"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_shared')) ?></option>
                             <option value="exclusive"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_exclusive')) ?></option>
                         </select>
@@ -434,8 +327,8 @@ foreach ($nodes as $node) {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="d-flex flex-column flex-sm-row gap-2 vpn-v2-dependency-controls">
-                        <select class="form-select flex-grow-1 vpn-v2-min-w-0" name="ownership_type" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_type')) ?>">
+                    <div class="d-flex gap-2">
+                        <select class="form-select" name="ownership_type" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_type')) ?>">
                             <option value="shared"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_shared')) ?></option>
                             <option value="exclusive"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ownership_exclusive')) ?></option>
                         </select>
@@ -457,7 +350,7 @@ foreach ($nodes as $node) {
                   data-vpn-v2-connection-order>
                 <?= get_csrf_field() ?>
                 <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-2 vpn-v2-order-heading">
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
                     <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_dependency_order_help')) ?></div>
                     <button class="btn btn-sm btn-outline-secondary rounded-pill" type="submit">
                         <i class="ci-save" aria-hidden="true"></i>
@@ -475,7 +368,7 @@ foreach ($nodes as $node) {
                         <div class="list-group-item d-flex align-items-center gap-3" draggable="true" data-vpn-v2-connection-order-item>
                             <input type="hidden" name="dependency_order[]" value="<?= $itemId ?>">
                             <i class="ci-menu text-body-tertiary" aria-hidden="true"></i>
-                            <span class="flex-grow-1 text-truncate vpn-v2-min-w-0"><?= htmlSC($itemLabel) ?></span>
+                            <span class="flex-grow-1 text-truncate"><?= htmlSC($itemLabel) ?></span>
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-outline-secondary btn-icon" type="button" data-vpn-v2-order-move="up" aria-label="↑"><i class="ci-chevron-up"></i></button>
                                 <button class="btn btn-sm btn-outline-secondary btn-icon" type="button" data-vpn-v2-order-move="down" aria-label="↓"><i class="ci-chevron-down"></i></button>
@@ -612,7 +505,7 @@ foreach ($nodes as $node) {
                   data-vpn-v2-connection-order>
                 <?= get_csrf_field() ?>
                 <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
-                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3 vpn-v2-order-heading">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
                     <div>
                         <h3 class="h6 mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_external_order_title')) ?></h3>
                         <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_external_order_help')) ?></div>
@@ -737,7 +630,7 @@ foreach ($nodes as $node) {
           data-vpn-v2-connection-order>
         <?= get_csrf_field() ?>
         <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3 vpn-v2-order-heading">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div>
                 <h2 class="h5 mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_connection_order_title')) ?></h2>
                 <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_connection_order_help')) ?></div>
