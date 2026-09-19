@@ -57,15 +57,8 @@ $metaKeywords = $pageSeoKeywords !== '' ? $pageSeoKeywords : $seoMetaKeywords;
 $metaAuthor = $seoMetaAuthor !== '' ? $seoMetaAuthor : $siteTitle;
 $metaRobots = $pageSeoRobots !== '' ? $pageSeoRobots : $seoRobots;
 $canonicalUrl = $pageSeoCanonical !== '' ? $pageSeoCanonical : base_href(uri_without_lang());
-// fireball-social-link-preview-v1: layout
-// У карточки ссылки всегда должно быть абсолютное изображение.
-// Приоритет: SEO-картинка страницы/поста -> глобальная OG-картинка -> favicon/logo сайта.
-$resolvedSocialImage = $pageSeoImage !== '' ? $pageSeoImage : $seoOgImage;
-if ($resolvedSocialImage === '') {
-    $resolvedSocialImage = site_favicon_url();
-}
 $metaImageData = social_image_metadata(
-    $resolvedSocialImage,
+    $pageSeoImage !== '' ? $pageSeoImage : $seoOgImage,
     $pageSeoImageWidth,
     $pageSeoImageHeight
 );
@@ -165,7 +158,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <meta property="og:description" content="<?= htmlSC($metaDescription) ?>">
     <meta property="og:url" content="<?= htmlSC($canonicalUrl) ?>">
     <?php if ($metaImage !== ''): ?>
-        <link rel="image_src" href="<?= htmlSC($metaImage) ?>">
         <meta property="og:image" content="<?= htmlSC($metaImage) ?>">
         <meta property="og:image:url" content="<?= htmlSC($metaImage) ?>">
         <?php if ($metaImageData['secure_url'] !== ''): ?>
@@ -187,7 +179,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
         <meta property="article:section" content="<?= htmlSC($pageSeoArticleSection) ?>">
     <?php endif; ?>
     <meta name="twitter:card" content="<?= htmlSC($seoTwitterCard !== '' ? $seoTwitterCard : 'summary_large_image') ?>">
-    <meta name="twitter:url" content="<?= htmlSC($canonicalUrl) ?>">
     <meta name="twitter:title" content="<?= htmlSC($documentTitle) ?>">
     <meta name="twitter:description" content="<?= htmlSC($metaDescription) ?>">
     <?php if ($metaImage !== ''): ?>

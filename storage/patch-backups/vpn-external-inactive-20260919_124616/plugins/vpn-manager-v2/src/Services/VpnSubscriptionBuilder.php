@@ -22,16 +22,6 @@ final class VpnSubscriptionBuilder
         $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService(
             config: $this->repository ?? new SubscriptionConfigRepository()
         );
-
-        // FIREBALL_VPN_EXTERNAL_INACTIVE_GUARD_V1
-        // Не выдаём ни собственные, ни внешние конфиги из builder, если
-        // родительская VPN-подписка больше не имеет эффективного доступа.
-        // Это также защищает любые внутренние вызовы builder вне HTTP endpoint.
-        $effective = $dependencies->calculateEffectiveStatus($subscription);
-        if (($effective['effective_status'] ?? 'inactive') !== 'active') {
-            return [];
-        }
-
         $firstPartyUris = $this->buildFromNodes(
             $subscription,
             $dependencies->collectEffectiveConnections($subscription)

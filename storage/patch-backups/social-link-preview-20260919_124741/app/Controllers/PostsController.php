@@ -128,40 +128,6 @@ class PostsController extends BaseController
         $sidebarData = $this->posts->getSidebarData($slug);
         $popularPosts = $this->posts->getPopularPosts(5, $slug);
 
-        // fireball-social-link-preview-v1: controller
-        // Социальные парсеры (Telegram, WhatsApp, VK и др.) не исполняют JS.
-        // Поэтому карточка ссылки должна полностью формироваться на сервере.
-        // После plugin-фильтров повторно страхуем description/image, чтобы
-        // пустые SEO-поля конкретной записи не давали "голую" ссылку.
-        $socialDescription = trim((string)($post['seo_description'] ?? ''));
-        if ($socialDescription === '') {
-            $socialDescription = trim((string)($post['excerpt'] ?? ''));
-        }
-        if ($socialDescription === '') {
-            $socialDescription = trim((string)preg_replace(
-                '/\s+/u',
-                ' ',
-                strip_tags((string)($post['content'] ?? ''))
-            ));
-        }
-        if ($socialDescription === '') {
-            $socialDescription = (string)$post['title'];
-        }
-        if (mb_strlen($socialDescription) > 220) {
-            $socialDescription = rtrim(mb_substr($socialDescription, 0, 217)) . '...';
-        }
-
-        $socialImage = trim((string)($post['seo_image'] ?? ''));
-        if ($socialImage === '' && !empty($post['has_image'])) {
-            foreach (['image_original', 'image_webp', 'image_thumb', 'image'] as $imageKey) {
-                $candidate = trim((string)($post[$imageKey] ?? ''));
-                if ($candidate !== '') {
-                    $socialImage = $candidate;
-                    break;
-                }
-            }
-        }
-
         return Theme::render('post', [
             'title' => $post['title'],
             'post' => $post,
@@ -169,9 +135,9 @@ class PostsController extends BaseController
             'trending_posts' => $this->filterPublicPosts((array)$sidebarData['trending_posts']),
             'popular_posts' => $this->filterPublicPosts($popularPosts),
             'seo_title' => $post['seo_title'] !== '' ? $post['seo_title'] : $post['title'],
-            'seo_description' => $socialDescription,
+            'seo_description' => $post['seo_description'],
             'seo_keywords' => $post['seo_keywords'],
-            'seo_image' => $socialImage,
+            'seo_image' => $post['seo_image'],
             'seo_image_width' => (int)($post['seo_image_width'] ?? 0),
             'seo_image_height' => (int)($post['seo_image_height'] ?? 0),
             'seo_image_alt' => $post['title'],

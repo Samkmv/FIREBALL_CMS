@@ -222,22 +222,22 @@ foreach ($nodes as $node) {
         <div class="row g-4 align-items-start">
             <div class="col-lg-7">
                 <label class="form-label" for="vpnV2SubscriptionUrl"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_public_url')) ?></label>
-                <div data-vpn-v2-admin-copy-safe>
-                    <input class="form-control font-monospace"
+                <div class="d-flex flex-column flex-md-row align-items-stretch gap-2">
+                    <input class="form-control font-monospace flex-grow-1"
                            id="vpnV2SubscriptionUrl"
                            type="url"
                            readonly
                            value="<?= htmlSC($subscriptionUrl) ?>">
-                    <div class="mt-2">
-                        <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 mw-100"
+                    <div class="d-flex flex-column align-items-stretch">
+                        <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 text-nowrap"
                                 type="button"
                                 data-vpn-v2-copy-value="<?= htmlSC($subscriptionUrl) ?>"
                                 data-vpn-v2-copy-done="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copied')) ?>"
                                 data-vpn-v2-copy-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copy_failed')) ?>">
-                            <i class="ci-copy flex-shrink-0" aria-hidden="true"></i>
-                            <span class="text-wrap" data-vpn-v2-copy-label><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_copy_link')) ?></span>
+                            <i class="ci-copy" aria-hidden="true"></i>
+                            <span data-vpn-v2-copy-label><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_copy_link')) ?></span>
                         </button>
-                        <div class="small text-body-secondary mt-1"
+                        <div class="small text-body-secondary mt-1 text-md-end"
                              data-vpn-v2-copy-status
                              aria-live="polite"></div>
                     </div>
