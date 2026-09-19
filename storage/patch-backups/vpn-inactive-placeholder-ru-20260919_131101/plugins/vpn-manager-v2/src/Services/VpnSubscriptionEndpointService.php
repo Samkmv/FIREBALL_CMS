@@ -213,7 +213,7 @@ final class VpnSubscriptionEndpointService
         $headers['Cache-Control'] = 'private, no-store, must-revalidate';
         $headers['X-Fireball-VPN-Status'] = 'inactive';
 
-        $placeholder = 'vless://00000000-0000-4000-8000-000000000000@192.0.2.1:1?encryption=none&security=none&type=tcp#%E2%9B%94%20VPN-%D0%BF%D0%BE%D0%B4%D0%BF%D0%B8%D1%81%D0%BA%D0%B0%20%D0%BD%D0%B5%D0%B0%D0%BA%D1%82%D0%B8%D0%B2%D0%BD%D0%B0';
+        $placeholder = 'vless://00000000-0000-4000-8000-000000000000@192.0.2.1:1?encryption=none&security=none&type=tcp#%E2%9B%94%20VPN%20subscription%20inactive';
         $plain = $placeholder . "\n";
         $body = $format === 'base64' ? base64_encode($plain) : $plain;
 
