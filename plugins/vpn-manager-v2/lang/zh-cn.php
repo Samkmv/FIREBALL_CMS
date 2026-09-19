@@ -573,7 +573,7 @@ return [
     'vpn_manager_v2_setting_notify_critical_errors' => '发生严重错误时',
     'vpn_manager_v2_setting_retry_failed_operations' => '重试失败的操作',
     'vpn_manager_v2_notification_expires_3_days_title' => 'VPN 即将到期',
-    'vpn_manager_v2_notification_expires_3_days_message' => 'VPN 订阅将在 3 天后到期。',
+    'vpn_manager_v2_notification_expires_3_days_message' => 'VPN 订阅将在未来 3 天内到期。',
     'vpn_manager_v2_notification_expires_today_title' => 'VPN 今天到期',
     'vpn_manager_v2_notification_expires_today_message' => 'VPN 订阅将在今天到期。',
     'vpn_manager_v2_notification_traffic_80_title' => 'VPN 流量已使用 80%',

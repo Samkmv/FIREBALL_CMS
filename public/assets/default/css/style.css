@@ -7521,3 +7521,58 @@ body:not(.fb-admin-body) .search-suggest-menu {
         color: inherit;
     }
 }
+
+/* FIREBALL_CHAT_TOAST_COMPACT */
+.app-toast-stack .toast.app-toast--chat {
+    width: min(100%, 22rem) !important;
+    justify-self: end;
+    border-radius: .9rem !important;
+    box-shadow: 0 .85rem 2rem rgba(15, 23, 42, .18) !important;
+}
+.app-toast-stack .toast.app-toast--chat .toast-header {
+    min-height: 3.25rem !important;
+    gap: .5rem !important;
+    padding: .55rem .7rem !important;
+}
+.app-toast-stack .toast.app-toast--chat .toast-header img {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    flex: 0 0 2.25rem !important;
+}
+.app-toast-stack .toast.app-toast--chat .toast-header .ci-chat {
+    font-size: 1.05rem !important;
+}
+.app-toast-stack .toast.app-toast--chat .app-toast--chat__title {
+    font-size: .875rem;
+    line-height: 1.2;
+}
+.app-toast-stack .toast.app-toast--chat .toast-header time {
+    font-size: .7rem !important;
+}
+.app-toast-stack .toast.app-toast--chat .toast-body {
+    padding: .65rem .75rem .75rem !important;
+    font-size: .9rem !important;
+    line-height: 1.35 !important;
+}
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--chat {
+    box-shadow: 0 .85rem 2rem rgba(0, 0, 0, .3) !important;
+}
+@media (max-width: 575.98px) {
+    .app-toast-stack .toast.app-toast--chat {
+        width: min(calc(100vw - 1.5rem), 20rem) !important;
+    }
+    .app-toast-stack .toast.app-toast--chat .toast-header {
+        min-height: 3rem !important;
+        padding: .5rem .65rem !important;
+    }
+    .app-toast-stack .toast.app-toast--chat .toast-header img {
+        width: 2rem !important;
+        height: 2rem !important;
+        flex-basis: 2rem !important;
+    }
+    .app-toast-stack .toast.app-toast--chat .toast-body {
+        padding: .6rem .7rem .7rem !important;
+        font-size: .875rem !important;
+    }
+}
+

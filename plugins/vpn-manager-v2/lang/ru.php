@@ -573,7 +573,7 @@ return [
     'vpn_manager_v2_setting_notify_critical_errors' => 'При критической ошибке',
     'vpn_manager_v2_setting_retry_failed_operations' => 'Повторять неудачные операции',
     'vpn_manager_v2_notification_expires_3_days_title' => 'VPN скоро закончится',
-    'vpn_manager_v2_notification_expires_3_days_message' => 'До окончания VPN-подписки осталось 3 дня.',
+    'vpn_manager_v2_notification_expires_3_days_message' => 'Срок VPN-подписки истекает в ближайшие 3 дня.',
     'vpn_manager_v2_notification_expires_today_title' => 'VPN заканчивается сегодня',
     'vpn_manager_v2_notification_expires_today_message' => 'Срок VPN-подписки истекает сегодня.',
     'vpn_manager_v2_notification_traffic_80_title' => 'Использовано 80% трафика VPN',

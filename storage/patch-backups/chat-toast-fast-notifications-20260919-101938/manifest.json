@@ -1,0 +1,21 @@
+{
+  "patch_id": "fireball-chat-toast-fast-notifications-20260919",
+  "files": [
+    {
+      "path": "public/assets/default/css/style.css",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/css/style.css",
+      "changed": true
+    },
+    {
+      "path": "public/assets/default/js/main.js",
+      "changed": true
+    },
+    {
+      "path": "themes/default/assets/js/main.js",
+      "changed": true
+    }
+  ]
+}

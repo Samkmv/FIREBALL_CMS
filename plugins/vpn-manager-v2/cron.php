@@ -15,7 +15,8 @@ $app = new \FBL\Application();
 require_once __DIR__ . '/Plugin.php';
 \FBL\Language::registerPluginLanguage('vpn-manager-v2', __DIR__ . '/lang');
 
-$lockPath = sys_get_temp_dir() . '/fireball-vpn-v2-expiration-notifications.lock';
+$cronScope = substr(hash('sha256', defined('ROOT') ? (string)ROOT : __DIR__), 0, 16);
+$lockPath = sys_get_temp_dir() . '/fireball-vpn-v2-notifications-' . $cronScope . '-cron.lock';
 $lock = @fopen($lockPath, 'c');
 if (!is_resource($lock) || !flock($lock, LOCK_EX | LOCK_NB)) {
     fwrite(STDOUT, json_encode(['status' => 'skipped', 'reason' => 'already_running']) . PHP_EOL);
@@ -23,14 +24,14 @@ if (!is_resource($lock) || !flock($lock, LOCK_EX | LOCK_NB)) {
 }
 
 try {
-    $result = (new \Fireball\VpnManagerV2\Jobs\VpnV2SendExpirationNotificationsJob())->handle();
+    $result = (new \Fireball\VpnManagerV2\Services\NotificationMaintenanceService())->runDue(true);
     fwrite(STDOUT, json_encode([
         'status' => 'ok',
         'result' => $result,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL);
     exit(0);
 } catch (\Throwable $exception) {
-    log_error_details('VPN Manager V2 expiration notifications failed', [], $exception);
+    log_error_details('VPN Manager V2 notification maintenance failed', [], $exception);
     fwrite(STDERR, json_encode([
         'status' => 'error',
         'error' => get_class($exception),

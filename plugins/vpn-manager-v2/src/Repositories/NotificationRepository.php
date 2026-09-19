@@ -98,6 +98,8 @@ final class NotificationRepository
     public function retryFailed(int $limit = 100): int
     {
         $limit = max(1, min(500, $limit));
+        $this->recoverStaleSending();
+
         $rows = db()->query(
             "SELECT id FROM vpn_v2_notifications
              WHERE status = 'failed' AND attempts < 5
@@ -115,6 +117,27 @@ final class NotificationRepository
         }
 
         return $retried;
+    }
+
+    /**
+     * Return interrupted deliveries to failed so the normal retry path can pick them up.
+     */
+    public function recoverStaleSending(int $minutes = 15): int
+    {
+        $minutes = max(5, min(120, $minutes));
+
+        db()->query(
+            "UPDATE vpn_v2_notifications
+             SET status = 'failed',
+                 last_error = COALESCE(last_error, 'delivery_interrupted'),
+                 updated_at = ?
+             WHERE status = 'sending'
+               AND attempts < 5
+               AND updated_at < DATE_SUB(NOW(), INTERVAL {$minutes} MINUTE)",
+            [date('Y-m-d H:i:s')]
+        );
+
+        return db()->rowCount();
     }
 
     private function channel(string $channel): string

@@ -12,6 +12,7 @@ use Fireball\VpnManagerV2\Jobs\VpnV2SyncConfigurationJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2FullReconcileJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2ProvisionMissingClientsJob;
 use Fireball\VpnManagerV2\Services\SettingsService;
+use Fireball\VpnManagerV2\Services\NotificationMaintenanceService;
 use Fireball\VpnManagerV2\Services\VpnV2SchemaUpgradeService;
 use Fireball\VpnManagerV2\Support\Permissions;
 
@@ -115,6 +116,42 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
 
             return $items;
         }, 10);
+
+        // FIREBALL_VPN_NOTIFICATION_DELIVERY_V2
+        self::registerNotificationMaintenanceFallback();
+    }
+
+    private static function registerNotificationMaintenanceFallback(): void
+    {
+        static $registered = false;
+
+        if ($registered || PHP_SAPI === 'cli') {
+            return;
+        }
+        $registered = true;
+
+        register_shutdown_function(static function (): void {
+            try {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
+
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    @session_write_close();
+                }
+
+                @ignore_user_abort(true);
+                @set_time_limit(30);
+
+                (new NotificationMaintenanceService())->runDue();
+            } catch (\Throwable $exception) {
+                log_error_details(
+                    'VPN Manager V2 web notification maintenance failed',
+                    ['Error Class' => get_class($exception)],
+                    $exception
+                );
+            }
+        });
     }
 
     public static function dashboardWidgets(array $widgets, array $context = []): array

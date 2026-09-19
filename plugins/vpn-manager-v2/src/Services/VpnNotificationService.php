@@ -44,7 +44,9 @@ final class VpnNotificationService
             $expiresAt = trim((string)($subscription['expires_at'] ?? ''));
             $date = $expiresAt !== '' ? substr($expiresAt, 0, 10) : date('Y-m-d');
             $days = $expiresAt !== '' ? (int)floor((strtotime($date . ' 00:00:00') - strtotime(date('Y-m-d') . ' 00:00:00')) / 86400) : 0;
-            if ($days === 3 && !empty($settings['notify_expiration_3_days'])) {
+            // Catch up the 3-day reminder on day -2/-1 if the exact
+            // scheduler run was missed. occurrence_key keeps it idempotent.
+            if ($days >= 1 && $days <= 3 && !empty($settings['notify_expiration_3_days'])) {
                 $queued += $this->queue($subscription, self::EXPIRES_3_DAYS, 'expiry:' . $date);
             }
             if ($days === 0 && !empty($settings['notify_expiration_day'])) {
@@ -157,10 +159,22 @@ final class VpnNotificationService
                 }
                 $this->repository()->markSent($id);
                 $sent++;
-            } catch (\Throwable) {
+            } catch (\Throwable $exception) {
                 $this->repository()->markFailed(
                     $id,
                     \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_notification_delivery')
+                );
+                log_error_details(
+                    'VPN Manager V2 notification delivery failed',
+                    [
+                        'Notification ID' => $id,
+                        'Subscription ID' => (int)($row['subscription_id'] ?? 0),
+                        'User ID' => (int)($row['user_id'] ?? 0),
+                        'Type' => (string)($row['notification_type'] ?? ''),
+                        'Channel' => (string)($row['channel'] ?? ''),
+                        'Error Class' => get_class($exception),
+                    ],
+                    $exception
                 );
                 $failed++;
             }

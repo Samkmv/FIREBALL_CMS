@@ -47,6 +47,14 @@ foreach ($plans as $plan) {
             ? 'subscriptions_status_active'
             : 'subscriptions_status_disabled'))
         . '</span>';
+
+    // FIREBALL_SUBSCRIPTION_PLANS_AUTO_RENEW_COLUMN_V1
+    $autoRenewStatus = '<span class="badge rounded-pill '
+        . (!empty($plan['auto_renew_enabled']) ? 'text-bg-success' : 'text-bg-secondary') . '">'
+        . htmlSC(FireballPluginSubscriptions::t(!empty($plan['auto_renew_enabled'])
+            ? 'subscriptions_auto_renew_enabled'
+            : 'subscriptions_auto_renew_disabled'))
+        . '</span>';
     $popularBadge = !empty($plan['is_popular'])
         ? ' <span class="badge rounded-pill text-primary bg-primary-subtle"><i class="ci-star-filled me-1"></i>'
             . htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_popular')) . '</span>'
@@ -87,6 +95,7 @@ foreach ($plans as $plan) {
             ['html' => '<div class="d-flex align-items-center flex-wrap gap-2"><strong>' . htmlSC((string)$plan['name']) . '</strong>' . $popularBadge . '</div><div class="small text-body-secondary">' . htmlSC((string)$plan['slug']) . '</div>'],
             ['value' => (string)$plan['price_display']],
             ['value' => $duration],
+            ['html' => $autoRenewStatus],
             ['html' => $status],
             ['html' => $desktopActions, 'class' => 'text-end'],
         ],
@@ -105,6 +114,7 @@ foreach ($plans as $plan) {
         'extra_fields' => [
             ['label' => FireballPluginSubscriptions::t('subscriptions_field_price'), 'value' => (string)$plan['price_display']],
             ['label' => FireballPluginSubscriptions::t('subscriptions_field_duration'), 'value' => $duration],
+            ['label' => FireballPluginSubscriptions::t('subscriptions_field_recurring'), 'html' => $autoRenewStatus],
         ],
     ];
 }
@@ -121,6 +131,7 @@ foreach ($plans as $plan) {
                 ['label' => FireballPluginSubscriptions::t('subscriptions_field_name')],
                 ['label' => FireballPluginSubscriptions::t('subscriptions_field_price')],
                 ['label' => FireballPluginSubscriptions::t('subscriptions_field_duration')],
+                ['label' => FireballPluginSubscriptions::t('subscriptions_field_recurring')],
                 ['label' => FireballPluginSubscriptions::t('subscriptions_field_status')],
                 ['label' => FireballPluginSubscriptions::t('subscriptions_actions'), 'class' => 'text-end'],
             ],

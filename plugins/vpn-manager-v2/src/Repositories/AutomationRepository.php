@@ -247,18 +247,18 @@ final class AutomationRepository
 
     public function expirationNotificationCandidates(): array
     {
+        // Use a padded DB window and let VpnNotificationService calculate
+        // calendar days in the application timezone. This avoids losing the
+        // whole reminder when the exact 09:10 scheduler run was missed.
         return db()->query(
             "SELECT id, user_id, status, expires_at
              FROM vpn_v2_subscriptions
              WHERE expires_at IS NOT NULL
-               AND (
-                    (status IN ('active', 'partial_sync', 'sync_error')
-                        AND DATE(expires_at) = DATE_ADD(CURDATE(), INTERVAL 3 DAY))
-                    OR (status IN ('active', 'partial_sync', 'sync_error', 'expired')
-                        AND DATE(expires_at) = CURDATE())
-               )
-             ORDER BY id ASC
-             LIMIT 1000"
+               AND status IN ('active', 'partial_sync', 'sync_error', 'expired')
+               AND expires_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+               AND expires_at < DATE_ADD(NOW(), INTERVAL 5 DAY)
+             ORDER BY expires_at ASC, id ASC
+             LIMIT 2000"
         )->get() ?: [];
     }
 

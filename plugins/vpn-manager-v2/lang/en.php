@@ -573,7 +573,7 @@ return [
     'vpn_manager_v2_setting_notify_critical_errors' => 'On critical error',
     'vpn_manager_v2_setting_retry_failed_operations' => 'Retry failed operations',
     'vpn_manager_v2_notification_expires_3_days_title' => 'VPN expires soon',
-    'vpn_manager_v2_notification_expires_3_days_message' => 'Your VPN subscription expires in 3 days.',
+    'vpn_manager_v2_notification_expires_3_days_message' => 'Your VPN subscription expires within the next 3 days.',
     'vpn_manager_v2_notification_expires_today_title' => 'VPN expires today',
     'vpn_manager_v2_notification_expires_today_message' => 'Your VPN subscription expires today.',
     'vpn_manager_v2_notification_traffic_80_title' => '80% of VPN traffic used',

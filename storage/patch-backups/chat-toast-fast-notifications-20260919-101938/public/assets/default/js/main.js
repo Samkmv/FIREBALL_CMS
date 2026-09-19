@@ -22,6 +22,7 @@ $(function(){
     let notificationFeedRequest = null;
     let notificationFeedGeneration = 0;
     let notificationMutations = 0;
+    let renderedNotificationHtml = null;
     const applyImageFallback = (image) => {
         const fallbackSource = image?.getAttribute?.('data-image-fallback');
         if (!fallbackSource || image.dataset.imageFallbackApplied === 'true') {
@@ -159,6 +160,76 @@ $(function(){
     });
     prepareAdminResponsiveTables(document);
 
+    const profileScrollStorageKey = 'fireball.profile.scrollTarget';
+    const scrollToProfileTarget = (selector, behavior = 'smooth') => {
+        if (!selector) {
+            return;
+        }
+        const target = document.querySelector(selector);
+        if (!target || typeof target.getBoundingClientRect !== 'function') {
+            return;
+        }
+        const viewportGap = window.matchMedia('(max-width: 767.98px)').matches ? 12 : 18;
+        const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - viewportGap);
+        window.scrollTo({ top, behavior });
+    };
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target.closest('[data-profile-scroll-target]');
+        const target = form?.getAttribute('data-profile-scroll-target');
+        if (!target) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(profileScrollStorageKey, target);
+        } catch (error) {
+            // Private browsing or disabled storage should not block form submission.
+        }
+    });
+
+    const resetSupportReplyForms = () => {
+        document.querySelectorAll('[data-support-reply-form]').forEach((form) => {
+            form.removeAttribute('data-support-reply-submitting');
+            form.removeAttribute('aria-busy');
+            const submitButton = form.querySelector('[data-support-reply-submit]');
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
+        });
+    };
+
+    window.addEventListener('pageshow', resetSupportReplyForms);
+    document.addEventListener('submit', (event) => {
+        const form = event.target.closest('[data-support-reply-form]');
+        if (!form) {
+            return;
+        }
+        if (form.hasAttribute('data-support-reply-submitting')) {
+            event.preventDefault();
+            return;
+        }
+        if (event.defaultPrevented || !form.checkValidity()) {
+            return;
+        }
+
+        form.setAttribute('data-support-reply-submitting', 'true');
+        form.setAttribute('aria-busy', 'true');
+        const submitButton = form.querySelector('[data-support-reply-submit]');
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+    });
+
+    try {
+        const profileScrollTarget = window.sessionStorage.getItem(profileScrollStorageKey);
+        if (profileScrollTarget) {
+            window.sessionStorage.removeItem(profileScrollStorageKey);
+            window.requestAnimationFrame(() => scrollToProfileTarget(profileScrollTarget));
+        }
+    } catch (error) {
+        // Storage can be unavailable; profile page remains fully usable.
+    }
+
     const adminPostActionDropdowns = new WeakMap();
     const getAdminPostActionDropdown = (target) => {
         if (!target || !target.closest) {
@@ -263,309 +334,227 @@ $(function(){
         adminPostActionDropdowns.delete(dropdown);
     });
 
-    document.querySelectorAll('[data-admin-posts-tabs]').forEach((root) => {
-        const input = root.querySelector('[data-admin-posts-live-search]');
-        const panes = Array.from(root.querySelectorAll('[data-admin-posts-pane]'));
-        const form = root.querySelector('[data-admin-posts-live-form]');
-        const statusInput = root.querySelector('[data-admin-posts-status-input]');
-        const pageInput = root.querySelector('[data-admin-posts-page-input]');
-        const sortInput = form ? form.querySelector('input[name="sort"]') : null;
-        const directionInput = form ? form.querySelector('input[name="direction"]') : null;
-        const endpoint = root.getAttribute('data-admin-posts-url') || window.location.pathname;
-        let activeStatus = root.querySelector('[data-admin-posts-tab-button].active')?.getAttribute('data-admin-posts-tab-button') || 'published';
+    if (!window.FireballDataTable) {
+    const adminAjaxTables = (() => {
         let activeRequest = null;
         let searchTimer = null;
 
-        if (!input || !panes.length) {
-            return;
+        const tableRoots = () => Array.from(document.querySelectorAll('[data-ajax-table]'));
+        if (tableRoots().length === 0) {
+            return { load: () => Promise.resolve() };
         }
-
-        const getPane = (status) => root.querySelector('[data-admin-posts-pane="' + status + '"]');
         const setLoading = (isLoading) => {
-            root.classList.toggle('admin-posts-tabs--loading', isLoading);
+            tableRoots().forEach((root) => {
+                root.classList.toggle('admin-table--loading', isLoading);
+                root.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+            });
         };
-
-        const buildUrl = (status, page = 1) => {
-            const url = new URL(endpoint, window.location.origin);
-            const search = input.value.trim();
-            const sort = sortInput ? sortInput.value.trim() : '';
-            const direction = directionInput ? directionInput.value.trim() : '';
-
-            if (search !== '') {
-                url.searchParams.set('search', search);
-            }
-            url.searchParams.set('status', status);
+        const buildFormUrl = (form, page = 1) => {
+            const url = new URL(form.action || window.location.href, window.location.origin);
+            const formData = new FormData(form);
+            url.search = '';
+            formData.forEach((value, key) => {
+                const normalizedValue = String(value || '').trim();
+                if (key === 'page' || normalizedValue === '') {
+                    return;
+                }
+                url.searchParams.set(key === 'q' ? 'search' : key, normalizedValue);
+            });
             url.searchParams.set('page', String(Math.max(1, parseInt(page, 10) || 1)));
-            if (sort !== '') {
-                url.searchParams.set('sort', sort);
-            }
-            if (direction !== '') {
-                url.searchParams.set('direction', direction);
-            }
-
             return url;
         };
-
-        const applyUrlState = (url) => {
-            const status = url.searchParams.get('status') === 'drafts' ? 'drafts' : 'published';
-            activeStatus = status;
-            input.value = url.searchParams.get('search') || '';
-
-            if (statusInput) {
-                statusInput.value = status;
-            }
-            if (pageInput) {
-                pageInput.value = url.searchParams.get('page') || '1';
-            }
-            if (sortInput) {
-                sortInput.value = url.searchParams.get('sort') || sortInput.value || '';
-            }
-            if (directionInput) {
-                directionInput.value = url.searchParams.get('direction') || directionInput.value || '';
-            }
+        const syncForms = (url) => {
+            document.querySelectorAll('[data-admin-table-form]').forEach((form) => {
+                Array.from(form.elements).forEach((field) => {
+                    if (!field.name || field.type === 'submit') {
+                        return;
+                    }
+                    const queryName = field.name === 'q' ? 'search' : field.name;
+                    if (field.type === 'checkbox' || field.type === 'radio') {
+                        field.checked = url.searchParams.getAll(queryName).includes(field.value);
+                        return;
+                    }
+                    if (url.searchParams.has(queryName) || field.type === 'hidden') {
+                        field.value = url.searchParams.get(queryName) || (field.name === 'page' ? '1' : '');
+                    }
+                });
+            });
         };
-
-        const updateTabCounts = (counts) => {
-            if (!counts) {
-                return;
+        const setPostsStatus = (root, status) => {
+            root.querySelectorAll('[data-admin-posts-tab-button]').forEach((button) => {
+                const active = button.getAttribute('data-admin-posts-tab-button') === status;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            root.querySelectorAll('[data-admin-posts-pane]').forEach((pane) => {
+                const active = pane.getAttribute('data-admin-posts-pane') === status;
+                pane.classList.toggle('show', active);
+                pane.classList.toggle('active', active);
+            });
+        };
+        const applyJsonTable = (root, data, url) => {
+            const status = url.searchParams.get('status') === 'drafts' ? 'drafts' : 'published';
+            const pane = root.querySelector('[data-admin-posts-pane="' + status + '"]');
+            if (!pane) {
+                throw new Error('Admin Ajax table response is missing the active pane');
             }
-
-            ['published', 'drafts'].forEach((status) => {
-                const countNode = root.querySelector('[data-admin-posts-count="' + status + '"]');
-                if (countNode) {
-                    countNode.textContent = String(counts[status] ?? 0);
+            setPostsStatus(root, status);
+            pane.innerHTML = data.html || '';
+            prepareAdminResponsiveTables(pane);
+            ['published', 'drafts'].forEach((key) => {
+                const count = root.querySelector('[data-admin-posts-count="' + key + '"]');
+                if (count && data.counts) {
+                    count.textContent = String(data.counts[key] ?? 0);
                 }
             });
         };
-
-        const loadTable = (url, pushState = true) => {
-            applyUrlState(url);
-
-            const pane = getPane(activeStatus);
-            if (!pane) {
+        const applyHtmlTables = (html) => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            let replaced = 0;
+            tableRoots().forEach((root) => {
+                const key = root.getAttribute('data-ajax-table') || '';
+                const nextRoot = Array.from(doc.querySelectorAll('[data-ajax-table]')).find((candidate) => {
+                    return (candidate.getAttribute('data-ajax-table') || '') === key;
+                });
+                if (!nextRoot) {
+                    return;
+                }
+                root.innerHTML = nextRoot.innerHTML;
+                replaced += 1;
+            });
+            if (replaced === 0) {
+                throw new Error('Admin Ajax table response is missing table roots');
+            }
+        };
+        const showError = () => {
+            tableRoots().forEach((root) => {
+                let state = root.querySelector('[data-admin-table-error]');
+                if (!state) {
+                    state = document.createElement('div');
+                    state.className = 'admin-table-state admin-table-state--error';
+                    state.setAttribute('data-admin-table-error', '');
+                    const title = bodyDataset.adminTableErrorTitle || 'Failed to load data';
+                    const text = bodyDataset.adminTableErrorText || 'Try refreshing the page';
+                    const retry = bodyDataset.adminTableRetryLabel || 'Retry';
+                    state.innerHTML = '<strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(text) + '</span><button class="btn btn-sm btn-outline-danger rounded-pill" type="button" data-admin-table-retry>' + escapeHtml(retry) + '</button>';
+                    root.appendChild(state);
+                }
+            });
+        };
+        const load = (url, options = {}) => {
+            const roots = tableRoots();
+            if (roots.length === 0) {
                 return Promise.resolve();
             }
-
             if (activeRequest) {
                 activeRequest.abort();
             }
-
-            activeRequest = new AbortController();
+            const request = new AbortController();
+            activeRequest = request;
+            const jsonRoot = roots.find((root) => root.getAttribute('data-ajax-table-format') === 'json');
             setLoading(true);
+            syncForms(url);
 
             return fetch(url.toString(), {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
+                    'Accept': jsonRoot ? 'application/json' : 'text/html'
                 },
-                signal: activeRequest.signal
+                signal: request.signal
             })
                 .then((response) => {
                     if (!response.ok) {
                         throw new Error('Admin table request failed');
                     }
-
-                    return response.json();
+                    return jsonRoot ? response.json() : response.text();
                 })
-                .then((data) => {
-                    pane.innerHTML = data.html || '';
-                    initBootstrapTooltips(pane);
-                    prepareAdminResponsiveTables(pane);
-                    updateTabCounts(data.counts);
-                    if (pushState) {
+                .then((payload) => {
+                    if (jsonRoot) {
+                        applyJsonTable(jsonRoot, payload, url);
+                    } else {
+                        applyHtmlTables(payload);
+                    }
+                    tableRoots().forEach((root) => {
+                        root.querySelector('[data-admin-table-error]')?.remove();
+                        initBootstrapTooltips(root);
+                        prepareAdminResponsiveTables(root);
+                    });
+                    const scrollTarget = options.scrollTarget || jsonRoot || tableRoots()[0];
+                    if (options.scroll === true && scrollTarget) {
+                        scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    if (options.pushState !== false) {
                         window.history.pushState({ adminTableUrl: url.toString() }, '', url.toString());
                     }
                 })
                 .catch((error) => {
-                    if (error.name !== 'AbortError') {
-                        console.error(error);
+                    if (error.name === 'AbortError') {
+                        return;
                     }
+                    console.error(error);
+                    showError();
+                    window.location.href = url.toString();
                 })
                 .finally(() => {
-                    setLoading(false);
-                    activeRequest = null;
+                    if (activeRequest === request) {
+                        setLoading(false);
+                        activeRequest = null;
+                    }
                 });
         };
 
-        root.querySelectorAll('[data-admin-posts-tab-button]').forEach((button) => {
-            button.addEventListener('shown.bs.tab', () => {
-                const status = button.getAttribute('data-admin-posts-tab-button') === 'drafts' ? 'drafts' : 'published';
-                loadTable(buildUrl(status, 1));
-            });
-        });
-
-        input.addEventListener('input', () => {
-            window.clearTimeout(searchTimer);
-            searchTimer = window.setTimeout(() => {
-                loadTable(buildUrl(activeStatus, 1));
-            }, 300);
-        });
-
-        form?.addEventListener('submit', (event) => {
-            event.preventDefault();
-            loadTable(buildUrl(activeStatus, 1));
-        });
-
-        root.addEventListener('click', (event) => {
-            const link = event.target.closest('[data-admin-posts-pane] .pagination a, [data-admin-posts-pane] thead a');
-            if (!link || !link.href) {
+        document.addEventListener('click', (event) => {
+            const retry = event.target.closest('[data-admin-table-retry]');
+            if (retry) {
+                load(new URL(window.location.href), { pushState: false });
                 return;
             }
-
-            event.preventDefault();
-            const url = new URL(link.href, window.location.origin);
-            loadTable(url);
-        });
-
-        window.addEventListener('popstate', () => {
-            loadTable(new URL(window.location.href), false);
-        });
-    });
-
-    document.querySelectorAll('[data-admin-live-table]').forEach((root) => {
-        let activeRequest = null;
-        let searchTimer = null;
-
-        const getInput = () => root.querySelector('[data-admin-live-table-search]');
-        const getForm = () => root.querySelector('[data-admin-live-table-form]');
-        const setLoading = (isLoading) => {
-            root.classList.toggle('admin-live-table--loading', isLoading);
-        };
-
-        const buildLiveTableUrl = (page = 1) => {
-            const form = getForm();
-            const input = getInput();
-            const url = new URL(form ? form.action || window.location.href : window.location.href, window.location.origin);
-            const formData = form ? new FormData(form) : new FormData();
-            const search = input ? input.value.trim() : '';
-
-            url.search = '';
-            formData.forEach((value, key) => {
-                const normalizedValue = String(value || '').trim();
-                if (key === 'q' || key === 'page' || normalizedValue === '') {
-                    return;
-                }
-
-                url.searchParams.set(key, normalizedValue);
-            });
-            if (search !== '') {
-                url.searchParams.set('search', search);
+            const link = event.target.closest('[data-ajax-table] .pagination a, [data-ajax-table] thead a');
+            if (!link || !link.href || link.getAttribute('href') === '#') {
+                return;
             }
-            url.searchParams.set('page', String(Math.max(1, parseInt(page, 10) || 1)));
-
-            return url;
-        };
-
-        const syncFormFromUrl = (url) => {
-            const form = getForm();
-            const input = getInput();
+            event.preventDefault();
+            load(new URL(link.href, window.location.origin), {
+                scrollTarget: link.closest('[data-ajax-table]')
+            });
+        });
+        document.addEventListener('submit', (event) => {
+            const form = event.target.closest('[data-admin-table-form]');
             if (!form) {
                 return;
             }
-
-            form.querySelectorAll('input[type="hidden"]').forEach((field) => {
-                field.value = url.searchParams.get(field.name) || field.value || '';
-            });
-            const pageInput = form.querySelector('[data-admin-live-table-page-input]');
-            if (pageInput) {
-                pageInput.value = url.searchParams.get('page') || '1';
-            }
-            if (input) {
-                input.value = url.searchParams.get('search') || '';
-            }
-        };
-
-        const replaceLiveTableHtml = (html) => {
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            const nextRoot = doc.querySelector('[data-admin-live-table]');
-            if (!nextRoot) {
-                throw new Error('Admin live table response is missing table root');
-            }
-
-            root.innerHTML = nextRoot.innerHTML;
-        };
-
-        const loadLiveTable = (url, pushState = true) => {
-            syncFormFromUrl(url);
-
-            if (activeRequest) {
-                activeRequest.abort();
-            }
-
-            activeRequest = new AbortController();
-            setLoading(true);
-
-            return fetch(url.toString(), {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'text/html'
-                },
-                signal: activeRequest.signal
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Admin live table request failed');
-                    }
-
-                    return response.text();
-                })
-                .then((html) => {
-                    replaceLiveTableHtml(html);
-                    initBootstrapTooltips(root);
-                    prepareAdminResponsiveTables(root);
-                    if (pushState) {
-                        window.history.pushState({ adminLiveTableUrl: url.toString() }, '', url.toString());
-                    }
-                })
-                .catch((error) => {
-                    if (error.name !== 'AbortError') {
-                        console.error(error);
-                    }
-                })
-                .finally(() => {
-                    setLoading(false);
-                    activeRequest = null;
-                });
-        };
-
-        if (!getInput()) {
-            return;
-        }
-
-        root.addEventListener('input', (event) => {
-            if (!event.target.matches('[data-admin-live-table-search]')) {
+            event.preventDefault();
+            load(buildFormUrl(form, 1));
+        });
+        document.addEventListener('input', (event) => {
+            const input = event.target.closest('[data-admin-table-search]');
+            const form = input?.closest('[data-admin-table-form]');
+            if (!input || !form) {
                 return;
             }
-
             window.clearTimeout(searchTimer);
-            searchTimer = window.setTimeout(() => {
-                loadLiveTable(buildLiveTableUrl(1));
-            }, 300);
+            searchTimer = window.setTimeout(() => load(buildFormUrl(form, 1)), 300);
         });
-
-        root.addEventListener('submit', (event) => {
-            if (!event.target.matches('[data-admin-live-table-form]')) {
+        document.addEventListener('shown.bs.tab', (event) => {
+            const button = event.target.closest('[data-admin-posts-tab-button]');
+            const root = button?.closest('[data-ajax-table-format="json"]');
+            if (!button || !root) {
                 return;
             }
-
-            event.preventDefault();
-            loadLiveTable(buildLiveTableUrl(1));
-        });
-
-        root.addEventListener('click', (event) => {
-            const link = event.target.closest('.pagination a, thead a');
-            if (!link || !link.href || !root.contains(link)) {
-                return;
+            const form = root.querySelector('[data-admin-table-form]');
+            const status = button.getAttribute('data-admin-posts-tab-button') === 'drafts' ? 'drafts' : 'published';
+            if (form?.elements.status) {
+                form.elements.status.value = status;
             }
-
-            event.preventDefault();
-            loadLiveTable(new URL(link.href, window.location.origin));
+            load(buildFormUrl(form, 1), { scrollTarget: root });
         });
-
         window.addEventListener('popstate', () => {
-            loadLiveTable(new URL(window.location.href), false);
+            load(new URL(window.location.href), { pushState: false, scroll: false });
         });
-    });
+
+        return { load };
+    })();
+    }
 
     const makeSlug = (value) => String(value || '')
         .trim()
@@ -830,19 +819,24 @@ $(function(){
         unreadBadgesReady = true;
     };
 
+    const safeNotificationUrl = (value) => {
+        const url = String(value || '').trim();
+        if (!url || url === '#') return '';
+        try {
+            const parsed = new URL(url, window.location.href);
+            return ['http:', 'https:'].includes(parsed.protocol) ? url : '';
+        } catch (error) {
+            return '';
+        }
+    };
+
     const renderNotificationItems = (items) => {
         if (!notificationList.length) {
             return;
         }
 
-        if (!Array.isArray(items) || !items.length) {
-            notificationList.html(
-                `<div class="px-3 py-3 text-body-secondary small">${escapeHtml(notificationCenter.data('empty-text') || 'No notifications')}</div>`
-            );
-            return;
-        }
-
-        let html = '';
+        items = Array.isArray(items) ? items : [];
+        let html = items.length ? '' : `<div class="px-3 py-3 text-body-secondary small">${escapeHtml(notificationCenter.data('empty-text') || 'No notifications')}</div>`;
 
         items.forEach((item) => {
             const type = String(item.type || '');
@@ -851,64 +845,133 @@ $(function(){
                 sourceClass = 'text-bg-warning';
             } else if (type === 'update') {
                 sourceClass = 'text-bg-success';
+            } else if (type === 'toy_rental') {
+                sourceClass = 'text-bg-danger';
+            } else if (type && type !== 'chat') {
+                sourceClass = 'text-bg-info';
             }
 
             const avatar = item.avatar
                 ? `<img src="${escapeHtml(item.avatar)}" alt="" class="rounded-circle object-fit-cover border flex-shrink-0" style="width: 40px; height: 40px;">`
                 : '';
 
+            const notificationId = Number(item.notification_id || 0);
+            const notificationAttr = notificationId > 0 ? ` data-notification-id="${notificationId}"` : '';
+            const targetUrl = safeNotificationUrl(item.url);
+            const key = escapeHtml(getNotificationKey(item));
+            const actionButtons = [
+                targetUrl ? `<a class="btn btn-sm btn-outline-secondary rounded-pill" href="${escapeHtml(targetUrl)}"${notificationAttr}><i class="ci-arrow-up-right me-1" aria-hidden="true"></i>${escapeHtml(notificationCenter.data('open-label') || 'Open')}</a>` : '',
+                notificationId > 0 ? `<button class="btn btn-sm btn-link text-decoration-none" type="button" data-notification-read${notificationAttr}>${escapeHtml(notificationCenter.data('mark-read-label') || 'Mark as read')}</button>` : '',
+            ].filter(Boolean).join('');
+
             html += `
-                <a class="list-group-item list-group-item-action px-3 py-3" href="${escapeHtml(item.url || '#')}">
-                    <div class="d-flex align-items-start justify-content-between gap-3">
-                        <div class="d-flex align-items-start gap-3 min-w-0 flex-grow-1">
-                            ${avatar}
-                            <div class="min-w-0 flex-grow-1">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="badge ${sourceClass} rounded-pill">${escapeHtml(item.source_label || '')}</span>
-                                </div>
-                                <div class="fw-semibold text-truncate">${escapeHtml(item.title || '')}</div>
-                                <div class="small text-body-secondary text-wrap">${escapeHtml(item.text || '')}</div>
+                <article class="list-group-item notification-feed-item px-3 py-3" data-notification-key="${key}">
+                    <div class="d-flex align-items-start gap-3 min-w-0">
+                        ${avatar}
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="notification-feed-item__meta d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="badge ${sourceClass} rounded-pill">${escapeHtml(item.source_label || '')}</span>
+                                <time class="small text-body-tertiary">${escapeHtml(item.time || item.created_at || '')}</time>
                             </div>
+                            <div class="fw-semibold mb-1">${escapeHtml(item.title || '')}</div>
+                            <div class="notification-feed-item__text small text-body-secondary">${escapeHtml(item.text || '')}</div>
                         </div>
-                        <div class="small text-body-tertiary text-nowrap">${escapeHtml(item.time || item.created_at || '')}</div>
                     </div>
-                </a>
+                    ${actionButtons ? `<div class="notification-feed-item__actions d-flex flex-wrap align-items-center gap-2 mt-3">${actionButtons}</div>` : ''}
+                </article>
             `;
         });
 
+        // Polling must not interrupt reading, keyboard focus or the scroll position.
+        if (html === renderedNotificationHtml) return;
+        const list = notificationList[0];
+        const previousScroll = list.scrollTop;
+        const listTop = list.getBoundingClientRect().top;
+        const anchor = previousScroll > 0 ? Array.from(list.children).find((child) => child.getBoundingClientRect().bottom > listTop) : null;
+        const anchorKey = anchor?.getAttribute('data-notification-key');
+        const anchorOffset = anchor ? anchor.getBoundingClientRect().top - listTop : 0;
+        const focused = list.contains(document.activeElement) ? document.activeElement : null;
+        const focusedKey = focused?.closest('[data-notification-key]')?.getAttribute('data-notification-key');
+        const focusedSelector = focused?.matches('[data-notification-read]') ? '[data-notification-read]' : 'a';
         notificationList.html(html);
+        renderedNotificationHtml = html;
+        const children = Array.from(list.children);
+        const newAnchor = anchorKey ? children.find((child) => child.getAttribute('data-notification-key') === anchorKey) : null;
+        list.scrollTop = newAnchor ? list.scrollTop + newAnchor.getBoundingClientRect().top - listTop - anchorOffset : previousScroll;
+        if (focused) {
+            const item = children.find((child) => child.getAttribute('data-notification-key') === focusedKey);
+            (item?.querySelector(focusedSelector) || list).focus({ preventScroll: true });
+        }
     };
 
-    const notifyChatItems = (items) => {
-        if (!Array.isArray(items) || typeof toastr.chat !== 'function') {
+    const getNotificationKey = (item) => {
+        const type = String(item.type || 'notification');
+        const sortId = Number(item.sort_id || 0);
+        const senderId = Number(item.sender_id || 0);
+        const createdAt = String(item.created_at || '');
+        const url = String(item.url || '');
+
+        return `${type}:${Number(item.notification_id || 0)}:${senderId}:${sortId}:${createdAt}:${url}`;
+    };
+
+    const notifyNotificationItems = (items) => {
+        if (!Array.isArray(items)) {
             notificationsReady = true;
             return;
         }
 
         items.forEach((item) => {
-            if (String(item.type || '') !== 'chat') {
-                return;
-            }
-
-            const key = `chat:${Number(item.sender_id || 0)}:${Number(item.sort_id || 0)}`;
+            const type = String(item.type || '');
+            const key = getNotificationKey(item);
             if (!notificationsReady) {
                 seenNotificationKeys.add(key);
                 return;
             }
 
-            if (seenNotificationKeys.has(key) || isSameChatOpen(item.sender_id)) {
+            if (seenNotificationKeys.has(key)) {
                 seenNotificationKeys.add(key);
                 return;
             }
 
             seenNotificationKeys.add(key);
-            toastr.chat({
-                title: item.title || notificationCenter.data('chat-source-label') || '',
-                message: item.text || '',
-                avatar: item.avatar || '',
-                time: item.time || item.created_at || '',
-                href: item.url || '#',
-            });
+
+            if (type === 'chat') {
+                if (isSameChatOpen(item.sender_id) || !window.toastr || typeof window.toastr.chat !== 'function') {
+                    return;
+                }
+
+                window.toastr.chat({
+                    title: item.title || notificationCenter.data('chat-source-label') || '',
+                    message: item.text || '',
+                    avatar: item.avatar || '',
+                    time: item.time || item.created_at || '',
+                    href: item.url || '#',
+                });
+                return;
+            }
+
+            if (!window.toastr) {
+                return;
+            }
+
+            const title = item.title || item.source_label || '';
+            const message = item.text || '';
+            if (type === 'toy_rental') {
+                if (typeof window.toastr.rental === 'function') {
+                    window.toastr.rental({
+                        title,
+                        message,
+                        href: item.url || '#',
+                        time: item.time || item.created_at || '',
+                    });
+                } else if (typeof window.toastr.error === 'function') {
+                    window.toastr.error(message, title);
+                }
+            } else if (type === 'contact_request' && typeof window.toastr.warning === 'function') {
+                window.toastr.warning(message, title);
+            } else if (typeof window.toastr.info === 'function') {
+                window.toastr.info(message, title);
+            }
         });
 
         notificationsReady = true;
@@ -916,6 +979,7 @@ $(function(){
 
     const updateNotificationBadges = (count) => {
         const total = Number(count) || 0;
+        window.FireballPwa?.setBadge(total);
 
         notificationBadges.each(function () {
             const badge = $(this);
@@ -936,7 +1000,7 @@ $(function(){
         notificationClearButton.toggleClass('d-none', Number(response.total_unread_count || 0) <= 0);
         notificationClearButton.prop('disabled', false);
         renderNotificationItems(response.items || []);
-        notifyChatItems(response.items || []);
+        notifyNotificationItems(response.items || []);
     };
 
     const sameOriginUrl = (url) => {
@@ -969,6 +1033,7 @@ $(function(){
             url: sameOriginUrl(clearUrl),
             method: 'POST',
             dataType: 'json',
+            timeout: 15000,
             data: {
                 needCSRFToken: getCsrfToken(),
             },
@@ -999,6 +1064,47 @@ $(function(){
         });
     });
 
+    notificationList.on('click', '[data-notification-id]', function (event) {
+        // Keep standard new-tab behaviour for links; reading is not a prerequisite for navigation.
+        if (this.tagName === 'A' && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
+        const readUrl = notificationCenter.data('read-url');
+        const notificationId = Number($(this).data('notification-id') || 0);
+        if (!readUrl || notificationId <= 0) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        const button = $(this);
+        if (button.attr('aria-busy') === 'true') return;
+        const targetUrl = safeNotificationUrl(button.attr('href'));
+        button.attr('aria-busy', 'true').prop('disabled', true);
+        beginNotificationMutation();
+        $.ajax({
+            url: sameOriginUrl(readUrl),
+            method: 'POST',
+            dataType: 'json',
+            timeout: 15000,
+            data: {
+                notification_id: notificationId,
+                needCSRFToken: getCsrfToken(),
+            },
+            headers: {
+                'X-CSRF-Token': getCsrfToken(),
+            },
+            complete: function () {
+                notificationMutations--;
+                button.removeAttr('aria-busy').prop('disabled', false);
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                    return;
+                }
+
+                setTimeout(refreshNotificationPoll, 250);
+            },
+        });
+    });
+
     const showNotificationFeedError = () => {
         // Preserve already loaded items while the connection is unavailable.
         if (notificationsReady) return;
@@ -1006,9 +1112,7 @@ $(function(){
     };
 
     // Fallback polling is shared by visible tabs; mutations always invalidate old responses.
-    // FIREBALL_CHAT_NOTIFICATION_POLL_5S
-    // Chat notifications outside /chat: poll every 5 seconds.
-    const notificationPollInterval = 5000;
+    const notificationPollInterval = 45000;
     let notificationPollDelay = notificationPollInterval;
     let notificationPollTimer = null;
     let notificationPollInFlight = false;
@@ -1221,16 +1325,16 @@ $(function(){
         const renderItems = (items, emptyText) => {
             if (!items.length) {
                 results.html(
-                    `<div class="search-suggest-menu search-suggest-menu--empty p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
+                    `<div class="search-suggest-menu bg-body border rounded-4 shadow-sm p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
                 ).removeClass('d-none');
                 return;
             }
 
-            let html = '<div class="search-suggest-menu">';
+            let html = '<div class="search-suggest-menu bg-body border rounded-4 shadow-sm">';
 
             items.forEach((item) => {
                 html += `
-                    <a class="search-suggest-menu__item d-block w-100 text-decoration-none text-reset px-3 py-3" href="${escapeHtml(item.url)}">
+                    <a class="search-suggest-menu__item d-block w-100 text-decoration-none text-reset px-3 py-2 border-bottom" href="${escapeHtml(item.url)}">
                         <div class="search-suggest-menu__meta d-flex align-items-start justify-content-between flex-wrap gap-1 gap-sm-3 mb-1">
                             <div class="fs-xs text-body-tertiary text-uppercase">${escapeHtml(item.type_label)}</div>
                             <div class="fs-xs text-body-tertiary text-sm-end">${escapeHtml(item.meta)}</div>
@@ -1311,7 +1415,6 @@ $(function(){
                 'needCSRFToken': getCsrfToken(),
             },
             beforeSend: function () {
-                // btn.prop('disabled', true);
                 $('.btn-remove').prop('disabled', true);
                 btnText.addClass('d-none');
                 loader.removeClass('d-none');
@@ -1321,11 +1424,9 @@ $(function(){
                 $('.product-id-' + productId).find(addToCart).removeClass('btn-secondary').addClass('btn-dark').text('В корзину');
                 $('#shoppingCart .offcanvas-body').html(result.mini_cart);
                 $('#countCart').text(result.cart_qty);
-                console.log(result);
             },
             error: function (request) {
                 toastr.error(request.responseText);
-                console.log(request);
             },
             complete: function () {
                 $('.btn-remove').prop('disabled', false);
@@ -1351,7 +1452,6 @@ $(function(){
                 'needCSRFToken': getCsrfToken(),
             },
             beforeSend: function () {
-                // btn.prop('disabled', true);
                 addToCart.prop('disabled', true);
                 btnText.addClass('d-none');
                 loader.removeClass('d-none');
@@ -1361,15 +1461,12 @@ $(function(){
                 $('.product-id-' + productId).find(addToCart).removeClass('btn-dark').addClass('btn-secondary').text('В корзине');
                 $('#shoppingCart .offcanvas-body').html(result.mini_cart);
                 $('#countCart').text(result.cart_qty);
-                console.log(result);
             },
             error: function (request) {
                 toastr.error(request.responseText);
-                console.log(request);
             },
             complete: function () {
                 setTimeout(function () {
-                    // btn.prop('disabled', false);
                     addToCart.prop('disabled', false);
                     btnText.removeClass('d-none');
                     loader.addClass('d-none');
@@ -1572,6 +1669,66 @@ $(function(){
         }, Number(config.timeOut) || 5000);
     };
 
+    const showRentalToast = (payload = {}) => {
+        const container = getContainer();
+        const toast = document.createElement('div');
+        const targetHref = String(payload.href || '#');
+
+        toast.className = 'toast app-toast--rental border-danger fade bg-white text-body shadow-sm';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('data-bs-theme', 'light');
+
+        toast.innerHTML = `
+            <div class="toast-header bg-white text-body">
+                <i class="ci-clock text-danger fs-base me-2"></i>
+                <span class="fw-semibold text-truncate">${escapeHtml(payload.title || 'Прокат машинок')}</span>
+                <span class="small text-body-tertiary ms-2">${escapeHtml(payload.time || '')}</span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
+            </div>
+            <div class="toast-body me-2 bg-white text-body">
+                ${escapeHtml(payload.message || '')}
+            </div>
+        `;
+
+        toast.addEventListener('click', function (event) {
+            if ($(event.target).closest('.btn-close').length || targetHref === '' || targetHref === '#') {
+                return;
+            }
+
+            window.location.href = targetHref;
+        });
+
+        if (config.newestOnTop && container.firstChild) {
+            container.insertBefore(toast, container.firstChild);
+        } else {
+            container.appendChild(toast);
+        }
+
+        if (bootstrapApi && bootstrapApi.Toast) {
+            const instance = bootstrapApi.Toast.getOrCreateInstance(toast, {
+                autohide: true,
+                delay: Number(config.timeOut) || 5000,
+            });
+
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            }, { once: true });
+
+            instance.show();
+            return;
+        }
+
+        $(toast).addClass('show');
+        setTimeout(function () {
+            $(toast).removeClass('show');
+            setTimeout(function () {
+                toast.remove();
+            }, 200);
+        }, Number(config.timeOut) || 5000);
+    };
+
     window.toastr = {
         options: config,
         success: (message, title) => showToast('success', message, title),
@@ -1579,6 +1736,7 @@ $(function(){
         info: (message, title) => showToast('info', message, title),
         warning: (message, title) => showToast('warning', message, title),
         chat: (payload) => showChatToast(payload),
+        rental: (payload) => showRentalToast(payload),
         remove: () => {
             document.querySelectorAll('[data-app-toast-container] .toast').forEach((toast) => toast.remove());
         },
@@ -1596,6 +1754,17 @@ $(function(){
 })();
 
 (() => {
+    const isNativeShareDevice = () => {
+        const userAgent = String(navigator.userAgent || navigator.vendor || '').toLowerCase();
+        const isIos = /iphone|ipad|ipod/.test(userAgent)
+            || (navigator.platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1);
+        const isAndroid = /android/.test(userAgent);
+        const hasTouch = Number(navigator.maxTouchPoints || 0) > 0
+            || (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches);
+
+        return hasTouch && (isIos || isAndroid);
+    };
+
     const copyText = async (text) => {
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(text);
@@ -1620,11 +1789,13 @@ $(function(){
         }
 
         const title = button.dataset.shareTitle || document.title;
-        const url = button.dataset.shareUrl || window.location.href;
+        const text = button.dataset.shareText || '';
+        const url = new URL(button.dataset.shareUrl || window.location.href, window.location.href).href;
+        const sharePayload = text !== '' ? {title, text, url} : {title, url};
 
-        if (navigator.share) {
+        if (isNativeShareDevice() && navigator.share && (!navigator.canShare || navigator.canShare(sharePayload))) {
             try {
-                await navigator.share({title, url});
+                await navigator.share(sharePayload);
                 return;
             } catch (error) {
                 if (error && error.name === 'AbortError') {

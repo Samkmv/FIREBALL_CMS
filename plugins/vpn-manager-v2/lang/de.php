@@ -573,7 +573,7 @@ return [
     'vpn_manager_v2_setting_notify_critical_errors' => 'Bei kritischem Fehler',
     'vpn_manager_v2_setting_retry_failed_operations' => 'Fehlgeschlagene Vorgänge wiederholen',
     'vpn_manager_v2_notification_expires_3_days_title' => 'VPN läuft bald ab',
-    'vpn_manager_v2_notification_expires_3_days_message' => 'Das VPN-Abonnement läuft in 3 Tagen ab.',
+    'vpn_manager_v2_notification_expires_3_days_message' => 'Das VPN-Abonnement läuft innerhalb der nächsten 3 Tage ab.',
     'vpn_manager_v2_notification_expires_today_title' => 'VPN läuft heute ab',
     'vpn_manager_v2_notification_expires_today_message' => 'Das VPN-Abonnement läuft heute ab.',
     'vpn_manager_v2_notification_traffic_80_title' => '80 % des VPN-Datenvolumens verbraucht',

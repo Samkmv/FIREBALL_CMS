@@ -1112,7 +1112,9 @@ $(function(){
     };
 
     // Fallback polling is shared by visible tabs; mutations always invalidate old responses.
-    const notificationPollInterval = 45000;
+    // FIREBALL_CHAT_NOTIFICATION_POLL_5S
+    // Chat notifications outside /chat: poll every 5 seconds.
+    const notificationPollInterval = 5000;
     let notificationPollDelay = notificationPollInterval;
     let notificationPollTimer = null;
     let notificationPollInFlight = false;
