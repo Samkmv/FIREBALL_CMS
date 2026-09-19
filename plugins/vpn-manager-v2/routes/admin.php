@@ -62,6 +62,8 @@ $router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/remove-obsolete/?
 
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions', [SubscriptionController::class, 'index'])
     ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/access-requests/(?P<id>\d+)/dismiss/?', [SubscriptionController::class, 'dismissAccessRequest'])
+    ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions/create', [SubscriptionController::class, 'create'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/create', [SubscriptionController::class, 'store'])

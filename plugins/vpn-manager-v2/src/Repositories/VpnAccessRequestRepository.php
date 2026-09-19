@@ -106,9 +106,87 @@ final class VpnAccessRequestRepository
              FROM vpn_v2_access_requests r
              INNER JOIN users u ON u.id = r.user_id
              WHERE r.status = 'pending'
-             ORDER BY r.requested_at ASC, r.id ASC
+             ORDER BY r.requested_at DESC, r.id DESC
              LIMIT {$limit}"
         )->get() ?: [];
+    }
+
+    /**
+     * Закрывает pending-заявки пользователей, у которых уже есть действующая подписка.
+     */
+    public function reconcilePendingWithActiveSubscriptions(int $adminId = 0): int
+    {
+        $now = date('Y-m-d H:i:s');
+        $rows = db()->query(
+            "SELECT r.id,
+                    (
+                        SELECT s.id
+                        FROM vpn_v2_subscriptions s
+                        WHERE s.user_id = r.user_id
+                          AND s.status IN ('active', 'partial_sync', 'sync_error')
+                          AND s.starts_at <= ?
+                          AND (s.expires_at IS NULL OR s.expires_at > ?)
+                        ORDER BY s.created_at DESC, s.id DESC
+                        LIMIT 1
+                    ) AS active_subscription_id
+             FROM vpn_v2_access_requests r
+             WHERE r.status = 'pending'
+             ORDER BY r.id DESC
+             LIMIT 500",
+            [$now, $now]
+        )->get() ?: [];
+
+        $resolved = 0;
+        foreach ($rows as $row) {
+            $requestId = (int)($row['id'] ?? 0);
+            $subscriptionId = (int)($row['active_subscription_id'] ?? 0);
+            if ($requestId <= 0 || $subscriptionId <= 0) {
+                continue;
+            }
+
+            db()->query(
+                "UPDATE vpn_v2_access_requests
+                 SET status = 'fulfilled',
+                     handled_at = ?,
+                     handled_by = ?,
+                     subscription_id = ?,
+                     updated_at = ?
+                 WHERE id = ? AND status = 'pending'",
+                [
+                    $now,
+                    $adminId > 0 ? $adminId : null,
+                    $subscriptionId,
+                    $now,
+                    $requestId,
+                ]
+            );
+            $resolved += db()->rowCount() === 1 ? 1 : 0;
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Закрывает лишнюю/ошибочную заявку без физического удаления истории.
+     */
+    public function dismiss(int $requestId, int $adminId = 0): bool
+    {
+        if ($requestId <= 0) {
+            return false;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            "UPDATE vpn_v2_access_requests
+             SET status = 'dismissed',
+                 handled_at = ?,
+                 handled_by = ?,
+                 updated_at = ?
+             WHERE id = ? AND status = 'pending'",
+            [$now, $adminId > 0 ? $adminId : null, $now, $requestId]
+        );
+
+        return db()->rowCount() === 1;
     }
 
     public function fulfillForUser(int $userId, int $adminId, int $subscriptionId): int

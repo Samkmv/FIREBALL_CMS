@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Controllers\Admin;
 
+use FBL\Pagination;
 use Fireball\VpnManagerV2\DTO\ProvisioningResult;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
@@ -27,11 +28,24 @@ final class SubscriptionController
     public function index(): string
     {
         Permissions::authorize(Permissions::VIEW);
+
+        // FIREBALL_VPN_SUBSCRIPTIONS_LIST_V1
+        $search = mb_substr(trim((string)request()->get('q', '')), 0, 120);
+        $repository = new SubscriptionRepository();
+        $total = $repository->countAdminList($search);
+        $pagination = new Pagination($total, 20);
+
+        $requestRepository = new VpnAccessRequestRepository();
+        $requestRepository->reconcilePendingWithActiveSubscriptions($this->adminId());
+
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscriptions', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_subtitle'),
-            'subscriptions' => (new SubscriptionRepository())->all(),
-            'accessRequests' => (new VpnAccessRequestRepository())->pending(),
+            'subscriptions' => $repository->adminPage($search, 20, $pagination->getOffset()),
+            'subscriptionsTotal' => $total,
+            'pagination' => $pagination,
+            'searchQuery' => $search,
+            'accessRequests' => $requestRepository->pending(),
             'returnQuery' => AdminTableState::capture(),
         ]));
     }
@@ -565,6 +579,50 @@ final class SubscriptionController
             '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
             $returnQuery
         ));
+    }
+
+    public function dismissAccessRequest(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+
+        $requestId = (int)get_route_param('id');
+        $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
+
+        try {
+            $dismissed = (new VpnAccessRequestRepository())->dismiss(
+                $requestId,
+                $this->adminId()
+            );
+
+            session()->setFlash(
+                $dismissed ? 'success' : 'info',
+                \FireballPluginVpnManagerV2::t(
+                    $dismissed
+                        ? 'vpn_manager_v2_access_request_dismissed'
+                        : 'vpn_manager_v2_access_request_dismiss_not_found'
+                )
+            );
+        } catch (\Throwable $exception) {
+            log_error_details(
+                'VPN Manager V2 access request dismiss failed',
+                [
+                    'Request ID' => $requestId,
+                    'Error Class' => get_class($exception),
+                ],
+                $exception
+            );
+            session()->setFlash(
+                'error',
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_error')
+            );
+        }
+
+        response()->redirect(
+            AdminTableState::append(
+                '/admin/plugins/vpn-manager-v2/subscriptions',
+                $returnQuery
+            )
+        );
     }
 
     private function adminId(): int

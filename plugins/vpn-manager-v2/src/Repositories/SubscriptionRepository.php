@@ -227,7 +227,85 @@ final class SubscriptionRepository
                       s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                       u.name, u.login, u.email, p.name
-             ORDER BY s.id ASC"
+             ORDER BY s.created_at DESC, s.id DESC"
+        )->get() ?: [];
+    }
+
+    /**
+     * Количество подписок для административного списка с учётом поиска.
+     */
+    public function countAdminList(string $search = ''): int
+    {
+        $search = trim($search);
+        $params = [];
+        $searchSql = '';
+
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $searchSql = " AND (
+                CAST(s.id AS CHAR) LIKE ?
+                OR u.name LIKE ?
+                OR u.login LIKE ?
+                OR u.email LIKE ?
+                OR p.name LIKE ?
+                OR s.status LIKE ?
+            )";
+            $params = [$like, $like, $like, $like, $like, $like];
+        }
+
+        return (int)db()->query(
+            "SELECT COUNT(*)
+             FROM vpn_v2_subscriptions s
+             INNER JOIN users u ON u.id = s.user_id
+             INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
+             WHERE s.status <> 'deleted'{$searchSql}",
+            $params
+        )->getColumn();
+    }
+
+    /**
+     * Страница административного списка. Новые подписки идут первыми.
+     */
+    public function adminPage(string $search = '', int $limit = 20, int $offset = 0): array
+    {
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+        $search = trim($search);
+        $params = [];
+        $searchSql = '';
+
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $searchSql = " AND (
+                CAST(s.id AS CHAR) LIKE ?
+                OR u.name LIKE ?
+                OR u.login LIKE ?
+                OR u.email LIKE ?
+                OR p.name LIKE ?
+                OR s.status LIKE ?
+            )";
+            $params = [$like, $like, $like, $like, $like, $like];
+        }
+
+        return db()->query(
+            "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
+                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                    s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
+                    u.name AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    COUNT(n.id) AS node_count,
+                    SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
+             FROM vpn_v2_subscriptions s
+             INNER JOIN users u ON u.id = s.user_id
+             INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
+             LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
+             WHERE s.status <> 'deleted'{$searchSql}
+             GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
+                      s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                      s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
+                      u.name, u.login, u.email, p.name
+             ORDER BY s.created_at DESC, s.id DESC
+             LIMIT {$limit} OFFSET {$offset}",
+            $params
         )->get() ?: [];
     }
 

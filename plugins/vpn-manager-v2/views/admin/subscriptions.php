@@ -7,6 +7,9 @@ use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 
 $subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
 $accessRequests = is_array($accessRequests ?? null) ? $accessRequests : [];
+$subscriptionsTotal = max(0, (int)($subscriptionsTotal ?? count($subscriptions)));
+$searchQuery = trim((string)($searchQuery ?? ''));
+$pagination = $pagination ?? null;
 $returnQuery = AdminTableState::sanitize($returnQuery ?? '');
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/create');
 $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
@@ -127,14 +130,58 @@ foreach ($subscriptions as $subscription) {
                             <?= htmlSC((string)($accessRequest['requested_at'] ?? '')) ?>
                         </div>
                     </div>
-                    <a class="btn btn-sm btn-dark rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/create?user_id=' . (int)$accessRequest['user_id'] . '&request_id=' . (int)$accessRequest['id'])) ?>">
-                        <i class="ci-plus me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_create_subscription')) ?>
-                    </a>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-sm btn-dark rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/create?user_id=' . (int)$accessRequest['user_id'] . '&request_id=' . (int)$accessRequest['id'])) ?>">
+                            <i class="ci-plus me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_create_subscription')) ?>
+                        </a>
+                        <form action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/access-requests/' . (int)$accessRequest['id'] . '/dismiss')) ?>" method="post" class="m-0">
+                            <?= get_csrf_field() ?>
+                            <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill" type="submit">
+                                <i class="ci-x me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_dismiss')) ?>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             <?php endforeach; ?>
         </div>
     </section>
 <?php endif; ?>
+
+<section class="border rounded-5 p-3 p-md-4 mb-4" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_button')) ?>">
+    <form method="get" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions')) ?>" class="row g-2 align-items-center">
+        <div class="col-12 col-lg">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent"><i class="ci-search" aria-hidden="true"></i></span>
+                <input
+                    class="form-control"
+                    type="search"
+                    name="q"
+                    value="<?= htmlSC($searchQuery) ?>"
+                    placeholder="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_placeholder')) ?>"
+                    autocomplete="off"
+                >
+            </div>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-dark rounded-pill" type="submit">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_button')) ?>
+            </button>
+        </div>
+        <?php if ($searchQuery !== ''): ?>
+            <div class="col-auto">
+                <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions')) ?>">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_clear')) ?>
+                </a>
+            </div>
+        <?php endif; ?>
+        <div class="col-12 col-lg-auto ms-lg-auto">
+            <span class="small text-body-secondary">
+                <?= htmlSC(sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_result'), $subscriptionsTotal)) ?>
+            </span>
+        </div>
+    </form>
+</section>
 
 <div class="border rounded-5 p-3 p-md-4">
     <?= view()->renderPartial('admin/partials/table', [
@@ -153,5 +200,11 @@ foreach ($subscriptions as $subscription) {
         'empty_text' => FireballPluginVpnManagerV2::t('vpn_manager_v2_empty_subscriptions'),
     ]) ?>
 </div>
+
+<?php if ($pagination && (int)($pagination['total_pages'] ?? 1) > 1): ?>
+    <div class="d-flex justify-content-center mt-4">
+        <?= $pagination ?>
+    </div>
+<?php endif; ?>
 
 <?= view()->renderPartial('admin/shell_close') ?>

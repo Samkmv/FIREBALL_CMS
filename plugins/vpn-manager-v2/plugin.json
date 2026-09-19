@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "0.26.1",
+  "version": "0.26.2",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
