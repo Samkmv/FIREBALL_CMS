@@ -27,6 +27,31 @@
         return /^ci-[a-z0-9-]+$/i.test(icon) ? icon : 'ci-square';
     }
 
+    // FIREBALL_CARTZILLA_ALERT_EDITOR_V1
+    const ALERT_DEFAULT_ICONS = {
+        primary: 'ci-bell',
+        secondary: 'ci-clock',
+        success: 'ci-check-circle',
+        danger: 'ci-banned',
+        warning: 'ci-alert-triangle',
+        info: 'ci-info',
+        light: 'ci-unlock',
+        dark: 'ci-map-pin'
+    };
+
+    function alertDefaultIcon(variant) {
+        return ALERT_DEFAULT_ICONS[String(variant || 'primary')] || ALERT_DEFAULT_ICONS.primary;
+    }
+
+    function alertTextHtml(value) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = sanitizer.sanitizeHtml(String(value || ''));
+        wrapper.querySelectorAll('a').forEach(function (link) {
+            link.classList.add('alert-link');
+        });
+        return wrapper.innerHTML;
+    }
+
     const socialIconSupport = new Map();
 
     function hasThemeSocialIcon(value) {
@@ -461,11 +486,32 @@
                 '</figure>';
             }
             if (block.type === 'gallery' || block.type === 'slider') {
+                // FIREBALL_GALLERY_ITEM_ACTIONS_V2
                 const items = Array.isArray(data.items) ? data.items : [];
+                const replaceLabel = this.label('replaceImage', 'Replace image');
+                const removeLabel = this.label('removeImage', 'Remove image');
+
                 return '<div class="fb-editor2-gallery">' +
-                    items.map(function (item) {
+                    items.map(function (item, itemIndex) {
                         const src = sanitizer.safeUrl(item.src || item.image || '', true);
-                        return src ? '<img src="' + escapeAttr(src) + '" alt="' + escapeAttr(item.alt || '') + '" loading="lazy">' : '';
+
+                        if (!src) {
+                            return '';
+                        }
+
+                        return '<div class="fb-editor2-gallery__item" data-editor-media-item="' + itemIndex + '">' +
+                            '<img src="' + escapeAttr(src) + '" alt="' + escapeAttr(item.alt || '') + '" loading="lazy">' +
+                            '<div class="fb-editor2-gallery__item-actions" role="group">' +
+                                '<button type="button" class="fb-editor2-gallery__item-action" data-editor-media-item-replace="' + itemIndex + '"' +
+                                    ' aria-label="' + escapeAttr(replaceLabel) + '" title="' + escapeAttr(replaceLabel) + '">' +
+                                    '<i class="ci-refresh-cw" aria-hidden="true"></i>' +
+                                '</button>' +
+                                '<button type="button" class="fb-editor2-gallery__item-action is-danger" data-editor-media-item-remove="' + itemIndex + '"' +
+                                    ' aria-label="' + escapeAttr(removeLabel) + '" title="' + escapeAttr(removeLabel) + '">' +
+                                    '<i class="ci-trash" aria-hidden="true"></i>' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>';
                     }).join('') +
                     '<button type="button" data-editor-pick-block-media><i class="ci-plus"></i><span>' + escapeAttr(this.label('chooseFile', 'Add media')) + '</span></button>' +
                 '</div>';
@@ -507,8 +553,18 @@
                 return '<div class="fb-editor2-divider"><span></span><small>***</small><span></span></div>';
             }
             if (block.type === 'alert') {
-                const variant = /^(primary|secondary|success|danger|warning|info|light|dark)$/.test(data.variant) ? data.variant : 'info';
-                return '<div class="fb-editor2-alert is-' + variant + '"><i class="' + iconClass(data.icon || 'ci-info') + '"></i><div><strong contenteditable="true" data-editor-plain data-editor-field="data.title">' + escapeAttr(data.title || '') + '</strong><p contenteditable="true" data-editor-plain data-editor-field="data.text">' + escapeAttr(data.text || '') + '</p></div></div>';
+                const variant = /^(primary|secondary|success|danger|warning|info|light|dark)$/.test(data.variant) ? data.variant : 'primary';
+                const icon = iconClass(data.icon || alertDefaultIcon(variant));
+                const title = String(data.title || '');
+                const text = alertTextHtml(data.text || '');
+
+                return '<div class="alert d-flex alert-' + variant + ' mb-0" role="alert" data-fb-alert-block="1" data-alert-variant="' + variant + '">' +
+                    '<i class="' + icon + ' fs-lg pe-1 mt-1 me-2" aria-hidden="true"></i>' +
+                    '<div class="flex-grow-1 min-w-0">' +
+                        '<div class="fw-semibold mb-1" contenteditable="true" spellcheck="true" data-editor-plain data-editor-field="data.title" data-placeholder="' + escapeAttr(this.label('alertTitle', 'Optional title')) + '">' + escapeAttr(title) + '</div>' +
+                        '<div contenteditable="true" spellcheck="true" data-editor-rich data-editor-field="data.text" data-placeholder="' + escapeAttr(this.label('alertText', 'Alert text')) + '">' + text + '</div>' +
+                    '</div>' +
+                '</div>';
             }
             if (block.type === 'faq') {
                 const items = Array.isArray(data.items) && data.items.length ? data.items : [{ question: '', answer: '' }];
@@ -749,10 +805,35 @@
                     this.checkField('data.responsive', this.label('tableResponsive', 'Responsive'), data.responsive !== false);
             }
             if (block.type === 'alert') {
-                return this.selectField('data.variant', this.label('variant', 'Variant'), data.variant || 'info', [
-                    ['primary', 'Primary'], ['success', 'Success'], ['info', 'Info'],
-                    ['warning', 'Warning'], ['danger', 'Danger'], ['dark', 'Dark']
-                ]);
+                const variant = /^(primary|secondary|success|danger|warning|info|light|dark)$/.test(data.variant) ? data.variant : 'primary';
+                const iconValue = iconClass(data.icon || alertDefaultIcon(variant));
+                const iconOptions = [
+                    ['ci-bell', 'ci-bell'],
+                    ['ci-clock', 'ci-clock'],
+                    ['ci-check-circle', 'ci-check-circle'],
+                    ['ci-banned', 'ci-banned'],
+                    ['ci-alert-triangle', 'ci-alert-triangle'],
+                    ['ci-info', 'ci-info'],
+                    ['ci-unlock', 'ci-unlock'],
+                    ['ci-map-pin', 'ci-map-pin']
+                ];
+
+                if (!iconOptions.some(function (option) { return option[0] === iconValue; })) {
+                    iconOptions.push([iconValue, iconValue]);
+                }
+
+                return this.selectField('data.variant', this.label('alertVariant', 'Alert color'), variant, [
+                    ['primary', this.label('alertPrimary', 'Primary')],
+                    ['secondary', this.label('alertSecondary', 'Secondary')],
+                    ['success', this.label('alertSuccess', 'Success')],
+                    ['danger', this.label('alertDanger', 'Danger')],
+                    ['warning', this.label('alertWarning', 'Warning')],
+                    ['info', this.label('alertInfo', 'Info')],
+                    ['light', this.label('alertLight', 'Light')],
+                    ['dark', this.label('alertDark', 'Dark')]
+                ]) +
+                    this.selectField('data.icon', this.label('alertIcon', 'Icon'), iconValue, iconOptions) +
+                    this.textField('data.title', this.label('alertTitle', 'Optional title'), data.title || '', '');
             }
             if (block.type === 'button') {
                 return this.textField('data.text', this.label('buttonText', 'Button text'), data.text || '', '') +
@@ -979,9 +1060,70 @@
                 this.handleBlockAction(blockId, target.closest('[data-block-action]').getAttribute('data-block-action'), target.closest('[data-block-action]'));
                 return;
             }
+            const mediaItemReplace = target.closest('[data-editor-media-item-replace]');
+            if (mediaItemReplace) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const itemIndex = Number(mediaItemReplace.getAttribute('data-editor-media-item-replace'));
+                const block = this.state.blocks[this.blockIndex(blockId)];
+
+                if (
+                    block
+                    && (block.type === 'gallery' || block.type === 'slider')
+                    && Array.isArray(block.data.items)
+                    && Number.isInteger(itemIndex)
+                    && itemIndex >= 0
+                    && itemIndex < block.data.items.length
+                ) {
+                    this.openMediaPicker(
+                        blockId,
+                        mediaItemReplace,
+                        'data.items.' + itemIndex + '.src'
+                    );
+                }
+                return;
+            }
+
+            const mediaItemRemove = target.closest('[data-editor-media-item-remove]');
+            if (mediaItemRemove) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const itemIndex = Number(mediaItemRemove.getAttribute('data-editor-media-item-remove'));
+                const block = this.state.blocks[this.blockIndex(blockId)];
+
+                if (
+                    block
+                    && (block.type === 'gallery' || block.type === 'slider')
+                    && Array.isArray(block.data.items)
+                    && Number.isInteger(itemIndex)
+                    && itemIndex >= 0
+                    && itemIndex < block.data.items.length
+                ) {
+                    block.data.items.splice(itemIndex, 1);
+                    this.activeId = block.id;
+                    this.selectedIds = new Set([block.id]);
+                    this.commit('media-item-remove', true, true);
+                }
+                return;
+            }
+
             if (target.closest('[data-editor-pick-block-media]')) {
                 event.preventDefault();
-                this.openMediaPicker(blockId, blockElement, blockElement && blockElement.getAttribute('data-block-type') === 'gallery' ? 'data.items' : 'data.src');
+
+                // FIREBALL_GALLERY_SLIDER_INLINE_FILE_FIX_V1
+                // Gallery и Slider оба хранят изображения в data.items.
+                // Раньше Slider ошибочно писал выбранный файл в data.src,
+                // поэтому после выбора в File Manager визуально ничего не добавлялось.
+                const mediaBlockType = blockElement
+                    ? String(blockElement.getAttribute('data-block-type') || '')
+                    : '';
+                const mediaPath = (mediaBlockType === 'gallery' || mediaBlockType === 'slider')
+                    ? 'data.items'
+                    : 'data.src';
+
+                this.openMediaPicker(blockId, blockElement, mediaPath);
                 return;
             }
             if (target.closest('[data-editor-select-block]')) {
@@ -2977,12 +3119,16 @@
             } else if (block.type === 'divider') {
                 content = '<hr>';
             } else if (block.type === 'alert') {
-                const variant = /^(primary|secondary|success|danger|warning|info|light|dark)$/.test(data.variant) ? data.variant : 'info';
-                content = '<div class="alert alert-' + variant + '" role="alert" data-fb-alert-block="1" data-alert-variant="' + variant + '">' +
-                    '<i class="' + iconClass(data.icon || 'ci-info') + '" aria-hidden="true"></i><div>' +
-                    (data.title ? '<div data-fb-alert-title="1"><strong>' + escapeAttr(data.title) + '</strong></div>' : '') +
-                    (data.text ? '<div data-fb-alert-text="1">' + escapeAttr(data.text).replace(/\n/g, '<br>') + '</div>' : '') +
-                '</div></div>';
+                const variant = /^(primary|secondary|success|danger|warning|info|light|dark)$/.test(data.variant) ? data.variant : 'primary';
+                const icon = iconClass(data.icon || alertDefaultIcon(variant));
+                const text = alertTextHtml(data.text || '');
+                content = '<div class="alert d-flex alert-' + variant + '" role="alert" data-fb-alert-block="1" data-alert-variant="' + variant + '">' +
+                    '<i class="' + icon + ' fs-lg pe-1 mt-1 me-2" aria-hidden="true"></i>' +
+                    '<div>' +
+                        (data.title ? '<div class="fw-semibold mb-1" data-fb-alert-title="1">' + escapeAttr(data.title) + '</div>' : '') +
+                        (text ? '<div data-fb-alert-text="1">' + text + '</div>' : '') +
+                    '</div>' +
+                '</div>';
             } else if (block.type === 'faq') {
                 content = '<div data-fb-faq="1">' + (data.items || []).map(function (item) {
                     return '<details><summary>' + escapeAttr(item.question || '') + '</summary><div>' + sanitizer.sanitizeHtml(item.answer || '') + '</div></details>';

@@ -402,7 +402,9 @@ final class BlockRenderer
                     '>' .
                     '<i class="ci-zoom-in hover-effect-target fs-3 text-white position-absolute top-50 start-50 translate-middle opacity-0 z-2" aria-hidden="true"></i>' .
                     '<div class="ratio ratio-1x1 hover-effect-target">' .
+                    // FIREBALL_GALLERY_SLIDER_OBJECT_FIT_V1
                     '<img src="' . htmlSC($image['src']) . '"' .
+                    ' class="w-100 h-100 object-fit-cover"' .
                     ' alt="' . htmlSC($image['alt']) . '"' .
                     ' loading="lazy">' .
                     '</div>' .
@@ -487,7 +489,7 @@ final class BlockRenderer
                 '<div class="swiper-slide">' .
                 '<div class="ratio" style="--cz-aspect-ratio: calc(505 / 728 * 100%)">' .
                 '<img src="' . htmlSC($image['src']) . '"' .
-                ' class="rounded-4"' .
+                ' class="rounded-4 w-100 h-100 object-fit-cover"' .
                 ' alt="' . htmlSC($image['alt']) . '"' .
                 ' loading="lazy">' .
                 '</div>';
@@ -619,6 +621,9 @@ final class BlockRenderer
 
     private function alert(array $data): string
     {
+        // FIREBALL_CARTZILLA_ALERT_PUBLIC_V1
+        // Публичная разметка повторяет Cartzilla alert:
+        // alert d-flex alert-{variant} + icon + content.
         $variants = [
             'primary' => 'ci-bell',
             'secondary' => 'ci-clock',
@@ -629,6 +634,7 @@ final class BlockRenderer
             'light' => 'ci-unlock',
             'dark' => 'ci-map-pin',
         ];
+
         $variant = strtolower(trim((string)($data['variant'] ?? 'primary')));
         if (!isset($variants[$variant])) {
             $variant = 'primary';
@@ -641,16 +647,66 @@ final class BlockRenderer
 
         $title = trim((string)($data['title'] ?? ''));
         $text = trim((string)($data['text'] ?? ''));
+
         if ($title === '' && $text === '') {
             return '';
         }
 
-        return '<div class="alert d-flex alert-' . htmlSC($variant) . '" role="alert" data-fb-alert-block="1" data-alert-variant="' . htmlSC($variant) . '">' .
+        $textHtml = '';
+        if ($text !== '') {
+            // Старые Alert-блоки содержат plain text, новые могут содержать
+            // безопасное inline HTML из rich-text редактора (например, <a>).
+            if (preg_match('/<[^>]+>/', $text)) {
+                $textHtml = sanitize_content_html($this->cleanEditorTypography($text));
+            } else {
+                $textHtml = nl2br(htmlSC($text), false);
+            }
+
+            // Ссылки внутри Alert автоматически получают Cartzilla/Bootstrap
+            // класс alert-link, как в эталонной разметке.
+            $textHtml = preg_replace_callback(
+                '/<a\b([^>]*)>/i',
+                static function (array $matches): string {
+                    $attributes = (string)($matches[1] ?? '');
+
+                    if (preg_match('/\bclass\s*=\s*(["\'])(.*?)\1/i', $attributes, $classMatch)) {
+                        $classes = trim((string)($classMatch[2] ?? ''));
+                        if (!preg_match('/(?:^|\s)alert-link(?:\s|$)/', $classes)) {
+                            $classes = trim($classes . ' alert-link');
+                        }
+
+                        $attributes = preg_replace(
+                            '/\bclass\s*=\s*(["\'])(.*?)\1/i',
+                            'class="' . htmlSC($classes) . '"',
+                            $attributes,
+                            1
+                        ) ?? $attributes;
+                    } else {
+                        $attributes = ' class="alert-link"' . $attributes;
+                    }
+
+                    return '<a' . $attributes . '>';
+                },
+                $textHtml
+            ) ?? $textHtml;
+        }
+
+        $content = '';
+
+        if ($title !== '') {
+            $content .= '<div class="fw-semibold mb-1" data-fb-alert-title="1">' .
+                htmlSC($title) .
+                '</div>';
+        }
+
+        if ($textHtml !== '') {
+            $content .= '<div data-fb-alert-text="1">' . $textHtml . '</div>';
+        }
+
+        return '<div class="alert d-flex alert-' . htmlSC($variant) . '" role="alert"' .
+            ' data-fb-alert-block="1" data-alert-variant="' . htmlSC($variant) . '">' .
             '<i class="' . htmlSC($icon) . ' fs-lg pe-1 mt-1 me-2" aria-hidden="true"></i>' .
-            '<div class="min-w-0">' .
-            ($title !== '' ? '<div class="fw-semibold mb-1" data-fb-alert-title="1">' . htmlSC($title) . '</div>' : '') .
-            ($text !== '' ? '<div data-fb-alert-text="1">' . nl2br(htmlSC($text), false) . '</div>' : '') .
-            '</div>' .
+            '<div>' . $content . '</div>' .
             '</div>';
     }
 

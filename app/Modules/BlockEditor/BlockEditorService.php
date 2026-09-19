@@ -178,7 +178,9 @@ final class BlockEditorService
             'alert' => $this->blockType('alert', 'admin_post_builder_block_alert', 'ci-bell', [
                 'variant' => 'primary',
                 'icon' => 'ci-bell',
-                'title' => $this->translateOrFallback('admin_post_builder_alert_default_title', 'Notice'),
+                // Cartzilla alert по умолчанию состоит из иконки + текста.
+                // Старые блоки с title остаются совместимыми.
+                'title' => '',
                 'text' => $this->translateOrFallback('admin_post_builder_alert_default_text', 'Add the notification text.'),
             ]),
             'newsletter' => $this->blockType('newsletter', 'admin_post_builder_block_newsletter', 'ci-mail', [

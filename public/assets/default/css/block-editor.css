@@ -1300,7 +1300,7 @@ body:has(.fb-editor-workspace) {
     object-fit: cover;
 }
 
-.fb-editor2-gallery button {
+.fb-editor2-gallery > button[data-editor-pick-block-media] {
     min-height: 110px;
     color: var(--fb-editor-primary);
     background: var(--fb-editor-primary-soft);
@@ -2625,3 +2625,69 @@ body:has(.fb-editor-workspace) {
         box-shadow: none;
     }
 }
+
+/* FIREBALL_GALLERY_ITEM_ACTIONS_CSS_V2 */
+.fb-editor2-gallery__item {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.fb-editor2-gallery__item > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.fb-editor2-gallery__item-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 4;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity .15s ease, transform .15s ease;
+}
+
+.fb-editor2-gallery__item:hover .fb-editor2-gallery__item-actions,
+.fb-editor2-gallery__item:focus-within .fb-editor2-gallery__item-actions {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.fb-editor2-gallery .fb-editor2-gallery__item-action {
+    display: inline-grid !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    place-items: center;
+    padding: 0 !important;
+    color: #fff !important;
+    background: rgba(15, 23, 42, .84) !important;
+    border: 1px solid rgba(255, 255, 255, .24) !important;
+    border-radius: 50% !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .24);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.fb-editor2-gallery .fb-editor2-gallery__item-action:hover,
+.fb-editor2-gallery .fb-editor2-gallery__item-action:focus-visible {
+    background: rgba(15, 23, 42, .98) !important;
+}
+
+.fb-editor2-gallery .fb-editor2-gallery__item-action.is-danger {
+    background: rgba(220, 53, 69, .9) !important;
+}
+
+.fb-editor2-gallery .fb-editor2-gallery__item-action.is-danger:hover,
+.fb-editor2-gallery .fb-editor2-gallery__item-action.is-danger:focus-visible {
+    background: rgba(220, 53, 69, 1) !important;
+}
+
