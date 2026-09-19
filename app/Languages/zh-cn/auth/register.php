@@ -21,6 +21,7 @@ return [
     'auth_validation_name_length' => '姓名至少需要 2 个字符。',
     'auth_validation_login_required' => '请输入登录名。',
     'auth_validation_login_format' => '登录名至少 3 个字符，只能包含拉丁字母、数字和连字符。',
+    'auth_validation_login_email_autofill' => '请勿将电子邮箱用作登录名。请使用拉丁字母、数字和连字符设置独立的登录名。',
     'auth_validation_login_exists' => '该登录名已被使用。',
     'auth_validation_login_reserved' => '该登录名为保留名称，请选择其他登录名。',
     'auth_validation_email_required' => '请输入邮箱。',

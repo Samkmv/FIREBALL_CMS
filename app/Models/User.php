@@ -920,6 +920,14 @@ class User
         $loginErrors = $this->validateLoginField($login);
         if (!empty($loginErrors)) {
             $errors['login'] = $loginErrors;
+        } elseif (
+            $email !== ''
+            && filter_var($email, FILTER_VALIDATE_EMAIL)
+            && $login === $this->normalizeLogin($email)
+        ) {
+            // Prevent Android/password-manager autofill from silently turning
+            // name@example.com into nameexamplecom.
+            $errors['login'][] = $this->translate('auth_validation_login_email_autofill');
         }
 
         if ($email === '') {

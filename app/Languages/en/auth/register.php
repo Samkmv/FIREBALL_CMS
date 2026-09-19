@@ -21,6 +21,7 @@ return [
     'auth_validation_name_length' => 'Name must be at least 2 characters long.',
     'auth_validation_login_required' => 'Enter your login.',
     'auth_validation_login_format' => 'Login must be at least 3 characters long and contain only Latin letters, numbers and hyphens.',
+    'auth_validation_login_email_autofill' => 'Do not use your email as the login. Choose a separate login using Latin letters, numbers, and hyphens.',
     'auth_validation_login_exists' => 'A user with this login already exists.',
     'auth_validation_login_reserved' => 'This login is reserved. Choose another one.',
     'auth_validation_email_required' => 'Enter your email.',

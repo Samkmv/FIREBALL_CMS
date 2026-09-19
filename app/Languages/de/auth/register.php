@@ -21,6 +21,7 @@ return [
     'auth_validation_name_length' => 'Der Name muss mindestens 2 Zeichen lang sein.',
     'auth_validation_login_required' => 'Geben Sie Ihren Login ein.',
     'auth_validation_login_format' => 'Der Login muss mindestens 3 Zeichen lang sein und darf nur lateinische Buchstaben, Zahlen und Bindestriche enthalten.',
+    'auth_validation_login_email_autofill' => 'Verwenden Sie Ihre E-Mail-Adresse nicht als Login. Wählen Sie einen eigenen Login aus lateinischen Buchstaben, Zahlen und Bindestrichen.',
     'auth_validation_login_exists' => 'Ein Benutzer mit diesem Login existiert bereits.',
     'auth_validation_login_reserved' => 'Dieser Login ist reserviert. Waehlen Sie einen anderen.',
     'auth_validation_email_required' => 'Geben Sie Ihre E-Mail-Adresse ein.',

@@ -46,7 +46,23 @@ if ($privacyUrl === '#') {
 
                     <div class="position-relative mb-4">
                         <label class="form-label" for="register-login"><?= print_translation('auth_register_login_field') ?></label>
-                        <input id="register-login" type="text" name="login" value="<?= old('login') ?>" class="form-control form-control-lg <?= get_validation_class('login') ?>" placeholder="user-login" autocomplete="username" minlength="3" pattern="[a-zA-Z0-9-]+" required>
+                        <!-- FIREBALL_REGISTER_LOGIN_AUTOFILL_V1 -->
+                        <input
+                            id="register-login"
+                            type="text"
+                            name="login"
+                            value="<?= old('login') ?>"
+                            class="form-control form-control-lg <?= get_validation_class('login') ?>"
+                            placeholder="user-login"
+                            autocomplete="nickname"
+                            autocapitalize="none"
+                            autocorrect="off"
+                            spellcheck="false"
+                            inputmode="text"
+                            minlength="3"
+                            pattern="[a-zA-Z0-9-]+"
+                            required
+                        >
                         <div class="invalid-feedback"><?= $errorText('login', 'auth_validation_login_format') ?></div>
                     </div>
 

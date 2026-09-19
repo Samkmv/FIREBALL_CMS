@@ -21,6 +21,7 @@ return [
     'auth_validation_name_length' => 'Имя должно содержать минимум 2 символа.',
     'auth_validation_login_required' => 'Введите логин.',
     'auth_validation_login_format' => 'Логин должен содержать минимум 3 символа и состоять из латинских букв, цифр и дефисов.',
+    'auth_validation_login_email_autofill' => 'Не используйте email как логин. Придумайте отдельный логин из латинских букв, цифр и дефисов.',
     'auth_validation_login_exists' => 'Пользователь с таким логином уже существует.',
     'auth_validation_login_reserved' => 'Этот логин зарезервирован. Выберите другой.',
     'auth_validation_email_required' => 'Введите email.',
