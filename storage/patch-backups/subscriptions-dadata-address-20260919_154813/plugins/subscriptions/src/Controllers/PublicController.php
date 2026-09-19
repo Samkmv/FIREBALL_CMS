@@ -7,8 +7,6 @@ use Fireball\Subscriptions\Repositories\PlanRepository;
 use Fireball\Subscriptions\Repositories\ProfileRepository;
 use Fireball\Subscriptions\Services\AccessService;
 use Fireball\Subscriptions\Services\CheckoutService;
-use Fireball\Subscriptions\Services\AddressSuggestionService;
-use Fireball\Subscriptions\Services\SettingsService;
 use Fireball\Subscriptions\Services\MediaTokenService;
 use Fireball\Subscriptions\Services\PaymentService;
 use Fireball\Subscriptions\Services\SubscriptionEligibilityService;
@@ -94,58 +92,14 @@ final class PublicController
         $formData = (array)session()->get('subscriptions.profile_data', []);
         session()->remove('subscriptions.profile_data');
 
-        $addressSettings = (new SettingsService())->current();
-
         return plugin_view('subscriptions', 'public/profile', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_profile_title'),
             'profile' => $profile,
             'fields' => $profiles->fields(true),
             'completion' => $profiles->completion($profile),
             'form_data' => $formData,
-            'address_suggestions_enabled' => !empty($addressSettings['dadata_enabled'])
-                && !empty($addressSettings['dadata_token_configured']),
-            'address_suggest_url' => base_href('/profile/subscription-address/suggest'),
             'footer_scripts' => [base_href('/plugins/subscriptions/assets/profile-region.js?v=' . filemtime(__DIR__ . '/../../assets/profile-region.js'))],
         ]));
-    }
-
-    public function addressSuggestions(): never
-    {
-        header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: no-store, private');
-
-        $type = strtolower(trim((string)($_GET['type'] ?? '')));
-        $query = trim((string)($_GET['q'] ?? ''));
-
-        try {
-            $service = new AddressSuggestionService();
-            $suggestions = $service->suggest($type, $query, [
-                'country' => (string)($_GET['country'] ?? ''),
-                'region' => (string)($_GET['region'] ?? ''),
-                'city' => (string)($_GET['city'] ?? ''),
-                'street' => (string)($_GET['street'] ?? ''),
-            ]);
-
-            echo json_encode([
-                'ok' => true,
-                'enabled' => $service->configured(),
-                'suggestions' => $suggestions,
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        } catch (\Throwable $exception) {
-            log_error_details('Subscription address suggestions failed', [
-                'type' => $type,
-                'query_length' => mb_strlen($query),
-                'user_id' => $this->userId(false),
-            ], $exception);
-
-            echo json_encode([
-                'ok' => false,
-                'enabled' => true,
-                'suggestions' => [],
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-
-        exit;
     }
 
     public function checkout(): string

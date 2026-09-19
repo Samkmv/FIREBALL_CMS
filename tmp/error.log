@@ -978,3 +978,23 @@ Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(8
 #5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
 #6 {main}
 ========================================================================
+[2026-09-19 15:53:23] Subscription settings save failed
+Request URI: /admin/subscriptions/settings/save
+Request Method: POST
+Remote IP: ::1
+Exception: RuntimeException
+Message: Robokassa credentials are not configured. Verification failed: dadata_token
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Services/SettingsService.php
+Line: 142
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/AdminController.php(494): Fireball\Subscriptions\Services\SettingsService->save(Array)
+#1 [internal function]: Fireball\Subscriptions\Controllers\AdminController->saveSettings()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#5 {main}
+Submitted keys: ["merchant_login","hash_algorithm","currency","payment_timeout_minutes","media_token_ttl","test_mode","receipt_tax","receipt_payment_method","receipt_payment_object","dadata_enabled","public_offer_page_id","public_offer_url","save_robokassa_settings"]
+Merchant login provided: 1
+Password 1 provided: 
+Password 2 provided: 
+DaData token provided: 1
+========================================================================

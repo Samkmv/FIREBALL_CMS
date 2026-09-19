@@ -34,32 +34,6 @@
             <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_receipt_object')) ?></label><select class="form-select" name="receipt_payment_object"><?php foreach ($objectLabels as $item => $label): ?><option value="<?= $item ?>" <?= $settings['receipt_payment_object'] === $item ? 'selected' : '' ?>><?= htmlSC(FireballPluginSubscriptions::t($label)) ?></option><?php endforeach; ?></select></div>
         </div>
         <hr class="my-4">
-        <h2 class="h5 mb-2"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_suggestions_title')) ?></h2>
-        <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_suggestions_admin_hint')) ?></p>
-        <div class="row g-3 mb-4">
-            <div class="col-12">
-                <label class="form-check">
-                    <input class="form-check-input" type="checkbox" name="dadata_enabled" value="1" <?= !empty($settings['dadata_enabled']) ? 'checked' : '' ?>>
-                    <span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_suggestions_enable')) ?></span>
-                </label>
-            </div>
-            <div class="col-md-8">
-                <label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_dadata_token')) ?></label>
-                <input
-                    class="form-control"
-                    type="password"
-                    name="dadata_token"
-                    value=""
-                    autocomplete="new-password"
-                    placeholder="<?= !empty($settings['dadata_token_configured']) ? '••••••••••••' : '' ?>"
-                >
-                <div class="form-text">
-                    <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_dadata_token_hint')) ?>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4">
         <h2 class="h5 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_offer_settings')) ?></h2>
         <div class="row g-3 mb-4">
             <div class="col-md-6">

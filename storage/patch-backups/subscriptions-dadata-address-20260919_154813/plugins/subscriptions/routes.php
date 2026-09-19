@@ -32,7 +32,6 @@ $router->get('/account/subscription', [SubscriptionsPublicController::class, 'ac
 $router->post('/account/subscription/auto-renew', [SubscriptionsPublicController::class, 'autoRenew'])->middleware(['auth']);
 $router->get('/profile/subscription-details', [SubscriptionsPublicController::class, 'profile'])->middleware(['auth']);
 $router->post('/profile/subscription-details', [SubscriptionsPublicController::class, 'profile'])->middleware(['auth']);
-$router->get('/profile/subscription-address/suggest', [SubscriptionsPublicController::class, 'addressSuggestions'])->middleware(['auth']);
 $router->post('/subscription-media/token/(?P<type>video|camera_archive)/(?P<id>[a-zA-Z0-9._:-]+)', [SubscriptionsPublicController::class, 'mediaToken'])->middleware(['auth']);
 $router->get('/subscription-media/validate/(?P<type>video|camera_archive)/(?P<id>[a-zA-Z0-9._:-]+)', [SubscriptionsPublicController::class, 'validateMediaToken']);
 

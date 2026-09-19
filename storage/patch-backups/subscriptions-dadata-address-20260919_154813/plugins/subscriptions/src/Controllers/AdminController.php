@@ -498,12 +498,11 @@ final class AdminController
             if ($database->inTransaction()) {
                 $database->rollBack();
             }
-            log_error_details('Subscription settings save failed', [
-                'Submitted keys' => array_values(array_diff(array_keys($data), ['password1', 'password2', 'dadata_token', 'needCSRFToken'])),
+            log_error_details('Robokassa settings save failed', [
+                'Submitted keys' => array_values(array_diff(array_keys($data), ['password1', 'password2', 'needCSRFToken'])),
                 'Merchant login provided' => trim((string)($data['merchant_login'] ?? '')) !== '',
                 'Password 1 provided' => (string)($data['password1'] ?? '') !== '',
                 'Password 2 provided' => (string)($data['password2'] ?? '') !== '',
-                'DaData token provided' => trim((string)($data['dadata_token'] ?? '')) !== '',
             ], $exception);
             $messageKey = str_starts_with($exception->getMessage(), SettingsService::CREDENTIALS_NOT_CONFIGURED)
                 ? 'subscriptions_settings_credentials_missing'

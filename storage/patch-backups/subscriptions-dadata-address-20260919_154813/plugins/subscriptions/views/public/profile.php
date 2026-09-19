@@ -12,18 +12,7 @@ session()->remove('subscriptions.checkout_return');
             <span class="badge rounded-pill <?= $completion['complete'] ? 'text-bg-success' : 'text-bg-warning' ?>"><?= htmlSC(str_replace(':percent', (string)$completion['percent'], FireballPluginSubscriptions::t('subscriptions_profile_percent'))) ?></span>
         </div>
         <?php if ($completion['missing']): ?><div class="alert alert-warning"><strong><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_missing_fields')) ?></strong><ul class="mb-0 mt-2"><?php foreach ($completion['missing'] as $missing): ?><li><?= htmlSC((string)$missing) ?></li><?php endforeach; ?></ul></div><?php endif; ?>
-        <form
-            class="border rounded-5 p-4 p-lg-5"
-            method="post"
-            novalidate
-            data-subscriptions-address-form
-            data-address-suggestions-enabled="<?= !empty($address_suggestions_enabled) ? '1' : '0' ?>"
-            data-address-suggest-url="<?= htmlSC((string)($address_suggest_url ?? '')) ?>"
-            data-address-searching="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_searching')) ?>"
-            data-address-no-results="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_no_results')) ?>"
-            data-address-select-required="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_select_required')) ?>"
-            data-address-service-unavailable="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_service_unavailable')) ?>"
-        >
+        <form class="border rounded-5 p-4 p-lg-5" method="post" novalidate>
             <?= get_csrf_field() ?>
             <?php if ($returnTo !== ''): ?><input type="hidden" name="return_to" value="<?= htmlSC($returnTo) ?>"><?php endif; ?>
             <div class="row g-3">
@@ -36,36 +25,6 @@ session()->remove('subscriptions.checkout_return');
                             <label class="form-label" <?= $field['is_system'] && $key === 'region' ? 'id="subscriptions-region-label"' : '' ?>><?= htmlSC((string)$field['label']) ?><?= $field['is_required'] ? ' *' : '' ?></label>
                             <?php if ($field['is_system'] && $key === 'region'): ?>
                                 <?php require __DIR__ . '/region-field.php'; ?>
-                            <?php elseif ($field['is_system'] && in_array($key, ['city', 'street', 'house'], true)): ?>
-                                <div class="subscriptions-address-autocomplete" data-address-field="<?= htmlSC($key) ?>">
-                                    <input
-                                        class="form-control"
-                                        type="text"
-                                        name="<?= htmlSC($name) ?>"
-                                        value="<?= htmlSC((string)$fieldValue) ?>"
-                                        placeholder="<?= htmlSC((string)$field['placeholder']) ?>"
-                                        autocomplete="off"
-                                        data-address-input="<?= htmlSC($key) ?>"
-                                        aria-autocomplete="list"
-                                        aria-expanded="false"
-                                        <?= $field['is_required'] ? 'required' : '' ?>
-                                    >
-                                    <div class="subscriptions-address-suggestions" data-address-suggestions hidden role="listbox"></div>
-                                    <div class="form-text">
-                                        <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_' . $key . '_suggest_hint')) ?>
-                                    </div>
-                                </div>
-                            <?php elseif ($field['is_system'] && $key === 'postal_code'): ?>
-                                <input
-                                    class="form-control"
-                                    type="text"
-                                    name="<?= htmlSC($name) ?>"
-                                    value="<?= htmlSC((string)$fieldValue) ?>"
-                                    placeholder="<?= htmlSC((string)$field['placeholder']) ?>"
-                                    autocomplete="postal-code"
-                                    data-address-postal-code
-                                    <?= $field['is_required'] ? 'required' : '' ?>
-                                >
                             <?php elseif ($field['field_type'] === 'textarea'): ?><textarea class="form-control" name="<?= htmlSC($name) ?>" rows="4" placeholder="<?= htmlSC((string)$field['placeholder']) ?>" <?= $field['is_required'] ? 'required' : '' ?>><?= htmlSC((string)$fieldValue) ?></textarea>
                             <?php elseif (in_array($field['field_type'], ['select', 'radio'], true)): ?><select class="form-select" name="<?= htmlSC($name) ?>" <?= $field['is_required'] ? 'required' : '' ?>><option value=""></option><?php foreach ($field['options'] as $option): ?><option value="<?= htmlSC((string)$option) ?>" <?= (string)$fieldValue === (string)$option ? 'selected' : '' ?>><?= htmlSC((string)$option) ?></option><?php endforeach; ?></select>
                             <?php else: ?><input class="form-control" type="<?= in_array($field['field_type'], ['email', 'number', 'date'], true) ? htmlSC((string)$field['field_type']) : 'text' ?>" name="<?= htmlSC($name) ?>" value="<?= htmlSC((string)$fieldValue) ?>" placeholder="<?= htmlSC((string)$field['placeholder']) ?>" <?= $field['is_required'] ? 'required' : '' ?>><?php endif; ?>
