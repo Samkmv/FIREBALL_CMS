@@ -6511,3 +6511,49 @@ body:not(.fb-admin-body) .fb-search-open:focus-visible {
     }
 }
 
+/* FIREBALL_SLIDER_EDGE_ARROWS_V1
+ * Swiper Navigation сам добавляет .swiper-button-disabled:
+ * prev — на первом слайде, next — на последнем.
+ * Кнопки абсолютные, поэтому их скрытие не меняет геометрию слайдера.
+ */
+[data-fb-slider-shell="1"] [data-fb-slider-prev].swiper-button-disabled,
+[data-fb-slider-shell="1"] [data-fb-slider-next].swiper-button-disabled {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+[data-fb-slider-shell="1"] [data-fb-slider-prev],
+[data-fb-slider-shell="1"] [data-fb-slider-next] {
+    transition:
+        opacity .2s ease,
+        visibility .2s ease,
+        color .2s ease,
+        background-color .2s ease,
+        border-color .2s ease;
+}
+
+/* FIREBALL_GLIGHTBOX_EDGE_ARROWS_V1
+ * GLightbox сам добавляет класс .disabled:
+ * - .gprev.disabled на первом изображении;
+ * - .gnext.disabled на последнем.
+ * Штатный vendor CSS только уменьшает opacity до .1.
+ * Здесь полностью скрываем недоступную стрелку.
+ */
+.glightbox-container .gprev.disabled,
+.glightbox-container .gnext.disabled {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.glightbox-container .gprev,
+.glightbox-container .gnext {
+    transition:
+        opacity .2s ease,
+        visibility .2s ease,
+        color .2s ease,
+        background-color .2s ease,
+        border-color .2s ease;
+}
+

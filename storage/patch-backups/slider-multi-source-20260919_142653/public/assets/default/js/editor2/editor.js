@@ -786,25 +786,7 @@
                 '</div>';
             }
             if (block.type === 'slider') {
-                // FIREBALL_SLIDER_MULTI_SOURCE_V1
-                return '<div class="d-grid gap-2 mb-3">' +
-                    '<button type="button" class="btn btn-outline-secondary" data-editor-pick-media-path="data.items">' +
-                        '<i class="ci-folder-open me-2"></i>' + escapeAttr(this.label('galleryFromManager', 'Choose from file manager')) +
-                    '</button>' +
-                    '<button type="button" class="btn btn-outline-secondary" data-editor-gallery-upload-local>' +
-                        '<i class="ci-upload me-2"></i>' + escapeAttr(this.label('galleryFromComputer', 'Upload from computer')) +
-                    '</button>' +
-                '</div>' +
-                '<div class="input-group mb-2">' +
-                    '<input type="url" class="form-control" data-editor-gallery-url placeholder="' +
-                        escapeAttr(this.label('galleryUrlPlaceholder', 'https://example.com/image.jpg')) + '">' +
-                    '<button type="button" class="btn btn-outline-secondary" data-editor-gallery-add-url>' +
-                        escapeAttr(this.label('galleryFromUrl', 'Add from URL')) +
-                    '</button>' +
-                '</div>' +
-                '<div class="small text-body-secondary mb-3">' +
-                    escapeAttr(this.label('galleryUrlHint', 'External images are referenced by URL and are not copied to local storage.')) +
-                '</div>';
+                return '<button type="button" class="btn btn-outline-secondary w-100 mb-3" data-editor-pick-media-path="data.items"><i class="ci-plus me-2"></i>' + escapeAttr(this.label('chooseFile', 'Add media')) + '</button>';
             }
             if (block.type === 'newsletter') {
                 return this.textField('data.title', this.label('newsletterTitle', 'Title'), data.title || '', '') +
@@ -3736,7 +3718,7 @@
 
         addGalleryItems(blockId, urls, reason) {
             const block = this.state.blocks[this.blockIndex(blockId)];
-            if (!block || (block.type !== 'gallery' && block.type !== 'slider')) {
+            if (!block || block.type !== 'gallery') {
                 return false;
             }
 
@@ -3763,13 +3745,13 @@
 
             this.activeId = block.id;
             this.selectedIds = new Set([block.id]);
-            this.commit(reason || 'media-items', true, true);
+            this.commit(reason || 'gallery-media', true, true);
             return true;
         }
 
         addGalleryImageFromUrl(button) {
             const block = this.activeBlock();
-            if (!block || (block.type !== 'gallery' && block.type !== 'slider')) {
+            if (!block || block.type !== 'gallery') {
                 return;
             }
 
@@ -3798,14 +3780,14 @@
                 return;
             }
 
-            if (this.addGalleryItems(block.id, [rawUrl], block.type + '-url') && input) {
+            if (this.addGalleryItems(block.id, [rawUrl], 'gallery-url') && input) {
                 input.value = '';
             }
         }
 
         pickGalleryLocalImages(button) {
             const block = this.activeBlock();
-            if (!block || (block.type !== 'gallery' && block.type !== 'slider')) {
+            if (!block || block.type !== 'gallery') {
                 return;
             }
 
@@ -3889,7 +3871,7 @@
                     uploadedUrls.push(String(result.url));
                 }
 
-                this.addGalleryItems(blockId, uploadedUrls, 'media-upload');
+                this.addGalleryItems(blockId, uploadedUrls, 'gallery-upload');
             } catch (error) {
                 window.alert(
                     String(error && error.message || this.label('galleryUploadFailed', 'Image upload failed.'))

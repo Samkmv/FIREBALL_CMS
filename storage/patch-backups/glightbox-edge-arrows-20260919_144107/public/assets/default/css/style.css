@@ -7598,27 +7598,3 @@ body:not(.fb-admin-body) .search-suggest-menu {
         border-color .2s ease;
 }
 
-/* FIREBALL_GLIGHTBOX_EDGE_ARROWS_V1
- * GLightbox сам добавляет класс .disabled:
- * - .gprev.disabled на первом изображении;
- * - .gnext.disabled на последнем.
- * Штатный vendor CSS только уменьшает opacity до .1.
- * Здесь полностью скрываем недоступную стрелку.
- */
-.glightbox-container .gprev.disabled,
-.glightbox-container .gnext.disabled {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
-
-.glightbox-container .gprev,
-.glightbox-container .gnext {
-    transition:
-        opacity .2s ease,
-        visibility .2s ease,
-        color .2s ease,
-        background-color .2s ease,
-        border-color .2s ease;
-}
-

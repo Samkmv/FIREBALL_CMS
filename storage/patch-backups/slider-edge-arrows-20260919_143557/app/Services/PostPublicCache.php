@@ -8,8 +8,7 @@ final class PostPublicCache
     private const DEFAULT_VERSION = '1';
     // FIREBALL_POST_RENDER_CACHE_V2
     // Версия server-side рендера публичного контента.
-    private const RENDER_VERSION = '3';
-    // FIREBALL_SLIDER_EDGE_ARROWS_CACHE_V1
+    private const RENDER_VERSION = '2';
 
     public function key(string $name): string
     {

@@ -11,86 +11,25 @@ final class BlockRenderer
             return '';
         }
 
-        // FIREBALL_EDITOR_STATE_PUBLIC_RENDER_V1
-        //
-        // Editor 2 хранит:
-        //   public HTML + <template data-fb-editor-state="2">BASE64(JSON)</template>
-        //
-        // Поэтому сначала восстанавливаем исходное состояние блоков,
-        // а уже затем рендерим каждый блок через BlockRenderer.
-        $decoded = $this->decodeEditorDocument($content);
+        if ($content[0] !== '{') {
+            return sanitize_content_html($content);
+        }
 
-        if (is_array($decoded) && isset($decoded['blocks']) && is_array($decoded['blocks'])) {
-            $html = '';
+        $decoded = json_decode($content, true);
+        if (!is_array($decoded) || !isset($decoded['blocks']) || !is_array($decoded['blocks'])) {
+            return sanitize_content_html($content);
+        }
 
-            foreach ($decoded['blocks'] as $block) {
-                if (!is_array($block) || !empty($block['hidden'])) {
-                    continue;
-                }
-
-                $html .= $this->renderBlock($block);
+        $html = '';
+        foreach ($decoded['blocks'] as $block) {
+            if (!is_array($block) || !empty($block['hidden'])) {
+                continue;
             }
 
-            return sanitize_content_html($html);
+            $html .= $this->renderBlock($block);
         }
 
-        // Старые записи и обычный HTML продолжают работать как раньше.
-        return sanitize_content_html($content);
-    }
-
-    private function decodeEditorDocument(string $content): ?array
-    {
-        // Старый формат: чистый JSON.
-        if ($content !== '' && $content[0] === '{') {
-            $decoded = json_decode($content, true);
-
-            if (
-                is_array($decoded)
-                && isset($decoded['blocks'])
-                && is_array($decoded['blocks'])
-            ) {
-                return $decoded;
-            }
-
-            return null;
-        }
-
-        // Editor 2: HTML + template с base64 JSON состоянием редактора.
-        if (!preg_match(
-            '~<template\b[^>]*\bdata-fb-editor-state\s*=\s*(?:"2"|\'2\'|2)[^>]*>(.*?)</template>~is',
-            $content,
-            $matches
-        )) {
-            return null;
-        }
-
-        $encoded = html_entity_decode(
-            trim((string)($matches[1] ?? '')),
-            ENT_QUOTES | ENT_HTML5,
-            'UTF-8'
-        );
-        $encoded = preg_replace('/\s+/', '', $encoded) ?? '';
-
-        if ($encoded === '') {
-            return null;
-        }
-
-        $json = base64_decode($encoded, true);
-        if (!is_string($json) || $json === '') {
-            return null;
-        }
-
-        $decoded = json_decode($json, true);
-
-        if (
-            !is_array($decoded)
-            || !isset($decoded['blocks'])
-            || !is_array($decoded['blocks'])
-        ) {
-            return null;
-        }
-
-        return $decoded;
+        return sanitize_content_html($html);
     }
 
     public function renderBlock(array $block): string
@@ -355,10 +294,7 @@ final class BlockRenderer
 
         $swiperConfig = [
             'effect' => 'fade',
-            // Не зацикливаем Slider: на первом слайде prev disabled,
-            // на последнем next disabled. Состоянием управляет Swiper Navigation.
-            'loop' => false,
-            'rewind' => false,
+            'loop' => $multiple,
         ];
 
         if ($multiple) {

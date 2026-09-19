@@ -6,17 +6,10 @@ final class PostPublicCache
 {
     private const VERSION_KEY = 'posts:public_version';
     private const DEFAULT_VERSION = '1';
-    // FIREBALL_POST_RENDER_CACHE_V2
-    // Версия server-side рендера публичного контента.
-    private const RENDER_VERSION = '3';
-    // FIREBALL_SLIDER_EDGE_ARROWS_CACHE_V1
 
     public function key(string $name): string
     {
-        return \FBL\Localization::localeCacheKey(
-            'posts',
-            'v' . $this->version() . ':r' . self::RENDER_VERSION . ':' . $name
-        );
+        return \FBL\Localization::localeCacheKey('posts', 'v' . $this->version() . ':' . $name);
     }
 
     public function version(): string

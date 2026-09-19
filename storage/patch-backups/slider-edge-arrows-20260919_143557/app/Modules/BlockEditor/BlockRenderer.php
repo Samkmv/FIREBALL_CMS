@@ -355,10 +355,7 @@ final class BlockRenderer
 
         $swiperConfig = [
             'effect' => 'fade',
-            // Не зацикливаем Slider: на первом слайде prev disabled,
-            // на последнем next disabled. Состоянием управляет Swiper Navigation.
-            'loop' => false,
-            'rewind' => false,
+            'loop' => $multiple,
         ];
 
         if ($multiple) {
