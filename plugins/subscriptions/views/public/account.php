@@ -1,5 +1,9 @@
 <?php
 
+// FIREBALL_SUBSCRIPTIONS_ACCOUNT_500_FIX_V1
+$subscription = is_array($subscription ?? null) ? $subscription : null;
+$autoRenew = false;
+
 $payments = is_array($payments ?? null) ? $payments : [];
 $permissions = is_array($permissions ?? null) ? $permissions : [];
 $includedPermissions = array_filter($permissions);

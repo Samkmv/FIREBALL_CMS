@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Fixed an HTTP 500 on the public My Subscription page for users without an active subscription by safely initializing the auto-renew state.",
     "Disabled subscriber records of any source can be removed through Actions, even when the user has another active subscription. Only the selected record is archived; active access, user accounts and financial history are retained. The backend rechecks the current status before removal.",
     "Added a configurable offer link inside checkout consent, safe timeout refresh and verified ResultURL retries, clearer payment badges and labeled detail buttons. Disabled subscribers can be deleted through the existing Actions menu; clearing payment history resets overview payment figures without deleting financial records. Fixed region-search asset routing.",
     "Added searchable Russian region selection with English aliases and backend normalization; invalid regions cannot enter new checkout snapshots, while foreign addresses and historic records are preserved.",
@@ -61,6 +62,7 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Исправлена ошибка HTTP 500 на публичной странице «Моя подписка» у пользователей без активной подписки: состояние автопродления теперь безопасно инициализируется.",
       "Выключенные записи подписчиков любого источника можно удалять через меню «Действия», даже если у пользователя есть другая активная подписка. Архивируется только выбранная запись; активный доступ, учётная запись и финансовая история сохраняются. Сервер повторно проверяет статус перед удалением.",
       "Добавлен выбор страницы или ссылки оферты со ссылкой внутри согласия. Исправлено обновление ожидания оплаты и повторная обработка проверенных ResultURL; диагностика оформлена бейджами, просмотр данных — некруглой кнопкой. Выключенных подписчиков можно удалять через существующее меню «Действия»; очистка платежей обнуляет показатели обзора без удаления финансовых записей. Исправлен маршрут скрипта поиска регионов.",
       "В анкету добавлен выбор региона с поиском на русском и английском и серверным сохранением русского названия. Ошибочные регионы требуют исправления перед оплатой; иностранные адреса и исторические записи сохранены.",
@@ -98,6 +100,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Fixed an HTTP 500 on the public My Subscription page for users without an active subscription by safely initializing the auto-renew state.",
       "Disabled subscriber records of any source can be removed through Actions, even when the user has another active subscription. Only the selected record is archived; active access, user accounts and financial history are retained. The backend rechecks the current status before removal.",
       "Added a configurable offer link inside checkout consent, safe timeout refresh and verified ResultURL retries, clearer payment badges and labeled detail buttons. Disabled subscribers can be deleted through the existing Actions menu; clearing payment history resets overview payment figures without deleting financial records. Fixed region-search asset routing.",
       "Added searchable Russian region selection with English aliases and backend normalization; invalid regions cannot enter new checkout snapshots, while foreign addresses and historic records are preserved.",
@@ -135,6 +138,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "HTTP-500-Fehler auf der öffentlichen Seite „Mein Abonnement“ für Benutzer ohne aktives Abonnement behoben; der Status der automatischen Verlängerung wird nun sicher initialisiert.",
       "Deaktivierte Abonnenteneinträge jeder Quelle können über das Aktionsmenü entfernt werden, auch wenn ein anderes Abonnement aktiv ist. Nur der ausgewählte Eintrag wird archiviert; aktiver Zugang, Benutzerkonto und Finanzhistorie bleiben erhalten. Der Server prüft den aktuellen Status erneut.",
       "Der konfigurierbare Angebotslink steht direkt in der Zustimmung. Abgelaufene Zahlungen und verifizierte ResultURL-Wiederholungen werden aktualisiert; Status-Badges und Detail-Schaltflächen wurden verbessert. Deaktivierte Abonnenten können über das bestehende Aktionsmenü gelöscht werden; das Leeren des Verlaufs setzt Zahlungskennzahlen ohne Löschen der Finanzdaten zurück. Die Regionssuche wurde korrigiert.",
       "Die Regionsauswahl unterstützt die Suche auf Russisch und Englisch und speichert russische Namen serverseitig. Ungültige Regionen müssen vor der Zahlung korrigiert werden; ausländische Adressen und bestehende Daten bleiben erhalten.",
@@ -172,6 +176,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "修复了无有效订阅用户打开“我的订阅”页面时出现的 HTTP 500；现在会安全初始化自动续订状态。",
       "可通过操作菜单移除任何来源的停用订阅者记录，即使用户还有其他有效订阅。仅归档所选记录，保留有效访问权限、用户账户及财务历史。服务器会在移除前重新检查当前状态。",
       "可配置的要约链接现位于付款同意文字中；安全更新超时付款并重试已验证的 ResultURL。优化状态徽章及详情按钮。可通过现有操作菜单删除停用订阅者；清除付款历史会重置概览付款统计，但保留财务记录。修复地区搜索脚本路由。",
       "资料表新增俄语及英语地区搜索，服务器统一保存俄语名称。错误地区须在付款前更正；保留其他国家地址及历史记录。",
