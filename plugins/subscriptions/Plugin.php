@@ -132,8 +132,14 @@ final class FireballPluginSubscriptions implements PluginInterface
                    AND s.status IN ('active', 'cancelled')
                    AND s.ends_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)"
             )->getColumn();
+            // FIREBALL_SUBSCRIPTIONS_DASHBOARD_STATS_V1
+            // Dashboard should show an operational snapshot, not the whole payment archive.
             $failed = (int)db()->query(
-                "SELECT COUNT(*) FROM subscription_payments WHERE status = 'failed'"
+                "SELECT COUNT(*)
+                 FROM subscription_payments
+                 WHERE status = 'failed'
+                   AND cleared_at IS NULL
+                   AND COALESCE(failed_at, updated_at, created_at) >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
             )->getColumn();
 
             $widgets[] = [

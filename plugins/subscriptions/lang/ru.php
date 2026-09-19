@@ -129,7 +129,7 @@ return array_replace($en, [
     'subscriptions_stat_active' => 'Активные подписки',
     'subscriptions_stat_expiring' => 'Истекают за 7 дней',
     'subscriptions_stat_revenue' => 'Подтверждённый доход',
-    'subscriptions_stat_failed' => 'Неудачные платежи',
+    'subscriptions_stat_failed' => 'Неудачные платежи за 7 дней',
     'subscriptions_distribution_title' => 'Подписчики по тарифам',
     'subscriptions_user' => 'Пользователь',
     'subscriptions_user_id' => 'ID пользователя',

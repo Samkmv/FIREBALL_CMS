@@ -275,7 +275,7 @@ return array_replace($en, [
     'subscriptions_signature_verified' => 'Signatur geprüft',
     'subscriptions_stat_active' => 'Aktive Abonnements',
     'subscriptions_stat_expiring' => 'Laufen in 7 Tagen ab',
-    'subscriptions_stat_failed' => 'Fehlgeschlagene Zahlungen',
+    'subscriptions_stat_failed' => 'Fehlgeschlagene Zahlungen in 7 Tagen',
     'subscriptions_stat_revenue' => 'Bestätigter Umsatz',
     'subscriptions_system' => 'Systemfeld',
     'subscriptions_test_mode' => 'Testmodus',

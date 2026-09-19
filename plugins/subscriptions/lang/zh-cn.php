@@ -275,7 +275,7 @@ return array_replace($en, [
     'subscriptions_signature_verified' => '签名已验证',
     'subscriptions_stat_active' => '有效订阅',
     'subscriptions_stat_expiring' => '7 天内到期',
-    'subscriptions_stat_failed' => '失败付款',
+    'subscriptions_stat_failed' => '7 天内失败付款',
     'subscriptions_stat_revenue' => '已确认收入',
     'subscriptions_system' => '系统字段',
     'subscriptions_test_mode' => '测试模式',

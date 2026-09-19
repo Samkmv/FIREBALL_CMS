@@ -127,7 +127,7 @@ return [
     'subscriptions_stat_active' => 'Active subscriptions',
     'subscriptions_stat_expiring' => 'Expiring in 7 days',
     'subscriptions_stat_revenue' => 'Paid revenue',
-    'subscriptions_stat_failed' => 'Failed payments',
+    'subscriptions_stat_failed' => 'Failed payments in 7 days',
     'subscriptions_distribution_title' => 'Subscribers by plan',
     'subscriptions_user' => 'User',
     'subscriptions_user_id' => 'User ID',
