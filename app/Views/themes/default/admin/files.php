@@ -223,6 +223,25 @@
             vertical-align: middle;
         }
 
+        /* FIREBALL_FILE_MANAGER_STICKY_HEADER_FIX_V1
+         * Safari надёжнее работает со sticky на отдельных th, а не на thead.
+         * Заголовок получает собственный stacking layer и всегда остаётся
+         * поверх строк и кнопок действий при внутреннем скролле.
+         */
+        [data-file-manager-table] thead {
+            position: static !important;
+            z-index: auto !important;
+        }
+
+        [data-file-manager-table] thead th {
+            position: sticky !important;
+            z-index: 40 !important;
+            top: 0 !important;
+            background: var(--fb-color-surface-secondary) !important;
+            background-clip: padding-box;
+        }
+
+
         [data-file-manager-table] {
             width: 100%;
             min-width: 100% !important;
@@ -283,6 +302,35 @@
             text-align: right !important;
         }
 
+        /*
+         * В picker-режиме в последней колонке находятся две кнопки:
+         * «Выбрать» + меню действий. Обычных 7rem для них недостаточно,
+         * поэтому содержимое выпирало из ячейки и создавало горизонтальный скролл.
+         */
+        [data-file-manager-workspace][data-file-manager-picker-mode="1"] [data-file-manager-table] col:nth-child(6) {
+            width: 10.5rem;
+        }
+
+        [data-file-manager-workspace][data-file-manager-picker-mode="1"] [data-file-manager-table] th:last-child,
+        [data-file-manager-workspace][data-file-manager-picker-mode="1"] [data-file-manager-table] td:last-child {
+            width: 10.5rem !important;
+            min-width: 10.5rem !important;
+        }
+
+        [data-file-manager-row-actions] {
+            display: inline-flex;
+            max-width: 100%;
+            align-items: center;
+            justify-content: flex-end;
+            gap: .5rem;
+            white-space: nowrap;
+        }
+
+        [data-file-manager-row-actions] [data-file-select],
+        [data-file-manager-row-actions] [data-file-manager-actions-menu] {
+            flex: 0 0 auto;
+        }
+
         [data-file-manager-item-link] {
             color: inherit;
         }
@@ -313,8 +361,7 @@
             width: 100%;
             max-width: 100%;
             min-width: 0;
-            overflow-x: hidden;
-            overflow-y: visible !important;
+            overflow: visible !important;
             position: relative;
         }
 
@@ -322,24 +369,36 @@
             position: relative;
         }
 
+        /* FIREBALL_FILE_MANAGER_DROPDOWN_STACK_FIX_V2
+         * Не создаём stacking context у каждой td/tr.
+         * Поднимаем только активную строку, когда Bootstrap dropstart открыт.
+         */
+        [data-file-manager-table] tbody tr {
+            position: relative;
+            z-index: auto;
+        }
+
+        [data-file-manager-table] tbody tr.is-actions-open {
+            z-index: 25;
+        }
+
+        [data-file-manager-table] tbody tr.is-actions-open > td {
+            position: relative;
+            z-index: 25;
+        }
+
+        [data-file-manager-table] tbody tr.is-actions-open [data-file-manager-actions-menu] {
+            z-index: 26;
+        }
+
+        [data-file-manager-table] tbody tr.is-actions-open .dropdown-menu {
+            z-index: 1060 !important;
+        }
+
         [data-file-manager-actions-menu] > .btn {
             width: 2.25rem;
             height: 2.25rem;
             padding: 0;
-        }
-
-        [data-file-manager-actions-menu] .dropdown-menu {
-            z-index: 1045;
-            margin-right: .35rem !important;
-        }
-
-        .fm-dropdown-floating {
-            position: fixed !important;
-            inset: auto !important;
-            transform: none !important;
-            margin: 0 !important;
-            z-index: 1045 !important;
-            box-shadow: 0 18px 48px rgba(17, 24, 39, .18);
         }
 
         [data-file-manager-selection-badge] {
@@ -704,15 +763,6 @@
 
             [data-file-manager-page] .dropdown-item {
                 white-space: normal;
-            }
-
-            .fm-dropdown-floating {
-                width: min(14.5rem, calc(100vw - 1.5rem)) !important;
-                max-width: calc(100vw - 1.5rem) !important;
-                min-width: 0 !important;
-                max-height: calc(100dvh - 1.5rem);
-                overflow-y: auto;
-                border-radius: 1.1rem !important;
             }
 
             [data-file-manager-actions-menu] > button {

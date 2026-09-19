@@ -1,0 +1,496 @@
+<?php
+
+/**
+ * Layout Template
+ *
+ * Available variables:
+ *
+ * $content
+ * $settings
+ * $user
+ * $locale
+ */
+
+$requiredAssets = \App\Services\FrontendAssets::requirements((string)$this->content, (array)($assets ?? []));
+extract((new \App\Services\PublicLayoutContext())->navigation(), EXTR_SKIP);
+$currentPostCategorySlug = trim((string)request()->get('category', ''));
+$siteTitle = site_setting('site_title', SITE_NAME);
+$siteDescription = site_setting('site_description', '');
+$socialLinks = site_social_links();
+$seoHomeTitle = site_setting('seo_home_title', '');
+$seoDefaultTitleSuffix = site_setting('seo_default_title_suffix', '');
+$seoMetaDescription = site_setting('seo_meta_description', '');
+$seoMetaKeywords = site_setting('seo_meta_keywords', '');
+$seoMetaAuthor = site_setting('seo_meta_author', '');
+$seoRobots = site_setting('seo_robots', 'index,follow');
+$seoOgImage = site_setting('seo_og_image', '');
+$seoTwitterCard = site_setting('seo_twitter_card', 'summary_large_image');
+$pageTitle = trim((string)($title ?? ''));
+$pageSeoTitle = trim((string)($seo_title ?? ''));
+$pageSeoDescription = trim((string)($seo_description ?? ''));
+$pageSeoKeywords = trim((string)($seo_keywords ?? ''));
+$pageSeoImage = trim((string)($seo_image ?? ''));
+$pageSeoImageWidth = max(0, (int)($seo_image_width ?? 0));
+$pageSeoImageHeight = max(0, (int)($seo_image_height ?? 0));
+$pageSeoImageAlt = trim((string)($seo_image_alt ?? ''));
+$pageSeoType = trim((string)($seo_type ?? 'website'));
+$pageSeoArticlePublishedTime = trim((string)($seo_article_published_time ?? ''));
+$pageSeoArticleSection = trim((string)($seo_article_section ?? ''));
+$pageSeoRobots = trim((string)($seo_robots ?? ''));
+$pageSeoCanonical = trim((string)($seo_canonical ?? ''));
+$isHomePage = uri_without_lang() === '';
+$homePageTitle = $pageTitle !== '' ? $pageTitle : return_translation('home_index_title');
+$homeTitleBase = ($seoHomeTitle !== '' && $seoHomeTitle !== $siteTitle)
+    ? $seoHomeTitle
+    : ($homePageTitle !== 'home_index_title' ? $homePageTitle : $siteTitle);
+$resolvedTitleBase = $pageSeoTitle !== ''
+    ? $pageSeoTitle
+    : ($isHomePage ? $homeTitleBase : ($pageTitle !== '' ? $pageTitle : $siteTitle));
+$resolvedTitleSuffix = $seoDefaultTitleSuffix !== '' ? $seoDefaultTitleSuffix : $siteTitle;
+$documentTitle = $resolvedTitleBase !== $resolvedTitleSuffix
+    ? $resolvedTitleBase . ' - ' . $resolvedTitleSuffix
+    : $resolvedTitleBase;
+$metaDescription = $pageSeoDescription !== ''
+    ? $pageSeoDescription
+    : ($seoMetaDescription !== '' ? $seoMetaDescription : ($siteDescription !== '' ? $siteDescription : $siteTitle));
+$metaKeywords = $pageSeoKeywords !== '' ? $pageSeoKeywords : $seoMetaKeywords;
+$metaAuthor = $seoMetaAuthor !== '' ? $seoMetaAuthor : $siteTitle;
+$metaRobots = $pageSeoRobots !== '' ? $pageSeoRobots : $seoRobots;
+$canonicalUrl = $pageSeoCanonical !== '' ? $pageSeoCanonical : base_href(uri_without_lang());
+// fireball-social-link-preview-v1: layout
+// У карточки ссылки всегда должно быть абсолютное изображение.
+// Приоритет: SEO-картинка страницы/поста -> глобальная OG-картинка -> favicon/logo сайта.
+$resolvedSocialImage = $pageSeoImage !== '' ? $pageSeoImage : $seoOgImage;
+if ($resolvedSocialImage === '') {
+    $resolvedSocialImage = site_favicon_url();
+}
+$metaImageData = social_image_metadata(
+    $resolvedSocialImage,
+    $pageSeoImageWidth,
+    $pageSeoImageHeight
+);
+$metaImage = (string)$metaImageData['url'];
+$metaImageAlt = $pageSeoImageAlt !== '' ? $pageSeoImageAlt : $resolvedTitleBase;
+$metaType = $pageSeoType !== '' ? $pageSeoType : 'website';
+$currentLangCode = current_locale();
+$ogLocale = match ($currentLangCode) {
+    'en' => 'en_US',
+    'de' => 'de_DE',
+    'zh-cn' => 'zh_CN',
+    default => 'ru_RU',
+};
+$currentUser = check_auth() ? get_user() : null;
+if ($currentUser) {
+    \FBL\Auth::touchPresence();
+}
+$isAdmin = check_admin();
+$hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="#adminSidebar"')
+    || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
+    || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
+$canViewVideoStatus = can_view_video_diagnostics();
+$streamConfig = stream_config();
+$frontendStreamConfig = [
+    'readyTimeoutMs' => (int)$streamConfig['ready_timeout_seconds'] * 1000,
+    'readyIntervalMs' => (int)$streamConfig['ready_interval_ms'],
+    'httpTimeoutMs' => (int)$streamConfig['http_timeout_seconds'] * 1000,
+];
+$currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
+$logoutAction = base_href('/logout');
+$pwaHeadData = pwa_head_data();
+$footerDescription = $siteDescription !== ''
+    ? $siteDescription
+    : return_translation('footer_description_fallback');
+$footerNavigationLinks = [
+    [
+        'href' => base_href('/'),
+        'label' => return_translation('tpl_menu_nav_index'),
+    ],
+    [
+        'href' => base_href('/posts'),
+        'label' => return_translation('footer_nav_posts'),
+    ],
+    [
+        'href' => base_href('/contacts'),
+        'label' => return_translation('tpl_menu_nav_contacts'),
+    ],
+];
+$footerNavigationLinks = array_merge($footerNavigationLinks, $footerPageLinks);
+if (site_setting('support_public_enabled', '1') === '1') {
+    $footerNavigationLinks[] = [
+        'href' => base_href('/support'),
+        'label' => return_translation('tpl_menu_nav_support'),
+    ];
+}
+$footerCategoryLinks = $postNavigationCategories;
+$postCategoryUrl = static function (?string $slug = null): string {
+    $url = base_href('/posts');
+    if ($slug === null || $slug === '') {
+        return $url;
+    }
+
+    return $url . '?category=' . rawurlencode($slug);
+};
+
+?>
+<!DOCTYPE html><html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="light" data-pwa="true" data-video-status="<?= $canViewVideoStatus ? '1' : '0' ?>"><head>
+    <meta charset="utf-8">
+    <script>
+        (function () {
+            var standalone = window.matchMedia('(display-mode: standalone)').matches
+                || window.navigator.standalone === true;
+            ['pwa', 'standalone', 'pwa-standalone'].forEach(function (className) {
+                document.documentElement.classList.toggle(className, standalone);
+            });
+        })();
+    </script>
+
+    <?= get_csrf_meta() ?>
+
+    <!-- Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <!-- SEO Meta Tags -->
+    <title><?= htmlSC($documentTitle) ?></title>
+    <meta name="description" content="<?= htmlSC($metaDescription) ?>">
+    <?php if ($metaKeywords !== ''): ?>
+        <meta name="keywords" content="<?= htmlSC($metaKeywords) ?>">
+    <?php endif; ?>
+    <meta name="author" content="<?= htmlSC($metaAuthor) ?>">
+    <meta name="robots" content="<?= htmlSC($metaRobots) ?>">
+    <link rel="canonical" href="<?= htmlSC($canonicalUrl) ?>">
+    <meta property="og:locale" content="<?= htmlSC($ogLocale) ?>">
+    <meta property="og:type" content="<?= htmlSC($metaType) ?>">
+    <meta property="og:site_name" content="<?= htmlSC($siteTitle) ?>">
+    <meta property="og:title" content="<?= htmlSC($documentTitle) ?>">
+    <meta property="og:description" content="<?= htmlSC($metaDescription) ?>">
+    <meta property="og:url" content="<?= htmlSC($canonicalUrl) ?>">
+    <?php if ($metaImage !== ''): ?>
+        <link rel="image_src" href="<?= htmlSC($metaImage) ?>">
+        <meta property="og:image" content="<?= htmlSC($metaImage) ?>">
+        <meta property="og:image:url" content="<?= htmlSC($metaImage) ?>">
+        <?php if ($metaImageData['secure_url'] !== ''): ?>
+            <meta property="og:image:secure_url" content="<?= htmlSC((string)$metaImageData['secure_url']) ?>">
+        <?php endif; ?>
+        <?php if ($metaImageData['type'] !== ''): ?>
+            <meta property="og:image:type" content="<?= htmlSC((string)$metaImageData['type']) ?>">
+        <?php endif; ?>
+        <?php if ($metaImageData['width'] > 0 && $metaImageData['height'] > 0): ?>
+            <meta property="og:image:width" content="<?= (int)$metaImageData['width'] ?>">
+            <meta property="og:image:height" content="<?= (int)$metaImageData['height'] ?>">
+        <?php endif; ?>
+        <meta property="og:image:alt" content="<?= htmlSC($metaImageAlt) ?>">
+    <?php endif; ?>
+    <?php if ($metaType === 'article' && $pageSeoArticlePublishedTime !== ''): ?>
+        <meta property="article:published_time" content="<?= htmlSC($pageSeoArticlePublishedTime) ?>">
+    <?php endif; ?>
+    <?php if ($metaType === 'article' && $pageSeoArticleSection !== ''): ?>
+        <meta property="article:section" content="<?= htmlSC($pageSeoArticleSection) ?>">
+    <?php endif; ?>
+    <meta name="twitter:card" content="<?= htmlSC($seoTwitterCard !== '' ? $seoTwitterCard : 'summary_large_image') ?>">
+    <meta name="twitter:url" content="<?= htmlSC($canonicalUrl) ?>">
+    <meta name="twitter:title" content="<?= htmlSC($documentTitle) ?>">
+    <meta name="twitter:description" content="<?= htmlSC($metaDescription) ?>">
+    <?php if ($metaImage !== ''): ?>
+        <meta name="twitter:image" content="<?= htmlSC($metaImage) ?>">
+        <meta name="twitter:image:alt" content="<?= htmlSC($metaImageAlt) ?>">
+    <?php endif; ?>
+
+    <!-- Webmanifest + Favicon / App icons -->
+    <?= pwa_head_tags() ?>
+
+    <!-- Theme switcher (color modes) -->
+    <script src="<?= theme_asset_versioned('js/theme-switcher.js') ?>"></script>
+
+    <!-- Font icons -->
+    <link rel="stylesheet" href="<?= theme_asset_versioned('icons/cartzilla-icons.min.css') ?>">
+
+    <!-- Vendor styles -->
+    <?php if (!empty($requiredAssets['choices'])): ?>
+    <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/choices.js/choices.min.css') ?>">
+    <?php endif; ?>
+    <?php if (!empty($requiredAssets['simplebar'])): ?>
+    <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/simplebar/simplebar.min.css') ?>">
+    <?php endif; ?>
+    <?php if (!empty($requiredAssets['swiper'])): ?>
+    <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/swiper/swiper-bundle.min.css') ?>">
+    <?php endif; ?>
+    <?php if (!empty($requiredAssets['player'])): ?>
+    <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/plyr/plyr.css') ?>">
+    <?php endif; ?>
+    <?php if (!empty($requiredAssets['player'])): ?>
+    <link rel="stylesheet" href="<?= asset_versioned_url(base_url('/assets/default/css/fireplayer.css'), WWW . '/assets/default/css/fireplayer.css') ?>">
+    <?php endif; ?>
+    <?php if (!empty($requiredAssets['highlight'])): ?>
+    <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/highlight.js/styles/atom-one-dark.min.css') ?>">
+    <?php endif; ?>
+
+    <?php if (!empty($styles)): ?>
+        <?php foreach ($styles as $style): ?>
+
+            <link rel="stylesheet" href="<?= $style; ?>">
+
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+    <!-- Bootstrap + Theme styles -->
+    <link rel="stylesheet" href="<?= theme_asset_versioned('css/theme.min.css') ?>" id="theme-styles">
+
+    <!-- Customs styles -->
+    <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/toastr/toastr.min.css') ?>">
+    <link rel="stylesheet" href="<?= theme_asset_versioned('css/style.css') ?>">
+    <?php if (!$canViewVideoStatus): ?>
+        <style id="fb-video-status-privacy">
+            .fb-plyr-hls-message--info,
+            .fb-plyr-hls-message--success,
+            .fb-plyr-hls-message--warning,
+            .fb-plyr-hls-message:not(.fb-plyr-hls-message--error) {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+        </style>
+    <?php endif; ?>
+
+    <!-- Header scripts -->
+    <?php if (!empty($header_scripts)): ?>
+        <?php foreach ($header_scripts as $header_script): ?>
+
+            <script src="<?= $header_script; ?>"></script>
+
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+</head>
+
+
+<!-- Body -->
+<body
+    data-toast-success-title="<?= htmlSC(return_translation('toast_success_title')) ?>"
+    data-toast-error-title="<?= htmlSC(return_translation('toast_error_title')) ?>"
+    data-toast-info-title="<?= htmlSC(return_translation('toast_info_title')) ?>"
+    data-toast-warning-title="<?= htmlSC(return_translation('toast_warning_title')) ?>"
+    data-toast-close-label="<?= htmlSC(return_translation('notification_close')) ?>"
+    data-code-copy-label="<?= htmlSC(return_translation('code_copy_button')) ?>"
+    data-code-copied-label="<?= htmlSC(return_translation('code_copied_button')) ?>"
+    data-pwa-enabled="<?= !empty($pwaHeadData['enabled']) ? '1' : '0' ?>"
+    data-pwa-push-enabled="<?= !empty($pwaHeadData['push_enabled']) ? '1' : '0' ?>"
+    data-pwa-vapid-public-key="<?= htmlSC((string)($pwaHeadData['vapid_public_key'] ?? '')) ?>"
+    data-pwa-service-worker-url="<?= htmlSC((string)($pwaHeadData['service_worker_url'] ?? base_url('/service-worker.js'))) ?>"
+    data-pwa-subscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions')) ?>"
+    data-pwa-unsubscribe-url="<?= htmlSC(base_url('/api/pwa/subscriptions/delete')) ?>"
+    data-pwa-badge-clear-url="<?= htmlSC(base_url('/api/pwa/badge/clear')) ?>"
+    data-pwa-safari-hint="<?= htmlSC(return_translation('pwa_safari_install_hint')) ?>"
+>
+
+<?= $this->partial('menu', get_defined_vars()) ?>
+
+<?= $this->partial('header', get_defined_vars()) ?>
+
+<!-- Вызов быстрых flash уведомлений -->
+<?php get_alerts(); ?>
+
+<?= $this->content; ?>
+
+<?= $this->partial('footer', get_defined_vars()) ?>
+
+<?php if ($isAdmin): ?>
+    <div class="modal fade" id="adminDeleteModal" tabindex="-1" aria-hidden="true" data-admin-delete-modal>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-5 overflow-hidden">
+                <div class="modal-body p-4 p-md-5 text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-4" style="width: 72px; height: 72px;" data-admin-delete-modal-icon-wrap>
+                        <i class="ci-trash fs-2" data-admin-delete-modal-icon></i>
+                    </div>
+                    <h2 class="h4 mb-2" data-admin-delete-modal-title><?= print_translation('admin_delete_modal_title') ?></h2>
+                    <p class="text-body-secondary mb-3" data-admin-delete-modal-message><?= print_translation('admin_delete_modal_default_message') ?></p>
+                    <div class="rounded-4 bg-body-tertiary px-3 py-3 mb-3 d-none" data-admin-delete-modal-item-wrap>
+                        <div class="text-uppercase small fw-semibold text-body-tertiary mb-1" style="letter-spacing: .08em;" data-admin-delete-modal-item-label><?= print_translation('admin_delete_modal_item_label') ?></div>
+                        <div class="fw-semibold text-break" data-admin-delete-modal-item></div>
+                    </div>
+                    <p class="small text-body-secondary mb-0" data-admin-delete-modal-hint><?= print_translation('admin_delete_modal_hint') ?></p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-2 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" data-bs-dismiss="modal">
+                        <i class="ci-close"></i><?= print_translation('admin_btn_cancel') ?>
+                    </button>
+                    <button type="button" class="btn btn-danger rounded-pill d-inline-flex align-items-center gap-2" data-admin-delete-modal-confirm>
+                        <i class="ci-trash" data-admin-delete-modal-confirm-icon></i><span data-admin-delete-modal-confirm-label><?= print_translation('admin_btn_delete') ?></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
+<!-- Back to top button -->
+<div class="floating-buttons position-fixed top-50 end-0 z-sticky me-3 me-xl-4 pb-4">
+    <a class="btn-scroll-top btn btn-sm bg-body border-0 rounded-pill shadow animate-slide-end" href="#top">
+        Top
+        <i class="ci-arrow-right fs-base ms-1 me-n1 animate-target"></i>
+        <span class="position-absolute top-0 start-0 w-100 h-100 border rounded-pill z-0"></span>
+        <svg class="position-absolute top-0 start-0 w-100 h-100 z-1" viewbox="0 0 62 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x=".75" y=".75" width="60.5" height="30.5" rx="15.25" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10"></rect>
+        </svg>
+    </a>
+</div>
+
+<script>
+    const baseUrl = '<?= base_url(); ?>';
+    const themeAssetsUrl = '<?= theme_asset_versioned('') ?>';
+    window.canViewVideoStatus = <?= $canViewVideoStatus ? 'true' : 'false'; ?>;
+    window.canViewVideoDiagnostics = window.canViewVideoStatus;
+    document.documentElement.dataset.videoStatus = window.canViewVideoStatus ? '1' : '0';
+    window.hlsStreamConfig = <?= json_encode($frontendStreamConfig, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    window.firePlayerConfig = {
+        assetBase: <?= json_encode(base_url('/assets/default'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+        hlsScriptUrl: <?= json_encode(theme_asset_versioned('vendor/hls.js/hls.min.js'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
+    };
+    if (!window.canViewVideoStatus) {
+        (function () {
+            const diagnosticTextPattern = /Загрузка видео|Подключение|Повторное подключение|Loading video|Connecting|Reconnecting/i;
+            const isDiagnosticMessage = function (node) {
+                if (!(node instanceof Element)) {
+                    return false;
+                }
+
+                return node.classList.contains('fb-plyr-hls-message--info')
+                    || node.classList.contains('fb-plyr-hls-message--success')
+                    || node.classList.contains('fb-plyr-hls-message--warning')
+                    || diagnosticTextPattern.test(node.textContent || '');
+            };
+            const clearDiagnosticMessage = function (node) {
+                if (!(node instanceof Element) || !isDiagnosticMessage(node)) {
+                    return;
+                }
+
+                const playerRoot = node.closest('.plyr');
+                const playerWrap = node.closest('[data-plyr-player-wrap]');
+
+                [playerRoot, playerWrap].forEach(function (container) {
+                    if (!container) {
+                        return;
+                    }
+
+                    container.classList.remove('has-hls-status');
+                    delete container.dataset.plyrHlsStatus;
+                });
+
+                node.className = 'fb-plyr-hls-message';
+                node.onclick = null;
+                node.onkeydown = null;
+                node.removeAttribute('tabindex');
+                if (node.parentNode) {
+                    node.parentNode.removeChild(node);
+                    return;
+                }
+
+                node.hidden = true;
+                node.textContent = '';
+            };
+            const clearVideoDiagnostics = function () {
+                document
+                    .querySelectorAll('[data-plyr-hls-message], .fb-plyr-hls-message')
+                    .forEach(clearDiagnosticMessage);
+            };
+
+            window.fbClearVideoDiagnostics = clearVideoDiagnostics;
+            clearVideoDiagnostics();
+
+            if (typeof MutationObserver === 'function') {
+                new MutationObserver(clearVideoDiagnostics).observe(document.documentElement, {
+                    subtree: true,
+                    childList: true,
+                    attributes: true,
+                    attributeFilter: ['class', 'hidden'],
+                    characterData: true
+                });
+            }
+        })();
+    }
+</script>
+
+<script src="<?= theme_asset_versioned('js/jquery-3.7.1.min.js') ?>"></script>
+
+<!-- Vendor scripts -->
+<?php if (!empty($requiredAssets['choices'])): ?>
+<script src="<?= theme_asset_versioned('vendor/choices.js/choices.min.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['simplebar'])): ?>
+<script src="<?= theme_asset_versioned('vendor/simplebar/simplebar.min.js') ?>"></script>
+<?php endif; ?>
+<script>
+    if (window.Choices && !window.Choices.__fireballHardened) {
+        const FireballChoicesBase = window.Choices;
+        const FireballChoices = function (element, options) {
+            const allowHtml = element && element.getAttribute && element.getAttribute('data-select-allow-html') === 'true';
+            return new FireballChoicesBase(element, Object.assign({}, options || {}, {
+                allowHTML: allowHtml
+            }));
+        };
+        FireballChoices.prototype = FireballChoicesBase.prototype;
+        Object.keys(FireballChoicesBase).forEach(function (key) {
+            FireballChoices[key] = FireballChoicesBase[key];
+        });
+        FireballChoices.__fireballHardened = true;
+        window.Choices = FireballChoices;
+    }
+</script>
+<?php if (!empty($requiredAssets['swiper'])): ?>
+<script src="<?= theme_asset_versioned('vendor/swiper/swiper-bundle.min.js') ?>"></script>
+<?php endif; ?>
+<script src="<?= theme_asset_versioned('vendor/toastr/toastr.min.js') ?>"></script>
+<?php if (!empty($requiredAssets['player'])): ?>
+<script src="<?= theme_asset_versioned('vendor/plyr/plyr.polyfilled.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['highlight'])): ?>
+<script src="<?= theme_asset_versioned('vendor/highlight.js/highlight.min.js') ?>"></script>
+<?php endif; ?>
+
+<?php if (!empty($footer_scripts)): ?>
+    <?php foreach ($footer_scripts as $footer_script): ?>
+
+        <script src="<?= $footer_script; ?>"></script>
+
+    <?php endforeach; ?>
+<?php endif; ?>
+
+<!-- Bootstrap + Theme scripts -->
+<script src="<?= theme_asset_versioned('js/bootstrap-guard.js') ?>"></script>
+<script src="<?= theme_asset_versioned('js/theme.min.js') ?>"></script>
+
+<!-- Customs scripts -->
+<?php if (!empty($requiredAssets['choices'])): ?>
+<script src="<?= theme_asset_versioned('js/select-init.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['player'])): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer.js'), WWW . '/assets/default/js/fireplayer.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['player_video'])): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-video.js'), WWW . '/assets/default/js/fireplayer-video.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['player_audio'])): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-audio.js'), WWW . '/assets/default/js/fireplayer-audio.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['player_hls'])): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-hls.js'), WWW . '/assets/default/js/fireplayer-hls.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['player_live'])): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-live.js'), WWW . '/assets/default/js/fireplayer-live.js') ?>"></script>
+<?php endif; ?>
+<?php if ($canViewVideoStatus && (!empty($requiredAssets['player']))): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-diagnostics.js'), WWW . '/assets/default/js/fireplayer-diagnostics.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['player'])): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/fireplayer-init.js'), WWW . '/assets/default/js/fireplayer-init.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['player'])): ?>
+<script src="<?= theme_asset_versioned('js/plyr-init.js') ?>"></script>
+<?php endif; ?>
+<?php if ($isAdmin): ?>
+    <script src="<?= theme_asset_versioned('js/admin-delete-modal.js') ?>"></script>
+<?php endif; ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/pwa.js'), WWW . '/assets/default/js/pwa.js') ?>"></script>
+<script src="<?= theme_asset_versioned('js/main.js') ?>"></script>
+
+
+</body></html>

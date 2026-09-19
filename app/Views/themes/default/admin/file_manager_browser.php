@@ -83,9 +83,10 @@ $archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'xz'];
 $renderFileActions = static function (array $item, bool $isDirectory, string $downloadUrl, bool $pickerMode, string $pickerField): string {
     ob_start();
     ?>
+    <div class="d-inline-flex align-items-center justify-content-end gap-2 mw-100" data-file-manager-row-actions>
     <?php if ($pickerMode && $pickerField !== '' && !$isDirectory): ?>
         <button
-            class="btn btn-sm btn-dark rounded-pill d-inline-flex align-items-center gap-2 me-2"
+            class="btn btn-sm btn-dark rounded-pill d-inline-flex align-items-center gap-2 flex-shrink-0"
             type="button"
             data-file-select
             data-file-select-field="<?= htmlSC($pickerField) ?>"
@@ -94,13 +95,11 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
             <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
         </button>
     <?php endif; ?>
-    <div class="dropdown dropstart d-inline-block" data-file-manager-actions-menu>
+    <div class="dropdown dropstart d-inline-block flex-shrink-0" data-file-manager-actions-menu data-fm-bootstrap-dropstart="FIREBALL_FILE_MANAGER_BOOTSTRAP_DROPSTART_V1">
         <button
             class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
             type="button"
             data-bs-toggle="dropdown"
-            data-bs-display="static"
-            data-bs-boundary="viewport"
             aria-expanded="false"
             aria-label="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
             title="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
@@ -143,13 +142,14 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
             </li>
         </ul>
     </div>
+    </div>
     <?php
 
     return trim((string)ob_get_clean());
 };
 ?>
 
-<div data-file-manager-workspace>
+<div data-file-manager-workspace data-file-manager-picker-mode="<?= $pickerMode ? '1' : '0' ?>">
     <aside data-file-manager-sidebar>
         <div class="p-3 p-xl-4" data-file-manager-sidebar-body>
             <div class="d-flex align-items-center gap-3 mb-4" data-file-manager-sidebar-head>

@@ -185,6 +185,7 @@ $app->router->post('/admin/block-editor/update', [BlockEditorController::class, 
 $app->router->post('/admin/block-editor/delete', [BlockEditorController::class, 'delete'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/block-editor/reorder', [BlockEditorController::class, 'reorder'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/block-editor/preview', [BlockEditorController::class, 'preview'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/block-editor/upload-image', [BlockEditorController::class, 'uploadImage'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/block-editor/order-modal', [BlockEditorController::class, 'orderModal'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories', [AdminController::class, 'categories'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/categories/create', [AdminController::class, 'categoryForm'])->middleware(['auth', 'admin']);

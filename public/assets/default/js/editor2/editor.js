@@ -764,7 +764,28 @@
                         ['left', 'Left'], ['center', 'Center'], ['right', 'Right']
                     ]);
             }
-            if (block.type === 'gallery' || block.type === 'slider') {
+            if (block.type === 'gallery') {
+                // FIREBALL_GALLERY_MULTI_SOURCE_V1
+                return '<div class="d-grid gap-2 mb-3">' +
+                    '<button type="button" class="btn btn-outline-secondary" data-editor-pick-media-path="data.items">' +
+                        '<i class="ci-folder-open me-2"></i>' + escapeAttr(this.label('galleryFromManager', 'Choose from file manager')) +
+                    '</button>' +
+                    '<button type="button" class="btn btn-outline-secondary" data-editor-gallery-upload-local>' +
+                        '<i class="ci-upload me-2"></i>' + escapeAttr(this.label('galleryFromComputer', 'Upload from computer')) +
+                    '</button>' +
+                '</div>' +
+                '<div class="input-group mb-2">' +
+                    '<input type="url" class="form-control" data-editor-gallery-url placeholder="' +
+                        escapeAttr(this.label('galleryUrlPlaceholder', 'https://example.com/image.jpg')) + '">' +
+                    '<button type="button" class="btn btn-outline-secondary" data-editor-gallery-add-url>' +
+                        escapeAttr(this.label('galleryFromUrl', 'Add from URL')) +
+                    '</button>' +
+                '</div>' +
+                '<div class="small text-body-secondary mb-3">' +
+                    escapeAttr(this.label('galleryUrlHint', 'External images are referenced by URL and are not copied to local storage.')) +
+                '</div>';
+            }
+            if (block.type === 'slider') {
                 return '<button type="button" class="btn btn-outline-secondary w-100 mb-3" data-editor-pick-media-path="data.items"><i class="ci-plus me-2"></i>' + escapeAttr(this.label('chooseFile', 'Add media')) + '</button>';
             }
             if (block.type === 'newsletter') {
@@ -1035,6 +1056,20 @@
                 this.removeBlocks(ids);
                 return;
             }
+            const galleryUploadButton = target.closest('[data-editor-gallery-upload-local]');
+            if (galleryUploadButton) {
+                event.preventDefault();
+                this.pickGalleryLocalImages(galleryUploadButton);
+                return;
+            }
+
+            const galleryUrlButton = target.closest('[data-editor-gallery-add-url]');
+            if (galleryUrlButton) {
+                event.preventDefault();
+                this.addGalleryImageFromUrl(galleryUrlButton);
+                return;
+            }
+
             if (target.closest('[data-editor-social-add]')) {
                 const block = this.activeBlock();
                 if (block && block.type === 'social') {
@@ -3678,6 +3713,174 @@
             if (changed) {
                 this.commit('replace', true, true);
                 this.performSearch(0);
+            }
+        }
+
+        addGalleryItems(blockId, urls, reason) {
+            const block = this.state.blocks[this.blockIndex(blockId)];
+            if (!block || block.type !== 'gallery') {
+                return false;
+            }
+
+            const normalized = (Array.isArray(urls) ? urls : [urls])
+                .map(function (url) {
+                    return String(url || '').trim();
+                })
+                .filter(function (url) {
+                    return Boolean(url) && Boolean(sanitizer.safeUrl(url, true));
+                });
+
+            if (!normalized.length) {
+                return false;
+            }
+
+            block.data.items = Array.isArray(block.data.items) ? block.data.items : [];
+            normalized.forEach(function (url) {
+                block.data.items.push({
+                    src: url,
+                    alt: '',
+                    caption: ''
+                });
+            });
+
+            this.activeId = block.id;
+            this.selectedIds = new Set([block.id]);
+            this.commit(reason || 'gallery-media', true, true);
+            return true;
+        }
+
+        addGalleryImageFromUrl(button) {
+            const block = this.activeBlock();
+            if (!block || block.type !== 'gallery') {
+                return;
+            }
+
+            const container = button.closest('[data-editor-inspector-tab-panel]') || this.ui.inspector;
+            const input = container ? container.querySelector('[data-editor-gallery-url]') : null;
+            const rawUrl = String(input ? input.value : '').trim();
+
+            if (!/^https?:\/\//i.test(rawUrl) || !sanitizer.safeUrl(rawUrl, true)) {
+                window.alert(this.label('galleryInvalidUrl', 'Enter a valid http:// or https:// image URL.'));
+                if (input) {
+                    input.focus();
+                }
+                return;
+            }
+
+            try {
+                const parsed = new URL(rawUrl);
+                if (!/^https?:$/.test(parsed.protocol)) {
+                    throw new Error('Invalid scheme');
+                }
+            } catch (error) {
+                window.alert(this.label('galleryInvalidUrl', 'Enter a valid http:// or https:// image URL.'));
+                if (input) {
+                    input.focus();
+                }
+                return;
+            }
+
+            if (this.addGalleryItems(block.id, [rawUrl], 'gallery-url') && input) {
+                input.value = '';
+            }
+        }
+
+        pickGalleryLocalImages(button) {
+            const block = this.activeBlock();
+            if (!block || block.type !== 'gallery') {
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/jpeg,image/png,image/webp,image/gif,image/bmp';
+            input.multiple = true;
+
+            input.addEventListener('change', function () {
+                const files = Array.from(input.files || []);
+                if (files.length) {
+                    this.uploadGalleryLocalImages(block.id, files, button);
+                }
+                input.remove();
+            }.bind(this), { once: true });
+
+            input.style.position = 'fixed';
+            input.style.left = '-9999px';
+            document.body.appendChild(input);
+            input.click();
+        }
+
+        async uploadGalleryLocalImages(blockId, files, button) {
+            const uploadUrl = String(this.config.galleryUploadUrl || '/admin/block-editor/upload-image');
+            const originalDisabled = Boolean(button && button.disabled);
+
+            if (button) {
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+            }
+
+            try {
+                const uploadedUrls = [];
+
+                for (const file of files) {
+                    if (!file || !/^image\//i.test(String(file.type || ''))) {
+                        throw new Error(this.label('galleryUploadFailed', 'Image upload failed.'));
+                    }
+
+                    const formData = new FormData();
+                    const csrfInput = this.form
+                        ? this.form.querySelector('input[name="needCSRFToken"]')
+                        : null;
+                    const csrfMeta = document.querySelector('meta[name="needCSRFToken"]');
+                    const csrfToken = csrfInput
+                        ? String(csrfInput.value || '')
+                        : String(csrfMeta ? csrfMeta.getAttribute('content') || '' : '');
+
+                    if (csrfToken) {
+                        formData.append('needCSRFToken', csrfToken);
+                    }
+
+                    formData.append(
+                        'entity_type',
+                        this.root.getAttribute('data-entity-type') || this.config.entityType || 'post'
+                    );
+                    formData.append('image', file, file.name || 'gallery-image');
+
+                    const response = await window.fetch(uploadUrl, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    });
+
+                    let result = {};
+                    try {
+                        result = await response.json();
+                    } catch (error) {
+                        result = {};
+                    }
+
+                    if (!response.ok || result.status !== 'success' || !result.url) {
+                        throw new Error(
+                            result.message || this.label('galleryUploadFailed', 'Image upload failed.')
+                        );
+                    }
+
+                    uploadedUrls.push(String(result.url));
+                }
+
+                this.addGalleryItems(blockId, uploadedUrls, 'gallery-upload');
+            } catch (error) {
+                window.alert(
+                    String(error && error.message || this.label('galleryUploadFailed', 'Image upload failed.'))
+                );
+            } finally {
+                if (button) {
+                    button.disabled = originalDisabled;
+                    button.removeAttribute('aria-busy');
+                }
             }
         }
 

@@ -214,6 +214,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php if (!empty($requiredAssets['swiper'])): ?>
     <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/swiper/swiper-bundle.min.css') ?>">
     <?php endif; ?>
+    <?php if (!empty($requiredAssets['glightbox'])): ?>
+    <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/glightbox/glightbox.min.css') ?>">
+    <?php endif; ?>
     <?php if (!empty($requiredAssets['player'])): ?>
     <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/plyr/plyr.css') ?>">
     <?php endif; ?>
@@ -437,6 +440,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
 </script>
 <?php if (!empty($requiredAssets['swiper'])): ?>
 <script src="<?= theme_asset_versioned('vendor/swiper/swiper-bundle.min.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['glightbox'])): ?>
+<script src="<?= theme_asset_versioned('vendor/glightbox/glightbox.min.js') ?>"></script>
 <?php endif; ?>
 <script src="<?= theme_asset_versioned('vendor/toastr/toastr.min.js') ?>"></script>
 <?php if (!empty($requiredAssets['player'])): ?>

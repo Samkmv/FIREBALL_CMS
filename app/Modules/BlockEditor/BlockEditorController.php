@@ -45,6 +45,79 @@ final class BlockEditorController extends BaseController
         ]);
     }
 
+    // FIREBALL_GALLERY_MULTI_SOURCE_V1
+    public function uploadImage(): void
+    {
+        $entityType = $this->service->normalizeEntityType(
+            (string)request()->post('entity_type', 'post')
+        );
+
+        $file = new \FBL\File('image');
+
+        if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
+            response()->json([
+                'status' => 'error',
+                'message' => return_translation('editor_gallery_upload_failed'),
+            ], 422);
+        }
+
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+        $extension = strtolower(pathinfo($file->getName(), PATHINFO_EXTENSION));
+        $maxSize = \App\Services\UploadSettings::maxFileSizeBytes();
+
+        if ($file->getSize() <= 0 || $file->getSize() > $maxSize) {
+            response()->json([
+                'status' => 'error',
+                'message' => return_translation('admin_files_size_error'),
+            ], 422);
+        }
+
+        if (!in_array($extension, $allowedExtensions, true)) {
+            response()->json([
+                'status' => 'error',
+                'message' => return_translation('admin_files_type_error'),
+            ], 422);
+        }
+
+        try {
+            (new \App\Services\SafeUploadService())->validate(
+                $file->getTmpName(),
+                $file->getName(),
+                $file->getSize(),
+                $maxSize,
+                $allowedExtensions
+            );
+
+            $directory = $entityType === 'page'
+                ? 'pages/gallery'
+                : 'posts/gallery';
+
+            $url = (new \App\Models\FileManager())->upload($directory, $file);
+
+            if (!is_string($url) || $url === '') {
+                throw new \RuntimeException(
+                    return_translation('editor_gallery_upload_failed')
+                );
+            }
+
+            response()->json([
+                'status' => 'success',
+                'url' => $url,
+            ]);
+        } catch (\RuntimeException $exception) {
+            log_error_details('Block editor gallery upload failed', [
+                'Entity type' => $entityType,
+                'File' => $file->getName(),
+                'Error' => $exception->getMessage(),
+            ], $exception);
+
+            response()->json([
+                'status' => 'error',
+                'message' => return_translation('editor_gallery_upload_failed'),
+            ], 422);
+        }
+    }
+
     public function reorder(): void
     {
         $entityType = $this->service->normalizeEntityType((string)request()->post('entity_type', 'post'));

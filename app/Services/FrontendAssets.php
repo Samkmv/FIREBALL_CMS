@@ -15,6 +15,7 @@ final class FrontendAssets
             'choices' => '/\\bdata-select(?:[\\s=>])|\\bdata-choices(?:[\\s=>])/i',
             'simplebar' => '/\\bdata-simplebar(?:[\\s=>])/i',
             'swiper' => '/\\bswiper(?:[\\s"\x27-])|\\bdata-swiper/i',
+            'glightbox' => '/\\bdata-glightbox(?:[\\s=>])|\\bglightbox(?:[\\s"\\x27-])/i',
             'highlight' => '/<pre\\b|\\blanguage-[a-z0-9]+/i',
             'player' => '/<(?:video|audio)\\b|\\bdata-(?:fire-player|fireplayer|plyr)/i',
         ] as $name => $pattern) {

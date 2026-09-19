@@ -141,127 +141,9 @@ $(function () {
         });
     }
 
-    function positionFloatingRowMenu(toggle, menu) {
-        if (!toggle || !menu) {
-            return;
-        }
-
-        const toggleRect = toggle.getBoundingClientRect();
-        const menuRect = menu.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const gap = viewportWidth < 768 ? 12 : 8;
-
-        menu.style.setProperty('position', 'fixed', 'important');
-        menu.style.setProperty('inset', 'auto', 'important');
-        menu.style.setProperty('margin', '0', 'important');
-        menu.style.setProperty('transform', 'none', 'important');
-        menu.style.setProperty('z-index', '2000', 'important');
-
-        if (viewportWidth < 768) {
-            const availableHeight = Math.max(180, viewportHeight - (gap * 2));
-            const menuWidth = Math.min(Math.max(menuRect.width, 224), viewportWidth - (gap * 2));
-            let left = toggleRect.right - menuWidth;
-            let top = Math.min(toggleRect.top, viewportHeight - gap - Math.min(menuRect.height, availableHeight));
-
-            if (left < gap) {
-                left = gap;
-            }
-
-            if (left + menuWidth > viewportWidth - gap) {
-                left = viewportWidth - gap - menuWidth;
-            }
-
-            if (top < gap) {
-                top = gap;
-            }
-
-            menu.style.setProperty('left', left + 'px', 'important');
-            menu.style.setProperty('right', 'auto', 'important');
-            menu.style.setProperty('top', top + 'px', 'important');
-            menu.style.setProperty('bottom', 'auto', 'important');
-            menu.style.setProperty('width', menuWidth + 'px', 'important');
-            menu.style.setProperty('min-width', '0', 'important');
-            menu.style.setProperty('max-width', (viewportWidth - (gap * 2)) + 'px', 'important');
-            menu.style.setProperty('max-height', availableHeight + 'px', 'important');
-            menu.style.setProperty('overflow-y', 'auto', 'important');
-            return;
-        }
-
-        let left = toggleRect.left - menuRect.width - gap;
-        let top = toggleRect.top;
-
-        if (left < gap) {
-            left = Math.min(viewportWidth - menuRect.width - gap, toggleRect.right + gap);
-        }
-
-        if (left < gap) {
-            left = gap;
-        }
-
-        if (top + menuRect.height > viewportHeight - gap) {
-            top = Math.max(gap, viewportHeight - menuRect.height - gap);
-        }
-
-        menu.style.setProperty('left', left + 'px', 'important');
-        menu.style.setProperty('top', top + 'px', 'important');
-        menu.style.setProperty('right', 'auto', 'important');
-        menu.style.setProperty('bottom', 'auto', 'important');
-        menu.style.width = '';
-        menu.style.minWidth = '';
-        menu.style.maxWidth = '';
-        menu.style.maxHeight = '';
-        menu.style.overflowY = '';
-    }
-
-    function floatRowMenu(dropdown) {
-        const menu = dropdown ? dropdown.querySelector('.dropdown-menu') : null;
-        const toggle = dropdown ? dropdown.querySelector('[data-bs-toggle="dropdown"]') : null;
-
-        if (!menu || !toggle || menu.dataset.fmFloating === '1') {
-            return;
-        }
-
-        menu.__fmOriginalParent = dropdown;
-        dropdown.__fmFloatingMenu = menu;
-        menu.dataset.fmFloating = '1';
-        menu.classList.add('fm-dropdown-floating');
-        document.body.appendChild(menu);
-        positionFloatingRowMenu(toggle, menu);
-        window.requestAnimationFrame(function () {
-            positionFloatingRowMenu(toggle, menu);
-        });
-        window.setTimeout(function () {
-            positionFloatingRowMenu(toggle, menu);
-        }, 0);
-    }
-
-    function restoreRowMenu(dropdown) {
-        const floatingMenu = dropdown ? dropdown.__fmFloatingMenu : null;
-
-        if (!floatingMenu || !floatingMenu.__fmOriginalParent) {
-            return;
-        }
-
-        floatingMenu.__fmOriginalParent.appendChild(floatingMenu);
-        floatingMenu.classList.remove('fm-dropdown-floating');
-        floatingMenu.dataset.fmFloating = '0';
-        floatingMenu.style.position = '';
-        floatingMenu.style.left = '';
-        floatingMenu.style.top = '';
-        floatingMenu.style.right = '';
-        floatingMenu.style.bottom = '';
-        floatingMenu.style.inset = '';
-        floatingMenu.style.margin = '';
-        floatingMenu.style.transform = '';
-        floatingMenu.style.zIndex = '';
-        floatingMenu.style.width = '';
-        floatingMenu.style.minWidth = '';
-        floatingMenu.style.maxWidth = '';
-        floatingMenu.style.maxHeight = '';
-        floatingMenu.style.overflowY = '';
-        dropdown.__fmFloatingMenu = null;
-    }
+    // FIREBALL_FILE_MANAGER_BOOTSTRAP_DROPSTART_V1
+    // Row actions используют штатный Bootstrap .dropstart + Popper.
+    // Меню больше не переносится в document.body и не позиционируется вручную.
 
     function getBrowser() {
         return $('[data-file-manager-browser]');
@@ -1177,18 +1059,38 @@ $(function () {
         }
     });
 
-    $(document).on('shown.bs.dropdown', '[data-file-manager-actions-menu]', function () {
-        floatRowMenu(this);
-    });
-
-    $(document).on('hide.bs.dropdown', '[data-file-manager-actions-menu]', function () {
-        restoreRowMenu(this);
-    });
-
     $(window).on('resize scroll', function () {
         closeFloatingRowMenus();
         refreshSelectionState();
     });
+
+    // FIREBALL_FILE_MANAGER_ROW_OPEN_CLASS_V1
+    // Bootstrap dropdown остаётся обычным dropstart. Для корректного
+    // stacking поднимаем только текущую строку, пока меню открыто.
+    $(document).on('shown.bs.dropdown', '[data-file-manager-actions-menu]', function () {
+        $(this).closest('[data-file-manager-row]').addClass('is-actions-open');
+    });
+
+    $(document).on('hidden.bs.dropdown', '[data-file-manager-actions-menu]', function () {
+        $(this).closest('[data-file-manager-row]').removeClass('is-actions-open');
+    });
+
+    // FIREBALL_FILE_MANAGER_RESULTS_SCROLL_FIX_V1
+    // Основная область файлового менеджера скроллится внутри
+    // [data-file-manager-results], поэтому window scroll здесь не срабатывает.
+    // Закрываем открытый Bootstrap dropstart при прокрутке таблицы, чтобы
+    // меню/кнопка не оставались визуально поверх sticky-заголовка.
+    document.addEventListener('scroll', function (event) {
+        const target = event.target;
+        if (
+            target &&
+            target.nodeType === 1 &&
+            target.matches &&
+            target.matches('[data-file-manager-results]')
+        ) {
+            closeFloatingRowMenus();
+        }
+    }, true);
 
     $(document).on('click', '[data-file-select]', function () {
         const button = $(this);
