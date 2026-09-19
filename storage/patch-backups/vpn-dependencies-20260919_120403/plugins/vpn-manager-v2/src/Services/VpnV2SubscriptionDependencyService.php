@@ -30,17 +30,16 @@ final class VpnV2SubscriptionDependencyService
         ?int $adminId = null
     ): int {
         $this->validateDependency($parentId, 'subscription', $childId);
-        $ownership = $this->ownership($ownership);
         $id = $this->repository()->create(
             $parentId,
             'subscription',
             $childId,
-            $ownership,
+            $this->ownership($ownership),
             (int)$adminId
         );
         $this->recalculateEffectiveStatuses($parentId);
         $this->touch($parentId);
-        $cascade = $this->cascadeItem($parentId, $id, true, null, $adminId);
+        $this->cascadeItem($parentId, $id, true, null, $adminId);
         $parent = $this->requiredSubscription($parentId);
         $this->events()->logEvent(
             'subscription.dependency_attached',
@@ -50,13 +49,8 @@ final class VpnV2SubscriptionDependencyService
             (int)$parent['user_id'],
             $adminId,
             ['item_id' => $id, 'item_type' => 'subscription', 'child_subscription_id' => $childId,
-                'ownership_type' => $ownership,
-                'cascade_status' => (string)($cascade['status'] ?? 'inactive'),
-                'cascade_failed' => (int)($cascade['failed'] ?? 0)]
+                'ownership_type' => $ownership]
         );
-        if ((int)($cascade['failed'] ?? 0) > 0) {
-            throw new \RuntimeException('dependency_partial_sync');
-        }
 
         return $id;
     }
@@ -68,32 +62,16 @@ final class VpnV2SubscriptionDependencyService
         ?int $adminId = null
     ): int {
         $this->validateDependency($parentId, 'connection', $connectionId);
-        $ownership = $this->ownership($ownership);
         $id = $this->repository()->create(
             $parentId,
             'connection',
             $connectionId,
-            $ownership,
+            $this->ownership($ownership),
             (int)$adminId
         );
         $this->recalculateEffectiveStatuses($parentId);
-        if ($ownership === 'exclusive') {
-            // Эксклюзивная связь меняет конфиг исходной подписки:
-            // подключение исчезает из неё и становится доступно через
-            // родительскую подписку.
-            ($this->revisions ?? new VpnSubscriptionRevisionService())
-                ->touchConnection($connectionId);
-        } else {
-            $this->touch($parentId);
-        }
-
-        $cascade = $this->cascadeItem(
-            $parentId,
-            $id,
-            true,
-            null,
-            $adminId
-        );
+        $this->touch($parentId);
+        $this->cascadeItem($parentId, $id, true, null, $adminId);
         $parent = $this->requiredSubscription($parentId);
         $this->events()->logEvent(
             'subscription.dependency_attached',
@@ -102,13 +80,8 @@ final class VpnV2SubscriptionDependencyService
             null,
             (int)$parent['user_id'],
             $adminId,
-            ['item_id' => $id, 'item_type' => 'connection', 'ownership_type' => $ownership,
-                'cascade_status' => (string)($cascade['status'] ?? 'inactive'),
-                'cascade_failed' => (int)($cascade['failed'] ?? 0)]
+            ['item_id' => $id, 'item_type' => 'connection', 'ownership_type' => $ownership]
         );
-        if ((int)($cascade['failed'] ?? 0) > 0) {
-            throw new \RuntimeException('dependency_partial_sync');
-        }
 
         return $id;
     }
@@ -120,17 +93,6 @@ final class VpnV2SubscriptionDependencyService
             return false;
         }
         $this->touch($parentId);
-
-        if ((string)($item['item_type'] ?? '') === 'connection'
-            && (string)($item['ownership_type'] ?? '') === 'exclusive'
-            && (int)($item['connection_id'] ?? 0) > 0) {
-
-            // После detach исходная подписка снова получает
-            // собственное подключение.
-            ($this->revisions ?? new VpnSubscriptionRevisionService())
-                ->touchConnection((int)$item['connection_id']);
-        }
-
         $parent = $this->requiredSubscription($parentId);
         $this->events()->logEvent(
             'subscription.dependency_detached',
@@ -159,34 +121,7 @@ final class VpnV2SubscriptionDependencyService
             return false;
         }
         $this->recalculateEffectiveStatuses($parentId);
-
-        $isExclusiveConnection =
-            (string)($item['item_type'] ?? '') === 'connection'
-            && (string)($item['ownership_type'] ?? '') === 'exclusive'
-            && (int)($item['connection_id'] ?? 0) > 0;
-
-        if ($isExclusiveConnection && $enabled) {
-
-            // При включении связь уже активна.
-            // touchConnection() обновит исходную подписку
-            // и распространит revision на родителя.
-            ($this->revisions ?? new VpnSubscriptionRevisionService())
-                ->touchConnection((int)$item['connection_id']);
-
-        } else {
-
-            $this->touch($parentId);
-
-            if ($isExclusiveConnection) {
-
-                // При выключении связь уже не участвует
-                // в распространении revision.
-                // Исходную подписку обновляем отдельно.
-                ($this->revisions ?? new VpnSubscriptionRevisionService())
-                    ->touchConnection((int)$item['connection_id']);
-            }
-        }
-
+        $this->touch($parentId);
         $cascade = $this->cascadeItem(
             $parentId,
             $itemId,
@@ -206,10 +141,6 @@ final class VpnV2SubscriptionDependencyService
                 'cascade_status' => (string)($cascade['status'] ?? 'inactive'),
                 'cascade_failed' => (int)($cascade['failed'] ?? 0)]
         );
-
-        if ((int)($cascade['failed'] ?? 0) > 0) {
-            throw new \RuntimeException('dependency_partial_sync');
-        }
 
         return true;
     }

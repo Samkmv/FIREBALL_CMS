@@ -269,12 +269,6 @@ final class SubscriptionController
             if ((int)($result['failed'] ?? 0) > 0) {
                 throw new \RuntimeException('dependency_partial_sync');
             }
-
-            if ((int)($result['processed'] ?? 0) === 0) {
-                throw new \RuntimeException(
-                    'dependency_nothing_to_sync'
-                );
-            }
         }, 'vpn_manager_v2_flash_dependency_synced');
     }
 
@@ -538,39 +532,16 @@ final class SubscriptionController
             };
             session()->setFlash('error', \FireballPluginVpnManagerV2::t($key));
         } catch (\Throwable $exception) {
-
-            if ($exception->getMessage() === 'dependency_nothing_to_sync') {
-
-                session()->setFlash(
-                    'info',
-                    \FireballPluginVpnManagerV2::t(
-                        'vpn_manager_v2_flash_no_changes'
-                    )
-                );
-
-            } else {
-
-                log_error_details(
-                    'VPN Manager V2 dependency action failed',
-                    [
-                        'Subscription' => $subscriptionId,
-                        'Error Class' => get_class($exception),
-                    ],
-                    $exception
-                );
-
-                session()->setFlash(
-                    $exception->getMessage() === 'dependency_partial_sync'
-                        ? 'warning'
-                        : 'error',
-
-                    \FireballPluginVpnManagerV2::t(
-                        $exception->getMessage() === 'dependency_partial_sync'
-                            ? 'vpn_manager_v2_flash_dependency_sync_partial'
-                            : 'vpn_manager_v2_error_dependency_generic'
-                    )
-                );
-            }
+            log_error_details('VPN Manager V2 dependency action failed', [
+                'Subscription' => $subscriptionId,
+                'Error Class' => get_class($exception),
+            ], $exception);
+            session()->setFlash(
+                $exception->getMessage() === 'dependency_partial_sync' ? 'warning' : 'error',
+                \FireballPluginVpnManagerV2::t($exception->getMessage() === 'dependency_partial_sync'
+                    ? 'vpn_manager_v2_flash_dependency_sync_partial'
+                    : 'vpn_manager_v2_error_dependency_generic')
+            );
         }
 
         response()->redirect(AdminTableState::asParameter(

@@ -313,7 +313,7 @@ final class SubscriptionItemRepository
         return (bool)db()->query(
             'SELECT id FROM vpn_v2_subscription_items
              WHERE child_subscription_id = ? AND item_type = \'subscription\'
-               AND is_enabled = 1 AND deleted_at IS NULL LIMIT 1',
+               AND deleted_at IS NULL LIMIT 1',
             [$subscriptionId]
         )->getOne();
     }
@@ -323,7 +323,7 @@ final class SubscriptionItemRepository
         $value = db()->query(
             "SELECT parent_subscription_id FROM vpn_v2_subscription_items
              WHERE connection_id = ? AND item_type = 'connection' AND ownership_type = 'exclusive'
-               AND is_enabled = 1 AND deleted_at IS NULL
+               AND deleted_at IS NULL
              ORDER BY id ASC LIMIT 1",
             [$connectionId]
         )->getColumn();

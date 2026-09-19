@@ -79,11 +79,18 @@ if ($autoRenewEnabled) {
                         <span class="subscriptions-checkout-panel__icon d-inline-flex align-items-center justify-content-center rounded-circle"><i class="ci-user"></i></span>
                         <div><div class="small text-body-secondary"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_contact_details')) ?></div><h2 class="h5 mb-0"><?= htmlSC($fullName) ?></h2></div>
                     </div>
-                    <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/profile/subscription-details') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_change_details')) ?></a>
+                    <!-- FIREBALL_SUBSCRIPTIONS_CHECKOUT_MOBILE_EDIT_BUTTON_V1 -->
+                    <a class="btn btn-sm btn-outline-secondary rounded-pill d-none d-md-inline-flex" href="<?= base_href('/profile/subscription-details') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_change_details')) ?></a>
                 </div>
                 <div class="subscriptions-checkout-contact vstack gap-3">
                     <div class="d-flex align-items-start gap-3"><i class="ci-user text-body-secondary mt-1"></i><span><?= htmlSC((string)$profile['email']) ?><br><span class="text-body-secondary"><?= htmlSC((string)$profile['phone']) ?></span></span></div>
                     <?php if ($address !== ''): ?><div class="d-flex align-items-start gap-3"><i class="ci-map-pin text-body-secondary mt-1"></i><span class="text-body-secondary"><?= htmlSC($address) ?></span></div><?php endif; ?>
+                </div>
+
+                <div class="d-md-none mt-4 pt-3 border-top">
+                    <a class="btn btn-outline-secondary rounded-pill w-100 d-inline-flex align-items-center justify-content-center" href="<?= base_href('/profile/subscription-details') ?>">
+                        <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_change_details')) ?>
+                    </a>
                 </div>
             </article>
 
