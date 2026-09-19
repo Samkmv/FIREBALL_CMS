@@ -740,8 +740,6 @@ return [
     'vpn_manager_v2_add_child_subscription' => 'Abonnement hinzufügen',
     'vpn_manager_v2_add_child_connection' => 'Verbindung hinzufügen',
     'vpn_manager_v2_select_item' => 'Element auswählen',
-    'vpn_manager_v2_dependency_no_subscription_candidates' => 'Keine weiteren Abonnements dieses Benutzers können hinzugefügt werden.',
-    'vpn_manager_v2_dependency_no_connection_candidates' => 'Keine Verbindungen aus anderen Abonnements dieses Benutzers können hinzugefügt werden.',
     'vpn_manager_v2_add' => 'Hinzufügen',
     'vpn_manager_v2_ownership_type' => 'Eigentumstyp',
     'vpn_manager_v2_ownership_shared' => 'Gemeinsames Element',

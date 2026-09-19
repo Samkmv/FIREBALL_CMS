@@ -740,8 +740,6 @@ return [
     'vpn_manager_v2_add_child_subscription' => 'Добавить подписку',
     'vpn_manager_v2_add_child_connection' => 'Добавить подключение',
     'vpn_manager_v2_select_item' => 'Выберите элемент',
-    'vpn_manager_v2_dependency_no_subscription_candidates' => 'Нет других подписок этого пользователя, доступных для добавления.',
-    'vpn_manager_v2_dependency_no_connection_candidates' => 'Нет подключений из других подписок этого пользователя, доступных для добавления.',
     'vpn_manager_v2_add' => 'Добавить',
     'vpn_manager_v2_ownership_type' => 'Тип владения',
     'vpn_manager_v2_ownership_shared' => 'Общий элемент',

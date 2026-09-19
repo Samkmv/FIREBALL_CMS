@@ -740,8 +740,6 @@ return [
     'vpn_manager_v2_add_child_subscription' => 'Add subscription',
     'vpn_manager_v2_add_child_connection' => 'Add connection',
     'vpn_manager_v2_select_item' => 'Select an item',
-    'vpn_manager_v2_dependency_no_subscription_candidates' => 'No other subscriptions for this user are available to add.',
-    'vpn_manager_v2_dependency_no_connection_candidates' => 'No connections from other subscriptions of this user are available to add.',
     'vpn_manager_v2_add' => 'Add',
     'vpn_manager_v2_ownership_type' => 'Ownership type',
     'vpn_manager_v2_ownership_shared' => 'Shared item',

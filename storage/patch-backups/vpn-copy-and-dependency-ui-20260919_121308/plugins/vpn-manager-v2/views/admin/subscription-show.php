@@ -222,26 +222,7 @@ foreach ($nodes as $node) {
         <div class="row g-4 align-items-start">
             <div class="col-lg-7">
                 <label class="form-label" for="vpnV2SubscriptionUrl"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_public_url')) ?></label>
-                <div class="d-flex flex-column flex-md-row align-items-stretch gap-2">
-                    <input class="form-control font-monospace flex-grow-1"
-                           id="vpnV2SubscriptionUrl"
-                           type="url"
-                           readonly
-                           value="<?= htmlSC($subscriptionUrl) ?>">
-                    <div class="d-flex flex-column align-items-stretch">
-                        <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 text-nowrap"
-                                type="button"
-                                data-vpn-v2-copy-value="<?= htmlSC($subscriptionUrl) ?>"
-                                data-vpn-v2-copy-done="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copied')) ?>"
-                                data-vpn-v2-copy-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copy_failed')) ?>">
-                            <i class="ci-copy" aria-hidden="true"></i>
-                            <span data-vpn-v2-copy-label><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_copy_link')) ?></span>
-                        </button>
-                        <div class="small text-body-secondary mt-1 text-md-end"
-                             data-vpn-v2-copy-status
-                             aria-live="polite"></div>
-                    </div>
-                </div>
+                <input class="form-control font-monospace" id="vpnV2SubscriptionUrl" type="url" readonly value="<?= htmlSC($subscriptionUrl) ?>">
                 <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_url_help')) ?></div>
             </div>
             <div class="col-lg-5 text-lg-center">
@@ -282,13 +263,8 @@ foreach ($nodes as $node) {
                     <label class="form-label fw-semibold" for="vpnV2ChildSubscription">
                         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_child_subscription')) ?>
                     </label>
-                    <select class="form-select mb-2" id="vpnV2ChildSubscription" name="child_subscription_id" required
-                            <?= $dependencySubscriptionCandidates === [] ? 'disabled' : '' ?>>
-                        <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t(
-                            $dependencySubscriptionCandidates === []
-                                ? 'vpn_manager_v2_dependency_no_subscription_candidates'
-                                : 'vpn_manager_v2_select_item'
-                        )) ?></option>
+                    <select class="form-select mb-2" id="vpnV2ChildSubscription" name="child_subscription_id" required>
+                        <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_select_item')) ?></option>
                         <?php foreach ($dependencySubscriptionCandidates as $candidate): ?>
                             <option value="<?= (int)$candidate['id'] ?>">
                                 #<?= (int)$candidate['id'] ?> · <?= htmlSC((string)$candidate['plan_name']) ?> · <?= htmlSC(ProvisioningStatus::label((string)$candidate['status'])) ?>
@@ -314,13 +290,8 @@ foreach ($nodes as $node) {
                     <label class="form-label fw-semibold" for="vpnV2ChildConnection">
                         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_child_connection')) ?>
                     </label>
-                    <select class="form-select mb-2" id="vpnV2ChildConnection" name="connection_id" required
-                            <?= $dependencyConnectionCandidates === [] ? 'disabled' : '' ?>>
-                        <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t(
-                            $dependencyConnectionCandidates === []
-                                ? 'vpn_manager_v2_dependency_no_connection_candidates'
-                                : 'vpn_manager_v2_select_item'
-                        )) ?></option>
+                    <select class="form-select mb-2" id="vpnV2ChildConnection" name="connection_id" required>
+                        <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_select_item')) ?></option>
                         <?php foreach ($dependencyConnectionCandidates as $candidate): ?>
                             <option value="<?= (int)$candidate['id'] ?>">
                                 #<?= (int)$candidate['id'] ?> · <?= htmlSC((string)$candidate['server_name']) ?> → <?= htmlSC((string)$candidate['inbound_name']) ?> · <?= htmlSC(strtoupper((string)$candidate['protocol'])) ?>

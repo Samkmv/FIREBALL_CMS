@@ -740,8 +740,6 @@ return [
     'vpn_manager_v2_add_child_subscription' => '添加订阅',
     'vpn_manager_v2_add_child_connection' => '添加连接',
     'vpn_manager_v2_select_item' => '选择项目',
-    'vpn_manager_v2_dependency_no_subscription_candidates' => '没有可添加的该用户其他订阅。',
-    'vpn_manager_v2_dependency_no_connection_candidates' => '没有可添加的该用户其他订阅中的连接。',
     'vpn_manager_v2_add' => '添加',
     'vpn_manager_v2_ownership_type' => '所有权类型',
     'vpn_manager_v2_ownership_shared' => '共享项目',
