@@ -52,7 +52,7 @@
             min-width: 0;
             height: 100%;
             min-height: 0;
-            transition: opacity .18s ease, transform .18s ease;
+            transition: opacity .18s ease;
         }
 
         [data-file-manager-frame] {
@@ -62,7 +62,6 @@
 
         [data-file-manager-browser].is-loading {
             opacity: .62;
-            transform: translateY(2px);
             pointer-events: none;
         }
 
@@ -119,6 +118,7 @@
             max-width: 100%;
             height: 100%;
             min-height: 0;
+            min-width: 0;
             flex-direction: column;
             background: var(--fm-panel);
             overflow: hidden;
@@ -184,10 +184,46 @@
         }
 
         [data-file-manager-results] {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
             min-height: 0;
             flex: 1 1 auto;
+            overflow: hidden;
+        }
+
+        [data-file-manager-table-panel] {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 0;
+            min-height: 0;
+            min-width: 0;
+            border: 1px solid var(--fm-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        [data-file-manager-scroll] {
+            flex: 1 1 0;
+            min-height: 0;
+            min-width: 0;
             overflow: auto;
+            overscroll-behavior: contain;
             scrollbar-width: thin;
+            scrollbar-gutter: stable;
+        }
+
+        [data-file-manager-table-panel] > .admin-table-footer {
+            flex: 0 0 auto;
+            padding: .75rem 1rem;
+            border-top: 1px solid var(--fm-border);
+            background: var(--fm-panel);
+        }
+
+        [data-file-manager-table-panel] .admin-pagination-wrap {
+            flex: 0 1 auto;
+            width: auto;
+            padding: 0;
         }
 
         [data-file-manager-table] tbody tr {
@@ -223,11 +259,7 @@
             vertical-align: middle;
         }
 
-        /* FIREBALL_FILE_MANAGER_STICKY_HEADER_FIX_V1
-         * Safari надёжнее работает со sticky на отдельных th, а не на thead.
-         * Заголовок получает собственный stacking layer и всегда остаётся
-         * поверх строк и кнопок действий при внутреннем скролле.
-         */
+        /* The list has one scroll owner; sticky cells stay in that viewport. */
         [data-file-manager-table] thead {
             position: static !important;
             z-index: auto !important;
@@ -235,7 +267,7 @@
 
         [data-file-manager-table] thead th {
             position: sticky !important;
-            z-index: 40 !important;
+            z-index: 3 !important;
             top: 0 !important;
             background: var(--fb-color-surface-secondary) !important;
             background-clip: padding-box;
@@ -244,9 +276,11 @@
 
         [data-file-manager-table] {
             width: 100%;
-            min-width: 100% !important;
+            min-width: 50rem !important;
             max-width: 100%;
             table-layout: fixed !important;
+            border-collapse: separate;
+            border-spacing: 0;
         }
 
         [data-file-manager-table] col:nth-child(1) {
@@ -311,6 +345,10 @@
             width: 10.5rem;
         }
 
+        [data-file-manager-workspace][data-file-manager-picker-mode="1"] [data-file-manager-table] {
+            min-width: 54rem !important;
+        }
+
         [data-file-manager-workspace][data-file-manager-picker-mode="1"] [data-file-manager-table] th:last-child,
         [data-file-manager-workspace][data-file-manager-picker-mode="1"] [data-file-manager-table] td:last-child {
             width: 10.5rem !important;
@@ -363,36 +401,24 @@
             min-width: 0;
             overflow: visible !important;
             position: relative;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
         }
 
         [data-file-manager-actions-menu] {
             position: relative;
         }
 
-        /* FIREBALL_FILE_MANAGER_DROPDOWN_STACK_FIX_V2
-         * Не создаём stacking context у каждой td/tr.
-         * Поднимаем только активную строку, когда Bootstrap dropstart открыт.
-         */
-        [data-file-manager-table] tbody tr {
-            position: relative;
-            z-index: auto;
-        }
-
-        [data-file-manager-table] tbody tr.is-actions-open {
-            z-index: 25;
-        }
-
-        [data-file-manager-table] tbody tr.is-actions-open > td {
-            position: relative;
-            z-index: 25;
-        }
-
-        [data-file-manager-table] tbody tr.is-actions-open [data-file-manager-actions-menu] {
-            z-index: 26;
-        }
-
-        [data-file-manager-table] tbody tr.is-actions-open .dropdown-menu {
-            z-index: 1060 !important;
+        .fm-row-menu-floating {
+            position: fixed !important;
+            inset: auto !important;
+            transform: none !important;
+            margin: 0 !important;
+            z-index: 1045 !important;
+            max-width: calc(100vw - 24px);
+            max-height: calc(100dvh - 24px);
+            overflow-y: auto;
         }
 
         [data-file-manager-actions-menu] > .btn {
@@ -415,20 +441,6 @@
             width: auto;
             min-width: 16rem;
             flex: 1 1 22rem !important;
-        }
-
-        [data-file-manager-feedback-wrap]:empty {
-            display: none;
-        }
-
-        [data-file-manager-feedback-wrap]:not(:empty) {
-            position: absolute;
-            z-index: 1040;
-            top: .5rem;
-            left: 50%;
-            width: min(640px, calc(100% - 2rem));
-            padding: 0 !important;
-            transform: translateX(-50%);
         }
 
         [data-file-manager-delete-selected].d-none {
@@ -512,9 +524,11 @@
         }
 
         [data-file-manager-upload-drop] {
+            position: relative;
             display: block;
-            min-height: 124px;
-            padding: 1.25rem;
+            cursor: pointer;
+            min-height: 200px;
+            padding: 1.75rem;
             border: 1px dashed var(--fb-color-border-strong);
             border-radius: 16px;
             background: color-mix(in srgb, var(--fb-color-surface-secondary) 70%, transparent);
@@ -525,6 +539,7 @@
 
         [data-file-manager-upload-drop]:hover,
         [data-file-manager-upload-drop]:focus-visible,
+        [data-file-manager-upload-drop]:focus-within,
         [data-file-manager-upload-drop].is-dragover {
             border-color: var(--fm-accent);
             background: var(--fm-accent-soft);
@@ -539,6 +554,19 @@
             height: 2.5rem;
             background: var(--fm-accent-soft);
             color: var(--fm-accent);
+        }
+
+        [data-file-manager-upload-selection] {
+            overflow-wrap: anywhere;
+            white-space: pre-line;
+            max-height: 8rem;
+            overflow-y: auto;
+        }
+
+        [data-file-manager-upload-form] {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         [data-file-manager-view][aria-pressed="true"] {
@@ -566,6 +594,23 @@
         }
 
         @media (min-width: 768px) {
+            [data-file-manager-shell] [data-file-manager-table] tbody td:last-child {
+                position: sticky;
+                right: 0;
+                z-index: 1;
+                background: var(--fm-panel);
+                box-shadow: -1px 0 var(--fm-border);
+            }
+
+            [data-file-manager-shell] [data-file-manager-table] thead th:last-child {
+                right: 0;
+                z-index: 4 !important;
+            }
+
+            [data-file-manager-page][data-fm-view-mode="grid"] [data-file-manager-scroll] {
+                padding: 1rem;
+            }
+
             [data-file-manager-page][data-fm-view-mode="grid"] [data-file-manager-table-wrap] {
                 display: none !important;
             }
@@ -618,7 +663,7 @@
         @media (max-width: 1199.98px) {
             [data-file-manager-workspace] {
                 grid-template-columns: 1fr;
-                height: auto;
+                grid-template-rows: auto minmax(0, 1fr);
             }
 
             [data-file-manager-sidebar] {
@@ -630,7 +675,8 @@
             }
 
             [data-file-manager-sidebar-body] {
-                overflow: visible;
+                max-height: 12rem;
+                overflow: auto;
             }
 
             [data-file-manager-quick-links],
@@ -652,6 +698,24 @@
 
             [data-file-manager-sidebar-footer] {
                 display: none;
+            }
+        }
+
+        @media (max-width: 991.98px) {
+            [data-file-manager-shell],
+            [data-file-manager-browser],
+            [data-file-manager-workspace],
+            [data-file-manager-content] {
+                height: auto;
+            }
+
+            [data-file-manager-scroll] {
+                flex-basis: auto;
+                max-height: 65dvh;
+            }
+
+            [data-file-manager-table-panel] {
+                flex-basis: auto;
             }
         }
 
@@ -789,13 +853,6 @@
                 font-size: .74rem;
             }
 
-            [data-file-manager-feedback-wrap] {
-                position: static !important;
-                width: auto !important;
-                padding: 1rem 1rem 0 !important;
-                transform: none !important;
-            }
-
             [data-file-manager-sidebar] {
                 display: block;
             }
@@ -812,6 +869,12 @@
 
             [data-file-manager-results] {
                 overflow: visible;
+            }
+
+            [data-file-manager-scroll] {
+                max-height: none;
+                overflow: visible;
+                padding: .75rem;
             }
 
             [data-file-manager-delete-selected] {

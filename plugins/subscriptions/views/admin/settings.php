@@ -70,27 +70,46 @@
             <form
                 method="post"
                 action="<?= htmlSC(base_href('/admin/subscriptions/address-catalog/import')) ?>"
-                enctype="multipart/form-data"
                 class="row g-3 align-items-end"
+                data-address-import
+                data-batch-url="<?= htmlSC(base_href('/admin/subscriptions/address-catalog/batch')) ?>"
+                data-request-limit="<?= (int)($address_import_limit ?? 262144) ?>"
             >
                 <?= get_csrf_field() ?>
                 <div class="col-lg-7">
                     <label class="form-label">CSV-файл справочника</label>
-                    <input class="form-control" type="file" name="address_catalog" accept=".csv,.txt,.tsv,text/csv,text/plain" required>
+                    <?php // No name: the file must never become part of a native form POST if the loader fails. ?>
+                    <input class="form-control" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" required disabled>
                     <div class="form-text">
                         Колонки: region, city, street, house, postal_code.
                         Обязательны region и city.
+                        Большой CSV загружается небольшими порциями. Кодировка — UTF-8.
                     </div>
                 </div>
                 <div class="col-lg-3">
                     <label class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="replace_catalog" value="1">
+                        <input class="form-check-input" type="checkbox" name="replace_catalog" value="1" disabled>
                         <span class="form-check-label">Заменить текущий справочник</span>
                     </label>
                 </div>
                 <div class="col-lg-2">
-                    <button class="btn btn-dark w-100" type="submit">Импортировать</button>
+                    <button class="btn btn-dark w-100" type="submit" disabled>Импортировать</button>
                 </div>
+                <div class="col-12" data-import-unavailable role="status">
+                    <div class="alert alert-warning mb-0">Загрузчик CSV ещё не готов. Если кнопка «Импортировать» не становится доступной, обновите страницу и проверьте, что JavaScript включён.</div>
+                </div>
+                <div class="col-12" data-import-progress hidden>
+                    <div class="progress mb-2" role="progressbar" aria-label="Импорт адресов" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <p class="small mb-2" data-import-status role="status" aria-live="polite"></p>
+                    <div class="alert alert-danger mb-2" data-import-error role="alert" hidden></div>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-import-resume hidden>Продолжить импорт</button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-import-pause hidden>Приостановить</button>
+                    <button class="btn btn-outline-danger btn-sm" type="button" data-import-cancel hidden>Отменить импорт</button>
+                </div>
+                <div class="col-12"><p class="form-text mb-0">Не закрывайте страницу до завершения. При замене старый справочник доступен до окончания импорта; при добавлении готовые порции сохраняются сразу.</p></div>
+                <noscript><div class="col-12 alert alert-warning">Для импорта справочника включите JavaScript: файл загружается небольшими порциями, а не целиком.</div></noscript>
             </form>
 
             <?php if ((int)($addressStats['rows'] ?? 0) > 0): ?>
@@ -107,4 +126,5 @@
             <?php endif; ?>
         </div>
     </div>
+    <script src="<?= htmlSC(base_href('/plugins/subscriptions/assets/address-catalog-import.js?v=' . filemtime(__DIR__ . '/../../assets/address-catalog-import.js'))) ?>" defer></script>
 <?php require __DIR__ . '/shell-close.php'; ?>

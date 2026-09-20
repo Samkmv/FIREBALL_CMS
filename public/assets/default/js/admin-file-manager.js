@@ -181,9 +181,17 @@ $(function () {
         });
     }
 
-    // FIREBALL_FILE_MANAGER_BOOTSTRAP_DROPSTART_V1
-    // Row actions используют штатный Bootstrap .dropstart + Popper.
-    // Меню больше не переносится в document.body и не позиционируется вручную.
+    const floatingRowMenus = new Map();
+
+    function placeRowMenu(state) {
+        const rect = state.toggle.getBoundingClientRect();
+        const menu = state.menu;
+        const edge = 12;
+        const left = Math.max(edge, Math.min(rect.left - menu.offsetWidth - 6, window.innerWidth - menu.offsetWidth - edge));
+        const top = Math.max(edge, Math.min(rect.top, window.innerHeight - menu.offsetHeight - edge));
+        menu.style.setProperty('left', left + 'px', 'important');
+        menu.style.setProperty('top', top + 'px', 'important');
+    }
 
     function getBrowser() {
         return $('[data-file-manager-browser]');
@@ -205,20 +213,12 @@ $(function () {
     }
 
     function renderFeedback(status, message) {
-        const wrap = $('[data-file-manager-feedback-wrap]').first();
-        if (!wrap.length) {
-            return;
-        }
-
         if (!message) {
-            wrap.empty();
             return;
         }
 
-        const variant = status === 'success' ? 'success' : 'danger';
-        wrap.html(
-            '<div class="alert alert-' + variant + ' border-0 rounded-4 mb-0">' + $('<div>').text(String(message)).html() + '</div>'
-        );
+        const variant = ['success', 'warning', 'info'].includes(status) ? status : 'error';
+        window.toastr?.[variant]?.(String(message));
     }
 
     function replaceBrowser(html) {
@@ -230,6 +230,15 @@ $(function () {
         if (window.FireballAdminTables?.prepareResponsiveTables) {
             window.FireballAdminTables.prepareResponsiveTables(getBrowser()[0] || document);
         }
+    }
+
+    function refreshUploadSelection(input) {
+        const form = $(input).closest('[data-file-manager-upload-form]');
+        const files = Array.from(input.files || []);
+        form.find('[data-file-manager-upload-selection]')
+            .text(files.map(function (file) { return file.name; }).join('\n'))
+            .prop('hidden', files.length === 0);
+        form.find('[data-file-manager-upload-submit]').prop('disabled', files.length === 0);
     }
 
     function updateBrowserUrl(url, replace) {
@@ -814,7 +823,12 @@ $(function () {
     });
 
     page.on('click', '[data-file-manager-view]', function () {
+        closeFloatingRowMenus();
         applyViewMode(String($(this).data('fileManagerView') || 'list'), true);
+    });
+
+    page.on('change', '[data-file-manager-upload-input]', function () {
+        refreshUploadSelection(this);
     });
 
     page.on('dragenter dragover', '[data-file-manager-upload-drop]', function (event) {
@@ -861,9 +875,7 @@ $(function () {
             return;
         }
 
-        submitAsyncForm(form, function () {
-            closeTransientModals();
-        });
+        refreshUploadSelection(input);
     });
 
     page.on('change', '[data-file-manager-toggle-all]', function () {
@@ -1071,12 +1083,14 @@ $(function () {
     $(document).on('click', '[data-file-manager-row-action]', function () {
         const button = $(this);
         const action = String(button.data('fileManagerRowAction') || '');
-        const row = button.closest('[data-file-manager-row]');
+        const menu = button.closest('.dropdown-menu')[0];
+        const row = menu?.__fmRow ? $(menu.__fmRow) : button.closest('[data-file-manager-row]');
         const messages = currentMessages();
 
-        if (!row.length) {
+        if (!row.length || button.hasClass('disabled') || button.attr('aria-disabled') === 'true') {
             return;
         }
+        closeFloatingRowMenus();
 
         if (action === 'rename') {
             openRenameModal(row);
@@ -1147,29 +1161,57 @@ $(function () {
         refreshSelectionState();
     });
 
-    // FIREBALL_FILE_MANAGER_ROW_OPEN_CLASS_V1
-    // Bootstrap dropdown остаётся обычным dropstart. Для корректного
-    // stacking поднимаем только текущую строку, пока меню открыто.
+    // Keep menus outside the scrolling table without changing row geometry.
     $(document).on('shown.bs.dropdown', '[data-file-manager-actions-menu]', function () {
-        $(this).closest('[data-file-manager-row]').addClass('is-actions-open');
+        const menu = this.querySelector('.dropdown-menu');
+        const toggle = this.querySelector('[data-bs-toggle="dropdown"]');
+        if (!menu || !toggle || floatingRowMenus.has(this)) return;
+        const state = { menu: menu, toggle: toggle, parent: this };
+        menu.__fmRow = $(this).closest('[data-file-manager-row]')[0];
+        menu.__fmToggle = toggle;
+        floatingRowMenus.set(this, state);
+        document.body.appendChild(menu);
+        menu.classList.add('fm-row-menu-floating');
+        placeRowMenu(state);
     });
 
     $(document).on('hidden.bs.dropdown', '[data-file-manager-actions-menu]', function () {
-        $(this).closest('[data-file-manager-row]').removeClass('is-actions-open');
+        const state = floatingRowMenus.get(this);
+        if (!state) return;
+        state.menu.classList.remove('fm-row-menu-floating');
+        state.menu.removeAttribute('style');
+        state.parent.appendChild(state.menu);
+        delete state.menu.__fmRow;
+        delete state.menu.__fmToggle;
+        floatingRowMenus.delete(this);
     });
 
-    // FIREBALL_FILE_MANAGER_RESULTS_SCROLL_FIX_V1
-    // Основная область файлового менеджера скроллится внутри
-    // [data-file-manager-results], поэтому window scroll здесь не срабатывает.
-    // Закрываем открытый Bootstrap dropstart при прокрутке таблицы, чтобы
-    // меню/кнопка не оставались визуально поверх sticky-заголовка.
+    // A portalled menu still belongs to its original toggle for keyboard use.
+    document.addEventListener('keydown', function (event) {
+        const menu = event.target.closest?.('.fm-row-menu-floating');
+        if (!menu || !['Escape', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const toggle = menu.__fmToggle;
+        if (event.key === 'Escape') {
+            bootstrapApi.Dropdown.getInstance(toggle)?.hide();
+            toggle.focus({ preventScroll: true });
+            return;
+        }
+        const items = Array.from(menu.querySelectorAll('.dropdown-item:not(.disabled):not(:disabled)'));
+        const current = items.indexOf(document.activeElement);
+        const next = current < 0 ? (event.key === 'ArrowDown' ? 0 : items.length - 1)
+            : Math.max(0, Math.min(items.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1)));
+        items[next]?.focus({ preventScroll: true });
+    }, true);
+
     document.addEventListener('scroll', function (event) {
         const target = event.target;
         if (
             target &&
             target.nodeType === 1 &&
             target.matches &&
-            target.matches('[data-file-manager-results]')
+            target.matches('[data-file-manager-scroll], [data-file-manager-results]')
         ) {
             closeFloatingRowMenus();
         }

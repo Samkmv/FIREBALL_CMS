@@ -8,6 +8,7 @@ use Fireball\Subscriptions\Repositories\ContentRuleRepository;
 use Fireball\Subscriptions\Repositories\AddressExclusionRepository;
 use Fireball\Subscriptions\Services\SettingsService;
 use Fireball\Subscriptions\Services\AddressSuggestionService;
+use Fireball\Subscriptions\Services\AddressCatalogImportService;
 use Fireball\Subscriptions\Services\PaymentService;
 use Fireball\Subscriptions\Services\SubscriptionService;
 use Fireball\Subscriptions\Support\SubscriptionStatus;
@@ -483,6 +484,7 @@ final class AdminController
             'settings' => $settings->current(),
             'offer_pages' => (new \Fireball\Subscriptions\Services\PublicOfferService())->pages(),
             'address_catalog_stats' => (new AddressSuggestionService())->stats(),
+            'address_import_limit' => AddressCatalogImportService::requestLimit(),
         ]);
     }
 
@@ -555,6 +557,21 @@ final class AdminController
         }
 
         response()->redirect(base_href('/admin/subscriptions/settings'));
+    }
+
+    public function addressCatalogBatch(): never
+    {
+        if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > AddressCatalogImportService::requestLimit()) {
+            response()->json(['ok' => false, 'message' => 'Порция файла превышает лимит загрузки. Обновите страницу настроек.'], 413);
+        }
+        try {
+            response()->json((new AddressCatalogImportService())->handle(request()->getData()));
+        } catch (\InvalidArgumentException $exception) {
+            response()->json(['ok' => false, 'message' => $exception->getMessage()], 422);
+        } catch (\Throwable $exception) {
+            log_error_details('Address catalog batch import failed', [], $exception);
+            response()->json(['ok' => false, 'message' => 'Не удалось обработать порцию справочника. Повторите попытку; подробности записаны в журнал сервера.'], 500);
+        }
     }
 
 

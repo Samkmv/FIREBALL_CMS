@@ -3,6 +3,10 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_address_choose' => 'Auswählen oder eingeben',
+    'subscriptions_address_search' => 'Im lokalen Verzeichnis suchen…',
+    'subscriptions_address_minimum' => 'Mindestens :count Zeichen eingeben. Fehlende Adressen können manuell eingegeben werden.',
+    'subscriptions_address_manual' => 'Eingegebenen Wert verwenden: :value',
     'subscriptions_menu' => 'Abonnements',
     'subscriptions_admin_title' => 'Abonnements',
     'subscriptions_admin_subtitle' => 'Tarife, Abonnenten, Zahlungen und Zugriffsregeln',

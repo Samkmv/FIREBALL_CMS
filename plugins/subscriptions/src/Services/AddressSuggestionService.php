@@ -7,6 +7,7 @@ use Fireball\Subscriptions\Support\RussianRegionCatalog;
 /** FIREBALL_SUBSCRIPTIONS_LOCAL_ADDRESS_V1 */
 final class AddressSuggestionService
 {
+    public const TABLE = 'subscription_address_catalog';
     private static bool $schemaReady = false;
 
     public function configured(): bool
@@ -42,6 +43,87 @@ final class AddressSuggestionService
     {
         $this->ensureSchema();
         db()->query('DELETE FROM subscription_address_catalog');
+    }
+
+    /** Shared CSV interpretation for ordinary uploads and bounded browser batches. */
+    public function importColumns(array $header): array
+    {
+        $columns = $this->mapHeader($header);
+        if (!isset($columns['region'], $columns['city'])) {
+            throw new \InvalidArgumentException('В CSV обязательны колонки region и city. Файлы indexes.csv и streets.csv сначала нужно объединить по индексу.');
+        }
+        return $columns;
+    }
+
+    public function prepareImportTable(string $table): void
+    {
+        $this->assertImportTable($table);
+        $this->ensureSchema();
+        if ($table !== self::TABLE) db()->query("CREATE TABLE `{$table}` LIKE " . self::TABLE);
+    }
+
+    public function discardImportTable(string $table): void
+    {
+        $this->assertImportTable($table);
+        if ($table !== self::TABLE) db()->query("DROP TABLE IF EXISTS `{$table}`");
+    }
+
+    public function publishImportTable(string $table): void
+    {
+        $this->assertImportTable($table);
+        if ($table === self::TABLE) return;
+        $backup = str_replace('subscription_address_import_', 'subscription_address_backup_', $table);
+        // One atomic rename: readers see either the old complete directory or the new one.
+        db()->query('RENAME TABLE ' . self::TABLE . " TO `{$backup}`, `{$table}` TO " . self::TABLE);
+        try {
+            db()->query("DROP TABLE `{$backup}`");
+        } catch (\Throwable $exception) {
+            log_error_details('Address directory replaced; old backup cleanup failed', ['table' => $backup], $exception);
+        }
+    }
+
+    public function importRecords(array $records, array $columns, string $table = self::TABLE): array
+    {
+        $this->assertImportTable($table);
+        $processed = $skipped = 0;
+        $batch = [];
+        $regions = new RussianRegionCatalog();
+        $resolved = [];
+        foreach ($records as $record) {
+            if (!is_array($record)) throw new \InvalidArgumentException('Некорректная строка CSV.');
+            $values = [];
+            foreach (['region' => 190, 'city' => 190, 'street' => 255, 'house' => 80, 'postal_code' => 20] as $key => $limit) {
+                $value = isset($columns[$key]) ? ($record[$columns[$key]] ?? '') : '';
+                if (!is_string($value) || !mb_check_encoding($value, 'UTF-8') || str_contains($value, "\0")) {
+                    throw new \InvalidArgumentException('CSV должен содержать текст в кодировке UTF-8.');
+                }
+                $value = trim($value);
+                if (mb_strlen($value, 'UTF-8') > $limit) {
+                    $skipped++;
+                    continue 2;
+                }
+                $values[$key] = $value;
+            }
+            if ($values['region'] === '' || $values['city'] === '') { $skipped++; continue; }
+            $raw = $values['region'];
+            $values['region'] = $resolved[$raw] ??= $regions->resolve($raw) ?? $raw;
+            $batch[] = [...array_values($values),
+                $this->normalize($values['region']), $this->normalize($values['city']),
+                $this->normalize($values['street']), $this->normalize($values['house']), date('Y-m-d H:i:s')];
+            if (count($batch) >= 300) {
+                $processed += $this->insertBatch($batch, $table);
+                $batch = [];
+            }
+        }
+        if ($batch) $processed += $this->insertBatch($batch, $table);
+        return ['processed' => $processed, 'skipped' => $skipped];
+    }
+
+    private function assertImportTable(string $table): void
+    {
+        if ($table !== self::TABLE && preg_match('/\Asubscription_address_import_[a-f0-9]{32}\z/D', $table) !== 1) {
+            throw new \InvalidArgumentException('Некорректный идентификатор импорта.');
+        }
     }
 
     public function importUploaded(array $file, bool $replace = false): array
@@ -85,12 +167,7 @@ final class AddressSuggestionService
                 throw new \InvalidArgumentException('Файл справочника пуст.');
             }
 
-            $columns = $this->mapHeader($header);
-            if (!isset($columns['region'], $columns['city'])) {
-                throw new \InvalidArgumentException(
-                    'В CSV обязательны колонки region и city.'
-                );
-            }
+            $columns = $this->importColumns($header);
 
             if ($replace) {
                 db()->query('DELETE FROM subscription_address_catalog');
@@ -249,17 +326,24 @@ final class AddressSuggestionService
                 [$region, $region, $prefix]
             )->get() ?: [];
         } elseif ($type === 'street') {
+            // Postal datasets keep the type in the name ("ул. Октябрьская"). Search
+            // both with and without that prefix; retain the actual structured name.
+            $prefixes = array_map(static fn(string $type): string => $type . $prefix,
+                ['', 'ул ', 'улица ', 'пер ', 'переулок ', 'пр кт ', 'пр т ', 'проспект ',
+                    'б р ', 'бульвар ', 'ш ', 'шоссе ', 'пл ', 'площадь ', 'наб ', 'набережная ',
+                    'проезд ', 'тер ', 'снт ', 'гск ', 'мкр ', 'линия ', 'кв л ', 'аллея ', 'туп ']);
+            $streetSearch = implode(' OR ', array_fill(0, count($prefixes), 'normalized_street LIKE ?'));
             $rows = db()->query(
                 "SELECT street AS value, street AS label, '' AS postal_code
                  FROM subscription_address_catalog
                  WHERE (? = '' OR normalized_region = ?)
                    AND normalized_city = ?
-                   AND normalized_street LIKE ?
+                   AND ({$streetSearch})
                    AND normalized_street <> ''
                  GROUP BY street, normalized_street
                  ORDER BY normalized_street
                  LIMIT 12",
-                [$region, $region, $city, $prefix]
+                [$region, $region, $city, ...$prefixes]
             )->get() ?: [];
         } else {
             $rows = db()->query(
@@ -360,8 +444,9 @@ final class AddressSuggestionService
         return $result;
     }
 
-    private function insertBatch(array $batch): int
+    private function insertBatch(array $batch, string $table = self::TABLE): int
     {
+        $this->assertImportTable($table);
         $groups = [];
         $params = [];
 
@@ -371,7 +456,7 @@ final class AddressSuggestionService
         }
 
         db()->query(
-            'INSERT IGNORE INTO subscription_address_catalog
+            'INSERT IGNORE INTO `' . $table . '`
              (region, city, street, house, postal_code,
               normalized_region, normalized_city, normalized_street,
               normalized_house, created_at)

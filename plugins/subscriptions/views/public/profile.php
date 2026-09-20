@@ -4,7 +4,6 @@ $customValues = array_replace((array)($profile['custom_values'] ?? []), (array)(
 $returnTo = (string)($form_data['return_to'] ?? session()->get('subscriptions.checkout_return', ''));
 session()->remove('subscriptions.checkout_return');
 ?>
-<!-- FIREBALL_SUBSCRIPTIONS_PROFILE_DIRECT_CSS_V1 -->
 <link rel="stylesheet" href="<?= htmlSC(base_href('/plugins/subscriptions/assets/subscriptions.css?v=' . filemtime(__DIR__ . '/../../assets/subscriptions.css'))) ?>">
 <section class="container py-5 subscriptions-public">
     <div class="row justify-content-center"><div class="col-xl-9">
@@ -14,7 +13,6 @@ session()->remove('subscriptions.checkout_return');
             <span class="badge rounded-pill <?= $completion['complete'] ? 'text-bg-success' : 'text-bg-warning' ?>"><?= htmlSC(str_replace(':percent', (string)$completion['percent'], FireballPluginSubscriptions::t('subscriptions_profile_percent'))) ?></span>
         </div>
         <?php if ($completion['missing']): ?><div class="alert alert-warning"><strong><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_missing_fields')) ?></strong><ul class="mb-0 mt-2"><?php foreach ($completion['missing'] as $missing): ?><li><?= htmlSC((string)$missing) ?></li><?php endforeach; ?></ul></div><?php endif; ?>
-        <!-- FIREBALL_LOCAL_ADDRESS_FORM_MARKUP_FIX_V1 -->
         <form
             class="border rounded-5 p-4 p-lg-5"
             method="post"
@@ -26,6 +24,10 @@ session()->remove('subscriptions.checkout_return');
             data-address-no-results="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_no_results')) ?>"
             data-address-select-required="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_select_required')) ?>"
             data-address-service-unavailable="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_service_unavailable')) ?>"
+            data-address-choose="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_choose')) ?>"
+            data-address-search="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_search')) ?>"
+            data-address-minimum="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_minimum')) ?>"
+            data-address-manual="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_address_manual')) ?>"
         >
             <?= get_csrf_field() ?>
             <?php if ($returnTo !== ''): ?><input type="hidden" name="return_to" value="<?= htmlSC($returnTo) ?>"><?php endif; ?>
@@ -40,35 +42,7 @@ session()->remove('subscriptions.checkout_return');
                             <?php if ($field['is_system'] && $key === 'region'): ?>
                                 <?php require __DIR__ . '/region-field.php'; ?>
                             <?php elseif ($field['is_system'] && in_array($key, ['city', 'street', 'house'], true)): ?>
-                                <!-- FIREBALL_SUBSCRIPTIONS_ADDRESS_TEXT_AUTOCOMPLETE_V1 -->
-                                <div
-                                    class="subscriptions-address-autocomplete"
-                                    data-address-field="<?= htmlSC($key) ?>"
-                                >
-                                    <input
-                                        class="form-control"
-                                        type="text"
-                                        name="<?= htmlSC($name) ?>"
-                                        value="<?= htmlSC((string)$fieldValue) ?>"
-                                        placeholder="<?= htmlSC((string)$field['placeholder']) ?>"
-                                        autocomplete="off"
-                                        data-address-input="<?= htmlSC($key) ?>"
-                                        aria-autocomplete="list"
-                                        aria-expanded="false"
-                                        <?= $field['is_required'] ? 'required' : '' ?>
-                                    >
-                                    <!-- FIREBALL_SUBSCRIPTIONS_ADDRESS_BOOTSTRAP_DROPDOWN_V1 -->
-                                    <ul
-                                        <!-- FIREBALL_SUBSCRIPTIONS_BASIC_DROPDOWN_V1 -->
-                                        class="dropdown-menu w-100"
-                                        data-address-suggestions
-                                        hidden
-                                        role="listbox"
-                                    ></ul>
-                                    <div class="form-text">
-                                        <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_' . $key . '_suggest_hint')) ?>
-                                    </div>
-                                </div>
+                                <?php require __DIR__ . '/address-field.php'; ?>
                             <?php elseif ($field['is_system'] && $key === 'postal_code'): ?>
                                 <input
                                     class="form-control"

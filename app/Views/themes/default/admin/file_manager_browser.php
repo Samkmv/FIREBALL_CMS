@@ -95,11 +95,12 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
             <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
         </button>
     <?php endif; ?>
-    <div class="dropdown dropstart d-inline-block flex-shrink-0" data-file-manager-actions-menu data-fm-bootstrap-dropstart="FIREBALL_FILE_MANAGER_BOOTSTRAP_DROPSTART_V1">
+    <div class="dropdown dropstart d-inline-block flex-shrink-0" data-file-manager-actions-menu>
         <button
             class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
             type="button"
             data-bs-toggle="dropdown"
+            data-bs-display="static"
             aria-expanded="false"
             aria-label="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
             title="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
@@ -217,8 +218,6 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
     </aside>
 
     <div data-file-manager-content>
-        <div class="p-3 p-lg-4" data-file-manager-feedback-wrap></div>
-
         <div class="px-3 px-lg-4 py-3" data-file-manager-toolbar>
             <div class="d-flex flex-column gap-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -317,7 +316,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                     <p class="text-body-secondary mb-0"><?= print_translation('admin_files_empty') ?></p>
                 </div>
             <?php else: ?>
-                <form action="<?= base_href('/admin/files/action') ?>" method="post" data-file-manager-bulk-form>
+                <form action="<?= base_href('/admin/files/action') ?>" method="post" data-file-manager-bulk-form data-file-manager-table-panel>
                     <?= get_csrf_field() ?>
                     <input type="hidden" name="dir" value="<?= htmlSC($currentDir) ?>">
                     <input type="hidden" name="picker" value="<?= $pickerMode ? '1' : '0' ?>">
@@ -503,13 +502,14 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                             <?php endforeach; ?>
                             </tbody>
                     <?php $adminTableContent = ob_get_clean(); ?>
+                    <div data-file-manager-scroll tabindex="0" role="region" aria-label="<?= htmlSC(return_translation('admin_files_heading')) ?>">
                     <?= view()->renderPartial('admin/partials/table', [
                         'content' => $adminTableContent,
                         'table_attributes' => ['data-file-manager-table' => true],
                         'wrapper_attributes' => ['data-file-manager-table-wrap' => true],
                         'mobile_cards' => $mobileCards,
                     ]) ?>
-                </form>
+                    </div>
 
                 <?= view()->renderPartial('admin/partials/table_footer', [
                     'visible' => count($items),
@@ -518,20 +518,15 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                     'info_class' => 'text-body-secondary',
                     'pagination_attributes' => ['data-fm-pagination' => true],
                 ]) ?>
+                </form>
             <?php endif; ?>
 
-            <button class="w-100 mt-4" type="button" data-file-manager-upload-drop data-file-manager-open-upload>
-                <span class="d-inline-flex align-items-center justify-content-center rounded-circle" data-file-manager-upload-drop-icon><i class="ci-upload"></i></span>
-                <span class="d-block fw-semibold mt-2"><?= print_translation('admin_files_drop_title') ?></span>
-                <span class="d-block small text-body-secondary mt-1"><?= print_translation('admin_files_drop_hint') ?></span>
-                <span class="d-block small text-body-secondary mt-2"><?= str_replace(':size', (string)\App\Services\UploadSettings::maxFileSizeMb(), return_translation('admin_files_upload_limit_hint')) ?></span>
-            </button>
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="fileUploadModal" tabindex="-1" aria-hidden="true" data-file-upload-modal>
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 rounded-5 overflow-hidden">
             <form action="<?= base_href('/admin/files/upload') ?>" method="post" enctype="multipart/form-data" data-fm-async-form data-file-manager-upload-form>
                 <?= get_csrf_field() ?>
@@ -548,13 +543,19 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body pt-3">
-                    <label class="form-label"><?= print_translation('admin_files_upload_label') ?></label>
-                    <input class="form-control" type="file" name="upload_files[]" multiple required data-file-manager-upload-input>
-                    <div class="form-text"><?= print_translation('admin_files_upload_hint') ?></div>
+                    <label class="w-100 mb-0" for="fileUploadInput" data-file-manager-upload-drop>
+                        <input class="visually-hidden" id="fileUploadInput" type="file" name="upload_files[]" multiple required data-file-manager-upload-input>
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" data-file-manager-upload-drop-icon><i class="ci-upload"></i></span>
+                        <span class="d-block fw-semibold mt-3"><?= print_translation('admin_files_drop_title') ?></span>
+                        <span class="d-block small text-body-secondary mt-1"><?= print_translation('admin_files_drop_hint') ?></span>
+                        <span class="d-block small text-body-secondary mt-3"><?= str_replace(':size', (string)\App\Services\UploadSettings::maxFileSizeMb(), return_translation('admin_files_upload_limit_hint')) ?></span>
+                    </label>
+                    <div class="small mt-3" data-file-manager-upload-selection role="status" aria-live="polite" hidden></div>
+                    <div class="form-text mt-3"><?= print_translation('admin_files_upload_hint') ?></div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal"><?= print_translation('admin_btn_close') ?></button>
-                    <button type="submit" class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2"><i class="ci-upload"></i><?= print_translation('admin_files_upload_btn') ?></button>
+                    <button type="submit" class="btn btn-primary rounded-pill d-inline-flex align-items-center gap-2" data-file-manager-upload-submit disabled><i class="ci-upload"></i><?= print_translation('admin_files_upload_btn') ?></button>
                 </div>
             </form>
         </div>
