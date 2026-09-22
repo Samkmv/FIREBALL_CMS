@@ -4,7 +4,11 @@
 
 $router->get('/plugins/vpn-manager-v2/assets/(?P<file>[a-z0-9._-]+)', static function (): never {
     $file = (string)get_route_param('file');
-    if ($file !== 'vpn-manager-v2.js') {
+    $contentTypes = [
+        'vpn-manager-v2.js' => 'application/javascript',
+        'profile-vpn.css' => 'text/css',
+    ];
+    if (!isset($contentTypes[$file])) {
         abort();
     }
 
@@ -15,7 +19,7 @@ $router->get('/plugins/vpn-manager-v2/assets/(?P<file>[a-z0-9._-]+)', static fun
         abort();
     }
 
-    header('Content-Type: application/javascript; charset=utf-8');
+    header('Content-Type: ' . $contentTypes[$file] . '; charset=utf-8');
     header('Cache-Control: public, max-age=3600');
     readfile($real);
     exit;

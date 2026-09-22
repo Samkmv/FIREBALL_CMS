@@ -26,8 +26,8 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
 
 <section class="container py-4 py-md-5" data-vpn-v2-profile>
     <div class="row justify-content-center">
-        <div class="col-xl-10">
-            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+        <div class="col-12 vpn-profile-shell">
+            <div class="vpn-profile-heading d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
                 <div>
                     <div class="d-inline-flex align-items-center gap-2 text-body-secondary small mb-2">
                         <?php if ($logo !== ''): ?>
@@ -37,7 +37,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                         <?php endif; ?>
                         <span><?= htmlSC($serviceName) ?></span>
                     </div>
-                    <h1 class="h3 mb-1"><?= htmlSC($title ?? FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_title')) ?></h1>
+                    <h1 class="mb-2"><?= htmlSC($title ?? FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_title')) ?></h1>
                     <p class="text-body-secondary mb-0"><?= htmlSC($subtitle ?? '') ?></p>
                 </div>
                 <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/profile') ?>">
@@ -47,7 +47,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
             </div>
 
             <?php if (!$hasActiveSubscription): ?>
-                <section class="border rounded-5 p-4 p-md-5 mb-4 text-center" data-vpn-v2-access-request>
+                <section class="vpn-panel vpn-empty mb-4 text-center" data-vpn-v2-access-request>
                     <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-body-tertiary mb-3 p-3">
                         <i class="ci-server fs-3" aria-hidden="true"></i>
                     </div>
@@ -85,7 +85,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
 
             <?php if ($subscriptions !== [] && $selected !== null): ?>
                 <?php if (count($subscriptions) > 1): ?>
-                    <div class="border rounded-5 p-3 mb-4" data-vpn-v2-subscription-selector>
+                    <div class="vpn-panel p-3 mb-4" data-vpn-v2-subscription-selector>
                         <div class="small fw-semibold text-body-secondary px-2 mb-2">
                             <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_select_subscription')) ?>
                         </div>
@@ -103,36 +103,40 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                     </div>
                 <?php endif; ?>
 
-                <article class="border rounded-5 p-4 p-md-5 mb-4" data-vpn-v2-subscription-card>
-                    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
-                        <div>
+                <div class="vpn-profile-grid">
+                <article class="vpn-panel vpn-overview" data-vpn-v2-subscription-card>
+                    <div class="vpn-plan-heading">
+                        <div class="vpn-plan-identity">
+                            <span class="vpn-plan-icon" aria-hidden="true"><i class="ci-shield"></i></span>
+                            <div>
                             <div class="mb-2"><?= ProvisioningStatus::badge((string)$selected['effective_status']) ?></div>
-                            <h2 class="h4 mb-1"><?= htmlSC((string)$selected['plan_name']) ?></h2>
+                            <h2 class="vpn-plan-name mb-1"><?= htmlSC((string)$selected['plan_name']) ?></h2>
                             <?php if (trim((string)($selected['plan_description'] ?? '')) !== ''): ?>
                                 <p class="text-body-secondary mb-0"><?= htmlSC((string)$selected['plan_description']) ?></p>
                             <?php endif; ?>
+                            </div>
                         </div>
-                        <div class="text-end">
+                        <div class="vpn-remaining">
                             <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_remaining')) ?></div>
                             <div class="fw-semibold" data-vpn-v2-remaining><?= htmlSC((string)$selected['remaining_display']) ?></div>
                         </div>
                     </div>
 
-                    <div class="row g-3 mb-4">
+                    <div class="row g-3 vpn-stats">
                         <div class="col-12 col-md-4">
-                            <div class="bg-body-tertiary rounded-4 p-3 h-100">
+                            <div class="vpn-stat h-100">
                                 <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_starts_at')) ?></div>
                                 <div class="fw-semibold"><?= htmlSC((string)$selected['starts_at_display']) ?></div>
                             </div>
                         </div>
                         <div class="col-12 col-md-4">
-                            <div class="bg-body-tertiary rounded-4 p-3 h-100">
+                            <div class="vpn-stat h-100">
                                 <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_expires_at')) ?></div>
                                 <div class="fw-semibold"><?= htmlSC((string)$selected['expires_at_display']) ?></div>
                             </div>
                         </div>
                         <div class="col-12 col-md-4">
-                            <div class="bg-body-tertiary rounded-4 p-3 h-100">
+                            <div class="vpn-stat h-100">
                                 <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_connections')) ?></div>
                                 <div class="fw-semibold"><?= (int)$selected['connection_count'] ?></div>
                                 <div class="small text-body-secondary"><?= htmlSC(sprintf(
@@ -143,7 +147,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                         </div>
                     </div>
 
-                    <section class="bg-body-tertiary rounded-4 p-3 p-md-4 mb-4" data-vpn-v2-traffic>
+                    <section class="vpn-traffic" data-vpn-v2-traffic>
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                             <h3 class="h6 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_title')) ?></h3>
                             <?php if ((string)($selected['traffic_synced_at_display'] ?? '') !== ''): ?>
@@ -154,9 +158,9 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                             <?php endif; ?>
                         </div>
                         <div class="row g-3">
-                            <div class="col-12 col-sm-4">
+                            <div class="col-12 col-sm-4 vpn-traffic-primary">
                                 <div class="small text-body-secondary mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_traffic_used')) ?></div>
-                                <div class="fs-5 fw-semibold" data-vpn-v2-traffic-used><?= htmlSC((string)$selected['traffic_used_display']) ?></div>
+                                <div class="vpn-traffic-value" data-vpn-v2-traffic-used><?= htmlSC((string)$selected['traffic_used_display']) ?></div>
                                 <div class="small text-body-secondary mt-1">
                                     ↑ <?= htmlSC((string)$selected['upload_display']) ?> · ↓ <?= htmlSC((string)$selected['download_display']) ?>
                                 </div>
@@ -184,7 +188,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                     </section>
 
                     <?php if ($profileInfoText !== ''): ?>
-                        <div class="alert alert-info rounded-4 d-flex align-items-start gap-3 mb-4" data-vpn-v2-profile-info>
+                        <div class="vpn-note d-flex align-items-start gap-3" data-vpn-v2-profile-info>
                             <i class="ci-info fs-5 mt-1" aria-hidden="true"></i>
                             <div>
                                 <div class="fw-semibold mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_info_title')) ?></div>
@@ -192,8 +196,9 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                             </div>
                         </div>
                     <?php endif; ?>
+                </article>
 
-                    <div class="border-top pt-4">
+                    <section class="vpn-panel vpn-servers">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                             <h3 class="h5 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_servers_title')) ?></h3>
                             <span class="small text-body-secondary">
@@ -214,7 +219,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                             </div>
                         <?php endif; ?>
                         <?php if ($servers === []): ?>
-                            <div class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_no_servers')) ?></div>
+                            <div class="vpn-server-empty text-body-secondary"><i class="ci-server" aria-hidden="true"></i><span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_no_servers')) ?></span></div>
                         <?php else: ?>
                             <div class="row g-3" data-vpn-v2-profile-servers>
                                 <?php foreach ($servers as $server): ?>
@@ -222,7 +227,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                                     $location = implode(', ', array_filter([(string)$server['country'], (string)$server['city']]));
                                     ?>
                                     <div class="col-12 col-md-6">
-                                        <div class="border rounded-4 p-3 h-100 d-flex align-items-center gap-3">
+                                        <div class="vpn-server h-100 d-flex align-items-center gap-3">
                                             <span class="fs-3" aria-hidden="true"><?= htmlSC((string)($server['flag'] ?: '🌐')) ?></span>
                                             <div class="min-w-0">
                                                 <div class="fw-semibold text-break"><?= htmlSC((string)$server['name']) ?></div>
@@ -242,12 +247,12 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
-                    </div>
-                </article>
+                    </section>
 
-                <div class="border rounded-5 p-4 p-md-5 mb-4" data-vpn-v2-access>
-                    <div class="row g-4 align-items-center">
-                        <div class="<?= $showQrInProfile ? 'col-lg-7' : 'col-12' ?>">
+                <div class="vpn-panel vpn-connect" data-vpn-v2-access>
+                    <span class="vpn-connect-icon" aria-hidden="true"><i class="ci-smartphone"></i></span>
+                    <div class="row g-4">
+                        <div class="col-12">
                             <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_access_title')) ?></h2>
                             <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_access_help')) ?></p>
                             <?php if ($localSubscriptionUrl && $linkReady): ?>
@@ -256,7 +261,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                                 </div>
                             <?php endif; ?>
                             <?php if ($linkReady): ?>
-                                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="button"
+                                <button class="btn vpn-primary-button d-inline-flex align-items-center justify-content-center gap-2" type="button"
                                         data-vpn-v2-copy-value="<?= htmlSC($subscriptionUrl) ?>"
                                         data-vpn-v2-copy-done="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copied')) ?>"
                                         data-vpn-v2-copy-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copy_failed')) ?>">
@@ -268,7 +273,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                                     <label class="form-label small" for="vpnV2ProfileSubscriptionUrl">
                                         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_manual_copy_label')) ?>
                                     </label>
-                                    <input class="form-control font-monospace" id="vpnV2ProfileSubscriptionUrl" type="url"
+                                    <input class="form-control font-monospace" id="vpnV2ProfileSubscriptionUrl" type="text" inputmode="url"
                                            readonly value="<?= htmlSC($subscriptionUrl) ?>" data-vpn-v2-copy-input>
                                 </div>
                             <?php else: ?>
@@ -277,22 +282,20 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                                 </div>
                             <?php endif; ?>
                         </div>
-                        <?php if ($showQrInProfile): ?>
-                            <div class="col-lg-5 text-center">
+                        <?php if ($showQrInProfile && $linkReady && $subscriptionQr !== ''): ?>
+                            <div class="col-12 vpn-qr-area text-center">
                                 <h3 class="h6 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_qr_title')) ?></h3>
-                                <?php if ($linkReady && $subscriptionQr !== ''): ?>
-                                    <div data-vpn-v2-profile-qr><?= $subscriptionQr ?></div>
-                                    <div class="small text-body-secondary mt-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_qr_help')) ?></div>
-                                <?php else: ?>
-                                    <div class="text-body-secondary">—</div>
-                                <?php endif; ?>
+                                <div data-vpn-v2-profile-qr><?= $subscriptionQr ?></div>
+                                <div class="small text-body-secondary mt-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_qr_help')) ?></div>
                             </div>
                         <?php endif; ?>
                     </div>
+                    <a class="vpn-instructions-link" href="#vpn-v2-instructions"><i class="ci-help-circle" aria-hidden="true"></i><span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_instructions_title')) ?></span><i class="ci-arrow-down" aria-hidden="true"></i></a>
+                </div>
                 </div>
 
                 <?php if ($linkReady && $happRoutingLink !== ''): ?>
-                    <section class="border rounded-5 p-4 mb-4">
+                    <section class="vpn-panel mb-4">
                         <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_title')) ?></h2>
                         <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_profile_help')) ?></p>
                         <?php $routingLink = $happRoutingLink; ?>
@@ -300,13 +303,13 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                     </section>
                 <?php endif; ?>
 
-                <div class="alert alert-info rounded-4 d-flex align-items-start gap-3 mb-4" data-vpn-v2-refresh-hint>
+                <div class="vpn-note vpn-refresh-note d-flex align-items-start gap-3 mb-4" data-vpn-v2-refresh-hint>
                     <i class="ci-info fs-5 mt-1" aria-hidden="true"></i>
                     <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_refresh_hint')) ?></div>
                 </div>
 
                 <?php if ($supportName !== '' || $supportUrl !== ''): ?>
-                    <section class="border rounded-5 p-4 mb-4" data-vpn-v2-support>
+                    <section class="vpn-panel vpn-support mb-4" data-vpn-v2-support>
                         <div class="d-flex align-items-start gap-3">
                             <i class="ci-life-buoy fs-4 text-body-secondary" aria-hidden="true"></i>
                             <div>
@@ -324,7 +327,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                     </section>
                 <?php endif; ?>
 
-                <section class="border rounded-5 p-4 p-md-5" id="vpn-v2-instructions" data-vpn-v2-instructions>
+                <section class="vpn-panel" id="vpn-v2-instructions" data-vpn-v2-instructions>
                     <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_instructions_title')) ?></h2>
                     <p class="text-body-secondary mb-4"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_instructions_subtitle')) ?></p>
                     <div class="vstack gap-3">

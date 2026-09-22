@@ -1,4 +1,10 @@
 <style>
+        .fb-content--edge-workspace:has([data-file-manager-page]) > .fb-alert-root {
+            position: static;
+            width: auto;
+            transform: none;
+        }
+
         [data-file-manager-page] {
             --fm-bg: var(--fb-color-surface);
             --fm-panel: var(--fb-color-surface);
@@ -163,6 +169,10 @@
         [data-file-manager-controls],
         [data-file-manager-control-actions] {
             min-width: 0;
+        }
+
+        [data-file-manager-page] .btn:hover {
+            transform: none;
         }
 
         [data-file-manager-control-actions] {
@@ -411,10 +421,6 @@
         }
 
         .fm-row-menu-floating {
-            position: fixed !important;
-            inset: auto !important;
-            transform: none !important;
-            margin: 0 !important;
             z-index: 1045 !important;
             max-width: calc(100vw - 24px);
             max-height: calc(100dvh - 24px);
@@ -599,7 +605,10 @@
                 right: 0;
                 z-index: 1;
                 background: var(--fm-panel);
-                box-shadow: -1px 0 var(--fm-border);
+            }
+
+            [data-file-manager-shell] [data-file-manager-table] tbody tr:hover td:last-child {
+                background: inherit;
             }
 
             [data-file-manager-shell] [data-file-manager-table] thead th:last-child {
@@ -701,7 +710,25 @@
             }
         }
 
-        @media (max-width: 991.98px) {
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            [data-admin-shell]:has([data-file-manager-page]) {
+                padding-bottom: 0 !important;
+            }
+
+            .fb-content.fb-content--edge-workspace:has([data-file-manager-page]) {
+                height: calc(100dvh - var(--fb-topbar-height) - var(--fb-mobile-nav-height) - env(safe-area-inset-bottom, 0px));
+                min-height: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+
+            .fb-content--edge-workspace > .fb-page-content:has([data-file-manager-page]) {
+                height: 100%;
+                min-height: 0;
+            }
+        }
+
+        @media (max-width: 767.98px) {
             [data-file-manager-shell],
             [data-file-manager-browser],
             [data-file-manager-workspace],
@@ -855,6 +882,11 @@
 
             [data-file-manager-sidebar] {
                 display: block;
+            }
+
+            [data-file-manager-sidebar-body] {
+                max-height: none;
+                overflow: visible;
             }
 
             [data-file-manager-sidebar-head] {

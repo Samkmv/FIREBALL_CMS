@@ -5,457 +5,144 @@ $pageTitle = return_translation('update_maintenance_title');
 $retryAfter = max(5, (int)($retry_after ?? 12));
 ?>
 <!doctype html>
-<html
-    lang="<?= htmlSC(current_locale()) ?>"
-    data-bs-theme="dark"
-    data-update-maintenance-page="1"
->
+<html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="dark" data-update-maintenance-page="1">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="robots" content="noindex,nofollow">
     <title><?= htmlSC($pageTitle) ?> · <?= htmlSC($siteTitle) ?></title>
     <?= pwa_head_tags() ?>
-    <meta name="theme-color" content="#0f1724">
-
+    <meta name="theme-color" content="#111721">
     <script src="<?= base_url('/assets/default/js/theme-switcher.js') ?>"></script>
-
     <link rel="preload" href="<?= base_url('/assets/default/fonts/inter-variable-latin.woff2') ?>" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="<?= base_url('/assets/default/icons/cartzilla-icons.woff2') ?>" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="<?= base_url('/assets/default/icons/cartzilla-icons.min.css') ?>">
-
     <style>
-        /* FIREBALL_UPDATE_PAGE_REDESIGN_V2 */
-
         @font-face {
             font-family: "FIREBALL Inter";
             src: url("<?= base_url('/assets/default/fonts/inter-variable-latin.woff2') ?>") format("woff2");
             font-display: swap;
             font-weight: 100 900;
         }
-
         :root {
             color-scheme: dark;
-            --update-bg: #0f1724;
-            --update-surface: rgba(22, 32, 46, .94);
-            --update-surface-soft: rgba(255, 255, 255, .045);
-            --update-border: rgba(181, 198, 222, .17);
-            --update-border-strong: rgba(181, 198, 222, .26);
-            --update-text: #f6f8fb;
-            --update-muted: #97a5b9;
-            --update-accent: #ff6654;
-            --update-accent-2: #ef4f7b;
-            --update-success: #49d394;
-            --update-shadow: 0 28px 80px rgba(0, 0, 0, .28);
+            --update-bg: #111721;
+            --update-surface: #19222f;
+            --update-soft: #202c3b;
+            --update-border: #303c4d;
+            --update-text: #f0f4fa;
+            --update-muted: #a6b3c6;
+            --update-accent: #ff684b;
         }
-
         [data-bs-theme="light"] {
             color-scheme: light;
-            --update-bg: #f3f6fa;
-            --update-surface: rgba(255, 255, 255, .96);
-            --update-surface-soft: rgba(32, 47, 72, .045);
-            --update-border: rgba(41, 58, 85, .13);
-            --update-border-strong: rgba(41, 58, 85, .2);
+            --update-bg: #f4f6f9;
+            --update-surface: #fff;
+            --update-soft: #f3f5f8;
+            --update-border: #e0e5ec;
             --update-text: #182235;
-            --update-muted: #66748a;
-            --update-accent: #ef5d4d;
-            --update-accent-2: #df4771;
-            --update-success: #22a86f;
-            --update-shadow: 0 28px 70px rgba(39, 55, 82, .14);
+            --update-muted: #647187;
+            --update-accent: #d9472c;
         }
-
         * { box-sizing: border-box; }
-
-        html,
-        body { min-height: 100%; }
-
-        body {
-            margin: 0;
-            min-height: 100svh;
-            overflow-x: hidden;
-            color: var(--update-text);
-            background:
-                radial-gradient(circle at 12% 5%, rgba(61, 133, 255, .12), transparent 34rem),
-                radial-gradient(circle at 90% 94%, rgba(239, 79, 123, .10), transparent 32rem),
-                var(--update-bg);
-            font-family: "FIREBALL Inter", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            -webkit-font-smoothing: antialiased;
-            text-rendering: optimizeLegibility;
-        }
-
-        .update-page {
-            display: grid;
-            min-height: 100svh;
-            place-items: center;
-            padding:
-                calc(2rem + env(safe-area-inset-top, 0px))
-                1rem
-                calc(2rem + env(safe-area-inset-bottom, 0px));
-        }
-
-        .update-shell {
-            width: min(100%, 38rem);
-        }
-
-        .update-brand {
-            display: flex;
-            width: fit-content;
-            align-items: center;
-            gap: .75rem;
-            margin: 0 auto 1.35rem;
-            color: var(--update-text);
-            font-size: 1.15rem;
-            font-weight: 800;
-            letter-spacing: .075em;
-            text-decoration: none;
-            text-transform: uppercase;
-        }
-
-        .update-brand__mark {
-            display: inline-grid;
-            width: 2.65rem;
-            height: 2.65rem;
-            flex: 0 0 auto;
-            place-items: center;
-            border: 1px solid rgba(255, 255, 255, .18);
-            border-radius: .9rem;
-            color: #fff;
-            background: linear-gradient(145deg, var(--update-accent), var(--update-accent-2));
-            box-shadow:
-                0 .55rem 1.35rem rgba(239, 79, 123, .22),
-                inset 0 1px 0 rgba(255, 255, 255, .25);
-            font-size: 1.05rem;
-        }
-
-        .update-card {
-            position: relative;
-            overflow: hidden;
-            padding: clamp(2rem, 5vw, 3rem);
-            border: 1px solid var(--update-border);
-            border-radius: 1.75rem;
-            background: var(--update-surface);
-            box-shadow: var(--update-shadow);
-            text-align: center;
-        }
-
-        .update-card::before {
-            position: absolute;
-            top: 0;
-            right: 18%;
-            left: 18%;
-            height: 2px;
-            border-radius: 999px;
-            background: linear-gradient(90deg, transparent, var(--update-accent), var(--update-accent-2), transparent);
-            content: "";
-        }
-
-        .update-loader {
-            position: relative;
-            display: grid;
-            width: 4.5rem;
-            height: 4.5rem;
-            place-items: center;
-            margin: 0 auto 1.35rem;
-            border-radius: 50%;
-        }
-
-        .update-loader::before {
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            background: conic-gradient(
-                from 0deg,
-                rgba(255, 102, 84, .06) 0 42%,
-                var(--update-accent) 68%,
-                var(--update-accent-2) 100%
-            );
-            content: "";
-            animation: update-loader-spin 1.15s linear infinite;
-        }
-
-        .update-loader::after {
-            position: absolute;
-            inset: .38rem;
-            border: 1px solid var(--update-border);
-            border-radius: inherit;
-            background: var(--update-surface);
-            content: "";
-        }
-
-        .update-loader__core {
-            position: relative;
-            z-index: 1;
-            display: block;
-            width: .55rem;
-            height: .55rem;
-            border-radius: 50%;
-            background: var(--update-accent);
-            box-shadow: 0 0 1rem rgba(255, 102, 84, .55);
-        }
-
-        .update-status {
-            display: inline-flex;
-            align-items: center;
-            gap: .5rem;
-            margin-bottom: 1rem;
-            padding: .45rem .75rem;
-            border: 1px solid var(--update-border);
-            border-radius: 999px;
-            color: var(--update-muted);
-            background: var(--update-surface-soft);
-            font-size: .76rem;
-            font-weight: 750;
-            letter-spacing: .075em;
-            text-transform: uppercase;
-        }
-
-        .update-status__dot {
-            width: .45rem;
-            height: .45rem;
-            flex: 0 0 auto;
-            border-radius: 50%;
-            background: var(--update-success);
-            box-shadow: 0 0 .65rem rgba(73, 211, 148, .6);
-        }
-
-        .update-title {
-            margin: 0;
-            font-size: clamp(2rem, 6vw, 2.8rem);
-            font-weight: 780;
-            letter-spacing: -.045em;
-            line-height: 1.08;
-        }
-
-        .update-message {
-            max-width: 30rem;
-            margin: 1rem auto 0;
-            color: var(--update-muted);
-            font-size: clamp(.98rem, 2.4vw, 1.08rem);
-            line-height: 1.7;
-        }
-
-        .update-progress {
-            position: relative;
-            height: .48rem;
-            margin: 2rem 0 .8rem;
-            overflow: hidden;
-            border-radius: 999px;
-            background: rgba(151, 165, 185, .17);
-        }
-
-        .update-progress::before {
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            background:
-                linear-gradient(
-                    90deg,
-                    transparent 0%,
-                    transparent 24%,
-                    var(--update-accent) 44%,
-                    var(--update-accent-2) 56%,
-                    transparent 76%,
-                    transparent 100%
-                );
-            background-size: 220% 100%;
-            content: "";
-            animation: update-progress-flow 1.65s linear infinite;
-        }
-
-        .update-hint {
-            margin: 0;
-            color: rgba(151, 165, 185, .8);
-            font-size: .84rem;
-            line-height: 1.55;
-        }
-
-        .update-actions {
-            display: flex;
-            justify-content: center;
-            margin-top: 1.6rem;
-        }
-
-        .update-refresh {
-            display: inline-flex;
-            min-height: 3rem;
-            align-items: center;
-            justify-content: center;
-            gap: .55rem;
-            padding: .72rem 1.25rem;
-            border: 1px solid var(--update-border-strong);
-            border-radius: 999px;
-            color: var(--update-text);
-            background: var(--update-surface-soft);
-            font: inherit;
-            font-weight: 700;
-            text-decoration: none;
-            transition:
-                transform .18s ease,
-                border-color .18s ease,
-                background-color .18s ease;
-        }
-
-        .update-refresh:hover,
-        .update-refresh:focus-visible {
-            border-color: rgba(255, 102, 84, .55);
-            background: rgba(255, 102, 84, .1);
-            transform: translateY(-1px);
-        }
-
-        .update-refresh:focus-visible {
-            outline: 3px solid rgba(255, 102, 84, .22);
-            outline-offset: 3px;
-        }
-
-        .update-note {
-            margin: 1.25rem 0 0;
-            color: rgba(151, 165, 185, .58);
-            font-size: .74rem;
-        }
-
-        @keyframes update-loader-spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes update-progress-flow {
-            from { background-position: 120% 0; }
-            to { background-position: -120% 0; }
-        }
-
-        @media (max-width: 520px) {
-            .update-page { padding-inline: .8rem; }
-
-            .update-card {
-                padding: 1.75rem 1.2rem;
-                border-radius: 1.4rem;
-            }
-
-            .update-loader {
-                width: 4rem;
-                height: 4rem;
-            }
-
-            .update-brand {
-                margin-bottom: 1rem;
-                font-size: 1rem;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .update-loader::before,
-            .update-progress::before {
-                animation: none;
-            }
-
-            .update-progress::before {
-                background-position: 50% 0;
-            }
-
-            .update-refresh {
-                transition: none;
-            }
-        }
+        body { margin: 0; color: var(--update-text); background: var(--update-bg); font-family: "FIREBALL Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+        .update-page { display: grid; min-height: 100svh; place-items: center; padding: calc(32px + env(safe-area-inset-top, 0px)) 20px calc(32px + env(safe-area-inset-bottom, 0px)); }
+        .update-shell { width: min(100%, 520px); min-width: 0; }
+        .update-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 28px; color: var(--update-text); text-decoration: none; font-weight: 700; font-size: .9rem; }
+        .update-brand__mark { display: inline-grid; flex: 0 0 auto; width: 32px; height: 32px; place-items: center; border: 1px solid var(--update-border); border-radius: 10px; color: var(--update-accent); }
+        .update-brand > span:last-child { overflow-wrap: anywhere; }
+        .update-card { padding: clamp(28px, 6vw, 44px); border: 1px solid var(--update-border); border-radius: 24px; background: var(--update-surface); text-align: center; box-shadow: 0 16px 48px rgba(0, 0, 0, .06); }
+        .update-loader { position: relative; display: grid; width: 76px; height: 76px; place-items: center; margin: 0 auto 26px; color: var(--update-accent); font-size: 26px; }
+        /* Only the outer ring rotates. Its center and geometry remain fixed. */
+        .update-loader::before { content: ""; position: absolute; inset: 0; border: 3px solid var(--update-border); border-top-color: var(--update-accent); border-radius: 50%; animation: update-spin 1.8s linear infinite; }
+        .update-loader > i { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--update-soft); }
+        .update-status { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; color: var(--update-muted); font-size: .78rem; font-weight: 600; line-height: 1.5; }
+        .update-status__dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--update-accent); }
+        .update-title { margin: 0; font-size: clamp(1.8rem, 6vw, 2.35rem); font-weight: 700; letter-spacing: -.045em; line-height: 1.15; overflow-wrap: anywhere; }
+        .update-message { margin: 18px 0 24px; color: var(--update-muted); font-size: .95rem; line-height: 1.75; }
+        .update-hint { display: flex; align-items: flex-start; gap: 10px; padding: 16px; margin: 0; border-radius: 12px; background: var(--update-soft); color: var(--update-muted); font-size: .8rem; line-height: 1.65; text-align: left; }
+        .update-hint > i { flex-shrink: 0; margin-top: 3px; color: var(--update-text); }
+        .update-refresh { display: inline-flex; min-height: 46px; width: 100%; align-items: center; justify-content: center; gap: 10px; margin-top: 24px; padding: 12px 16px; border: 1px solid var(--update-border); border-radius: 12px; color: var(--update-text); background: var(--update-surface); font-size: .875rem; font-weight: 600; text-decoration: none; transition: background-color .15s ease, border-color .15s ease; }
+        .update-refresh:hover { border-color: var(--update-accent); background: var(--update-soft); }
+        .update-refresh[aria-disabled="true"] { opacity: .65; pointer-events: none; }
+        a:focus-visible { outline: 3px solid var(--update-accent); outline-offset: 4px; }
+        .update-note { margin: 22px 0 0; text-align: center; color: var(--update-muted); font-size: .75rem; overflow-wrap: anywhere; }
+        @keyframes update-spin { to { transform: rotate(360deg); } }
+        @media (max-width: 380px) { .update-page { padding-inline: 12px; } .update-card { padding: 28px 20px; } }
+        @media (prefers-reduced-motion: reduce) { .update-loader::before { animation: none; } .update-refresh { transition: none; } }
     </style>
 </head>
-
 <body>
     <main class="update-page">
         <div class="update-shell">
-            <a
-                class="update-brand"
-                href="<?= htmlSC(base_href('/')) ?>"
-                aria-label="<?= htmlSC($siteTitle) ?>"
-            >
-                <span class="update-brand__mark" aria-hidden="true">
-                    <i class="ci-refresh-cw"></i>
-                </span>
+            <a class="update-brand" href="<?= htmlSC(base_href('/')) ?>" aria-label="<?= htmlSC($siteTitle) ?>">
+                <span class="update-brand__mark" aria-hidden="true"><i class="ci-layers"></i></span>
                 <span><?= htmlSC($siteTitle) ?></span>
             </a>
-
-            <section
-                class="update-card"
-                aria-labelledby="update-title"
-                aria-live="polite"
-                aria-busy="true"
-            >
-                <div class="update-loader" aria-hidden="true">
-                    <span class="update-loader__core"></span>
-                </div>
-
-                <div class="update-status">
+            <section class="update-card" aria-labelledby="update-title">
+                <div class="update-loader" aria-hidden="true"><i class="ci-refresh-cw"></i></div>
+                <div class="update-status" role="status">
                     <span class="update-status__dot" aria-hidden="true"></span>
                     <span><?= print_translation('update_maintenance_status') ?></span>
                 </div>
-
-                <h1 class="update-title" id="update-title">
-                    <?= htmlSC($pageTitle) ?>
-                </h1>
-
-                <p class="update-message">
-                    <?= print_translation('update_maintenance_message') ?>
-                </p>
-
-                <div
-                    class="update-progress"
-                    role="progressbar"
-                    aria-label="<?= htmlSC(return_translation('update_maintenance_status')) ?>"
-                    aria-valuetext="<?= htmlSC(return_translation('update_maintenance_status')) ?>"
-                ></div>
-
-                <p class="update-hint">
-                    <?= print_translation('update_maintenance_hint') ?>
-                </p>
-
-                <div class="update-actions">
-                    <a class="update-refresh" href="<?= htmlSC(base_href('/')) ?>">
-                        <i class="ci-refresh-cw" aria-hidden="true"></i>
-                        <span><?= print_translation('update_maintenance_refresh') ?></span>
-                    </a>
-                </div>
-
-                <p class="update-note"><?= htmlSC($siteTitle) ?></p>
+                <h1 class="update-title" id="update-title"><?= htmlSC($pageTitle) ?></h1>
+                <p class="update-message"><?= print_translation('update_maintenance_message') ?></p>
+                <p class="update-hint"><i class="ci-info" aria-hidden="true"></i><span><?= print_translation('update_maintenance_hint') ?></span></p>
+                <a class="update-refresh" href="" data-update-refresh>
+                    <i class="ci-refresh-cw" aria-hidden="true"></i><span><?= print_translation('update_maintenance_refresh') ?></span>
+                </a>
             </section>
+            <p class="update-note"><?= htmlSC($siteTitle) ?></p>
         </div>
     </main>
-
     <script>
         (function () {
             'use strict';
-
             var retryDelay = <?= (int)$retryAfter * 1000 ?>;
             var marker = 'data-update-maintenance-page="1"';
             var timer = null;
+            var pending = false;
+            var refresh = document.querySelector('[data-update-refresh]');
 
             function scheduleNextCheck() {
                 window.clearTimeout(timer);
-                timer = window.setTimeout(checkUpdateState, retryDelay);
+                if (!document.hidden) timer = window.setTimeout(checkUpdateState, retryDelay);
             }
 
             async function checkUpdateState() {
+                if (pending) return;
+                window.clearTimeout(timer);
+                pending = true;
+                refresh.setAttribute('aria-disabled', 'true');
+                refresh.setAttribute('aria-busy', 'true');
+                var controller = new AbortController();
+                var timeout = window.setTimeout(function () { controller.abort(); }, 10000);
                 try {
                     var response = await window.fetch(window.location.href, {
-                        method: 'GET',
-                        credentials: 'same-origin',
-                        cache: 'no-store',
-                        headers: {
-                            'X-Fireball-Update-Check': '1'
-                        }
+                        method: 'GET', credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
+                        headers: {'X-Fireball-Update-Check': '1'}
                     });
-
                     var html = await response.text();
-
-                    if (html.indexOf(marker) === -1) {
+                    // A temporary 5xx response is not evidence that the update has finished.
+                    if (response.ok && /text\/html/i.test(response.headers.get('content-type') || '') && html.indexOf(marker) === -1) {
                         window.location.reload();
                         return;
                     }
                 } catch (error) {
-                    // Во время обновления соединение может кратковременно пропадать.
-                    // Не перезагружаем экран с ошибкой — просто проверим снова.
+                    // Keep the stable screen during a restart, timeout or loss of connection.
+                } finally {
+                    window.clearTimeout(timeout);
+                    pending = false;
+                    refresh.removeAttribute('aria-disabled');
+                    refresh.removeAttribute('aria-busy');
                 }
-
                 scheduleNextCheck();
             }
-
+            refresh.addEventListener('click', function (event) { event.preventDefault(); checkUpdateState(); });
+            document.addEventListener('visibilitychange', function () {
+                window.clearTimeout(timer);
+                if (!document.hidden) scheduleNextCheck();
+            });
+            window.addEventListener('pagehide', function () { window.clearTimeout(timer); });
             scheduleNextCheck();
         })();
     </script>

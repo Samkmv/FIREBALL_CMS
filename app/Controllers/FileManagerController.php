@@ -271,6 +271,7 @@ class FileManagerController extends BaseController
         $direction = $this->normalizeTableDirection((string)request()->post('direction', 'desc'), 'desc');
 
         return [
+            'per_page' => 10,
             'search' => request()->post('q', ''),
             'sort' => $sort,
             'direction' => $direction,

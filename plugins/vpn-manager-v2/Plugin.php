@@ -377,9 +377,10 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
         $assetPath = __DIR__ . '/assets/vpn-manager-v2.js';
         $assetUrl = base_href('/plugins/vpn-manager-v2/assets/vpn-manager-v2.js');
         $assetVersion = is_file($assetPath) ? (string)filemtime($assetPath) : (string)time();
+        $styleVersion = (string)filemtime(__DIR__ . '/assets/profile-vpn.css');
 
         return array_merge([
-            'styles' => [],
+            'styles' => [base_href('/plugins/vpn-manager-v2/assets/profile-vpn.css') . '?v=' . $styleVersion],
             'footer_scripts' => [$assetUrl . '?v=' . $assetVersion],
         ], $data);
     }

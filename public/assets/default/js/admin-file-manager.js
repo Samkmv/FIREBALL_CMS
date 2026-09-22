@@ -183,14 +183,22 @@ $(function () {
 
     const floatingRowMenus = new Map();
 
-    function placeRowMenu(state) {
-        const rect = state.toggle.getBoundingClientRect();
-        const menu = state.menu;
-        const edge = 12;
-        const left = Math.max(edge, Math.min(rect.left - menu.offsetWidth - 6, window.innerWidth - menu.offsetWidth - edge));
-        const top = Math.max(edge, Math.min(rect.top, window.innerHeight - menu.offsetHeight - edge));
-        menu.style.setProperty('left', left + 'px', 'important');
-        menu.style.setProperty('top', top + 'px', 'important');
+    function initRowMenus() {
+        if (!bootstrapApi?.Dropdown) return;
+        page.find('[data-file-manager-actions-menu] > [data-bs-toggle="dropdown"]').each(function () {
+            bootstrapApi.Dropdown.getOrCreateInstance(this, {
+                boundary: 'viewport',
+                popperConfig: function (config) {
+                    return Object.assign({}, config, {
+                        strategy: 'fixed',
+                        modifiers: config.modifiers.concat([
+                            { name: 'preventOverflow', options: { boundary: 'viewport', padding: 12 } },
+                            { name: 'flip', options: { boundary: 'viewport', padding: 12 } }
+                        ])
+                    });
+                }
+            });
+        });
     }
 
     function getBrowser() {
@@ -221,14 +229,25 @@ $(function () {
         window.toastr?.[variant]?.(String(message));
     }
 
-    function replaceBrowser(html) {
+    function replaceBrowser(html, preserveScroll) {
+        const previousScroll = page.find('[data-file-manager-scroll]')[0];
+        const scrollTop = preserveScroll && previousScroll ? previousScroll.scrollTop : 0;
+        const scrollLeft = preserveScroll && previousScroll ? previousScroll.scrollLeft : 0;
         closeFloatingRowMenus();
+        getBrowser().find('.modal').each(function () { bootstrapApi?.Modal.getInstance(this)?.dispose(); });
+        getBrowser().find('[data-bs-toggle="dropdown"]').each(function () { bootstrapApi?.Dropdown.getInstance(this)?.dispose(); });
         getBrowser().html(html);
         applyViewMode(getStoredViewMode(), false);
         refreshSelectionState();
         initTooltips();
+        initRowMenus();
         if (window.FireballAdminTables?.prepareResponsiveTables) {
             window.FireballAdminTables.prepareResponsiveTables(getBrowser()[0] || document);
+        }
+        const nextScroll = page.find('[data-file-manager-scroll]')[0];
+        if (nextScroll) {
+            nextScroll.scrollTop = scrollTop;
+            nextScroll.scrollLeft = scrollLeft;
         }
     }
 
@@ -317,14 +336,18 @@ $(function () {
     }
 
     function submitAsyncForm(form, onSuccess) {
+        if (form.dataset.submitting === 'true') return;
         const formData = new FormData(form);
+        const submitButtons = $(form).find('[type="submit"]:enabled');
+        form.dataset.submitting = 'true';
+        submitButtons.prop('disabled', true);
 
         requestManager(form.action, {
             method: String(form.method || 'POST').toUpperCase(),
             body: formData
-        }).then(function (payload) {
-            hideVisibleModals();
-            replaceBrowser(payload.html || '');
+        }).then(async function (payload) {
+            await hideVisibleModals();
+            replaceBrowser(payload.html || '', true);
             renderFeedback(payload.status || 'success', payload.message || '');
             updateBrowserUrl(payload.url || '', true);
 
@@ -332,11 +355,14 @@ $(function () {
                 onSuccess(payload);
             }
         }).catch(function (payload) {
-            if (payload && payload.html) {
-                replaceBrowser(payload.html);
+            if (payload && payload.html && !form.closest('.modal')) {
+                replaceBrowser(payload.html, true);
             }
 
             renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
+        }).finally(function () {
+            delete form.dataset.submitting;
+            submitButtons.prop('disabled', false);
         });
     }
 
@@ -356,14 +382,15 @@ $(function () {
         requestManager(form.action, {
             method: String(form.method || 'POST').toUpperCase(),
             body: formData
-        }).then(function (payload) {
-            hideVisibleModals();
-            replaceBrowser(payload.html || '');
+        }).then(async function (payload) {
+            await hideVisibleModals();
+            replaceBrowser(payload.html || '', true);
             renderFeedback(payload.status || 'success', payload.message || '');
             updateBrowserUrl(payload.url || '', true);
-        }).catch(function (payload) {
+        }).catch(async function (payload) {
             if (payload && payload.html) {
-                replaceBrowser(payload.html);
+                await hideVisibleModals();
+                replaceBrowser(payload.html, true);
             }
 
             renderFeedback('error', payload && payload.message ? payload.message : 'Request failed');
@@ -757,15 +784,22 @@ $(function () {
 
     function hideVisibleModals() {
         if (!bootstrapApi) {
-            return;
+            return Promise.resolve();
         }
 
-        document.querySelectorAll('.modal.show').forEach(function (element) {
+        return Promise.all(Array.from(document.querySelectorAll('.modal')).map(function (element) {
             const instance = bootstrapApi.Modal.getInstance(element);
-            if (instance) {
-                instance.hide();
-            }
-        });
+            if (!instance || element.style.display !== 'block') return Promise.resolve();
+            return new Promise(function (resolve) {
+                const hide = function () { instance.hide(); };
+                element.addEventListener('hidden.bs.modal', function () {
+                    element.removeEventListener('shown.bs.modal', hide);
+                    resolve();
+                }, { once: true });
+                element.addEventListener('shown.bs.modal', hide, { once: true });
+                hide();
+            });
+        }));
     }
 
     page.on('click', '[data-fm-nav-link]', function (event) {
@@ -1156,13 +1190,13 @@ $(function () {
         }
     });
 
-    $(window).on('resize scroll', function () {
+    $(window).on('resize', function () {
         closeFloatingRowMenus();
         refreshSelectionState();
     });
 
     // Keep menus outside the scrolling table without changing row geometry.
-    $(document).on('shown.bs.dropdown', '[data-file-manager-actions-menu]', function () {
+    $(document).on('show.bs.dropdown', '[data-file-manager-actions-menu]', function () {
         const menu = this.querySelector('.dropdown-menu');
         const toggle = this.querySelector('[data-bs-toggle="dropdown"]');
         if (!menu || !toggle || floatingRowMenus.has(this)) return;
@@ -1172,7 +1206,6 @@ $(function () {
         floatingRowMenus.set(this, state);
         document.body.appendChild(menu);
         menu.classList.add('fm-row-menu-floating');
-        placeRowMenu(state);
     });
 
     $(document).on('hidden.bs.dropdown', '[data-file-manager-actions-menu]', function () {
@@ -1188,6 +1221,21 @@ $(function () {
 
     // A portalled menu still belongs to its original toggle for keyboard use.
     document.addEventListener('keydown', function (event) {
+        const toggleTarget = event.target.closest?.('[data-file-manager-actions-menu] > [data-bs-toggle="dropdown"]');
+        if (toggleTarget && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            bootstrapApi.Dropdown.getOrCreateInstance(toggleTarget).show();
+            // Wait for Popper before focusing so the document cannot scroll to
+            // the temporary position of a menu that has just entered the body.
+            requestAnimationFrame(function () {
+                const menu = floatingRowMenus.get(toggleTarget.parentElement)?.menu;
+                const items = menu?.querySelectorAll('.dropdown-item:not(.disabled):not(:disabled)');
+                if (!items?.length) return;
+                items[event.key === 'ArrowDown' ? 0 : items.length - 1].focus({ preventScroll: true });
+            });
+            return;
+        }
         const menu = event.target.closest?.('.fm-row-menu-floating');
         if (!menu || !['Escape', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
         event.preventDefault();
@@ -1207,13 +1255,21 @@ $(function () {
 
     document.addEventListener('scroll', function (event) {
         const target = event.target;
-        if (
-            target &&
-            target.nodeType === 1 &&
-            target.matches &&
-            target.matches('[data-file-manager-scroll], [data-file-manager-results]')
-        ) {
-            closeFloatingRowMenus();
+        if (target === document || target?.matches?.('[data-file-manager-scroll], [data-file-manager-results]')) {
+            floatingRowMenus.forEach(function (state) {
+                const scroll = state.toggle.closest('[data-file-manager-scroll]');
+                if (!scroll) return;
+                const viewport = scroll.getBoundingClientRect();
+                const header = scroll.querySelector('[data-file-manager-table] thead th');
+                const top = Math.max(0, viewport.top + (header ? header.offsetHeight : 0));
+                const rect = state.toggle.getBoundingClientRect();
+                const dropdown = bootstrapApi.Dropdown.getInstance(state.toggle);
+                if (rect.top < top || rect.bottom > Math.min(window.innerHeight, viewport.bottom)) {
+                    dropdown?.hide();
+                } else {
+                    dropdown?.update();
+                }
+            });
         }
     }, true);
 
@@ -1344,4 +1400,5 @@ $(function () {
 
     refreshSelectionState();
     initTooltips();
+    initRowMenus();
 });

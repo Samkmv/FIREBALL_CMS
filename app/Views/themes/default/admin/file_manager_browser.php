@@ -100,7 +100,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
             class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
             type="button"
             data-bs-toggle="dropdown"
-            data-bs-display="static"
+            aria-haspopup="true"
             aria-expanded="false"
             aria-label="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
             title="<?= htmlSC(return_translation('admin_files_actions_btn')) ?>"
