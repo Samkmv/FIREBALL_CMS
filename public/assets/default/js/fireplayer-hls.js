@@ -484,6 +484,17 @@
             };
 
             const prepareNative = async function (reason) {
+                // Initial attachment must not wait for metadata/canplay: Safari can need
+                // play() to start loading them. Keep the reset/readiness path for recovery.
+                if (reason === 'initial' && !media.error) {
+                    assertActive();
+                    const sourceChanged = media.getAttribute('src') !== source;
+                    if (sourceChanged) { media.setAttribute('src', source); }
+                    if (sourceChanged || !media.currentSrc) { media.load(); }
+                    player._emit('recovery', { reason: 'initial', stage: 'native-attach', attempt: 1 });
+                    return;
+                }
+
                 const maxAttempts = 2;
                 player._nativeHlsPreparing = true;
 

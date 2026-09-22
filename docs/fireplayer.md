@@ -1,4 +1,4 @@
-# FirePlayer 1.0.3
+# FirePlayer 1.0.8
 
 FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD, and HLS LIVE. New content uses `.fire-player` or `[data-fire-player]`; legacy video/audio inside post content is upgraded automatically while chat and background media remain on their own paths.
 
@@ -56,6 +56,12 @@ player.on('reconnect', ({ reason }) => console.log(reason));
 
 `ready` means the source/adapter is attached, not that playback has started. `play()` may be called during preparation and waits for it; a later source change or unload cancels that intent. Handle rejected API promises when calling them from application code. Browser autoplay denial emits `autoplayblocked` without presenting a broken-source error.
 
+### Native HLS startup
+
+Initial Safari/iOS startup follows `wake ready → attach source → play()`. The adapter assigns `src` only when different and calls `load()` only for a changed source or an absent `currentSrc`. It does not reset a healthy native source or wait for `loadedmetadata`/`canplay` before allowing `play()`. These events still drive the UI and recovery. A real native error/reconnect retains the bounded source-reset/readiness/retry path.
+
+If native HLS video rejects audible playback with `NotAllowedError` after asynchronous preparation, FirePlayer tries `play()` once more muted, on the same source. Temporary mute never changes saved sound preferences or volume. An explicit Play, unmute or volume action restores normal control. It does not automatically unmute in `playing`, because [WebKit can pause playback when unmuted outside a user gesture](https://webkit.org/blog/6784/new-video-policies-for-ios/). If the muted attempt is also blocked, the existing Play prompt remains available. Other playback errors retain their existing recovery paths.
+
 Source inspection is also public:
 
 ```js
@@ -72,7 +78,7 @@ const info = await FirePlayer.detect('/camera/index.m3u8');
 - `reconnect`, `reconnectDelay`, `stallTimeout`, `startupTimeout` (30 seconds by default), `maxReconnectAttempts` (4), `liveEdgeTolerance`.
 - `rememberVolume`, `keyboard`, `gestures`.
 - `rememberPosition`: `'auto'` by default (video resumes, audio starts at zero). Set `true` to resume audio as well, for example for audiobooks, or `false` to disable position persistence.
-- `streamId` identifies a managed camera; `/stream-ID/index.m3u8` URLs are recognized automatically. Managed cameras always require `/api/streams/wake` to return `ready: true` before attachment, including reconnect. `lazyStart` remains accepted for legacy markup compatibility.
+- `streamId` identifies a managed camera; `/stream-ID/index.m3u8` URLs are recognized automatically. Initial attachment requires `/api/streams/wake` to return `ready: true`. Reconnect first attempts local recovery; repeated recovery and manual retry can wake the backend again. `lazyStart` remains accepted for legacy markup compatibility.
 
 Camera Manager uses a single lazy modal player. Closing the modal unloads the HLS engine, so hidden cameras do not continue downloading segments.
 
@@ -87,14 +93,11 @@ Camera Manager uses a single lazy modal player. Closing the modal unloads the HL
 ## Verification
 
 ```bash
-php tests/fireplayer_regression.php
-php tests/hls_player_regression.php
-php tests/editor2_unit.php
-node tests/fireplayer_browser.js
+node tests/fireplayer_native_startup.cjs
 ```
 
-The browser suite requires Node.js, Playwright and its Chromium binary. When dependencies are installed outside the repository, configure `NODE_PATH` and `PLAYWRIGHT_BROWSERS_PATH`. Missing dependencies or a missing browser fail the suite rather than reporting success. Playwright 1.48.2/Chromium is used on the macOS 13 test host.
+This dependency-free regression test runs the production core and HLS adapter with controlled media, readiness and browser-policy events. It checks source attachment and the first `play()` without metadata/canplay, source reuse, readiness failures, cancellation, native recovery, the hls.js path, and the bounded muted fallback without changing saved sound preferences.
 
-The suite contains 17 check groups. It generates local WebM/WAV media for real playback checks, and uses deterministic media/HLS doubles for startup races, failed readiness, retry and decoder errors. It also checks HTTP source detection, the bundled hls.js script loader after a failed request, desktop/touch controls, audio session ownership, creator diagnostics permissions/cleanup, and editor/public/preview rendering. Browser assertions cover the volume popup gap, pointer transition, unnecessary desktop scrolling, narrow-screen diagnostics, compact LIVE controls, separate status messages, page scrolling at video zoom 1×/2×, audio starting at zero, sound preferences, and audio timeline styling in light/dark themes with the CMS stylesheets loaded.
+For the device comparison, keep a camera playing on phone 1, then open the same camera on phone 2 and compare legacy `/admin/posts/preview/17` with its FirePlayer page. On iPhone Safari, check first Play, sound enablement, pause/resume, reconnect and switching cameras. In a browser performance recording, compare the successful wake response with the first `media.play()` call; no native readiness wait should sit between them.
 
 This does not certify Safari/iPhone, actual camera connectivity, server-side stream readiness, or HLS decoding against a real segment feed; those require a deployment/device smoke test.

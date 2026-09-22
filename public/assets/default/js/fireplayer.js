@@ -475,6 +475,7 @@
             this._recoveringMedia = false;
             this._nativeHlsPreparing = false;
             this._nativePlayRecoveries = 0;
+            this._nativeHlsMutedFallback = false;
             this._sourcePrepared = false;
             this._loadAbortController = null;
             this._reconnectPromise = null;
@@ -926,6 +927,11 @@
         }
 
         _teardownPlayback() {
+            // Capture before adapter cleanup: hls.js may detach its source itself.
+            // A freshly rendered empty element has no session to reset on first Play.
+            const hadMediaSource = this.media && Boolean(this.media.getAttribute('src') !== null
+                || this.media.currentSrc || this.media.srcObject || this.media.firstChild
+                || this.media.error || this.media.readyState > 0);
             this._sourcePrepared = false;
             this._playRequested = false;
             this._playPromise = null;
@@ -943,11 +949,14 @@
             this.controller = null;
             if (this.media) {
                 try { this.media.pause(); } catch (error) { /* The media may not be attached yet. */ }
-                this.media.removeAttribute('src');
+                this._restoreNativeHlsMute();
+                if (hadMediaSource) { this.media.removeAttribute('src'); }
                 while (this.media.firstChild) {
                     this.media.removeChild(this.media.firstChild);
                 }
-                try { this.media.load(); } catch (error) { /* Some test DOMs do not implement load(). */ }
+                if (hadMediaSource) {
+                    try { this.media.load(); } catch (error) { /* Some test DOMs do not implement load(). */ }
+                }
             }
         }
 
@@ -956,6 +965,9 @@
             if (!this.options.src) {
                 throw new Error('FirePlayer has no source.');
             }
+            // An explicit Play can restore sound within its user gesture. Never unmute
+            // from `playing`: Safari may pause again when activation has been lost.
+            this._restoreNativeHlsMute();
             this._playRequested = true;
             if (!this._sourcePrepared) {
                 if (this._lazySourcePending) {
@@ -982,7 +994,21 @@
             // Call play synchronously when prepared so a click retains browser activation.
             let attempt;
             try { attempt = media.play(); } catch (error) { attempt = Promise.reject(error); }
-            const pending = Promise.resolve(attempt).then(() => {
+            const pending = Promise.resolve(attempt).catch((error) => {
+                const current = () => token === this._loadToken && attemptId === this._playAttemptId
+                    && !this._destroyed && media === this.media && this._playRequested;
+                // Async camera wake can outlive iOS user activation. Try audible playback
+                // first, then one silent native-video attempt without reloading the source.
+                if (error.name !== 'NotAllowedError' || !current() || media.muted
+                    || !(media instanceof HTMLVideoElement) || !this.info || this.info.protocol !== 'hls'
+                    || !this.controller || this.controller.engine !== 'native') { throw error; }
+                this._nativeHlsMutedFallback = true;
+                media.muted = true;
+                this._syncVolume();
+                this._emit('recovery', { reason: 'autoplay', stage: 'native-muted-play' });
+                if (!current()) { return this; }
+                return media.play();
+            }).then(() => {
                 if (token !== this._loadToken || attemptId !== this._playAttemptId || this._destroyed || media !== this.media) { return this; }
                 if (!media.paused && !media.ended) {
                     this.root.classList.add('fireplayer--playing');
@@ -991,7 +1017,8 @@
                 this._syncPlayButtons();
                 return this;
             }).catch((error) => {
-                if (token !== this._loadToken || attemptId !== this._playAttemptId || this._destroyed || error.name === 'AbortError') { return this; }
+                if (token !== this._loadToken || attemptId !== this._playAttemptId || this._destroyed || media !== this.media || error.name === 'AbortError') { return this; }
+                this._restoreNativeHlsMute();
 
                 if (error.name === 'NotAllowedError') {
                     this._playRequested = false;
@@ -1058,6 +1085,7 @@
                 this.setStatus('');
             }
             this.media.pause();
+            this._restoreNativeHlsMute();
             this._settleLoading();
             return this;
         }
@@ -1473,9 +1501,19 @@
         }
 
         _storeVolume() {
+            // Only explicit volume/mute controls call this method; their choice replaces
+            // any temporary policy mute used during native HLS startup.
+            this._nativeHlsMutedFallback = false;
             if (this.options.rememberVolume) {
                 storage.set('volume', { version: 2, volume: this.media.volume, muted: this.media.muted });
             }
+        }
+
+        _restoreNativeHlsMute() {
+            if (!this._nativeHlsMutedFallback) { return; }
+            this._nativeHlsMutedFallback = false;
+            this.media.muted = false;
+            this._syncVolume();
         }
 
         _rememberPositionEnabled() {
@@ -1606,7 +1644,7 @@
         }
     }
 
-    FirePlayer.version = '1.0.7';
+    FirePlayer.version = '1.0.8';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;
