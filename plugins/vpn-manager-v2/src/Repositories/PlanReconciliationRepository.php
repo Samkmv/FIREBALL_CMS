@@ -201,7 +201,7 @@ final class PlanReconciliationRepository
         $limitSql = $limit > 0 ? ' LIMIT ' . max(1, min(500, $limit)) : '';
 
         return db()->query(
-            "SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+            "SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions
              WHERE plan_id = ? AND id > ? AND status IN ({$statusSql}) AND starts_at <= NOW()
@@ -215,7 +215,7 @@ final class PlanReconciliationRepository
     {
         [$statusSql, $params] = $this->statusClause(self::ELIGIBLE_STATUSES);
         $row = db()->query(
-            "SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+            "SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? AND status IN ({$statusSql}) AND starts_at <= NOW()
                AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1",
@@ -228,7 +228,7 @@ final class PlanReconciliationRepository
     public function subscription(int $subscriptionId): ?array
     {
         $row = db()->query(
-            'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+            'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$subscriptionId]

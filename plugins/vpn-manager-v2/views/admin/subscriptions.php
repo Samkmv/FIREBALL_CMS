@@ -20,6 +20,14 @@ $rows = [];
 $mobileCards = [];
 foreach ($subscriptions as $subscription) {
     $id = (int)$subscription['id'];
+    $manualCustomer = (int)($subscription['user_id'] ?? 0) <= 0;
+    $userMeta = $manualCustomer
+        ? FireballPluginVpnManagerV2::t('vpn_manager_v2_manual_customer_label')
+        : trim(
+            (string)($subscription['user_login'] ?? '')
+            . ' · '
+            . (string)($subscription['user_email'] ?? '')
+        );
     $showUrl = AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $id, $returnQuery);
     $editUrl = AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $id, $returnQuery);
     $suspendUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $id . '/suspend');
@@ -73,8 +81,7 @@ foreach ($subscriptions as $subscription) {
     $rows[] = ['cells' => [
         ['value' => '#' . $id],
         ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['user_name'])
-            . '</span><div class="small text-body-secondary">' . htmlSC((string)$subscription['user_login'])
-            . ' · ' . htmlSC((string)$subscription['user_email']) . '</div>'],
+            . '</span><div class="small text-body-secondary">' . htmlSC($userMeta) . '</div>'],
         ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['plan_name'])
             . '</span><div class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</div>'],
         ['html' => $badge],

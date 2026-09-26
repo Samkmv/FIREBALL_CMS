@@ -294,7 +294,17 @@ foreach ($nodes as $node) {
     </div>
     <dl class="row mb-0 g-3">
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user')) ?></dt>
-        <dd class="col-sm-9 mb-0">#<?= (int)$subscription['user_id'] ?> · <?= htmlSC((string)$subscription['user_name']) ?> · <?= htmlSC((string)$subscription['user_login']) ?> · <?= htmlSC((string)$subscription['user_email']) ?></dd>
+        <dd class="col-sm-9 mb-0">
+            <?php if ((int)($subscription['user_id'] ?? 0) > 0): ?>
+                #<?= (int)$subscription['user_id'] ?> ·
+                <?= htmlSC((string)$subscription['user_name']) ?> ·
+                <?= htmlSC((string)$subscription['user_login']) ?> ·
+                <?= htmlSC((string)$subscription['user_email']) ?>
+            <?php else: ?>
+                <?= htmlSC((string)$subscription['user_name']) ?> ·
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_manual_customer_label')) ?>
+            <?php endif; ?>
+        </dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_plan')) ?></dt>
         <dd class="col-sm-9 mb-0">#<?= (int)$subscription['plan_id'] ?> · <?= htmlSC((string)$subscription['plan_name']) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_period')) ?></dt>

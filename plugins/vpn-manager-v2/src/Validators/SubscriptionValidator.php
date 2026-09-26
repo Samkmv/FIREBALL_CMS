@@ -9,7 +9,24 @@ final class SubscriptionValidator
 {
     public function validate(array $input): SubscriptionRequestData
     {
-        $userId = $this->positiveInteger($input['user_id'] ?? null, 'vpn_manager_v2_error_subscription_user_required');
+        $ownerType = strtolower(trim((string)($input['owner_type'] ?? 'registered')));
+        if (!in_array($ownerType, ['registered', 'manual'], true)) {
+            $ownerType = 'registered';
+        }
+
+        if ($ownerType === 'manual') {
+            $userId = null;
+            $manualCustomerName = $this->manualCustomerName(
+                $input['manual_customer_name'] ?? null
+            );
+        } else {
+            $userId = $this->positiveInteger(
+                $input['user_id'] ?? null,
+                'vpn_manager_v2_error_subscription_user_required'
+            );
+            $manualCustomerName = null;
+        }
+
         $planId = $this->positiveInteger($input['plan_id'] ?? null, 'vpn_manager_v2_error_subscription_plan_required');
         $startsAt = $this->dateTime(
             $input['starts_at'] ?? null,
@@ -41,11 +58,27 @@ final class SubscriptionValidator
 
         return new SubscriptionRequestData(
             $userId,
+            $manualCustomerName,
             $planId,
             $startsAt,
             $expiresAt,
             $lifetime
         );
+    }
+
+    private function manualCustomerName(mixed $value): string
+    {
+        $value = trim((string)$value);
+
+        if ($value === '' || mb_strlen($value) < 2 || mb_strlen($value) > 190) {
+            throw new ValidationException(
+                \FireballPluginVpnManagerV2::t(
+                    'vpn_manager_v2_error_manual_customer_name'
+                )
+            );
+        }
+
+        return $value;
     }
 
     private function positiveInteger(mixed $value, string $errorKey): int

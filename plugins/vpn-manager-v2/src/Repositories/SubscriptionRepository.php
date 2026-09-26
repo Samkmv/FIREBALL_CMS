@@ -133,12 +133,13 @@ final class SubscriptionRepository
             $now = date('Y-m-d H:i:s');
             $database->query(
                 'INSERT INTO vpn_v2_subscriptions
-                    (user_id, profile_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes, device_limit,
+                    (user_id, manual_customer_name, profile_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes, device_limit,
                      subscription_token, subscription_token_hash, revision, config_updated_at,
                      created_by, last_error, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?, NULL, ?, ?)',
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?, NULL, ?, ?)',
                 [
-                    $subscription['user_id'],
+                    $subscription['user_id'] ?? null,
+                    $subscription['manual_customer_name'] ?? null,
                     (int)($subscription['profile_id'] ?? 0) > 0 ? (int)$subscription['profile_id'] : null,
                     $subscription['plan_id'],
                     'provisioning',
@@ -216,18 +217,18 @@ final class SubscriptionRepository
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                    u.name AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
                     SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
              FROM vpn_v2_subscriptions s
-             INNER JOIN users u ON u.id = s.user_id
+             LEFT JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
              WHERE s.status <> 'deleted'
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                       s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                      u.name, u.login, u.email, p.name
+                      s.manual_customer_name, u.name, u.login, u.email, p.name
              ORDER BY s.created_at DESC, s.id DESC"
         )->get() ?: [];
     }
@@ -248,16 +249,17 @@ final class SubscriptionRepository
                 OR u.name LIKE ?
                 OR u.login LIKE ?
                 OR u.email LIKE ?
+                OR s.manual_customer_name LIKE ?
                 OR p.name LIKE ?
                 OR s.status LIKE ?
             )";
-            $params = [$like, $like, $like, $like, $like, $like];
+            $params = [$like, $like, $like, $like, $like, $like, $like];
         }
 
         return (int)db()->query(
             "SELECT COUNT(*)
              FROM vpn_v2_subscriptions s
-             INNER JOIN users u ON u.id = s.user_id
+             LEFT JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
              WHERE s.status <> 'deleted'{$searchSql}",
             $params
@@ -282,28 +284,29 @@ final class SubscriptionRepository
                 OR u.name LIKE ?
                 OR u.login LIKE ?
                 OR u.email LIKE ?
+                OR s.manual_customer_name LIKE ?
                 OR p.name LIKE ?
                 OR s.status LIKE ?
             )";
-            $params = [$like, $like, $like, $like, $like, $like];
+            $params = [$like, $like, $like, $like, $like, $like, $like];
         }
 
         return db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                    u.name AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
                     SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
              FROM vpn_v2_subscriptions s
-             INNER JOIN users u ON u.id = s.user_id
+             LEFT JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
              WHERE s.status <> 'deleted'{$searchSql}
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                       s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                      u.name, u.login, u.email, p.name
+                      s.manual_customer_name, u.name, u.login, u.email, p.name
              ORDER BY s.created_at DESC, s.id DESC
              LIMIT {$limit} OFFSET {$offset}",
             $params
@@ -317,9 +320,9 @@ final class SubscriptionRepository
                     s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     CONCAT(LEFT(s.subscription_token, 4), '…', RIGHT(s.subscription_token, 4)) AS token_preview,
-                    u.name AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name
+                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name
              FROM vpn_v2_subscriptions s
-             INNER JOIN users u ON u.id = s.user_id
+             LEFT JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
              WHERE s.id = ? LIMIT 1",
             [$id]
@@ -331,7 +334,7 @@ final class SubscriptionRepository
     public function findForProvisioning(int $id): ?array
     {
         $row = db()->query(
-            'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+            'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, revision, created_by, internal_comment, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$id]
@@ -343,7 +346,7 @@ final class SubscriptionRepository
     public function findForDeletion(int $id): ?array
     {
         $row = db()->query(
-            'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+            'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, subscription_token, revision, config_updated_at, created_by,
                     internal_comment, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
@@ -365,10 +368,10 @@ final class SubscriptionRepository
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
                     n.last_error, n.created_at, n.updated_at,
                     s.name AS server_name, s.code AS server_code, i.name AS inbound_name,
-                    i.remote_inbound_id, u.name AS user_name, u.email AS user_email
+                    i.remote_inbound_id, COALESCE(u.name, sub.manual_customer_name) AS user_name, u.email AS user_email
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
-             INNER JOIN users u ON u.id = sub.user_id
+             LEFT JOIN users u ON u.id = sub.user_id
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id
              WHERE n.subscription_id = ?
@@ -404,12 +407,12 @@ final class SubscriptionRepository
                     n.desired_enabled, n.is_obsolete,
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at, n.last_error,
                     n.created_at, n.updated_at, sub.user_id, sub.plan_id,
-                    u.name AS user_name, u.email AS user_email, p.name AS plan_name,
+                    COALESCE(u.name, sub.manual_customer_name) AS user_name, u.email AS user_email, p.name AS plan_name,
                     s.name AS server_name, s.code AS server_code, i.name AS inbound_name,
                     i.remote_inbound_id
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
-             INNER JOIN users u ON u.id = sub.user_id
+             LEFT JOIN users u ON u.id = sub.user_id
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id
@@ -433,14 +436,14 @@ final class SubscriptionRepository
                     n.last_error, n.created_at, n.updated_at, sub.user_id, sub.plan_id,
                     sub.status AS subscription_status, sub.starts_at, sub.expires_at,
                     sub.device_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
-                    sub.created_by, u.name AS user_name, u.email AS user_email,
+                    sub.created_by, COALESCE(u.name, sub.manual_customer_name) AS user_name, u.email AS user_email,
                     p.name AS plan_name, s.name AS server_name, s.code AS server_code,
                     s.is_enabled AS server_is_enabled, i.name AS inbound_name,
                     i.remote_inbound_id, i.status AS inbound_status,
                     i.is_enabled AS inbound_is_enabled
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
-             INNER JOIN users u ON u.id = sub.user_id
+             LEFT JOIN users u ON u.id = sub.user_id
              INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id
@@ -904,6 +907,13 @@ final class SubscriptionRepository
         ?int $adminId,
         array $context = []
     ): void {
+        $userId = $userId !== null && $userId > 0
+            ? $userId
+            : null;
+        $adminId = $adminId !== null && $adminId > 0
+            ? $adminId
+            : null;
+
         $safeContext = $this->sanitizeContext($context);
         $json = $safeContext !== []
             ? json_encode($safeContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)

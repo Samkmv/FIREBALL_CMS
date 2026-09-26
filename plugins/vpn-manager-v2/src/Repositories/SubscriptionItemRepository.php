@@ -10,10 +10,10 @@ final class SubscriptionItemRepository
             'SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.traffic_used_bytes, s.device_limit, s.revision,
                     s.subscription_token, s.config_updated_at, s.created_at, s.updated_at,
-                    u.name AS user_name, u.login AS user_login, u.email AS user_email,
+                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email,
                     p.name AS plan_name
              FROM vpn_v2_subscriptions s
-             INNER JOIN users u ON u.id = s.user_id
+             LEFT JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
              WHERE s.id = ? LIMIT 1',
             [$id]
@@ -53,7 +53,7 @@ final class SubscriptionItemRepository
                     child.starts_at AS child_starts_at, child.expires_at AS child_expires_at,
                     child.traffic_limit_bytes AS child_traffic_limit_bytes,
                     child.traffic_used_bytes AS child_traffic_used_bytes,
-                    child_user.name AS child_user_name, child_user.email AS child_user_email,
+                    COALESCE(child_user.name, child.manual_customer_name) AS child_user_name, child_user.email AS child_user_email,
                     child_plan.name AS child_plan_name,
                     connection.subscription_id AS connection_subscription_id,
                     connection.status AS connection_status,
@@ -67,7 +67,7 @@ final class SubscriptionItemRepository
                     source_sub.status AS connection_subscription_status,
                     source_sub.starts_at AS connection_starts_at,
                     source_sub.expires_at AS connection_expires_at,
-                    source_user.name AS connection_user_name,
+                    COALESCE(source_user.name, source_sub.manual_customer_name) AS connection_user_name,
                     source_user.email AS connection_user_email,
                     (SELECT COUNT(*) FROM vpn_v2_subscription_nodes child_node
                      WHERE child_node.subscription_id = child.id
@@ -381,7 +381,7 @@ final class SubscriptionItemRepository
         return db()->query(
             "SELECT s.id, s.status, s.expires_at, u.name AS user_name, p.name AS plan_name
              FROM vpn_v2_subscriptions s
-             INNER JOIN users u ON u.id = s.user_id
+             LEFT JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
              WHERE s.user_id = ? AND s.id <> ? AND s.status NOT IN ('deleting', 'deleted')
                AND NOT EXISTS (

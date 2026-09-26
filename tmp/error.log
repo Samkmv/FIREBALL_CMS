@@ -998,3 +998,109 @@ Password 1 provided:
 Password 2 provided: 
 DaData token provided: 1
 ========================================================================
+[2026-09-26 14:43:26] Database query error
+Request URI: /admin/plugins/vpn-manager-v2/subscriptions
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+SQL: SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
+                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                    s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
+                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    COUNT(n.id) AS node_count,
+                    SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
+             FROM vpn_v2_subscriptions s
+             LEFT JOIN users u ON u.id = s.user_id
+             INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
+             LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
+             WHERE s.status <> 'deleted'
+             GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
+                      s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                      s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
+                      s.manual_customer_name, u.name, u.login, u.email, p.name
+             ORDER BY s.created_at DESC, s.id DESC
+             LIMIT 20 OFFSET 0
+Param Count: 0
+Param Keys: []
+========================================================================
+[2026-09-26 14:43:26] Unhandled application exception
+Request URI: /admin/plugins/vpn-manager-v2/subscriptions
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-26 14:43:38] Database query error
+Request URI: /admin/plugins/vpn-manager-v2/subscriptions
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+SQL: SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
+                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                    s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
+                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    COUNT(n.id) AS node_count,
+                    SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
+             FROM vpn_v2_subscriptions s
+             LEFT JOIN users u ON u.id = s.user_id
+             INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
+             LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
+             WHERE s.status <> 'deleted'
+             GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
+                      s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                      s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
+                      s.manual_customer_name, u.name, u.login, u.email, p.name
+             ORDER BY s.created_at DESC, s.id DESC
+             LIMIT 20 OFFSET 0
+Param Count: 0
+Param Keys: []
+========================================================================
+[2026-09-26 14:43:38] Unhandled application exception
+Request URI: /admin/plugins/vpn-manager-v2/subscriptions
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================

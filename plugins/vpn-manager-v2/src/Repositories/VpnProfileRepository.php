@@ -65,6 +65,68 @@ final class VpnProfileRepository
         return $profile;
     }
 
+    public function find(int $profileId): ?array
+    {
+        if ($profileId <= 0) {
+            return null;
+        }
+
+        $row = db()->query(
+            'SELECT id, cms_user_id, shared_uuid, encrypted_shared_password,
+                    status, created_at, updated_at
+             FROM vpn_v2_profiles
+             WHERE id = ? LIMIT 1',
+            [$profileId]
+        )->getOne();
+
+        return is_array($row) ? $row : null;
+    }
+
+    public function createManual(): array
+    {
+        $now = date('Y-m-d H:i:s');
+
+        db()->query(
+            'INSERT INTO vpn_v2_profiles
+                (cms_user_id, shared_uuid, encrypted_shared_password,
+                 status, created_at, updated_at)
+             VALUES (NULL, ?, ?, \'active\', ?, ?)',
+            [
+                Uuid::v4(),
+                SecretCipher::encrypt($this->password()),
+                $now,
+                $now,
+            ]
+        );
+
+        $profile = $this->find((int)db()->getInsertId());
+
+        if (!$profile) {
+            throw new \RuntimeException(
+                'Manual VPN profile could not be created.'
+            );
+        }
+
+        return $profile;
+    }
+
+    public function deleteManualIfUnused(int $profileId): void
+    {
+        if ($profileId <= 0) {
+            return;
+        }
+
+        db()->query(
+            'DELETE p
+             FROM vpn_v2_profiles p
+             LEFT JOIN vpn_v2_subscriptions s ON s.profile_id = p.id
+             WHERE p.id = ?
+               AND p.cms_user_id IS NULL
+               AND s.id IS NULL',
+            [$profileId]
+        );
+    }
+
     public function sharedPassword(array $profile): string
     {
         return SecretCipher::decrypt($profile['encrypted_shared_password'] ?? null);

@@ -192,6 +192,11 @@ final class VpnNotificationService
 
     private function queue(array $subscription, string $type, string $occurrence): int
     {
+        // Manual subscriptions have no CMS notification recipient.
+        if ((int)($subscription['user_id'] ?? 0) <= 0) {
+            return 0;
+        }
+
         $settings = $this->settings();
         $count = 0;
         if (!empty($settings['notifications_profile_enabled'])) {

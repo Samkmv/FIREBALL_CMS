@@ -11,6 +11,7 @@ use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
+use Fireball\VpnManagerV2\Repositories\VpnProfileRepository;
 use Fireball\VpnManagerV2\Repositories\VpnAccessRequestRepository;
 use Fireball\VpnManagerV2\Support\SubscriptionToken;
 use Fireball\VpnManagerV2\Validators\SubscriptionValidator;
@@ -34,9 +35,18 @@ final class SubscriptionProvisioningService
     {
         $repository = $this->repository();
         $request = ($this->validator ?? new SubscriptionValidator())->validate($input);
-        $user = $repository->findUser($request->userId);
-        if (!$user) {
-            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_user_not_found'));
+        $user = null;
+
+        if ($request->userId !== null) {
+            $user = $repository->findUser($request->userId);
+
+            if (!$user) {
+                throw new ValidationException(
+                    \FireballPluginVpnManagerV2::t(
+                        'vpn_manager_v2_error_subscription_user_not_found'
+                    )
+                );
+            }
         }
 
         $adminId = $adminId ?? $this->currentAdminId();
@@ -69,34 +79,87 @@ final class SubscriptionProvisioningService
 
         $expiresAtValue = $expiresAt?->format('Y-m-d H:i:s');
 
-        if ($repository->hasOverlappingSubscription(
+        if ($user !== null && $repository->hasOverlappingSubscription(
             (int)$user['id'],
             $startsAt->format('Y-m-d H:i:s'),
             $expiresAtValue
         )) {
-            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_overlap'));
+            throw new ValidationException(
+                \FireballPluginVpnManagerV2::t(
+                    'vpn_manager_v2_error_subscription_overlap'
+                )
+            );
         }
 
-        $localNodes = $this->prepareLocalNodes($planNodes, $user);
-        $subscriptionId = $repository->createLocal([
-            'user_id' => (int)$user['id'],
-            'profile_id' => (int)($localNodes[0]['profile_id'] ?? 0),
-            'plan_id' => (int)$plan['id'],
-            'starts_at' => $startsAt->format('Y-m-d H:i:s'),
-            'expires_at' => $expiresAtValue,
-            'traffic_limit_bytes' => $plan['traffic_limit_bytes'] !== null ? (int)$plan['traffic_limit_bytes'] : null,
-            'device_limit' => (int)$plan['device_limit'],
-            'subscription_token' => $this->uniqueToken($repository),
-            'created_by' => $adminId,
-        ], $localNodes);
+        $manualProfile = null;
 
         try {
-            (new VpnAccessRequestRepository())->fulfillForUser((int)$user['id'], $adminId, $subscriptionId);
+            if ($user !== null) {
+                $localNodes = $this->prepareLocalNodes(
+                    $planNodes,
+                    $user
+                );
+            } else {
+                $manualProfile = (
+                    new VpnProfileRepository()
+                )->createManual();
+
+                $localNodes = $this->prepareLocalNodes(
+                    $planNodes,
+                    null,
+                    $manualProfile,
+                    (string)$request->manualCustomerName
+                );
+            }
+
+            $subscriptionId = $repository->createLocal([
+                'user_id' => $user !== null
+                    ? (int)$user['id']
+                    : null,
+                'manual_customer_name' => $user === null
+                    ? (string)$request->manualCustomerName
+                    : null,
+                'profile_id' => (int)($localNodes[0]['profile_id'] ?? 0),
+                'plan_id' => (int)$plan['id'],
+                'starts_at' => $startsAt->format('Y-m-d H:i:s'),
+                'expires_at' => $expiresAtValue,
+                'traffic_limit_bytes' => $plan['traffic_limit_bytes'] !== null
+                    ? (int)$plan['traffic_limit_bytes']
+                    : null,
+                'device_limit' => (int)$plan['device_limit'],
+                'subscription_token' => $this->uniqueToken($repository),
+                'created_by' => $adminId,
+            ], $localNodes);
         } catch (\Throwable $exception) {
-            log_error_details('VPN access request fulfillment failed', [
-                'User' => (int)$user['id'],
-                'Subscription' => $subscriptionId,
-            ], $exception);
+            if (is_array($manualProfile)) {
+                try {
+                    (new VpnProfileRepository())->deleteManualIfUnused(
+                        (int)($manualProfile['id'] ?? 0)
+                    );
+                } catch (\Throwable) {
+                }
+            }
+
+            throw $exception;
+        }
+
+        if ($user !== null) {
+            try {
+                (new VpnAccessRequestRepository())->fulfillForUser(
+                    (int)$user['id'],
+                    $adminId,
+                    $subscriptionId
+                );
+            } catch (\Throwable $exception) {
+                log_error_details(
+                    'VPN access request fulfillment failed',
+                    [
+                        'User' => (int)$user['id'],
+                        'Subscription' => $subscriptionId,
+                    ],
+                    $exception
+                );
+            }
         }
 
         // The local subscription and every local node are committed before this method performs HTTP.
@@ -361,7 +424,12 @@ final class SubscriptionProvisioningService
         }
     }
 
-    private function prepareLocalNodes(array $planNodes, array $user): array
+    private function prepareLocalNodes(
+        array $planNodes,
+        ?array $user,
+        ?array $manualProfile = null,
+        ?string $manualName = null
+    ): array
     {
         $resolver = $this->flowResolver ?? new VpnFlowResolver();
         $payloadFactory = $this->payloadFactory ?? new ClientPayloadFactory();
@@ -381,10 +449,26 @@ final class SubscriptionProvisioningService
             }
 
             $protocol = strtolower(trim((string)$planNode['protocol']));
-            $identity = ($this->identityService ?? new RemoteClientIdentityService())->forTarget(
-                $user,
-                array_replace($planNode, ['protocol' => $protocol])
+            $identityService = $this->identityService
+                ?? new RemoteClientIdentityService();
+
+            $target = array_replace(
+                $planNode,
+                ['protocol' => $protocol]
             );
+
+            if ($user !== null) {
+                $identity = $identityService->forTarget(
+                    $user,
+                    $target
+                );
+            } else {
+                $identity = $identityService->forManualTarget(
+                    $manualProfile ?? [],
+                    (string)$manualName,
+                    $target
+                );
+            }
             $nodes[] = [
                 'plan_node_id' => (int)$planNode['plan_node_id'],
                 'server_id' => (int)$planNode['server_id'],
