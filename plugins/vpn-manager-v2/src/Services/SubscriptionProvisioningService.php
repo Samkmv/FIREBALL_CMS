@@ -55,21 +55,35 @@ final class SubscriptionProvisioningService
         }
 
         $startsAt = new \DateTimeImmutable($request->startsAt);
-        $expiresAt = $startsAt->add(new \DateInterval('P' . max(1, (int)$plan['duration_days']) . 'D'));
+
+        $expiresAt = null;
+        if (!$request->lifetime) {
+            $expiresAt = $request->expiresAt !== null
+                ? new \DateTimeImmutable($request->expiresAt)
+                : $startsAt->add(
+                    new \DateInterval(
+                        'P' . max(1, (int)$plan['duration_days']) . 'D'
+                    )
+                );
+        }
+
+        $expiresAtValue = $expiresAt?->format('Y-m-d H:i:s');
+
         if ($repository->hasOverlappingSubscription(
             (int)$user['id'],
             $startsAt->format('Y-m-d H:i:s'),
-            $expiresAt->format('Y-m-d H:i:s')
+            $expiresAtValue
         )) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_overlap'));
         }
+
         $localNodes = $this->prepareLocalNodes($planNodes, $user);
         $subscriptionId = $repository->createLocal([
             'user_id' => (int)$user['id'],
             'profile_id' => (int)($localNodes[0]['profile_id'] ?? 0),
             'plan_id' => (int)$plan['id'],
             'starts_at' => $startsAt->format('Y-m-d H:i:s'),
-            'expires_at' => $expiresAt->format('Y-m-d H:i:s'),
+            'expires_at' => $expiresAtValue,
             'traffic_limit_bytes' => $plan['traffic_limit_bytes'] !== null ? (int)$plan['traffic_limit_bytes'] : null,
             'device_limit' => (int)$plan['device_limit'],
             'subscription_token' => $this->uniqueToken($repository),

@@ -59,15 +59,16 @@ final class SubscriptionRepository
         );
     }
 
-    public function hasOverlappingSubscription(int $userId, string $startsAt, string $expiresAt): bool
+    public function hasOverlappingSubscription(int $userId, string $startsAt, ?string $expiresAt): bool
     {
         return (bool)db()->query(
             "SELECT id FROM vpn_v2_subscriptions
              WHERE user_id = ?
                AND status IN ('active', 'provisioning', 'provisioning_failed', 'partial_sync', 'sync_error', 'suspended')
-               AND starts_at < ? AND (expires_at IS NULL OR expires_at > ?)
+               AND (? IS NULL OR starts_at < ?)
+               AND (expires_at IS NULL OR expires_at > ?)
              LIMIT 1",
-            [$userId, $expiresAt, $startsAt]
+            [$userId, $expiresAt, $expiresAt, $startsAt]
         )->getOne();
     }
 

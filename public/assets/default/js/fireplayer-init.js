@@ -25,6 +25,40 @@
         }
     };
 
+    const isAppleHlsTarget = function () {
+        const navigator = window.navigator || {};
+        const agent = navigator.userAgent || '';
+
+        return /iPad|iPhone|iPod/.test(agent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+            || (/Safari/.test(agent)
+                && !/Chrome|Chromium|CriOS|Edg|OPR|FxiOS|YaBrowser/.test(agent));
+    };
+
+    const applyGlobalPlayerDefaults = function (scope) {
+        const config = window.firePlayerConfig && typeof window.firePlayerConfig === 'object'
+            ? window.firePlayerConfig
+            : {};
+
+        if (config.forceHlsJsOnApple !== true || !isAppleHlsTarget()) {
+            return;
+        }
+
+        const root = scope instanceof Element ? scope : document;
+        const players = [];
+
+        if (root instanceof Element && root.matches('[data-fire-player], .fire-player')) {
+            players.push(root);
+        }
+        root.querySelectorAll('[data-fire-player], .fire-player').forEach(function (element) {
+            players.push(element);
+        });
+
+        players.forEach(function (element) {
+            setDefaultAttribute(element, 'data-force-hls-js', 'true');
+        });
+    };
+
     const readMediaSource = function (media) {
         const source = media.querySelector('source[src]');
         return media.getAttribute('data-hls-src')
@@ -103,6 +137,7 @@
     const initialize = function (scope) {
         try {
             upgradeLegacyContentMedia(scope || document);
+            applyGlobalPlayerDefaults(scope || document);
             window.FirePlayer.bootstrap(scope || document);
         } catch (error) {
             if (window.console && typeof window.console.error === 'function') {

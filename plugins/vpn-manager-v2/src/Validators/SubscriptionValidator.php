@@ -11,9 +11,41 @@ final class SubscriptionValidator
     {
         $userId = $this->positiveInteger($input['user_id'] ?? null, 'vpn_manager_v2_error_subscription_user_required');
         $planId = $this->positiveInteger($input['plan_id'] ?? null, 'vpn_manager_v2_error_subscription_plan_required');
-        $startsAt = $this->dateTime($input['starts_at'] ?? null);
+        $startsAt = $this->dateTime(
+            $input['starts_at'] ?? null,
+            'vpn_manager_v2_error_subscription_starts_at'
+        );
 
-        return new SubscriptionRequestData($userId, $planId, $startsAt);
+        $lifetime = !empty($input['lifetime']);
+        $expiresAt = null;
+        $rawExpiresAt = trim((string)($input['expires_at'] ?? ''));
+
+        if (!$lifetime && $rawExpiresAt !== '') {
+            $expiresAt = $this->dateTime(
+                $rawExpiresAt,
+                'vpn_manager_v2_error_subscription_expires_at'
+            );
+
+            $startsTimestamp = strtotime($startsAt);
+            $expiresTimestamp = strtotime($expiresAt);
+            if ($startsTimestamp === false
+                || $expiresTimestamp === false
+                || $expiresTimestamp <= $startsTimestamp) {
+                throw new ValidationException(
+                    \FireballPluginVpnManagerV2::t(
+                        'vpn_manager_v2_error_subscription_expiry_order'
+                    )
+                );
+            }
+        }
+
+        return new SubscriptionRequestData(
+            $userId,
+            $planId,
+            $startsAt,
+            $expiresAt,
+            $lifetime
+        );
     }
 
     private function positiveInteger(mixed $value, string $errorKey): int
@@ -25,7 +57,7 @@ final class SubscriptionValidator
         return (int)$value;
     }
 
-    private function dateTime(mixed $value): string
+    private function dateTime(mixed $value, string $errorKey): string
     {
         $value = trim((string)$value);
         if ($value === '') {
@@ -42,6 +74,6 @@ final class SubscriptionValidator
             }
         }
 
-        throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_starts_at'));
+        throw new ValidationException(\FireballPluginVpnManagerV2::t($errorKey));
     }
 }

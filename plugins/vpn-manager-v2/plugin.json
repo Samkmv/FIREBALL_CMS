@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
@@ -13,6 +13,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Added manual subscription expiration dates and lifetime VPN subscriptions for administrator-created subscriptions.",
     "Added Happ routing links and JSON profile import, automatic subscription routing headers, and apply/copy actions in the customer profile.",
     "Moved server removal, log clearing, and traffic reset confirmations to the standard administrator modal.",
     "Renamed the plugin to VPN Management, moved quick actions to the top, added safe server removal, and introduced persistent VPN access requests with administrator notifications.",
@@ -27,6 +28,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Добавлены ручная дата окончания и бессрочные VPN-подписки при создании подписки администратором.",
       "Добавлены маршрутизация Happ по ссылке или JSON-профилю, автоматическая передача правил с подпиской и кнопки применения и копирования в кабинете.",
       "Удаление серверов, очистка журналов и сброс трафика теперь подтверждаются в стандартном модальном окне админки.",
       "Плагин переименован в «Управление VPN», быстрые действия перенесены вверх, добавлено безопасное удаление серверов и заявки на VPN с уведомлением создателя и администраторов.",
@@ -40,6 +42,7 @@
       "Истёкшие подписки больше не показывают ссылку или QR-код в личном кабинете."
     ],
     "en": [
+      "Added manual subscription expiration dates and lifetime VPN subscriptions for administrator-created subscriptions.",
       "Added Happ routing links and JSON profile import, automatic subscription routing headers, and apply/copy actions in the customer profile.",
       "Moved server removal, log clearing, and traffic reset confirmations to the standard administrator modal.",
       "Renamed the plugin to VPN Management, moved quick actions to the top, added safe server removal, and introduced persistent VPN access requests with administrator notifications.",
@@ -53,6 +56,7 @@
       "Prevented expired subscriptions from exposing a profile link or QR code."
     ],
     "de": [
+      "Manuelle Ablaufdaten und unbefristete VPN-Abonnements für vom Administrator erstellte Abonnements hinzugefügt.",
       "Happ-Routing per Link oder JSON-Profil, automatische Routing-Header im Abonnement und Anwenden/Kopieren im Kundenkonto ergänzt.",
       "Bestätigungen für Serverlöschung, Protokollbereinigung und Traffic-Zurücksetzung verwenden jetzt den standardmäßigen Administrator-Dialog.",
       "Das Plugin heißt jetzt VPN-Verwaltung; Schnellaktionen wurden nach oben verschoben, sicheres Löschen von Servern und dauerhafte VPN-Anfragen mit Administratorbenachrichtigungen wurden ergänzt.",
@@ -66,6 +70,7 @@
       "Abgelaufene Abonnements zeigen im Kundenkonto keinen Link und keinen QR-Code mehr."
     ],
     "zh-cn": [
+      "管理员创建订阅时现可手动设置到期时间或创建永久 VPN 订阅。",
       "新增 Happ 路由链接和 JSON 配置导入、订阅自动下发路由，以及用户中心的应用和复制按钮。",
       "删除服务器、清空日志和重置流量现在使用标准管理员确认对话框。",
       "插件已更名为 VPN 管理；快捷操作移至顶部，并新增安全删除服务器和向创建者及管理员发送通知的 VPN 申请功能。",

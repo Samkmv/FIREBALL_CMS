@@ -2098,6 +2098,7 @@ class AdminController extends BaseController
             'default_locale' => \FBL\Localization::normalizeLocale((string)($data['default_locale'] ?? '')) ?: \FBL\Localization::siteLocale(),
             'language_pack' => $this->languagePacks->normalizeId((string)($data['language_pack'] ?? '')),
             'admin_session_lifetime_hours' => trim((string)($data['admin_session_lifetime_hours'] ?? '12')),
+            'player_apple_force_hlsjs' => !empty($data['player_apple_force_hlsjs']) ? '1' : '0',
             'social_links' => $this->normalizeSocialLinksSetting($data),
             'social_telegram' => trim((string)($data['social_telegram'] ?? '')),
             'social_instagram' => trim((string)($data['social_instagram'] ?? '')),

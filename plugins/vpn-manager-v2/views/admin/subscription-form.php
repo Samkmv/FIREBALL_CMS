@@ -5,6 +5,7 @@ use Fireball\VpnManagerV2\Support\TrafficFormatter;
 $users = is_array($users ?? null) ? $users : [];
 $plans = is_array($plans ?? null) ? $plans : [];
 $preselectedUserId = max(0, (int)($preselectedUserId ?? 0));
+// FIREBALL_VPN_MANUAL_EXPIRY_V1
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
@@ -54,7 +55,20 @@ $preselectedUserId = max(0, (int)($preselectedUserId ?? 0));
             <label class="form-label" for="vpnV2SubscriptionStartsAt"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_starts_at')) ?></label>
             <input class="form-control" id="vpnV2SubscriptionStartsAt" type="datetime-local" name="starts_at" required
                    value="<?= htmlSC((string)($defaultStartsAt ?? date('Y-m-d\\TH:i'))) ?>">
+        </div>
+        <div class="col-lg-6">
+            <label class="form-label" for="vpnV2SubscriptionExpiresAt"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_expires_at')) ?></label>
+            <input class="form-control" id="vpnV2SubscriptionExpiresAt" type="datetime-local" name="expires_at">
             <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_expiry_note')) ?></div>
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" id="vpnV2SubscriptionLifetime" type="checkbox" name="lifetime" value="1">
+                <label class="form-check-label" for="vpnV2SubscriptionLifetime">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_lifetime')) ?>
+                </label>
+            </div>
+            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_lifetime_help')) ?></div>
         </div>
     </div>
 
@@ -73,5 +87,26 @@ $preselectedUserId = max(0, (int)($preselectedUserId ?? 0));
         </a>
     </div>
 </form>
+
+<script>
+(() => {
+    const lifetime = document.getElementById('vpnV2SubscriptionLifetime');
+    const expiresAt = document.getElementById('vpnV2SubscriptionExpiresAt');
+
+    if (!lifetime || !expiresAt) {
+        return;
+    }
+
+    const syncLifetime = () => {
+        expiresAt.disabled = lifetime.checked;
+        if (lifetime.checked) {
+            expiresAt.value = '';
+        }
+    };
+
+    lifetime.addEventListener('change', syncLifetime);
+    syncLifetime();
+})();
+</script>
 
 <?= view()->renderPartial('admin/shell_close') ?>

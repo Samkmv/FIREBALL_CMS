@@ -409,6 +409,34 @@ $publishedPages = (array)($published_pages ?? []);
                     </div>
                 </div>
             </div>
+
+            <div class="col-12 pt-2" data-settings-section="player">
+                <div class="border rounded-4 p-3 p-md-4">
+                    <div class="mb-3">
+                        <h2 class="h5 mb-1">Плеер</h2>
+                        <p class="text-body-secondary mb-0">Выбор HLS-движка для устройств Apple.</p>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            role="switch"
+                            id="playerAppleForceHlsJs"
+                            name="player_apple_force_hlsjs"
+                            value="1"
+                            <?= (($settings['player_apple_force_hlsjs'] ?? '0') === '1') ? 'checked' : '' ?>
+                        >
+                        <label class="form-check-label" for="playerAppleForceHlsJs">
+                            Использовать HLS.js на устройствах Apple
+                        </label>
+                    </div>
+                    <div class="form-text mt-2">
+                        Выключено: iPhone, iPad и Safari используют нативный HLS.
+                        Включено: FirePlayer использует HLS.js на Apple-устройствах.
+                    </div>
+                </div>
+            </div>
+
             <div class="col-12 d-flex gap-2">
                 <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit"><i class="ci-save"></i><?= print_translation('admin_btn_save') ?></button>
             </div>

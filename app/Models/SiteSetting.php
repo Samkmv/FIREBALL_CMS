@@ -169,6 +169,7 @@ class SiteSetting
             'system_role_profile' => 'all',
             'timezone' => APP_TIMEZONE,
             'admin_session_lifetime_hours' => '12',
+            'player_apple_force_hlsjs' => '0',
             'active_theme' => 'default',
             'social_links' => '[]',
             'social_telegram' => '',

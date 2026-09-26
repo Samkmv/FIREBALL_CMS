@@ -8,6 +8,8 @@ final readonly class SubscriptionRequestData
         public int $userId,
         public int $planId,
         public string $startsAt,
+        public ?string $expiresAt = null,
+        public bool $lifetime = false,
     ) {
     }
 }
