@@ -322,6 +322,7 @@ final class SubscriptionProvisioningService
 
             $client = $this->client($server, $inbound, $node);
             $subscriptionState = [
+                'starts_at' => $node['starts_at'] ?? null,
                 'expires_at' => $node['expires_at'] ?? null,
                 'status' => $node['subscription_status'] ?? 'active',
                 'device_limit' => $node['device_limit'] ?? 0,
@@ -348,7 +349,7 @@ final class SubscriptionProvisioningService
                 $repository->markNodeActive(
                     $nodeId,
                     $storedRemoteIdentity,
-                    empty($node['desired_enabled']) ? 'disabled' : 'active'
+                    empty($payload['enable']) ? 'disabled' : 'active'
                 );
                 $repository->logEvent(
                     'node.client_reused',
@@ -380,7 +381,7 @@ final class SubscriptionProvisioningService
             $repository->markNodeActive(
                 $nodeId,
                 $storedRemoteIdentity,
-                empty($node['desired_enabled']) ? 'disabled' : 'active'
+                empty($payload['enable']) ? 'disabled' : 'active'
             );
             $repository->logEvent(
                 'node.client_created',

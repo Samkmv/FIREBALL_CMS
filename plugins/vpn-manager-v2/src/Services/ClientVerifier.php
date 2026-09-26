@@ -139,7 +139,7 @@ final class ClientVerifier
     public function changedFields(array $remoteClient, array $expectedPayload): array
     {
         $changed = [];
-        foreach (['email', 'expiryTime', 'totalGB', 'limitIp', 'enable', 'flow'] as $field) {
+        foreach (['email', 'expiryTime', 'totalGB', 'limitIp', 'enable', 'flow', 'reset', 'resetDay'] as $field) {
             if (!$this->sameField($field, $remoteClient[$field] ?? null, $expectedPayload[$field] ?? null)) {
                 $changed[] = $field;
             }
@@ -169,7 +169,7 @@ final class ClientVerifier
             'flow' => ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow((string)$actual)
                 === ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow((string)$expected),
             'enable' => $this->enabled($actual) === $this->enabled($expected),
-            'expiryTime', 'totalGB', 'limitIp' => (int)$actual === (int)$expected,
+            'expiryTime', 'totalGB', 'limitIp', 'reset', 'resetDay' => (int)$actual === (int)$expected,
             default => (string)$actual === (string)$expected,
         };
     }

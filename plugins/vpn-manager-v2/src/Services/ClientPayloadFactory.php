@@ -2,6 +2,9 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
+use Fireball\VpnManagerV2\Support\SubscriptionAccessPolicy;
+use Fireball\VpnManagerV2\Exceptions\ValidationException;
+
 final class ClientPayloadFactory
 {
     public function build(array $subscription, array $node): array
@@ -12,10 +15,12 @@ final class ClientPayloadFactory
         $expiryTime = 0;
         if ($expiresAt !== '') {
             $timestamp = strtotime($expiresAt);
-            $expiryTime = $timestamp !== false ? $timestamp * 1000 : 0;
+            if ($timestamp === false || $timestamp <= 0) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_edit_expiry'));
+            }
+            $expiryTime = $timestamp * 1000;
         }
 
-        $status = strtolower(trim((string)($subscription['status'] ?? 'active')));
         $payload = [
             'flow' => trim((string)($node['flow'] ?? '')),
             // This is 3x-ui's per-client cipher field, not inbound TLS/Reality security.
@@ -25,13 +30,12 @@ final class ClientPayloadFactory
             'limitIp' => max(0, (int)($node['device_limit'] ?? $subscription['device_limit'] ?? 0)),
             'totalGB' => max(0, (int)($node['traffic_limit_bytes'] ?? $subscription['traffic_limit_bytes'] ?? 0)),
             'expiryTime' => $expiryTime,
-            'enable' => array_key_exists('desired_enabled', $node)
-                ? !empty($node['desired_enabled'])
-                : !in_array($status, ['suspended', 'expired', 'traffic_exceeded', 'deleting', 'delete_failed'], true),
+            'enable' => SubscriptionAccessPolicy::enabled($subscription, $node),
             'tgId' => 0,
             'group' => '',
             'comment' => '',
             'reset' => 0,
+            'resetDay' => 0,
         ];
 
         if ($this->requiresSubId($protocol) && trim((string)($node['client_sub_id'] ?? '')) !== '') {
@@ -52,6 +56,7 @@ final class ClientPayloadFactory
         $payload = array_replace($remoteClient, $expected);
         // 3x-ui treats reset as an explicit command. Ordinary edits must always preserve counters.
         $payload['reset'] = 0;
+        $payload['resetDay'] = 0;
 
         return $payload;
     }

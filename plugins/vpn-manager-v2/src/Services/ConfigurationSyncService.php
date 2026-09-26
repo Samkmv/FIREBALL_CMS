@@ -457,14 +457,18 @@ final class ConfigurationSyncService
         $limit = $node['subscription_traffic_limit_bytes'] !== null
             ? (int)$node['subscription_traffic_limit_bytes']
             : 0;
-        $enabled = !in_array((string)$node['subscription_status'], [
-            'suspended', 'expired', 'traffic_exceeded', 'deleting', 'delete_failed', 'deleted',
-        ], true);
+        $enabled = \Fireball\VpnManagerV2\Support\SubscriptionAccessPolicy::enabled([
+            'status' => $node['subscription_status'],
+            'starts_at' => $node['starts_at'] ?? null,
+            'expires_at' => $node['expires_at'] ?? null,
+        ], $node);
 
         return trim((string)($client['email'] ?? '')) !== $expectedName
             || (int)($client['expiryTime'] ?? 0) !== max(0, (int)$expiry)
             || (int)($client['totalGB'] ?? 0) !== max(0, $limit)
             || (int)($client['limitIp'] ?? 0) !== max(0, (int)$node['device_limit'])
+            || (int)($client['reset'] ?? 0) !== 0
+            || (int)($client['resetDay'] ?? 0) !== 0
             || (bool)($client['enable'] ?? false) !== $enabled;
     }
 

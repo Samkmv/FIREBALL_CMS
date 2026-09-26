@@ -38,7 +38,9 @@ final class SubscriptionAutomationService
             }
             $subscriptionId = (int)$subscription['id'];
             $this->repository()->updateSubscriptionStatus($subscriptionId, 'expired');
-            ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
+            if ((string)$subscription['status'] !== 'expired') {
+                ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
+            }
             $result = $this->syncDisabledState($subscription, 'expired', 'expiration');
             $cascade = ($this->dependencies ?? new VpnV2SubscriptionDependencyService())->cascadeDisable(
                 $subscriptionId,
@@ -143,7 +145,7 @@ final class SubscriptionAutomationService
             $this->repository()->recordAutomationNodeSuccess(
                 $nodeId,
                 isset($result['traffic_used_bytes']) ? (int)$result['traffic_used_bytes'] : null,
-                (string)$subscription['status'] === 'active'
+                \Fireball\VpnManagerV2\Support\SubscriptionAccessPolicy::enabled($subscription, $node)
             );
             $this->repository()->recalculateSubscriptionTraffic((int)$node['subscription_id']);
             $this->subscriptions()->logEvent('node.automation_retry_confirmed', (int)$node['subscription_id'],
@@ -198,7 +200,7 @@ final class SubscriptionAutomationService
                 $failed++;
                 $safeError = $this->safeError($exception);
                 $firstError ??= $safeError;
-                $this->repository()->recordAutomationNodeFailure($nodeId, $safeError);
+                $this->repository()->recordAutomationNodeFailure($nodeId, $safeError, false);
                 $this->subscriptions()->logEvent('node.' . $operation . '.failed', $subscriptionId,
                     $nodeId, (int)$node['server_id'], (int)$subscription['user_id'], null,
                     ['error_type' => $this->errorType($exception)]);

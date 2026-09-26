@@ -161,10 +161,15 @@ final class AutomationRepository
             "SELECT id, user_id, status, starts_at, expires_at, traffic_limit_bytes,
                     traffic_used_bytes, device_limit, revision, created_by, internal_comment
              FROM vpn_v2_subscriptions
-             WHERE status IN ('active', 'partial_sync', 'sync_error')
-               AND expires_at IS NOT NULL AND expires_at <= NOW()
-             ORDER BY expires_at ASC, id ASC
-             LIMIT {$limit}"
+             WHERE expires_at IS NOT NULL AND expires_at <= ?
+               AND (status IN ('active', 'partial_sync', 'sync_error')
+                    OR (status = 'expired' AND EXISTS (
+                        SELECT 1 FROM vpn_v2_subscription_nodes n
+                        WHERE n.subscription_id = vpn_v2_subscriptions.id AND n.status = 'sync_error'
+                    )))
+             ORDER BY (status = 'expired') ASC, updated_at ASC, id ASC
+             LIMIT {$limit}",
+            [date('Y-m-d H:i:s')]
         )->get() ?: [];
     }
 
@@ -224,12 +229,14 @@ final class AutomationRepository
         );
     }
 
-    public function recordAutomationNodeFailure(int $nodeId, string $safeError): void
+    public function recordAutomationNodeFailure(int $nodeId, string $safeError, ?bool $desiredEnabled = null): void
     {
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
-             SET status = 'sync_error', last_error = ?, updated_at = ? WHERE id = ?",
-            [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $nodeId]
+             SET status = 'sync_error', desired_enabled = COALESCE(?, desired_enabled),
+                 last_error = ?, updated_at = ? WHERE id = ?",
+            [$desiredEnabled === null ? null : (int)$desiredEnabled,
+                mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $nodeId]
         );
     }
 
