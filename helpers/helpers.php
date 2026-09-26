@@ -815,6 +815,8 @@ function stream_config(): array
         'ready_timeout_seconds' => 30,
         'ready_interval_ms' => 1500,
         'http_timeout_seconds' => 5,
+        'ready_cache_seconds' => 5,
+        'ready_segment_probe_count' => 3,
     ];
     $path = CONFIG . '/streams.php';
     $loaded = [];
@@ -832,6 +834,8 @@ function stream_config(): array
         'ready_timeout_seconds' => max(1, min(120, (int)($merged['ready_timeout_seconds'] ?? $defaults['ready_timeout_seconds']))),
         'ready_interval_ms' => max(500, min(10000, (int)($merged['ready_interval_ms'] ?? $defaults['ready_interval_ms']))),
         'http_timeout_seconds' => max(1, min(15, (int)($merged['http_timeout_seconds'] ?? $defaults['http_timeout_seconds']))),
+        'ready_cache_seconds' => max(0, min(30, (int)($merged['ready_cache_seconds'] ?? $defaults['ready_cache_seconds']))),
+        'ready_segment_probe_count' => max(1, min(10, (int)($merged['ready_segment_probe_count'] ?? $defaults['ready_segment_probe_count']))),
     ];
 }
 

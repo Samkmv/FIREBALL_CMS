@@ -33,12 +33,29 @@ final class StreamController extends BaseController
             ]);
         }
 
+        $readyCacheSeconds = (int)($config['ready_cache_seconds'] ?? 0);
+        if ($this->hasReadyCache($streamId, $hlsUrl, $readyCacheSeconds)) {
+            response()->json([
+                'success' => true,
+                'stream_id' => $streamId,
+                'woke' => true,
+                'ready' => true,
+                'message' => 'HLS is ready (cached)',
+            ]);
+            return;
+        }
+
         $ready = $this->waitForHlsReady(
             $hlsUrl,
             (int)$config['ready_timeout_seconds'],
             (int)$config['ready_interval_ms'],
-            (int)$config['http_timeout_seconds']
+            (int)$config['http_timeout_seconds'],
+            (int)($config['ready_segment_probe_count'] ?? 3)
         );
+
+        if ($ready['ready']) {
+            $this->markReadyCache($streamId, $hlsUrl);
+        }
 
         response()->json([
             'success' => true,
@@ -49,13 +66,18 @@ final class StreamController extends BaseController
         ]);
     }
 
-    private function waitForHlsReady(string $manifestUrl, int $timeoutSeconds, int $intervalMs, int $httpTimeoutSeconds): array
-    {
+    private function waitForHlsReady(
+        string $manifestUrl,
+        int $timeoutSeconds,
+        int $intervalMs,
+        int $httpTimeoutSeconds,
+        int $segmentProbeCount
+    ): array {
         $deadline = microtime(true) + $timeoutSeconds;
         $lastMessage = 'HLS manifest exists but segments are not ready';
 
         do {
-            $check = $this->checkHlsReady($manifestUrl, $httpTimeoutSeconds);
+            $check = $this->checkHlsReady($manifestUrl, $httpTimeoutSeconds, $segmentProbeCount);
             if ($check['ready']) {
                 return [
                     'ready' => true,
@@ -79,17 +101,18 @@ final class StreamController extends BaseController
         ];
     }
 
-    private function checkHlsReady(string $manifestUrl, int $httpTimeoutSeconds): array
-    {
-        $manifest = $this->httpRequest($manifestUrl, 'HEAD', $httpTimeoutSeconds);
-        if ($manifest['status'] !== 200 || $manifest['body'] === '') {
-            $manifest = $this->httpRequest($manifestUrl, 'GET', $httpTimeoutSeconds);
-        }
+    private function checkHlsReady(
+        string $manifestUrl,
+        int $httpTimeoutSeconds,
+        int $segmentProbeCount
+    ): array {
+        // We need the manifest body, so HEAD only adds a redundant round trip.
+        $manifest = $this->httpRequest($manifestUrl, 'GET', $httpTimeoutSeconds);
 
         if ($manifest['status'] !== 200) {
             return [
                 'ready' => false,
-                'retry' => in_array($manifest['status'], [0, 404], true),
+                'retry' => $this->isRetryableHlsStatus((int)$manifest['status']),
                 'message' => 'HLS manifest is not available',
             ];
         }
@@ -111,8 +134,13 @@ final class StreamController extends BaseController
             ];
         }
 
-        $segmentUrl = $this->firstMediaSegmentUrl($body, $manifestUrl);
-        if ($segmentUrl === '') {
+        $segmentUrls = $this->mediaSegmentUrls(
+            $body,
+            $manifestUrl,
+            max(1, $segmentProbeCount)
+        );
+
+        if ($segmentUrls === []) {
             return [
                 'ready' => false,
                 'retry' => true,
@@ -120,23 +148,45 @@ final class StreamController extends BaseController
             ];
         }
 
-        $segment = $this->httpRequest($segmentUrl, 'HEAD', $httpTimeoutSeconds);
-        if (!in_array($segment['status'], [200, 206], true)) {
-            $segment = $this->httpRequest($segmentUrl, 'GET', $httpTimeoutSeconds, [0, 0]);
+        $retry = false;
+
+        // Newest -> oldest. In a rolling live playlist an older segment can be
+        // deleted between the manifest fetch and the probe, so one 404 must not
+        // make a healthy stream look cold.
+        foreach ($segmentUrls as $segmentUrl) {
+            $segment = $this->httpRequest($segmentUrl, 'HEAD', $httpTimeoutSeconds);
+            if (!in_array($segment['status'], [200, 206], true)) {
+                $segment = $this->httpRequest($segmentUrl, 'GET', $httpTimeoutSeconds, [0, 0]);
+            }
+
+            $status = (int)$segment['status'];
+            if (in_array($status, [200, 206], true)) {
+                return [
+                    'ready' => true,
+                    'retry' => false,
+                    'message' => 'HLS is ready',
+                ];
+            }
+
+            if ($this->isRetryableHlsStatus($status)) {
+                $retry = true;
+            }
         }
 
         return [
-            'ready' => in_array($segment['status'], [200, 206], true),
-            'retry' => in_array($segment['status'], [0, 404], true),
-            'message' => in_array($segment['status'], [200, 206], true)
-                ? 'HLS is ready'
-                : 'HLS manifest exists but segments are not ready',
+            'ready' => false,
+            'retry' => $retry,
+            'message' => 'HLS manifest exists but recent segments are not ready',
         ];
     }
 
-    private function firstMediaSegmentUrl(string $manifest, string $manifestUrl): string
-    {
+    private function mediaSegmentUrls(
+        string $manifest,
+        string $manifestUrl,
+        int $limit = 3
+    ): array {
         $lines = preg_split('/\r\n|\r|\n/', $manifest) ?: [];
+        $segments = [];
         $expectSegment = false;
 
         foreach ($lines as $line) {
@@ -150,14 +200,117 @@ final class StreamController extends BaseController
                 continue;
             }
 
-            if (!$expectSegment || str_starts_with($line, '#')) {
+            // Tags such as EXT-X-BYTERANGE may appear between EXTINF and URI.
+            if (str_starts_with($line, '#')) {
                 continue;
             }
 
-            return $this->resolveUrl($manifestUrl, $line);
+            if (!$expectSegment) {
+                continue;
+            }
+
+            $segmentUrl = $this->resolveUrl($manifestUrl, $line);
+            if ($segmentUrl !== '') {
+                $segments[] = $segmentUrl;
+            }
+
+            $expectSegment = false;
         }
 
-        return '';
+        if ($segments === []) {
+            return [];
+        }
+
+        return array_slice(array_reverse($segments), 0, max(1, $limit));
+    }
+
+    private function isRetryableHlsStatus(int $status): bool
+    {
+        return $status === 0
+            || in_array($status, [404, 408, 425, 429], true)
+            || ($status >= 500 && $status <= 599);
+    }
+
+    private function hasReadyCache(
+        string $streamId,
+        string $manifestUrl,
+        int $ttlSeconds
+    ): bool {
+        if ($ttlSeconds <= 0) {
+            return false;
+        }
+
+        $path = $this->readyCachePath($streamId, $manifestUrl);
+        if ($path === '' || !is_file($path)) {
+            return false;
+        }
+
+        $modifiedAt = @filemtime($path);
+        if ($modifiedAt === false) {
+            return false;
+        }
+
+        if ((time() - $modifiedAt) <= $ttlSeconds) {
+            return true;
+        }
+
+        @unlink($path);
+        return false;
+    }
+
+    private function markReadyCache(string $streamId, string $manifestUrl): void
+    {
+        $path = $this->readyCachePath($streamId, $manifestUrl, true);
+        if ($path === '') {
+            return;
+        }
+
+        try {
+            $suffix = bin2hex(random_bytes(4));
+        } catch (\Throwable) {
+            $suffix = str_replace('.', '', uniqid('', true));
+        }
+
+        $temporaryPath = $path . '.tmp-' . $suffix;
+        $payload = json_encode([
+            'stream_id' => $streamId,
+            'ready_at' => microtime(true),
+        ], JSON_UNESCAPED_SLASHES);
+
+        if (!is_string($payload) || @file_put_contents($temporaryPath, $payload, LOCK_EX) === false) {
+            @unlink($temporaryPath);
+            return;
+        }
+
+        if (!@rename($temporaryPath, $path)) {
+            @unlink($temporaryPath);
+        }
+    }
+
+    private function readyCachePath(
+        string $streamId,
+        string $manifestUrl,
+        bool $createDirectory = false
+    ): string {
+        $base = defined('CACHE')
+            ? rtrim((string)CACHE, '/\\')
+            : rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'fireball-cache';
+
+        $directory = $base . DIRECTORY_SEPARATOR . 'streams';
+
+        if ($createDirectory && !is_dir($directory)) {
+            if (!@mkdir($directory, 0755, true) && !is_dir($directory)) {
+                return '';
+            }
+        }
+
+        if (!is_dir($directory)) {
+            return '';
+        }
+
+        $key = hash('sha256', $streamId . '|' . $manifestUrl);
+
+        return $directory . DIRECTORY_SEPARATOR . 'ready-' . $key . '.json';
     }
 
     private function resolveUrl(string $baseUrl, string $path): string

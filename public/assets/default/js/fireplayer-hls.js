@@ -122,7 +122,7 @@
         let entry = wakeRequests.get(streamId);
         if (!entry) {
             const frontend = window.hlsStreamConfig && typeof window.hlsStreamConfig === 'object' ? window.hlsStreamConfig : {};
-            // The backend may probe both the manifest and its first segment.
+            // The backend may probe the manifest and recent media segments.
             const timeout = boundedNumber(frontend.readyTimeoutMs, 30000, 1000, 120000)
                 + boundedNumber(frontend.readyIntervalMs, 1500, 500, 10000)
                 + (boundedNumber(frontend.httpTimeoutMs, 5000, 1000, 15000) * 4) + 2000;
