@@ -27,12 +27,27 @@
 
     const isAppleHlsTarget = function () {
         const navigator = window.navigator || {};
-        const agent = navigator.userAgent || '';
+        const agent = String(navigator.userAgent || '');
+        const platform = String(
+            (navigator.userAgentData && navigator.userAgentData.platform)
+            || navigator.platform
+            || ''
+        );
+        const touchPoints = Number(navigator.maxTouchPoints || 0);
 
-        return /iPad|iPhone|iPod/.test(agent)
-            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-            || (/Safari/.test(agent)
-                && !/Chrome|Chromium|CriOS|Edg|OPR|FxiOS|YaBrowser/.test(agent));
+        // iPhone / iPad / iPod, including iPadOS desktop-mode user agents.
+        const isIOS = /iPhone|iPad|iPod/i.test(agent)
+            || (/^MacIntel$/i.test(platform) && touchPoints > 1);
+
+        // Any browser running on macOS: Safari, Chrome/Chromium, Firefox, Edge, etc.
+        // Apple Silicon browsers may still expose MacIntel for compatibility.
+        const isMac = /Macintosh|Mac OS X/i.test(agent)
+            || /Mac|macOS/i.test(platform);
+
+        // Apple spatial browsers generally expose Mac-like platform data or visionOS.
+        const isVision = /visionOS|Apple Vision/i.test(agent + ' ' + platform);
+
+        return isIOS || isMac || isVision;
     };
 
     const applyGlobalPlayerDefaults = function (scope) {
