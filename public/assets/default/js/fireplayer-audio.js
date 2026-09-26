@@ -17,25 +17,37 @@
             player.elements.fullscreen.hidden = true;
 
             const media = player.media;
+            const actions = ['play', 'pause', 'seekbackward', 'seekforward', 'seekto'];
+            const seek = function (position) {
+                if (Number.isFinite(position) && Number.isFinite(media.duration)) {
+                    media.currentTime = Math.max(0, Math.min(media.duration, position));
+                }
+            };
             const activateSession = function () {
                 if (!('mediaSession' in window.navigator) || player._destroyed || player.media !== media) { return; }
                 try {
                     sessionOwner = player;
                     window.navigator.mediaSession.metadata = new window.MediaMetadata({
                         title: player.options.title || window.FirePlayer.translate('audio'),
-                        artwork: player.options.poster ? [{ src: player.options.poster }] : []
-                    });
-                    window.navigator.mediaSession.setActionHandler('play', function () { player.play().catch(function () {}); });
-                    window.navigator.mediaSession.setActionHandler('pause', function () { player.pause(); });
-                    window.navigator.mediaSession.setActionHandler('seekbackward', function (details) {
-                        player.media.currentTime = Math.max(0, player.media.currentTime - (details.seekOffset || 10));
-                    });
-                    window.navigator.mediaSession.setActionHandler('seekforward', function (details) {
-                        player.media.currentTime = Math.min(player.media.duration || Infinity, player.media.currentTime + (details.seekOffset || 10));
+                        artist: player.options.artist || '',
+                        album: player.options.album || '',
+                        artwork: Array.isArray(player.options.artwork) ? player.options.artwork : (player.options.poster ? [{ src: player.options.poster }] : [])
                     });
                 } catch (error) {
-                    // Browsers expose different Media Session action subsets.
+                    // Metadata is optional; action support is checked separately.
                 }
+                const handlers = {
+                    play: function () { player.play().catch(function () {}); },
+                    pause: function () { player.pause(); },
+                    seekbackward: function (details) { seek(media.currentTime - (details.seekOffset || 10)); },
+                    seekforward: function (details) { seek(media.currentTime + (details.seekOffset || 10)); },
+                    seekto: function (details) { seek(details.seekTime); }
+                };
+                actions.forEach(function (action) {
+                    try { window.navigator.mediaSession.setActionHandler(action, function (details) {
+                        if (sessionOwner === player && !player._destroyed && player.media === media) { handlers[action](details || {}); }
+                    }); } catch (error) { /* Unsupported actions must not prevent the remaining ones. */ }
+                });
             };
             player.on('play', activateSession);
 
@@ -47,12 +59,12 @@
                     sessionOwner = null;
                     try {
                         window.navigator.mediaSession.metadata = null;
-                        ['play', 'pause', 'seekbackward', 'seekforward'].forEach(function (action) {
-                            window.navigator.mediaSession.setActionHandler(action, null);
-                        });
                     } catch (error) {
                         // No cleanup is needed when an action is unsupported.
                     }
+                    actions.forEach(function (action) {
+                        try { window.navigator.mediaSession.setActionHandler(action, null); } catch (error) { /* Optional action. */ }
+                    });
                 }
             };
         }

@@ -54,10 +54,12 @@
             });
         });
 
-        modal.addEventListener('hidden.bs.modal', function () {
+        modal.addEventListener('hide.bs.modal', function () {
             if (player) {
                 player.unload();
             }
+        });
+        modal.addEventListener('hidden.bs.modal', function () {
             if (selectedButton) {
                 selectedButton.focus();
             }

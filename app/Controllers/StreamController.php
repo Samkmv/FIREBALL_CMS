@@ -9,14 +9,16 @@ final class StreamController extends BaseController
         $rawStreamId = request()->post('stream_id', '');
         $streamId = is_scalar($rawStreamId) ? trim((string)$rawStreamId) : '';
 
-        if ($streamId === '' || !preg_match('/^[a-zA-Z0-9_-]+$/', $streamId)) {
+        if ($streamId === '' || !preg_match('/^[a-zA-Z0-9_-]{1,100}$/', $streamId)) {
             response()->json([
                 'success' => false,
                 'stream_id' => $streamId,
                 'woke' => false,
                 'ready' => false,
                 'message' => 'Invalid stream_id',
+                'state' => 'failed', 'retryable' => false, 'code' => 'INVALID_STREAM',
             ]);
+            return;
         }
 
         $config = stream_config();
@@ -30,40 +32,59 @@ final class StreamController extends BaseController
                 'woke' => false,
                 'ready' => false,
                 'message' => 'Invalid HLS URL',
-            ]);
-        }
-
-        $readyCacheSeconds = (int)($config['ready_cache_seconds'] ?? 0);
-        if ($this->hasReadyCache($streamId, $hlsUrl, $readyCacheSeconds)) {
-            response()->json([
-                'success' => true,
-                'stream_id' => $streamId,
-                'woke' => true,
-                'ready' => true,
-                'message' => 'HLS is ready (cached)',
+                'state' => 'failed', 'retryable' => false, 'code' => 'INVALID_HLS_URL',
             ]);
             return;
         }
 
-        $ready = $this->waitForHlsReady(
-            $hlsUrl,
-            (int)$config['ready_timeout_seconds'],
-            (int)$config['ready_interval_ms'],
-            (int)$config['http_timeout_seconds'],
-            (int)($config['ready_segment_probe_count'] ?? 3)
-        );
-
-        if ($ready['ready']) {
-            $this->markReadyCache($streamId, $hlsUrl);
-        }
-
-        response()->json([
+        $result = $this->coordinateReadiness($streamId, $hlsUrl, $config);
+        response()->json(array_merge([
             'success' => true,
             'stream_id' => $streamId,
             'woke' => true,
-            'ready' => $ready['ready'],
-            'message' => $ready['message'],
-        ]);
+        ], $result));
+    }
+
+    private function coordinateReadiness(string $streamId, string $url, array $config): array
+    {
+        // Bounded lock slots, kept under the cache's persistent .locks directory.
+        // Never unlink a lock inode: other workers may already hold its descriptor.
+        $key = hash('sha256', $streamId . '|' . $url);
+        $directory = rtrim(CACHE, '/\\') . '/.locks';
+        if (!is_dir($directory)) { @mkdir($directory, 0755, true); }
+        $lock = @fopen($directory . '/stream-' . substr($key, 0, 2), 'c+');
+        if (!$lock) {
+            return ['ready' => false, 'state' => 'failed', 'retryable' => true,
+                'code' => 'COORDINATION_UNAVAILABLE', 'message' => 'Camera readiness is temporarily unavailable'];
+        }
+        if (!flock($lock, LOCK_EX | LOCK_NB)) {
+            fclose($lock);
+            return ['ready' => false, 'state' => 'starting', 'retryable' => true,
+                'code' => 'STARTING', 'message' => 'Camera readiness check is in progress'];
+        }
+        try {
+            $cached = json_decode((string)stream_get_contents($lock, 4096), true);
+            if (is_array($cached) && ($cached['key'] ?? '') === $key
+                && ($cached['expires'] ?? 0) > microtime(true)) {
+                return ['ready' => true, 'state' => 'ready', 'retryable' => false,
+                    'code' => 'READY_CACHED', 'message' => 'HLS is ready'];
+            }
+            $ready = $this->waitForHlsReady($url, (int)$config['ready_timeout_seconds'],
+                (int)$config['ready_interval_ms'], (int)$config['http_timeout_seconds'],
+                (int)($config['ready_segment_probe_count'] ?? 3));
+            rewind($lock);
+            ftruncate($lock, 0);
+            if ($ready['ready']) {
+                fwrite($lock, json_encode(['key' => $key,
+                    'expires' => microtime(true) + (int)($config['ready_cache_seconds'] ?? 5)]));
+                fflush($lock);
+            }
+            return $ready + ['state' => $ready['ready'] ? 'ready' : 'failed',
+                'retryable' => !$ready['ready'], 'code' => $ready['ready'] ? 'READY' : 'SEGMENTS_NOT_READY'];
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
 
     private function waitForHlsReady(
@@ -75,6 +96,7 @@ final class StreamController extends BaseController
     ): array {
         $deadline = microtime(true) + $timeoutSeconds;
         $lastMessage = 'HLS manifest exists but segments are not ready';
+        $lastCode = 'SEGMENTS_NOT_READY';
 
         do {
             $check = $this->checkHlsReady($manifestUrl, $httpTimeoutSeconds, $segmentProbeCount);
@@ -82,10 +104,12 @@ final class StreamController extends BaseController
                 return [
                     'ready' => true,
                     'message' => 'HLS is ready',
+                    'code' => 'READY',
                 ];
             }
 
             $lastMessage = $check['message'];
+            $lastCode = $check['code'] ?? 'SEGMENTS_NOT_READY';
             if (!($check['retry'] ?? true)) {
                 break;
             }
@@ -98,6 +122,7 @@ final class StreamController extends BaseController
         return [
             'ready' => false,
             'message' => $lastMessage,
+            'code' => $lastCode,
         ];
     }
 
@@ -114,15 +139,17 @@ final class StreamController extends BaseController
                 'ready' => false,
                 'retry' => $this->isRetryableHlsStatus((int)$manifest['status']),
                 'message' => 'HLS manifest is not available',
+                'code' => $manifest['status'] === 0 ? 'UPSTREAM_TIMEOUT' : 'MANIFEST_UNAVAILABLE',
             ];
         }
 
         $body = trim((string)$manifest['body']);
-        if ($body === '' || !str_contains($body, '#EXTM3U')) {
+        if ($body === '' || !str_starts_with($body, '#EXTM3U')) {
             return [
                 'ready' => false,
                 'retry' => true,
                 'message' => 'HLS manifest is empty or invalid',
+                'code' => 'MANIFEST_INVALID',
             ];
         }
 
@@ -154,6 +181,8 @@ final class StreamController extends BaseController
         // deleted between the manifest fetch and the probe, so one 404 must not
         // make a healthy stream look cold.
         foreach ($segmentUrls as $segmentUrl) {
+            // A playlist cannot turn this endpoint into a cross-host HTTP proxy.
+            if (!$this->isTrustedHlsUrl($segmentUrl)) { continue; }
             $segment = $this->httpRequest($segmentUrl, 'HEAD', $httpTimeoutSeconds);
             if (!in_array($segment['status'], [200, 206], true)) {
                 $segment = $this->httpRequest($segmentUrl, 'GET', $httpTimeoutSeconds, [0, 0]);
@@ -231,87 +260,6 @@ final class StreamController extends BaseController
             || ($status >= 500 && $status <= 599);
     }
 
-    private function hasReadyCache(
-        string $streamId,
-        string $manifestUrl,
-        int $ttlSeconds
-    ): bool {
-        if ($ttlSeconds <= 0) {
-            return false;
-        }
-
-        $path = $this->readyCachePath($streamId, $manifestUrl);
-        if ($path === '' || !is_file($path)) {
-            return false;
-        }
-
-        $modifiedAt = @filemtime($path);
-        if ($modifiedAt === false) {
-            return false;
-        }
-
-        if ((time() - $modifiedAt) <= $ttlSeconds) {
-            return true;
-        }
-
-        @unlink($path);
-        return false;
-    }
-
-    private function markReadyCache(string $streamId, string $manifestUrl): void
-    {
-        $path = $this->readyCachePath($streamId, $manifestUrl, true);
-        if ($path === '') {
-            return;
-        }
-
-        try {
-            $suffix = bin2hex(random_bytes(4));
-        } catch (\Throwable) {
-            $suffix = str_replace('.', '', uniqid('', true));
-        }
-
-        $temporaryPath = $path . '.tmp-' . $suffix;
-        $payload = json_encode([
-            'stream_id' => $streamId,
-            'ready_at' => microtime(true),
-        ], JSON_UNESCAPED_SLASHES);
-
-        if (!is_string($payload) || @file_put_contents($temporaryPath, $payload, LOCK_EX) === false) {
-            @unlink($temporaryPath);
-            return;
-        }
-
-        if (!@rename($temporaryPath, $path)) {
-            @unlink($temporaryPath);
-        }
-    }
-
-    private function readyCachePath(
-        string $streamId,
-        string $manifestUrl,
-        bool $createDirectory = false
-    ): string {
-        $base = defined('CACHE')
-            ? rtrim((string)CACHE, '/\\')
-            : rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'fireball-cache';
-
-        $directory = $base . DIRECTORY_SEPARATOR . 'streams';
-
-        if ($createDirectory && !is_dir($directory)) {
-            if (!@mkdir($directory, 0755, true) && !is_dir($directory)) {
-                return '';
-            }
-        }
-
-        if (!is_dir($directory)) {
-            return '';
-        }
-
-        $key = hash('sha256', $streamId . '|' . $manifestUrl);
-
-        return $directory . DIRECTORY_SEPARATOR . 'ready-' . $key . '.json';
-    }
 
     private function resolveUrl(string $baseUrl, string $path): string
     {
@@ -340,7 +288,8 @@ final class StreamController extends BaseController
             $resolvedPath = $directory . $path;
         }
 
-        return $scheme . '://' . $host . $port . $this->normalizeUrlPath($resolvedPath);
+        $suffixAt = strcspn($resolvedPath, '?#');
+        return $scheme . '://' . $host . $port . $this->normalizeUrlPath(substr($resolvedPath, 0, $suffixAt)) . substr($resolvedPath, $suffixAt);
     }
 
     private function normalizeUrlPath(string $path): string
@@ -385,7 +334,7 @@ final class StreamController extends BaseController
 
         curl_setopt_array($handle, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_MAXREDIRS => 3,
             CURLOPT_CONNECTTIMEOUT => $timeoutSeconds,
             CURLOPT_TIMEOUT => $timeoutSeconds,
@@ -411,7 +360,14 @@ final class StreamController extends BaseController
             curl_setopt($handle, CURLOPT_RANGE, (int)$range[0] . '-' . (int)$range[1]);
         }
 
-        $body = curl_exec($handle);
+        $body = '';
+        $limit = $range === null ? 131072 : 1;
+        curl_setopt($handle, CURLOPT_WRITEFUNCTION, static function ($handle, string $chunk) use (&$body, $limit): int {
+            $remaining = $limit - strlen($body);
+            $body .= substr($chunk, 0, max(0, $remaining));
+            return strlen($chunk) > $remaining ? 0 : strlen($chunk);
+        });
+        curl_exec($handle);
         $status = (int)curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         curl_close($handle);
 
@@ -433,11 +389,12 @@ final class StreamController extends BaseController
                 'method' => $method,
                 'timeout' => $timeoutSeconds,
                 'ignore_errors' => true,
+                'follow_location' => 0,
                 'header' => implode("\r\n", $headers),
             ],
         ]);
 
-        $body = @file_get_contents($url, false, $context);
+        $body = @file_get_contents($url, false, $context, 0, $range === null ? 131072 : 1);
         $status = 0;
         foreach (($http_response_header ?? []) as $header) {
             if (preg_match('~^HTTP/\S+\s+(\d{3})~', $header, $match)) {
@@ -481,7 +438,7 @@ final class StreamController extends BaseController
 
     private function isAllowedHlsUrl(string $url, string $streamId): bool
     {
-        if (!$this->isHttpUrl($url)) {
+        if (!$this->isTrustedHlsUrl($url)) {
             return false;
         }
 
@@ -492,6 +449,28 @@ final class StreamController extends BaseController
         }
 
         return hash_equals($streamId, (string)$match[1]);
+    }
+
+    private function isTrustedHlsUrl(string $url): bool
+    {
+        if (!$this->isHttpUrl($url) || preg_match('/[\x00-\x20\\\\]/', $url)) { return false; }
+        $parts = parse_url($url);
+        if (isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) { return false; }
+        $bases = stream_config()['allowed_hls_bases'] ?? [];
+        if (class_exists('FireballPluginCameraManager')) {
+            $bases[] = \FireballPluginCameraManager::settings()['hls_base_url'] ?? '';
+        }
+        foreach ($bases as $base) {
+            $trusted = parse_url((string)$base);
+            if (!is_array($trusted) || empty($trusted['host'])) { continue; }
+            $port = static fn(array $p): int => (int)($p['port'] ?? (($p['scheme'] ?? '') === 'https' ? 443 : 80));
+            $path = rawurldecode((string)($parts['path'] ?? '/'));
+            if (preg_match('~(?:^|/)\.\.?(/|$)|[\\\\\x00-\x20]~', $path)) { return false; }
+            if (strtolower($parts['host']) === strtolower($trusted['host'])
+                && ($parts['scheme'] ?? '') === ($trusted['scheme'] ?? '') && $port($parts) === $port($trusted)
+                && str_starts_with($path, rtrim((string)($trusted['path'] ?? ''), '/') . '/')) { return true; }
+        }
+        return false;
     }
 
 }

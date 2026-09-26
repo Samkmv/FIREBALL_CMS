@@ -2746,7 +2746,7 @@
         }
 
         document.querySelectorAll('[data-plyr-player], .post-content video, [data-plyr-player-wrap] video').forEach(function (element) {
-            if (element.closest('.fireplayer, .fire-player, [data-fire-player]')) {
+            if (element.closest('.fireplayer, .fire-player, [data-fire-player], [data-player-native]')) {
                 return;
             }
 

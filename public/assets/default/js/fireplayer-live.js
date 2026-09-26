@@ -31,6 +31,29 @@
             let lastAdvanceAt = Date.now();
             let lastReconnectAt = 0;
             let hasAdvanced = false;
+            let frameCallback = null;
+            let frameSerial = 0;
+            let lastFrameCount = null;
+            let lastBufferEnd = 0;
+            const health = player._health = { lastFrameAt: null, lastFrameCount: 0, lastCurrentTime: lastTime, lastBufferProgressAt: null };
+            const observeFrame = function () {
+                frameCallback = media.requestVideoFrameCallback(function () {
+                    if (destroyed || player._destroyed || token !== player._loadToken) { return; }
+                    frameSerial += 1;
+                    observeFrame();
+                });
+            };
+            if (typeof media.requestVideoFrameCallback === 'function') { observeFrame(); }
+            const decodedFrames = function () {
+                if (typeof media.requestVideoFrameCallback === 'function') { return frameSerial; }
+                if (typeof media.getVideoPlaybackQuality === 'function') {
+                    try {
+                        const count = media.getVideoPlaybackQuality().totalVideoFrames;
+                        if (Number.isFinite(count)) { return count; }
+                    } catch (error) { /* Optional browser metric; try the next available source. */ }
+                }
+                return Number.isFinite(media.webkitDecodedFrameCount) ? media.webkitDecodedFrameCount : null;
+            };
             const isLive = function () {
                 return !destroyed && !player._destroyed && token === player._loadToken && player.media === media
                     && player.info && (player.info.mode === 'live' || player.info.mode === 'event');
@@ -42,24 +65,39 @@
                 hasAdvanced = false;
                 lastTime = media.currentTime || 0;
                 lastAdvanceAt = Date.now();
+                lastFrameCount = decodedFrames();
+                player._healthySince = null;
             };
 
             const healthCheck = function () {
-                if (!isLive() || !player._playRequested || player.media.ended || player.media.seeking || document.hidden || !player.options.reconnect
+                if (!isLive() || !player._playRequested || media.paused || player.media.ended || player.media.seeking || document.hidden || !player.options.reconnect
                     || (window.navigator && window.navigator.onLine === false)
+                    || player._nativeHlsPreparing || player._state === 'awaiting-gesture'
                     || player._reconnectPromise || player.root.classList.contains('fireplayer--error')) {
-                    lastTime = player.media.currentTime || 0;
-                    lastAdvanceAt = Date.now();
+                    resetStartup();
                     return;
                 }
                 const current = player.media.currentTime || 0;
-                if (Math.abs(current - lastTime) > 0.08) {
+                const frames = decodedFrames();
+                const progressing = frames !== null ? frames > (lastFrameCount == null ? 0 : lastFrameCount) : Math.abs(current - lastTime) > 0.08;
+                lastFrameCount = frames;
+                lastTime = current;
+                health.lastCurrentTime = current;
+                health.lastFrameCount = frames;
+                if (media.buffered && media.buffered.length) {
+                    const end = media.buffered.end(media.buffered.length - 1);
+                    if (end > lastBufferEnd) { health.lastBufferProgressAt = Date.now(); }
+                    lastBufferEnd = end;
+                }
+                if (progressing) {
                     hasAdvanced = true;
-                    lastTime = current;
                     lastAdvanceAt = Date.now();
-                    if (!media.paused && !media.error) { player._settleLoading(true); }
+                    health.lastFrameAt = lastAdvanceAt;
+                    if (player._metrics && player._metrics.firstFrameMs == null) { player._metrics.firstFrameMs = lastAdvanceAt - player._metrics.startedAt; }
+                    if (!media.paused && !media.error) { player._settleLoading(true); player._markHealthy(); }
                     return;
                 }
+                player._healthySince = null;
                 const stalledFor = Date.now() - lastAdvanceAt;
                 const cooldown = Date.now() - lastReconnectAt;
                 const threshold = hasAdvanced
@@ -81,6 +119,7 @@
                     lastAdvanceAt = Date.now();
 
                     player._emit('recovery', {
+                        code: hasAdvanced ? 'PLAYBACK_STALL' : 'FIRST_FRAME_TIMEOUT',
                         reason: 'stall',
                         stage: 'live-health-check',
                         attempt: reconnectAttempt + 1
@@ -101,9 +140,6 @@
                 // Timers can be throttled while hidden; give the resumed source
                 // its startup budget before deciding that it has stalled.
                 resetStartup();
-                if (isLive() && !document.hidden && player._playRequested && !player.media.paused) {
-                    player.goLive();
-                }
             };
 
             player.root.classList.add('fireplayer--live-ready');
@@ -118,6 +154,7 @@
 
             return function () {
                 destroyed = true;
+                if (frameCallback !== null && typeof media.cancelVideoFrameCallback === 'function') { media.cancelVideoFrameCallback(frameCallback); }
                 if (healthTimer) {
                     window.clearInterval(healthTimer);
                 }

@@ -831,6 +831,7 @@ function stream_config(): array
     $merged = array_replace($defaults, $loaded);
 
     return $config = [
+        'allowed_hls_bases' => array_values(array_filter((array)($merged['allowed_hls_bases'] ?? []), 'is_string')),
         'ready_timeout_seconds' => max(1, min(120, (int)($merged['ready_timeout_seconds'] ?? $defaults['ready_timeout_seconds']))),
         'ready_interval_ms' => max(500, min(10000, (int)($merged['ready_interval_ms'] ?? $defaults['ready_interval_ms']))),
         'http_timeout_seconds' => max(1, min(15, (int)($merged['http_timeout_seconds'] ?? $defaults['http_timeout_seconds']))),

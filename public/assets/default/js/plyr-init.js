@@ -3225,7 +3225,7 @@
         }
 
         document.querySelectorAll('[data-plyr-player], .post-content video, .post-content audio, [data-plyr-player-wrap] video, [data-plyr-player-wrap] audio').forEach(function (element) {
-            if (element.closest('.fireplayer, .fire-player, [data-fire-player]')) {
+            if (element.closest('.fireplayer, .fire-player, [data-fire-player], [data-player-native]')) {
                 return;
             }
 

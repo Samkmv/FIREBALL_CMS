@@ -17,7 +17,7 @@ final class FrontendAssets
             'swiper' => '/\\bswiper(?:[\\s"\x27-])|\\bdata-swiper/i',
             'glightbox' => '/\\bdata-glightbox(?:[\\s=>])|\\bglightbox(?:[\\s"\\x27-])/i',
             'highlight' => '/<pre\\b|\\blanguage-[a-z0-9]+/i',
-            'player' => '/<(?:video|audio)\\b|\\bdata-(?:fire-player|fireplayer|plyr)/i',
+            'player' => '/<(?:video|audio)\\b|\\bdata-(?:fire-player|fireplayer|plyr)|class=["\x27][^"\x27]*\\bfire-player\\b/i',
         ] as $name => $pattern) {
             if (preg_match($pattern, $name === 'player' ? $playerHtml : $html)) $assets[$name] = true;
         }

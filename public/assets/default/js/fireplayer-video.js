@@ -15,12 +15,11 @@
             const media = player.media;
             const menu = player.elements.settingsMenu;
             const document = player.root.ownerDocument;
-            const russian = (document.documentElement.lang || '').toLowerCase().startsWith('ru');
             const zoom = document.createElement('div');
             zoom.className = 'fireplayer__zoom';
-            zoom.innerHTML = '<label class="fireplayer__zoom-label"><span class="fireplayer__settings-label">' + (russian ? 'Масштаб' : 'Zoom') + '</span>' +
-                '<span data-fp-zoom-value>1×</span><input class="fireplayer__range" data-fp-zoom-range type="range" min="1" max="3" step="0.05" value="1" aria-label="' + (russian ? 'Масштаб видео' : 'Video zoom') + '"></label>' +
-                '<button type="button" class="fireplayer__zoom-reset" data-fp-zoom-reset>' + (russian ? 'Сбросить масштаб' : 'Reset zoom') + '</button>';
+            zoom.innerHTML = '<label class="fireplayer__zoom-label"><span class="fireplayer__settings-label">' + window.FirePlayer.translate('zoom') + '</span>' +
+                '<span data-fp-zoom-value>1×</span><input class="fireplayer__range" data-fp-zoom-range type="range" min="1" max="3" step="0.05" value="1" aria-label="' + window.FirePlayer.translate('zoom') + '"></label>' +
+                '<button type="button" class="fireplayer__zoom-reset" data-fp-zoom-reset>' + window.FirePlayer.translate('resetZoom') + '</button>';
             menu.appendChild(zoom);
             const range = zoom.querySelector('[data-fp-zoom-range]');
             const value = zoom.querySelector('[data-fp-zoom-value]');

@@ -24,7 +24,8 @@
             readyToPlay: 'Нажмите Play для начала воспроизведения',
             unavailable: 'Камера временно недоступна',
             unsupported: 'Этот формат не поддерживается браузером', failed: 'Не удалось воспроизвести медиа',
-            retry: 'Повторить', audio: 'Аудиоплеер', video: 'Видеоплеер'
+            retry: 'Повторить', audio: 'Аудиоплеер', video: 'Видеоплеер',
+            quality: 'Качество', auto: 'Авто', subtitles: 'Субтитры', off: 'Выкл.', zoom: 'Масштаб', resetZoom: 'Сбросить масштаб'
         },
         en: {
             play: 'Play', pause: 'Pause', mute: 'Mute', unmute: 'Unmute', volume: 'Volume',
@@ -35,7 +36,26 @@
             readyToPlay: 'Press Play to start playback',
             unavailable: 'Camera is temporarily unavailable',
             unsupported: 'This format is not supported by the browser', failed: 'Unable to play media',
-            retry: 'Retry', audio: 'Audio player', video: 'Video player'
+            retry: 'Retry', audio: 'Audio player', video: 'Video player',
+            quality: 'Quality', auto: 'Auto', subtitles: 'Subtitles', off: 'Off', zoom: 'Zoom', resetZoom: 'Reset zoom'
+        },
+        de: {
+            play: 'Abspielen', pause: 'Pause', mute: 'Stummschalten', unmute: 'Ton einschalten', volume: 'Lautstärke',
+            seek: 'Position', speed: 'Geschwindigkeit', settings: 'Einstellungen', pip: 'Bild im Bild', fullscreen: 'Vollbild',
+            exitFullscreen: 'Vollbild verlassen', live: 'LIVE', goLive: 'Zum Livestream', detecting: 'Quelle erkennen…',
+            connecting: 'Verbindung herstellen…', loading: 'Medien laden…', reconnecting: 'Erneut verbinden…',
+            waking: 'Kamera starten…', offline: 'Keine Internetverbindung', readyToPlay: 'Zum Starten auf Abspielen drücken',
+            unavailable: 'Kamera vorübergehend nicht verfügbar', unsupported: 'Dieses Format wird nicht unterstützt',
+            failed: 'Medien konnten nicht abgespielt werden', retry: 'Erneut versuchen', audio: 'Audioplayer', video: 'Videoplayer',
+            quality: 'Qualität', auto: 'Automatisch', subtitles: 'Untertitel', off: 'Aus', zoom: 'Zoom', resetZoom: 'Zoom zurücksetzen'
+        },
+        'zh-cn': {
+            play: '播放', pause: '暂停', mute: '静音', unmute: '取消静音', volume: '音量', seek: '进度', speed: '播放速度',
+            settings: '设置', pip: '画中画', fullscreen: '全屏', exitFullscreen: '退出全屏', live: '直播', goLive: '返回直播',
+            detecting: '正在识别媒体…', connecting: '正在连接…', loading: '正在加载媒体…', reconnecting: '正在重新连接…',
+            waking: '正在启动摄像头…', offline: '无网络连接', readyToPlay: '点击播放开始', unavailable: '摄像头暂时不可用',
+            unsupported: '浏览器不支持此格式', failed: '无法播放媒体', retry: '重试', audio: '音频播放器', video: '视频播放器',
+            quality: '画质', auto: '自动', subtitles: '字幕', off: '关闭', zoom: '缩放', resetZoom: '重置缩放'
         }
     };
     const icons = {
@@ -51,7 +71,8 @@
     };
 
     const locale = function () {
-        return String(document.documentElement.lang || 'en').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+        const lang = String(document.documentElement.lang || 'en').toLowerCase();
+        return lang.startsWith('zh') ? 'zh-cn' : (lang.startsWith('de') ? 'de' : (lang.startsWith('ru') ? 'ru' : 'en'));
     };
 
     const t = function (key) {
@@ -172,6 +193,8 @@
         assignText('protocol', data.protocol);
         assignText('mode', data.mode);
         assignText('title', data.title || element.getAttribute('aria-label'));
+        assignText('artist', data.artist);
+        assignText('album', data.album);
         assignText('streamId', data.streamId);
         assignText('preload', data.preload);
         assignText('crossorigin', data.crossorigin);
@@ -192,7 +215,7 @@
         assignBoolean('probe', data.probe, true);
         assignBoolean('playsinline', data.playsinline, true);
         assignBoolean('forceHlsJs', data.forceHlsJs, false);
-        ['probeTimeout', 'reconnectDelay', 'stallTimeout', 'liveEdgeTolerance', 'posterRefreshInterval', 'startupTimeout', 'maxReconnectAttempts'].forEach(function (key) {
+        ['managedIdleDetach', 'probeTimeout', 'reconnectDelay', 'stallTimeout', 'liveEdgeTolerance', 'posterRefreshInterval', 'startupTimeout', 'maxReconnectAttempts'].forEach(function (key) {
             if (data[key] !== undefined && Number.isFinite(Number(data[key]))) {
                 result[key] = Number(data[key]);
             }
@@ -298,7 +321,10 @@
                     body += decoder.decode();
                 } finally { await reader.cancel().catch(function () {}); }
             } else {
-                body = (await response.text()).slice(0, 131072);
+                // Without a streaming reader there is no way to bound an unknown
+                // response. Fall back to URL/MIME detection instead of downloading it.
+                abort();
+                throw new Error('Bounded response reader is unavailable.');
             }
             return { ok: response.ok, url: response.url, headers: response.headers, text: async function () { return body; } };
         } finally {
@@ -360,6 +386,10 @@
             }
         }
 
+        if (isManagedStreamSource(src, options)) {
+            options.probe = false;
+            if (options.protocol === 'auto') { result.protocol = 'hls'; }
+        }
         if (result.protocol === 'hls' && options.mode === 'auto') { result.mode = 'live'; }
         const inspectResponse = async function (response) {
             if (!response.ok) { return; }
@@ -488,6 +518,7 @@
             this._render(this.options.media === 'audio' ? 'audio' : 'video');
             this._lazySourcePending = shouldLazyStart(this.options.src, this.options);
             this.root.classList.toggle('fireplayer--lazy', this._lazySourcePending);
+            this._transition(this._lazySourcePending ? 'lazy' : 'idle');
 
             instances.set(this.root, this);
             instances.set(element, this);
@@ -662,7 +693,6 @@
                 if (player._destroyed || player.media.paused) { return; }
                 player._recoveringMedia = false;
                 player._nativeHlsPreparing = false;
-                player._nativePlayRecoveries = 0;
                 player.root.classList.remove('fireplayer--awaiting-gesture', 'fireplayer--offline');
                 player.root.classList.add('fireplayer--playing');
                 player._playRequested = true;
@@ -716,6 +746,7 @@
                 const current = player.media.currentTime;
                 if (!player.media.error && !player.media.paused && !player.media.seeking && current > player._lastPlaybackTime + 0.02) {
                     player._settleLoading(true);
+                    if (player.info && player.info.mode === 'vod') { player._markHealthy(); }
                 }
                 player._lastPlaybackTime = current;
                 player._storePosition(false);
@@ -723,18 +754,24 @@
             this._listen(document, 'fullscreenchange', function () { player._syncFullscreen(); });
             this._listen(document, 'webkitfullscreenchange', function () { player._syncFullscreen(); });
             this._listen(window, 'offline', function () {
-                if (!player.info || player.info.protocol !== 'hls' || !player._playRequested) { return; }
-                player.root.classList.add('fireplayer--offline');
-                player._clearLoadingTimers();
-                player.setStatus(t('offline'), 'warning');
+                if (!player._playRequested) { return; }
+                const attempts = player._reconnectAttempts;
+                ++player._loadToken;
+                player._teardownPlayback();
+                player._reconnectAttempts = attempts;
+                player._playRequested = true;
+                player._lazySourcePending = true;
+                player._transition('offline');
                 player._emit('offline');
             });
             this._listen(window, 'online', function () {
                 if (!player.root.classList.contains('fireplayer--offline')) { return; }
                 player.root.classList.remove('fireplayer--offline');
                 player._emit('online');
-                if (player.info && player.info.protocol === 'hls' && player._playRequested && player._sourcePrepared) {
-                    player.reconnect('online').catch(function () {});
+                if (player._playRequested) {
+                    const pending = player._loadSource(player.options.src, null, true);
+                    player.ready = pending;
+                    pending.catch(function () {});
                 }
             });
             this._listen(this.root, 'keydown', function (event) { player._handleKey(event); });
@@ -805,11 +842,16 @@
             this.root.classList.remove('fireplayer--ready', 'fireplayer--ended', 'fireplayer--playing', 'fireplayer--reconnecting', 'fireplayer--error', 'fireplayer--live', 'fireplayer--event', 'fireplayer--vod');
             this.root.classList.add('fireplayer--loading');
             this.elements.retry.hidden = true;
-            this.setStatus(t('detecting'), 'info');
+            this._transition('detecting');
             this._emit('loadstart');
+            if (window.navigator && window.navigator.onLine === false) {
+                this._lazySourcePending = true;
+                this._transition('offline');
+                return this;
+            }
 
             // Known camera endpoints are prepared by the backend/HLS adapter, not a duplicate probe.
-            const cameraSource = /\/stream-[^/]+\/index\.m3u8(?:[?#].*)?$/i.test(src);
+            const cameraSource = isManagedStreamSource(src, this.options);
             const info = await detect(src, Object.assign({}, this.options, {
                 probe: cameraSource ? false : this.options.probe,
                 signal: this._loadAbortController ? this._loadAbortController.signal : undefined
@@ -841,7 +883,7 @@
             this.elements.controls.hidden = this.options.controls === false;
             this.root.setAttribute('aria-label', this.options.title || t(info.media));
             this._syncLiveUi();
-            this.setStatus(info.protocol === 'hls' ? t('connecting') : t('loading'), 'info');
+            this._transition('connecting');
 
             const adapter = adapters.get(info.protocol);
             let adapterResult = null;
@@ -876,8 +918,10 @@
                 return this;
             }
             if (!adapterResult || adapterResult.handled !== true) {
-                this._showError(t('unsupported'), new Error('Unsupported protocol: ' + info.protocol));
-                throw new Error('Unsupported protocol: ' + info.protocol);
+                const error = new Error('Unsupported protocol: ' + info.protocol);
+                error.code = 'UNSUPPORTED_FORMAT';
+                this._showError(t('unsupported'), error);
+                throw error;
             }
             this.controller = adapterResult.controller || null;
             if (typeof adapterResult.cleanup === 'function') {
@@ -922,11 +966,15 @@
             this._setSettingsOpen(false);
             this._syncTimeline();
             this.setStatus('');
+            this._transition('idle');
             this._emit('unload');
             return this;
         }
 
         _teardownPlayback() {
+            window.clearTimeout(this._idleTimer);
+            this._idleTimer = null;
+            this._healthySince = null;
             // Capture before adapter cleanup: hls.js may detach its source itself.
             // A freshly rendered empty element has no session to reset on first Play.
             const hadMediaSource = this.media && Boolean(this.media.getAttribute('src') !== null
@@ -969,6 +1017,13 @@
             // from `playing`: Safari may pause again when activation has been lost.
             this._restoreNativeHlsMute();
             this._playRequested = true;
+            window.clearTimeout(this._idleTimer);
+            this._idleTimer = null;
+            if (window.navigator && window.navigator.onLine === false) {
+                this._lazySourcePending = !this._sourcePrepared;
+                this._transition('offline');
+                return this;
+            }
             if (!this._sourcePrepared) {
                 if (this._lazySourcePending) {
                     const pending = this._loadSource(this.options.src, null, true);
@@ -981,6 +1036,7 @@
             }
             const token = this._loadToken;
             if (this._destroyed || !this._playRequested || !this._sourcePrepared) { return this; }
+            if (this.controller && this.controller.needsRecovery) { await this.reconnect('resume'); return this; }
             await this._playMedia(token);
             return this;
         }
@@ -1012,7 +1068,7 @@
                 if (token !== this._loadToken || attemptId !== this._playAttemptId || this._destroyed || media !== this.media) { return this; }
                 if (!media.paused && !media.ended) {
                     this.root.classList.add('fireplayer--playing');
-                    this._settleLoading(true);
+                    // play() resolving is not proof that a frame has been displayed.
                 }
                 this._syncPlayButtons();
                 return this;
@@ -1023,8 +1079,8 @@
                 if (error.name === 'NotAllowedError') {
                     this._playRequested = false;
                     this._settleLoading();
-                    this.root.classList.add('fireplayer--awaiting-gesture');
-                    this.setStatus(t('readyToPlay'), 'info');
+                    error.code = 'AUTOPLAY_BLOCKED';
+                    this._transition('awaiting-gesture');
                     this._emit('autoplayblocked', { error: error });
                     throw error;
                 }
@@ -1077,6 +1133,8 @@
             this._nativePlayRecoveries = 0;
             ++this._playAttemptId;
             this._playPromise = null;
+            this._healthySince = null;
+            if (this.controller && this.controller.cancelRecovery) { this.controller.cancelRecovery(); }
             if (cancelLazyLoad) {
                 this._loadAbortController.abort();
                 this._lazySourcePending = true;
@@ -1087,6 +1145,18 @@
             this.media.pause();
             this._restoreNativeHlsMute();
             this._settleLoading();
+            this._transition('paused');
+            const idleDelay = this.options.managedIdleDetach === undefined ? 60000 : Number(this.options.managedIdleDetach);
+            window.clearTimeout(this._idleTimer);
+            if (idleDelay > 0 && isManagedStreamSource(this.options.src, this.options)) {
+                this._idleTimer = window.setTimeout(() => {
+                    if (this._destroyed || this._playRequested) { return; }
+                    ++this._loadToken;
+                    this._teardownPlayback();
+                    this._lazySourcePending = true;
+                    this._transition('paused');
+                }, Math.max(1000, idleDelay));
+            }
             return this;
         }
 
@@ -1171,6 +1241,12 @@
             if (this._reconnectPromise) { return this._reconnectPromise; }
             const token = this._loadToken;
             if (reason === 'manual') { this._reconnectAttempts = 0; this._playRequested = true; }
+            if (!this._playRequested) { return this; }
+            if (window.navigator && window.navigator.onLine === false) {
+                this._transition('offline');
+                return this;
+            }
+            this._healthySince = null;
             ++this._playAttemptId;
             this._playPromise = null;
             this._recoveringMedia = false;
@@ -1186,8 +1262,7 @@
             if (this.info.mode === 'vod' && Number.isFinite(this.media.currentTime)) { this._resumePosition = this.media.currentTime; }
             this.root.classList.remove('fireplayer--error');
             this.elements.retry.hidden = true;
-            this.root.classList.add('fireplayer--reconnecting');
-            this.setStatus(t('reconnecting'), 'warning');
+            this._transition('reconnecting');
             this._emit('reconnect', { reason: reason || 'unknown' });
             const pending = Promise.resolve().then(async () => { try {
                 if (this.controller && typeof this.controller.reconnect === 'function') {
@@ -1207,7 +1282,7 @@
                     this._settleLoading();
                 }
             } catch (error) {
-                if (token === this._loadToken && !this._destroyed && error.name !== 'AbortError') { this._showError(t('failed'), error); }
+                if (token === this._loadToken && !this._destroyed && this._playRequested && error.name !== 'AbortError') { this._showError(t('failed'), error); }
             } finally {
                 if (this._reconnectPromise === pending) { this._reconnectPromise = null; }
             } return this; });
@@ -1236,14 +1311,42 @@
 
         _settleLoading(recovered) {
             if (this.root.classList.contains('fireplayer--error') && !recovered) { return; }
-            this._clearLoadingTimers();
+            window.clearTimeout(this._loadingTimer);
+            this._loadingTimer = null;
+            if (recovered || !this._playRequested) { this._clearLoadingTimers(); }
             this.root.classList.remove('fireplayer--loading', 'fireplayer--reconnecting');
             if (recovered) {
                 this.root.classList.remove('fireplayer--error', 'fireplayer--offline', 'fireplayer--awaiting-gesture');
-                this._reconnectAttempts = 0;
             }
             this.elements.retry.hidden = true;
             if (!this.elements.status.hidden || this.elements.status.textContent) { this.setStatus(''); }
+            this._transition(this.media.ended ? 'ended' : (!this.media.paused ? 'playing' : (this._playRequested ? 'ready' : 'paused')));
+        }
+
+        _transition(state, meta = {}) {
+            if (this._state === 'destroyed' && state !== 'destroyed') { return; }
+            const states = ['idle', 'lazy', 'detecting', 'waking', 'connecting', 'ready', 'playing', 'buffering', 'paused', 'reconnecting', 'offline', 'awaiting-gesture', 'ended', 'error', 'destroyed'];
+            if (!states.includes(state)) { return; }
+            const previous = this._state || 'idle';
+            this._state = state;
+            states.forEach((name) => this.root.classList.toggle('fireplayer--' + name, name === state));
+            this.root.classList.toggle('fireplayer--loading', ['detecting', 'waking', 'connecting', 'buffering'].includes(state));
+            this.root.dataset.state = state;
+            const status = { detecting: 'detecting', waking: 'waking', connecting: 'connecting', buffering: 'loading', reconnecting: 'reconnecting', offline: 'offline', 'awaiting-gesture': 'readyToPlay', error: 'failed' };
+            this.setStatus(meta.message || (status[state] ? t(status[state]) : ''), state === 'error' ? 'error' : 'info');
+            this.elements.retry.hidden = state !== 'error';
+            if (previous !== state) { this._emit('statechange', { state: state, previous: previous }); }
+        }
+
+        _markHealthy() {
+            if (!this._playRequested || this.media.paused || this.media.seeking || document.hidden
+                || this._reconnectPromise || (window.navigator && window.navigator.onLine === false)) { this._healthySince = null; return; }
+            const now = Date.now();
+            if (this._healthySince == null) { this._healthySince = now; return; }
+            if (now - this._healthySince < 2000) { return; }
+            this._reconnectAttempts = 0;
+            this._nativePlayRecoveries = 0;
+            this._emit('healthy');
         }
 
         _queueLoading() {
@@ -1252,8 +1355,8 @@
             this._loadingTimer = window.setTimeout(() => {
                 this._loadingTimer = null;
                 if (token === this._loadToken && !this._destroyed && !this.media.paused && this.media.readyState < 3 && !this.media.error) {
-                    this.root.classList.add('fireplayer--loading');
-                    this.setStatus(t('loading'), 'info');
+                    this._healthySince = null;
+                    this._transition('buffering');
                 }
             }, 220);
         }
@@ -1263,7 +1366,9 @@
             this._startupTimer = window.setTimeout(() => {
                 this._startupTimer = null;
                 if (token !== this._loadToken || this._destroyed || !this._playRequested) { return; }
-                this._showError(t('failed'), new Error('Playback did not start before the timeout.'));
+                const error = new Error('Playback did not start before the timeout.');
+                error.code = 'FIRST_FRAME_TIMEOUT';
+                this._showError(t('failed'), error);
             }, numberValue(this.options.startupTimeout, 30000, 1000, 120000));
         }
 
@@ -1272,7 +1377,7 @@
                 return;
             }
             const text = String(message || '');
-            const visible = text !== '' && (window.canViewVideoStatus !== false || tone === 'error');
+            const visible = text !== '';
             this.elements.status.textContent = visible ? text : '';
             this.elements.status.hidden = !visible;
             this.elements.status.dataset.tone = tone || 'info';
@@ -1304,9 +1409,10 @@
             if (this._destroyed) { return; }
             this._recoveringMedia = false;
             this._clearLoadingTimers();
-            this.root.classList.add('fireplayer--error');
-            this.root.classList.remove('fireplayer--loading', 'fireplayer--playing', 'fireplayer--reconnecting');
-            this.setStatus(message || t('failed'), 'error');
+            this._transition('error', { message: message || t('failed') });
+            this._playRequested = false;
+            if (this.controller && this.controller.suspend) { this.controller.suspend(); }
+            this.media.pause();
             this.elements.retry.hidden = false;
             this._emit('error', { error: error || this.media.error, message: message || t('failed') });
         }
@@ -1569,6 +1675,10 @@
         }
 
         _emit(eventName, detail) {
+            if (eventName === 'loadstart') { this._metrics = { startedAt: Date.now() }; }
+            const metrics = this._metrics || (this._metrics = {});
+            if (eventName === 'manifest' && metrics.startedAt != null && metrics.manifestMs == null) { metrics.manifestMs = Date.now() - metrics.startedAt; }
+            if (eventName === 'recovery' && detail) { metrics.recoveryStage = detail.stage; metrics.recoveryReason = detail.reason; }
             const payload = Object.assign({ player: this }, detail && typeof detail === 'object' ? detail : { value: detail });
             if (this._events.has(eventName)) {
                 this._events.get(eventName).forEach(function (callback) {
@@ -1587,6 +1697,7 @@
             ++this._loadToken;
             this._teardownPlayback();
             this._clearListeners();
+            this._transition('destroyed');
             this._emit('destroy');
             this._events.clear();
             instances.delete(this.root);
@@ -1633,7 +1744,8 @@
             root.querySelectorAll('.fire-player, [data-fire-player]').forEach(function (element) { elements.push(element); });
             return elements.filter(function (element) {
                 const media = element instanceof HTMLMediaElement ? element : element.querySelector('video, audio');
-                return element.dataset.firePlayerManual === undefined
+                return !element.closest('[data-player-native]')
+                    && element.dataset.firePlayerManual === undefined
                     && element.dataset.firePlayerInitialized !== 'true'
                     && Boolean(parseDataset(element).src || sourceFromMedia(media));
             }).map(function (element) { return new FirePlayer(element); });
@@ -1644,7 +1756,82 @@
         }
     }
 
-    FirePlayer.version = '1.0.8';
+    FirePlayer.use({
+        name: 'media-settings',
+        setup: function (player) {
+            const media = player.media;
+            const menu = player.elements.settingsMenu;
+            if (!media.textTracks || !menu) { return; }
+            const makeSelect = function (name) {
+                const row = document.createElement('label');
+                row.className = 'fireplayer__speed-wrap';
+                const label = document.createElement('span');
+                label.className = 'fireplayer__settings-label';
+                label.textContent = t(name);
+                const select = document.createElement('select');
+                select.className = 'fireplayer__speed';
+                select.dataset.fpSetting = name;
+                select.setAttribute('aria-label', t(name));
+                row.appendChild(label); row.appendChild(select); menu.appendChild(row);
+                return { row: row, select: select };
+            };
+            const quality = makeSelect('quality');
+            const subtitles = makeSelect('subtitles');
+            const populate = function (select, items, selected) {
+                select.innerHTML = '';
+                items.forEach(function (item) {
+                    const option = document.createElement('option');
+                    option.value = String(item.value); option.textContent = item.label;
+                    select.appendChild(option);
+                });
+                select.value = String(selected);
+            };
+            const updateQuality = function () {
+                const hls = player.controller && player.controller.hls;
+                const levels = hls && hls.levels || [];
+                quality.row.hidden = levels.length < 2;
+                populate(quality.select, [{ value: -1, label: t('auto') }].concat(levels.map(function (level, index) {
+                    return { value: index, label: (level.height ? level.height + 'p' : String(index + 1))
+                        + (level.bitrate ? ' · ' + (level.bitrate / 1000000).toFixed(1) + ' Mbps' : '') };
+                })), hls && !hls.autoLevelEnabled ? hls.currentLevel : -1);
+                player._syncLiveUi();
+            };
+            const tracks = function () { return Array.from(media.textTracks).filter(function (track) {
+                return track.kind === 'subtitles' || track.kind === 'captions';
+            }); };
+            const updateTracks = function () {
+                const list = tracks();
+                subtitles.row.hidden = !list.length;
+                populate(subtitles.select, [{ value: -1, label: t('off') }].concat(list.map(function (track, index) {
+                    return { value: index, label: track.label || track.language || String(index + 1) };
+                })), list.findIndex(function (track) { return track.mode === 'showing'; }));
+                player._syncLiveUi();
+            };
+            const chooseQuality = function () {
+                const hls = player.controller && player.controller.hls;
+                const level = Number(quality.select.value);
+                if (hls && Number.isInteger(level) && level >= -1 && level < hls.levels.length) { hls.currentLevel = level; }
+            };
+            const chooseTrack = function () {
+                const selected = Number(subtitles.select.value);
+                tracks().forEach(function (track, index) { track.mode = index === selected ? 'showing' : 'disabled'; });
+            };
+            quality.select.addEventListener('change', chooseQuality);
+            subtitles.select.addEventListener('change', chooseTrack);
+            ['addtrack', 'removetrack', 'change'].forEach(function (event) { media.textTracks.addEventListener(event, updateTracks); });
+            player.on('manifest', updateQuality);
+            updateQuality(); updateTracks();
+            return function () {
+                player.off('manifest', updateQuality);
+                ['addtrack', 'removetrack', 'change'].forEach(function (event) { media.textTracks.removeEventListener(event, updateTracks); });
+                quality.select.removeEventListener('change', chooseQuality);
+                subtitles.select.removeEventListener('change', chooseTrack);
+                quality.row.remove(); subtitles.row.remove();
+            };
+        }
+    });
+
+    FirePlayer.version = '1.1.0';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;

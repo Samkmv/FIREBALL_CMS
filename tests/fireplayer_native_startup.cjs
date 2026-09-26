@@ -72,7 +72,7 @@ class Target {
     querySelectorAll() { return []; }
 }
 
-function environment({ native = true, safari = true, fetch: fetchImpl, Hls } = {}) {
+function environment({ native = true, safari = true, fetch: fetchImpl, Hls, modules = [] } = {}) {
     let now = 0, nextTimer = 0;
     const timers = new Map(), trace = [], values = new Map(), writes = [];
     class Media extends Target {
@@ -125,6 +125,10 @@ function environment({ native = true, safari = true, fetch: fetchImpl, Hls } = {
             const id = ++nextTimer; timers.set(id, { fn, due: now + Number(milliseconds || 0) }); return id;
         },
         clearTimeout(id) { timers.delete(id); },
+        setInterval(fn, milliseconds) {
+            const id = ++nextTimer; timers.set(id, { fn, due: now + milliseconds, interval: milliseconds }); return id;
+        },
+        clearInterval(id) { timers.delete(id); },
         localStorage: {
             getItem: key => values.get(key) ?? null,
             setItem(key, value) { values.set(key, value); writes.push({ key, value }); },
@@ -151,6 +155,7 @@ function environment({ native = true, safari = true, fetch: fetchImpl, Hls } = {
         return register.call(this, protocol, factory);
     };
     vm.runInContext(sources[1].code, context, { filename: sources[1].name });
+    modules.forEach(name => vm.runInContext(fs.readFileSync(path.join(root, 'public/assets/default/js', name), 'utf8'), context, { filename: name }));
     const players = [];
     function player({ audio = false, prepared = false, options = {} } = {}) {
         const p = Object.create(FirePlayer.prototype);
@@ -189,7 +194,9 @@ function environment({ native = true, safari = true, fetch: fetchImpl, Hls } = {
             for (;;) {
                 const next = [...timers].filter(([, timer]) => timer.due <= end).sort((a, b) => a[1].due - b[1].due)[0];
                 if (!next) { break; }
-                now = next[1].due; timers.delete(next[0]); next[1].fn(); await flush();
+                now = next[1].due;
+                if (next[1].interval) { next[1].due += next[1].interval; } else { timers.delete(next[0]); }
+                next[1].fn(); await flush();
             }
             now = end; await flush();
         },
@@ -468,7 +475,9 @@ test('failed muted retry reports autoplayblocked once and never loops', async ()
     } finally { env.dispose(); }
 });
 
-(async () => {
+module.exports = { environment, deferred, namedError, flush, bounded, Target, stream };
+
+if (require.main === module) (async () => {
     const start = performance.now();
     let failures = 0;
     for (const { name, run } of tests) {

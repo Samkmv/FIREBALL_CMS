@@ -90,7 +90,8 @@
         if (root instanceof Element && root.matches('.post-content video, .post-content audio')) {
             mediaElements.push(root);
         }
-        root.querySelectorAll('.post-content video, .post-content audio').forEach(function (media) {
+        root.querySelectorAll('.post-content video, .post-content audio, video[data-plyr-player], audio[data-plyr-player], [data-plyr-player-wrap] video, [data-plyr-player-wrap] audio').forEach(function (media) {
+            if (media.closest('[data-player-native]')) { return; }
             mediaElements.push(media);
         });
 

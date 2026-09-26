@@ -119,7 +119,9 @@
         }
         if (signal && signal.aborted) { throw abortError(); }
 
-        let entry = wakeRequests.get(streamId);
+        const key = streamId + '|' + new URL(source, window.location.href).href;
+        if (window.navigator && window.navigator.onLine === false) { throw nativeHlsError('NETWORK_OFFLINE', 'Network is offline.'); }
+        let entry = wakeRequests.get(key);
         if (!entry) {
             const frontend = window.hlsStreamConfig && typeof window.hlsStreamConfig === 'object' ? window.hlsStreamConfig : {};
             // The backend may probe the manifest and recent media segments.
@@ -134,6 +136,9 @@
                 let timedOut = false;
                 try {
                     const request = (async function () {
+                      for (;;) {
+                        if (controller && controller.signal.aborted) { throw abortError(); }
+                        if (window.navigator && window.navigator.onLine === false) { throw nativeHlsError('NETWORK_OFFLINE', 'Network is offline.'); }
                         const response = await window.fetch((typeof window.baseUrl === 'string' ? window.baseUrl : (typeof baseUrl === 'string' ? baseUrl : '')) + '/api/streams/wake', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -142,9 +147,16 @@
                             signal: controller ? controller.signal : undefined
                         });
                         const payload = await response.json().catch(function () { return {}; });
-                        if (!response.ok || payload.success === false || payload.ready !== true) {
-                            throw new Error('Camera stream is not ready (HTTP ' + response.status + ').');
+                        if (response.ok && payload.ready !== true && payload.retryable === true && payload.state === 'starting') {
+                            await delayWithSignal(1500, controller && controller.signal);
+                            continue;
                         }
+                        if (!response.ok || payload.success === false || payload.ready !== true) {
+                            const code = { MANIFEST_UNAVAILABLE: 'MANIFEST_UNAVAILABLE', MANIFEST_INVALID: 'MANIFEST_INVALID', UPSTREAM_TIMEOUT: 'CAMERA_WAKE_TIMEOUT' }[payload.code] || 'CAMERA_NOT_READY';
+                            throw nativeHlsError(code, 'Camera stream is not ready.');
+                        }
+                        return;
+                      }
                     })();
                     const deadline = new Promise(function (_, reject) {
                         timer = window.setTimeout(function () {
@@ -155,20 +167,20 @@
                     });
                     await Promise.race([request, deadline]);
                 } catch (error) {
-                    if (timedOut) { throw new Error('Camera readiness check timed out.'); }
+                    if (timedOut) { throw nativeHlsError('CAMERA_WAKE_TIMEOUT', 'Camera readiness check timed out.'); }
                     throw error;
                 } finally {
                     window.clearTimeout(timer);
                 }
             })().finally(function () {
                 currentEntry.settled = true;
-                if (wakeRequests.get(streamId) === currentEntry) {
-                    wakeRequests.delete(streamId);
+                if (wakeRequests.get(key) === currentEntry) {
+                    wakeRequests.delete(key);
                 }
             });
             // A player may disappear while the shared wake is still unwinding.
             entry.promise.catch(function () {});
-            wakeRequests.set(streamId, entry);
+            wakeRequests.set(key, entry);
         }
 
         entry.consumers += 1;
@@ -177,7 +189,7 @@
         } finally {
             entry.consumers = Math.max(0, entry.consumers - 1);
             if (!entry.settled && entry.consumers === 0 && entry.controller) {
-                if (wakeRequests.get(streamId) === entry) { wakeRequests.delete(streamId); }
+                if (wakeRequests.get(key) === entry) { wakeRequests.delete(key); }
                 entry.controller.abort();
             }
         }
@@ -198,8 +210,8 @@
         let mediaRecoveries = 0;
         let networkRecoveries = 0;
         let softReconnects = 0;
+        let pausedFailure = false;
         let lastWakeAt = 0;
-        let lastHealthyTime = media.currentTime || 0;
         const active = function () {
             return !destroyed && !player._destroyed && player._loadToken === token
                 && player.media === media && !(signal && signal.aborted);
@@ -210,12 +222,10 @@
             retryTimer = null;
         };
         const onProgress = function () {
-            const current = media.currentTime || 0;
-            if (active() && !media.paused && !media.seeking && Math.abs(current - lastHealthyTime) >= 2) {
+            if (active() && !media.paused && !media.seeking) {
                 mediaRecoveries = 0;
                 networkRecoveries = 0;
                 softReconnects = 0;
-                lastHealthyTime = current;
                 player._emit('recovered', { protocol: 'hls' });
             }
         };
@@ -226,10 +236,10 @@
             if (player._loadToken === token) { player._nativeHlsPreparing = false; }
             if (loadSignal) { loadSignal.removeEventListener('abort', cleanup); }
             if (lifetime) { lifetime.abort(); }
-            media.removeEventListener('timeupdate', onProgress);
-            if (hls) { hls.destroy(); hls = null; }
+            player.off('healthy', onProgress);
+            if (hls) { if (hls.stopLoad) { hls.stopLoad(); } hls.destroy(); hls = null; }
         };
-        media.addEventListener('timeupdate', onProgress);
+        player.on('healthy', onProgress);
         if (loadSignal) {
             loadSignal.addEventListener('abort', cleanup, { once: true });
             if (loadSignal.aborted) { cleanup(); }
@@ -245,12 +255,14 @@
             }
 
             try {
-                if (streamId) { player.setStatus(window.FirePlayer.translate('waking'), 'info'); }
+                const wakeStartedAt = Date.now();
+                if (streamId) { player._transition('waking'); }
                 await wakeStream(source, options, signal);
                 assertActive();
                 if (streamId) {
+                    if (player._metrics) { player._metrics.wakeMs = Date.now() - wakeStartedAt; }
                     lastWakeAt = Date.now();
-                    player.setStatus(window.FirePlayer.translate('connecting'), 'info');
+                    player._transition('connecting');
                 }
                 return Boolean(streamId);
             } catch (error) {
@@ -293,7 +305,7 @@
                 if (active()) { player._showError(window.FirePlayer.translate('failed'), error); }
             };
             const scheduleReconnect = function (error, instance) {
-                if (!active() || reconnectPromise || player._reconnectPromise || retryTimer !== null) { return; }
+                if (!active() || !player._playRequested || reconnectPromise || player._reconnectPromise || retryTimer !== null) { return; }
                 if (!player.options.reconnect) { reportFatal(error); return; }
                 if (window.navigator && window.navigator.onLine === false) {
                     player.root.classList.add('fireplayer--offline');
@@ -316,7 +328,7 @@
 
                 retryTimer = window.setTimeout(function () {
                     retryTimer = null;
-                    if (!active()) { return; }
+                    if (!active() || !player._playRequested) { return; }
                     if (!player.options.reconnect) { reportFatal(error); return; }
                     if (window.navigator && window.navigator.onLine === false) {
                         player.root.classList.add('fireplayer--offline');
@@ -340,7 +352,7 @@
                     }
 
                     player.reconnect('network').catch(reportFatal);
-                }, delay + jitter);
+                }, Math.min(15000, delay + jitter));
             };
             const attachHls = function () {
                 const instance = new Hls(Object.assign({
@@ -376,7 +388,8 @@
                     }
                 });
                 instance.on(Hls.Events.ERROR, function (event, data) {
-                    if (!current() || !data || !data.fatal) { return; }
+                    if (!current() || !data || !data.fatal || (window.navigator && window.navigator.onLine === false)) { return; }
+                    if (!player._playRequested) { pausedFailure = true; return; }
 
                     const error = new Error(data.details || 'Fatal HLS error');
                     const details = String(data.details || '');
@@ -545,7 +558,7 @@
                 if (useNative) {
                     await prepareNative(reason);
                 } else {
-                    if (hls) { hls.destroy(); hls = null; }
+                    if (hls) { if (hls.stopLoad) { hls.stopLoad(); } hls.destroy(); hls = null; }
                     attachHls();
                 }
             };
@@ -555,6 +568,7 @@
 
                 reconnectPromise = (async function () {
                     assertActive();
+                    pausedFailure = false;
 
                     const reconnectReason = reason || 'unknown';
                     const streamId = options.streamId || inferStreamId(source);
@@ -581,7 +595,6 @@
 
                     mediaRecoveries = 0;
                     networkRecoveries = 0;
-                    lastHealthyTime = media.currentTime || 0;
 
                     player._emit('recovery', {
                         reason: reconnectReason,
@@ -602,7 +615,10 @@
                     engine: useNative ? 'native' : 'hls.js',
                     get hls() { return hls; },
                     get liveSyncPosition() { return liveSyncPosition(); },
-                    reconnect: reconnect
+                    get needsRecovery() { return pausedFailure; },
+                    reconnect: reconnect,
+                    cancelRecovery: clearRetry,
+                    suspend: function () { clearRetry(); if (hls && hls.stopLoad) { hls.stopLoad(); } }
                 },
                 cleanup: cleanup
             };

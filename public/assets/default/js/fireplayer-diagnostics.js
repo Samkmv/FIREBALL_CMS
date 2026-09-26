@@ -68,10 +68,11 @@
         const grid = document.createElement('dl');
         grid.className = 'fireplayer-diagnostics__grid';
         const values = {};
-        ['version', 'source', 'media', 'engine', 'resolution', 'time', 'buffer', 'level', 'codecs', 'frames', 'reconnects', 'error'].forEach(function (key) {
+        ['version', 'source', 'media', 'engine', 'resolution', 'time', 'buffer', 'level', 'codecs', 'frames', 'reconnects', 'error',
+            'state', 'managed', 'online', 'liveEdge', 'latency', 'liveSyncPosition', 'wakeMs', 'manifestMs', 'firstFrameMs', 'frameAge', 'recoveryStage', 'recoveryReason'].forEach(function (key) {
             const row = document.createElement('div');
             const term = document.createElement('dt');
-            term.textContent = labels[key];
+            term.textContent = labels[key] || key;
             const value = document.createElement('dd');
             value.setAttribute('data-fp-diagnostic', key);
             value.textContent = '—';
@@ -153,12 +154,26 @@
             values.frames.textContent = Number.isFinite(dropped) && Number.isFinite(total) ? dropped + ' / ' + total : '—';
             values.reconnects.textContent = String(reconnects);
             values.error.textContent = lastError;
+            values.state.textContent = token(player._state || 'idle');
+            values.managed.textContent = String(Boolean(player.options.streamId || /\/stream-[^/]+\/index\.m3u8(?:[?#]|$)/i.test(source)));
+            values.online.textContent = String(window.navigator.onLine !== false);
+            const edge = media.seekable && media.seekable.length ? media.seekable.end(media.seekable.length - 1) : null;
+            values.liveEdge.textContent = Number.isFinite(edge) ? edge.toFixed(1) : '—';
+            values.latency.textContent = Number.isFinite(edge) ? Math.max(0, edge - media.currentTime).toFixed(1) : '—';
+            const sync = controller && controller.liveSyncPosition;
+            values.liveSyncPosition.textContent = Number.isFinite(sync) ? sync.toFixed(1) : '—';
+            const metrics = player._metrics || {};
+            ['wakeMs', 'manifestMs', 'firstFrameMs'].forEach(function (key) { values[key].textContent = Number.isFinite(metrics[key]) ? String(Math.round(metrics[key])) : '—'; });
+            ['recoveryStage', 'recoveryReason'].forEach(function (key) { values[key].textContent = token(metrics[key]); });
+            const frameAt = player._health && player._health.lastFrameAt;
+            values.frameAge.textContent = Number.isFinite(frameAt) ? ((Date.now() - frameAt) / 1000).toFixed(1) : '—';
             if (media.error || player.root.classList.contains('fireplayer--error')) { setState('error'); }
             else if (media.ended) { setState('ended'); }
             else if (player.root.classList.contains('fireplayer--reconnecting')) { setState('reconnecting'); }
             else if (player.root.classList.contains('fireplayer--loading')) { setState('loading'); }
             else if (!media.paused && media.readyState >= 3) { setState('playing'); }
             else if (state === 'playing' && media.paused) { setState('paused'); }
+            if (player._state) { setState(player._state); }
         };
         const on = function (name, handler) {
             player.on(name, handler);
