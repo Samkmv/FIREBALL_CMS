@@ -471,6 +471,118 @@
         return (result >>> 0).toString(36);
     };
 
+    // Poster work is independent of source preparation/playback. One observer and
+    // two Image slots are shared by all instances, including dynamically added ones.
+    const posterLoader = (function () {
+        const jobs = new Map();
+        let observer = null;
+        let active = 0;
+        let scheduled = false;
+        let listening = false;
+        const priority = function (root) {
+            if (document.hidden) { return 0; }
+            if (typeof root.getBoundingClientRect !== 'function') { return 1; }
+            const rect = root.getBoundingClientRect();
+            const height = window.innerHeight || document.documentElement.clientHeight;
+            const width = window.innerWidth || document.documentElement.clientWidth;
+            if (!rect.width || !rect.height || rect.bottom < -150 || rect.top > height + 150 || rect.right < 0 || rect.left > width) { return 0; }
+            return rect.bottom > 0 && rect.top < height ? 2 : 1;
+        };
+        const visibility = function () {
+            jobs.forEach(function (job) {
+                if (job.loading) { return; }
+                job.priority = priority(job.player.root);
+                job.player._posterState = job.priority ? 'queued' : 'idle';
+            });
+            schedule();
+        };
+        const release = function (job) {
+            if (jobs.get(job.player.root) === job) { jobs.delete(job.player.root); }
+            if (observer) { observer.unobserve(job.player.root); }
+            if (!jobs.size) {
+                if (observer) { observer.disconnect(); observer = null; }
+                document.removeEventListener('visibilitychange', visibility);
+                window.removeEventListener('scroll', visibility);
+                window.removeEventListener('resize', visibility);
+                listening = false;
+            }
+        };
+        const finish = function (job, result) {
+            if (job.done) { return; }
+            job.done = true;
+            window.clearTimeout(job.timer);
+            if (job.image) {
+                job.image.onload = null; job.image.onerror = null;
+                if (result !== 'loaded') { job.image.removeAttribute('src'); }
+            }
+            if (job.loading) { active -= 1; }
+            release(job);
+            job.complete(result);
+            schedule();
+        };
+        const pump = function () {
+            scheduled = false;
+            if (document.hidden) { return; }
+            const waiting = Array.from(jobs.values()).filter(function (job) { return !job.loading && job.priority; })
+                .map(function (job) { job.priority = priority(job.player.root); return job; })
+                .sort(function (a, b) { return b.priority - a.priority; });
+            for (const job of waiting) {
+                if (active >= 2) { break; }
+                if (!job.valid()) { finish(job, 'cancelled'); continue; }
+                // Recheck geometry: queued players can leave the viewport before their turn.
+                job.priority = priority(job.player.root);
+                if (!job.priority) { job.player._posterState = 'idle'; continue; }
+                job.loading = true; active += 1;
+                job.player._posterState = 'loading';
+                job.image = new window.Image();
+                job.image.onload = function () { finish(job, 'loaded'); };
+                job.image.onerror = function () { finish(job, 'failed'); };
+                job.timer = window.setTimeout(function () { finish(job, 'failed'); }, 15000);
+                job.image.src = job.url;
+            }
+        };
+        function schedule() {
+            if (scheduled) { return; }
+            scheduled = true;
+            Promise.resolve().then(pump);
+        }
+        return {
+            priority: priority,
+            enqueue: function (player, url, valid, complete) {
+                if (typeof window.Image !== 'function') { return function () {}; }
+                const job = { player: player, url: url, valid: valid, complete: complete, priority: 0, loading: false, done: false };
+                jobs.set(player.root, job);
+                if (!listening) {
+                    listening = true;
+                    document.addEventListener('visibilitychange', visibility);
+                    if (typeof window.IntersectionObserver !== 'function') {
+                        window.addEventListener('scroll', visibility, { passive: true });
+                        window.addEventListener('resize', visibility, { passive: true });
+                    }
+                }
+                if (typeof window.IntersectionObserver === 'function') {
+                    if (!observer) {
+                        observer = new window.IntersectionObserver(function (entries) {
+                            entries.forEach(function (entry) {
+                                const pending = jobs.get(entry.target);
+                                if (!pending || pending.loading) { return; }
+                                pending.priority = entry.isIntersecting ? priority(entry.target) : 0;
+                                pending.player._posterState = pending.priority ? 'queued' : 'idle';
+                            });
+                            schedule();
+                        }, { rootMargin: '150px 0px', threshold: 0 });
+                    }
+                    observer.observe(player.root);
+                } else {
+                    job.priority = priority(player.root);
+                    player._posterState = job.priority ? 'queued' : 'idle';
+                    schedule();
+                }
+                return function () { finish(job, 'cancelled'); };
+            }
+        };
+    })();
+
     class FirePlayer {
         constructor(target, options) {
             const element = typeof target === 'string' ? document.querySelector(target) : target;
@@ -516,6 +628,7 @@
             this._restoredPosition = false;
             this._lazySourcePending = false;
             this._render(this.options.media === 'audio' ? 'audio' : 'video');
+            this._preparePoster(this.options.poster);
             this._lazySourcePending = shouldLazyStart(this.options.src, this.options);
             this.root.classList.toggle('fireplayer--lazy', this._lazySourcePending);
             this._transition(this._lazySourcePending ? 'lazy' : 'idle');
@@ -551,7 +664,6 @@
             if (media instanceof HTMLVideoElement) {
                 media.playsInline = this.options.playsinline !== false;
                 media.setAttribute('webkit-playsinline', '');
-                if (this.options.poster) { media.poster = this.options.poster; }
             }
 
             this.root.className = this.root.className
@@ -817,6 +929,50 @@
             return pending;
         }
 
+        _cancelPoster() {
+            this._posterVersion = (this._posterVersion || 0) + 1;
+            if (this._posterCancel) { this._posterCancel(); this._posterCancel = null; }
+            if (this._posterState === 'queued' || this._posterState === 'loading') { this._posterState = 'idle'; }
+        }
+
+        _preparePoster(url) {
+            this._cancelPoster();
+            const identity = this.options.src + '|' + String(url || '');
+            const failed = this._posterIdentity === identity && this._posterState === 'failed';
+            this._posterIdentity = identity;
+            this._posterUrl = String(url || '');
+            this._posterState = failed ? 'failed' : 'idle';
+            this.media.removeAttribute('poster');
+            this.root.classList.remove('fireplayer--poster-loaded');
+            this._queuePoster();
+        }
+
+        _queuePoster(url, refresh) {
+            if (this._destroyed || !(this.media instanceof HTMLVideoElement) || !this._posterUrl
+                || this._playRequested || !this.media.paused || this._posterCancel
+                || this._posterState === 'failed' || (!refresh && this._posterState === 'loaded')) { return; }
+            if (refresh && (this._posterState !== 'loaded' || posterLoader.priority(this.root) !== 2)) { return; }
+            const version = this._posterVersion;
+            const token = this._loadToken;
+            const media = this.media;
+            const valid = () => !this._destroyed && this._posterVersion === version && this._loadToken === token
+                && this.media === media && !this._playRequested && media.paused && this.root.isConnected !== false;
+            const posterUrl = url || this._posterUrl;
+            this._posterCancel = posterLoader.enqueue(this, posterUrl, () => valid() && (!refresh || posterLoader.priority(this.root) === 2), (result) => {
+                if (this._posterVersion !== version || this._loadToken !== token || this.media !== media) { return; }
+                this._posterCancel = null;
+                if (!valid()) { this._posterState = 'idle'; return; }
+                this._posterState = result === 'cancelled' ? (refresh ? 'loaded' : 'idle') : result;
+                if (result === 'loaded') {
+                    media.poster = posterUrl;
+                    if (!refresh) { this.root.classList.add('fireplayer--poster-loaded'); }
+                } else if (result === 'failed') {
+                    media.removeAttribute('poster');
+                    this.root.classList.remove('fireplayer--poster-loaded');
+                }
+            });
+        }
+
         async _loadSource(source, overrides, preservePlayIntent) {
             if (this._destroyed) {
                 throw new Error('FirePlayer instance was destroyed.');
@@ -826,10 +982,14 @@
                 throw new Error('FirePlayer requires a media source.');
             }
             const requestedPlay = Boolean(preservePlayIntent && this._playRequested);
+            const changedSource = src !== this.options.src;
             const token = ++this._loadToken;
             this._storePosition(false, true);
             this._teardownPlayback();
             this.options = Object.assign({}, this.options, overrides || {}, { src: src });
+            if (changedSource && !(overrides && Object.prototype.hasOwnProperty.call(overrides, 'poster'))) {
+                this.options.poster = inferHlsPoster(src);
+            }
             this._lazySourcePending = false;
             this.root.classList.remove('fireplayer--lazy', 'fireplayer--awaiting-gesture', 'fireplayer--offline');
             this._loadAbortController = typeof AbortController === 'function' ? new AbortController() : null;
@@ -877,9 +1037,9 @@
                 this.media.removeAttribute('crossorigin');
             }
             if (this.media instanceof HTMLVideoElement) {
-                this.media.poster = this.options.poster || '';
                 this._originalTracks.forEach((track) => this.media.appendChild(track.cloneNode(true)));
             }
+            this._preparePoster(this.options.poster);
             this.elements.controls.hidden = this.options.controls === false;
             this.root.setAttribute('aria-label', this.options.title || t(info.media));
             this._syncLiveUi();
@@ -972,6 +1132,9 @@
         }
 
         _teardownPlayback() {
+            this._cancelPoster();
+            if (this.media) { this.media.removeAttribute('poster'); }
+            this.root.classList.remove('fireplayer--poster-loaded');
             window.clearTimeout(this._idleTimer);
             this._idleTimer = null;
             this._healthySince = null;
@@ -1013,6 +1176,8 @@
             if (!this.options.src) {
                 throw new Error('FirePlayer has no source.');
             }
+            this._cancelPoster();
+            this.root.classList.remove('fireplayer--poster-loaded');
             // An explicit Play can restore sound within its user gesture. Never unmute
             // from `playing`: Safari may pause again when activation has been lost.
             this._restoreNativeHlsMute();
@@ -1146,6 +1311,7 @@
             this._restoreNativeHlsMute();
             this._settleLoading();
             this._transition('paused');
+            this._queuePoster();
             const idleDelay = this.options.managedIdleDetach === undefined ? 60000 : Number(this.options.managedIdleDetach);
             window.clearTimeout(this._idleTimer);
             if (idleDelay > 0 && isManagedStreamSource(this.options.src, this.options)) {

@@ -82,6 +82,40 @@ const info = await FirePlayer.detect('/camera/index.m3u8');
 
 Camera Manager uses a single lazy modal player. Closing the modal unloads the HLS engine, so hidden cameras do not continue downloading segments.
 
+### Lazy posters
+
+Both explicit posters and inferred `stream-ID/index.m3u8 → tn-ID.jpg` posters use the
+shared core poster queue. Creating a FirePlayer does not set `video.poster` immediately.
+One IntersectionObserver with a 150 px vertical margin admits nearby players, with visible
+players taking priority. At most two Image preloads run at once. Without IntersectionObserver,
+geometry checks on scroll/resize provide the same bounded queue. No external dependency is needed.
+
+The native poster is assigned only after a successful preload. Until then the existing dark
+background and Play button remain; no poster-specific spinner or error is shown. A failed or
+15-second timed-out poster stays failed for that source/poster identity and does not prevent
+playback. Play cancels pending poster work rather than waiting for it. Source replacement,
+unload and destroy cancel work and invalidate late callbacks. A new source without a poster
+override infers its own poster instead of retaining the previous source's image.
+
+`posterCacheBust` refreshes only a previously loaded poster while the paused player is actually
+in the viewport and the document is visible. Refresh uses the same queue; failure stops further
+automatic refresh. This also applies to Camera Manager. Images fade in briefly; reduced-motion
+preferences disable the animation. This does not stop an original legacy `video poster` URL
+from being requested by the HTML parser before FirePlayer initializes; use `data-poster` markup
+for fully deferred initial loading.
+
+Poster checks:
+
+```bash
+node tests/fireplayer_poster.cjs
+node tests/fireplayer_poster_browser.cjs
+```
+
+The dependency-free suite covers queue order/capacity, errors/timeouts, playback independence,
+source races, cleanup, fallback visibility and refresh. The browser suite needs Playwright
+(optionally supplied through NODE_PATH), and tests real constructors, native poster attributes,
+image requests, scrolling and zero pre-Play HLS/wake requests in Chromium and Firefox.
+
 ## Compatibility with the previous Plyr integration
 
 - Native Safari/iOS HLS and bundled hls.js paths are retained, with backend readiness checks before camera playback.

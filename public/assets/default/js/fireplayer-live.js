@@ -133,7 +133,7 @@
                 if (!isLive() || !(player.media instanceof HTMLVideoElement) || !player.options.poster || !player.options.posterCacheBust || !player.media.paused) {
                     return;
                 }
-                player.media.poster = cacheBustedPoster(player.options.poster);
+                player._queuePoster(cacheBustedPoster(player.options.poster), true);
             };
 
             const onVisibility = function () {

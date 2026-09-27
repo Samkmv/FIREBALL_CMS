@@ -78,6 +78,19 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     transition: opacity 180ms ease;
 }
 
+.fireplayer--poster-loaded .fireplayer__media {
+    animation: fireplayer-poster-appear 180ms ease-out;
+}
+
+@keyframes fireplayer-poster-appear {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fireplayer--poster-loaded .fireplayer__media { animation: none; }
+}
+
 .fireplayer__center-play {
     position: absolute;
     z-index: 3;
