@@ -701,7 +701,7 @@
                                 >
                                     <span class="d-flex align-items-center gap-3 min-w-0">
                                         <span class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
-                                            <i class="ci-users" aria-hidden="true"></i>
+                                            <i class="ci-user" aria-hidden="true"></i>
                                         </span>
                                         <span class="min-w-0 flex-grow-1">
                                             <span class="d-flex align-items-start justify-content-between gap-2">

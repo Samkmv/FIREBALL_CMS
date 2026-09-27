@@ -138,6 +138,19 @@ class HomeController extends BaseController
             $data = $this->normalizeContactData($requestData);
             $errors = $this->validateContactData($data, requirePrivacy: true);
 
+            // CONTACT_DUPLICATE_FIX_V1
+            // A browser/network retry may arrive after FireCaptcha consumed its one-time nonce.
+            // Treat an identical recent request as already accepted before re-verifying captcha.
+            if (empty($errors)) {
+                $duplicateRequestId = $this->contactRequests->findRecentDuplicate($data, 60);
+                if ($duplicateRequestId !== null) {
+                    session()->remove('form_data');
+                    session()->remove('form_errors');
+                    session()->setFlash('success', return_translation('contacts_form_success'));
+                    response()->redirect(base_href('/contacts'));
+                }
+            }
+
             if (empty($errors)) {
                 $captchaResult = $fireCaptcha->verify('contacts', $requestData);
                 if (!(bool)($captchaResult['passed'] ?? false)) {
@@ -161,8 +174,13 @@ class HomeController extends BaseController
                 response()->redirect(base_href('/contacts'));
             }
 
-            $requestId = $this->contactRequests->create($data);
-            $this->notifyAdminsAboutContactRequest($requestId, $data, 'contacts');
+            // CONTACT_DUPLICATE_FIX_V1
+            $creation = $this->contactRequests->createDeduplicated($data, 60);
+            $requestId = (int)($creation['id'] ?? 0);
+            if (!empty($creation['created'])) {
+                $this->notifyAdminsAboutContactRequest($requestId, $data, 'contacts');
+            }
+
             session()->remove('form_data');
             session()->remove('form_errors');
             session()->setFlash('success', return_translation('contacts_form_success'));

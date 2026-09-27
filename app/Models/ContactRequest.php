@@ -98,6 +98,92 @@ class ContactRequest
     }
 
     /**
+     * CONTACT_DUPLICATE_FIX_V1
+     * Finds an identical recently created request.
+     */
+    public function findRecentDuplicate(array $data, int $windowSeconds = 60): ?int
+    {
+        $this->ensureTableExists();
+
+        $windowSeconds = max(5, min(600, $windowSeconds));
+        $createdAfter = date('Y-m-d H:i:s', time() - $windowSeconds);
+
+        $id = (int)db()->query(
+            "SELECT id
+             FROM {$this->table}
+             WHERE name = :name
+               AND email = :email
+               AND phone = :phone
+               AND subject = :subject
+               AND message = :message
+               AND created_at >= :created_after
+             ORDER BY id DESC
+             LIMIT 1",
+            [
+                'name' => trim((string)($data['name'] ?? '')),
+                'email' => mb_strtolower(trim((string)($data['email'] ?? ''))),
+                'phone' => mb_substr(trim((string)($data['phone'] ?? '')), 0, 50),
+                'subject' => trim((string)($data['subject'] ?? '')),
+                'message' => trim((string)($data['message'] ?? '')),
+                'created_after' => $createdAfter,
+            ]
+        )->getColumn();
+
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * CONTACT_DUPLICATE_FIX_V1
+     * Creates a request only when an identical recent request does not exist.
+     *
+     * @return array{id:int, created:bool}
+     */
+    public function createDeduplicated(array $data, int $windowSeconds = 60): array
+    {
+        $fingerprint = hash('sha256', implode("\n", [
+            trim((string)($data['name'] ?? '')),
+            mb_strtolower(trim((string)($data['email'] ?? ''))),
+            mb_substr(trim((string)($data['phone'] ?? '')), 0, 50),
+            trim((string)($data['subject'] ?? '')),
+            trim((string)($data['message'] ?? '')),
+        ]));
+        $lockName = 'contact:' . substr($fingerprint, 0, 48);
+        $lockAcquired = false;
+
+        try {
+            try {
+                $lockAcquired = (int)db()->query(
+                    "SELECT GET_LOCK(?, 5)",
+                    [$lockName]
+                )->getColumn() === 1;
+            } catch (\Throwable) {
+                $lockAcquired = false;
+            }
+
+            $duplicateId = $this->findRecentDuplicate($data, $windowSeconds);
+            if ($duplicateId !== null) {
+                return [
+                    'id' => $duplicateId,
+                    'created' => false,
+                ];
+            }
+
+            return [
+                'id' => $this->create($data),
+                'created' => true,
+            ];
+        } finally {
+            if ($lockAcquired) {
+                try {
+                    db()->query("SELECT RELEASE_LOCK(?)", [$lockName])->getColumn();
+                } catch (\Throwable) {
+                    // DB connection cleanup will release the advisory lock.
+                }
+            }
+        }
+    }
+
+    /**
      * Возвращает все заявки без пагинации.
      */
     public function getAll(): array

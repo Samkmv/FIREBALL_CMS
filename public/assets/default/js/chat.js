@@ -1728,20 +1728,23 @@ $(function () {
     const hasMessageTextSelection = () => {
         const selection = window.getSelection ? window.getSelection() : null;
         if (!selection || selection.isCollapsed || selection.rangeCount === 0 || String(selection.toString() || '') === '') return false;
-        return selectionNodeInsideMessages(selection.anchorNode) || selectionNodeInsideMessages(selection.focusNode);
+        if (selectionNodeInsideMessages(selection.anchorNode) || selectionNodeInsideMessages(selection.focusNode)) return true;
+        // A selection can start and end outside the thread while spanning its text.
+        for (let index = 0; index < selection.rangeCount; index += 1) {
+            if (selection.getRangeAt(index).intersectsNode(messagesBox[0])) return true;
+        }
+        return false;
     };
 
     const flushDeferredMessageRender = () => {
-        if (!messageRenderDeferred || hasMessageTextSelection()) return;
-        const currentUserId = deferredRenderCurrentUserId;
-        const options = {...(deferredRenderOptions || {}), force: true};
-        messageRenderDeferred = false;
-        deferredRenderCurrentUserId = 0;
-        deferredRenderOptions = {};
-        renderMessages(state.messages, currentUserId, options);
-        if (typeof chatRealtimeRefreshPending !== 'undefined' && chatRealtimeRefreshPending && typeof scheduleRealtimeRefresh === 'function') {
-            window.setTimeout(scheduleRealtimeRefresh, 0);
+        if (hasMessageTextSelection()) return;
+        if (messageRenderDeferred) {
+            const currentUserId = deferredRenderCurrentUserId;
+            const options = {...deferredRenderOptions, force: true};
+            renderMessages(state.messages, currentUserId, options);
         }
+        // SSE may have deferred the fetch without ever reaching renderMessages.
+        if (chatRealtimeRefreshPending) scheduleRealtimeRefresh();
     };
 
     const renderMessages = (messages, currentUserId, options = {}) => {
@@ -1752,6 +1755,9 @@ $(function () {
             return;
         }
 
+        messageRenderDeferred = false;
+        deferredRenderCurrentUserId = 0;
+        deferredRenderOptions = {};
 
         const box = messagesBox[0];
         const force = Boolean(options.force);
@@ -2964,7 +2970,7 @@ $(function () {
         window.setTimeout(flushDeferredMessageRender, 0);
     });
 
-    messagesBox.on('mouseup touchend keyup', function () {
+    $(document).on('mouseup touchend keyup', function () {
         window.setTimeout(flushDeferredMessageRender, 0);
     });
 

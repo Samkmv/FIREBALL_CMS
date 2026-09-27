@@ -68,29 +68,6 @@ final class SettingsService
             $settings[$flag] = (bool)$settings[$flag];
         }
 
-        $settings['receipt_tax'] = $this->choice(
-            (string)$settings['receipt_tax'],
-            ['none', 'vat0', 'vat5', 'vat7', 'vat10', 'vat20', 'vat105', 'vat107', 'vat110', 'vat120'],
-            'none'
-        );
-
-        $receiptPaymentMethod = (string)$settings['receipt_payment_method'];
-        if ($receiptPaymentMethod === 'prepayment_full') {
-            $receiptPaymentMethod = 'full_prepayment';
-        }
-
-        $settings['receipt_payment_method'] = $this->choice(
-            $receiptPaymentMethod,
-            ['full_payment', 'prepayment', 'full_prepayment', 'advance'],
-            'full_payment'
-        );
-
-        $settings['receipt_payment_object'] = $this->choice(
-            (string)$settings['receipt_payment_object'],
-            ['service', 'commodity', 'payment', 'another'],
-            'service'
-        );
-
         return $settings;
     }
 

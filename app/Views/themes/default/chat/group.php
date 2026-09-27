@@ -13,7 +13,7 @@
 [data-group-chat-app] [data-group-chat-input] { min-height:2.75rem; max-height:8.25rem; resize:none; overflow-y:hidden; }
 [data-group-chat-app] .group-chat-send { display:inline-flex; align-items:center; justify-content:center; width:2.75rem; height:2.75rem; min-width:2.75rem; padding:0; }
 @media (min-width:992px) {
-    [data-group-chat-app] .chat-layout-sidebar { flex:0 0 var(--group-member-width); width:var(--group-member-width); }
+    [data-group-chat-app] .chat-app-layout { grid-template-columns:var(--group-member-width) minmax(0,1fr); }
 }
 @media (max-width:991.98px) {
     [data-group-chat-app] .chat-app-layout { height:clamp(36rem, calc(100dvh - 8rem), 50rem); }
@@ -43,7 +43,7 @@
                                    aria-label="<?= htmlSC(return_translation('chat_group_back')) ?>">
                                     <i class="ci-arrow-left" aria-hidden="true"></i>
                                 </a>
-                                <span class="chat-sidebar__title-icon" aria-hidden="true"><i class="ci-users"></i></span>
+                                <span class="chat-sidebar__title-icon" aria-hidden="true"><i class="ci-user"></i></span>
                                 <div class="min-w-0">
                                     <div class="fw-semibold text-truncate"><?= print_translation('chat_group_members') ?></div>
                                     <div class="small text-body-secondary">
@@ -88,7 +88,7 @@
                                         <i class="ci-arrow-left" aria-hidden="true"></i>
                                     </a>
                                     <span class="rounded-circle border bg-body-tertiary d-inline-flex align-items-center justify-content-center group-current-avatar flex-shrink-0">
-                                        <i class="ci-users" aria-hidden="true"></i>
+                                        <i class="ci-user" aria-hidden="true"></i>
                                     </span>
                                     <div class="min-w-0">
                                         <strong class="d-block text-truncate"><?= htmlSC($group['title']) ?></strong>

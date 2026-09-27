@@ -16,9 +16,44 @@ $(function () {
     const input = app.find('[data-group-chat-input]');
     const sendButton = form.find('button[type="submit"]');
 
+    // Use the same viewport shell as direct chat, including the on-screen keyboard.
+    const root = document.documentElement;
+    let viewportFrame = 0;
+    const syncViewport = () => {
+        viewportFrame = 0;
+        const mobile = window.matchMedia('(max-width: 767.98px)').matches;
+        const standalone = root.classList.contains('pwa-standalone')
+            || window.matchMedia('(display-mode: standalone)').matches
+            || navigator.standalone === true;
+        const viewport = window.visualViewport;
+        const top = Math.max(0, viewport?.offsetTop || 0);
+        const height = viewport?.height || window.innerHeight;
+        const keyboard = mobile && input.is(':focus') && window.innerHeight - height > 80;
+        [root, document.body].forEach(element => {
+            element.classList.add('chat-viewport-fullscreen');
+            element.classList.toggle('chat-mobile-fullscreen', mobile);
+            element.classList.toggle('chat-pwa-fullscreen', standalone);
+            element.classList.toggle('chat-keyboard-visible', keyboard);
+        });
+        const header = standalone && !mobile ? null : document.querySelector('body > header');
+        const headerHeight = header ? header.getBoundingClientRect().height : 0;
+        root.style.setProperty('--chat-mobile-viewport-top', `${top + headerHeight}px`);
+        root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, height - headerHeight)}px`);
+    };
+    const scheduleViewport = () => {
+        if (!viewportFrame) viewportFrame = requestAnimationFrame(syncViewport);
+    };
+    window.addEventListener('resize', scheduleViewport, {passive: true});
+    window.addEventListener('pageshow', scheduleViewport, {passive: true});
+    window.visualViewport?.addEventListener('resize', scheduleViewport, {passive: true});
+    window.visualViewport?.addEventListener('scroll', scheduleViewport, {passive: true});
+    document.addEventListener('focusin', scheduleViewport);
+    document.addEventListener('focusout', scheduleViewport);
+
     let source = null;
     let realtimeConnected = false;
     let requestPending = false;
+    let realtimeRefreshPending = false;
     let renderedSignature = '';
 
     const escapeHtml = (value) => $('<div>').text(value || '').html();
@@ -67,16 +102,26 @@ $(function () {
     const hasGroupMessageTextSelection = () => {
         const selection = window.getSelection ? window.getSelection() : null;
         if (!selection || selection.isCollapsed || selection.rangeCount === 0 || String(selection.toString() || '') === '') return false;
-        return groupSelectionNodeInsideMessages(selection.anchorNode) || groupSelectionNodeInsideMessages(selection.focusNode);
+        if (groupSelectionNodeInsideMessages(selection.anchorNode) || groupSelectionNodeInsideMessages(selection.focusNode)) return true;
+        for (let index = 0; index < selection.rangeCount; index += 1) {
+            if (selection.getRangeAt(index).intersectsNode(box[0])) return true;
+        }
+        return false;
     };
 
     const flushDeferredGroupRender = () => {
-        if (!Array.isArray(deferredGroupMessages) || hasGroupMessageTextSelection()) return;
-        const messages = deferredGroupMessages;
-        const forceBottom = deferredGroupForceBottom;
-        deferredGroupMessages = null;
-        deferredGroupForceBottom = false;
-        render(messages, forceBottom);
+        if (hasGroupMessageTextSelection()) return;
+        if (Array.isArray(deferredGroupMessages)) {
+            render(deferredGroupMessages, deferredGroupForceBottom);
+        }
+        if (realtimeRefreshPending) refreshRealtimeMessages();
+    };
+
+    const refreshRealtimeMessages = () => {
+        realtimeRefreshPending = true;
+        if (document.hidden || requestPending || hasGroupMessageTextSelection()) return;
+        realtimeRefreshPending = false;
+        loadMessages(false);
     };
 
     const render = (messages, forceBottom = false) => {
@@ -87,6 +132,8 @@ $(function () {
             return;
         }
 
+        deferredGroupMessages = null;
+        deferredGroupForceBottom = false;
 
         const nextSignature = signature(messages);
 
@@ -166,6 +213,7 @@ $(function () {
             },
             complete: function () {
                 requestPending = false;
+                if (realtimeRefreshPending) refreshRealtimeMessages();
             }
         });
     };
@@ -207,7 +255,7 @@ $(function () {
             }
 
             if (Number(payload.conversation_id) === conversationId) {
-                loadMessages(true);
+                refreshRealtimeMessages();
             }
         });
 
@@ -281,7 +329,7 @@ $(function () {
         window.setTimeout(flushDeferredGroupRender, 0);
     });
 
-    box.on('mouseup touchend keyup', function () {
+    $(document).on('mouseup touchend keyup', function () {
         window.setTimeout(flushDeferredGroupRender, 0);
     });
 
@@ -302,6 +350,7 @@ $(function () {
         }
     }, 5000);
 
+    syncViewport();
     resizeInput();
     loadMessages(true);
     startRealtime();

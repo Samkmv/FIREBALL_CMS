@@ -7560,6 +7560,7 @@ body:not(.fb-admin-body) .search-suggest-menu {
 @media (max-width: 575.98px) {
     .app-toast-stack .toast.app-toast--chat {
         width: min(calc(100vw - 1.5rem), 20rem) !important;
+        max-width: 100%;
     }
     .app-toast-stack .toast.app-toast--chat .toast-header {
         min-height: 3rem !important;
