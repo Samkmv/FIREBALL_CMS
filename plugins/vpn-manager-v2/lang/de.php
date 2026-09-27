@@ -910,7 +910,7 @@ return [
     'vpn_manager_v2_changed_field_value_client_uuid' => 'Client-Kennung',
     'vpn_manager_v2_changed_field_value_client_email' => 'Client-Name',
     'vpn_manager_v2_changed_field_value_client_sub_id' => 'Client-Sub-ID',
-    'vpn_manager_v2_expired_behavior_gone' => 'HTTP 410 — Zugriff abgelaufen',
+    'vpn_manager_v2_expired_behavior_inactive' => 'Inaktives Abonnement in der VPN-App anzeigen',
     'vpn_manager_v2_expired_behavior_not_found' => 'HTTP 404 — Abonnement nicht gefunden',
     'vpn_manager_v2_operation_status_value_changed' => 'Änderungen übernommen',
     'vpn_manager_v2_operation_status_value_synced' => 'Synchronisiert',

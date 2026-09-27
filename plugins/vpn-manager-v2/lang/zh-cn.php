@@ -910,7 +910,7 @@ return [
     'vpn_manager_v2_changed_field_value_client_uuid' => '客户端标识符',
     'vpn_manager_v2_changed_field_value_client_email' => '客户端名称',
     'vpn_manager_v2_changed_field_value_client_sub_id' => '客户端 Sub ID',
-    'vpn_manager_v2_expired_behavior_gone' => 'HTTP 410 — 访问已终止',
+    'vpn_manager_v2_expired_behavior_inactive' => '在 VPN 应用中显示订阅未激活',
     'vpn_manager_v2_expired_behavior_not_found' => 'HTTP 404 — 未找到订阅',
     'vpn_manager_v2_operation_status_value_changed' => '更改已应用',
     'vpn_manager_v2_operation_status_value_synced' => '已同步',

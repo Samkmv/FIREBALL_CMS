@@ -42,7 +42,7 @@ final class SettingsService
             'support_url' => '',
             'profile_info_text' => '',
             'logo' => '',
-            'expired_subscription_behavior' => 'gone',
+            'expired_subscription_behavior' => 'inactive',
             'subscription_cache_ttl_seconds' => 300,
             'qr_cache_ttl_seconds' => 3600,
             'settings_cache_ttl_seconds' => 300,

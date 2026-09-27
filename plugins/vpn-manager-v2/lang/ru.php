@@ -910,7 +910,7 @@ return [
     'vpn_manager_v2_changed_field_value_client_uuid' => 'Идентификатор клиента',
     'vpn_manager_v2_changed_field_value_client_email' => 'Имя клиента',
     'vpn_manager_v2_changed_field_value_client_sub_id' => 'Sub ID клиента',
-    'vpn_manager_v2_expired_behavior_gone' => 'HTTP 410 — Доступ прекращён',
+    'vpn_manager_v2_expired_behavior_inactive' => 'Показать «VPN-подписка неактивна» в приложении',
     'vpn_manager_v2_expired_behavior_not_found' => 'HTTP 404 — Подписка не найдена',
     'vpn_manager_v2_operation_status_value_changed' => 'Изменения применены',
     'vpn_manager_v2_operation_status_value_synced' => 'Синхронизировано',

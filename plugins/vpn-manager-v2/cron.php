@@ -7,6 +7,13 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
+$arguments = array_slice($argv, 1);
+if (array_diff($arguments, ['--access-only', '--notifications-only']) !== []
+    || (in_array('--access-only', $arguments, true) && in_array('--notifications-only', $arguments, true))) {
+    fwrite(STDERR, "Usage: php cron.php [--access-only|--notifications-only]\n");
+    exit(2);
+}
+
 require_once __DIR__ . '/../../config/config.php';
 require_once ROOT . '/vendor/autoload.php';
 require_once HELPERS . '/helpers.php';
@@ -24,14 +31,26 @@ if (!is_resource($lock) || !flock($lock, LOCK_EX | LOCK_NB)) {
 }
 
 try {
-    $result = (new \Fireball\VpnManagerV2\Services\NotificationMaintenanceService())->runDue(true);
+    $result = [];
+    $failed = false;
+    if (!in_array('--notifications-only', $arguments, true)) {
+        $result['expiration'] = (new \Fireball\VpnManagerV2\Services\SubscriptionAutomationService())->checkExpirations();
+        $failed = (int)($result['expiration']['failed'] ?? 0) > 0;
+    }
+    if (!in_array('--access-only', $arguments, true)) {
+        $result['notifications'] = (new \Fireball\VpnManagerV2\Services\NotificationMaintenanceService())->runDue(true);
+        foreach ($result['notifications']['steps'] ?? [] as $step) {
+            $failed = $failed || ($step['status'] ?? 'error') !== 'ok'
+                || (int)($step['result']['failed'] ?? 0) > 0;
+        }
+    }
     fwrite(STDOUT, json_encode([
-        'status' => 'ok',
+        'status' => $failed ? 'partial_failure' : 'ok',
         'result' => $result,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL);
-    exit(0);
+    exit($failed ? 1 : 0);
 } catch (\Throwable $exception) {
-    log_error_details('VPN Manager V2 notification maintenance failed', [], $exception);
+    log_error_details('VPN Manager V2 maintenance failed', [], $exception);
     fwrite(STDERR, json_encode([
         'status' => 'error',
         'error' => get_class($exception),

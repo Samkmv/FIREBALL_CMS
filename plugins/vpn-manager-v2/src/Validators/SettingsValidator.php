@@ -90,9 +90,10 @@ final class SettingsValidator
             $this->paragraph($data['profile_info_text'] ?? '', 500, 'vpn_manager_v2_error_settings_profile_info', $strict),
             $this->logo((string)($data['logo'] ?? ''), $strict),
             $this->choice(
-                (string)($data['expired_subscription_behavior'] ?? 'gone'),
-                ['gone', 'not_found'],
-                'gone',
+                ($data['expired_subscription_behavior'] ?? '') === 'gone'
+                    ? 'inactive' : (string)($data['expired_subscription_behavior'] ?? 'inactive'),
+                ['inactive', 'not_found'],
+                'inactive',
                 'vpn_manager_v2_error_settings_expired_behavior',
                 $strict
             ),

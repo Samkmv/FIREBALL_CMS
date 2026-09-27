@@ -39,19 +39,13 @@ final class VpnSubscriptionEndpointService
         if (!$subscription) {
             return new SubscriptionEndpointResponse(404, '', $headers);
         }
+        $settings = ($this->settings ?? new SettingsService())->current();
         if ($this->expired($subscription)) {
-            // FIREBALL_VPN_EXTERNAL_INACTIVE_CLEANUP_V1
-            // Если эта подписка отдавала активные внешние источники,
-            // HTTP 404/410 не подходит: VPN-клиент может оставить старые URI.
-            // Успешный пустой payload позволяет заменить старый набор на пустой.
-            if ($this->hasExternalSources($subscription)) {
-                return $this->inactiveExternalCleanupResponse($format, $headers);
+            if (($settings['expired_subscription_behavior'] ?? 'inactive') === 'not_found') {
+                return new SubscriptionEndpointResponse(404, '', $headers);
             }
 
-            $settings = ($this->settings ?? new SettingsService())->current();
-            $status = (string)($settings['expired_subscription_behavior'] ?? 'gone') === 'not_found' ? 404 : 410;
-
-            return new SubscriptionEndpointResponse($status, '', $headers);
+            return $this->inactiveResponse($subscription, $settings, $format, $headers);
         }
         $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService(config: $repository);
         if ($dependencies->isDependentChild((int)$subscription['id'])) {
@@ -59,14 +53,9 @@ final class VpnSubscriptionEndpointService
         }
         $effective = $dependencies->calculateEffectiveStatus($subscription);
         if ($effective['effective_status'] !== 'active' || !$this->started($subscription)) {
-            if ($this->hasExternalSources($subscription)) {
-                return $this->inactiveExternalCleanupResponse($format, $headers);
-            }
-
-            return new SubscriptionEndpointResponse(403, '', $headers);
+            return $this->inactiveResponse($subscription, $settings, $format, $headers);
         }
 
-        $settings = ($this->settings ?? new SettingsService())->current();
         $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();
         $subscriptionName = $metadata->profileTitle($subscription, $settings);
         if ($subscriptionName !== '') {
@@ -150,66 +139,22 @@ final class VpnSubscriptionEndpointService
     }
 
     /**
-     * Проверяет активные внешние источники не только у корневой подписки,
-     * но и у включённых дочерних subscription-зависимостей.
-     *
-     * Проверка дерева намеренно не зависит от effective_status родителя:
-     * этот метод вызывается как раз тогда, когда родитель уже expired/suspended.
+     * A successful update replaces previously downloaded servers with an
+     * inactive placeholder. Empty bodies and HTTP errors may retain old URIs.
      */
-    private function hasExternalSources(array $subscription): bool
-    {
-        $rootId = (int)($subscription['id'] ?? 0);
-        if ($rootId <= 0) {
-            return false;
-        }
-
-        $external = new ExternalVpnSourceService();
-        $items = new \Fireball\VpnManagerV2\Repositories\SubscriptionItemRepository();
-        $stack = [$rootId];
-        $visited = [];
-
-        while ($stack !== []) {
-            $subscriptionId = (int)array_pop($stack);
-            if ($subscriptionId <= 0 || isset($visited[$subscriptionId])) {
-                continue;
-            }
-            $visited[$subscriptionId] = true;
-
-            if ($external->itemsForParent($subscriptionId) !== []) {
-                return true;
-            }
-
-            foreach ($items->itemsForParent($subscriptionId, true) as $item) {
-                if ((string)($item['item_type'] ?? '') !== 'subscription') {
-                    continue;
-                }
-
-                $childId = (int)($item['child_subscription_id'] ?? 0);
-                if ($childId > 0 && !isset($visited[$childId])) {
-                    $stack[] = $childId;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Возвращает синтаксически корректное, но пустое обновление подписки.
-     *
-     * Для base64 это "Cg==" (одна пустая строка после декодирования),
-     * для plain — перевод строки. В payload нет ни одного VPN URI.
-     */
-    private function inactiveExternalCleanupResponse(
+    private function inactiveResponse(
+        array $subscription,
+        array $settings,
         string $format,
         array $headers
     ): SubscriptionEndpointResponse {
-        // FIREBALL_VPN_EXTERNAL_INACTIVE_TOMBSTONE_V2
-        // Нельзя отдавать полностью пустую подписку: некоторые клиенты
-        // считают её ошибкой ("There are no server links") и сохраняют
-        // старые реальные серверы. Поэтому отдаём один заведомо нерабочий,
-        // но синтаксически валидный VLESS URI. Успешное обновление заменит
-        // старые внешние конфиги этой подписки на заглушку.
+        $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();
+        // Preserve the profile identity and real expiration, but do not apply
+        // routing rules from a subscription that no longer grants access.
+        $inactiveHeaders = $metadata->headers($subscription, $settings);
+        unset($inactiveHeaders['routing'], $inactiveHeaders['routing-enable']);
+        $headers = array_replace($headers, $inactiveHeaders);
+        $headers['profile-title'] = 'base64:' . base64_encode($metadata->profileTitle($subscription, $settings));
         $headers['Cache-Control'] = 'private, no-store, must-revalidate';
         $headers['X-Fireball-VPN-Status'] = 'inactive';
 

@@ -235,6 +235,53 @@ try {
     $assert($endpoint->respond($expired['token'])->status === 404,
         'Configured expired subscription behavior was ignored.');
 
+    // Upgrade the historical default without requiring an administrator to
+    // resave settings. A stale ETag or cached URI must not prolong access.
+    $settingsRepository->write(['expired_subscription_behavior' => 'gone']);
+    $settingsRepository->invalidateCache();
+    $assert($service->current()['expired_subscription_behavior'] === 'inactive',
+        'Legacy expiration behavior was not upgraded.');
+    $payload['expired_subscription_behavior'] = 'inactive';
+    $beforeInactive = $endpoint->respond($active['token']);
+    $assertInactive = static function ($response, string $format) use ($assert, $active): void {
+        $plain = $format === 'base64' ? base64_decode($response->body, true) : $response->body;
+        $uris = is_string($plain) ? array_values(array_filter(explode("\n", trim($plain)))) : [];
+        $assert($response->status === 200 && count($uris) === 1 && $response->configCount === 1,
+            'Inactive subscription did not return one importable placeholder.');
+        $assert(rawurldecode((string)parse_url($uris[0], PHP_URL_FRAGMENT)) === '⛔ VPN-подписка неактивна'
+            && parse_url($uris[0], PHP_URL_HOST) === '192.0.2.1'
+            && !str_contains($plain, $active['uuid']), 'Inactive response exposed a working client.');
+        $assert(!$response->cacheHit && ($response->headers['X-Fireball-VPN-Status'] ?? '') === 'inactive'
+            && str_contains($response->headers['Cache-Control'], 'no-store')
+            && !isset($response->headers['ETag'], $response->headers['routing']),
+            'Inactive response allowed a stale cache or routing profile.');
+    };
+    $assertInactive($endpoint->respond($expired['token']), 'base64');
+    foreach ([
+        ['status' => 'active', 'starts_at' => $past, 'expires_at' => $past, 'used' => 0],
+        ['status' => 'partial_sync', 'starts_at' => $past, 'expires_at' => $past, 'used' => 0],
+        ['status' => 'sync_error', 'starts_at' => $past, 'expires_at' => $past, 'used' => 0],
+        ['status' => 'expired', 'starts_at' => $past, 'expires_at' => $future, 'used' => 0],
+        ['status' => 'suspended', 'starts_at' => $past, 'expires_at' => $future, 'used' => 0],
+        ['status' => 'active', 'starts_at' => $future, 'expires_at' => $future, 'used' => 0],
+        ['status' => 'active', 'starts_at' => $past, 'expires_at' => $future, 'used' => 20 * (1024 ** 3)],
+    ] as $inactive) {
+        db()->query('UPDATE vpn_v2_subscriptions SET status = ?, starts_at = ?, expires_at = ?, traffic_used_bytes = ? WHERE id = ?',
+            [$inactive['status'], $inactive['starts_at'], $inactive['expires_at'], $inactive['used'], $active['id']]);
+        foreach (['base64', 'plain'] as $format) {
+            $assertInactive($endpoint->respond($active['token'], $format,
+                $beforeInactive->headers['ETag'], gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT'), $format);
+        }
+    }
+    // Renewal reuses the same URL and restores real servers after a tombstone.
+    db()->query('UPDATE vpn_v2_subscriptions SET status = ?, starts_at = ?, expires_at = ?, traffic_used_bytes = 0 WHERE id = ?',
+        ['active', $past, $future, $active['id']]);
+    $renewed = $endpoint->respond($active['token']);
+    $assert($renewed->status === 200 && str_contains($uriFrom($renewed->body), $active['uuid'])
+        && !isset($renewed->headers['X-Fireball-VPN-Status']), 'Renewal did not restore the same subscription URL.');
+    $assert($endpoint->respond(str_repeat('f', 64))->status === 404
+        && $endpoint->respond('invalid')->status === 404, 'An unknown token returned an inactive profile.');
+
     $currentRevision = (int)db()->query('SELECT revision FROM vpn_v2_subscriptions WHERE id = ?', [$active['id']])->getColumn();
     $revisions[] = $currentRevision;
     $cache->set($active['token'], $currentRevision, 'base64', 'cached-marker', 1);
@@ -336,6 +383,9 @@ try {
             'revision_and_etag' => true,
             'same_subscription_url_updated' => true,
             'expired_behavior' => true,
+            'inactive_placeholder_plain_base64_before_cache_and_304' => true,
+            'inactive_states_and_renewal' => true,
+            'legacy_expiration_setting_upgrade' => true,
             'settings_cache_invalidation' => true,
             'subscription_cache_invalidation' => true,
             'qr_cache_invalidation' => true,

@@ -195,11 +195,23 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
 
         if ($email !== '') {
             try {
+                // The current API replaces a complete client record. Inbound
+                // snapshots omit global fields such as limitHwid; preserve them
+                // when changing expiry/enable or other locally managed values.
+                $details = $this->requestJson(
+                    'GET',
+                    $this->config->endpoint('/panel/api/clients/get/' . rawurlencode($email))
+                );
+                $record = $details['obj']['client'] ?? null;
+                if (!is_array($record) || array_is_list($record)
+                    || (string)($record['email'] ?? '') !== $email) {
+                    throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_client_response'));
+                }
                 return $this->requestJson(
                     'POST',
                     $this->config->endpoint('/panel/api/clients/update/' . rawurlencode($email))
                         . '?inboundIds=' . rawurlencode((string)$remoteInboundId),
-                    $client,
+                    array_replace($record, $client),
                     'json'
                 );
             } catch (ThreeXuiHttpException $exception) {

@@ -154,9 +154,9 @@ try {
         db()->query(
             'INSERT INTO vpn_v2_subscriptions
                 (user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes, device_limit,
-                 subscription_token, revision, config_updated_at, created_by, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 3, ?, 1, ?, ?, ?, ?)',
-            [$userId, $planId, $status, date('Y-m-d H:i:s', time() - 3600), $expiresAt, 50 * (1024 ** 3), $token, $now, $adminId, $now, $now]
+                 subscription_token, subscription_token_hash, revision, config_updated_at, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 3, ?, ?, 1, ?, ?, ?, ?)',
+            [$userId, $planId, $status, date('Y-m-d H:i:s', time() - 3600), $expiresAt, 50 * (1024 ** 3), $token, hash('sha256', $token), $now, $adminId, $now, $now]
         );
         $subscriptionId = (int)db()->getInsertId();
         $subscriptionIds[] = $subscriptionId;
@@ -212,7 +212,7 @@ try {
     $notModified = $endpoint->respond($tokens[$singleId], 'base64', (string)$single->headers['ETag']);
     $assert($notModified->status === 304 && $notModified->body === '', 'ETag did not produce 304.');
     $modifiedSince = $endpoint->respond($tokens[$singleId], 'base64', '', (string)$single->headers['Last-Modified']);
-    $assert($modifiedSince->status === 304, 'Last-Modified did not produce 304.');
+    $assert($modifiedSince->status === 200, 'Second-precision Last-Modified incorrectly suppressed an update.');
 
     $multi = $endpoint->respond($tokens[$multiId]);
     $multiLines = $lines($multi->body, 'base64');
@@ -223,8 +223,11 @@ try {
         && !array_key_exists('flow', $xhttpQuery), 'XHTTP config is invalid.');
 
     $assert($endpoint->respond(str_repeat('f', 64))->status === 404, 'Invalid token was accepted.');
-    $assert($endpoint->respond($tokens[$suspendedId])->status === 403, 'Suspended subscription was returned.');
-    $assert($endpoint->respond($tokens[$expiredId])->status === 410, 'Expired subscription was returned.');
+    foreach ([$suspendedId, $expiredId] as $inactiveId) {
+        $inactive = $endpoint->respond($tokens[$inactiveId]);
+        $assert($inactive->status === 200 && ($inactive->headers['X-Fireball-VPN-Status'] ?? '') === 'inactive',
+            'Inactive subscription did not replace the old configuration.');
+    }
 
     $beforeRevision = (int)db()->query('SELECT revision FROM vpn_v2_subscriptions WHERE id = ?', [$singleId])->getColumn();
     $newRevision = (new VpnSubscriptionRevisionService())->touchConfig($singleId);
@@ -253,11 +256,11 @@ try {
             'qr_local_svg' => true,
             'cache_hit' => true,
             'etag_304' => true,
-            'last_modified_304' => true,
+            'last_modified_same_second_refresh' => true,
             'revision_invalidation' => true,
             'invalid_token_404' => true,
-            'suspended_403' => true,
-            'expired_410' => true,
+            'suspended_placeholder' => true,
+            'expired_placeholder' => true,
         ],
         'fixtures_cleaned' => true,
     ], JSON_UNESCAPED_SLASHES), PHP_EOL;

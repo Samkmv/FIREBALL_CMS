@@ -36,7 +36,7 @@ $request = (new SubscriptionValidator())->validate([
 $assert($request->startsAt === '2026-07-14 12:30:00', 'datetime-local normalization failed.');
 
 $payload = (new ClientPayloadFactory())->build([
-    'expires_at' => '2026-08-13 12:30:00',
+    'expires_at' => date('Y-m-d H:i:s', time() + 86400),
     'device_limit' => 3,
     'traffic_limit_bytes' => 107374182400,
 ], [

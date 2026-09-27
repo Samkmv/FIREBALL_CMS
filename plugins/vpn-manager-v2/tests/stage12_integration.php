@@ -100,6 +100,8 @@ $admin = db()->query("SELECT id FROM users WHERE role IN ('creator', 'admin') OR
 $user = db()->query("SELECT id FROM users WHERE role = 'user' ORDER BY id LIMIT 1")->getOne()
     ?: db()->query('SELECT id FROM users ORDER BY id LIMIT 1')->getOne();
 $assert(is_array($admin) && is_array($user), 'CMS users are required for Stage 12 integration tests.');
+$assert((int)db()->query("SELECT COUNT(*) FROM vpn_v2_notifications WHERE status IN ('pending', 'failed', 'sending')")->getColumn() === 0,
+    'Use a database without queued notifications: the test must not consume an existing outbox.');
 
 $suffix = substr(hash('sha256', uniqid('stage12-', true)), 0, 12);
 $now = date('Y-m-d H:i:s');
@@ -249,9 +251,16 @@ try {
 
     $expiryFixture = $createSubscription('active', date('Y-m-d H:i:s', time() - 60), 10 * (1024 ** 3), 1);
     $remoteStates = [];
+    $failExpirationNode = 0;
     $automation = new SubscriptionAutomationService(
         notificationService: $notificationService,
-        remotePush: static function (array $node, array $subscription, array $overrides) use (&$remoteStates): array {
+        remotePush: static function (array $node, array $subscription, array $overrides) use (&$remoteStates, &$failExpirationNode, $assert): array {
+            $payload = (new \Fireball\VpnManagerV2\Services\ClientPayloadFactory())->build($subscription, array_replace($node, $overrides));
+            $assert($payload['enable'] === false && $payload['reset'] === 0 && $payload['resetDay'] === 0,
+                'Automation enabled an inactive client or reset its counters.');
+            if ((int)$node['id'] === $failExpirationNode) {
+                throw new ThreeXuiTransportException('fixture panel unavailable');
+            }
             $remoteStates[(int)$node['id']] = (string)$subscription['status'];
             return ['remote_updated' => true, 'traffic_used_bytes' => (int)$node['traffic_used_bytes']];
         },
@@ -270,10 +279,30 @@ try {
     );
     $expirationResult = $automation->checkExpirations();
     $expired = db()->query('SELECT status, revision FROM vpn_v2_subscriptions WHERE id = ?', [$expiryFixture['subscription_id']])->getOne();
-    $assert((string)$expired['status'] === 'expired' && (int)$expired['revision'] === 2
+    $assert((string)$expired['status'] === 'expired' && (int)$expired['revision'] > 1
         && ($remoteStates[$expiryFixture['node_id']] ?? '') === 'expired'
         && $expirationResult['failed'] === 0, 'Expiration was not confirmed remotely and persisted locally.');
     $results['expiration'] = true;
+
+    $failedExpiry = $createSubscription('partial_sync', date('Y-m-d H:i:s', time() - 60), 10 * (1024 ** 3), 1);
+    $failExpirationNode = $failedExpiry['node_id'];
+    $firstAttempt = $automation->checkExpirations();
+    $failedNode = db()->query('SELECT status, desired_enabled FROM vpn_v2_subscription_nodes WHERE id = ?',
+        [$failedExpiry['node_id']])->getOne();
+    $assert($firstAttempt['failed'] === 1 && $failedNode['status'] === 'sync_error'
+        && (int)$failedNode['desired_enabled'] === 0, 'Failed expiration lost the pending disable.');
+    $failExpirationNode = 0;
+    $secondAttempt = $automation->checkExpirations();
+    $recoveredNode = db()->query('SELECT status, desired_enabled FROM vpn_v2_subscription_nodes WHERE id = ?',
+        [$failedExpiry['node_id']])->getOne();
+    $recoveredSubscription = db()->query('SELECT status, revision FROM vpn_v2_subscriptions WHERE id = ?',
+        [$failedExpiry['subscription_id']])->getOne();
+    $assert($secondAttempt['failed'] === 0 && $secondAttempt['synced'] === 1
+        && $recoveredNode['status'] === 'disabled' && (int)$recoveredNode['desired_enabled'] === 0
+        && $recoveredSubscription['status'] === 'expired' && (int)$recoveredSubscription['revision'] > 1,
+        'Expired subscription was not retried or its configuration was not invalidated.');
+    $assert($automation->checkExpirations()['expired'] === 0, 'Confirmed expiration was repeatedly processed.');
+    $results['failed_expiration_retry'] = true;
 
     $limitFixture = $createSubscription('active', date('Y-m-d H:i:s', time() + 86400 * 20), 10 * (1024 ** 3), 10 * (1024 ** 3));
     $beforeLimitNotifications = $fakeNotifications->created;
@@ -281,7 +310,7 @@ try {
     $limitStatus = db()->query('SELECT status, revision FROM vpn_v2_subscriptions WHERE id = ?', [$limitFixture['subscription_id']])->getOne();
     $firstLimitNotifications = $fakeNotifications->created;
     $automation->checkTrafficLimits();
-    $assert((string)$limitStatus['status'] === 'traffic_exceeded' && (int)$limitStatus['revision'] === 2
+    $assert((string)$limitStatus['status'] === 'traffic_exceeded' && (int)$limitStatus['revision'] > 1
         && ($remoteStates[$limitFixture['node_id']] ?? '') === 'traffic_exceeded'
         && $limitResult['failed'] === 0, 'Traffic limit enforcement was not confirmed.');
     $assert($firstLimitNotifications === $beforeLimitNotifications + 2
