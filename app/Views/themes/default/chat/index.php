@@ -1,3 +1,4 @@
+<?php if (!empty($active_contact)) { require __DIR__ . '/viewport.php'; } ?>
 
 <style id="fireball-chat-reply-ui-v2">
 /* FIREBALL_CHAT21_REPLY_UI_FIX_V2 */

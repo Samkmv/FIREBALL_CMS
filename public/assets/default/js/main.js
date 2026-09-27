@@ -1629,9 +1629,7 @@ $(function(){
                 ${formattedTime ? `<time class="small text-body-tertiary ms-2">${escapeHtml(formattedTime)}</time>` : ''}
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
-            <div class="toast-body me-2">
-                ${escapeHtml(payload.message || '')}
-            </div>
+            <div class="toast-body me-2"><span class="app-toast--chat__preview">${escapeHtml(payload.message || '')}</span></div>
         `;
 
         toast.addEventListener('click', function (event) {

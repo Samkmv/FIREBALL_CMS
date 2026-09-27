@@ -1320,7 +1320,7 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
     background: #9ca3af;
 }
 
-.list-group-item[data-chat-contact] {
+.list-group-item:is([data-chat-contact], .chat-contact-item) {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -1333,28 +1333,28 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
     transition: transform .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
 }
 
-[data-chat-contact] > .d-flex,
-[data-chat-contact] > .d-flex > .flex-grow-1 {
+:is([data-chat-contact], .chat-contact-item) > .d-flex,
+:is([data-chat-contact], .chat-contact-item) > .d-flex > .flex-grow-1 {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     overflow: hidden;
 }
 
-.list-group-item[data-chat-contact]:hover {
+.list-group-item:is([data-chat-contact], .chat-contact-item):hover {
     transform: none;
     background: rgba(15, 23, 42, .055);
     box-shadow: none;
 }
 
-.list-group-item[data-chat-contact].active {
+.list-group-item:is([data-chat-contact], .chat-contact-item).active {
     background: #e7edf5 !important;
     color: #111827 !important;
     box-shadow: inset 3px 0 0 #0d6efd;
 }
 
-.list-group-item[data-chat-contact].active [data-chat-contact-preview],
-.list-group-item[data-chat-contact].active [data-chat-contact-status] {
+.list-group-item:is([data-chat-contact], .chat-contact-item).active [data-chat-contact-preview],
+.list-group-item:is([data-chat-contact], .chat-contact-item).active [data-chat-contact-status] {
     color: #64748b !important;
 }
 
@@ -1700,21 +1700,21 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
     border-radius: .78rem;
 }
 
-[data-chat-messages] .chat-message-bubble .chat-message-text {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble .chat-message-text {
     color: inherit !important;
     word-break: break-word;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
 }
 
-[data-chat-messages] .chat-message-bubble .chat-message-attachment {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble .chat-message-attachment {
     color: inherit !important;
     text-decoration: none;
     max-width: 100%;
 }
 
-[data-chat-messages] .chat-message-bubble .chat-message-attachment:hover,
-[data-chat-messages] .chat-message-bubble .chat-message-attachment:focus {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble .chat-message-attachment:hover,
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble .chat-message-attachment:focus {
     color: inherit !important;
     text-decoration: underline;
 }
@@ -1874,12 +1874,12 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
     opacity: .62;
 }
 
-[data-chat-messages] .chat-message-bubble--mine .chat-message-voice {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine .chat-message-voice {
     --chat-voice-wave: rgba(255, 255, 255, .34);
     --chat-voice-wave-active: #fff;
 }
 
-[data-chat-messages] .chat-message-bubble--mine .chat-message-voice__toggle {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine .chat-message-voice__toggle {
     color: #2459c4;
     background: #fff;
     box-shadow: 0 .3rem .75rem rgba(15, 23, 42, .16);
@@ -1892,29 +1892,29 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
     padding: 0 .12rem;
 }
 
-[data-chat-messages] .chat-message-bubble--mine {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine {
     background: linear-gradient(145deg, #2f6fed, #2459c4) !important;
     border-color: rgba(36, 89, 196, .45) !important;
     color: #fff !important;
 }
 
-[data-chat-messages] .chat-message-bubble--theirs {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--theirs {
     background: rgba(255, 255, 255, .95) !important;
     border-color: rgba(148, 163, 184, .24) !important;
     color: #111827 !important;
 }
 
-[data-chat-messages] .chat-message-bubble:hover {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble:hover {
     box-shadow: 0 .7rem 1.35rem rgba(15, 23, 42, .1);
 }
 
-[data-chat-messages] .chat-message-bubble--mine .chat-message-meta-text,
-[data-chat-messages] .chat-message-bubble--mine .chat-message-attachment {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine .chat-message-meta-text,
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine .chat-message-attachment {
     color: rgba(255, 255, 255, .72) !important;
 }
 
-[data-chat-messages] .chat-message-bubble--theirs .chat-message-meta-text,
-[data-chat-messages] .chat-message-bubble--theirs .chat-message-attachment {
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--theirs .chat-message-meta-text,
+:is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--theirs .chat-message-attachment {
     color: #64748b !important;
 }
 
@@ -2431,23 +2431,23 @@ html.pwa-standalone body .chat-sidebar-offcanvas {
     border-color: #222934;
 }
 
-[data-bs-theme="dark"] .list-group-item[data-chat-contact] {
+[data-bs-theme="dark"] .list-group-item:is([data-chat-contact], .chat-contact-item) {
     background: transparent;
     color: #eef1f6;
 }
 
-[data-bs-theme="dark"] .list-group-item[data-chat-contact]:hover {
+[data-bs-theme="dark"] .list-group-item:is([data-chat-contact], .chat-contact-item):hover {
     background: rgba(255, 255, 255, .055);
 }
 
-[data-bs-theme="dark"] .list-group-item[data-chat-contact].active {
+[data-bs-theme="dark"] .list-group-item:is([data-chat-contact], .chat-contact-item).active {
     background: rgba(54, 66, 83, .78) !important;
     color: #eef1f6 !important;
     box-shadow: inset 3px 0 0 #5b9cff;
 }
 
-[data-bs-theme="dark"] .list-group-item[data-chat-contact].active [data-chat-contact-preview],
-[data-bs-theme="dark"] .list-group-item[data-chat-contact].active [data-chat-contact-status] {
+[data-bs-theme="dark"] .list-group-item:is([data-chat-contact], .chat-contact-item).active [data-chat-contact-preview],
+[data-bs-theme="dark"] .list-group-item:is([data-chat-contact], .chat-contact-item).active [data-chat-contact-status] {
     color: #b6bfcb !important;
 }
 
@@ -2477,29 +2477,29 @@ html.pwa-standalone body .chat-sidebar-offcanvas {
     background: rgba(30, 39, 51, .82);
 }
 
-[data-bs-theme="dark"] [data-chat-messages] .chat-message-bubble--mine {
+[data-bs-theme="dark"] :is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine {
     background: linear-gradient(145deg, #2d5f87, #294b6c) !important;
     border-color: rgba(125, 211, 252, .16) !important;
     color: #f8fbff !important;
 }
 
-[data-bs-theme="dark"] [data-chat-messages] .chat-message-bubble--theirs {
+[data-bs-theme="dark"] :is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--theirs {
     background: rgba(29, 37, 49, .98) !important;
     border-color: rgba(255, 255, 255, .08) !important;
     color: #eef1f6 !important;
 }
 
-[data-bs-theme="dark"] [data-chat-messages] .chat-message-bubble--mine .chat-message-meta-text,
-[data-bs-theme="dark"] [data-chat-messages] .chat-message-bubble--mine .chat-message-attachment {
+[data-bs-theme="dark"] :is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine .chat-message-meta-text,
+[data-bs-theme="dark"] :is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--mine .chat-message-attachment {
     color: rgba(226, 232, 240, .78) !important;
 }
 
-[data-bs-theme="dark"] [data-chat-messages] .chat-message-bubble--theirs .chat-message-meta-text,
-[data-bs-theme="dark"] [data-chat-messages] .chat-message-bubble--theirs .chat-message-attachment {
+[data-bs-theme="dark"] :is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--theirs .chat-message-meta-text,
+[data-bs-theme="dark"] :is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--theirs .chat-message-attachment {
     color: #9ca3af !important;
 }
 
-[data-bs-theme="dark"] [data-chat-messages] .chat-message-bubble--media-only .chat-message-meta-text {
+[data-bs-theme="dark"] :is([data-chat-messages], [data-group-chat-messages]) .chat-message-bubble--media-only .chat-message-meta-text {
     color: rgba(255, 255, 255, .92) !important;
 }
 
@@ -2562,9 +2562,14 @@ html.chat-viewport-fullscreen body {
     overscroll-behavior: none;
 }
 
-html.chat-viewport-fullscreen body > footer,
-html.chat-viewport-fullscreen body > .floating-buttons {
+html.chat-viewport-fullscreen body > footer {
     display: none !important;
+}
+
+/* Keep SVG geometry available to the theme's scroll-progress initializer. */
+html.chat-viewport-fullscreen body > .floating-buttons {
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
 @media (min-width: 768px) {
@@ -7545,6 +7550,16 @@ body:not(.fb-admin-body) .search-suggest-menu {
 .app-toast-stack .toast.app-toast--chat .app-toast--chat__title {
     font-size: .875rem;
     line-height: 1.2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.app-toast-stack .toast.app-toast--chat .app-toast--chat__preview {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
 }
 .app-toast-stack .toast.app-toast--chat .toast-header time {
     font-size: .7rem !important;

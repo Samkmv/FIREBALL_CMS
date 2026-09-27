@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/viewport.php'; ?>
 <style id="fireball-chat31-group-ui-v2">
 /* FIREBALL_CHAT30_GROUPS */
 /* FIREBALL_CHAT31_GROUP_UI_V2 */
