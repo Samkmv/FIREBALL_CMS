@@ -170,6 +170,8 @@ return [
     'vpn_manager_v2_error_html_response' => '3x-ui 返回了 HTML，而不是 API 响应。',
     'vpn_manager_v2_error_invalid_json' => '3x-ui 返回无效 JSON。',
     'vpn_manager_v2_error_api_rejected' => '3x-ui 拒绝了 API 请求。',
+    'vpn_manager_v2_error_api_rejected_detail' => '3x-ui 拒绝了 API 请求：%s',
+    // FIREBALL_VPN_REPAIR_V2: api-error-detail
     'vpn_manager_v2_error_curl_required' => 'cURL 扩展不可用。',
     'vpn_manager_v2_error_transport' => '无法连接到 3x-ui。',
     'vpn_manager_v2_error_response_too_large' => '3x-ui 响应超过允许大小。',

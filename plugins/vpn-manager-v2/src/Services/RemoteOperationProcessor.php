@@ -315,7 +315,66 @@ final class RemoteOperationProcessor
             );
         }
 
+        // FIREBALL_VPN_REPAIR_V2: final-state-wins
+        // Intermediate failures do not keep an operation in retry if the final
+        // factual state now matches the active tariff topology.
+        $finalSubscription = $plans->subscription($subscriptionId) ?? $subscription;
+        if ($this->subscriptionMatchesCurrentPlan(
+            $plans,
+            $finalSubscription,
+            $subscriptionId
+        )) {
+            $plans->finishSubscription(
+                $subscriptionId,
+                (string)($finalSubscription['status'] ?? 'active'),
+                null
+            );
+            $result['errors'] = 0;
+        }
+
         return $result;
+    }
+
+    private function subscriptionMatchesCurrentPlan(
+        PlanReconciliationRepository $plans,
+        array $subscription,
+        int $subscriptionId
+    ): bool {
+        $planId = (int)($subscription['plan_id'] ?? 0);
+        if ($planId <= 0) {
+            return false;
+        }
+
+        $targets = $plans->activePlanNodes($planId);
+        if ($targets === []) {
+            return false;
+        }
+
+        $nodes = [];
+        foreach ($plans->subscriptionNodes($subscriptionId) as $node) {
+            if (!empty($node['is_obsolete'])) {
+                continue;
+            }
+            $key = (int)$node['server_id'] . ':' . (int)$node['inbound_id'];
+            $nodes[$key] = $node;
+        }
+
+        $subscriptionStatus = (string)($subscription['status'] ?? 'active');
+        $allowedStatuses = $subscriptionStatus === 'suspended'
+            ? ['disabled']
+            : ['active'];
+
+        foreach ($targets as $target) {
+            $key = (int)$target['server_id'] . ':' . (int)$target['inbound_id'];
+            $node = $nodes[$key] ?? null;
+            if (!is_array($node)
+                || !in_array((string)($node['status'] ?? ''), $allowedStatuses, true)
+                || (string)($node['sync_status'] ?? '') !== 'synced') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function provision(int $nodeId): array

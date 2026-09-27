@@ -165,10 +165,22 @@ final class SubscriptionController
         $missing = $reconciler->findMissingNodes((int)$subscription['id']);
         $obsolete = $reconciler->findObsoleteNodes((int)$subscription['id']);
         $planCount = count($planRepository->activePlanNodes((int)$subscription['plan_id']));
-        $createdCount = count(array_filter($nodes, static fn(array $node): bool =>
-            in_array((string)$node['status'], ['active', 'disabled'], true)
+        // FIREBALL_VPN_REPAIR_V2: active-counter
+        // "Active" means exactly active. Disabled clients still physically
+        // exist on 3x-ui and therefore must not inflate the missing count.
+        $activeCount = count(array_filter(
+            $nodes,
+            static fn(array $node): bool => (string)$node['status'] === 'active'
         ));
-        $missingCount = max(count($missing), max(0, $planCount - $createdCount));
+        $presentCount = count(array_filter(
+            $nodes,
+            static fn(array $node): bool => in_array(
+                (string)$node['status'],
+                ['active', 'disabled'],
+                true
+            )
+        ));
+        $missingCount = max(count($missing), max(0, $planCount - $presentCount));
         $dependencies->recalculateEffectiveStatuses((int)$subscription['id']);
         $itemRepository = new SubscriptionItemRepository();
         $externalSources = new ExternalVpnSourceService();
@@ -180,7 +192,8 @@ final class SubscriptionController
             'nodes' => $nodes,
             'reconciliationSummary' => [
                 'plan_count' => $planCount,
-                'created_count' => $createdCount,
+                'created_count' => $activeCount,
+                'present_count' => $presentCount,
                 'missing_count' => $missingCount,
                 'obsolete_count' => count($obsolete),
                 'matches' => $missingCount === 0 && $obsolete === [],

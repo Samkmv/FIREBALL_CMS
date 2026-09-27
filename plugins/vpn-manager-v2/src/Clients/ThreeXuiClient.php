@@ -164,6 +164,120 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         return null;
     }
 
+    /**
+     * FIREBALL_VPN_REPAIR_V2: global-client-lookup
+     *
+     * Modern 3x-ui stores clients as first-class records identified by email.
+     * A client may exist globally without being attached to this inbound.
+     *
+     * This method deliberately is not added to ThreeXuiClientInterface:
+     * older test doubles / legacy implementations remain compatible and callers
+     * feature-detect it through method_exists().
+     *
+     * @return array{client: array, inbound_ids: array<int, int>}|null
+     */
+    public function findGlobalClient(string $clientEmail): ?array
+    {
+        $clientEmail = trim($clientEmail);
+        if ($clientEmail === '') {
+            return null;
+        }
+
+        $this->authenticate();
+
+        try {
+            $decoded = $this->requestJson(
+                'GET',
+                $this->config->endpoint('/panel/api/clients/get/' . rawurlencode($clientEmail))
+            );
+        } catch (ThreeXuiHttpException $exception) {
+            // 404/405 also covers old 3x-ui releases without the modern client API.
+            if ($this->isEndpointFallbackStatus($exception)) {
+                return null;
+            }
+            throw $exception;
+        } catch (ThreeXuiResponseException $exception) {
+            // Current 3x-ui may report a missing client as success:false + msg.
+            $message = mb_strtolower(trim($exception->getMessage()));
+            foreach ([
+                'client not found',
+                'not found',
+                'does not exist',
+                'не найден',
+                'nicht gefunden',
+                '未找到',
+                '不存在',
+            ] as $needle) {
+                if (str_contains($message, $needle)) {
+                    return null;
+                }
+            }
+            throw $exception;
+        }
+
+        $obj = $decoded['obj'] ?? null;
+        if (!is_array($obj)) {
+            return null;
+        }
+
+        $client = is_array($obj['client'] ?? null) ? $obj['client'] : $obj;
+        if (!is_array($client) || array_is_list($client)) {
+            throw new ThreeXuiResponseException(
+                $this->message('vpn_manager_v2_error_invalid_client_response')
+            );
+        }
+
+        // In the global-client response `id` may be a DB row id while `uuid`
+        // is the VLESS/VMess credential. ClientVerifier expects `id` to be the
+        // protocol credential just like an inbound client record.
+        $uuid = trim((string)($client['uuid'] ?? ''));
+        if ($uuid !== '') {
+            $client['id'] = $uuid;
+        }
+
+        $ids = $obj['inboundIds']
+            ?? $obj['inbound_ids']
+            ?? $client['inboundIds']
+            ?? $client['inbound_ids']
+            ?? [];
+        $inboundIds = is_array($ids)
+            ? array_values(array_unique(array_filter(
+                array_map('intval', $ids),
+                static fn(int $id): bool => $id > 0
+            )))
+            : [];
+
+        return [
+            'client' => $client,
+            'inbound_ids' => $inboundIds,
+        ];
+    }
+
+    /**
+     * Attach an existing modern 3x-ui client to another inbound without
+     * recreating or changing its stable credential.
+     */
+    public function attachGlobalClient(string $clientEmail, int $remoteInboundId): array
+    {
+        $clientEmail = trim($clientEmail);
+        if ($clientEmail === '' || $remoteInboundId <= 0) {
+            throw new ThreeXuiResponseException(
+                $this->message('vpn_manager_v2_error_invalid_client_response')
+            );
+        }
+
+        $this->authenticate();
+
+        return $this->requestJson(
+            'POST',
+            $this->config->endpoint(
+                '/panel/api/clients/' . rawurlencode($clientEmail) . '/attach'
+            ),
+            ['inboundIds' => [$remoteInboundId]],
+            'json'
+        );
+    }
+
     public function addClient(int $remoteInboundId, array $client): array
     {
         if ($remoteInboundId <= 0) {
@@ -371,7 +485,20 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             if ($authenticationStage) {
                 throw new ThreeXuiAuthenticationException($this->message('vpn_manager_v2_error_authentication_failed'));
             }
-            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_api_rejected'));
+
+            // FIREBALL_VPN_REPAIR_V2: preserve-api-message
+            // 3x-ui returns the actionable reason in `msg`. Keep it, but strip
+            // markup/control whitespace and cap the length before logs/UI.
+            $detail = trim((string)($decoded['msg'] ?? ''));
+            $detail = strip_tags($detail);
+            $detail = preg_replace('/\s+/u', ' ', $detail) ?? '';
+            $detail = mb_substr(trim($detail), 0, 700);
+
+            throw new ThreeXuiResponseException(
+                $detail !== ''
+                    ? sprintf($this->message('vpn_manager_v2_error_api_rejected_detail'), $detail)
+                    : $this->message('vpn_manager_v2_error_api_rejected')
+            );
         }
 
         return $decoded;

@@ -7,6 +7,7 @@ use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\DTO\ProvisioningResult;
 use Fireball\VpnManagerV2\Exceptions\ClientVerificationException;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
+use Fireball\VpnManagerV2\Exceptions\ThreeXuiResponseException;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
@@ -397,7 +398,124 @@ final class SubscriptionProvisioningService
                 return ['status' => 'reused', 'flow_error' => false];
             }
 
-            $client->addClient($remoteInboundId, $payload);
+            // FIREBALL_VPN_REPAIR_V2: global-attach-repair
+            // Modern 3x-ui may already have this email as a global client record
+            // even though it is not present in the target inbound. In that case
+            // creating it again is wrong: verify the stable credential and attach.
+            if (method_exists($client, 'findGlobalClient')
+                && method_exists($client, 'attachGlobalClient')) {
+                $global = $client->findGlobalClient((string)$node['client_email']);
+                if (is_array($global) && is_array($global['client'] ?? null)) {
+                    $globalClient = (array)$global['client'];
+                    $verifier->assertStableCredential($globalClient, $payload);
+
+                    $attachedInboundIds = array_map(
+                        'intval',
+                        is_array($global['inbound_ids'] ?? null) ? $global['inbound_ids'] : []
+                    );
+                    if (!in_array($remoteInboundId, $attachedInboundIds, true)) {
+                        $client->attachGlobalClient(
+                            (string)$node['client_email'],
+                            $remoteInboundId
+                        );
+                    }
+
+                    $attachedInbound = $client->getInbound($remoteInboundId);
+                    $attached = $verifier->findInInbound(
+                        $attachedInbound,
+                        $credential,
+                        (string)$node['client_email'],
+                        (string)($node['remote_client_id'] ?? ''),
+                        (string)($node['client_sub_id'] ?? '')
+                    );
+                    if ($attached === null) {
+                        throw new ProvisioningException(
+                            \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed')
+                        );
+                    }
+
+                    $verifier->assertStableCredential($attached, $payload);
+                    $changedFields = $verifier->changedFields($attached, $payload);
+                    if ($changedFields !== []) {
+                        $client->updateClient(
+                            $remoteInboundId,
+                            $credential,
+                            $factory->mergeForUpdate($attached, $payload)
+                        );
+                        $attachedInbound = $client->getInbound($remoteInboundId);
+                        $attached = $verifier->findInInbound(
+                            $attachedInbound,
+                            $credential,
+                            (string)$node['client_email'],
+                            (string)($node['remote_client_id'] ?? ''),
+                            (string)($node['client_sub_id'] ?? '')
+                        );
+                        if ($attached === null) {
+                            throw new ProvisioningException(
+                                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed')
+                            );
+                        }
+                    }
+
+                    $verifier->verify($attached, $payload);
+                    $repository->markNodeActive(
+                        $nodeId,
+                        $storedRemoteIdentity,
+                        empty($payload['enable']) ? 'disabled' : 'active'
+                    );
+                    $repository->logEvent(
+                        'node.client_attached',
+                        (int)$node['subscription_id'],
+                        $nodeId,
+                        (int)$node['server_id'],
+                        (int)$node['user_id'],
+                        (int)$node['created_by'],
+                        [
+                            'inbound_id' => (int)$node['inbound_id'],
+                            'changed_fields' => $changedFields,
+                        ]
+                    );
+
+                    return ['status' => 'reused', 'flow_error' => false];
+                }
+            }
+
+            try {
+                $client->addClient($remoteInboundId, $payload);
+            } catch (ThreeXuiResponseException $addException) {
+                // A modern 3x-ui add can report success:false after a partial
+                // operation. Trust the factual inbound read over the envelope.
+                $freshInbound = $client->getInbound($remoteInboundId);
+                $partiallyCreated = $verifier->findInInbound(
+                    $freshInbound,
+                    $credential,
+                    (string)$node['client_email'],
+                    (string)($node['remote_client_id'] ?? ''),
+                    (string)($node['client_sub_id'] ?? '')
+                );
+                if ($partiallyCreated === null) {
+                    throw $addException;
+                }
+
+                $verifier->verify($partiallyCreated, $payload);
+                $repository->markNodeActive(
+                    $nodeId,
+                    $storedRemoteIdentity,
+                    empty($payload['enable']) ? 'disabled' : 'active'
+                );
+                $repository->logEvent(
+                    'node.client_created_after_partial_response',
+                    (int)$node['subscription_id'],
+                    $nodeId,
+                    (int)$node['server_id'],
+                    (int)$node['user_id'],
+                    (int)$node['created_by'],
+                    ['inbound_id' => (int)$node['inbound_id']]
+                );
+
+                return ['status' => 'created', 'flow_error' => false];
+            }
+
             $freshInbound = $client->getInbound($remoteInboundId);
             $confirmed = $verifier->findInInbound(
                 $freshInbound,

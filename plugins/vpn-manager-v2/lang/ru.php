@@ -170,6 +170,8 @@ return [
     'vpn_manager_v2_error_html_response' => 'Вместо API-ответа 3x-ui вернул HTML.',
     'vpn_manager_v2_error_invalid_json' => '3x-ui вернул некорректный JSON.',
     'vpn_manager_v2_error_api_rejected' => '3x-ui отклонил API-запрос.',
+    'vpn_manager_v2_error_api_rejected_detail' => '3x-ui отклонил API-запрос: %s',
+    // FIREBALL_VPN_REPAIR_V2: api-error-detail
     'vpn_manager_v2_error_curl_required' => 'Расширение cURL недоступно.',
     'vpn_manager_v2_error_transport' => 'Не удалось подключиться к 3x-ui.',
     'vpn_manager_v2_error_response_too_large' => 'Ответ 3x-ui превышает допустимый размер.',
