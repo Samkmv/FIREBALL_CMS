@@ -37,15 +37,8 @@ foreach (['modern', 'legacy', 'unavailable', 'malformed'] as $mode) {
             if ($mode === 'legacy') { return $json(['success' => false], 404); }
             if ($mode === 'unavailable') { return $json(['success' => false], 503); }
             if ($mode === 'malformed') { return $json(['success' => true, 'obj' => []]); }
-            // FIREBALL_VPN_REPAIR_V3: allowed-ips-regression
             return $json(['success' => true, 'obj' => ['client' => array_replace($client,
-                [
-                    'enable' => true,
-                    'expiryTime' => 0,
-                    'limitHwid' => 3,
-                    'adTag' => 'preserved',
-                    'allowedIPs' => '10.0.0.2/32,10.0.0.3/32',
-                ])]]);
+                ['enable' => true, 'expiryTime' => 0, 'limitHwid' => 3, 'adTag' => 'preserved'])]]);
         }
         if ($method === 'POST') {
             $writes[] = compact('path', 'payload', 'encoding', 'url');
@@ -69,9 +62,8 @@ foreach (['modern', 'legacy', 'unavailable', 'malformed'] as $mode) {
     } else {
         $assert($write['encoding'] === 'json' && str_contains($write['url'], '?inboundIds=11')
             && $write['payload']['limitHwid'] === 3 && $write['payload']['adTag'] === 'preserved'
-            && $write['payload']['enable'] === false && $write['payload']['expiryTime'] === $client['expiryTime']
-            && ($write['payload']['allowedIPs'] ?? null) === ['10.0.0.2/32', '10.0.0.3/32'],
-            'Current API lost fields or allowedIPs was not normalized to []string.');
+            && $write['payload']['enable'] === false && $write['payload']['expiryTime'] === $client['expiryTime'],
+            'Current API lost the device limit or ignored expiration/disable.');
     }
 }
 echo json_encode(['status' => 'ok', 'cases' => ['modern_device_limit_preserved', 'legacy_fallback',

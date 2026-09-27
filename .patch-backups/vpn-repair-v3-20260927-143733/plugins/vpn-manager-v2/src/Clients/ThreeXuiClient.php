@@ -321,18 +321,11 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
                     || (string)($record['email'] ?? '') !== $email) {
                     throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_client_response'));
                 }
-                // FIREBALL_VPN_REPAIR_V3: normalize-modern-client
-                // Modern 3x-ui can return list fields in display-friendly string form.
-                // The update DTO expects typed JSON arrays.
-                $modernPayload = $this->normalizeModernClientPayload(
-                    array_replace($record, $client)
-                );
-
                 return $this->requestJson(
                     'POST',
                     $this->config->endpoint('/panel/api/clients/update/' . rawurlencode($email))
                         . '?inboundIds=' . rawurlencode((string)$remoteInboundId),
-                    $modernPayload,
+                    array_replace($record, $client),
                     'json'
                 );
             } catch (ThreeXuiHttpException $exception) {
@@ -687,87 +680,6 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         }
 
         return array_keys($ids);
-    }
-
-    /**
-     * FIREBALL_VPN_REPAIR_V3: typed-modern-fields
-     *
-     * Normalize fields whose REST write representation is stricter than
-     * the hydrated client object returned by 3x-ui.
-     */
-    private function normalizeModernClientPayload(array $client): array
-    {
-        if (array_key_exists('allowedIPs', $client)) {
-            $client['allowedIPs'] = $this->normalizeStringList($client['allowedIPs']);
-        }
-
-        if (array_key_exists('allowedIPsByInbound', $client)) {
-            $raw = $client['allowedIPsByInbound'];
-
-            if (is_string($raw)) {
-                $trimmed = trim($raw);
-                if ($trimmed === '') {
-                    unset($client['allowedIPsByInbound']);
-                    $raw = null;
-                } else {
-                    $decoded = json_decode($trimmed, true);
-                    if (is_array($decoded)) {
-                        $raw = $decoded;
-                    } else {
-                        // Do not send an invalid display string into a typed Go map.
-                        unset($client['allowedIPsByInbound']);
-                        $raw = null;
-                    }
-                }
-            }
-
-            if (is_array($raw)) {
-                $normalized = [];
-                foreach ($raw as $inboundId => $values) {
-                    $normalized[(string)$inboundId] = $this->normalizeStringList($values);
-                }
-                $client['allowedIPsByInbound'] = $normalized;
-            }
-        }
-
-        return $client;
-    }
-
-    private function normalizeStringList(mixed $value): array
-    {
-        if ($value === null) {
-            return [];
-        }
-
-        if (is_array($value)) {
-            $items = $value;
-        } else {
-            $string = trim((string)$value);
-            if ($string === '') {
-                return [];
-            }
-
-            $decoded = json_decode($string, true);
-            if (is_array($decoded)) {
-                $items = $decoded;
-            } else {
-                $items = preg_split('/[\r\n,;]+/u', $string) ?: [];
-            }
-        }
-
-        $result = [];
-        foreach ($items as $item) {
-            if (is_array($item) || is_object($item)) {
-                continue;
-            }
-            $item = trim((string)$item);
-            if ($item === '') {
-                continue;
-            }
-            $result[$item] = $item;
-        }
-
-        return array_values($result);
     }
 
     private function encodeJson(array $payload): string
