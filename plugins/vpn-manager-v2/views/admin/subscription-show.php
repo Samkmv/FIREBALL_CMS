@@ -221,7 +221,7 @@ foreach ($nodes as $node) {
             <i class="ci-refresh-cw" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_subscription')) ?>
         </button>
     </form>
-    <?php if ((string)($subscription['status'] ?? '') === 'active'): ?>
+    <?php if (ProvisioningStatus::subscriptionStatus($subscription) === 'active'): ?>
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/suspend')) ?>">
             <?= get_csrf_field() ?>
             <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
@@ -290,7 +290,7 @@ foreach ($nodes as $node) {
 <div class="border rounded-5 p-3 p-md-4 mb-4">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3 vpn-v2-order-heading">
         <div><span class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_id')) ?></span> <strong>#<?= $subscriptionId ?></strong></div>
-        <?= ProvisioningStatus::badge((string)($subscription['status'] ?? '')) ?>
+        <?= ProvisioningStatus::badge(ProvisioningStatus::subscriptionStatus($subscription)) ?>
     </div>
     <dl class="row mb-0 g-3">
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user')) ?></dt>
@@ -308,7 +308,7 @@ foreach ($nodes as $node) {
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_plan')) ?></dt>
         <dd class="col-sm-9 mb-0">#<?= (int)$subscription['plan_id'] ?> · <?= htmlSC((string)$subscription['plan_name']) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_period')) ?></dt>
-        <dd class="col-sm-9 mb-0"><?= htmlSC((string)$subscription['starts_at']) ?> — <?= htmlSC((string)($subscription['expires_at'] ?: '—')) ?></dd>
+        <dd class="col-sm-9 mb-0"><?= htmlSC((string)$subscription['starts_at']) ?> — <?= htmlSC((string)($subscription['expires_at'] ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_lifetime_short'))) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_limits')) ?></dt>
         <dd class="col-sm-9 mb-0"><?= htmlSC(TrafficFormatter::limit(isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null)) ?> · <?= (int)$subscription['device_limit'] ?> IP</dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_token_preview')) ?></dt>
@@ -548,7 +548,7 @@ foreach ($nodes as $node) {
                         <td><?= htmlSC($name) ?></td>
                         <td><?= htmlSC($user) ?></td>
                         <td><?= htmlSC(ProvisioningStatus::label($ownStatus)) ?></td>
-                        <td><?= htmlSC(ProvisioningStatus::label((string)($subscription['status'] ?? ''))) ?></td>
+                        <td><?= htmlSC(ProvisioningStatus::label(ProvisioningStatus::subscriptionStatus($subscription))) ?></td>
                         <td><span class="badge rounded-pill text-bg-<?= $active ? 'success' : 'secondary' ?>"><?= htmlSC(ProvisioningStatus::label((string)$item['effective_status'])) ?></span></td>
                         <td class="small text-body-secondary"><?= htmlSC(LocalizedValue::inactiveReason($item['inactive_reason'] ?? '')) ?></td>
                         <td class="text-nowrap"><?= htmlSC($expires !== '' ? $expires : '—') ?></td>

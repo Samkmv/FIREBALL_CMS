@@ -407,7 +407,7 @@ return [
     'vpn_manager_v2_field_internal_comment' => 'Interner Kommentar',
     'vpn_manager_v2_internal_comment_help' => 'Der Kommentar wird nur im CMS gespeichert und nicht an 3x-ui gesendet.',
     'vpn_manager_v2_subscription_edit_sync_note' => 'Änderungen an Ablauf, Limit oder Status aktualisieren jeden 3x-ui-Client und werden erneut gelesen.',
-    'vpn_manager_v2_subscription_renewal_note' => 'Wählen Sie ein zukünftiges Datum: Das abgelaufene Abonnement wird aktiv und seine 3x-ui-Verbindungen werden automatisch wieder eingeschaltet.',
+    'vpn_manager_v2_subscription_renewal_note' => 'Wählen Sie ein zukünftiges Datum oder Unbefristet: Das abgelaufene Abonnement wird aktiv und seine 3x-ui-Verbindungen werden wieder eingeschaltet.',
     'vpn_manager_v2_connection_edit_identity_note' => 'UUID, technische E-Mail und Abonnement-Token werden beim Bearbeiten nicht geändert.',
     'vpn_manager_v2_save_and_sync' => 'Speichern und synchronisieren',
     'vpn_manager_v2_col_revision' => 'Revision',

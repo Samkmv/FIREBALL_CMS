@@ -4,6 +4,7 @@ $subscription = is_array($subscription ?? null) ? $subscription : [];
 $id = (int)($subscription['id'] ?? 0);
 $trafficInput = is_array($trafficInput ?? null) ? $trafficInput : ['value' => '0', 'unit' => 'gb'];
 $expiresAt = trim((string)($subscription['expires_at'] ?? ''));
+$lifetime = $expiresAt === '';
 $expiresInput = $expiresAt !== '' && strtotime($expiresAt) !== false ? date('Y-m-d\TH:i', strtotime($expiresAt)) : '';
 $storedStatus = (string)($subscription['status'] ?? 'active');
 $formStatus = in_array($storedStatus, ['active', 'suspended'], true) ? $storedStatus : 'active';
@@ -20,7 +21,7 @@ $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQ
 
     <div class="alert alert-info rounded-4">
         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_edit_sync_note')) ?>
-        <?php if ($storedStatus === 'expired'): ?>
+        <?php if (\Fireball\VpnManagerV2\Support\ProvisioningStatus::subscriptionStatus($subscription) === 'expired'): ?>
             <div class="mt-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_renewal_note')) ?></div>
         <?php endif; ?>
     </div>
@@ -29,7 +30,15 @@ $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQ
         <div class="col-lg-6">
             <label class="form-label" for="vpnV2SubscriptionExpiresAt"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_expires_at')) ?></label>
             <input class="form-control" id="vpnV2SubscriptionExpiresAt" type="datetime-local" name="expires_at"
-                   value="<?= htmlSC($expiresInput) ?>">
+                   value="<?= htmlSC($expiresInput) ?>" <?= $lifetime ? 'disabled' : 'required' ?>>
+            <div class="form-check mt-3">
+                <input class="form-check-input" id="vpnV2SubscriptionLifetime" type="checkbox" name="lifetime" value="1"
+                       <?= $lifetime ? 'checked' : '' ?> aria-controls="vpnV2SubscriptionExpiresAt">
+                <label class="form-check-label" for="vpnV2SubscriptionLifetime">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_lifetime')) ?>
+                </label>
+            </div>
+            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_lifetime_help')) ?></div>
         </div>
         <div class="col-lg-6">
             <label class="form-label" for="vpnV2SubscriptionStatus"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_status')) ?></label>
@@ -72,5 +81,19 @@ $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQ
         </a>
     </div>
 </form>
+
+<script>
+(() => {
+    const lifetime = document.getElementById('vpnV2SubscriptionLifetime');
+    const expiresAt = document.getElementById('vpnV2SubscriptionExpiresAt');
+    if (!lifetime || !expiresAt) return;
+    const syncLifetime = () => {
+        expiresAt.disabled = lifetime.checked;
+        expiresAt.required = !lifetime.checked;
+    };
+    lifetime.addEventListener('change', syncLifetime);
+    syncLifetime();
+})();
+</script>
 
 <?= view()->renderPartial('admin/shell_close') ?>

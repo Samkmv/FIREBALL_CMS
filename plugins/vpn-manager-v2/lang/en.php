@@ -407,7 +407,7 @@ return [
     'vpn_manager_v2_field_internal_comment' => 'Internal comment',
     'vpn_manager_v2_internal_comment_help' => 'The comment is stored only in the CMS and is not sent to 3x-ui.',
     'vpn_manager_v2_subscription_edit_sync_note' => 'Changing expiration, limit, or status updates every 3x-ui client and verifies it with a second read.',
-    'vpn_manager_v2_subscription_renewal_note' => 'Choose a future date: the expired subscription will become active and its 3x-ui connections will be enabled again automatically.',
+    'vpn_manager_v2_subscription_renewal_note' => 'Choose a future date or Lifetime: the expired subscription will become active and its 3x-ui connections will be enabled again.',
     'vpn_manager_v2_connection_edit_identity_note' => 'UUID, technical email, and subscription token never change during editing.',
     'vpn_manager_v2_save_and_sync' => 'Save and synchronize',
     'vpn_manager_v2_col_revision' => 'Revision',

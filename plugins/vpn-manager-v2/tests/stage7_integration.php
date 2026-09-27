@@ -265,7 +265,10 @@ try {
         return new Stage7Client($panels[$index], (int)$inbound['remote_inbound_id']);
     };
     $remote = new RemoteClientSyncService(clientFactory: $factory);
-    $subscriptions = new SubscriptionEditingService(remoteSync: $remote);
+    $subscriptions = new SubscriptionEditingService(remoteSync: $remote,
+        planReconciler: new VpnPlanSubscriptionReconciler(
+            provisioning: new SubscriptionProvisioningService(clientFactory: $factory), remoteSync: $remote
+        ));
     $connections = new ConnectionEditingService(remoteSync: $remote);
     $endpoint = new VpnSubscriptionEndpointService();
 
@@ -340,21 +343,32 @@ try {
         $assert(reset($panel->clients)['enable'] === false, 'Expiration did not disable a client.');
     }
     $renewedEdit = $subscriptions->update($subscriptionId, [
-        'expires_at' => $newExpires,
+        'lifetime' => '1',
+        'expires_at' => $pastExpiry,
         'traffic_limit_value' => 20,
         'traffic_unit' => 'gb',
         'status' => 'expired',
         'internal_comment' => '',
     ], $adminId);
-    $renewedStatus = db()->query(
-        'SELECT status FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]
-    )->getColumn();
+    $renewedState = db()->query(
+        'SELECT status, expires_at FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]
+    )->getOne();
     foreach ($panels as $panel) {
-        $assert(reset($panel->clients)['enable'] === true, 'Renewal did not enable a client.');
+        $assert(reset($panel->clients)['enable'] === true && (int)reset($panel->clients)['expiryTime'] === 0,
+            'Lifetime renewal did not enable a client without an expiration.');
     }
-    $assert($expiredEdit->successful() && $renewedEdit->successful() && $renewedStatus === 'active',
-        'Expired subscription renewal was not confirmed as active.');
-    $results['expired_renewal'] = true;
+    $assert($expiredEdit->successful() && $renewedEdit->successful() && $renewedState['status'] === 'active'
+        && $renewedState['expires_at'] === null, 'Lifetime renewal was not persisted as active without expiration.');
+    $finiteEdit = $subscriptions->update($subscriptionId, [
+        'lifetime' => '0', 'expires_at' => $newExpires, 'traffic_limit_value' => 20,
+        'traffic_unit' => 'gb', 'status' => 'active', 'internal_comment' => '',
+    ], $adminId);
+    foreach ($panels as $panel) {
+        $assert((int)reset($panel->clients)['expiryTime'] === strtotime($newExpires) * 1000,
+            'Finite term was not restored after lifetime.');
+    }
+    $assert($finiteEdit->successful(), 'Restoring a finite term failed.');
+    $results['expired_to_lifetime_and_back'] = true;
 
     $beforeNodeUpdates = [$panels[0]->updateCount, $panels[1]->updateCount];
     $nodeResult = $connections->update($nodeIds[0], [

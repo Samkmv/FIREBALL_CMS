@@ -9,7 +9,8 @@ final class SubscriptionEditValidator
 {
     public function validate(array $input): SubscriptionEditData
     {
-        $expiresAt = $this->nullableDateTime($input['expires_at'] ?? null);
+        $lifetime = filter_var($input['lifetime'] ?? false, FILTER_VALIDATE_BOOL);
+        $expiresAt = $lifetime ? null : $this->nullableDateTime($input['expires_at'] ?? null);
         $status = strtolower(trim((string)($input['status'] ?? 'active')));
         if (!in_array($status, ['active', 'suspended', 'expired'], true)) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_edit_status'));

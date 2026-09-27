@@ -4,6 +4,23 @@ namespace Fireball\VpnManagerV2\Support;
 
 final class ProvisioningStatus
 {
+    public static function subscriptionStatus(array $subscription, ?int $now = null): string
+    {
+        $status = strtolower(trim((string)($subscription['status'] ?? '')));
+        // Display expiration immediately without overwriting synchronization
+        // state that the worker still needs to finish remote disable/retries.
+        if (in_array($status, ['active', 'partial_sync', 'sync_error', 'suspended',
+            'traffic_exceeded', 'provisioning', 'provisioning_failed'], true)) {
+            $expiresAt = trim((string)($subscription['expires_at'] ?? ''));
+            $timestamp = $expiresAt !== '' ? strtotime($expiresAt) : false;
+            if ($timestamp !== false && $timestamp <= ($now ?? time())) {
+                return 'expired';
+            }
+        }
+
+        return $status;
+    }
+
     public static function badge(string $status): string
     {
         $status = strtolower(trim($status));

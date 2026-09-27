@@ -407,7 +407,7 @@ return [
     'vpn_manager_v2_field_internal_comment' => 'Внутренний комментарий',
     'vpn_manager_v2_internal_comment_help' => 'Комментарий хранится только в CMS и не отправляется в 3x-ui.',
     'vpn_manager_v2_subscription_edit_sync_note' => 'Изменение срока, лимита или статуса обновит каждого клиента в 3x-ui и будет подтверждено повторным чтением.',
-    'vpn_manager_v2_subscription_renewal_note' => 'Укажите будущую дату: истёкшая подписка автоматически станет активной, а подключения будут повторно включены в 3x-ui.',
+    'vpn_manager_v2_subscription_renewal_note' => 'Укажите будущую дату или выберите «Бессрочно»: истёкшая подписка станет активной, а подключения будут повторно включены в 3x-ui.',
     'vpn_manager_v2_connection_edit_identity_note' => 'UUID, технический email и subscription token при редактировании не изменяются.',
     'vpn_manager_v2_save_and_sync' => 'Сохранить и синхронизировать',
     'vpn_manager_v2_col_revision' => 'Ревизия',

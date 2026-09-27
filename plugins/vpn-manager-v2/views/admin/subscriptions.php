@@ -37,7 +37,10 @@ foreach ($subscriptions as $subscription) {
         ? 'vpn_manager_v2_action_retry_delete'
         : 'vpn_manager_v2_action_delete_forever');
     $deleteConfirm = sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_delete_subscription'), $id);
-    $badge = ProvisioningStatus::badge((string)$subscription['status']);
+    $displayStatus = ProvisioningStatus::subscriptionStatus($subscription);
+    $badge = ProvisioningStatus::badge($displayStatus);
+    $expiresDisplay = trim((string)($subscription['expires_at'] ?? ''))
+        ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_lifetime_short');
     $nodeCount = (int)($subscription['node_count'] ?? 0);
     $activeCount = (int)($subscription['active_node_count'] ?? 0);
     $nodeText = $activeCount . ' / ' . $nodeCount;
@@ -51,7 +54,7 @@ foreach ($subscriptions as $subscription) {
         'href' => $editUrl,
         'icon' => 'ci-edit-2',
     ]];
-    if ((string)$subscription['status'] === 'active') {
+    if ($displayStatus === 'active') {
         $showAction[] = [
             'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_suspend'),
             'type' => 'form',
@@ -86,7 +89,7 @@ foreach ($subscriptions as $subscription) {
             . '</span><div class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</div>'],
         ['html' => $badge],
         ['value' => (string)$subscription['starts_at']],
-        ['value' => (string)($subscription['expires_at'] ?: '—')],
+        ['value' => $expiresDisplay],
         ['html' => htmlSC($nodeText) . '<div class="small text-body-secondary">'
             . htmlSC($traffic) . ' · ' . (int)$subscription['device_limit'] . '</div>'],
         ['html' => '<div class="text-end">' . $desktopAction . '</div>'],
@@ -101,7 +104,7 @@ foreach ($subscriptions as $subscription) {
         'extra_fields' => [
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user'), 'value' => (string)$subscription['user_name']],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_starts_at'), 'value' => (string)$subscription['starts_at']],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_expires_at'), 'value' => (string)($subscription['expires_at'] ?: '—')],
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_expires_at'), 'value' => $expiresDisplay],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_nodes'), 'value' => $nodeText],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_traffic_limit'), 'value' => $traffic],
         ],

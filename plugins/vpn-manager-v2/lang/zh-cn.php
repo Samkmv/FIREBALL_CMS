@@ -407,7 +407,7 @@ return [
     'vpn_manager_v2_field_internal_comment' => '内部备注',
     'vpn_manager_v2_internal_comment_help' => '备注仅保存在 CMS 中，不会发送到 3x-ui。',
     'vpn_manager_v2_subscription_edit_sync_note' => '更改到期时间、限额或状态会更新每个 3x-ui 客户端，并通过再次读取进行验证。',
-    'vpn_manager_v2_subscription_renewal_note' => '请选择未来日期：已到期的订阅会恢复为活动状态，并自动重新启用其 3x-ui 连接。',
+    'vpn_manager_v2_subscription_renewal_note' => '请选择未来日期或永久：已到期的订阅会恢复为活动状态，并重新启用其 3x-ui 连接。',
     'vpn_manager_v2_connection_edit_identity_note' => '编辑期间不会更改 UUID、技术邮箱和订阅 token。',
     'vpn_manager_v2_save_and_sync' => '保存并同步',
     'vpn_manager_v2_col_revision' => '修订版本',
