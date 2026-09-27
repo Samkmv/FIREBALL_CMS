@@ -10,11 +10,6 @@ final class MaintenanceService
         $payments = new PaymentService();
         $stalePayments = $payments->expirePending();
         $webhookRetries = $payments->retryFailedWebhooks();
-
-        // Repair paid recurring subscriptions that were accidentally persisted
-        // locally as one-time subscriptions. Explicit user opt-out always wins.
-        $reconciledAutoRenewals = (new SubscriptionService())->reconcilePaidAutoRenewals();
-
         $recurring = (new RecurringService())->processDue();
         $activated = db()->query(
             "UPDATE subscriptions SET status = 'active', updated_at = ? WHERE archived_at IS NULL AND status = 'pending' AND starts_at <= ? AND ends_at > ?",
@@ -26,15 +21,7 @@ final class MaintenanceService
         )->rowCount();
         $notifications = $this->sendExpiryNotifications();
 
-        return compact(
-            'recurring',
-            'activated',
-            'expired',
-            'stalePayments',
-            'webhookRetries',
-            'reconciledAutoRenewals',
-            'notifications'
-        );
+        return compact('recurring', 'activated', 'expired', 'stalePayments', 'webhookRetries', 'notifications');
     }
 
     private function sendExpiryNotifications(): int

@@ -44,20 +44,10 @@ final class RobokassaGateway implements PaymentGatewayInterface
         $signatureParts[] = $config['password1'];
 
         $params['SignatureValue'] = $this->hash(implode(':', $signatureParts), $config['hash_algorithm']);
-
         $consents = json_decode((string)($order['consent_snapshot'] ?? ''), true);
-        $autoRenewRequired = !empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false);
-
-        if ($autoRenewRequired) {
-            if (!is_array($consents) || empty($consents['recurring']) || empty($consents['auto_renew'])) {
-                throw new \RuntimeException(
-                    \FireballPluginSubscriptions::t('subscriptions_error_recurring_consent')
-                );
-            }
-
-            // Never silently downgrade an auto-renewing tariff to a one-time payment.
+        if (!empty($plan['auto_renew_enabled'] ?? $plan['is_recurring'] ?? false)
+            && !empty($consents['recurring']) && !empty($consents['auto_renew'])) {
             $params['Recurring'] = 'true';
-
             // Robokassa recurring charges require the parent payment to be completed by bank card.
             $params['IncCurrLabel'] = 'BankCard';
         }
