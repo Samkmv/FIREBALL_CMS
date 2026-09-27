@@ -8,8 +8,9 @@
     FirePlayer.diagnosticsRegistered = true;
 
     const panels = new WeakMap();
-    const russian = (document.documentElement.lang || '').toLowerCase().startsWith('ru');
-    const labels = russian ? {
+    const language = (document.documentElement.lang || 'en').toLowerCase().replace('_', '-');
+    const locale = language.startsWith('ru') ? 'ru' : language.startsWith('de') ? 'de' : language.startsWith('zh') ? 'zh-cn' : 'en';
+    const dictionaries = { ru: {
         title: 'Техническая информация', version: 'Версия плеера', source: 'Сервер источника',
         media: 'Медиа / протокол / режим', engine: 'Движок', resolution: 'Разрешение',
         time: 'Позиция / длительность', buffer: 'Буфер впереди', level: 'Качество / битрейт',
@@ -17,7 +18,7 @@
         idle: 'Не загружено', loading: 'Загрузка', ready: 'Готов', play: 'Запуск', playing: 'Воспроизведение',
         paused: 'Пауза', ended: 'Завершено', reconnecting: 'Переподключение', failed: 'Ошибка',
         seconds: 'с', bitrate: 'кбит/с'
-    } : {
+    }, en: {
         title: 'Technical information', version: 'Player version', source: 'Source host',
         media: 'Media / protocol / mode', engine: 'Engine', resolution: 'Resolution',
         time: 'Position / duration', buffer: 'Buffer ahead', level: 'Quality / bitrate',
@@ -25,12 +26,91 @@
         idle: 'Unloaded', loading: 'Loading', ready: 'Ready', play: 'Starting', playing: 'Playing',
         paused: 'Paused', ended: 'Ended', reconnecting: 'Reconnecting', failed: 'Error',
         seconds: 's', bitrate: 'kbps'
+    }, de: {
+        title: 'Technische Informationen', version: 'Player-Version', source: 'Quellserver',
+        media: 'Medien / Protokoll / Modus', engine: 'Wiedergabe-Engine', resolution: 'Auflösung',
+        time: 'Position / Dauer', buffer: 'Vorausgepuffert', level: 'Qualität / Bitrate',
+        codecs: 'Codecs', frames: 'Verworfene / gesamte Frames', reconnects: 'Neu-Verbindungen', error: 'Letzter Fehler',
+        idle: 'Nicht geladen', loading: 'Laden', ready: 'Bereit', play: 'Starten', playing: 'Wiedergabe',
+        paused: 'Pausiert', ended: 'Beendet', reconnecting: 'Erneut verbinden', failed: 'Fehler',
+        seconds: 's', bitrate: 'kbit/s'
+    }, 'zh-cn': {
+        title: '技术信息', version: '播放器版本', source: '媒体服务器', media: '媒体 / 协议 / 模式',
+        engine: '播放引擎', resolution: '分辨率', time: '位置 / 时长', buffer: '前向缓冲', level: '画质 / 比特率',
+        codecs: '编解码器', frames: '丢帧 / 总帧数', reconnects: '重连次数', error: '最近错误',
+        idle: '未加载', loading: '加载中', ready: '就绪', play: '启动中', playing: '播放中',
+        paused: '已暂停', ended: '已结束', reconnecting: '重新连接中', failed: '错误', seconds: '秒', bitrate: '千比特/秒'
+    } };
+    // Each row has the same locale order so additions cannot silently fall back to field IDs.
+    const locales = ['ru', 'en', 'de', 'zh-cn'];
+    const extraLabels = {
+        state: ['Состояние', 'State', 'Status', '状态'],
+        managed: ['Управляемый поток', 'Managed stream', 'Verwalteter Stream', '受管流'],
+        online: ['Подключение к сети', 'Network connection', 'Netzwerkverbindung', '网络连接'],
+        liveEdge: ['Край прямого эфира', 'Live edge', 'Live-Endpunkt', '直播边缘'],
+        latency: ['Задержка эфира', 'Live latency', 'Live-Verzögerung', '直播延迟'],
+        liveSyncPosition: ['Целевая позиция эфира', 'Live sync position', 'Live-Synchronisationsposition', '直播同步位置'],
+        wakeMs: ['Время запуска камеры', 'Camera wake time', 'Kamera-Startzeit', '摄像头启动耗时'],
+        manifestMs: ['Время до манифеста', 'Time to manifest', 'Zeit bis zum Manifest', '清单加载耗时'],
+        firstFrameMs: ['Время до первого кадра', 'Time to first frame', 'Zeit bis zum ersten Bild', '首帧耗时'],
+        frameAge: ['Время с последнего кадра', 'Time since last frame', 'Zeit seit dem letzten Bild', '距上一帧时间'],
+        recoveryStage: ['Этап восстановления', 'Recovery stage', 'Wiederherstellungsschritt', '恢复阶段'],
+        recoveryReason: ['Причина восстановления', 'Recovery reason', 'Wiederherstellungsgrund', '恢复原因'],
+        lazy: ['Ожидание запуска', 'Waiting to start', 'Warten auf Start', '等待启动'],
+        detecting: ['Определение источника', 'Detecting source', 'Quelle erkennen', '正在识别媒体'],
+        waking: ['Запуск камеры', 'Starting camera', 'Kamera starten', '正在启动摄像头'],
+        connecting: ['Подключение', 'Connecting', 'Verbindung herstellen', '正在连接'],
+        buffering: ['Буферизация', 'Buffering', 'Puffern', '缓冲中'],
+        offline: ['Нет сети', 'Offline', 'Offline', '离线'],
+        'awaiting-gesture': ['Ожидание нажатия Play', 'Waiting for Play', 'Warten auf Abspielen', '等待点击播放'],
+        destroyed: ['Плеер закрыт', 'Player closed', 'Player geschlossen', '播放器已关闭'],
+        yes: ['Да', 'Yes', 'Ja', '是'], no: ['Нет', 'No', 'Nein', '否'],
+        connected: ['Есть подключение', 'Connected', 'Verbunden', '已连接'],
+        milliseconds: ['мс', 'ms', 'ms', '毫秒']
+    };
+    Object.entries(extraLabels).forEach(function ([key, translations]) {
+        locales.forEach(function (lang, index) { dictionaries[lang][key] = translations[index]; });
+    });
+    const labels = dictionaries[locale];
+    const stateLabel = function (value) { return labels[value === 'error' ? 'failed' : value] || '—'; };
+    const terms = {
+        video: ['Видео', 'Video', 'Video', '视频'], audio: ['Аудио', 'Audio', 'Audio', '音频'],
+        file: ['Файл', 'File', 'Datei', '文件'], hls: ['HLS', 'HLS', 'HLS', 'HLS'], dash: ['DASH', 'DASH', 'DASH', 'DASH'],
+        live: ['Прямой эфир', 'Live', 'Live', '直播'], vod: ['Запись', 'On demand', 'Auf Abruf', '点播'],
+        event: ['Событийная трансляция', 'Event stream', 'Ereignisstream', '活动直播'],
+        native: ['Встроенный в браузер', 'Browser native', 'Browserintern', '浏览器原生'],
+        'hls.js': ['hls.js', 'hls.js', 'hls.js', 'hls.js'],
+        initial: ['Первоначальный запуск', 'Initial start', 'Erster Start', '首次启动'],
+        manual: ['Ручной повтор', 'Manual retry', 'Manueller Neuversuch', '手动重试'],
+        resume: ['Возобновление', 'Resume', 'Fortsetzen', '恢复播放'],
+        network: ['Ошибка сети', 'Network error', 'Netzwerkfehler', '网络错误'],
+        media: ['Ошибка декодирования', 'Decoding error', 'Dekodierungsfehler', '解码错误'],
+        stall: ['Зависание потока', 'Playback stalled', 'Wiedergabe stockt', '播放停滞'],
+        online: ['Сеть восстановлена', 'Network restored', 'Netzwerk wieder verfügbar', '网络已恢复'],
+        autoplay: ['Ограничение автозапуска', 'Autoplay restriction', 'Autoplay-Beschränkung', '自动播放受限'],
+        unknown: ['Неизвестно', 'Unknown', 'Unbekannt', '未知'],
+        'native-play': ['Запуск встроенного плеера', 'Native playback start', 'Start der nativen Wiedergabe', '启动原生播放'],
+        'native-prepare': ['Подготовка встроенного плеера', 'Preparing native playback', 'Native Wiedergabe vorbereiten', '准备原生播放'],
+        'native-attach': ['Подключение встроенного плеера', 'Native source attachment', 'Native Quelle verbinden', '连接原生媒体源'],
+        'native-reattach': ['Повторное подключение встроенного плеера', 'Native source reattachment', 'Native Quelle erneut verbinden', '重新连接原生媒体源'],
+        'native-muted-play': ['Попытка запуска без звука', 'Muted playback attempt', 'Stummer Wiedergabeversuch', '尝试静音播放'],
+        'play-not-supported': ['Повтор после отказа воспроизведения', 'Retry after playback rejection', 'Neuversuch nach Wiedergabeablehnung', '播放被拒后重试'],
+        'wake-cooldown': ['Пауза между запусками камеры', 'Camera wake cooldown', 'Wartezeit zwischen Kamerastarts', '摄像头启动冷却期'],
+        'wake-skipped': ['Повторный запуск камеры пропущен', 'Camera wake skipped', 'Kamerastart übersprungen', '已跳过摄像头启动'],
+        'hls-start-load': ['Возобновление загрузки HLS', 'Resuming HLS loading', 'HLS-Laden fortsetzen', '恢复 HLS 加载'],
+        'recover-media-error': ['Восстановление декодера', 'Decoder recovery', 'Decoder wiederherstellen', '恢复解码器'],
+        'live-health-check': ['Проверка состояния эфира', 'Live health check', 'Live-Zustandsprüfung', '直播状态检查'],
+        'wake-rebuild': ['Перезапуск движка после запуска камеры', 'Rebuild after camera wake', 'Neuaufbau nach Kamerastart', '启动摄像头后重建引擎'],
+        'soft-rebuild': ['Перезапуск движка без запуска камеры', 'Rebuild without camera wake', 'Neuaufbau ohne Kamerastart', '不启动摄像头而重建引擎']
+    };
+    const termLabel = function (value) {
+        return Object.prototype.hasOwnProperty.call(terms, value) ? terms[value][locales.indexOf(locale)] : '—';
     };
     const token = function (value) {
         return typeof value === 'string' && /^[a-zA-Z0-9_. ,/-]{1,100}$/.test(value) ? value : '—';
     };
     const clock = function (value) {
-        if (value === Infinity) { return 'LIVE'; }
+        if (value === Infinity) { return termLabel('live'); }
         if (!Number.isFinite(value) || value < 0) { return '—'; }
         const seconds = Math.floor(value);
         return (seconds >= 3600 ? Math.floor(seconds / 3600) + ':' : '') +
@@ -94,7 +174,7 @@
         const setState = function (next) {
             state = next;
             status.setAttribute('data-fp-diagnostic-state', next);
-            status.textContent = labels[next === 'error' ? 'failed' : next] || next;
+            status.textContent = stateLabel(next);
         };
         const reset = function () {
             reconnects = 0;
@@ -128,8 +208,8 @@
             const engine = controller && controller.engine || 'native';
             values.version.textContent = token(FirePlayer.version);
             values.source.textContent = source ? host(source) : '—';
-            values.media.textContent = [info.media, info.protocol, info.mode].map(token).join(' / ');
-            values.engine.textContent = token(engine) + (hls ? ' ' + token((hls.constructor && hls.constructor.version) || (window.Hls && window.Hls.version)) : '');
+            values.media.textContent = [info.media, info.protocol, info.mode].map(termLabel).join(' / ');
+            values.engine.textContent = termLabel(engine) + (hls ? ' ' + token((hls.constructor && hls.constructor.version) || (window.Hls && window.Hls.version)) : '');
             values.resolution.textContent = media.videoWidth > 0 && media.videoHeight > 0 ? media.videoWidth + ' × ' + media.videoHeight : '—';
             values.time.textContent = clock(media.currentTime) + ' / ' + clock(media.duration);
             let ahead = 0;
@@ -154,19 +234,19 @@
             values.frames.textContent = Number.isFinite(dropped) && Number.isFinite(total) ? dropped + ' / ' + total : '—';
             values.reconnects.textContent = String(reconnects);
             values.error.textContent = lastError;
-            values.state.textContent = token(player._state || 'idle');
-            values.managed.textContent = String(Boolean(player.options.streamId || /\/stream-[^/]+\/index\.m3u8(?:[?#]|$)/i.test(source)));
-            values.online.textContent = String(window.navigator.onLine !== false);
+            values.state.textContent = stateLabel(player._state || 'idle');
+            values.managed.textContent = (player.options.streamId || /\/stream-[^/]+\/index\.m3u8(?:[?#]|$)/i.test(source)) ? labels.yes : labels.no;
+            values.online.textContent = window.navigator.onLine !== false ? labels.connected : labels.offline;
             const edge = media.seekable && media.seekable.length ? media.seekable.end(media.seekable.length - 1) : null;
-            values.liveEdge.textContent = Number.isFinite(edge) ? edge.toFixed(1) : '—';
-            values.latency.textContent = Number.isFinite(edge) ? Math.max(0, edge - media.currentTime).toFixed(1) : '—';
+            values.liveEdge.textContent = Number.isFinite(edge) ? edge.toFixed(1) + ' ' + labels.seconds : '—';
+            values.latency.textContent = Number.isFinite(edge) ? Math.max(0, edge - media.currentTime).toFixed(1) + ' ' + labels.seconds : '—';
             const sync = controller && controller.liveSyncPosition;
-            values.liveSyncPosition.textContent = Number.isFinite(sync) ? sync.toFixed(1) : '—';
+            values.liveSyncPosition.textContent = Number.isFinite(sync) ? sync.toFixed(1) + ' ' + labels.seconds : '—';
             const metrics = player._metrics || {};
-            ['wakeMs', 'manifestMs', 'firstFrameMs'].forEach(function (key) { values[key].textContent = Number.isFinite(metrics[key]) ? String(Math.round(metrics[key])) : '—'; });
-            ['recoveryStage', 'recoveryReason'].forEach(function (key) { values[key].textContent = token(metrics[key]); });
+            ['wakeMs', 'manifestMs', 'firstFrameMs'].forEach(function (key) { values[key].textContent = Number.isFinite(metrics[key]) ? Math.round(metrics[key]) + ' ' + labels.milliseconds : '—'; });
+            ['recoveryStage', 'recoveryReason'].forEach(function (key) { values[key].textContent = termLabel(metrics[key]); });
             const frameAt = player._health && player._health.lastFrameAt;
-            values.frameAge.textContent = Number.isFinite(frameAt) ? ((Date.now() - frameAt) / 1000).toFixed(1) : '—';
+            values.frameAge.textContent = Number.isFinite(frameAt) ? ((Date.now() - frameAt) / 1000).toFixed(1) + ' ' + labels.seconds : '—';
             if (media.error || player.root.classList.contains('fireplayer--error')) { setState('error'); }
             else if (media.ended) { setState('ended'); }
             else if (player.root.classList.contains('fireplayer--reconnecting')) { setState('reconnecting'); }
