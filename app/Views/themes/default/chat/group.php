@@ -10,9 +10,7 @@
 [data-group-chat-app] .group-member-avatar { width:2.5rem; height:2.5rem; object-fit:cover; }
 [data-group-chat-app] .group-current-avatar { width:2.75rem; height:2.75rem; }
 [data-group-chat-app] .group-chat-sender { margin:0 .65rem .25rem; color:var(--cz-body-color); font-size:.72rem; font-weight:600; opacity:.66; }
-[data-group-chat-app] .group-chat-composer-row { display:grid; grid-template-columns:minmax(0,1fr) 2.75rem; align-items:end; gap:.7rem; }
-[data-group-chat-app] [data-group-chat-input] { min-height:2.75rem; max-height:8.25rem; resize:none; overflow-y:hidden; }
-[data-group-chat-app] .group-chat-send { display:inline-flex; align-items:center; justify-content:center; width:2.75rem; height:2.75rem; min-width:2.75rem; padding:0; }
+[data-group-chat-app] .chat-composer__row { grid-template-columns:minmax(0,1fr) auto; }
 @media (min-width:992px) {
     [data-group-chat-app] .chat-app-layout { grid-template-columns:var(--group-member-width) minmax(0,1fr); }
 }
@@ -117,23 +115,26 @@
                             </div>
                         </div>
 
-                        <div class="chat-thread__composer">
+                        <div class="chat-thread__composer border-top">
                             <form data-group-chat-form>
                                 <?= get_csrf_field() ?>
                                 <input type="hidden" name="conversation_id" value="<?= (int)$group['id'] ?>">
-                                <div class="group-chat-composer-row">
-                                    <textarea class="form-control"
-                                              name="message"
-                                              rows="1"
-                                              maxlength="2000"
-                                              placeholder="<?= htmlSC(return_translation('chat_group_message_placeholder')) ?>"
-                                              data-group-chat-input></textarea>
-                                    <button type="submit"
-                                            class="btn btn-primary rounded-circle group-chat-send"
-                                            title="<?= htmlSC(return_translation('chat_send_btn')) ?>"
-                                            aria-label="<?= htmlSC(return_translation('chat_send_btn')) ?>">
-                                        <i class="ci-send" aria-hidden="true"></i>
-                                    </button>
+                                <div class="chat-composer">
+                                    <div class="chat-composer__row">
+                                        <textarea class="form-control border-0 shadow-none bg-transparent chat-composer__message"
+                                                  name="message"
+                                                  rows="1"
+                                                  maxlength="2000"
+                                                  placeholder="<?= htmlSC(return_translation('chat_message_placeholder')) ?>"
+                                                  aria-label="<?= htmlSC(return_translation('chat_message_placeholder')) ?>"
+                                                  data-group-chat-input></textarea>
+                                        <button type="submit"
+                                                class="chat-composer__submit btn btn-primary rounded-circle"
+                                                title="<?= htmlSC(return_translation('chat_send_btn')) ?>"
+                                                aria-label="<?= htmlSC(return_translation('chat_send_btn')) ?>">
+                                            <i class="ci-send" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
