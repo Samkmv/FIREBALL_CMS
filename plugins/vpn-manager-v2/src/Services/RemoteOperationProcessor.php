@@ -138,7 +138,12 @@ final class RemoteOperationProcessor
             'sync_server', 'sync_inbound' => ($this->sync ?? new ConfigurationSyncService())
                 ->syncServer($serverId, $source, $operationId),
             'sync_client' => $this->syncClient($nodeId, $source, $operationId),
-            'sync_subscription' => $this->syncSubscription($subscriptionId, $source, $operationId),
+            'sync_subscription' => $this->syncSubscription(
+                $subscriptionId,
+                $source,
+                $operationId,
+                isset($operation['initiated_by']) ? (int)$operation['initiated_by'] : null
+            ),
             'full_reconcile' => ($this->sync ?? new ConfigurationSyncService())->syncAllPages(1000, 100, $source),
             'create_client' => $this->provision($nodeId),
             'update_client', 'rename_client', 'enable_client' => $this->push($nodeId, $source, $operationId),
@@ -210,19 +215,98 @@ final class RemoteOperationProcessor
             ->syncServer((int)$node['server_id'], $source, $operationId);
     }
 
-    private function syncSubscription(int $subscriptionId, string $source, string $operationId): array
-    {
+    private function syncSubscription(
+        int $subscriptionId,
+        string $source,
+        string $operationId,
+        ?int $adminId = null
+    ): array {
+        // FIREBALL_VPN_RENEW_SYNC_PATCH_V1: subscription-repair
+        // Manual subscription sync is a repair operation:
+        // tariff reconciliation -> push desired state -> factual server inventory.
+        $plans = $this->plans ?? new PlanReconciliationRepository();
+        $subscription = $plans->subscription($subscriptionId);
+        if (!$subscription) {
+            throw new \RuntimeException('VPN subscription not found.');
+        }
+
+        $reconcile = ($this->reconciler ?? new VpnPlanSubscriptionReconciler())
+            ->reconcileSubscription(
+                $subscriptionId,
+                [
+                    'initiated_by' => $adminId,
+                    'authorized' => true,
+                    'provision_missing' => true,
+                    'sync_flow' => true,
+                ]
+            );
+
+        // Re-read the subscription because reconciliation may have changed its state.
+        $subscription = $plans->subscription($subscriptionId) ?? $subscription;
+        $nodeRows = $plans->subscriptionNodes($subscriptionId);
         $serverIds = ($this->configuration ?? new ConfigurationSyncRepository())
             ->serverIdsForSubscription($subscriptionId);
-        $result = ['processed' => 0, 'changed' => 0, 'errors' => 0, 'total' => count($serverIds)];
+
+        $pushable = array_values(array_filter(
+            $nodeRows,
+            static fn(array $node): bool => in_array(
+                (string)($node['status'] ?? ''),
+                ['active', 'disabled'],
+                true
+            )
+        ));
+
+        $result = [
+            'processed' => 1,
+            'changed' => $reconcile->created + $reconcile->reused + $reconcile->changedSubscriptions,
+            'errors' => $reconcile->failed + $reconcile->syncErrors,
+            'total' => 1 + count($pushable) + count($serverIds),
+        ];
+
+        // Push the current CMS expiry/status/limits into every confirmed client.
+        foreach ($pushable as $summaryNode) {
+            try {
+                $node = $plans->node((int)$summaryNode['id']);
+                if (!$node) {
+                    throw new \RuntimeException('VPN connection not found.');
+                }
+
+                $push = ($this->remoteSync ?? new RemoteClientSyncService())
+                    ->push($node, $subscription);
+
+                ($this->subscriptions ?? new SubscriptionRepository())->updateNodeConfirmed(
+                    (int)$node['id'],
+                    $push['flow'] ?? null,
+                    $push['traffic_limit_bytes'] ?? null,
+                    $push['traffic_used_bytes'] ?? null,
+                    empty($node['desired_enabled']) ? 'disabled' : 'active',
+                    !empty($node['desired_enabled'])
+                );
+
+                $result['changed'] += !empty($push['remote_updated']) ? 1 : 0;
+            } catch (\Throwable) {
+                $result['errors']++;
+            }
+
+            $result['processed']++;
+            ($this->operations ?? new OperationQueueRepository())->heartbeat(
+                (int)($this->operationRowId($operationId) ?? 0),
+                $result['processed'],
+                $result['total']
+            );
+        }
+
+        // Final factual inventory confirms what is really present in 3x-ui.
         foreach ($serverIds as $serverId) {
             try {
                 $sync = ($this->sync ?? new ConfigurationSyncService())
                     ->syncServer($serverId, $source, $operationId);
                 $result['changed'] += (int)($sync['changed'] ?? 0);
+                $result['errors'] += (int)($sync['errors'] ?? 0);
             } catch (\Throwable) {
                 $result['errors']++;
             }
+
             $result['processed']++;
             ($this->operations ?? new OperationQueueRepository())->heartbeat(
                 (int)($this->operationRowId($operationId) ?? 0),

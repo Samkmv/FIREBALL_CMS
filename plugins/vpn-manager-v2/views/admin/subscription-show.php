@@ -215,6 +215,15 @@ foreach ($nodes as $node) {
     <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $subscriptionId, $returnQuery)) ?>">
         <i class="ci-edit-2" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit')) ?>
     </a>
+    <!-- FIREBALL_VPN_RENEW_SYNC_PATCH_V1: renew-button -->
+    <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/renew')) ?>">
+        <?= get_csrf_field() ?>
+        <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
+        <button class="btn btn-success rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+            <i class="ci-calendar" aria-hidden="true"></i>
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_renew_by_plan')) ?>
+        </button>
+    </form>
     <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/subscription/' . $subscriptionId)) ?>" data-vpn-v2-async-operation>
         <?= get_csrf_field() ?>
         <button class="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2" type="submit">

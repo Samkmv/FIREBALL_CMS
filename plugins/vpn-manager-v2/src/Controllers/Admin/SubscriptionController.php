@@ -376,6 +376,113 @@ final class SubscriptionController
         ));
     }
 
+    public function renew(): void
+    {
+        // FIREBALL_VPN_RENEW_SYNC_PATCH_V1: renew-by-plan
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $subscriptionId = (int)get_route_param('id');
+        $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
+
+        try {
+            $repository = new SubscriptionRepository();
+            $subscription = $repository->find($subscriptionId);
+            if (!$subscription) {
+                session()->setFlash(
+                    'error',
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_not_found')
+                );
+                response()->redirect(AdminTableState::asParameter(
+                    '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
+                    $returnQuery
+                ));
+                return;
+            }
+
+            $plan = $repository->activePlan((int)$subscription['plan_id']);
+            if (!$plan) {
+                session()->setFlash(
+                    'error',
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_plan_inactive')
+                );
+                response()->redirect(AdminTableState::asParameter(
+                    '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
+                    $returnQuery
+                ));
+                return;
+            }
+
+            $now = new \DateTimeImmutable('now');
+            $base = $now;
+            $currentExpiryRaw = trim((string)($subscription['expires_at'] ?? ''));
+            if ($currentExpiryRaw !== '') {
+                try {
+                    $currentExpiry = new \DateTimeImmutable($currentExpiryRaw);
+                    if ($currentExpiry > $now) {
+                        $base = $currentExpiry;
+                    }
+                } catch (\Throwable) {
+                    // Broken/legacy date must not prevent renewal from "now".
+                }
+            }
+
+            $durationDays = max(1, (int)$plan['duration_days']);
+            $newExpiry = $base
+                ->add(new \DateInterval('P' . $durationDays . 'D'))
+                ->format('Y-m-d H:i:s');
+
+            $trafficInput = TrafficFormatter::inputParts(
+                isset($subscription['traffic_limit_bytes'])
+                    ? (int)$subscription['traffic_limit_bytes']
+                    : null
+            );
+
+            $result = (new SubscriptionEditingService())->update(
+                $subscriptionId,
+                [
+                    'expires_at' => $newExpiry,
+                    'lifetime' => '0',
+                    'status' => 'active',
+                    'traffic_limit_value' => (string)($trafficInput['value'] ?? '0'),
+                    'traffic_unit' => (string)($trafficInput['unit'] ?? 'gb'),
+                    'internal_comment' => $subscription['internal_comment'] ?? null,
+                ],
+                $this->adminId()
+            );
+
+            if ($result->failed > 0) {
+                session()->setFlash(
+                    'warning',
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_sync_partial')
+                );
+            } else {
+                session()->setFlash(
+                    'success',
+                    sprintf(
+                        \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_renewed'),
+                        $durationDays
+                    )
+                );
+            }
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            log_error_details(
+                'VPN Manager V2 subscription renewal failed',
+                ['Subscription' => $subscriptionId, 'Error Class' => get_class($exception)],
+                $exception
+            );
+            session()->setFlash(
+                'error',
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_sync_generic')
+            );
+        }
+
+        response()->redirect(AdminTableState::asParameter(
+            '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
+            $returnQuery
+        ));
+    }
+
     public function suspend(): void
     {
         Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);

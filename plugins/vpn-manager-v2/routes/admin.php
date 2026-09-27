@@ -72,6 +72,9 @@ $router->get('/admin/plugins/vpn-manager-v2/subscriptions/edit/(?P<id>\d+)/?', [
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/edit/(?P<id>\d+)/?', [SubscriptionController::class, 'update'])
     ->middleware(['auth', 'admin']);
+// FIREBALL_VPN_RENEW_SYNC_PATCH_V1: renew-route
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/renew/?', [SubscriptionController::class, 'renew'])
+    ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/suspend/?', [SubscriptionController::class, 'suspend'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/delete/?', [SubscriptionController::class, 'delete'])

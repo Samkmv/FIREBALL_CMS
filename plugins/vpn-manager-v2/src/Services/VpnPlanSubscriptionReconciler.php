@@ -267,8 +267,9 @@ final class VpnPlanSubscriptionReconciler
                 continue;
             }
 
+            // FIREBALL_VPN_RENEW_SYNC_PATCH_V1: recover-sync-errors
             if ($node === null || in_array((string)$node['status'], [
-                'creating', 'create_failed', 'deleted', 'delete_failed',
+                'creating', 'create_failed', 'sync_error', 'missing_remote', 'deleted', 'delete_failed',
             ], true)) {
                 $missing[] = [
                     'plan_node' => $planNode,
