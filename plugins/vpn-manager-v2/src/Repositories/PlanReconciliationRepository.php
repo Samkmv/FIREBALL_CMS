@@ -19,7 +19,7 @@ final class PlanReconciliationRepository
     public function plan(int $planId): ?array
     {
         $row = db()->query(
-            'SELECT id, name, is_active FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+            'SELECT id, name, is_active, device_limit, ip_limit, traffic_limit_bytes FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL LIMIT 1',
             [$planId]
         )->getOne();
 
@@ -201,8 +201,8 @@ final class PlanReconciliationRepository
         $limitSql = $limit > 0 ? ' LIMIT ' . max(1, min(500, $limit)) : '';
 
         return db()->query(
-            "SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    device_limit, revision, created_by, last_error, created_at, updated_at
+            "SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes, traffic_used_bytes,
+                    device_limit, ip_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions
              WHERE plan_id = ? AND id > ? AND status IN ({$statusSql}) AND starts_at <= NOW()
                AND (expires_at IS NULL OR expires_at > NOW())
@@ -215,8 +215,8 @@ final class PlanReconciliationRepository
     {
         [$statusSql, $params] = $this->statusClause(self::ELIGIBLE_STATUSES);
         $row = db()->query(
-            "SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    device_limit, revision, created_by, last_error, created_at, updated_at
+            "SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes, traffic_used_bytes,
+                    device_limit, ip_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? AND status IN ({$statusSql}) AND starts_at <= NOW()
                AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1",
             array_merge([$subscriptionId], $params)
@@ -228,8 +228,8 @@ final class PlanReconciliationRepository
     public function subscription(int $subscriptionId): ?array
     {
         $row = db()->query(
-            'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    device_limit, revision, created_by, last_error, created_at, updated_at
+            'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes, traffic_used_bytes,
+                    device_limit, ip_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$subscriptionId]
         )->getOne();
@@ -259,7 +259,7 @@ final class PlanReconciliationRepository
                     n.security, n.flow, n.status, n.desired_enabled, n.is_obsolete,
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at, n.last_error,
                     sub.user_id, sub.plan_id, sub.status AS subscription_status,
-                    sub.starts_at, sub.expires_at, sub.device_limit,
+                    sub.starts_at, sub.expires_at, sub.device_limit, sub.ip_limit,
                     sub.traffic_limit_bytes AS subscription_traffic_limit_bytes, sub.created_by
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
@@ -424,20 +424,34 @@ final class PlanReconciliationRepository
         return db()->rowCount();
     }
 
-    public function confirmNode(int $nodeId, ?string $flow, ?int $trafficUsedBytes = null): void
+    public function applyPlanParameters(array $subscription, array $plan): bool
+    {
+        $changed = (int)$subscription['device_limit'] !== (int)$plan['device_limit']
+            || (int)($subscription['ip_limit'] ?? 0) !== (int)$plan['ip_limit']
+            || (int)($subscription['traffic_limit_bytes'] ?? 0) !== (int)($plan['traffic_limit_bytes'] ?? 0);
+        if ($changed) {
+            db()->query('UPDATE vpn_v2_subscriptions SET device_limit = ?, ip_limit = ?, traffic_limit_bytes = ?, updated_at = ? WHERE id = ?',
+                [(int)$plan['device_limit'], (int)$plan['ip_limit'], $plan['traffic_limit_bytes'], date('Y-m-d H:i:s'), (int)$subscription['id']]);
+        }
+        return $changed;
+    }
+
+    public function confirmNode(int $nodeId, ?string $flow, ?int $trafficUsedBytes = null, ?array $expected = null): void
     {
         $node = $this->node($nodeId);
         if (!is_array($node)) {
             throw new \RuntimeException('VPN subscription node not found: ' . $nodeId);
         }
-        $status = !empty($node['desired_enabled']) ? 'active' : 'disabled';
+        $status = !empty($expected['enable'] ?? $node['desired_enabled']) ? 'active' : 'disabled';
         $now = date('Y-m-d H:i:s');
         db()->query(
             'UPDATE vpn_v2_subscription_nodes
-             SET flow = ?, status = ?, is_obsolete = 0,
-                 traffic_used_bytes = COALESCE(?, traffic_used_bytes),
+             SET flow = ?, status = ?, is_obsolete = 0, sync_status = \'synced\',
+                 traffic_limit_bytes = ?, device_limit = ?, expires_at = ?,
+                 traffic_used_bytes = GREATEST(COALESCE(?, traffic_used_bytes), traffic_used_bytes),
                  last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?',
-            [$flow, $status, $trafficUsedBytes, $now, $now, $nodeId]
+            [$flow, $status, $expected !== null ? $expected['traffic_limit_bytes'] : $node['traffic_limit_bytes'],
+                (int)$node['device_limit'], $node['expires_at'], $trafficUsedBytes, $now, $now, $nodeId]
         );
     }
 

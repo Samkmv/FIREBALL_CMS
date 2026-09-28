@@ -108,13 +108,13 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                     <div class="vpn-plan-heading">
                         <div class="vpn-plan-identity">
                             <span class="vpn-plan-icon" aria-hidden="true"><i class="ci-shield"></i></span>
-                            <div>
-                            <div class="mb-2"><?= ProvisioningStatus::badge((string)$selected['effective_status']) ?></div>
-                            <h2 class="vpn-plan-name mb-1"><?= htmlSC((string)$selected['plan_name']) ?></h2>
-                            <?php if (trim((string)($selected['plan_description'] ?? '')) !== ''): ?>
-                                <p class="text-body-secondary mb-0"><?= htmlSC((string)$selected['plan_description']) ?></p>
-                            <?php endif; ?>
+                            <div class="vpn-plan-title">
+                                <h2 class="vpn-plan-name mb-0"><?= htmlSC((string)$selected['plan_name']) ?></h2>
+                                <?= ProvisioningStatus::badge((string)$selected['effective_status']) ?>
                             </div>
+                            <?php if (trim((string)($selected['plan_description'] ?? '')) !== ''): ?>
+                                <p class="vpn-plan-description text-body-secondary mb-0"><?= htmlSC((string)$selected['plan_description']) ?></p>
+                            <?php endif; ?>
                         </div>
                         <div class="vpn-remaining">
                             <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_remaining')) ?></div>

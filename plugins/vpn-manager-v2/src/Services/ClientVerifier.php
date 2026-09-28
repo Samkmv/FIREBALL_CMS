@@ -102,7 +102,10 @@ final class ClientVerifier
             && $this->enabled($remoteClient['enable'] ?? false) === $this->enabled($expectedPayload['enable'] ?? false)
             && (int)($remoteClient['expiryTime'] ?? 0) === (int)($expectedPayload['expiryTime'] ?? 0)
             && (int)($remoteClient['totalGB'] ?? 0) === (int)($expectedPayload['totalGB'] ?? 0)
-            && (int)($remoteClient['limitIp'] ?? 0) === (int)($expectedPayload['limitIp'] ?? 0);
+            && (int)($remoteClient['limitIp'] ?? 0) === (int)($expectedPayload['limitIp'] ?? 0)
+            && (!array_key_exists('limitHwid', $expectedPayload)
+                || (array_key_exists('limitHwid', $remoteClient)
+                    && (int)$remoteClient['limitHwid'] === (int)$expectedPayload['limitHwid']));
 
         if (!$matches) {
             throw new ClientVerificationException(
@@ -139,7 +142,10 @@ final class ClientVerifier
     public function changedFields(array $remoteClient, array $expectedPayload): array
     {
         $changed = [];
-        foreach (['email', 'expiryTime', 'totalGB', 'limitIp', 'enable', 'flow', 'reset', 'resetDay'] as $field) {
+        foreach (['email', 'expiryTime', 'totalGB', 'limitHwid', 'limitIp', 'enable', 'flow', 'reset', 'resetDay'] as $field) {
+            if (!array_key_exists($field, $expectedPayload)) {
+                continue;
+            }
             if (!$this->sameField($field, $remoteClient[$field] ?? null, $expectedPayload[$field] ?? null)) {
                 $changed[] = $field;
             }
@@ -169,6 +175,7 @@ final class ClientVerifier
             'flow' => ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow((string)$actual)
                 === ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow((string)$expected),
             'enable' => $this->enabled($actual) === $this->enabled($expected),
+            'limitHwid' => $actual !== null && (int)$actual === (int)$expected,
             'expiryTime', 'totalGB', 'limitIp', 'reset', 'resetDay' => (int)$actual === (int)$expected,
             default => (string)$actual === (string)$expected,
         };

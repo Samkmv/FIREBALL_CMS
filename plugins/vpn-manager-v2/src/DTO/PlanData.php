@@ -12,6 +12,7 @@ final readonly class PlanData
         public int $deviceLimit,
         public bool $isActive,
         public array $nodes,
+        public int $ipLimit = 0,
     ) {
     }
 }

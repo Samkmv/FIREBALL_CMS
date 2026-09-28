@@ -19,7 +19,7 @@ final class VpnV2ReconcilePlanSubscriptionsJob
     ) {
     }
 
-    public function handle(?string $operationId = null): array
+    public function handle(?string $operationId = null, ?int $batchLimit = null): array
     {
         $repository = $this->repository ?? new PlanReconciliationRepository();
         $subscriptions = $this->subscriptions ?? new SubscriptionRepository();
@@ -35,7 +35,7 @@ final class VpnV2ReconcilePlanSubscriptionsJob
         $planId = (int)$operation['plan_id'];
         $rawAdminId = (int)($operation['initiated_by'] ?? 0);
         $adminId = $rawAdminId > 0 ? $rawAdminId : null;
-        $batchSize = max(1, min(100, (int)$operation['batch_size']));
+        $batchSize = max(1, min($batchLimit ?? 100, (int)$operation['batch_size']));
         $options = json_decode((string)($operation['options_json'] ?? ''), true);
         $options = is_array($options) ? $options : [];
         $removeObsolete = !empty($options['remove_obsolete']);
@@ -93,6 +93,7 @@ final class VpnV2ReconcilePlanSubscriptionsJob
                                 'authorized' => true,
                                 'provision_missing' => $options['provision_missing'] ?? true,
                                 'sync_flow' => $options['sync_flow'] ?? true,
+                                'sync_parameters' => $options['sync_parameters'] ?? $options['sync_flow'] ?? true,
                             ]);
                         if ($result->failed > 0 || $result->syncErrors > 0) {
                             $counts['failure']++;

@@ -18,7 +18,7 @@ final class AutomationRepository
                     n.upload_bytes, n.download_bytes, n.traffic_synced_at,
                     n.traffic_sync_status, n.last_sync_at,
                     sub.user_id, sub.status AS subscription_status, sub.starts_at, sub.expires_at,
-                    sub.device_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
+                    sub.device_limit, sub.ip_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
                     i.remote_inbound_id
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
@@ -159,7 +159,7 @@ final class AutomationRepository
 
         return db()->query(
             "SELECT id, user_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    traffic_used_bytes, device_limit, revision, created_by, internal_comment
+                    traffic_used_bytes, device_limit, ip_limit, revision, created_by, internal_comment
              FROM vpn_v2_subscriptions
              WHERE expires_at IS NOT NULL AND expires_at <= ?
                AND (status IN ('active', 'partial_sync', 'sync_error')
@@ -179,7 +179,7 @@ final class AutomationRepository
 
         return db()->query(
             "SELECT id, user_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    traffic_used_bytes, device_limit, revision, created_by, internal_comment
+                    traffic_used_bytes, device_limit, ip_limit, revision, created_by, internal_comment
              FROM vpn_v2_subscriptions
              WHERE status = 'active' AND traffic_limit_bytes IS NOT NULL
                AND traffic_limit_bytes > 0 AND traffic_used_bytes >= traffic_limit_bytes
@@ -244,7 +244,7 @@ final class AutomationRepository
     {
         $row = db()->query(
             'SELECT id, user_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    traffic_used_bytes, device_limit, revision, created_by, internal_comment, created_at
+                    traffic_used_bytes, device_limit, ip_limit, revision, created_by, internal_comment, created_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$subscriptionId]
         )->getOne();

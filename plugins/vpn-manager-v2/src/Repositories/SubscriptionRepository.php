@@ -89,7 +89,7 @@ final class SubscriptionRepository
     public function activePlan(int $id): ?array
     {
         $row = db()->query(
-            'SELECT id, name, description, duration_days, traffic_limit_bytes, device_limit, is_active
+            'SELECT id, name, description, duration_days, traffic_limit_bytes, device_limit, ip_limit, is_active
              FROM vpn_v2_plans WHERE id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1',
             [$id]
         )->getOne();
@@ -133,10 +133,10 @@ final class SubscriptionRepository
             $now = date('Y-m-d H:i:s');
             $database->query(
                 'INSERT INTO vpn_v2_subscriptions
-                    (user_id, manual_customer_name, profile_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes, device_limit,
+                    (user_id, manual_customer_name, profile_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes, device_limit, ip_limit,
                      subscription_token, subscription_token_hash, revision, config_updated_at,
                      created_by, last_error, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?, NULL, ?, ?)',
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?, NULL, ?, ?)',
                 [
                     $subscription['user_id'] ?? null,
                     $subscription['manual_customer_name'] ?? null,
@@ -147,6 +147,7 @@ final class SubscriptionRepository
                     $subscription['expires_at'],
                     $subscription['traffic_limit_bytes'],
                     $subscription['device_limit'],
+                    $subscription['ip_limit'] ?? 0,
                     $subscription['subscription_token'],
                     hash('sha256', (string)$subscription['subscription_token']),
                     $subscription['created_by'],
@@ -335,7 +336,7 @@ final class SubscriptionRepository
     {
         $row = db()->query(
             'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    device_limit, revision, created_by, internal_comment, last_error, created_at, updated_at
+                    device_limit, ip_limit, revision, created_by, internal_comment, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$id]
         )->getOne();
@@ -347,7 +348,7 @@ final class SubscriptionRepository
     {
         $row = db()->query(
             'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    device_limit, subscription_token, revision, config_updated_at, created_by,
+                    device_limit, ip_limit, subscription_token, revision, config_updated_at, created_by,
                     internal_comment, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$id]
@@ -435,7 +436,7 @@ final class SubscriptionRepository
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
                     n.last_error, n.created_at, n.updated_at, sub.user_id, sub.plan_id,
                     sub.status AS subscription_status, sub.starts_at, sub.expires_at,
-                    sub.device_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
+                    sub.device_limit, sub.ip_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
                     sub.created_by, COALESCE(u.name, sub.manual_customer_name) AS user_name, u.email AS user_email,
                     p.name AS plan_name, s.name AS server_name, s.code AS server_code,
                     s.is_enabled AS server_is_enabled, i.name AS inbound_name,
@@ -464,7 +465,7 @@ final class SubscriptionRepository
                     n.traffic_limit_bytes, n.traffic_used_bytes,
                     n.last_sync_at, n.last_error, sub.user_id, sub.plan_id,
                     sub.status AS subscription_status, sub.starts_at, sub.expires_at,
-                    sub.device_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
+                    sub.device_limit, sub.ip_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
                     sub.created_by
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id

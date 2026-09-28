@@ -27,7 +27,8 @@ final class ClientPayloadFactory
             // Inbound security remains stored separately on the local node.
             'security' => 'auto',
             'email' => trim((string)($node['client_email'] ?? '')),
-            'limitIp' => max(0, (int)($node['device_limit'] ?? $subscription['device_limit'] ?? 0)),
+            'limitHwid' => max(0, (int)($subscription['device_limit'] ?? $node['device_limit'] ?? 0)),
+            'limitIp' => max(0, (int)($subscription['ip_limit'] ?? $node['ip_limit'] ?? 0)),
             'totalGB' => max(0, (int)($node['traffic_limit_bytes'] ?? $subscription['traffic_limit_bytes'] ?? 0)),
             'expiryTime' => $expiryTime,
             'enable' => SubscriptionAccessPolicy::enabled($subscription, $node),
@@ -53,6 +54,12 @@ final class ClientPayloadFactory
 
     public function mergeForUpdate(array $remoteClient, array $expected): array
     {
+        // Creation defaults are not CMS-owned metadata on an existing client.
+        foreach (['security', 'tgId', 'group', 'comment'] as $field) {
+            if (array_key_exists($field, $remoteClient)) {
+                unset($expected[$field]);
+            }
+        }
         $payload = array_replace($remoteClient, $expected);
         // 3x-ui treats reset as an explicit command. Ordinary edits must always preserve counters.
         $payload['reset'] = 0;

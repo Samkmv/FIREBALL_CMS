@@ -1,1104 +1,133 @@
-[2026-09-18 23:40:25] Database query error
-Request URI: /chat/messages?user_id=40
+[2026-09-28 21:12:18] Database query error
+Request URI: /admin/plugins/vpn-manager-v2/plans
 Request Method: GET
 Remote IP: ::1
 Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:40:25] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:40:25] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:40:25] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:40:37] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:40:37] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:40:51] Database query error
-Request URI: /chat/send
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(91): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(187): App\Models\ChatMessage->create(1, 40, '111', NULL, Array)
-#4 [internal function]: App\Controllers\ChatController->send()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:40:51] Protected chat media storage failed
-Request URI: /chat/send
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(91): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(187): App\Models\ChatMessage->create(1, 40, '111', NULL, Array)
-#4 [internal function]: App\Controllers\ChatController->send()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-sender_id: 1
-receiver_id: 40
-attachment_count: 0
-========================================================================
-[2026-09-18 23:41:21] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:41:21] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:41:21] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:41:21] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:41:25] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:41:25] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:41:25] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:41:25] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:41:37] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:41:37] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:41:56] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:41:56] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:41:56] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:41:56] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:42:00] Database query error
-Request URI: /chat/send
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(91): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(187): App\Models\ChatMessage->create(1, 40, '111', NULL, Array)
-#4 [internal function]: App\Controllers\ChatController->send()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:42:00] Protected chat media storage failed
-Request URI: /chat/send
-Request Method: POST
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(91): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(187): App\Models\ChatMessage->create(1, 40, '111', NULL, Array)
-#4 [internal function]: App\Controllers\ChatController->send()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-sender_id: 1
-receiver_id: 40
-attachment_count: 0
-========================================================================
-[2026-09-18 23:43:16] Database connection error
-Request URI: -
-Request Method: -
-Remote IP: -
-Exception: PDOException
-Message: SQLSTATE[HY000] [2002] No such file or directory
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 30
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(30): PDO->__construct('mysql:host=loca...', 'root', Object(SensitiveParameterValue), Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/bin/cms.php(21): FBL\Database->__construct()
-#2 {main}
-Driver: mysql
-Host: localhost
-Port: 3306
-Database: fbl
-Username: root
-DSN: mysql:host=localhost;dbname=fbl;charset=utf8mb4;port=3306
-========================================================================
-[2026-09-18 23:43:20] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:43:20] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:43:21] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:43:21] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:43:23] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:43:23] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:43:23] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:43:23] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:44:43] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:44:43] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:44:44] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:44:44] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:47:06] Database query error
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: SELECT id FROM chat_conversations WHERE type = 'direct' AND direct_key = ? LIMIT 1
-Param Count: 1
-Param Keys: ["0"]
-========================================================================
-[2026-09-18 23:47:06] Unhandled application exception
-Request URI: /chat/messages?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(40): FBL\Database->query('SELECT id FROM ...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/ChatMessage.php(248): App\Services\ConversationService->findDirectConversationId(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(89): App\Models\ChatMessage->markConversationAsRead(1, 40)
-#4 [internal function]: App\Controllers\ChatController->messages()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:47:07] Database query error
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-SQL: INSERT INTO chat_conversations
-                (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-             VALUES ('direct', ?, NULL, ?, NULL, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-Param Count: 4
-Param Keys: ["0","1","2","3"]
-========================================================================
-[2026-09-18 23:47:07] Unhandled application exception
-Request URI: /chat/stream?user_id=40
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'fbl.chat_conversations' doesn't exist
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ConversationService.php(13): FBL\Database->query('INSERT INTO cha...', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/ChatRealtimeService.php(12): App\Services\ConversationService->ensureDirectConversation(1, 40)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ChatController.php(380): App\Services\ChatRealtimeService->streamDirectConversation(1, 40)
-#4 [internal function]: App\Controllers\ChatController->stream()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#7 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#8 {main}
-========================================================================
-[2026-09-18 23:48:29] Database query error
-Request URI: -
-Request Method: -
-Remote IP: -
-Exception: PDOException
-Message: SQLSTATE[42000]: Syntax error or access violation: 1055 Expression #2 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'fbl.chat_messages.sender_id' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
-Line: 56
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(56): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/database/migrations/20260918_create_chat2_foundation.php(110): FBL\Database->query('INSERT INTO cha...')
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/MigrationRunner.php(44): App\Services\MigrationRunner::{closure}()
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/SchemaMigration.php(19): App\Services\MigrationRunner->App\Services\{closure}()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/MigrationRunner.php(21): App\Services\SchemaMigration::run(Object(Closure))
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/bin/cms.php(22): App\Services\MigrationRunner->run()
-#6 {main}
-SQL: INSERT INTO chat_conversations
-        (type, direct_key, title, created_by, last_message_id, created_at, updated_at)
-        SELECT 'direct',
-               CONCAT(LEAST(sender_id, receiver_id), ':', GREATEST(sender_id, receiver_id)),
-               NULL,
-               LEAST(sender_id, receiver_id),
-               MAX(id), MIN(created_at), MAX(created_at)
-        FROM chat_messages
-        WHERE sender_id > 0 AND receiver_id > 0 AND sender_id <> receiver_id
-        GROUP BY LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id)
-        ON DUPLICATE KEY UPDATE
-            last_message_id = GREATEST(COALESCE(chat_conversations.last_message_id, 0), COALESCE(VALUES(last_message_id), 0)),
-            updated_at = GREATEST(chat_conversations.updated_at, VALUES(updated_at))
-Param Count: 0
-Param Keys: []
-========================================================================
-[2026-09-19 09:53:46] Unhandled application exception
-Request URI: /notifications/feed?_=1789800070896
-Request Method: GET
-Remote IP: ::1
-Exception: Error
-Message: Undefined constant "ß"
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
-Line: 15
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(26): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(22): App\Models\NotificationCenter->__construct()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\NotificationController->__construct()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#7 {main}
-========================================================================
-[2026-09-19 09:53:48] Unhandled application exception
-Request URI: /admin/updates
-Request Method: GET
-Remote IP: ::1
-Exception: Error
-Message: Undefined constant "ß"
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
-Line: 15
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#6 {main}
-========================================================================
-[2026-09-19 09:53:54] Unhandled application exception
-Request URI: /admin/updates
-Request Method: GET
-Remote IP: ::1
-Exception: Error
-Message: Undefined constant "ß"
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
-Line: 15
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#6 {main}
-========================================================================
-[2026-09-19 09:53:58] Unhandled application exception
-Request URI: /notifications/feed?_=1789800070897
-Request Method: GET
-Remote IP: ::1
-Exception: Error
-Message: Undefined constant "ß"
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
-Line: 15
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(26): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(22): App\Models\NotificationCenter->__construct()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\NotificationController->__construct()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#7 {main}
-========================================================================
-[2026-09-19 09:54:01] Unhandled application exception
-Request URI: /admin/updates
-Request Method: GET
-Remote IP: ::1
-Exception: Error
-Message: Undefined constant "ß"
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
-Line: 15
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#6 {main}
-========================================================================
-[2026-09-19 09:54:07] Unhandled application exception
-Request URI: /notifications/feed?_=1789800070898
-Request Method: GET
-Remote IP: ::1
-Exception: Error
-Message: Undefined constant "ß"
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
-Line: 15
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Models/NotificationCenter.php(26): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/NotificationController.php(22): App\Models\NotificationCenter->__construct()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\NotificationController->__construct()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#7 {main}
-========================================================================
-[2026-09-19 09:54:09] Unhandled application exception
-Request URI: /admin
-Request Method: GET
-Remote IP: ::1
-Exception: Error
-Message: Undefined constant "ß"
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/config/version.php
-Line: 15
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(899): require()
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Services/UpdateCenter.php(26): App\Services\UpdateCenter->reloadEngineRelease()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/AdminController.php(65): App\Services\UpdateCenter->__construct(Object(App\Models\SiteSetting))
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(116): App\Controllers\AdminController->__construct()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#6 {main}
-========================================================================
-[2026-09-19 15:53:23] Subscription settings save failed
-Request URI: /admin/subscriptions/settings/save
-Request Method: POST
-Remote IP: ::1
-Exception: RuntimeException
-Message: Robokassa credentials are not configured. Verification failed: dadata_token
-File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Services/SettingsService.php
-Line: 142
-Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/AdminController.php(494): Fireball\Subscriptions\Services\SettingsService->save(Array)
-#1 [internal function]: Fireball\Subscriptions\Controllers\AdminController->saveSettings()
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
-#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
-#4 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
-#5 {main}
-Submitted keys: ["merchant_login","hash_algorithm","currency","payment_timeout_minutes","media_token_ttl","test_mode","receipt_tax","receipt_payment_method","receipt_payment_object","dadata_enabled","public_offer_page_id","public_offer_url","save_robokassa_settings"]
-Merchant login provided: 1
-Password 1 provided: 
-Password 2 provided: 
-DaData token provided: 1
-========================================================================
-[2026-09-26 14:43:26] Database query error
-Request URI: /admin/plugins/vpn-manager-v2/subscriptions
-Request Method: GET
-Remote IP: ::1
-Exception: PDOException
-Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.ip_limit' in 'field list'
 File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
 Line: 73
 Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
-#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/PlanRepository.php(12): FBL\Database->query('SELECT p.id, p....')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/PlanController.php(22): Fireball\VpnManagerV2\Repositories\PlanRepository->all()
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\PlanController->index()
 #4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
 #5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
 #6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
 #7 {main}
-SQL: SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
-                    s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
-                    COUNT(n.id) AS node_count,
-                    SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
-             FROM vpn_v2_subscriptions s
-             LEFT JOIN users u ON u.id = s.user_id
-             INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
-             LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
-             WHERE s.status <> 'deleted'
-             GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                      s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
-                      s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                      s.manual_customer_name, u.name, u.login, u.email, p.name
-             ORDER BY s.created_at DESC, s.id DESC
-             LIMIT 20 OFFSET 0
+SQL: SELECT p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
+                    p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at,
+                    COUNT(DISTINCT n.server_id) AS server_count, COUNT(n.id) AS node_count
+             FROM vpn_v2_plans p
+             LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
+             WHERE p.deleted_at IS NULL
+             GROUP BY p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
+                      p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at
+             ORDER BY p.id ASC
 Param Count: 0
 Param Keys: []
 ========================================================================
-[2026-09-26 14:43:26] Unhandled application exception
-Request URI: /admin/plugins/vpn-manager-v2/subscriptions
+[2026-09-28 21:12:18] Unhandled application exception
+Request URI: /admin/plugins/vpn-manager-v2/plans
 Request Method: GET
 Remote IP: ::1
 Exception: PDOException
-Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.ip_limit' in 'field list'
 File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
 Line: 73
 Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
-#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/PlanRepository.php(12): FBL\Database->query('SELECT p.id, p....')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/PlanController.php(22): Fireball\VpnManagerV2\Repositories\PlanRepository->all()
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\PlanController->index()
 #4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
 #5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
 #6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
 #7 {main}
 ========================================================================
-[2026-09-26 14:43:38] Database query error
-Request URI: /admin/plugins/vpn-manager-v2/subscriptions
+[2026-09-28 21:18:31] Database query error
+Request URI: /admin/plugins/vpn-manager-v2/plans
 Request Method: GET
 Remote IP: ::1
 Exception: PDOException
-Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.ip_limit' in 'field list'
 File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
 Line: 73
 Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
-#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/PlanRepository.php(12): FBL\Database->query('SELECT p.id, p....')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/PlanController.php(22): Fireball\VpnManagerV2\Repositories\PlanRepository->all()
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\PlanController->index()
 #4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
 #5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
 #6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
 #7 {main}
-SQL: SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
-                    s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
-                    COUNT(n.id) AS node_count,
-                    SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
-             FROM vpn_v2_subscriptions s
-             LEFT JOIN users u ON u.id = s.user_id
-             INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
-             LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
-             WHERE s.status <> 'deleted'
-             GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                      s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
-                      s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                      s.manual_customer_name, u.name, u.login, u.email, p.name
-             ORDER BY s.created_at DESC, s.id DESC
-             LIMIT 20 OFFSET 0
+SQL: SELECT p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
+                    p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at,
+                    COUNT(DISTINCT n.server_id) AS server_count, COUNT(n.id) AS node_count
+             FROM vpn_v2_plans p
+             LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
+             WHERE p.deleted_at IS NULL
+             GROUP BY p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
+                      p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at
+             ORDER BY p.id ASC
 Param Count: 0
 Param Keys: []
 ========================================================================
-[2026-09-26 14:43:38] Unhandled application exception
-Request URI: /admin/plugins/vpn-manager-v2/subscriptions
+[2026-09-28 21:18:31] Unhandled application exception
+Request URI: /admin/plugins/vpn-manager-v2/plans
 Request Method: GET
 Remote IP: ::1
 Exception: PDOException
-Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.manual_customer_name' in 'field list'
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.ip_limit' in 'field list'
 File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
 Line: 73
 Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
-#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/SubscriptionRepository.php(294): FBL\Database->query('SELECT s.id, s....', Array)
-#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/SubscriptionController.php(44): Fireball\VpnManagerV2\Repositories\SubscriptionRepository->adminPage('', 20, 0)
-#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController->index()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/PlanRepository.php(12): FBL\Database->query('SELECT p.id, p....')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/PlanController.php(22): Fireball\VpnManagerV2\Repositories\PlanRepository->all()
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\PlanController->index()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-28 21:18:39] Database query error
+Request URI: /admin/plugins/vpn-manager-v2/plans
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.ip_limit' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/PlanRepository.php(12): FBL\Database->query('SELECT p.id, p....')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/PlanController.php(22): Fireball\VpnManagerV2\Repositories\PlanRepository->all()
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\PlanController->index()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+SQL: SELECT p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
+                    p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at,
+                    COUNT(DISTINCT n.server_id) AS server_count, COUNT(n.id) AS node_count
+             FROM vpn_v2_plans p
+             LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
+             WHERE p.deleted_at IS NULL
+             GROUP BY p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
+                      p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at
+             ORDER BY p.id ASC
+Param Count: 0
+Param Keys: []
+========================================================================
+[2026-09-28 21:18:39] Unhandled application exception
+Request URI: /admin/plugins/vpn-manager-v2/plans
+Request Method: GET
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.ip_limit' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Repositories/PlanRepository.php(12): FBL\Database->query('SELECT p.id, p....')
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/vpn-manager-v2/src/Controllers/Admin/PlanController.php(22): Fireball\VpnManagerV2\Repositories\PlanRepository->all()
+#3 [internal function]: Fireball\VpnManagerV2\Controllers\Admin\PlanController->index()
 #4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
 #5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
 #6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()

@@ -13,6 +13,10 @@ final readonly class ReconcilePreview
         public array $unavailableServers = [],
         public array $disabledInbounds = [],
         public array $conflicts = [],
+        public array $parameterCounts = [],
+        public array $details = [],
+        public array $errors = [],
+        public ?string $checkedAt = null,
     ) {
     }
 
@@ -23,6 +27,8 @@ final readonly class ReconcilePreview
             || $this->matchingSubscriptions < $this->subscriptionsChecked
             || $this->unavailableServers !== []
             || $this->disabledInbounds !== []
-            || $this->conflicts !== [];
+            || $this->conflicts !== []
+            || $this->errors !== []
+            || array_sum($this->parameterCounts) > 0;
     }
 }

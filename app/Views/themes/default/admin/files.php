@@ -242,11 +242,11 @@
         }
 
         [data-file-manager-table] tbody tr:hover {
-            background: var(--fm-row-hover);
+            background: linear-gradient(var(--fm-row-hover), var(--fm-row-hover)), var(--fm-panel);
         }
 
         [data-file-manager-table] tbody tr.is-selected {
-            background: var(--fm-row-active);
+            background: linear-gradient(var(--fm-row-active), var(--fm-row-active)), var(--fm-panel);
             box-shadow: inset 0 0 0 1px var(--fm-row-active-border);
         }
 
@@ -608,7 +608,15 @@
             }
 
             [data-file-manager-shell] [data-file-manager-table] tbody tr:hover td:last-child {
-                background: inherit;
+                background: linear-gradient(var(--fm-row-hover), var(--fm-row-hover)), var(--fm-panel);
+            }
+
+            /* Keep the pinned action cell opaque and carry the selection to the row edge. */
+            [data-file-manager-shell] [data-file-manager-table] tbody tr.is-selected td:last-child {
+                background: linear-gradient(var(--fm-row-active), var(--fm-row-active)), var(--fm-panel);
+                box-shadow: inset 0 1px var(--fm-row-active-border),
+                            inset 0 -1px var(--fm-row-active-border),
+                            inset -1px 0 var(--fm-row-active-border);
             }
 
             [data-file-manager-shell] [data-file-manager-table] thead th:last-child {

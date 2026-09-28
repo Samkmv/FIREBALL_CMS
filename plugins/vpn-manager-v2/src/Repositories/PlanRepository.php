@@ -11,13 +11,13 @@ final class PlanRepository
     {
         $rows = db()->query(
             'SELECT p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
-                    p.device_limit, p.is_active, p.created_at, p.updated_at,
+                    p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at,
                     COUNT(DISTINCT n.server_id) AS server_count, COUNT(n.id) AS node_count
              FROM vpn_v2_plans p
              LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
              WHERE p.deleted_at IS NULL
              GROUP BY p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
-                      p.device_limit, p.is_active, p.created_at, p.updated_at
+                      p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at
              ORDER BY p.id ASC'
         )->get() ?: [];
         $reconciliation = new PlanReconciliationRepository();
@@ -37,7 +37,7 @@ final class PlanRepository
     public function find(int $id): ?array
     {
         $row = db()->query(
-            'SELECT id, name, description, duration_days, traffic_limit_bytes, device_limit,
+            'SELECT id, name, description, duration_days, traffic_limit_bytes, device_limit, ip_limit,
                     is_active, created_at, updated_at
              FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL LIMIT 1',
             [$id]
@@ -113,14 +113,15 @@ final class PlanRepository
             $now = date('Y-m-d H:i:s');
             $database->query(
                 'INSERT INTO vpn_v2_plans
-                    (name, description, duration_days, traffic_limit_bytes, device_limit, is_active, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    (name, description, duration_days, traffic_limit_bytes, device_limit, ip_limit, is_active, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $plan->name,
                     $plan->description,
                     $plan->durationDays,
                     $plan->trafficLimitBytes,
                     $plan->deviceLimit,
+                    $plan->ipLimit,
                     $plan->isActive ? 1 : 0,
                     $now,
                     $now,
@@ -149,7 +150,7 @@ final class PlanRepository
             $database->query(
                 'UPDATE vpn_v2_plans
                  SET name = ?, description = ?, duration_days = ?, traffic_limit_bytes = ?,
-                     device_limit = ?, is_active = ?, updated_at = ?
+                     device_limit = ?, ip_limit = ?, is_active = ?, updated_at = ?
                  WHERE id = ?',
                 [
                     $plan->name,
@@ -157,6 +158,7 @@ final class PlanRepository
                     $plan->durationDays,
                     $plan->trafficLimitBytes,
                     $plan->deviceLimit,
+                    $plan->ipLimit,
                     $plan->isActive ? 1 : 0,
                     $now,
                     $id,

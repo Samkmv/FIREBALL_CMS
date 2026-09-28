@@ -32,6 +32,7 @@ final class PlanValidator
             $deviceLimit,
             !empty($input['is_active']),
             $nodes,
+            $this->integer($input['ip_limit'] ?? 0, 0, 100000, 'vpn_manager_v2_error_plan_ip_limit'),
         );
     }
 

@@ -74,6 +74,32 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         $this->authenticated = true;
     }
 
+    public function listClientDevices(string $email): array
+    {
+        $this->authenticate();
+        $response = $this->requestJson('POST', $this->config->endpoint('/panel/api/clients/hwids/' . rawurlencode($email)));
+        $rows = $response['obj'] ?? [];
+        if (!is_array($rows) || !array_is_list($rows)) {
+            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_devices_response'));
+        }
+        return array_values(array_filter($rows, 'is_array'));
+    }
+
+    public function deleteClientDevice(string $email, int $deviceId): void
+    {
+        if ($deviceId <= 0) {
+            throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_remote_id'));
+        }
+        $this->authenticate();
+        $this->requestJson('DELETE', $this->config->endpoint('/panel/api/clients/hwids/' . rawurlencode($email) . '/' . $deviceId));
+    }
+
+    public function clearClientDevices(string $email): void
+    {
+        $this->authenticate();
+        $this->requestJson('DELETE', $this->config->endpoint('/panel/api/clients/hwids/' . rawurlencode($email)));
+    }
+
     public function testConnection(): ConnectionTestResult
     {
         $this->authenticate();

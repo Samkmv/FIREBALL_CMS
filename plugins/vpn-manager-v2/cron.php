@@ -8,9 +8,9 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $arguments = array_slice($argv, 1);
-if (array_diff($arguments, ['--access-only', '--notifications-only']) !== []
-    || (in_array('--access-only', $arguments, true) && in_array('--notifications-only', $arguments, true))) {
-    fwrite(STDERR, "Usage: php cron.php [--access-only|--notifications-only]\n");
+if (array_diff($arguments, ['--access-only', '--notifications-only', '--reconcile-only']) !== []
+    || count($arguments) > 1) {
+    fwrite(STDERR, "Usage: php cron.php [--access-only|--notifications-only|--reconcile-only]\n");
     exit(2);
 }
 
@@ -33,11 +33,15 @@ if (!is_resource($lock) || !flock($lock, LOCK_EX | LOCK_NB)) {
 try {
     $result = [];
     $failed = false;
-    if (!in_array('--notifications-only', $arguments, true)) {
+    if ($arguments === [] || in_array('--access-only', $arguments, true)) {
         $result['expiration'] = (new \Fireball\VpnManagerV2\Services\SubscriptionAutomationService())->checkExpirations();
         $failed = (int)($result['expiration']['failed'] ?? 0) > 0;
     }
-    if (!in_array('--access-only', $arguments, true)) {
+    if ($arguments === [] || in_array('--reconcile-only', $arguments, true)) {
+        $result['reconciliation'] = (new \Fireball\VpnManagerV2\Jobs\VpnV2ReconcilePlanSubscriptionsJob())->handle();
+        $failed = $failed || (int)($result['reconciliation']['failure'] ?? 0) > 0;
+    }
+    if ($arguments === [] || in_array('--notifications-only', $arguments, true)) {
         $result['notifications'] = (new \Fireball\VpnManagerV2\Services\NotificationMaintenanceService())->runDue(true);
         foreach ($result['notifications']['steps'] ?? [] as $step) {
             $failed = $failed || ($step['status'] ?? 'error') !== 'ok'

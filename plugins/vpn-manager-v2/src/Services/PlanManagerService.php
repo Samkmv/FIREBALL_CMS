@@ -34,11 +34,13 @@ final class PlanManagerService
     public function update(int $id, array $input): PlanUpdateResult
     {
         $repository = $this->repository ?? new PlanRepository();
-        if (!$repository->find($id)) {
+        $beforePlan = $repository->find($id);
+        if (!$beforePlan) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_not_found'));
         }
 
         $before = $repository->nodes($id);
+        $input['ip_limit'] ??= $beforePlan['ip_limit'] ?? 0;
         $plan = ($this->validator ?? new PlanValidator())->validate(
             $input,
             $repository->topologyForInboundIds($this->inboundIds($input))
@@ -74,21 +76,15 @@ final class PlanManagerService
         $affected = $reconciliationRepository->eligibleSubscriptionCount($id);
         $reconciliation = null;
         $reconciler = $this->reconciler ?? new VpnPlanSubscriptionReconciler();
-        $propagate = !empty($input['reconcile_existing']);
+        $parametersChanged = (int)$beforePlan['device_limit'] !== $plan->deviceLimit
+            || (int)($beforePlan['ip_limit'] ?? 0) !== $plan->ipLimit
+            || (int)($beforePlan['traffic_limit_bytes'] ?? 0) !== (int)$plan->trafficLimitBytes;
+        cache()->remove('vpn-v2:plan-preview:' . $id);
         try {
-            if ($affected > 0 && $propagate && ($diff['added'] !== [] || $diff['changed'] !== [])) {
+            if ($affected > 0 && ($parametersChanged || $diff['added'] !== [] || $diff['changed'] !== [] || $diff['removed'] !== [])) {
                 // A plan edit can fan out to many panels. Keep the admin request
                 // local-only and let the registered worker perform remote I/O.
                 $reconciliation = $reconciler->queuePlan($id, $adminId, ['batch_size' => 20]);
-            } elseif ($affected > 0 && $diff['removed'] !== []) {
-                // Removal only marks local connections obsolete. Remote clients keep working.
-                $removalOptions = [
-                    'initiated_by' => $adminId,
-                    'provision_missing' => false,
-                    'sync_flow' => false,
-                    'batch_size' => 20,
-                ];
-                $reconciliation = $reconciler->queuePlan($id, $adminId, $removalOptions);
             }
         } catch (\Throwable $exception) {
             $events->logEvent('plan_reconcile_failed', null, null, null, null, $adminId, [

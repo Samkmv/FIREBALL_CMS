@@ -35,48 +35,84 @@ final class RemoteClientSyncService
         $expected = $factory->build($subscription, $desiredNode);
         $client = $this->client($context['server'], $context['inbound'], $node);
         $remoteInboundId = (int)$context['inbound']['remote_inbound_id'];
-        $beforeInbound = $client->getInbound($remoteInboundId);
-        $verifier = $this->verifier ?? new ClientVerifier($resolver);
-        $credential = (new RemoteClientCredentialService())->credential($node);
-        $before = $verifier->findInInbound(
-            $beforeInbound,
-            $credential,
-            (string)$node['client_email']
-        );
+        return $this->applyClientState($client, $remoteInboundId, $node, $expected);
+    }
+
+    /** Shared read/merge/update/read path for provisioning and every later change. */
+    public function applyClientState(
+        ThreeXuiClientInterface $client, int $remoteInboundId, array $node, array $expected,
+        ?array $beforeInbound = null
+    ): array {
+        $beforeInbound ??= $client->getInbound($remoteInboundId);
+        $verifier = $this->verifier ?? new ClientVerifier();
+        $before = $this->readClientState($client, $beforeInbound, $node);
         if ($before === null) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_found_for_update'));
         }
-        // UUID/password is the stable identity; email is CMS-owned and may need to be restored.
         $verifier->assertStableCredential($before, $expected);
         $changedFields = $verifier->changedFields($before, $expected);
-
         if ($changedFields !== []) {
-            $client->updateClient(
-                $remoteInboundId,
-                $credential,
-                $factory->mergeForUpdate($before, $expected)
-            );
+            $client->updateClient($remoteInboundId, (new RemoteClientCredentialService())->credential($node),
+                ($this->payloadFactory ?? new ClientPayloadFactory())->mergeForUpdate($before, $expected));
         }
-
-        // A second read is mandatory after every actual update; a no-op already has a fresh factual read.
         $confirmedInbound = $changedFields !== [] ? $client->getInbound($remoteInboundId) : $beforeInbound;
-        $confirmed = $verifier->findInInbound(
-            $confirmedInbound,
-            $credential,
-            (string)$node['client_email']
-        );
+        $confirmed = $changedFields !== [] ? $this->readClientState($client, $confirmedInbound, $node) : $before;
         if ($confirmed === null) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed'));
         }
-        $verifier->verifyFields($confirmed, $expected, $changedFields);
+        // Confirm every owned field, including HWID stored outside inbound settings.
+        $verifier->verify($confirmed, $expected);
+        $verifier->verifyFields($confirmed, $expected, ['reset', 'resetDay']);
 
         return [
             'remote_updated' => $changedFields !== [],
             'changed_fields' => $changedFields,
-            'flow' => $flow,
+            'flow' => ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow($expected['flow'] ?? null),
+            'enable' => (bool)$expected['enable'],
             'traffic_limit_bytes' => (int)($expected['totalGB'] ?? 0) > 0 ? (int)$expected['totalGB'] : null,
             'traffic_used_bytes' => $this->trafficUsed($confirmedInbound, $confirmed, (string)$node['client_email']),
         ];
+    }
+
+    public function readClientState(ThreeXuiClientInterface $client, array $inbound, array $node): ?array
+    {
+        $verifier = $this->verifier ?? new ClientVerifier();
+        $remote = $verifier->findInInbound($inbound, (new RemoteClientCredentialService())->credential($node),
+            (string)$node['client_email'], (string)($node['remote_client_id'] ?? ''), (string)($node['client_sub_id'] ?? ''));
+        if ($remote !== null && method_exists($client, 'findGlobalClient')) {
+            $global = $client->findGlobalClient((string)$remote['email']);
+            if ($global !== null) {
+                $record = $global['client'];
+                $verifier->assertStableCredential($record, $remote);
+                if (array_key_exists('limitHwid', $record)) {
+                    $remote['limitHwid'] = $record['limitHwid'];
+                }
+            }
+        }
+        return $remote;
+    }
+
+    /** A factual read only. No updates, creation, device registration or deletion. */
+    public function inspect(array $node, array $subscription, array $nodeOverrides = []): array
+    {
+        $context = $this->context($node);
+        $expected = ($this->payloadFactory ?? new ClientPayloadFactory())->build($subscription, array_replace($node, $nodeOverrides));
+        $client = $this->client($context['server'], $context['inbound'], $node);
+        $remote = $this->readClientState($client, $client->getInbound((int)$context['inbound']['remote_inbound_id']), $node);
+        if ($remote === null) {
+            return ['missing' => true, 'changed_fields' => [], 'differences' => []];
+        }
+        $verifier = $this->verifier ?? new ClientVerifier();
+        $verifier->assertStableCredential($remote, $expected);
+        $fields = $verifier->changedFields($remote, $expected);
+        $differences = [];
+        foreach ($fields as $field) {
+            // Do not persist remote strings, identifiers, credentials or metadata in preview.
+            $differences[$field] = in_array($field, ['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable', 'reset', 'resetDay'], true)
+                ? ['actual' => isset($remote[$field]) ? (int)$remote[$field] : null, 'expected' => (int)$expected[$field]]
+                : ['changed' => true];
+        }
+        return ['missing' => false, 'changed_fields' => $fields, 'differences' => $differences];
     }
 
     public function pull(array $node): array
@@ -86,7 +122,7 @@ final class RemoteClientSyncService
         $inbound = $client->getInbound((int)$context['inbound']['remote_inbound_id']);
         $verifier = $this->verifier ?? new ClientVerifier($this->flowResolver ?? new VpnFlowResolver());
         $credential = (new RemoteClientCredentialService())->credential($node);
-        $remote = $verifier->findInInbound($inbound, $credential, (string)$node['client_email']);
+        $remote = $this->readClientState($client, $inbound, $node);
         if ($remote === null) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_found_for_update'));
         }
@@ -106,7 +142,8 @@ final class RemoteClientSyncService
             'traffic_used_bytes' => $this->trafficUsed($inbound, $remote, (string)$node['client_email']),
             'enable' => $remote['enable'] ?? false,
             'expiry_time' => (int)($remote['expiryTime'] ?? 0),
-            'device_limit' => max(0, (int)($remote['limitIp'] ?? 0)),
+            'device_limit' => max(0, (int)($remote['limitHwid'] ?? 0)),
+            'ip_limit' => max(0, (int)($remote['limitIp'] ?? 0)),
         ];
     }
 
@@ -145,6 +182,7 @@ final class RemoteClientSyncService
             'expires_at' => $node['expires_at'] ?? null,
             'status' => $node['subscription_status'] ?? 'active',
             'device_limit' => $node['device_limit'] ?? 0,
+            'ip_limit' => $node['ip_limit'] ?? 0,
             'traffic_limit_bytes' => $node['subscription_traffic_limit_bytes'] ?? null,
         ];
     }

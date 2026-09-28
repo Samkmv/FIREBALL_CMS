@@ -237,7 +237,8 @@ final class ConfigurationSyncService
                     $counts['changed']++;
                     $changedSubscriptions[(int)$node['subscription_id']] = true;
                 }
-                if ($this->remotePolicyMismatch($node, $remote['client'], $expectedName)) {
+                $policyClient = (new RemoteClientSyncService())->readClientState($client, $remote['raw_inbound'], $node) ?? $remote['client'];
+                if ($this->remotePolicyMismatch($node, $policyClient, $expectedName)) {
                     ($this->operations ?? new OperationQueueRepository())->enqueue(
                         'update_client',
                         'reconciliation',
@@ -451,25 +452,12 @@ final class ConfigurationSyncService
 
     private function remotePolicyMismatch(array $node, array $client, string $expectedName): bool
     {
-        $expiry = isset($node['expires_at']) && $node['expires_at'] !== null
-            ? strtotime((string)$node['expires_at']) * 1000
-            : 0;
-        $limit = $node['subscription_traffic_limit_bytes'] !== null
-            ? (int)$node['subscription_traffic_limit_bytes']
-            : 0;
-        $enabled = \Fireball\VpnManagerV2\Support\SubscriptionAccessPolicy::enabled([
-            'status' => $node['subscription_status'],
-            'starts_at' => $node['starts_at'] ?? null,
-            'expires_at' => $node['expires_at'] ?? null,
-        ], $node);
-
-        return trim((string)($client['email'] ?? '')) !== $expectedName
-            || (int)($client['expiryTime'] ?? 0) !== max(0, (int)$expiry)
-            || (int)($client['totalGB'] ?? 0) !== max(0, $limit)
-            || (int)($client['limitIp'] ?? 0) !== max(0, (int)$node['device_limit'])
-            || (int)($client['reset'] ?? 0) !== 0
-            || (int)($client['resetDay'] ?? 0) !== 0
-            || (bool)($client['enable'] ?? false) !== $enabled;
+        $expected = (new ClientPayloadFactory())->build([
+            'status' => $node['subscription_status'], 'starts_at' => $node['starts_at'] ?? null,
+            'expires_at' => $node['expires_at'] ?? null, 'device_limit' => $node['device_limit'] ?? 0,
+            'ip_limit' => $node['ip_limit'] ?? 0, 'traffic_limit_bytes' => $node['subscription_traffic_limit_bytes'] ?? null,
+        ], array_replace($node, ['client_email' => $expectedName]));
+        return (new ClientVerifier())->changedFields($client, $expected) !== [];
     }
 
     private function wasConfirmedRemote(array $node): bool

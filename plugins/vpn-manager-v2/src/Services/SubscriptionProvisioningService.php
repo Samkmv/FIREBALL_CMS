@@ -128,6 +128,7 @@ final class SubscriptionProvisioningService
                     ? (int)$plan['traffic_limit_bytes']
                     : null,
                 'device_limit' => (int)$plan['device_limit'],
+            'ip_limit' => (int)($plan['ip_limit'] ?? 0),
                 'subscription_token' => $this->uniqueToken($repository),
                 'created_by' => $adminId,
             ], $localNodes);
@@ -327,6 +328,7 @@ final class SubscriptionProvisioningService
                 'expires_at' => $node['expires_at'] ?? null,
                 'status' => $node['subscription_status'] ?? 'active',
                 'device_limit' => $node['device_limit'] ?? 0,
+                'ip_limit' => $node['ip_limit'] ?? 0,
                 'traffic_limit_bytes' => $node['subscription_traffic_limit_bytes'] ?? null,
             ];
             $factory = $this->payloadFactory ?? new ClientPayloadFactory();
@@ -337,6 +339,7 @@ final class SubscriptionProvisioningService
             $storedRemoteIdentity = $credentials->usesPassword((string)$node['protocol'])
                 ? (trim((string)($node['remote_client_id'] ?? '')) ?: null)
                 : $credential;
+            $sync = new RemoteClientSyncService(payloadFactory: $factory, verifier: $verifier);
             $remoteInboundId = (int)$inbound['remote_inbound_id'];
             $currentInbound = $client->getInbound($remoteInboundId);
             $existing = $verifier->findInInbound(
@@ -347,36 +350,8 @@ final class SubscriptionProvisioningService
                 (string)($node['client_sub_id'] ?? '')
             );
             if ($existing !== null) {
-                // FIREBALL_VPN_RENEW_SYNC_PATCH_V1: existing-client-upsert
-                // Renewal may legitimately change expiryTime/enable/limits.
-                // UUID/password remains the stable identity and is never regenerated.
-                $verifier->assertStableCredential($existing, $payload);
-                $changedFields = $verifier->changedFields($existing, $payload);
-
-                if ($changedFields !== []) {
-                    $client->updateClient(
-                        $remoteInboundId,
-                        $credential,
-                        $factory->mergeForUpdate($existing, $payload)
-                    );
-
-                    // Mandatory factual read after update.
-                    $currentInbound = $client->getInbound($remoteInboundId);
-                    $existing = $verifier->findInInbound(
-                        $currentInbound,
-                        $credential,
-                        (string)$node['client_email'],
-                        (string)($node['remote_client_id'] ?? ''),
-                        (string)($node['client_sub_id'] ?? '')
-                    );
-                    if ($existing === null) {
-                        throw new ProvisioningException(
-                            \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed')
-                        );
-                    }
-                }
-
-                $verifier->verify($existing, $payload);
+                $applied = $sync->applyClientState($client, $remoteInboundId, $node, $payload, $currentInbound);
+                $changedFields = $applied['changed_fields'];
                 $repository->markNodeActive(
                     $nodeId,
                     $storedRemoteIdentity,
@@ -434,30 +409,8 @@ final class SubscriptionProvisioningService
                         );
                     }
 
-                    $verifier->assertStableCredential($attached, $payload);
-                    $changedFields = $verifier->changedFields($attached, $payload);
-                    if ($changedFields !== []) {
-                        $client->updateClient(
-                            $remoteInboundId,
-                            $credential,
-                            $factory->mergeForUpdate($attached, $payload)
-                        );
-                        $attachedInbound = $client->getInbound($remoteInboundId);
-                        $attached = $verifier->findInInbound(
-                            $attachedInbound,
-                            $credential,
-                            (string)$node['client_email'],
-                            (string)($node['remote_client_id'] ?? ''),
-                            (string)($node['client_sub_id'] ?? '')
-                        );
-                        if ($attached === null) {
-                            throw new ProvisioningException(
-                                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed')
-                            );
-                        }
-                    }
-
-                    $verifier->verify($attached, $payload);
+                    $applied = $sync->applyClientState($client, $remoteInboundId, $node, $payload, $attachedInbound);
+                    $changedFields = $applied['changed_fields'];
                     $repository->markNodeActive(
                         $nodeId,
                         $storedRemoteIdentity,
@@ -497,7 +450,7 @@ final class SubscriptionProvisioningService
                     throw $addException;
                 }
 
-                $verifier->verify($partiallyCreated, $payload);
+                $sync->applyClientState($client, $remoteInboundId, $node, $payload, $freshInbound);
                 $repository->markNodeActive(
                     $nodeId,
                     $storedRemoteIdentity,
@@ -527,7 +480,7 @@ final class SubscriptionProvisioningService
             if ($confirmed === null) {
                 throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed'));
             }
-            $verifier->verify($confirmed, $payload);
+            $sync->applyClientState($client, $remoteInboundId, $node, $payload, $freshInbound);
 
             $repository->markNodeActive(
                 $nodeId,

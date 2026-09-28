@@ -143,6 +143,14 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
                 @ignore_user_abort(true);
                 @set_time_limit(30);
 
+                // Reuse the persisted reconciliation queue; one subscription per web fallback.
+                // The registered scheduler/CLI worker drains larger batches without web traffic.
+                try {
+                    (new VpnV2ReconcilePlanSubscriptionsJob())->handle(null, 1);
+                } catch (\Throwable $exception) {
+                    error_log('VPN Manager V2 reconciliation worker: ' . get_class($exception));
+                }
+
                 (new NotificationMaintenanceService())->runDue();
             } catch (\Throwable $exception) {
                 log_error_details(
