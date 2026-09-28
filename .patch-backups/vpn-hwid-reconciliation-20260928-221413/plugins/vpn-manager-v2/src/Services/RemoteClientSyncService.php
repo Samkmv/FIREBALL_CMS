@@ -69,10 +69,6 @@ final class RemoteClientSyncService
             'changed_fields' => $changedFields,
             'flow' => ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow($expected['flow'] ?? null),
             'enable' => (bool)$expected['enable'],
-            // FIREBALL_VPN_HWID_RECONCILIATION_FINISH_V1: values confirmed in 3x-ui.
-            'device_limit' => max(0, (int)($expected['limitHwid'] ?? 0)),
-            'ip_limit' => max(0, (int)($expected['limitIp'] ?? 0)),
-            'expiry_time' => max(0, (int)($expected['expiryTime'] ?? 0)),
             'traffic_limit_bytes' => (int)($expected['totalGB'] ?? 0) > 0 ? (int)$expected['totalGB'] : null,
             'traffic_used_bytes' => $this->trafficUsed($confirmedInbound, $confirmed, (string)$node['client_email']),
         ];

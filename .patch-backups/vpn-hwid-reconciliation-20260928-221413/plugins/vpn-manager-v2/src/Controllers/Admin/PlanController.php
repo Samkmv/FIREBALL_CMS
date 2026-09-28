@@ -120,16 +120,6 @@ final class PlanController
         $id = (int)get_route_param('id');
         try {
             $preview = (new VpnPlanSubscriptionReconciler())->previewPlanReconciliation($id);
-            // FIREBALL_VPN_HWID_RECONCILIATION_FINISH_V1: persist sanitized preview for the edit page.
-            cache()->set('vpn-v2:plan-preview:' . $id, [
-                'checked_at' => $preview->checkedAt,
-                'subscriptions_checked' => $preview->subscriptionsChecked,
-                'matching_subscriptions' => $preview->matchingSubscriptions,
-                'missing_connections' => $preview->missingConnections,
-                'obsolete_connections' => $preview->obsoleteConnections,
-                'parameter_counts' => $preview->parameterCounts,
-                'error_count' => count($preview->errors),
-            ], 600);
             $message = sprintf(
                 \FireballPluginVpnManagerV2::t($preview->hasDifferences()
                     ? 'vpn_manager_v2_flash_reconcile_preview'
@@ -182,7 +172,6 @@ final class PlanController
             $result = $count > 0
                 ? $service->queuePlan($id, $this->adminId(), ['batch_size' => 20])
                 : new \Fireball\VpnManagerV2\DTO\ReconcileResult($id, 0);
-            cache()->remove('vpn-v2:plan-preview:' . $id);
             if ($result->queued) {
                 session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_reconcile_queued'));
             } elseif (!$result->successful()) {
@@ -255,7 +244,6 @@ final class PlanController
             'servers' => $repository->serversForForm(),
             'inbounds' => $inbounds,
             'affectedSubscriptions' => $plan ? $reconciliation->eligibleSubscriptionCount((int)$plan['id']) : 0,
-            'reconciliationPreview' => $plan ? cache()->get('vpn-v2:plan-preview:' . (int)$plan['id'], null) : null,
             'missingConnectionCount' => $plan ? $reconciliation->missingNodeCountForPlan((int)$plan['id']) : 0,
             'latestReconciliation' => $plan ? $reconciliation->latestOperation((int)$plan['id']) : null,
             'obsoleteConnectionCount' => $plan ? $reconciliation->obsoleteNodeCount((int)$plan['id']) : 0,

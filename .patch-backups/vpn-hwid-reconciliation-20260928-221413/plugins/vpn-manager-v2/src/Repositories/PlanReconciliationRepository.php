@@ -444,13 +444,6 @@ final class PlanReconciliationRepository
         }
         $status = !empty($expected['enable'] ?? $node['desired_enabled']) ? 'active' : 'disabled';
         $now = date('Y-m-d H:i:s');
-        $deviceLimit = $expected !== null && array_key_exists('device_limit', $expected)
-            ? max(0, (int)$expected['device_limit'])
-            : (int)$node['device_limit'];
-        $expiryTime = $expected !== null ? max(0, (int)($expected['expiry_time'] ?? 0)) : 0;
-        $expiresAt = $expected !== null && array_key_exists('expiry_time', $expected)
-            ? ($expiryTime > 0 ? date('Y-m-d H:i:s', (int)floor($expiryTime / 1000)) : null)
-            : $node['expires_at'];
         db()->query(
             'UPDATE vpn_v2_subscription_nodes
              SET flow = ?, status = ?, is_obsolete = 0, sync_status = \'synced\',
@@ -458,7 +451,7 @@ final class PlanReconciliationRepository
                  traffic_used_bytes = GREATEST(COALESCE(?, traffic_used_bytes), traffic_used_bytes),
                  last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?',
             [$flow, $status, $expected !== null ? $expected['traffic_limit_bytes'] : $node['traffic_limit_bytes'],
-                $deviceLimit, $expiresAt, $trafficUsedBytes, $now, $now, $nodeId]
+                (int)$node['device_limit'], $node['expires_at'], $trafficUsedBytes, $now, $now, $nodeId]
         );
     }
 

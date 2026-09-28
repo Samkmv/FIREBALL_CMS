@@ -5,7 +5,6 @@ use Fireball\VpnManagerV2\Controllers\Admin\InboundController;
 use Fireball\VpnManagerV2\Controllers\Admin\PlanController;
 use Fireball\VpnManagerV2\Controllers\Admin\ServerController;
 use Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController;
-use Fireball\VpnManagerV2\Controllers\Admin\SubscriptionDeviceController;
 use Fireball\VpnManagerV2\Controllers\Admin\ConnectionController;
 use Fireball\VpnManagerV2\Controllers\Admin\SettingsController;
 use Fireball\VpnManagerV2\Controllers\Admin\SyncController;
@@ -108,15 +107,6 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/(?P<source>\d+)/detach/?', [SubscriptionController::class, 'detachExternalSource'])
     ->middleware(['auth', 'admin']);
-
-// FIREBALL_VPN_HWID_RECONCILIATION_FINISH_V1: device-management-routes
-$router->get('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/devices/?', [SubscriptionDeviceController::class, 'index'])
-    ->middleware(['auth', 'admin']);
-$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/devices/(?P<node>\d+)/(?P<device>\d+)/delete/?', [SubscriptionDeviceController::class, 'delete'])
-    ->middleware(['auth', 'admin']);
-$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/devices/(?P<node>\d+)/clear/?', [SubscriptionDeviceController::class, 'clear'])
-    ->middleware(['auth', 'admin']);
-
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/?', [SubscriptionController::class, 'show'])
     ->middleware(['auth', 'admin']);
 

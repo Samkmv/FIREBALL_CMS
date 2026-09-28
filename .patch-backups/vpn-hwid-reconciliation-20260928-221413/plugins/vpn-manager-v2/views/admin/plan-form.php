@@ -15,20 +15,6 @@ $latestReconciliation = is_array($latestReconciliation ?? null) ? $latestReconci
 $obsoleteConnectionCount = max(0, (int)($obsoleteConnectionCount ?? 0));
 $obsoleteSubscriptionCount = max(0, (int)($obsoleteSubscriptionCount ?? 0));
 $obsoleteTargets = is_array($obsoleteTargets ?? null) ? $obsoleteTargets : [];
-$reconciliationPreview = is_array($reconciliationPreview ?? null) ? $reconciliationPreview : null;
-$previewParameterCounts = is_array($reconciliationPreview['parameter_counts'] ?? null)
-    ? $reconciliationPreview['parameter_counts'] : [];
-$previewLabels = [
-    'limitHwid' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_devices'),
-    'limitIp' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_ip'),
-    'totalGB' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_traffic'),
-    'expiryTime' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_expiry'),
-    'enable' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_enable'),
-    'flow' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_flow'),
-    'email' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_identity'),
-    'reset' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_reset'),
-    'resetDay' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_reset'),
-];
 $planId = (int)($plan['id'] ?? 0);
 $action = $editing
     ? base_href('/admin/plugins/vpn-manager-v2/plans/edit/' . $planId)
@@ -148,23 +134,17 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
     <?= get_csrf_field() ?>
 
     <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-7">
             <label class="form-label" for="vpnV2PlanName"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_name')) ?></label>
             <input class="form-control" id="vpnV2PlanName" type="text" name="name" maxlength="255" required value="<?= htmlSC((string)($plan['name'] ?? '')) ?>">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
             <label class="form-label" for="vpnV2PlanDuration"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_duration_days')) ?></label>
             <input class="form-control" id="vpnV2PlanDuration" type="number" name="duration_days" min="1" max="36500" step="1" required value="<?= (int)($plan['duration_days'] ?? 30) ?>">
         </div>
         <div class="col-md-2">
             <label class="form-label" for="vpnV2PlanDevices"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_device_limit')) ?></label>
             <input class="form-control" id="vpnV2PlanDevices" type="number" name="device_limit" min="1" max="100000" step="1" required value="<?= (int)($plan['device_limit'] ?? 1) ?>">
-            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_device_limit_hwid_help')) ?></div>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label" for="vpnV2PlanIpLimit"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_ip_limit')) ?></label>
-            <input class="form-control" id="vpnV2PlanIpLimit" type="number" name="ip_limit" min="0" max="100000" step="1" value="<?= (int)($plan['ip_limit'] ?? 0) ?>">
-            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_ip_limit_help')) ?></div>
         </div>
         <div class="col-12">
             <label class="form-label" for="vpnV2PlanDescription"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_description')) ?></label>
@@ -232,12 +212,20 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
     </section>
 
     <?php if ($editing): ?>
-        <div class="alert alert-info rounded-4 mt-4 mb-0">
-            <div class="fw-medium"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_auto_reconcile_title')) ?></div>
-            <div class="small mt-1"><?= htmlSC(sprintf(
-                FireballPluginVpnManagerV2::t('vpn_manager_v2_auto_reconcile_help'),
-                $affectedSubscriptions
-            )) ?></div>
+        <div class="border rounded-4 p-3 mt-4">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" id="vpnV2ReconcileExisting" type="checkbox"
+                       name="reconcile_existing" value="1" checked>
+                <label class="form-check-label fw-medium" for="vpnV2ReconcileExisting">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_existing_label')) ?>
+                </label>
+                <div class="form-text">
+                    <?= htmlSC(sprintf(
+                        FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_affected_count'),
+                        $affectedSubscriptions
+                    )) ?>
+                </div>
+            </div>
         </div>
     <?php endif; ?>
 
@@ -264,30 +252,6 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_connections')) ?>:
                     <strong class="text-body"><?= $obsoleteConnectionCount ?></strong></span>
                 </div>
-
-                <?php if ($reconciliationPreview !== null): ?>
-                    <div class="border rounded-4 p-3 mt-3">
-                        <div class="small text-body-secondary mb-2">
-                            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_preview_checked')) ?>:
-                            <strong class="text-body"><?= htmlSC((string)($reconciliationPreview['checked_at'] ?? '—')) ?></strong>
-                        </div>
-                        <div class="d-flex flex-wrap gap-2">
-                            <?php foreach ($previewParameterCounts as $field => $count): ?>
-                                <?php if ((int)$count > 0): ?>
-                                    <span class="badge rounded-pill text-bg-warning">
-                                        <?= htmlSC($previewLabels[$field] ?? (string)$field) ?>: <?= (int)$count ?>
-                                    </span>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                            <?php if ((int)($reconciliationPreview['error_count'] ?? 0) > 0): ?>
-                                <span class="badge rounded-pill text-bg-danger">
-                                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_preview_errors')) ?>:
-                                    <?= (int)$reconciliationPreview['error_count'] ?>
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endif; ?>
                 <?php if ($obsoleteTargets !== []): ?>
                     <div class="small text-body-secondary mt-2">
                         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_targets')) ?>:
