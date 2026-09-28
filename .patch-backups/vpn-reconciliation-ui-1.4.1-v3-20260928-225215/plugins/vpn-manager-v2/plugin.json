@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.4.1",
+  "version": "1.4.0",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
@@ -13,7 +13,6 @@
   },
   "auto_migrate": true,
   "release_notes": [
-    "Improved tariff reconciliation UI: explicit discrepancy counters, no-op detection, manual sync guard, and clearer HWID/IP limit labels.",
     "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
     "Added a Lifetime option when editing subscriptions; administrator lists and details show expiration immediately from the actual date without waiting for cron.",
     "Fixed inactive subscription refresh in Happ: previous servers are replaced by an inactive placeholder, including managed subscriptions and stale caches.",
@@ -28,7 +27,6 @@
   ],
   "release_notes_i18n": {
     "ru": [
-      "Улучшено согласование тарифов: явные счётчики расхождений, состояние «всё соответствует», защита от лишней ручной синхронизации и понятные лимиты устройств/IP.",
       "Завершена синхронизация тарифов с 3x-ui: лимит HWID-устройств, отдельный лимит IP, управление устройствами в админке и подробная диагностика расхождений.",
       "При редактировании подписки добавлен переключатель «Бессрочно»; таблица и карточка администратора показывают истечение по фактической дате без ожидания cron.",
       "Исправлено обновление неактивной подписки в Happ: прежние серверы заменяются записью «VPN-подписка неактивна», включая обычные подписки и устаревший кеш.",
@@ -42,7 +40,6 @@
       "Исправлено продление истёкшей подписки: будущая дата повторно активирует клиентов 3x-ui, а ошибка повторного создания больше не показывается как успешное обновление."
     ],
     "en": [
-      "Improved tariff reconciliation UI: explicit discrepancy counters, no-op detection, manual sync guard, and clearer HWID/IP limit labels.",
       "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
       "Added a Lifetime option when editing subscriptions; administrator lists and details show expiration immediately from the actual date without waiting for cron.",
       "Fixed inactive subscription refresh in Happ: previous servers are replaced by an inactive placeholder, including managed subscriptions and stale caches.",
@@ -56,7 +53,6 @@
       "Fixed expired-subscription renewal: a future expiration reactivates 3x-ui clients, and failed reconciliation can no longer be reported as a successful update."
     ],
     "de": [
-      "Die Tarifabstimmung wurde verbessert: klare Abweichungszähler, Erkennung von „alles stimmt überein“, Schutz vor unnötiger manueller Synchronisierung und verständliche Geräte-/IP-Limits.",
       "Die Tarifsynchronisierung mit 3x-ui wurde vervollständigt: HWID-Gerätelimit, separates IP-Limit, Geräteverwaltung im Adminbereich und detaillierte Abweichungsdiagnose.",
       "Die Abonnementbearbeitung bietet jetzt Unbefristet; Adminlisten und Detailansichten zeigen den Ablauf anhand des Datums ohne Warten auf Cron.",
       "Die Aktualisierung inaktiver Happ-Abonnements ersetzt bisherige Server durch einen Inaktiv-Hinweis, auch bei verwalteten Abonnements und veraltetem Cache.",
@@ -70,7 +66,6 @@
       "Die Verlängerung abgelaufener Abonnements wurde korrigiert: Ein zukünftiges Datum reaktiviert 3x-ui-Clients und fehlgeschlagene Wiederherstellungen werden nicht mehr als Erfolg gemeldet."
     ],
     "zh-cn": [
-      "改进套餐同步界面：显示明确的差异计数、识别“全部一致”状态、防止无意义的手动同步，并明确区分设备限制和 IP 限制。",
       "已完成与 3x-ui 的套餐同步：支持 HWID 设备限制、独立 IP 限制、后台设备管理和详细差异诊断。",
       "编辑订阅时新增永久选项；管理列表和详情会按实际到期时间显示已过期，无需等待 cron。",
       "修复 Happ 非活动订阅更新：旧服务器将替换为订阅未激活提示，适用于托管订阅和过期缓存。",

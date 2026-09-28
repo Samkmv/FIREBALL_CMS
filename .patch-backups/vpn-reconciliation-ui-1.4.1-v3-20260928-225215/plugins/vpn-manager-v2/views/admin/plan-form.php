@@ -25,35 +25,10 @@ $previewLabels = [
     'expiryTime' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_expiry'),
     'enable' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_enable'),
     'flow' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_flow'),
+    'email' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_identity'),
+    'reset' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_reset'),
+    'resetDay' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_reset'),
 ];
-
-$previewMissingConnections = max(0, (int)($reconciliationPreview['missing_connections'] ?? 0));
-$previewObsoleteConnections = max(0, (int)($reconciliationPreview['obsolete_connections'] ?? 0));
-$previewErrorCount = max(0, (int)($reconciliationPreview['error_count'] ?? 0));
-$previewUnavailableServers = max(0, (int)($reconciliationPreview['unavailable_server_count'] ?? 0));
-$previewDisabledInbounds = max(0, (int)($reconciliationPreview['disabled_inbound_count'] ?? 0));
-$previewConflictCount = max(0, (int)($reconciliationPreview['conflict_count'] ?? 0));
-
-$previewOtherCount = max(0,
-    (int)($previewParameterCounts['email'] ?? 0)
-    + (int)($previewParameterCounts['reset'] ?? 0)
-    + (int)($previewParameterCounts['resetDay'] ?? 0)
-);
-
-$previewFallbackDifferences = $previewMissingConnections > 0
-    || $previewObsoleteConnections > 0
-    || $previewErrorCount > 0
-    || $previewUnavailableServers > 0
-    || $previewDisabledInbounds > 0
-    || $previewConflictCount > 0
-    || array_sum(array_map('intval', $previewParameterCounts)) > 0;
-
-$previewHasDifferences = $reconciliationPreview !== null
-    && (array_key_exists('has_differences', $reconciliationPreview)
-        ? !empty($reconciliationPreview['has_differences'])
-        : $previewFallbackDifferences);
-
-$manualReconcileEnabled = $reconciliationPreview !== null && $previewHasDifferences;
 $planId = (int)($plan['id'] ?? 0);
 $action = $editing
     ? base_href('/admin/plugins/vpn-manager-v2/plans/edit/' . $planId)
@@ -292,67 +267,24 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
 
                 <?php if ($reconciliationPreview !== null): ?>
                     <div class="border rounded-4 p-3 mt-3">
-                        <div class="small text-body-secondary mb-3">
+                        <div class="small text-body-secondary mb-2">
                             <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_preview_checked')) ?>:
                             <strong class="text-body"><?= htmlSC((string)($reconciliationPreview['checked_at'] ?? '—')) ?></strong>
                         </div>
-
                         <div class="d-flex flex-wrap gap-2">
-                            <span class="badge rounded-pill text-bg-<?= $previewMissingConnections > 0 ? 'warning' : 'success' ?>">
-                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_missing_connections')) ?>:
-                                <?= $previewMissingConnections ?>
-                            </span>
-
-                            <span class="badge rounded-pill text-bg-<?= $previewObsoleteConnections > 0 ? 'warning' : 'success' ?>">
-                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_connections')) ?>:
-                                <?= $previewObsoleteConnections ?>
-                            </span>
-
-                            <?php foreach ($previewLabels as $field => $label): ?>
-                                <?php $count = max(0, (int)($previewParameterCounts[$field] ?? 0)); ?>
-                                <span class="badge rounded-pill text-bg-<?= $count > 0 ? 'warning' : 'success' ?>">
-                                    <?= htmlSC($label) ?>: <?= $count ?>
-                                </span>
+                            <?php foreach ($previewParameterCounts as $field => $count): ?>
+                                <?php if ((int)$count > 0): ?>
+                                    <span class="badge rounded-pill text-bg-warning">
+                                        <?= htmlSC($previewLabels[$field] ?? (string)$field) ?>: <?= (int)$count ?>
+                                    </span>
+                                <?php endif; ?>
                             <?php endforeach; ?>
-
-                            <span class="badge rounded-pill text-bg-<?= $previewOtherCount > 0 ? 'warning' : 'success' ?>">
-                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_other')) ?>:
-                                <?= $previewOtherCount ?>
-                            </span>
-
-                            <span class="badge rounded-pill text-bg-<?= $previewErrorCount > 0 ? 'danger' : 'success' ?>">
-                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_preview_errors')) ?>:
-                                <?= $previewErrorCount ?>
-                            </span>
-
-                            <?php if ($previewUnavailableServers > 0): ?>
+                            <?php if ((int)($reconciliationPreview['error_count'] ?? 0) > 0): ?>
                                 <span class="badge rounded-pill text-bg-danger">
-                                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_unavailable_servers')) ?>:
-                                    <?= $previewUnavailableServers ?>
+                                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_preview_errors')) ?>:
+                                    <?= (int)$reconciliationPreview['error_count'] ?>
                                 </span>
                             <?php endif; ?>
-
-                            <?php if ($previewDisabledInbounds > 0): ?>
-                                <span class="badge rounded-pill text-bg-danger">
-                                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_disabled_inbounds')) ?>:
-                                    <?= $previewDisabledInbounds ?>
-                                </span>
-                            <?php endif; ?>
-
-                            <?php if ($previewConflictCount > 0): ?>
-                                <span class="badge rounded-pill text-bg-danger">
-                                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_conflicts')) ?>:
-                                    <?= $previewConflictCount ?>
-                                </span>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="alert alert-<?= $previewHasDifferences ? 'warning' : 'success' ?> rounded-4 mt-3 mb-0 py-2 px-3">
-                            <?= htmlSC(FireballPluginVpnManagerV2::t(
-                                $previewHasDifferences
-                                    ? 'vpn_manager_v2_reconcile_differences_found'
-                                    : 'vpn_manager_v2_reconcile_all_matches'
-                            )) ?>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -379,9 +311,9 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                         )) ?></span></div>
                     <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_processed')) ?>:
                         <?= (int)$latestReconciliation['processed_count'] ?> / <?= (int)$latestReconciliation['total_count'] ?> ·
-                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_changed')) ?>: <?= (int)$latestReconciliation['success_count'] ?> ·
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_successful')) ?>: <?= (int)$latestReconciliation['success_count'] ?> ·
                         <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_errors')) ?>: <?= (int)$latestReconciliation['failure_count'] ?> ·
-                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_already_matched')) ?>: <?= (int)$latestReconciliation['skipped_count'] ?>
+                        <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_skipped')) ?>: <?= (int)$latestReconciliation['skipped_count'] ?>
                     </div>
                     <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_started_at')) ?>:
                         <?= htmlSC((string)($latestReconciliation['started_at'] ?? '—')) ?> ·
@@ -406,25 +338,11 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
             </form>
             <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/reconcile')) ?>">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2"
-                        type="submit"
-                        <?= $manualReconcileEnabled ? '' : 'disabled' ?>
-                        title="<?= htmlSC(FireballPluginVpnManagerV2::t(
-                            $reconciliationPreview === null
-                                ? 'vpn_manager_v2_reconcile_check_first'
-                                : ($previewHasDifferences
-                                    ? 'vpn_manager_v2_action_reconcile'
-                                    : 'vpn_manager_v2_reconcile_all_matches')
-                        )) ?>">
+                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                     <i class="ci-refresh-cw" aria-hidden="true"></i>
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reconcile')) ?>
                 </button>
             </form>
-            <?php endif; ?>
-            <?php if (Permissions::allows(Permissions::RECONCILE) && $reconciliationPreview === null): ?>
-                <div class="small text-body-secondary align-self-center">
-                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_check_first')) ?>
-                </div>
             <?php endif; ?>
             <?php if ($obsoleteConnectionCount > 0 && Permissions::allows(Permissions::DELETE_CONNECTIONS)): ?>
             <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/remove-obsolete')) ?>"

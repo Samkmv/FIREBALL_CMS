@@ -129,11 +129,6 @@ final class PlanController
                 'obsolete_connections' => $preview->obsoleteConnections,
                 'parameter_counts' => $preview->parameterCounts,
                 'error_count' => count($preview->errors),
-                // FIREBALL_VPN_RECONCILIATION_UI_V141
-                'has_differences' => $preview->hasDifferences(),
-                'unavailable_server_count' => count($preview->unavailableServers),
-                'disabled_inbound_count' => count($preview->disabledInbounds),
-                'conflict_count' => count($preview->conflicts),
             ], 600);
             $message = sprintf(
                 \FireballPluginVpnManagerV2::t($preview->hasDifferences()
@@ -181,27 +176,6 @@ final class PlanController
         Permissions::authorize(Permissions::RECONCILE);
         $id = (int)get_route_param('id');
         try {
-            // FIREBALL_VPN_RECONCILIATION_UI_V141
-            // Это ограничение относится только к ручной кнопке.
-            // Автосинхронизация после сохранения тарифа работает как раньше.
-            $previewState = cache()->get('vpn-v2:plan-preview:' . $id, null);
-
-            if (!is_array($previewState)) {
-                session()->setFlash(
-                    'warning',
-                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_check_first')
-                );
-                $this->redirect('/admin/plugins/vpn-manager-v2/plans/edit/' . $id);
-            }
-
-            if (empty($previewState['has_differences'])) {
-                session()->setFlash(
-                    'info',
-                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_all_matches')
-                );
-                $this->redirect('/admin/plugins/vpn-manager-v2/plans/edit/' . $id);
-            }
-
             $repository = new PlanReconciliationRepository();
             $count = $repository->eligibleSubscriptionCount($id);
             $service = new VpnPlanSubscriptionReconciler();

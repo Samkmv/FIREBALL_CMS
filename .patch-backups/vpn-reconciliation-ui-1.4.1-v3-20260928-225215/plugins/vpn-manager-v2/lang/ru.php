@@ -226,7 +226,7 @@ return [
     'vpn_manager_v2_empty_plans' => 'Тарифы VPN V2 ещё не созданы.',
     'vpn_manager_v2_unlimited' => 'Безлимит',
     'vpn_manager_v2_field_duration_days' => 'Длительность, дней',
-    'vpn_manager_v2_field_device_limit' => 'Лимит устройств',
+    'vpn_manager_v2_field_device_limit' => 'Лимит устройств / IP',
     'vpn_manager_v2_field_description' => 'Описание',
     'vpn_manager_v2_field_traffic_limit' => 'Лимит трафика',
     'vpn_manager_v2_field_traffic_unit' => 'Единица',
@@ -631,7 +631,7 @@ return [
     'vpn_manager_v2_reconcile_existing_label' => 'Добавить новый сервер в существующие подписки этого тарифа',
     'vpn_manager_v2_reconcile_affected_count' => 'Новый сервер будет добавлен в действующие подписки: %d.',
     'vpn_manager_v2_reconciliation_title' => 'Согласование подписок с тарифом',
-    'vpn_manager_v2_reconciliation_help' => 'Проверка сравнивает активные подписки с текущими параметрами тарифа и состоянием клиентов в 3x-ui. Синхронизация создаёт отсутствующие подключения и обновляет параметры существующих. Лишние подключения не удаляются без отдельного подтверждения.',
+    'vpn_manager_v2_reconciliation_help' => 'Проверка создаёт только отсутствующие подключения. Удалённые из тарифа подключения остаются рабочими до отдельного подтверждения.',
     'vpn_manager_v2_action_preview_reconciliation' => 'Проверить расхождения',
     'vpn_manager_v2_action_reconcile' => 'Синхронизировать подписки с тарифом',
     'vpn_manager_v2_action_create_missing' => 'Создать отсутствующее подключение',
@@ -996,15 +996,5 @@ return [
     'vpn_manager_v2_error_devices_generic' => 'Не удалось получить или изменить список устройств.',
     'vpn_manager_v2_error_devices_unsupported' => 'Эта версия или конфигурация 3x-ui не поддерживает управление HWID-устройствами.',
     'vpn_manager_v2_error_device_not_found' => 'Устройство или VPN-подключение не найдено.',
-
-
-    // FIREBALL_VPN_RECONCILIATION_UI_V141
-    'vpn_manager_v2_reconcile_changed' => 'Изменено',
-    'vpn_manager_v2_reconcile_already_matched' => 'Уже соответствовали',
-    'vpn_manager_v2_reconcile_all_matches' => 'Все проверенные подписки соответствуют тарифу и состоянию 3x-ui.',
-    'vpn_manager_v2_reconcile_differences_found' => 'Найдены расхождения. Можно выполнить синхронизацию.',
-    'vpn_manager_v2_reconcile_check_first' => 'Сначала выполните «Проверить расхождения».',
-    'vpn_manager_v2_reconcile_conflicts' => 'Конфликты',
-    'vpn_manager_v2_reconcile_diff_other' => 'Другие параметры',
 
 ];

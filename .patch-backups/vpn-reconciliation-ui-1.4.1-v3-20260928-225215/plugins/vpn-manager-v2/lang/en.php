@@ -226,7 +226,7 @@ return [
     'vpn_manager_v2_empty_plans' => 'No VPN V2 plans have been created.',
     'vpn_manager_v2_unlimited' => 'Unlimited',
     'vpn_manager_v2_field_duration_days' => 'Duration, days',
-    'vpn_manager_v2_field_device_limit' => 'Device limit',
+    'vpn_manager_v2_field_device_limit' => 'Device / IP limit',
     'vpn_manager_v2_field_description' => 'Description',
     'vpn_manager_v2_field_traffic_limit' => 'Traffic limit',
     'vpn_manager_v2_field_traffic_unit' => 'Unit',
@@ -631,7 +631,7 @@ return [
     'vpn_manager_v2_reconcile_existing_label' => 'Add the new server to existing subscriptions on this plan',
     'vpn_manager_v2_reconcile_affected_count' => 'The new server will be added to active subscriptions: %d.',
     'vpn_manager_v2_reconciliation_title' => 'Plan subscription reconciliation',
-    'vpn_manager_v2_reconciliation_help' => 'The check compares active subscriptions with the current plan parameters and client state in 3x-ui. Synchronization creates missing connections and updates existing client parameters. Extra connections are not removed without separate confirmation.',
+    'vpn_manager_v2_reconciliation_help' => 'Only missing connections are created. Connections removed from the plan keep working until separately confirmed.',
     'vpn_manager_v2_action_preview_reconciliation' => 'Check discrepancies',
     'vpn_manager_v2_action_reconcile' => 'Synchronize subscriptions with plan',
     'vpn_manager_v2_action_create_missing' => 'Create missing connection',
@@ -996,15 +996,5 @@ return [
     'vpn_manager_v2_error_devices_generic' => 'Unable to read or update the device list.',
     'vpn_manager_v2_error_devices_unsupported' => 'This 3x-ui version or configuration does not support HWID device management.',
     'vpn_manager_v2_error_device_not_found' => 'The device or VPN connection was not found.',
-
-
-    // FIREBALL_VPN_RECONCILIATION_UI_V141
-    'vpn_manager_v2_reconcile_changed' => 'Changed',
-    'vpn_manager_v2_reconcile_already_matched' => 'Already matched',
-    'vpn_manager_v2_reconcile_all_matches' => 'All checked subscriptions match the plan and the current 3x-ui state.',
-    'vpn_manager_v2_reconcile_differences_found' => 'Differences were found. Synchronization is available.',
-    'vpn_manager_v2_reconcile_check_first' => 'Run “Check discrepancies” first.',
-    'vpn_manager_v2_reconcile_conflicts' => 'Conflicts',
-    'vpn_manager_v2_reconcile_diff_other' => 'Other parameters',
 
 ];

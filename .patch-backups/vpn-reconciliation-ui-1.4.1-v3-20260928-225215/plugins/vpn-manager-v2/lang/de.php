@@ -226,7 +226,7 @@ return [
     'vpn_manager_v2_empty_plans' => 'Noch keine VPN-V2-Tarife erstellt.',
     'vpn_manager_v2_unlimited' => 'Unbegrenzt',
     'vpn_manager_v2_field_duration_days' => 'Dauer in Tagen',
-    'vpn_manager_v2_field_device_limit' => 'Gerätelimit',
+    'vpn_manager_v2_field_device_limit' => 'Geräte-/IP-Limit',
     'vpn_manager_v2_field_description' => 'Beschreibung',
     'vpn_manager_v2_field_traffic_limit' => 'Datenlimit',
     'vpn_manager_v2_field_traffic_unit' => 'Einheit',
@@ -631,7 +631,7 @@ return [
     'vpn_manager_v2_reconcile_existing_label' => 'Neuen Server zu bestehenden Abonnements dieses Tarifs hinzufügen',
     'vpn_manager_v2_reconcile_affected_count' => 'Der neue Server wird zu aktiven Abonnements hinzugefügt: %d.',
     'vpn_manager_v2_reconciliation_title' => 'Abonnements mit Tarif abgleichen',
-    'vpn_manager_v2_reconciliation_help' => 'Die Prüfung vergleicht aktive Abonnements mit den aktuellen Tarifparametern und dem Clientstatus in 3x-ui. Die Synchronisierung erstellt fehlende Verbindungen und aktualisiert vorhandene Clientparameter. Zusätzliche Verbindungen werden ohne separate Bestätigung nicht entfernt.',
+    'vpn_manager_v2_reconciliation_help' => 'Nur fehlende Verbindungen werden erstellt. Aus dem Tarif entfernte Verbindungen bleiben bis zur separaten Bestätigung aktiv.',
     'vpn_manager_v2_action_preview_reconciliation' => 'Abweichungen prüfen',
     'vpn_manager_v2_action_reconcile' => 'Abonnements mit Tarif synchronisieren',
     'vpn_manager_v2_action_create_missing' => 'Fehlende Verbindung erstellen',
@@ -996,15 +996,5 @@ return [
     'vpn_manager_v2_error_devices_generic' => 'Die Geräteliste konnte nicht gelesen oder geändert werden.',
     'vpn_manager_v2_error_devices_unsupported' => 'Diese 3x-ui-Version oder Konfiguration unterstützt keine HWID-Geräteverwaltung.',
     'vpn_manager_v2_error_device_not_found' => 'Gerät oder VPN-Verbindung wurde nicht gefunden.',
-
-
-    // FIREBALL_VPN_RECONCILIATION_UI_V141
-    'vpn_manager_v2_reconcile_changed' => 'Geändert',
-    'vpn_manager_v2_reconcile_already_matched' => 'Bereits passend',
-    'vpn_manager_v2_reconcile_all_matches' => 'Alle geprüften Abonnements entsprechen dem Tarif und dem aktuellen 3x-ui-Status.',
-    'vpn_manager_v2_reconcile_differences_found' => 'Abweichungen wurden gefunden. Die Synchronisierung ist verfügbar.',
-    'vpn_manager_v2_reconcile_check_first' => 'Führe zuerst „Abweichungen prüfen“ aus.',
-    'vpn_manager_v2_reconcile_conflicts' => 'Konflikte',
-    'vpn_manager_v2_reconcile_diff_other' => 'Weitere Parameter',
 
 ];

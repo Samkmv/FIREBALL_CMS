@@ -226,7 +226,7 @@ return [
     'vpn_manager_v2_empty_plans' => '尚未创建 VPN V2 套餐。',
     'vpn_manager_v2_unlimited' => '无限制',
     'vpn_manager_v2_field_duration_days' => '时长（天）',
-    'vpn_manager_v2_field_device_limit' => '设备限制',
+    'vpn_manager_v2_field_device_limit' => '设备 / IP 限制',
     'vpn_manager_v2_field_description' => '说明',
     'vpn_manager_v2_field_traffic_limit' => '流量限制',
     'vpn_manager_v2_field_traffic_unit' => '单位',
@@ -631,7 +631,7 @@ return [
     'vpn_manager_v2_reconcile_existing_label' => '将新服务器添加到此套餐的现有订阅',
     'vpn_manager_v2_reconcile_affected_count' => '新服务器将添加到有效订阅：%d。',
     'vpn_manager_v2_reconciliation_title' => '套餐订阅同步',
-    'vpn_manager_v2_reconciliation_help' => '检查会将有效订阅与当前套餐参数以及 3x-ui 中的客户端状态进行比较。同步会创建缺失连接并更新现有客户端参数。多余连接不会在未单独确认的情况下删除。',
+    'vpn_manager_v2_reconciliation_help' => '仅创建缺失连接。从套餐移除的连接在单独确认前继续工作。',
     'vpn_manager_v2_action_preview_reconciliation' => '检查差异',
     'vpn_manager_v2_action_reconcile' => '将订阅与套餐同步',
     'vpn_manager_v2_action_create_missing' => '创建缺失连接',
@@ -996,15 +996,5 @@ return [
     'vpn_manager_v2_error_devices_generic' => '无法读取或更新设备列表。',
     'vpn_manager_v2_error_devices_unsupported' => '此 3x-ui 版本或配置不支持 HWID 设备管理。',
     'vpn_manager_v2_error_device_not_found' => '未找到设备或 VPN 连接。',
-
-
-    // FIREBALL_VPN_RECONCILIATION_UI_V141
-    'vpn_manager_v2_reconcile_changed' => '已更改',
-    'vpn_manager_v2_reconcile_already_matched' => '已一致',
-    'vpn_manager_v2_reconcile_all_matches' => '所有已检查订阅均与套餐和当前 3x-ui 状态一致。',
-    'vpn_manager_v2_reconcile_differences_found' => '发现差异，可以执行同步。',
-    'vpn_manager_v2_reconcile_check_first' => '请先执行“检查差异”。',
-    'vpn_manager_v2_reconcile_conflicts' => '冲突',
-    'vpn_manager_v2_reconcile_diff_other' => '其他参数',
 
 ];
