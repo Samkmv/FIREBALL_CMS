@@ -15,7 +15,6 @@ final class VpnSubscriptionEndpointService
         private readonly ?SettingsService $settings = null,
         private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
         private readonly ?VpnSubscriptionMetadataService $metadata = null,
-        private readonly ?SubscriptionHwidGatewayService $hwidGateway = null,
     ) {
     }
 
@@ -23,8 +22,7 @@ final class VpnSubscriptionEndpointService
         string $token,
         string $format = 'base64',
         string $ifNoneMatch = '',
-        string $ifModifiedSince = '',
-        array $requestHeaders = []
+        string $ifModifiedSince = ''
     ): SubscriptionEndpointResponse {
         $headers = $this->baseHeaders();
         $token = strtolower(trim($token));
@@ -56,19 +54,6 @@ final class VpnSubscriptionEndpointService
         $effective = $dependencies->calculateEffectiveStatus($subscription);
         if ($effective['effective_status'] !== 'active' || !$this->started($subscription)) {
             return $this->inactiveResponse($subscription, $settings, $format, $headers);
-        }
-
-        // FIREBALL_VPN_HWID_GATEWAY_V1
-        // Run native 3x-ui HWID registration/enforcement before ETag/cache handling.
-        $effectiveNodes = $dependencies->collectEffectiveConnections($subscription);
-        $gate = ($this->hwidGateway ?? new SubscriptionHwidGatewayService())->enforce(
-            $subscription,
-            $effectiveNodes,
-            $requestHeaders
-        );
-        $headers = array_replace($headers, $gate['headers']);
-        if (!$gate['allowed']) {
-            return new SubscriptionEndpointResponse((int)$gate['status'], '', $headers);
         }
 
         $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();

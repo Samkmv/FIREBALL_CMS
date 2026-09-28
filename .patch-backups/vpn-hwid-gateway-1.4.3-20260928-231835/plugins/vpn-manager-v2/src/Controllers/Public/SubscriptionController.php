@@ -21,15 +21,7 @@ final class SubscriptionController
             (string)get_route_param('token'),
             (string)request()->get('format', 'base64'),
             (string)request()->header('If-None-Match', ''),
-            (string)request()->header('If-Modified-Since', ''),
-            [
-                // FIREBALL_VPN_HWID_GATEWAY_V1
-                'X-HWID' => (string)request()->header('X-HWID', ''),
-                'X-Device-OS' => (string)request()->header('X-Device-OS', ''),
-                'X-Ver-OS' => (string)request()->header('X-Ver-OS', ''),
-                'X-Device-Model' => (string)request()->header('X-Device-Model', ''),
-                'User-Agent' => (string)request()->header('User-Agent', ''),
-            ]
+            (string)request()->header('If-Modified-Since', '')
         );
         http_response_code($response->status);
         foreach ($response->headers as $name => $value) {
