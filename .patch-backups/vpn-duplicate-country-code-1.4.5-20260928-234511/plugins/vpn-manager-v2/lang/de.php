@@ -119,7 +119,7 @@ return [
     'vpn_manager_v2_never' => 'Nie',
     'vpn_manager_v2_server_id' => 'Server-ID',
     'vpn_manager_v2_field_name' => 'Name',
-    'vpn_manager_v2_field_code' => 'Servercode',
+    'vpn_manager_v2_field_code' => 'Code',
     'vpn_manager_v2_field_panel_url' => 'Panel-URL',
     'vpn_manager_v2_field_panel_path' => 'Panel-Pfad',
     'vpn_manager_v2_field_auth_type' => 'Authentifizierungsmethode',
@@ -147,7 +147,7 @@ return [
     'vpn_manager_v2_error_save_generic' => 'Server konnte nicht gespeichert werden.',
     'vpn_manager_v2_error_toggle_generic' => 'Serverstatus konnte nicht geändert werden.',
     'vpn_manager_v2_error_server_not_found' => 'VPN-V2-Server wurde nicht gefunden.',
-    'vpn_manager_v2_error_code_exists' => 'Ein Server mit diesem Servercode ist bereits vorhanden.',
+    'vpn_manager_v2_error_code_exists' => 'Ein Server mit diesem Code ist bereits vorhanden.',
     'vpn_manager_v2_error_name_required' => 'Servernamen eingeben.',
     'vpn_manager_v2_error_code_required' => 'Servercode eingeben.',
     'vpn_manager_v2_error_invalid_panel_url' => 'Eine gültige HTTP- oder HTTPS-Panel-URL ohne Anmeldedaten, Query oder Fragment eingeben.',
@@ -1006,10 +1006,5 @@ return [
     'vpn_manager_v2_reconcile_check_first' => 'Führe zuerst „Abweichungen prüfen“ aus.',
     'vpn_manager_v2_reconcile_conflicts' => 'Konflikte',
     'vpn_manager_v2_reconcile_diff_other' => 'Weitere Parameter',
-
-
-    // FIREBALL_VPN_DUPLICATE_COUNTRY_CODE_V145
-    'vpn_manager_v2_server_code_help' => 'Eindeutiger interner Servercode, z. B. de-fra-1 oder de-fra-2.',
-    'vpn_manager_v2_country_code_help' => 'Zweistelliger Ländercode, z. B. DE. Derselbe Ländercode darf für mehrere Server verwendet werden.',
 
 ];

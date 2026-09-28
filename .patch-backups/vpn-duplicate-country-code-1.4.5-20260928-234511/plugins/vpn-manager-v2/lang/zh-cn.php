@@ -119,7 +119,7 @@ return [
     'vpn_manager_v2_never' => '从未',
     'vpn_manager_v2_server_id' => '服务器 ID',
     'vpn_manager_v2_field_name' => '名称',
-    'vpn_manager_v2_field_code' => '服务器代码',
+    'vpn_manager_v2_field_code' => '代码',
     'vpn_manager_v2_field_panel_url' => '面板 URL',
     'vpn_manager_v2_field_panel_path' => '面板路径',
     'vpn_manager_v2_field_auth_type' => '认证方式',
@@ -147,7 +147,7 @@ return [
     'vpn_manager_v2_error_save_generic' => '无法保存服务器。',
     'vpn_manager_v2_error_toggle_generic' => '无法更改服务器状态。',
     'vpn_manager_v2_error_server_not_found' => '未找到 VPN V2 服务器。',
-    'vpn_manager_v2_error_code_exists' => '具有此服务器代码的服务器已存在。',
+    'vpn_manager_v2_error_code_exists' => '此代码的服务器已存在。',
     'vpn_manager_v2_error_name_required' => '请输入服务器名称。',
     'vpn_manager_v2_error_code_required' => '请输入服务器代码。',
     'vpn_manager_v2_error_invalid_panel_url' => '请输入不含凭据、查询或片段的有效 HTTP 或 HTTPS 面板 URL。',
@@ -1006,10 +1006,5 @@ return [
     'vpn_manager_v2_reconcile_check_first' => '请先执行“检查差异”。',
     'vpn_manager_v2_reconcile_conflicts' => '冲突',
     'vpn_manager_v2_reconcile_diff_other' => '其他参数',
-
-
-    // FIREBALL_VPN_DUPLICATE_COUNTRY_CODE_V145
-    'vpn_manager_v2_server_code_help' => '服务器的唯一内部代码，例如 de-fra-1 或 de-fra-2。',
-    'vpn_manager_v2_country_code_help' => '两位国家代码，例如 DE。多个服务器可以使用相同的国家代码。',
 
 ];

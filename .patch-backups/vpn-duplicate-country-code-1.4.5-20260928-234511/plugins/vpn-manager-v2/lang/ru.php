@@ -119,7 +119,7 @@ return [
     'vpn_manager_v2_never' => 'Никогда',
     'vpn_manager_v2_server_id' => 'ID сервера',
     'vpn_manager_v2_field_name' => 'Название',
-    'vpn_manager_v2_field_code' => 'Код сервера',
+    'vpn_manager_v2_field_code' => 'Код',
     'vpn_manager_v2_field_panel_url' => 'URL панели',
     'vpn_manager_v2_field_panel_path' => 'Путь панели',
     'vpn_manager_v2_field_auth_type' => 'Способ авторизации',
@@ -147,7 +147,7 @@ return [
     'vpn_manager_v2_error_save_generic' => 'Не удалось сохранить сервер.',
     'vpn_manager_v2_error_toggle_generic' => 'Не удалось изменить активность сервера.',
     'vpn_manager_v2_error_server_not_found' => 'Сервер VPN V2 не найден.',
-    'vpn_manager_v2_error_code_exists' => 'Сервер с таким кодом сервера уже существует.',
+    'vpn_manager_v2_error_code_exists' => 'Сервер с таким кодом уже существует.',
     'vpn_manager_v2_error_name_required' => 'Укажите название сервера.',
     'vpn_manager_v2_error_code_required' => 'Укажите код сервера.',
     'vpn_manager_v2_error_invalid_panel_url' => 'Укажите корректный HTTP или HTTPS URL панели без логина, query и fragment.',
@@ -1006,10 +1006,5 @@ return [
     'vpn_manager_v2_reconcile_check_first' => 'Сначала выполните «Проверить расхождения».',
     'vpn_manager_v2_reconcile_conflicts' => 'Конфликты',
     'vpn_manager_v2_reconcile_diff_other' => 'Другие параметры',
-
-
-    // FIREBALL_VPN_DUPLICATE_COUNTRY_CODE_V145
-    'vpn_manager_v2_server_code_help' => 'Уникальный внутренний код сервера. Например: de-fra-1 или de-fra-2.',
-    'vpn_manager_v2_country_code_help' => 'Двухбуквенный код страны, например DE. Один и тот же код страны можно использовать у нескольких серверов.',
 
 ];

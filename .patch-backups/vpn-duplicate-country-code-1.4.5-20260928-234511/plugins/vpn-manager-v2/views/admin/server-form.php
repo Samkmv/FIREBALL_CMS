@@ -39,7 +39,6 @@ $secretPlaceholder = static function (string $key) use ($server): string {
         <div class="col-md-4">
             <label class="form-label" for="vpnV2Code"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_code')) ?></label>
             <input class="form-control" id="vpnV2Code" type="text" name="code" maxlength="80" required value="<?= htmlSC((string)($server['code'] ?? '')) ?>">
-            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_server_code_help')) ?></div>
         </div>
         <div class="col-md-8">
             <label class="form-label" for="vpnV2ApiUrl"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_api_url')) ?></label>
@@ -130,7 +129,6 @@ $secretPlaceholder = static function (string $key) use ($server): string {
         <div class="col-md-4">
             <label class="form-label" for="vpnV2CountryCode"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_country_code')) ?></label>
             <input class="form-control text-uppercase" id="vpnV2CountryCode" type="text" name="country_code" maxlength="2" placeholder="DE" value="<?= htmlSC((string)($server['country_code'] ?? '')) ?>">
-            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_country_code_help')) ?></div>
         </div>
         <div class="col-md-4">
             <label class="form-label" for="vpnV2CountryName"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_country_name')) ?></label>
