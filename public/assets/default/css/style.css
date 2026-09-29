@@ -259,19 +259,28 @@ html {
         width: 100%;
         max-height: calc(100dvh - var(--fb-mobile-search-top, 4.25rem));
         overflow: visible;
-    }
-
-    body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
-        background: rgba(255, 255, 255, .9);
-        background: color-mix(in srgb, var(--cz-body-bg) 86%, transparent);
+        background: rgba(255, 255, 255, .86);
+        background: color-mix(in srgb, var(--cz-body-bg) 78%, transparent);
         border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
         -webkit-backdrop-filter: saturate(180%) blur(18px);
         backdrop-filter: saturate(180%) blur(18px);
     }
 
-    [data-bs-theme="dark"] body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
-        background: rgba(24, 29, 37, .9);
-        background: color-mix(in srgb, var(--cz-body-bg) 86%, transparent);
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
+        background: transparent;
+        border: 0;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    [data-bs-theme="dark"] body:not(.fb-admin-body) > header.navbar-sticky #searchBar {
+        background: rgba(24, 29, 37, .82);
+        background: color-mix(in srgb, var(--cz-body-bg) 78%, transparent);
+    }
+
+    body:not(.fb-admin-body) > header.navbar-sticky:has(#searchBar.show),
+    body:not(.fb-admin-body) > header.navbar-sticky:has(#searchBar.collapsing) {
+        border-bottom-color: transparent;
     }
 
     body:not(.fb-admin-body) > header.navbar-sticky #searchBar input[type="search"] {
@@ -279,10 +288,6 @@ html {
         scroll-margin-top: 5rem;
     }
 
-    html.fb-mobile-search-open body {
-        overflow: hidden !important;
-        overscroll-behavior: none;
-    }
 }
 
 [data-search-suggest-results] {

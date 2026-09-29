@@ -1297,14 +1297,13 @@ $(function(){
 
 
     // FIREBALL_MOBILE_SEARCH_IOS_FIX_20260929
-    // On iOS a focused input inside a sticky header can pan the layout
-    // viewport. Freeze the document while the mobile search is open and keep
-    // the search panel fixed immediately below the visible header.
+    // Keep the panel below the visible header without fixing the document.
+    // iOS may pan the layout viewport while an input is focused; remember the
+    // position before focus and restore it once visualViewport has recovered.
     const mobileSearchBar = document.getElementById('searchBar');
     const mobileSearchMedia = window.matchMedia('(max-width: 767.98px)');
-    let mobileSearchLocked = false;
-    let mobileSearchScrollY = 0;
-    let mobileSearchBodyStyles = null;
+    let mobileSearchFocusState = null;
+    let mobileSearchRestoreTimer = 0;
 
     const syncMobileSearchTop = () => {
         if (!mobileSearchBar || !mobileSearchMedia.matches) {
@@ -1324,66 +1323,59 @@ $(function(){
         document.documentElement.style.setProperty('--fb-mobile-search-top', `${top}px`);
     };
 
-    const lockMobileSearchDocument = () => {
-        if (!mobileSearchBar || !mobileSearchMedia.matches || mobileSearchLocked) {
+    const rememberMobileSearchPosition = () => {
+        if (!mobileSearchBar || !mobileSearchMedia.matches || mobileSearchFocusState) {
             return;
         }
 
         syncMobileSearchTop();
 
-        const body = document.body;
-        mobileSearchScrollY = Math.max(
-            0,
-            Number(window.scrollY || document.documentElement.scrollTop || body.scrollTop || 0)
-        );
-        mobileSearchBodyStyles = {
-            position: body.style.position,
-            top: body.style.top,
-            right: body.style.right,
-            left: body.style.left,
-            width: body.style.width,
-            overflow: body.style.overflow,
+        mobileSearchFocusState = {
+            scrollY: Math.max(
+                0,
+                Number(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0)
+            ),
+            viewportHeight: Number(window.visualViewport ? window.visualViewport.height : window.innerHeight) || 0,
         };
-
-        body.style.position = 'fixed';
-        body.style.top = `-${mobileSearchScrollY}px`;
-        body.style.right = '0';
-        body.style.left = '0';
-        body.style.width = '100%';
-        body.style.overflow = 'hidden';
-
-        document.documentElement.classList.add('fb-mobile-search-open');
-        mobileSearchLocked = true;
     };
 
-    const unlockMobileSearchDocument = () => {
-        if (!mobileSearchLocked) {
+    const restoreMobileSearchPosition = (force = false) => {
+        if (!mobileSearchFocusState) {
             return;
         }
 
-        const body = document.body;
-        const restore = mobileSearchBodyStyles || {};
-        body.style.position = restore.position || '';
-        body.style.top = restore.top || '';
-        body.style.right = restore.right || '';
-        body.style.left = restore.left || '';
-        body.style.width = restore.width || '';
-        body.style.overflow = restore.overflow || '';
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && mobileSearchBar.contains(active)) {
+            return;
+        }
 
-        document.documentElement.classList.remove('fb-mobile-search-open');
-        document.documentElement.style.removeProperty('--fb-mobile-search-top');
+        const viewportHeight = Number(window.visualViewport ? window.visualViewport.height : window.innerHeight) || 0;
+        const keyboardThreshold = Math.max(80, mobileSearchFocusState.viewportHeight * .12);
+        const viewportRecovered = !window.visualViewport
+            || viewportHeight >= mobileSearchFocusState.viewportHeight - keyboardThreshold;
+        if (!force && !viewportRecovered) {
+            return;
+        }
 
-        const scrollY = mobileSearchScrollY;
-        mobileSearchLocked = false;
-        mobileSearchBodyStyles = null;
+        window.clearTimeout(mobileSearchRestoreTimer);
+        mobileSearchRestoreTimer = 0;
+        const scrollY = mobileSearchFocusState.scrollY;
+        mobileSearchFocusState = null;
 
         window.requestAnimationFrame(() => {
             window.scrollTo({top: scrollY, left: 0, behavior: 'auto'});
         });
     };
 
+    const scheduleMobileSearchRestore = () => {
+        window.requestAnimationFrame(() => restoreMobileSearchPosition(false));
+        window.clearTimeout(mobileSearchRestoreTimer);
+        mobileSearchRestoreTimer = window.setTimeout(() => restoreMobileSearchPosition(false), 900);
+    };
+
     if (mobileSearchBar) {
-        mobileSearchBar.addEventListener('show.bs.collapse', lockMobileSearchDocument);
+        const mobileSearchInput = mobileSearchBar.querySelector('[data-search-suggest-input]');
+        mobileSearchBar.addEventListener('show.bs.collapse', syncMobileSearchTop);
         mobileSearchBar.addEventListener('shown.bs.collapse', syncMobileSearchTop);
         mobileSearchBar.addEventListener('hide.bs.collapse', () => {
             const active = document.activeElement;
@@ -1391,19 +1383,33 @@ $(function(){
                 active.blur();
             }
         });
-        mobileSearchBar.addEventListener('hidden.bs.collapse', unlockMobileSearchDocument);
+        mobileSearchBar.addEventListener('hidden.bs.collapse', () => {
+            document.documentElement.style.removeProperty('--fb-mobile-search-top');
+            scheduleMobileSearchRestore();
+        });
+
+        if (mobileSearchInput) {
+            mobileSearchInput.addEventListener('pointerdown', rememberMobileSearchPosition, {passive: true});
+            mobileSearchInput.addEventListener('focus', rememberMobileSearchPosition, {passive: true});
+            mobileSearchInput.addEventListener('blur', scheduleMobileSearchRestore, {passive: true});
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => restoreMobileSearchPosition(false), {passive: true});
+            window.visualViewport.addEventListener('scroll', () => restoreMobileSearchPosition(false), {passive: true});
+        }
 
         window.addEventListener('resize', () => {
-            if (mobileSearchLocked) {
+            if (mobileSearchBar.classList.contains('show')) {
                 syncMobileSearchTop();
             }
         }, {passive: true});
 
         const releaseOnDesktop = () => {
             if (!mobileSearchMedia.matches) {
-                unlockMobileSearchDocument();
+                restoreMobileSearchPosition(true);
+                document.documentElement.style.removeProperty('--fb-mobile-search-top');
             } else if (mobileSearchBar.classList.contains('show')) {
-                lockMobileSearchDocument();
                 syncMobileSearchTop();
             }
         };
