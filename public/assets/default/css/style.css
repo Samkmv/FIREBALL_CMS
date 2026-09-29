@@ -289,34 +289,11 @@ html {
         bottom: calc(-1 * var(--fb-mobile-search-height, 0px));
     }
 
-    body:not(.fb-admin-body) > header.navbar-sticky #searchBar.fb-mobile-search-opening > .container {
-        animation: fb-mobile-search-content-in .18s ease .045s both;
-    }
-
-    body:not(.fb-admin-body) > header.navbar-sticky #searchBar.fb-mobile-search-closing > .container {
-        animation: fb-mobile-search-content-out .14s ease both;
-    }
-
-    @keyframes fb-mobile-search-content-in {
-        from {
-            opacity: 0;
-            transform: translateY(-.25rem);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    @keyframes fb-mobile-search-content-out {
-        from {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        to {
-            opacity: 0;
-            transform: translateY(-.2rem);
-        }
+    /* Measure the hidden collapse before Bootstrap starts its transition.
+       This class is added and removed synchronously, before any paint. */
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar.fb-mobile-search-measuring {
+        display: block;
+        visibility: hidden;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -324,8 +301,8 @@ html {
             transition: none;
         }
 
-        body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
-            animation: none;
+        body:not(.fb-admin-body) > header.navbar-sticky #searchBar.collapsing {
+            transition: none;
         }
     }
 

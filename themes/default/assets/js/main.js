@@ -1321,9 +1321,19 @@ $(function(){
         const rect = (headerMain || header).getBoundingClientRect();
         const top = Math.max(0, Math.round(rect.bottom));
         document.documentElement.style.setProperty('--fb-mobile-search-top', `${top}px`);
+        // show.bs.collapse fires while .collapse still has display:none.
+        // Measure invisibly now; waiting for shown starts the glass too late.
+        const needsMeasurement = window.getComputedStyle(mobileSearchBar).display === 'none';
+        if (needsMeasurement) {
+            mobileSearchBar.classList.add('fb-mobile-search-measuring');
+        }
+        const searchHeight = Math.max(0, Math.ceil(mobileSearchBar.scrollHeight));
+        if (needsMeasurement) {
+            mobileSearchBar.classList.remove('fb-mobile-search-measuring');
+        }
         document.documentElement.style.setProperty(
             '--fb-mobile-search-height',
-            `${Math.max(0, Math.ceil(mobileSearchBar.scrollHeight))}px`
+            `${searchHeight}px`
         );
     };
 
@@ -1382,17 +1392,12 @@ $(function(){
         const mobileSearchInput = mobileSearchBar.querySelector('[data-search-suggest-input]');
         mobileSearchBar.addEventListener('show.bs.collapse', () => {
             syncMobileSearchTop();
-            mobileSearchBar.classList.remove('fb-mobile-search-closing');
-            mobileSearchBar.classList.add('fb-mobile-search-opening');
             mobileSearchHeader?.classList.add('fb-mobile-search-expanded');
         });
         mobileSearchBar.addEventListener('shown.bs.collapse', () => {
             syncMobileSearchTop();
-            mobileSearchBar.classList.remove('fb-mobile-search-opening');
         });
         mobileSearchBar.addEventListener('hide.bs.collapse', () => {
-            mobileSearchBar.classList.remove('fb-mobile-search-opening');
-            mobileSearchBar.classList.add('fb-mobile-search-closing');
             mobileSearchHeader?.classList.remove('fb-mobile-search-expanded');
             const active = document.activeElement;
             if (active instanceof HTMLElement && mobileSearchBar.contains(active)) {
@@ -1400,7 +1405,6 @@ $(function(){
             }
         });
         mobileSearchBar.addEventListener('hidden.bs.collapse', () => {
-            mobileSearchBar.classList.remove('fb-mobile-search-closing');
             mobileSearchHeader?.classList.remove('fb-mobile-search-expanded');
             document.documentElement.style.removeProperty('--fb-mobile-search-top');
             document.documentElement.style.removeProperty('--fb-mobile-search-height');
