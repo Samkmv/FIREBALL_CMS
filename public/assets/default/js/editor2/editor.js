@@ -170,6 +170,7 @@
             this.contextMenuAnchor = null;
             this.pendingDeleteIds = [];
             this.floatingUiFrame = 0;
+            this.mobilePanelScrollTop = null;
             this.history = new API.EditorHistory(this.historyState(), { limit: 120, coalesceMs: 700 });
             this.ui = this.collectUi();
             this.refreshOutlineSoon = debounce(this.refreshOutline.bind(this), 160);
@@ -3778,13 +3779,31 @@
 
         openMobilePanels() {
             if (this.workspace) {
+                const documentScroller = this.workspace.querySelector('.fb-editor-workspace__document');
+                if (!this.workspace.classList.contains('is-mobile-panel-open') && documentScroller) {
+                    this.mobilePanelScrollTop = documentScroller.scrollTop;
+                }
                 this.workspace.classList.add('is-mobile-panel-open');
             }
         }
 
         closeMobilePanels() {
             if (this.workspace) {
+                const documentScroller = this.workspace.querySelector('.fb-editor-workspace__document');
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.closest && activeElement.closest('[data-editor-inspector-panel]')) {
+                    activeElement.blur();
+                }
                 this.workspace.classList.remove('is-mobile-panel-open');
+                const previousScrollTop = this.mobilePanelScrollTop;
+                this.mobilePanelScrollTop = null;
+                if (documentScroller && Number.isFinite(previousScrollTop)) {
+                    window.requestAnimationFrame(function () {
+                        window.requestAnimationFrame(function () {
+                            documentScroller.scrollTop = previousScrollTop;
+                        });
+                    });
+                }
             }
         }
 

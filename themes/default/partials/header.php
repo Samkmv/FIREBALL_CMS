@@ -303,7 +303,6 @@
                     value="<?= htmlSC((string)request()->get('q', '')) ?>"
                     class="form-control form-icon-start rounded-pill"
                     placeholder="<?= print_translation('tpl_menu_search') ?>"
-                    data-autofocus="collapse"
                     autocomplete="off"
                     data-search-suggest-input
                 >

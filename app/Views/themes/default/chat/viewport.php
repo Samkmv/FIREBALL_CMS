@@ -13,8 +13,10 @@
     });
     const header = standalone && !mobile ? null : document.querySelector('body > header');
     const headerHeight = header ? header.getBoundingClientRect().height : 0;
-    const height = window.visualViewport?.height || window.innerHeight;
-    root.style.setProperty('--chat-mobile-viewport-top', `${headerHeight}px`);
+    const viewport = window.visualViewport;
+    const top = mobile ? Math.max(0, viewport?.offsetTop || 0) : 0;
+    const height = mobile ? (viewport?.height || window.innerHeight) : window.innerHeight;
+    root.style.setProperty('--chat-mobile-viewport-top', `${top + headerHeight}px`);
     root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, height - headerHeight)}px`);
 })();
 </script>

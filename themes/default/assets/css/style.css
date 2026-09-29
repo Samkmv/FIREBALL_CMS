@@ -278,6 +278,35 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
     }
 }
 
+@media (max-width: 767.98px) {
+    /* Keep mobile search from changing the sticky header geometry on iOS. */
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        width: 100%;
+    }
+
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
+        background: rgba(255, 255, 255, .9);
+        background: color-mix(in srgb, var(--cz-body-bg) 86%, transparent);
+        border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+        -webkit-backdrop-filter: saturate(180%) blur(18px);
+        backdrop-filter: saturate(180%) blur(18px);
+    }
+
+    [data-bs-theme="dark"] body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
+        background: rgba(24, 29, 37, .9);
+        background: color-mix(in srgb, var(--cz-body-bg) 86%, transparent);
+    }
+
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar input[type="search"] {
+        font-size: 16px !important;
+        scroll-margin-top: 5rem;
+    }
+}
+
 [data-search-suggest-results] {
     z-index: 1080 !important;
 }
@@ -2456,10 +2485,6 @@ html.pwa-standalone.chat-viewport-fullscreen .chat-thread__head {
     padding-top: calc(1rem + var(--pwa-safe-top));
 }
 
-html.pwa-standalone.chat-viewport-fullscreen .chat-thread__composer {
-    padding-bottom: calc(.75rem + var(--pwa-safe-bottom));
-}
-
 html.chat-viewport-fullscreen .chat-app-shell,
 html.chat-viewport-fullscreen .chat-app-layout,
 html.chat-viewport-fullscreen .chat-layout-main,
@@ -2591,8 +2616,8 @@ html.chat-viewport-fullscreen .chat-messages-surface {
     }
 
     .chat-app-layout {
-        height: calc(var(--chat-shell-height) + var(--chat-composer-growth));
-        max-height: calc(var(--chat-shell-height) + var(--chat-composer-growth));
+        height: var(--chat-shell-height);
+        max-height: var(--chat-shell-height);
         border-radius: 1.15rem;
     }
 
@@ -2741,7 +2766,9 @@ html.chat-viewport-fullscreen .chat-messages-surface {
 
     .chat-thread__composer {
         padding: .5rem;
-        padding-bottom: calc(.5rem + var(--chat-composer-offset));
+        padding-right: max(.5rem, env(safe-area-inset-right, 0px));
+        padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px));
+        padding-left: max(.5rem, env(safe-area-inset-left, 0px));
     }
 
     .chat-composer {
@@ -6060,6 +6087,7 @@ body:not(.fb-admin-body) .fb-search-open:focus-visible {
     outline: 2px solid var(--cz-primary, #0d6efd);
     outline-offset: -2px;
 }
+
 .fb-search-page .form-control { background-color: transparent; }
 .fb-search-result h2 a { color: var(--cz-body-color); }
 .fb-search-type, .fb-search-open {
@@ -6572,4 +6600,3 @@ body:not(.fb-admin-body) .fb-search-open:focus-visible {
         background-color .2s ease,
         border-color .2s ease;
 }
-

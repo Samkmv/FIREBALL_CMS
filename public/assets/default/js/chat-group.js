@@ -19,6 +19,24 @@ $(function () {
     // Use the same viewport shell as direct chat, including the on-screen keyboard.
     const root = document.documentElement;
     let viewportFrame = 0;
+    let viewportAnchor = null;
+    const captureViewportAnchor = () => {
+        const element = box[0];
+        if (!element || viewportAnchor) return;
+        const distanceFromBottom = Math.max(0, element.scrollHeight - element.scrollTop - element.clientHeight);
+        viewportAnchor = {distanceFromBottom, stickToBottom: distanceFromBottom <= 48};
+    };
+    const restoreViewportAnchor = () => {
+        window.requestAnimationFrame(() => {
+            const element = box[0];
+            const anchor = viewportAnchor;
+            viewportAnchor = null;
+            if (!element || !anchor) return;
+            element.scrollTop = anchor.stickToBottom
+                ? element.scrollHeight
+                : Math.max(0, element.scrollHeight - element.clientHeight - anchor.distanceFromBottom);
+        });
+    };
     const syncViewport = () => {
         viewportFrame = 0;
         const mobile = window.matchMedia('(max-width: 767.98px)').matches;
@@ -39,8 +57,10 @@ $(function () {
         const headerHeight = header ? header.getBoundingClientRect().height : 0;
         root.style.setProperty('--chat-mobile-viewport-top', `${top + headerHeight}px`);
         root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, height - headerHeight)}px`);
+        restoreViewportAnchor();
     };
     const scheduleViewport = () => {
+        captureViewportAnchor();
         if (!viewportFrame) viewportFrame = requestAnimationFrame(syncViewport);
     };
     window.addEventListener('resize', scheduleViewport, {passive: true});
@@ -268,9 +288,11 @@ $(function () {
         const el = input[0];
         if (!el) return;
 
+        captureViewportAnchor();
         el.style.height = 'auto';
         el.style.height = `${Math.max(44, Math.min(el.scrollHeight, 132))}px`;
         el.style.overflowY = el.scrollHeight > 132 ? 'auto' : 'hidden';
+        restoreViewportAnchor();
     };
 
     form.on('submit', function (event) {

@@ -7,6 +7,29 @@ $(function () {
     const mobileFullscreenQuery = window.matchMedia('(max-width: 767.98px)');
     const rootElement = document.documentElement;
     let mobileViewportFrame = 0;
+    let messageViewportFrame = 0;
+    let pendingMessageViewportAnchor = null;
+
+    const captureMessageViewportAnchor = () => {
+        const box = chatApp.find('[data-chat-messages]')[0];
+        if (!box || pendingMessageViewportAnchor) return;
+        const distanceFromBottom = Math.max(0, box.scrollHeight - box.scrollTop - box.clientHeight);
+        pendingMessageViewportAnchor = {distanceFromBottom, stickToBottom: distanceFromBottom <= 48};
+    };
+
+    const restoreMessageViewportAnchor = () => {
+        if (messageViewportFrame) cancelAnimationFrame(messageViewportFrame);
+        messageViewportFrame = requestAnimationFrame(() => {
+            messageViewportFrame = 0;
+            const box = chatApp.find('[data-chat-messages]')[0];
+            const anchor = pendingMessageViewportAnchor;
+            pendingMessageViewportAnchor = null;
+            if (!box || !anchor) return;
+            box.scrollTop = anchor.stickToBottom
+                ? box.scrollHeight
+                : Math.max(0, box.scrollHeight - box.clientHeight - anchor.distanceFromBottom);
+        });
+    };
 
     const syncMobileFullscreen = () => {
         mobileViewportFrame = 0;
@@ -14,10 +37,6 @@ $(function () {
         const isStandalone = rootElement.classList.contains('pwa-standalone')
             || window.matchMedia('(display-mode: standalone)').matches
             || window.navigator.standalone === true;
-
-        if (!rootElement.classList.contains('chat-viewport-fullscreen')) {
-            window.scrollTo({top: 0, left: 0, behavior: 'auto'});
-        }
 
         rootElement.classList.add('chat-viewport-fullscreen');
         document.body.classList.add('chat-viewport-fullscreen');
@@ -29,7 +48,9 @@ $(function () {
         const viewport = window.visualViewport;
         const viewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
         const viewportHeight = Math.max(0, Number(viewport ? viewport.height : window.innerHeight) || window.innerHeight);
-        const siteHeader = isStandalone ? null : (document.querySelector('body > header') || document.querySelector('header'));
+        const siteHeader = isStandalone && !isMobile
+            ? null
+            : (document.querySelector('body > header') || document.querySelector('header'));
         const headerRect = siteHeader ? siteHeader.getBoundingClientRect() : null;
         const visibleHeaderHeight = headerRect
             ? Math.max(0, Math.min(viewportHeight, headerRect.bottom - viewportTop))
@@ -37,9 +58,11 @@ $(function () {
 
         rootElement.style.setProperty('--chat-mobile-viewport-top', `${viewportTop + visibleHeaderHeight}px`);
         rootElement.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, viewportHeight - visibleHeaderHeight)}px`);
+        restoreMessageViewportAnchor();
     };
 
     const scheduleMobileFullscreenSync = () => {
+        captureMessageViewportAnchor();
         if (mobileViewportFrame) {
             cancelAnimationFrame(mobileViewportFrame);
         }
@@ -225,6 +248,10 @@ $(function () {
             return;
         }
 
+        const isMobile = typeof window.matchMedia === 'function'
+            && window.matchMedia('(max-width: 767.98px)').matches;
+        if (isMobile) captureMessageViewportAnchor();
+
         input.style.height = 'auto';
         const computedStyle = window.getComputedStyle(input);
         const minHeight = Number.parseFloat(computedStyle.minHeight) || 44;
@@ -237,11 +264,10 @@ $(function () {
             input.dataset.chatBaseHeight = String(nextHeight);
         }
 
-        const isMobile = typeof window.matchMedia === 'function'
-            && window.matchMedia('(max-width: 767.98px)').matches;
         const baseHeight = Number(input.dataset.chatBaseHeight) || nextHeight;
         const composerGrowth = isMobile ? Math.max(0, nextHeight - baseHeight) : 0;
         chatApp[0].style.setProperty('--chat-composer-growth', `${composerGrowth}px`);
+        if (isMobile) restoreMessageViewportAnchor();
     };
 
     const formatBytes = (bytes) => {
@@ -2600,7 +2626,12 @@ $(function () {
         const target = messagesBox.find(`[data-message-id="${messageId}"]`).first();
         if (!target.length) return;
 
-        target[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+        const box = messagesBox[0];
+        const targetElement = target[0];
+        if (box && targetElement) {
+            const nextTop = targetElement.offsetTop - ((box.clientHeight - targetElement.offsetHeight) / 2);
+            box.scrollTo({top: Math.max(0, nextTop), behavior: 'smooth'});
+        }
         target.addClass('is-reply-target');
         window.setTimeout(() => target.removeClass('is-reply-target'), 1400);
     });
