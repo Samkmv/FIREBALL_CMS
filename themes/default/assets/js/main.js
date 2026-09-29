@@ -1321,6 +1321,10 @@ $(function(){
         const rect = (headerMain || header).getBoundingClientRect();
         const top = Math.max(0, Math.round(rect.bottom));
         document.documentElement.style.setProperty('--fb-mobile-search-top', `${top}px`);
+        document.documentElement.style.setProperty(
+            '--fb-mobile-search-height',
+            `${Math.max(0, Math.ceil(mobileSearchBar.scrollHeight))}px`
+        );
     };
 
     const rememberMobileSearchPosition = () => {
@@ -1374,17 +1378,32 @@ $(function(){
     };
 
     if (mobileSearchBar) {
+        const mobileSearchHeader = mobileSearchBar.closest('header.navbar-sticky');
         const mobileSearchInput = mobileSearchBar.querySelector('[data-search-suggest-input]');
-        mobileSearchBar.addEventListener('show.bs.collapse', syncMobileSearchTop);
-        mobileSearchBar.addEventListener('shown.bs.collapse', syncMobileSearchTop);
+        mobileSearchBar.addEventListener('show.bs.collapse', () => {
+            syncMobileSearchTop();
+            mobileSearchBar.classList.remove('fb-mobile-search-closing');
+            mobileSearchBar.classList.add('fb-mobile-search-opening');
+            mobileSearchHeader?.classList.add('fb-mobile-search-expanded');
+        });
+        mobileSearchBar.addEventListener('shown.bs.collapse', () => {
+            syncMobileSearchTop();
+            mobileSearchBar.classList.remove('fb-mobile-search-opening');
+        });
         mobileSearchBar.addEventListener('hide.bs.collapse', () => {
+            mobileSearchBar.classList.remove('fb-mobile-search-opening');
+            mobileSearchBar.classList.add('fb-mobile-search-closing');
+            mobileSearchHeader?.classList.remove('fb-mobile-search-expanded');
             const active = document.activeElement;
             if (active instanceof HTMLElement && mobileSearchBar.contains(active)) {
                 active.blur();
             }
         });
         mobileSearchBar.addEventListener('hidden.bs.collapse', () => {
+            mobileSearchBar.classList.remove('fb-mobile-search-closing');
+            mobileSearchHeader?.classList.remove('fb-mobile-search-expanded');
             document.documentElement.style.removeProperty('--fb-mobile-search-top');
+            document.documentElement.style.removeProperty('--fb-mobile-search-height');
             scheduleMobileSearchRestore();
         });
 
@@ -1407,10 +1426,13 @@ $(function(){
 
         const releaseOnDesktop = () => {
             if (!mobileSearchMedia.matches) {
+                mobileSearchHeader?.classList.remove('fb-mobile-search-expanded');
                 restoreMobileSearchPosition(true);
                 document.documentElement.style.removeProperty('--fb-mobile-search-top');
+                document.documentElement.style.removeProperty('--fb-mobile-search-height');
             } else if (mobileSearchBar.classList.contains('show')) {
                 syncMobileSearchTop();
+                mobileSearchHeader?.classList.add('fb-mobile-search-expanded');
             }
         };
 

@@ -290,11 +290,10 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
         width: 100%;
         max-height: calc(100dvh - var(--fb-mobile-search-top, 4.25rem));
         overflow: visible;
-        background: rgba(255, 255, 255, .86);
-        background: color-mix(in srgb, var(--cz-body-bg) 78%, transparent);
-        border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-        -webkit-backdrop-filter: saturate(180%) blur(18px);
-        backdrop-filter: saturate(180%) blur(18px);
+        background: transparent;
+        border: 0;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
     }
 
     body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
@@ -304,14 +303,61 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
         backdrop-filter: none;
     }
 
-    [data-bs-theme="dark"] body:not(.fb-admin-body) > header.navbar-sticky #searchBar {
-        background: rgba(24, 29, 37, .82);
-        background: color-mix(in srgb, var(--cz-body-bg) 78%, transparent);
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar.collapsing {
+        overflow: hidden;
+        transition-duration: .24s;
     }
 
-    body:not(.fb-admin-body) > header.navbar-sticky:has(#searchBar.show),
-    body:not(.fb-admin-body) > header.navbar-sticky:has(#searchBar.collapsing) {
+    body:not(.fb-admin-body) > header.navbar-sticky::before {
+        transition: bottom .24s ease;
+    }
+
+    body:not(.fb-admin-body) > header.navbar-sticky.fb-mobile-search-expanded {
         border-bottom-color: transparent;
+    }
+
+    body:not(.fb-admin-body) > header.navbar-sticky.fb-mobile-search-expanded::before {
+        bottom: calc(-1 * var(--fb-mobile-search-height, 0px));
+    }
+
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar.fb-mobile-search-opening > .container {
+        animation: fb-mobile-search-content-in .18s ease .045s both;
+    }
+
+    body:not(.fb-admin-body) > header.navbar-sticky #searchBar.fb-mobile-search-closing > .container {
+        animation: fb-mobile-search-content-out .14s ease both;
+    }
+
+    @keyframes fb-mobile-search-content-in {
+        from {
+            opacity: 0;
+            transform: translateY(-.25rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fb-mobile-search-content-out {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-.2rem);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        body:not(.fb-admin-body) > header.navbar-sticky::before {
+            transition: none;
+        }
+
+        body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
+            animation: none;
+        }
     }
 
     body:not(.fb-admin-body) > header.navbar-sticky #searchBar input[type="search"] {
