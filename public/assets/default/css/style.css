@@ -249,12 +249,16 @@ html {
      * opening it changes the header height and iOS Safari performs a second
      * viewport pan when the input receives focus.
      */
+    /* FIREBALL_MOBILE_SEARCH_IOS_FIX_20260929 */
     body:not(.fb-admin-body) > header.navbar-sticky #searchBar {
-        position: absolute;
-        top: 100%;
+        position: fixed;
+        top: var(--fb-mobile-search-top, 4.25rem);
         right: 0;
         left: 0;
+        z-index: 1045;
         width: 100%;
+        max-height: calc(100dvh - var(--fb-mobile-search-top, 4.25rem));
+        overflow: visible;
     }
 
     body:not(.fb-admin-body) > header.navbar-sticky #searchBar > .container {
@@ -273,6 +277,11 @@ html {
     body:not(.fb-admin-body) > header.navbar-sticky #searchBar input[type="search"] {
         font-size: 16px !important;
         scroll-margin-top: 5rem;
+    }
+
+    html.fb-mobile-search-open body {
+        overflow: hidden !important;
+        overscroll-behavior: none;
     }
 }
 
@@ -2922,8 +2931,21 @@ html.chat-viewport-fullscreen .chat-messages-surface {
     .chat-thread__composer {
         padding: .5rem;
         padding-right: max(.5rem, env(safe-area-inset-right, 0px));
-        padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px));
+        /*
+         * The composer itself already has .4rem of inner padding. Subtract it
+         * from the outer safe-area reservation so the input does not sit too
+         * high above the iPhone home indicator.
+         */
+        padding-bottom: max(.25rem, calc(env(safe-area-inset-bottom, 0px) - .4rem));
         padding-left: max(.5rem, env(safe-area-inset-left, 0px));
+    }
+
+    html.chat-keyboard-visible .chat-thread__composer {
+        /*
+         * visualViewport already ends above the software keyboard. Adding the
+         * home-indicator inset again creates the visible empty strip.
+         */
+        padding-bottom: .25rem;
     }
 
     .chat-composer {

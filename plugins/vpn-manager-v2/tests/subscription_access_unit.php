@@ -19,7 +19,8 @@ $assert = static function (bool $condition, string $message): void {
 };
 $now = time();
 $active = ['status' => 'active', 'starts_at' => date('Y-m-d H:i:s', $now - 3600),
-    'expires_at' => date('Y-m-d H:i:s', $now + 3600), 'traffic_limit_bytes' => 100, 'traffic_used_bytes' => 20];
+    'expires_at' => date('Y-m-d H:i:s', $now + 3600), 'traffic_limit_bytes' => 100,
+    'traffic_used_bytes' => 20, 'device_limit' => 2, 'ip_limit' => 0];
 $node = ['protocol' => 'vless', 'client_uuid' => '00000000-0000-4000-8000-000000000012',
     'client_email' => 'access-fixture', 'client_sub_id' => 'access-fixture', 'desired_enabled' => 1];
 $factory = new ClientPayloadFactory();
@@ -49,8 +50,9 @@ $renewed = $factory->build($active, $node);
 $assert($renewed['enable'] === true && $renewed['expiryTime'] === ($now + 3600) * 1000,
     'Renewed subscription did not receive a finite future expiration.');
 $updated = $factory->mergeForUpdate(['reset' => 1, 'resetDay' => 15, 'limitHwid' => 2], $renewed);
-$assert($updated['reset'] === 0 && $updated['resetDay'] === 0 && $updated['limitHwid'] === 2,
-    'Ordinary synchronization changed counters or lost the panel device limit.');
+$assert($updated['reset'] === 0 && $updated['resetDay'] === 0
+    && $updated['limitHwid'] === 2 && $updated['limitIp'] === 0,
+    'Ordinary synchronization changed counters or did not apply the CMS HWID/IP limits.');
 
 echo json_encode(['status' => 'ok', 'cases' => ['expiration_boundary', 'stale_enable', 'suspension',
     'traffic_limit', 'malformed_expiration', 'lifetime', 'renewal', 'reset_and_device_limit_preserved']]), PHP_EOL;

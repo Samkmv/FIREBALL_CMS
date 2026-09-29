@@ -13,7 +13,8 @@ $read = static function (string $path) use ($root): string {
 };
 
 $plugin = json_decode($read('plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-$assert(($plugin['version'] ?? '') === '1.4.0', 'Version is not 1.4.0');
+$assert(version_compare((string)($plugin['version'] ?? '0.0.0'), '1.4.0', '>='),
+    'Version is older than the HWID reconciliation release.');
 $assert(str_contains($read('src/Services/ClientPayloadFactory.php'), "'limitHwid' =>"), 'limitHwid missing');
 $assert(str_contains($read('src/Services/ClientPayloadFactory.php'), "'limitIp' =>"), 'limitIp missing');
 $assert(str_contains($read('src/Services/PlanManagerService.php'), '$parametersChanged'), 'auto reconciliation missing');

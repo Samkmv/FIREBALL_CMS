@@ -119,7 +119,7 @@ return [
     'vpn_manager_v2_never' => '从未',
     'vpn_manager_v2_server_id' => '服务器 ID',
     'vpn_manager_v2_field_name' => '名称',
-    'vpn_manager_v2_field_code' => '服务器代码',
+    'vpn_manager_v2_field_code' => '内部服务器代码',
     'vpn_manager_v2_field_panel_url' => '面板 URL',
     'vpn_manager_v2_field_panel_path' => '面板路径',
     'vpn_manager_v2_field_auth_type' => '认证方式',
@@ -1009,7 +1009,7 @@ return [
 
 
     // FIREBALL_VPN_DUPLICATE_COUNTRY_CODE_V145
-    'vpn_manager_v2_server_code_help' => '服务器的唯一内部代码，例如 de-fra-1 或 de-fra-2。',
+    'vpn_manager_v2_server_code_help' => '服务器内部代码。重复时 CMS 会自动添加编号：nl、nl-2、nl-3。',
     'vpn_manager_v2_country_code_help' => '两位国家代码，例如 DE。多个服务器可以使用相同的国家代码。',
 
 ];

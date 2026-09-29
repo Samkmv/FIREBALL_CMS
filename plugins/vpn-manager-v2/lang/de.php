@@ -119,7 +119,7 @@ return [
     'vpn_manager_v2_never' => 'Nie',
     'vpn_manager_v2_server_id' => 'Server-ID',
     'vpn_manager_v2_field_name' => 'Name',
-    'vpn_manager_v2_field_code' => 'Servercode',
+    'vpn_manager_v2_field_code' => 'Interner Servercode',
     'vpn_manager_v2_field_panel_url' => 'Panel-URL',
     'vpn_manager_v2_field_panel_path' => 'Panel-Pfad',
     'vpn_manager_v2_field_auth_type' => 'Authentifizierungsmethode',
@@ -1009,7 +1009,7 @@ return [
 
 
     // FIREBALL_VPN_DUPLICATE_COUNTRY_CODE_V145
-    'vpn_manager_v2_server_code_help' => 'Eindeutiger interner Servercode, z. B. de-fra-1 oder de-fra-2.',
+    'vpn_manager_v2_server_code_help' => 'Interner Servercode. Bei Duplikaten ergänzt das CMS automatisch eine Nummer: nl, nl-2, nl-3.',
     'vpn_manager_v2_country_code_help' => 'Zweistelliger Ländercode, z. B. DE. Derselbe Ländercode darf für mehrere Server verwendet werden.',
 
 ];

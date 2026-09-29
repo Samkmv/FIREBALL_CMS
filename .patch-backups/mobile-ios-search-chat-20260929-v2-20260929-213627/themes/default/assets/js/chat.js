@@ -8,37 +8,27 @@ $(function () {
     const rootElement = document.documentElement;
     let mobileViewportFrame = 0;
     let messageViewportFrame = 0;
-    let viewportAnchorReleaseTimer = 0;
-    let viewportAnchor = null;
+    let pendingMessageViewportAnchor = null;
 
-    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
-    const readMessageViewportAnchor = () => {
+    const captureMessageViewportAnchor = () => {
         const box = chatApp.find('[data-chat-messages]')[0];
-        if (!box) return null;
+        if (!box || pendingMessageViewportAnchor) return;
         const distanceFromBottom = Math.max(0, box.scrollHeight - box.scrollTop - box.clientHeight);
-        return {distanceFromBottom, stickToBottom: distanceFromBottom <= 48};
+        pendingMessageViewportAnchor = {distanceFromBottom, stickToBottom: distanceFromBottom <= 48};
     };
 
-    const restoreMessageViewportAnchor = (anchor) => {
-        if (!anchor) return;
+    const restoreMessageViewportAnchor = () => {
         if (messageViewportFrame) cancelAnimationFrame(messageViewportFrame);
         messageViewportFrame = requestAnimationFrame(() => {
             messageViewportFrame = 0;
             const box = chatApp.find('[data-chat-messages]')[0];
-            if (!box) return;
+            const anchor = pendingMessageViewportAnchor;
+            pendingMessageViewportAnchor = null;
+            if (!box || !anchor) return;
             box.scrollTop = anchor.stickToBottom
                 ? box.scrollHeight
                 : Math.max(0, box.scrollHeight - box.clientHeight - anchor.distanceFromBottom);
         });
-    };
-
-    const beginMessageViewportAnchorSession = () => {
-        if (!viewportAnchor) viewportAnchor = readMessageViewportAnchor();
-        if (viewportAnchorReleaseTimer) clearTimeout(viewportAnchorReleaseTimer);
-        viewportAnchorReleaseTimer = window.setTimeout(() => {
-            viewportAnchorReleaseTimer = 0;
-            viewportAnchor = null;
-        }, 220);
     };
 
     const syncMobileFullscreen = () => {
@@ -56,39 +46,23 @@ $(function () {
         document.body.classList.toggle('chat-pwa-fullscreen', isStandalone);
 
         const viewport = window.visualViewport;
-        const layoutViewportHeight = Math.max(
-            Number(window.innerHeight) || 0,
-            Number(rootElement.clientHeight) || 0
-        );
-        const visualViewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
-        const visualViewportHeight = Math.max(
-            0,
-            Number(viewport ? viewport.height : layoutViewportHeight) || layoutViewportHeight
-        );
+        const viewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
+        const viewportHeight = Math.max(0, Number(viewport ? viewport.height : window.innerHeight) || window.innerHeight);
         const siteHeader = isStandalone && !isMobile
             ? null
             : (document.querySelector('body > header') || document.querySelector('header'));
         const headerRect = siteHeader ? siteHeader.getBoundingClientRect() : null;
         const visibleHeaderHeight = headerRect
-            ? Math.max(0, Math.min(
-                visualViewportHeight,
-                Number(headerRect.height) || Number(siteHeader.offsetHeight) || 0
-            ))
+            ? Math.max(0, Math.min(viewportHeight, headerRect.bottom - viewportTop))
             : 0;
-        const visibleViewportBottom = isMobile
-            ? Math.max(0, Math.min(layoutViewportHeight, visualViewportTop + visualViewportHeight))
-            : layoutViewportHeight;
 
-        rootElement.style.setProperty('--chat-mobile-viewport-top', `${visibleHeaderHeight}px`);
-        rootElement.style.setProperty(
-            '--chat-mobile-viewport-height',
-            `${Math.max(0, visibleViewportBottom - visibleHeaderHeight)}px`
-        );
-        restoreMessageViewportAnchor(viewportAnchor);
+        rootElement.style.setProperty('--chat-mobile-viewport-top', `${viewportTop + visibleHeaderHeight}px`);
+        rootElement.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, viewportHeight - visibleHeaderHeight)}px`);
+        restoreMessageViewportAnchor();
     };
 
     const scheduleMobileFullscreenSync = () => {
-        beginMessageViewportAnchorSession();
+        captureMessageViewportAnchor();
         if (mobileViewportFrame) {
             cancelAnimationFrame(mobileViewportFrame);
         }
@@ -276,7 +250,7 @@ $(function () {
 
         const isMobile = typeof window.matchMedia === 'function'
             && window.matchMedia('(max-width: 767.98px)').matches;
-        const resizeAnchor = isMobile ? readMessageViewportAnchor() : null;
+        if (isMobile) captureMessageViewportAnchor();
 
         input.style.height = 'auto';
         const computedStyle = window.getComputedStyle(input);
@@ -293,7 +267,7 @@ $(function () {
         const baseHeight = Number(input.dataset.chatBaseHeight) || nextHeight;
         const composerGrowth = isMobile ? Math.max(0, nextHeight - baseHeight) : 0;
         chatApp[0].style.setProperty('--chat-composer-growth', `${composerGrowth}px`);
-        if (isMobile) restoreMessageViewportAnchor(resizeAnchor);
+        if (isMobile) restoreMessageViewportAnchor();
     };
 
     const formatBytes = (bytes) => {

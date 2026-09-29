@@ -8,33 +8,36 @@ $(function () {
     const rootElement = document.documentElement;
     let mobileViewportFrame = 0;
     let messageViewportFrame = 0;
-    let pendingMessageViewportAnchor = null;
+    let viewportAnchorReleaseTimer = 0;
+    let viewportAnchor = null;
     let stableMobileViewportHeight = 0;
     let stableMobileViewportWidth = 0;
 
-    const captureMessageViewportAnchor = () => {
+    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
+    const readMessageViewportAnchor = () => {
         const box = chatApp.find('[data-chat-messages]')[0];
-        if (!box || pendingMessageViewportAnchor) {
-            return;
+        if (!box) {
+            return null;
         }
 
         const distanceFromBottom = Math.max(0, box.scrollHeight - box.scrollTop - box.clientHeight);
-        pendingMessageViewportAnchor = {
+        return {
             distanceFromBottom,
             stickToBottom: distanceFromBottom <= 48,
         };
     };
 
-    const restoreMessageViewportAnchor = () => {
+    const restoreMessageViewportAnchor = (anchor) => {
+        if (!anchor) {
+            return;
+        }
         if (messageViewportFrame) {
             cancelAnimationFrame(messageViewportFrame);
         }
         messageViewportFrame = requestAnimationFrame(() => {
             messageViewportFrame = 0;
-            const anchor = pendingMessageViewportAnchor;
-            pendingMessageViewportAnchor = null;
             const box = chatApp.find('[data-chat-messages]')[0];
-            if (!box || !anchor) {
+            if (!box) {
                 return;
             }
 
@@ -42,6 +45,19 @@ $(function () {
                 ? box.scrollHeight
                 : Math.max(0, box.scrollHeight - box.clientHeight - anchor.distanceFromBottom);
         });
+    };
+
+    const beginMessageViewportAnchorSession = () => {
+        if (!viewportAnchor) {
+            viewportAnchor = readMessageViewportAnchor();
+        }
+        if (viewportAnchorReleaseTimer) {
+            clearTimeout(viewportAnchorReleaseTimer);
+        }
+        viewportAnchorReleaseTimer = window.setTimeout(() => {
+            viewportAnchorReleaseTimer = 0;
+            viewportAnchor = null;
+        }, 220);
     };
 
     const syncMobileFullscreen = () => {
@@ -98,7 +114,6 @@ $(function () {
         rootElement.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
         document.body.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
 
-        const viewportTop = isMobile ? visualViewportTop : 0;
         const viewportHeight = isMobile ? visualViewportHeight : layoutViewportHeight;
         const siteHeader = isStandalone && !isMobile
             ? null
@@ -108,13 +123,20 @@ $(function () {
             ? Math.max(0, Math.min(viewportHeight, Number(headerRect.height) || Number(siteHeader.offsetHeight) || 0))
             : 0;
 
-        rootElement.style.setProperty('--chat-mobile-viewport-top', `${viewportTop + visibleHeaderHeight}px`);
-        rootElement.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, viewportHeight - visibleHeaderHeight)}px`);
-        restoreMessageViewportAnchor();
+        const visibleViewportBottom = isMobile
+            ? Math.max(0, Math.min(keyboardReferenceHeight, visualViewportTop + visualViewportHeight))
+            : layoutViewportHeight;
+
+        rootElement.style.setProperty('--chat-mobile-viewport-top', `${visibleHeaderHeight}px`);
+        rootElement.style.setProperty(
+            '--chat-mobile-viewport-height',
+            `${Math.max(0, visibleViewportBottom - visibleHeaderHeight)}px`
+        );
+        restoreMessageViewportAnchor(viewportAnchor);
     };
 
     const scheduleMobileFullscreenSync = () => {
-        captureMessageViewportAnchor();
+        beginMessageViewportAnchorSession();
         if (mobileViewportFrame) {
             cancelAnimationFrame(mobileViewportFrame);
         }
@@ -312,9 +334,7 @@ $(function () {
 
         const isMobile = typeof window.matchMedia === 'function'
             && window.matchMedia('(max-width: 767.98px)').matches;
-        if (isMobile) {
-            captureMessageViewportAnchor();
-        }
+        const resizeAnchor = isMobile ? readMessageViewportAnchor() : null;
 
         input.style.height = 'auto';
         const computedStyle = window.getComputedStyle(input);
@@ -332,7 +352,7 @@ $(function () {
         const composerGrowth = isMobile ? Math.max(0, nextHeight - baseHeight) : 0;
         chatApp[0].style.setProperty('--chat-composer-growth', `${composerGrowth}px`);
         if (isMobile) {
-            restoreMessageViewportAnchor();
+            restoreMessageViewportAnchor(resizeAnchor);
         }
     };
 

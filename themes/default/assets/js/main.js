@@ -1295,6 +1295,126 @@ $(function(){
         });
     });
 
+
+    // FIREBALL_MOBILE_SEARCH_IOS_FIX_20260929
+    // On iOS a focused input inside a sticky header can pan the layout
+    // viewport. Freeze the document while the mobile search is open and keep
+    // the search panel fixed immediately below the visible header.
+    const mobileSearchBar = document.getElementById('searchBar');
+    const mobileSearchMedia = window.matchMedia('(max-width: 767.98px)');
+    let mobileSearchLocked = false;
+    let mobileSearchScrollY = 0;
+    let mobileSearchBodyStyles = null;
+
+    const syncMobileSearchTop = () => {
+        if (!mobileSearchBar || !mobileSearchMedia.matches) {
+            return;
+        }
+
+        const header = mobileSearchBar.closest('header.navbar-sticky');
+        if (!header) {
+            return;
+        }
+
+        const headerMain = Array.from(header.children).find((element) => (
+            element instanceof HTMLElement && element.classList.contains('container')
+        ));
+        const rect = (headerMain || header).getBoundingClientRect();
+        const top = Math.max(0, Math.round(rect.bottom));
+        document.documentElement.style.setProperty('--fb-mobile-search-top', `${top}px`);
+    };
+
+    const lockMobileSearchDocument = () => {
+        if (!mobileSearchBar || !mobileSearchMedia.matches || mobileSearchLocked) {
+            return;
+        }
+
+        syncMobileSearchTop();
+
+        const body = document.body;
+        mobileSearchScrollY = Math.max(
+            0,
+            Number(window.scrollY || document.documentElement.scrollTop || body.scrollTop || 0)
+        );
+        mobileSearchBodyStyles = {
+            position: body.style.position,
+            top: body.style.top,
+            right: body.style.right,
+            left: body.style.left,
+            width: body.style.width,
+            overflow: body.style.overflow,
+        };
+
+        body.style.position = 'fixed';
+        body.style.top = `-${mobileSearchScrollY}px`;
+        body.style.right = '0';
+        body.style.left = '0';
+        body.style.width = '100%';
+        body.style.overflow = 'hidden';
+
+        document.documentElement.classList.add('fb-mobile-search-open');
+        mobileSearchLocked = true;
+    };
+
+    const unlockMobileSearchDocument = () => {
+        if (!mobileSearchLocked) {
+            return;
+        }
+
+        const body = document.body;
+        const restore = mobileSearchBodyStyles || {};
+        body.style.position = restore.position || '';
+        body.style.top = restore.top || '';
+        body.style.right = restore.right || '';
+        body.style.left = restore.left || '';
+        body.style.width = restore.width || '';
+        body.style.overflow = restore.overflow || '';
+
+        document.documentElement.classList.remove('fb-mobile-search-open');
+        document.documentElement.style.removeProperty('--fb-mobile-search-top');
+
+        const scrollY = mobileSearchScrollY;
+        mobileSearchLocked = false;
+        mobileSearchBodyStyles = null;
+
+        window.requestAnimationFrame(() => {
+            window.scrollTo({top: scrollY, left: 0, behavior: 'auto'});
+        });
+    };
+
+    if (mobileSearchBar) {
+        mobileSearchBar.addEventListener('show.bs.collapse', lockMobileSearchDocument);
+        mobileSearchBar.addEventListener('shown.bs.collapse', syncMobileSearchTop);
+        mobileSearchBar.addEventListener('hide.bs.collapse', () => {
+            const active = document.activeElement;
+            if (active instanceof HTMLElement && mobileSearchBar.contains(active)) {
+                active.blur();
+            }
+        });
+        mobileSearchBar.addEventListener('hidden.bs.collapse', unlockMobileSearchDocument);
+
+        window.addEventListener('resize', () => {
+            if (mobileSearchLocked) {
+                syncMobileSearchTop();
+            }
+        }, {passive: true});
+
+        const releaseOnDesktop = () => {
+            if (!mobileSearchMedia.matches) {
+                unlockMobileSearchDocument();
+            } else if (mobileSearchBar.classList.contains('show')) {
+                lockMobileSearchDocument();
+                syncMobileSearchTop();
+            }
+        };
+
+        if (typeof mobileSearchMedia.addEventListener === 'function') {
+            mobileSearchMedia.addEventListener('change', releaseOnDesktop);
+        } else if (typeof mobileSearchMedia.addListener === 'function') {
+            mobileSearchMedia.addListener(releaseOnDesktop);
+        }
+    }
+
     // Remove from Cart
     $('body').on('click', '.btn-remove', function(e){
         e.preventDefault();

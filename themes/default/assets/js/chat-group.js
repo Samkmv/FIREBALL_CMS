@@ -19,6 +19,38 @@ $(function () {
     // Use the same viewport shell as direct chat, including the on-screen keyboard.
     const root = document.documentElement;
     let viewportFrame = 0;
+    let messageViewportFrame = 0;
+    let viewportAnchor = null;
+    let viewportAnchorReleaseTimer = 0;
+
+    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
+    const readViewportAnchor = () => {
+        const element = box[0];
+        if (!element) return null;
+        const distanceFromBottom = Math.max(0, element.scrollHeight - element.scrollTop - element.clientHeight);
+        return {distanceFromBottom, stickToBottom: distanceFromBottom <= 48};
+    };
+    const restoreViewportAnchor = (anchor) => {
+        if (!anchor) return;
+        if (messageViewportFrame) cancelAnimationFrame(messageViewportFrame);
+        messageViewportFrame = window.requestAnimationFrame(() => {
+            messageViewportFrame = 0;
+            const element = box[0];
+            if (!element) return;
+            element.scrollTop = anchor.stickToBottom
+                ? element.scrollHeight
+                : Math.max(0, element.scrollHeight - element.clientHeight - anchor.distanceFromBottom);
+        });
+    };
+    const beginViewportAnchorSession = () => {
+        if (!viewportAnchor) viewportAnchor = readViewportAnchor();
+        if (viewportAnchorReleaseTimer) clearTimeout(viewportAnchorReleaseTimer);
+        viewportAnchorReleaseTimer = window.setTimeout(() => {
+            viewportAnchorReleaseTimer = 0;
+            viewportAnchor = null;
+        }, 220);
+    };
+
     const syncViewport = () => {
         viewportFrame = 0;
         const mobile = window.matchMedia('(max-width: 767.98px)').matches;
@@ -26,9 +58,16 @@ $(function () {
             || window.matchMedia('(display-mode: standalone)').matches
             || navigator.standalone === true;
         const viewport = window.visualViewport;
-        const top = Math.max(0, viewport?.offsetTop || 0);
-        const height = viewport?.height || window.innerHeight;
-        const keyboard = mobile && input.is(':focus') && window.innerHeight - height > 80;
+        const layoutHeight = Math.max(
+            Number(window.innerHeight) || 0,
+            Number(root.clientHeight) || 0
+        );
+        const visualTop = Math.max(0, Number(viewport?.offsetTop || 0));
+        const visualHeight = Math.max(0, Number(viewport?.height || layoutHeight));
+        const visibleBottom = mobile
+            ? Math.max(0, Math.min(layoutHeight, visualTop + visualHeight))
+            : layoutHeight;
+        const keyboard = mobile && input.is(':focus') && (layoutHeight - visibleBottom) > 80;
         [root, document.body].forEach(element => {
             element.classList.add('chat-viewport-fullscreen');
             element.classList.toggle('chat-mobile-fullscreen', mobile);
@@ -37,10 +76,12 @@ $(function () {
         });
         const header = standalone && !mobile ? null : document.querySelector('body > header');
         const headerHeight = header ? header.getBoundingClientRect().height : 0;
-        root.style.setProperty('--chat-mobile-viewport-top', `${top + headerHeight}px`);
-        root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, height - headerHeight)}px`);
+        root.style.setProperty('--chat-mobile-viewport-top', `${headerHeight}px`);
+        root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, visibleBottom - headerHeight)}px`);
+        restoreViewportAnchor(viewportAnchor);
     };
     const scheduleViewport = () => {
+        beginViewportAnchorSession();
         if (!viewportFrame) viewportFrame = requestAnimationFrame(syncViewport);
     };
     window.addEventListener('resize', scheduleViewport, {passive: true});
@@ -268,9 +309,11 @@ $(function () {
         const el = input[0];
         if (!el) return;
 
+        const resizeAnchor = readViewportAnchor();
         el.style.height = 'auto';
         el.style.height = `${Math.max(44, Math.min(el.scrollHeight, 132))}px`;
         el.style.overflowY = el.scrollHeight > 132 ? 'auto' : 'hidden';
+        restoreViewportAnchor(resizeAnchor);
     };
 
     form.on('submit', function (event) {

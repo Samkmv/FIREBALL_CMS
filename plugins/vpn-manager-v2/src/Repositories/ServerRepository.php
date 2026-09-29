@@ -95,6 +95,29 @@ final class ServerRepository
         return (bool)db()->query($sql . ' LIMIT 1', $params)->getOne();
     }
 
+    /**
+     * Server code is an internal stable identifier and remains unique. When an
+     * administrator enters a country code for several servers, choose a clear
+     * deterministic suffix instead of rejecting the form.
+     */
+    public function availableCode(string $preferredCode, ?int $exceptId = null): string
+    {
+        $preferredCode = mb_substr(trim($preferredCode), 0, 80);
+        if (!$this->codeExists($preferredCode, $exceptId)) {
+            return $preferredCode;
+        }
+
+        for ($suffix = 2; $suffix <= 99999; $suffix++) {
+            $tail = '-' . $suffix;
+            $candidate = mb_substr($preferredCode, 0, 80 - strlen($tail)) . $tail;
+            if (!$this->codeExists($candidate, $exceptId)) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException('Could not allocate a unique VPN server code.');
+    }
+
     public function create(array $data, array $encryptedSecrets): int
     {
         $now = date('Y-m-d H:i:s');

@@ -64,7 +64,7 @@ $payload = (new ClientPayloadFactory())->build([
     'desired_enabled' => 0,
 ]);
 $assert($payload['enable'] === false && $payload['expiryTime'] > 0
-    && $payload['totalGB'] === 1024 && $payload['limitIp'] === 3,
+    && $payload['totalGB'] === 1024 && $payload['limitHwid'] === 3 && $payload['limitIp'] === 0,
     'Suspended reconciliation payload does not preserve current subscription state.');
 
 $traffic = TrafficSyncService::trafficFromResponse(['obj' => ['up' => 120, 'down' => 80]]);
@@ -98,7 +98,7 @@ $assert(str_contains($reconciler, 'provisionMissingNode')
     && str_contains($repository, 'FOR UPDATE'),
     'Local-first reconciliation or revision aggregation is incomplete.');
 $assert(str_contains($provisioning, 'getInbound($remoteInboundId)')
-    && str_contains($provisioning, 'verify($confirmed, $payload)'),
+    && str_contains($provisioning, 'applyClientState($client, $remoteInboundId, $node, $payload, $freshInbound)'),
     'Provisioning does not perform the mandatory post-create inbound verification.');
 $assert(str_contains($endpointRepository, "n.status = 'active'")
     && !str_contains($endpointRepository, "n.status IN ('creating'"),

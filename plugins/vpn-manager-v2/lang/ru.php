@@ -119,7 +119,7 @@ return [
     'vpn_manager_v2_never' => 'Никогда',
     'vpn_manager_v2_server_id' => 'ID сервера',
     'vpn_manager_v2_field_name' => 'Название',
-    'vpn_manager_v2_field_code' => 'Код сервера',
+    'vpn_manager_v2_field_code' => 'Внутренний код сервера',
     'vpn_manager_v2_field_panel_url' => 'URL панели',
     'vpn_manager_v2_field_panel_path' => 'Путь панели',
     'vpn_manager_v2_field_auth_type' => 'Способ авторизации',
@@ -1009,7 +1009,7 @@ return [
 
 
     // FIREBALL_VPN_DUPLICATE_COUNTRY_CODE_V145
-    'vpn_manager_v2_server_code_help' => 'Уникальный внутренний код сервера. Например: de-fra-1 или de-fra-2.',
+    'vpn_manager_v2_server_code_help' => 'Внутренний код сервера. При повторении CMS автоматически добавит номер: nl, nl-2, nl-3.',
     'vpn_manager_v2_country_code_help' => 'Двухбуквенный код страны, например DE. Один и тот же код страны можно использовать у нескольких серверов.',
 
 ];

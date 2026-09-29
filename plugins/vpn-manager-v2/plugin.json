@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
@@ -13,7 +13,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
-    "Allowed multiple VPN servers to share the same country code; server code remains unique and the server form now explains the difference.",
+    "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
     "Added a native 3x-ui HWID gateway for FIREBALL subscriptions: device headers are validated by the 3x-ui subscription server before FIREBALL returns configs.",
     "Improved tariff reconciliation UI: explicit discrepancy counters, no-op detection, manual sync guard, and clearer HWID/IP limit labels.",
     "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
@@ -30,7 +30,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
-      "Разрешено использовать одинаковый код страны у нескольких VPN-серверов; код сервера остаётся уникальным, а форма сервера теперь явно объясняет разницу.",
+      "Несколько VPN-серверов могут иметь один код страны; повторяющиеся внутренние коды автоматически получают номер (nl, nl-2, nl-3).",
       "Добавлен нативный HWID-шлюз 3x-ui для подписок FIREBALL: заголовки устройства проверяются сервером подписок 3x-ui до выдачи конфигураций FIREBALL.",
       "Улучшено согласование тарифов: явные счётчики расхождений, состояние «всё соответствует», защита от лишней ручной синхронизации и понятные лимиты устройств/IP.",
       "Завершена синхронизация тарифов с 3x-ui: лимит HWID-устройств, отдельный лимит IP, управление устройствами в админке и подробная диагностика расхождений.",
@@ -46,7 +46,7 @@
       "Исправлено продление истёкшей подписки: будущая дата повторно активирует клиентов 3x-ui, а ошибка повторного создания больше не показывается как успешное обновление."
     ],
     "en": [
-      "Allowed multiple VPN servers to share the same country code; server code remains unique and the server form now explains the difference.",
+      "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
       "Added a native 3x-ui HWID gateway for FIREBALL subscriptions: device headers are validated by the 3x-ui subscription server before FIREBALL returns configs.",
       "Improved tariff reconciliation UI: explicit discrepancy counters, no-op detection, manual sync guard, and clearer HWID/IP limit labels.",
       "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
@@ -62,7 +62,7 @@
       "Fixed expired-subscription renewal: a future expiration reactivates 3x-ui clients, and failed reconciliation can no longer be reported as a successful update."
     ],
     "de": [
-      "Mehrere VPN-Server dürfen jetzt denselben Ländercode verwenden; der Servercode bleibt eindeutig und das Serverformular erklärt den Unterschied.",
+      "Mehrere VPN-Server können denselben Ländercode verwenden; doppelte interne Servercodes werden automatisch nummeriert (nl, nl-2, nl-3).",
       "Ein nativer 3x-ui-HWID-Gateway für FIREBALL-Abonnements wurde hinzugefügt: Geräte-Header werden vom 3x-ui-Abonnementserver geprüft, bevor FIREBALL Konfigurationen ausliefert.",
       "Die Tarifabstimmung wurde verbessert: klare Abweichungszähler, Erkennung von „alles stimmt überein“, Schutz vor unnötiger manueller Synchronisierung und verständliche Geräte-/IP-Limits.",
       "Die Tarifsynchronisierung mit 3x-ui wurde vervollständigt: HWID-Gerätelimit, separates IP-Limit, Geräteverwaltung im Adminbereich und detaillierte Abweichungsdiagnose.",
@@ -78,7 +78,7 @@
       "Die Verlängerung abgelaufener Abonnements wurde korrigiert: Ein zukünftiges Datum reaktiviert 3x-ui-Clients und fehlgeschlagene Wiederherstellungen werden nicht mehr als Erfolg gemeldet."
     ],
     "zh-cn": [
-      "现在允许多个 VPN 服务器使用相同的国家代码；服务器代码仍保持唯一，服务器表单也会明确说明两者的区别。",
+      "多个 VPN 服务器可以使用相同的国家代码；重复的内部服务器代码会自动编号（nl、nl-2、nl-3）。",
       "为 FIREBALL 订阅新增原生 3x-ui HWID 网关：FIREBALL 返回配置前，设备请求头会先由 3x-ui 订阅服务器校验。",
       "改进套餐同步界面：显示明确的差异计数、识别“全部一致”状态、防止无意义的手动同步，并明确区分设备限制和 IP 限制。",
       "已完成与 3x-ui 的套餐同步：支持 HWID 设备限制、独立 IP 限制、后台设备管理和详细差异诊断。",

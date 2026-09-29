@@ -55,10 +55,10 @@ $assert($metadataHeaders['subscription-userinfo'] === 'upload=1073741824; downlo
     && $metadataHeaders['profile-update-interval'] === '1'
     && $metadataHeaders['support-url'] === 'https://support.example.com',
     'Subscription traffic or expiration metadata is incorrect.');
-$assert(str_contains($metadata->profileTitle([
+$assert($metadata->profileTitle([
     'expires_at' => '2026-07-17 14:00:00',
-], ['subscription_name' => 'Fireball VPN']), '17.07.2026'),
-    'Subscription profile title does not show its expiration date.');
+], ['subscription_name' => 'Fireball VPN']) === 'Fireball VPN',
+    'Subscription profile title is not stable across renewals.');
 
 $instructions = ProfileVpnInstructions::all('android');
 $assert(count($instructions) === 4 && count($instructions[0]['steps']) === 4,
@@ -85,7 +85,7 @@ echo json_encode([
         'traffic_formatting',
         'remaining_time',
         'subscription_traffic_metadata',
-        'subscription_expiration_title',
+        'stable_subscription_title',
         'four_platform_instructions',
         'v2_subscription_url',
         'iphone_clipboard_fallback',

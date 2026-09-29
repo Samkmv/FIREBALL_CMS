@@ -19,8 +19,10 @@ final class ServerManagerService
     {
         $repository = $this->repository();
         $data = ($this->validator ?? new ServerValidator())->validate($input);
-        if ($repository->codeExists($data->code)) {
-            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_code_exists'));
+        $availableCode = $repository->availableCode($data->code);
+        if ($availableCode !== $data->code) {
+            $input['code'] = $availableCode;
+            $data = ($this->validator ?? new ServerValidator())->validate($input);
         }
 
         $secretService = $this->secrets ?? new ServerSecretService();
@@ -43,8 +45,10 @@ final class ServerManagerService
         }
 
         $data = ($this->validator ?? new ServerValidator())->validate($input);
-        if ($repository->codeExists($data->code, $id)) {
-            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_code_exists'));
+        $availableCode = $repository->availableCode($data->code, $id);
+        if ($availableCode !== $data->code) {
+            $input['code'] = $availableCode;
+            $data = ($this->validator ?? new ServerValidator())->validate($input);
         }
 
         $secretService = $this->secrets ?? new ServerSecretService();

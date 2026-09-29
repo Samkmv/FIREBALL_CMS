@@ -13,10 +13,25 @@
     });
     const header = standalone && !mobile ? null : document.querySelector('body > header');
     const headerHeight = header ? header.getBoundingClientRect().height : 0;
+    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
+    // Do not move the entire chat by visualViewport.offsetTop. Safari changes
+    // offsetTop while focusing the keyboard, which is exactly what makes the
+    // chat jump. Keep the top stable and use offsetTop only to find the visible
+    // bottom edge.
     const viewport = window.visualViewport;
-    const top = mobile ? Math.max(0, viewport?.offsetTop || 0) : 0;
-    const height = mobile ? (viewport?.height || window.innerHeight) : window.innerHeight;
-    root.style.setProperty('--chat-mobile-viewport-top', `${top + headerHeight}px`);
-    root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, height - headerHeight)}px`);
+    const visualTop = mobile ? Math.max(0, Number(viewport?.offsetTop || 0)) : 0;
+    const visualHeight = mobile
+        ? Math.max(0, Number(viewport?.height || window.innerHeight))
+        : Math.max(0, Number(window.innerHeight));
+    const layoutHeight = Math.max(
+        Number(window.innerHeight) || 0,
+        Number(document.documentElement.clientHeight) || 0
+    );
+    const visibleBottom = mobile
+        ? Math.max(0, Math.min(layoutHeight, visualTop + visualHeight))
+        : layoutHeight;
+
+    root.style.setProperty('--chat-mobile-viewport-top', `${headerHeight}px`);
+    root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, visibleBottom - headerHeight)}px`);
 })();
 </script>
