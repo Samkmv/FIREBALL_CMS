@@ -59,11 +59,17 @@ body:has(.fb-editor-workspace) {
     left: var(--fb-sidebar-collapsed-width, 76px);
 }
 
+/* FIREBALL_MOBILE_BOTTOM_GAP_FIX_20260930
+ * The workspace itself is already fixed with top/bottom edges. Using 100dvh
+ * again for its child can make the form shorter than the fixed workspace on
+ * iOS and expose the workspace/background as an empty strip at the bottom.
+ */
 .fb-editor-workspace__form {
     display: grid;
     grid-template-rows: 64px minmax(0, 1fr) 28px;
-    height: 100dvh;
+    height: 100%;
     min-width: 0;
+    min-height: 0;
 }
 
 .fb-editor-workspace__topbar {
