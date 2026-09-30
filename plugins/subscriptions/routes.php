@@ -2,6 +2,7 @@
 
 use Fireball\Subscriptions\Controllers\AdminController as SubscriptionsAdminController;
 use Fireball\Subscriptions\Controllers\PublicController as SubscriptionsPublicController;
+use Fireball\Subscriptions\Controllers\BusinessController;
 
 /** @var \FBL\Router $router */
 
@@ -10,6 +11,7 @@ $router->get('/plugins/subscriptions/assets/(?P<file>[a-z0-9._-]+)', static func
     $types = [
         'subscriptions.css' => 'text/css',
         'profile-region.js' => 'application/javascript',
+        'business-dashboard.js' => 'application/javascript',
         'address-catalog-import.js' => 'application/javascript',
     ];
     if (!isset($types[$file])) {
@@ -76,3 +78,10 @@ $router->post('/admin/subscriptions/settings/save', [SubscriptionsAdminControlle
 $router->post('/admin/subscriptions/address-catalog/import', [SubscriptionsAdminController::class, 'addressCatalogImport'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/address-catalog/batch', [SubscriptionsAdminController::class, 'addressCatalogBatch'])->middleware(['auth', 'admin']);
 $router->post('/admin/subscriptions/address-catalog/clear', [SubscriptionsAdminController::class, 'addressCatalogClear'])->middleware(['auth', 'admin']);
+
+$router->get('/account/business', [BusinessController::class, 'manage'])->middleware(['auth']);
+$router->post('/account/business', [BusinessController::class, 'manage'])->middleware(['auth']);
+$router->get('/business/(?P<slug>[a-z0-9][a-z0-9-]{0,189})/?', [BusinessController::class, 'show']);
+$router->post('/business/(?P<slug>[a-z0-9][a-z0-9-]{0,189})/review', [BusinessController::class, 'review'])->middleware(['auth']);
+$router->get('/admin/subscriptions/business', [BusinessController::class, 'admin'])->middleware(['auth', 'admin']);
+$router->post('/admin/subscriptions/business', [BusinessController::class, 'admin'])->middleware(['auth', 'admin']);

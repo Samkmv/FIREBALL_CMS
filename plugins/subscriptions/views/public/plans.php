@@ -5,6 +5,7 @@ $planColumnClass = $planCount === 1
     ? 'col-md-8 col-lg-6 col-xl-5'
     : ($planCount === 2 ? 'col-md-6 col-xl-5' : 'col-md-6 col-xl-4');
 $features = [
+    ['business.manage', 'subscriptions_permission_business_manage'],
     ['posts.view_paid', 'subscriptions_feature_posts'],
     ['videos.view_paid', 'subscriptions_feature_video'],
     ['camera_archive.view', 'subscriptions_feature_archive'],

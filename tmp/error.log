@@ -1,0 +1,155 @@
+[2026-09-30 21:41:56] Database query error
+Request URI: /admin/subscriptions/business
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'camera_url' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php(182): FBL\Database->query('UPDATE subscrip...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/BusinessController.php(137): Fireball\Subscriptions\Repositories\BusinessRepository->saveCameraLinks(1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\BusinessController->admin()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+SQL: UPDATE subscription_business_pages SET camera_url=?, camera_poster=?, camera_id=NULL, updated_at=? WHERE id=?
+Param Count: 4
+Param Keys: ["0","1","2","3"]
+========================================================================
+[2026-09-30 21:41:56] Business administration failed
+Request URI: /admin/subscriptions/business
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'camera_url' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php(182): FBL\Database->query('UPDATE subscrip...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/BusinessController.php(137): Fireball\Subscriptions\Repositories\BusinessRepository->saveCameraLinks(1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\BusinessController->admin()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-30 21:42:06] Database query error
+Request URI: /admin/subscriptions/business?business=1
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'camera_url' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php(182): FBL\Database->query('UPDATE subscrip...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/BusinessController.php(137): Fireball\Subscriptions\Repositories\BusinessRepository->saveCameraLinks(1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\BusinessController->admin()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+SQL: UPDATE subscription_business_pages SET camera_url=?, camera_poster=?, camera_id=NULL, updated_at=? WHERE id=?
+Param Count: 4
+Param Keys: ["0","1","2","3"]
+========================================================================
+[2026-09-30 21:42:06] Business administration failed
+Request URI: /admin/subscriptions/business?business=1
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'camera_url' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php(182): FBL\Database->query('UPDATE subscrip...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/BusinessController.php(137): Fireball\Subscriptions\Repositories\BusinessRepository->saveCameraLinks(1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\BusinessController->admin()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-30 21:42:26] Database query error
+Request URI: /admin/subscriptions/business
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'camera_url' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php(182): FBL\Database->query('UPDATE subscrip...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/BusinessController.php(137): Fireball\Subscriptions\Repositories\BusinessRepository->saveCameraLinks(1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\BusinessController->admin()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+SQL: UPDATE subscription_business_pages SET camera_url=?, camera_poster=?, camera_id=NULL, updated_at=? WHERE id=?
+Param Count: 4
+Param Keys: ["0","1","2","3"]
+========================================================================
+[2026-09-30 21:42:26] Business administration failed
+Request URI: /admin/subscriptions/business
+Request Method: POST
+Remote IP: ::1
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'camera_url' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php(182): FBL\Database->query('UPDATE subscrip...', Array)
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/BusinessController.php(137): Fireball\Subscriptions\Repositories\BusinessRepository->saveCameraLinks(1, Array)
+#3 [internal function]: Fireball\Subscriptions\Controllers\BusinessController->admin()
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#6 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#7 {main}
+========================================================================
+[2026-09-30 21:42:50] Business administration failed
+Request URI: /admin/subscriptions/business
+Request Method: POST
+Remote IP: ::1
+Exception: InvalidArgumentException
+Message: Проверьте обязательные поля, длину текста, email и ссылки (http/https). Для публикации фотографии нужно изображение.
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php
+Line: 218
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Repositories/BusinessRepository.php(180): Fireball\Subscriptions\Repositories\BusinessRepository->invalid()
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/plugins/subscriptions/src/Controllers/BusinessController.php(137): Fireball\Subscriptions\Repositories\BusinessRepository->saveCameraLinks(1, Array)
+#2 [internal function]: Fireball\Subscriptions\Controllers\BusinessController->admin()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#6 {main}
+========================================================================
+[30-Sep-2026 21:58:50 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:50 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:55 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:58:56 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:59:01 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:59:01 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:59:06 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"
+[30-Sep-2026 21:59:06 Europe/Moscow] Plugin language file error [subscriptions]: syntax error, unexpected token "=>"

@@ -1,0 +1,5 @@
+    <section id="owner-reviews" class="profile-panel business-panel"><h2 class="h4"><?= $t('reviews') ?></h2>
+        <?php if (!$reviews): ?><p class="text-body-secondary"><?= $t('no_reviews') ?></p><?php endif; ?>
+        <?php foreach ($reviews as $review): ?><article class="border-top py-3"><strong><?= htmlSC($review['author']) ?> · <?= (int)$review['rating'] ?>/5</strong><p class="business-text"><?= htmlSC($review['body']) ?></p><form method="post"><?= get_csrf_field() ?><input type="hidden" name="action" value="reply"><input type="hidden" name="review_id" value="<?= (int)$review['id'] ?>"><label class="form-label" for="reply-<?= (int)$review['id'] ?>"><?= $t('reply') ?></label><textarea id="reply-<?= (int)$review['id'] ?>" class="form-control" name="reply" maxlength="3000" rows="2"><?= htmlSC($review['reply']) ?></textarea><button class="btn btn-outline-secondary rounded-pill btn-sm mt-2"><?= $t('save') ?></button></form></article><?php endforeach; ?>
+        <?= $reviews_pagination->getHtml() ?>
+    </section>

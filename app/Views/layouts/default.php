@@ -243,7 +243,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Bootstrap + Theme styles -->
     <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/theme.min.css') ?>" id="theme-styles">
 
-    <?php if (isset($is_settings)): ?>
+    <?php if (isset($is_settings) || !empty($use_profile_styles)): ?>
         <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/profile.css') ?>">
     <?php endif; ?>
 

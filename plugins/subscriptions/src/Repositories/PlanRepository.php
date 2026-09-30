@@ -7,6 +7,7 @@ use Fireball\Subscriptions\Support\Money;
 final class PlanRepository
 {
     public const PERMISSIONS = [
+        'business.manage',
         'posts.view_paid',
         'videos.view_paid',
         'camera_archive.view',

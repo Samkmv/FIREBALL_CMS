@@ -1,0 +1,4 @@
+<?php if ($business_camera): ?>
+<div class="business-camera-frame"><div class="fire-player" data-fire-player data-src="<?= htmlSC($business_camera['url']) ?>" data-poster="<?= htmlSC($business_camera['poster']) ?>" data-stream-id="<?= htmlSC($business_camera['stream_key']) ?>" data-media="video" data-mode="live" data-protocol="auto" data-controls="true" data-muted="true" data-aspect-ratio="16:9" aria-label="<?= htmlSC($business_camera['title']) ?>"><?php if ($business_camera['poster']): ?><img class="business-camera-fallback" src="<?= htmlSC($business_camera['poster']) ?>" alt="" loading="lazy"><?php endif; ?></div></div>
+<?php else: ?><div class="business-camera-empty"><i class="ci-camera" aria-hidden="true"></i><strong><?= $t('no_camera') ?></strong><p><?= $t('camera_admin') ?></p></div><?php endif; ?>
+<p class="business-camera-refresh-status small business-muted mt-2 mb-0" data-business-camera-status role="status"></p>

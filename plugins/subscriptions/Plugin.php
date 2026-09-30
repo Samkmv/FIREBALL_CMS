@@ -50,6 +50,10 @@ final class FireballPluginSubscriptions implements PluginInterface
     public function boot(): void
     {
         (new SettingsService())->ensureDefaults();
+        if (!plugin_setting(self::SLUG, 'business_slugs_backfilled', false)) {
+            (new \Fireball\Subscriptions\Repositories\BusinessRepository())->backfillSlugs();
+            plugin_setting_set(self::SLUG, 'business_slugs_backfilled', true);
+        }
 
         add_filter('admin_menu', static function (array $menu): array {
             $menu[] = [
@@ -64,7 +68,7 @@ final class FireballPluginSubscriptions implements PluginInterface
             return $menu;
         });
 
-        add_filter('profile_menu', static function (array $items): array {
+        add_filter('profile_menu', static function (array $items, array $user = []): array {
             $items[] = [
                 'key' => 'subscription',
                 'label' => self::t('subscriptions_account_title'),
@@ -82,6 +86,12 @@ final class FireballPluginSubscriptions implements PluginInterface
                 'plugin' => self::SLUG,
             ];
 
+            $business = new \Fireball\Subscriptions\Repositories\BusinessRepository();
+            $userId = (int)($user['id'] ?? get_user()['id'] ?? 0);
+            if ($business->canManage($userId) || $business->forUser($userId)) {
+                $items[] = ['key' => 'business', 'label' => self::t('business_manage'),
+                    'href' => base_href('/account/business'), 'icon' => 'ci-briefcase', 'order' => 37, 'plugin' => self::SLUG];
+            }
             return $items;
         });
 
@@ -614,6 +624,7 @@ final class FireballPluginSubscriptions implements PluginInterface
             'exclusions' => ['subscriptions_admin_exclusions', '/admin/subscriptions/exclusions', 'ci-map-pin'],
             'payments' => ['subscriptions_admin_payments', '/admin/subscriptions/payments', 'ci-credit-card'],
             'content' => ['subscriptions_admin_content', '/admin/subscriptions/content', 'ci-file-text'],
+            'business' => ['business_manage', '/admin/subscriptions/business', 'ci-briefcase'],
             'fields' => ['subscriptions_admin_profile_fields', '/admin/subscriptions/profile-fields', 'ci-list'],
             'settings' => ['subscriptions_admin_settings', '/admin/subscriptions/settings', 'ci-settings'],
         ];

@@ -20,7 +20,7 @@ $value = static fn(string $key, mixed $default = ''): mixed => $values[$key] ?? 
         <hr class="my-4">
         <h2 class="h5"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_permissions_title')) ?></h2>
         <div class="row g-3">
-            <?php foreach (['posts.view_paid', 'videos.view_paid', 'camera_archive.view', 'camera_archive.download'] as $permission): ?>
+            <?php foreach (['business.manage', 'posts.view_paid', 'videos.view_paid', 'camera_archive.view', 'camera_archive.download'] as $permission): ?>
                 <div class="col-md-6"><label class="form-check"><input class="form-check-input" type="checkbox" name="permissions[<?= htmlSC($permission) ?>]" value="1" <?= !empty($permissionValues[$permission]) ? 'checked' : '' ?>><span class="form-check-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_permission_' . str_replace('.', '_', $permission))) ?></span></label></div>
             <?php endforeach; ?>
             <div class="col-md-6"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_archive_days')) ?></label><input class="form-control" type="number" min="0" name="permissions[camera_archive.max_days]" value="<?= (int)($permissionValues['camera_archive.max_days'] ?? 0) ?>"></div>

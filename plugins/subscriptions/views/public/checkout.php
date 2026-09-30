@@ -1,5 +1,6 @@
 <?php
 $features = [
+    ['business.manage', 'subscriptions_permission_business_manage'],
     ['posts.view_paid', 'subscriptions_feature_posts'],
     ['videos.view_paid', 'subscriptions_feature_video'],
     ['camera_archive.view', 'subscriptions_feature_archive'],
