@@ -14,7 +14,7 @@
         constructor(initialState, options) {
             const settings = options || {};
             this.limit = Math.max(10, Number(settings.limit || 100));
-            this.coalesceMs = Math.max(0, Number(settings.coalesceMs || 650));
+            this.coalesceMs = Math.max(0, Number(settings.coalesceMs == null ? 650 : settings.coalesceMs));
             this.entries = [{ state: clone(initialState), label: 'initial', time: Date.now() }];
             this.index = 0;
         }
@@ -23,6 +23,8 @@
             const now = Date.now();
             const entry = this.entries[this.index];
             const shouldCoalesce = !force
+                && this.index > 0
+                && this.index === this.entries.length - 1
                 && entry
                 && entry.label === label
                 && now - entry.time <= this.coalesceMs;

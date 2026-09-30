@@ -109,10 +109,20 @@
 
     function normalizeState(value, registry) {
         const source = value && typeof value === 'object' ? value : {};
+        const ids = new Set();
         return {
             version: 2,
             blocks: Array.isArray(source.blocks)
-                ? source.blocks.map(function (block) { return normalizeBlock(block, registry); })
+                ? source.blocks.map(function (block) {
+                    const normalized = normalizeBlock(block, registry);
+                    // Duplicate IDs otherwise make selecting, moving and deleting
+                    // one imported block operate on a different block.
+                    if (ids.has(normalized.id)) {
+                        normalized.id = blockId();
+                    }
+                    ids.add(normalized.id);
+                    return normalized;
+                })
                 : []
         };
     }

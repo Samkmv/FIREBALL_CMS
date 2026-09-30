@@ -150,6 +150,8 @@
             this.selectionAnchorId = this.activeId;
             this.lastSelectAllAt = 0;
             this.dirty = false;
+            this.changeRevision = 0;
+            this.autosaveQueued = false;
             this.destroyed = false;
             this.savedRange = null;
             this.draggedId = '';
@@ -2419,6 +2421,12 @@
                 this.openCommandPalette();
                 return;
             }
+            // Document fields and menu/search inputs have their own native
+            // selection and undo; do not apply block shortcuts to them.
+            if (modifier && editableTarget && !this.ui.canvas.contains(editableTarget)
+                && ['z', 'y', 'a', 'b', 'i', 'u', 'k', 'f', 'h'].indexOf(key) !== -1) {
+                return;
+            }
             if (modifier && ['b', 'i', 'u'].indexOf(key) !== -1 && event.target.closest('[contenteditable="true"]')) {
                 event.preventDefault();
                 this.applyInline({ b: 'strong', i: 'em', u: 'u' }[key]);
@@ -2534,6 +2542,7 @@
             this.markDirty();
             this.syncTextarea();
             this.renderAll({ preserveFocus: true });
+            this.saveLocalDraftSoon();
             this.scheduleAutosave();
         }
 
@@ -2550,6 +2559,7 @@
             this.markDirty();
             this.syncTextarea();
             this.renderAll({ preserveFocus: true });
+            this.saveLocalDraftSoon();
             this.scheduleAutosave();
         }
 
@@ -2570,10 +2580,12 @@
         }
 
         markDirty() {
+            this.changeRevision += 1;
             this.dirty = true;
             if (this.workspace) {
                 this.workspace.classList.add('is-dirty');
             }
+            this.saveLocalDraftSoon();
             this.setSaveState('saving', this.label('saving', 'Saving…'));
         }
 
@@ -3228,10 +3240,36 @@
             this.syncTextarea(false);
         }
 
-        handleSubmit() {
+        handleSubmit(event) {
+            if (event && this.abortController && this.autosaveFinished) {
+                event.preventDefault();
+                if (this.submitPending) {
+                    return;
+                }
+                this.submitPending = true;
+                const submitter = event.submitter;
+                // A new draft must receive its ID before the final form submit.
+                this.autosaveFinished.then(function () {
+                    this.submitPending = false;
+                    if (!this.destroyed) {
+                        this.form.requestSubmit(submitter || undefined);
+                    }
+                }.bind(this));
+                return;
+            }
             this.syncTextarea(false);
+            window.clearTimeout(this.autosaveTimer);
+            window.clearTimeout(this.localSaveTimer);
+            if (this.abortController) {
+                this.abortController.abort();
+            }
+            this.autosaveQueued = false;
+            // Keep recovery until the next page confirms the saved content.
+            // A submit event does not guarantee that the server saved the form.
+            if (this.dirty) {
+                this.saveLocalDraft();
+            }
             this.dirty = false;
-            this.clearLocalDraft();
         }
 
         handleFormInvalid(event) {
@@ -3259,6 +3297,15 @@
         }
 
         async autosave(userInitiated) {
+            if (this.destroyed) {
+                return;
+            }
+            // Serialize requests: aborting a fetch cannot undo a server write,
+            // and overlapping creates can produce duplicate draft records.
+            if (this.abortController) {
+                this.autosaveQueued = true;
+                return;
+            }
             if (!this.form || !this.dirty) {
                 if (userInitiated) {
                     this.setSaveState('saved', this.label('saved', 'Saved'));
@@ -3270,10 +3317,15 @@
                 return;
             }
             this.syncTextarea(false);
-            if (this.abortController) {
-                this.abortController.abort();
-            }
-            this.abortController = new AbortController();
+            const revision = this.changeRevision;
+            const serialized = this.lastSerialized;
+            const controller = new AbortController();
+            this.abortController = controller;
+            let finishAutosave;
+            this.autosaveFinished = new Promise(function (resolve) {
+                finishAutosave = resolve;
+            });
+            let succeeded = false;
             this.setSaveState('saving', this.form.getAttribute('data-autosave-saving') || this.label('saving', 'Saving…'));
             try {
                 const previousStorageKey = this.localStorageKey();
@@ -3282,9 +3334,12 @@
                     body: new FormData(this.form),
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
-                    signal: this.abortController.signal
+                    signal: controller.signal
                 });
                 const result = await response.json();
+                if (controller.signal.aborted || this.destroyed) {
+                    return;
+                }
                 if (!response.ok || result.status !== 'success') {
                     throw new Error(result.message || 'Autosave failed');
                 }
@@ -3307,18 +3362,24 @@
                 if (result.preview_url) {
                     this.form.setAttribute('data-preview-url', result.preview_url);
                 }
-                this.savedSerialized = this.lastSerialized;
-                this.dirty = false;
-                if (this.workspace) {
+                this.savedSerialized = serialized;
+                this.dirty = this.changeRevision !== revision;
+                if (this.workspace && !this.dirty) {
                     this.workspace.classList.remove('is-dirty');
                 }
                 this.lastSavedAt = String(result.saved_at || new Intl.DateTimeFormat(undefined, {
                     hour: '2-digit',
                     minute: '2-digit'
                 }).format(new Date()));
-                this.setSaveState('saved', (result.message || this.label('saved', 'Saved')) + (result.saved_at ? ' · ' + result.saved_at : ''));
+                if (this.dirty) {
+                    this.setSaveState('saving', this.label('saving', 'Saving…'));
+                    this.saveLocalDraft();
+                } else {
+                    this.setSaveState('saved', (result.message || this.label('saved', 'Saved')) + (result.saved_at ? ' · ' + result.saved_at : ''));
+                    this.clearLocalDraft();
+                }
                 this.refreshStatus();
-                this.clearLocalDraft();
+                succeeded = true;
                 API.doAction('autosave:success', result, this);
             } catch (error) {
                 if (error.name === 'AbortError') {
@@ -3328,6 +3389,16 @@
                 this.saveLocalDraft();
                 API.doAction('autosave:error', error, this);
                 API.doAction('editor:error', { phase: 'autosave', message: String(error && error.message || error) }, this);
+            } finally {
+                if (this.abortController === controller) {
+                    this.abortController = null;
+                }
+                const queued = this.autosaveQueued;
+                this.autosaveQueued = false;
+                if (succeeded && this.dirty && !this.destroyed) {
+                    this.scheduleAutosave(queued);
+                }
+                finishAutosave();
             }
         }
 
@@ -3344,11 +3415,14 @@
         }
 
         saveLocalDraft() {
+            if (!this.dirty || this.destroyed) {
+                return;
+            }
             try {
                 window.localStorage.setItem(this.localStorageKey(), JSON.stringify({
                     timestamp: Date.now(),
                     state: this.historyState(),
-                    title: this.workspace.querySelector('[data-editor-document-title]')?.value || '',
+                    title: this.workspace?.querySelector('[data-editor-document-title]')?.value || '',
                     serialized: this.lastSerialized
                 }));
             } catch (error) {
@@ -3362,7 +3436,13 @@
             } catch (error) {
                 recovery = null;
             }
-            if (!recovery || !recovery.state || recovery.serialized === this.savedSerialized) {
+            if (!recovery || !recovery.state) {
+                return;
+            }
+            const title = this.workspace?.querySelector('[data-editor-document-title]');
+            const titleMatches = !title || typeof recovery.title !== 'string' || recovery.title === title.value;
+            if (recovery.serialized === this.savedSerialized && titleMatches) {
+                this.clearLocalDraft();
                 return;
             }
             this.pendingRecovery = recovery;
@@ -3375,14 +3455,15 @@
                     this.history = new API.EditorHistory(this.historyState(), { limit: 120, coalesceMs: 700 });
                     this.activeId = this.state.blocks[0] ? this.state.blocks[0].id : '';
                     this.selectedIds = new Set(this.activeId ? [this.activeId] : []);
-                    const title = this.workspace.querySelector('[data-editor-document-title]');
-                    if (title && recovery.title) {
+                    if (title && typeof recovery.title === 'string') {
                         title.value = recovery.title;
                     }
                     this.markDirty();
                     this.syncTextarea();
                     this.renderAll();
                     this.ui.recoveryDialog.close();
+                    this.saveLocalDraftSoon();
+                    this.scheduleAutosave();
                 }.bind(this), { once: true });
                 discard.addEventListener('click', function () {
                     this.clearLocalDraft();
@@ -3392,6 +3473,7 @@
         }
 
         clearLocalDraft() {
+            window.clearTimeout(this.localSaveTimer);
             try {
                 window.localStorage.removeItem(this.localStorageKey());
             } catch (error) {
@@ -4002,8 +4084,8 @@
                 button.setAttribute('aria-busy', 'true');
             }
 
+            const uploadedUrls = [];
             try {
-                const uploadedUrls = [];
 
                 for (const file of files) {
                     if (!file || !/^image\//i.test(String(file.type || ''))) {
@@ -4054,12 +4136,15 @@
                     uploadedUrls.push(String(result.url));
                 }
 
-                this.addGalleryItems(blockId, uploadedUrls, 'media-upload');
             } catch (error) {
                 window.alert(
                     String(error && error.message || this.label('galleryUploadFailed', 'Image upload failed.'))
                 );
             } finally {
+                // Preserve successful uploads even if a later file fails.
+                if (uploadedUrls.length && !this.destroyed) {
+                    this.addGalleryItems(blockId, uploadedUrls, 'media-upload');
+                }
                 if (button) {
                     button.disabled = originalDisabled;
                     button.removeAttribute('aria-busy');
