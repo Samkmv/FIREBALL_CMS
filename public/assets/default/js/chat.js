@@ -123,7 +123,11 @@ $(function () {
             ? Math.max(0, Math.min(viewportHeight, Number(headerRect.height) || Number(siteHeader.offsetHeight) || 0))
             : 0;
 
-        const visibleViewportBottom = isMobile
+        // FIREBALL_CHAT_BOTTOM_GAP_FIX_V2_20260930
+        // visualViewport can be shorter even with the keyboard closed on iOS.
+        // Use it only for the keyboard-open state; otherwise keep the chat
+        // pinned to the full layout viewport.
+        const visibleViewportBottom = isMobile && keyboardLikelyVisible
             ? Math.max(0, Math.min(keyboardReferenceHeight, visualViewportTop + visualViewportHeight))
             : layoutViewportHeight;
 

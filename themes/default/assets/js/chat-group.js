@@ -64,10 +64,14 @@ $(function () {
         );
         const visualTop = Math.max(0, Number(viewport?.offsetTop || 0));
         const visualHeight = Math.max(0, Number(viewport?.height || layoutHeight));
-        const visibleBottom = mobile
+        const visualBottom = mobile
             ? Math.max(0, Math.min(layoutHeight, visualTop + visualHeight))
             : layoutHeight;
-        const keyboard = mobile && input.is(':focus') && (layoutHeight - visibleBottom) > 80;
+        const keyboard = mobile && input.is(':focus') && (layoutHeight - visualBottom) > 80;
+        // FIREBALL_CHAT_BOTTOM_GAP_FIX_V2_20260930
+        // A shorter visualViewport with the keyboard closed is browser chrome,
+        // not usable chat geometry. Only shrink to it while the keyboard is open.
+        const visibleBottom = mobile && keyboard ? visualBottom : layoutHeight;
         [root, document.body].forEach(element => {
             element.classList.add('chat-viewport-fullscreen');
             element.classList.toggle('chat-mobile-fullscreen', mobile);

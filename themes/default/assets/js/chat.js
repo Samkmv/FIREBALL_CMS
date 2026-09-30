@@ -75,7 +75,19 @@ $(function () {
                 Number(headerRect.height) || Number(siteHeader.offsetHeight) || 0
             ))
             : 0;
-        const visibleViewportBottom = isMobile
+        const composerHasFocus = Boolean(
+            isMobile
+            && document.activeElement
+            && chatApp[0].contains(document.activeElement)
+            && document.activeElement.matches('input, textarea, [contenteditable="true"]')
+        );
+        const keyboardLikelyVisible = composerHasFocus
+            && (layoutViewportHeight - visualViewportHeight - visualViewportTop) > Math.max(80, layoutViewportHeight * .12);
+        rootElement.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
+        document.body.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
+
+        // FIREBALL_CHAT_BOTTOM_GAP_FIX_V2_20260930
+        const visibleViewportBottom = isMobile && keyboardLikelyVisible
             ? Math.max(0, Math.min(layoutViewportHeight, visualViewportTop + visualViewportHeight))
             : layoutViewportHeight;
 

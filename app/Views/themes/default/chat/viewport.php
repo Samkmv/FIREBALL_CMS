@@ -13,25 +13,18 @@
     });
     const header = standalone && !mobile ? null : document.querySelector('body > header');
     const headerHeight = header ? header.getBoundingClientRect().height : 0;
-    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
-    // Do not move the entire chat by visualViewport.offsetTop. Safari changes
-    // offsetTop while focusing the keyboard, which is exactly what makes the
-    // chat jump. Keep the top stable and use offsetTop only to find the visible
-    // bottom edge.
-    const viewport = window.visualViewport;
-    const visualTop = mobile ? Math.max(0, Number(viewport?.offsetTop || 0)) : 0;
-    const visualHeight = mobile
-        ? Math.max(0, Number(viewport?.height || window.innerHeight))
-        : Math.max(0, Number(window.innerHeight));
+    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_V2_20260930
+    // This script runs before the composer can have keyboard focus. On iOS,
+    // visualViewport may already be shorter than the fixed/layout viewport
+    // because of browser chrome. Using that shorter value here creates the
+    // empty strip below the composer. Start from the full layout viewport;
+    // chat.js switches to visualViewport only while the keyboard is visible.
     const layoutHeight = Math.max(
         Number(window.innerHeight) || 0,
         Number(document.documentElement.clientHeight) || 0
     );
-    const visibleBottom = mobile
-        ? Math.max(0, Math.min(layoutHeight, visualTop + visualHeight))
-        : layoutHeight;
 
     root.style.setProperty('--chat-mobile-viewport-top', `${headerHeight}px`);
-    root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, visibleBottom - headerHeight)}px`);
+    root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, layoutHeight - headerHeight)}px`);
 })();
 </script>

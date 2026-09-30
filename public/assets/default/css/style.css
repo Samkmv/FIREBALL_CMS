@@ -2677,17 +2677,17 @@ html.chat-viewport-fullscreen .chat-page-header {
     display: none !important;
 }
 
-/* FIREBALL_MOBILE_BOTTOM_GAP_FIX_20260930
- * With the software keyboard closed, let the fixed chat shell use the real
- * bottom edge of the viewport. visualViewport can be shorter than the fixed
- * containing block on iOS/PWA and otherwise leaves a visible strip below the
- * composer. Keyboard-open geometry is still controlled by chat.js.
+/* FIREBALL_MOBILE_BOTTOM_GAP_FIX_V2_20260930
+ * Keep a definite fixed-page height on iOS. The previous bottom:0/height:auto
+ * workaround made the parent height indefinite for WebKit, so descendants
+ * using height:100% could stop above the physical bottom of the screen.
+ * chat.js now publishes the full layout height while the keyboard is closed.
  */
 @media (max-width: 767.98px) {
     html.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page {
         top: var(--chat-mobile-viewport-top, 0px);
-        bottom: 0;
-        height: auto;
+        bottom: auto;
+        height: var(--chat-mobile-viewport-height, 100dvh);
     }
 }
 

@@ -59,17 +59,19 @@ body:has(.fb-editor-workspace) {
     left: var(--fb-sidebar-collapsed-width, 76px);
 }
 
-/* FIREBALL_MOBILE_BOTTOM_GAP_FIX_20260930
- * The workspace itself is already fixed with top/bottom edges. Using 100dvh
- * again for its child can make the form shorter than the fixed workspace on
- * iOS and expose the workspace/background as an empty strip at the bottom.
+/* FIREBALL_MOBILE_BOTTOM_GAP_FIX_V2_20260930
+ * WebKit can resolve height:100% incorrectly for a child of a fixed element
+ * whose size comes from inset. Pin the form to the already full-screen
+ * workspace instead of asking iOS to resolve a percentage height.
  */
 .fb-editor-workspace__form {
+    position: absolute;
+    inset: 0;
     display: grid;
     grid-template-rows: 64px minmax(0, 1fr) 28px;
-    height: 100%;
     min-width: 0;
     min-height: 0;
+    overflow: hidden;
 }
 
 .fb-editor-workspace__topbar {
