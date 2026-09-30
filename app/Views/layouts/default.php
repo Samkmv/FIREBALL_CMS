@@ -356,6 +356,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
                 >
                 <?= print_translation('tpl_auth_profile') ?>
             </a>
+            <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2 d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/profile/settings') ?>">
+                <i class="ci-settings fs-lg ms-n1"></i><?= print_translation('tpl_auth_settings') ?>
+            </a>
             <?php if (check_admin()): ?>
                 <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2 d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/admin') ?>">
                     <i class="ci-layout fs-lg ms-n1"></i>
@@ -612,6 +615,12 @@ $postCategoryUrl = static function (?string $slug = null): string {
                             <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/profile') ?>">
                                 <i class="ci-user fs-base"></i>
                                 <span><?= print_translation('tpl_auth_profile') ?></span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/profile/settings') ?>">
+                                <i class="ci-settings fs-base"></i>
+                                <span><?= print_translation('tpl_auth_settings') ?></span>
                             </a>
                         </li>
                         <li>

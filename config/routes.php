@@ -73,6 +73,8 @@ $app->router->get('/register', [AuthController::class, 'register'])->middleware(
 $app->router->post('/register', [AuthController::class, 'register'])->middleware(['guest']);
 $app->router->get('/profile', [AuthController::class, 'profile'])->middleware(['auth']);
 $app->router->post('/profile', [AuthController::class, 'profile'])->middleware(['auth']);
+$app->router->get('/profile/settings', [AuthController::class, 'settings'])->middleware(['auth']);
+$app->router->post('/profile/settings', [AuthController::class, 'settings'])->middleware(['auth']);
 $app->router->get('/chat', [ChatController::class, 'index'])->middleware(['auth']);
 $app->router->get('/chat/messages', [ChatController::class, 'messages'])->middleware(['auth']);
 // FIREBALL_CHAT2_ROUTE

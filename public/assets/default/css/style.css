@@ -7722,3 +7722,19 @@ body:not(.fb-admin-body) .search-suggest-menu {
         background-color .2s ease,
         border-color .2s ease;
 }
+
+/* Service cards share the outline button border colors in both themes. */
+.profile-service-card {
+    transition: border-color .2s ease;
+}
+.profile-service-card:hover,
+.profile-service-card:focus-visible {
+    border-color: var(--cz-btn-hover-border-color, #9ca3af) !important;
+}
+.profile-service-card:focus-visible {
+    outline: 2px solid var(--cz-btn-hover-border-color);
+    outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .profile-service-card { transition: none; }
+}

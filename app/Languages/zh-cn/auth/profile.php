@@ -1,6 +1,23 @@
 <?php
 
 return [
+    'auth_settings_title' => '账户设置',
+    'auth_settings_subtitle' => '个人信息、安全和通知。',
+    'auth_settings_information' => '信息和头像',
+    'auth_settings_information_hint' => '修改姓名、用户名和电子邮箱。',
+    'auth_settings_identity_password_hint' => '仅修改用户名或电子邮箱时需要。',
+    'auth_settings_security' => '安全',
+    'auth_settings_notifications' => '通知',
+    'auth_settings_password' => '修改密码',
+    'auth_settings_password_hint' => '请输入当前密码以设置新密码。',
+    'auth_settings_password_rules' => '至少 8 个字符，包含一个大写字母和一个数字。',
+    'auth_settings_password_required' => '请输入新密码。',
+    'auth_profile_overview' => '个人资料概览',
+    'auth_profile_overview_subtitle' => '您的账户、服务和常用入口。',
+    'auth_profile_services' => '我的服务',
+    'auth_profile_services_hint' => '在此访问您的服务和聊天。',
+    'auth_profile_manage_security' => '管理安全设置',
+    'auth_profile_manage_notifications' => '管理通知',
     'auth_profile_title' => '个人资料',
     'auth_profile_heading' => '用户资料',
     'auth_profile_subtitle' => '您的主要账户信息。',

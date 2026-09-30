@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'tpl_auth_settings' => 'Account settings',
     // Menu
     'tpl_menu_logo' => 'Fireball',
     'tpl_menu_nav' => 'Navigation',

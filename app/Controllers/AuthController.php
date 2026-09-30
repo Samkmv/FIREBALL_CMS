@@ -414,9 +414,17 @@ class AuthController extends BaseController
     }
 
     /**
-     * Показывает профиль пользователя и обрабатывает обновление данных или аватара.
+     * Открывает настройки аккаунта.
      */
-    public function profile()
+    public function settings()
+    {
+        return $this->profile(true);
+    }
+
+    /**
+     * Показывает обзор или настройки; принимает также старые формы профиля.
+     */
+    public function profile(bool $isSettings = false)
     {
         $user = $this->users->findById((int)get_user()['id']);
 
@@ -424,6 +432,11 @@ class AuthController extends BaseController
             logout();
             session()->setFlash('error', return_translation('auth_profile_not_found'));
             response()->redirect(base_href('/login'));
+        }
+
+        $settingsSection = (string)request()->get('section', 'information');
+        if (!in_array($settingsSection, ['information', 'security', 'notifications'], true)) {
+            $settingsSection = 'information';
         }
 
         $twoFactorSetup = session()->get('auth.two_factor_setup');
@@ -441,14 +454,18 @@ class AuthController extends BaseController
         if (request()->isPost()) {
             $action = trim((string)request()->post('profile_action', 'avatar'));
 
+            $targetSection = $action === 'password' || str_starts_with($action, 'two_factor_')
+                ? 'security' : 'information';
+            $settingsUrl = '/profile/settings?section=' . $targetSection;
+            $this->assertValidCsrfToken($settingsUrl);
+
             if ($action === 'two_factor_prepare') {
-                $this->assertValidCsrfToken('/profile');
                 $currentPassword = (string)request()->post('current_password', '');
                 if (!password_verify($currentPassword, (string)$user['password'])) {
                     $this->setFormState([], [
                         'two_factor_current_password' => [return_translation('auth_validation_current_password')],
                     ]);
-                    response()->redirect(base_href('/profile'));
+                    response()->redirect(base_href($settingsUrl));
                 }
 
                 $twoFactor = new TwoFactorService();
@@ -459,11 +476,10 @@ class AuthController extends BaseController
                     'expires_at' => time() + self::TWO_FACTOR_SETUP_SECONDS,
                 ]);
                 $this->clearFormState();
-                response()->redirect(base_href('/profile'));
+                response()->redirect(base_href($settingsUrl));
             }
 
             if ($action === 'two_factor_confirm') {
-                $this->assertValidCsrfToken('/profile');
                 $setup = session()->get('auth.two_factor_setup');
                 $code = trim((string)request()->post('code', ''));
                 if (
@@ -473,7 +489,7 @@ class AuthController extends BaseController
                 ) {
                     session()->remove('auth.two_factor_setup');
                     session()->setFlash('error', return_translation('auth_two_factor_setup_expired'));
-                    response()->redirect(base_href('/profile'));
+                    response()->redirect(base_href($settingsUrl));
                 }
 
                 $twoFactor = new TwoFactorService();
@@ -481,7 +497,7 @@ class AuthController extends BaseController
                     $this->setFormState([], [
                         'two_factor_code' => [return_translation('auth_two_factor_invalid_code')],
                     ]);
-                    response()->redirect(base_href('/profile'));
+                    response()->redirect(base_href($settingsUrl));
                 }
 
                 $recoveryCodes = $twoFactor->generateRecoveryCodes();
@@ -492,11 +508,10 @@ class AuthController extends BaseController
                 $this->securityLogs->record('two_factor_recovery_codes_created', 'success', (int)$user['id'], (int)$user['id']);
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_two_factor_enabled'));
-                response()->redirect(base_href('/profile'));
+                response()->redirect(base_href($settingsUrl));
             }
 
             if ($action === 'two_factor_disable') {
-                $this->assertValidCsrfToken('/profile');
                 $currentPassword = (string)request()->post('current_password', '');
                 $code = trim((string)request()->post('code', ''));
                 $validPassword = password_verify($currentPassword, (string)$user['password']);
@@ -509,7 +524,7 @@ class AuthController extends BaseController
                     $this->setFormState([], [
                         'two_factor_disable' => [return_translation('auth_two_factor_disable_invalid')],
                     ]);
-                    response()->redirect(base_href('/profile'));
+                    response()->redirect(base_href($settingsUrl));
                 }
 
                 $this->users->disableTwoFactor((int)$user['id']);
@@ -517,10 +532,10 @@ class AuthController extends BaseController
                 session()->remove('auth.two_factor_setup');
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_two_factor_disabled'));
-                response()->redirect(base_href('/profile'));
+                response()->redirect(base_href($settingsUrl));
             }
 
-            if ($action === 'details') {
+            if ($action === 'details' || $action === 'password') {
                 $data = [
                     'name' => trim((string)request()->post('name', '')),
                     'login' => trim((string)request()->post('login', '')),
@@ -530,14 +545,27 @@ class AuthController extends BaseController
                     'password_confirmation' => (string)request()->post('password_confirmation', ''),
                 ];
 
+                if ($action === 'password') {
+                    // Password changes cannot overwrite account information.
+                    $data['name'] = (string)$user['name'];
+                    $data['login'] = (string)$user['login'];
+                    $data['email'] = (string)$user['email'];
+                } elseif ($isSettings) {
+                    $data['password'] = '';
+                    $data['password_confirmation'] = '';
+                }
+
                 $errors = $this->users->validateProfileUpdate($data, (int)$user['id']);
+                if ($action === 'password' && $data['password'] === '') {
+                    $errors['password'][] = return_translation('auth_settings_password_required');
+                }
                 if (!empty($errors)) {
                     $this->setFormState([
                         'name' => $data['name'],
                         'login' => $data['login'],
                         'email' => $data['email'],
                     ], $errors);
-                    response()->redirect(base_href('/profile'));
+                    response()->redirect(base_href($settingsUrl));
                 }
 
                 $this->users->updateProfile((int)$user['id'], $data);
@@ -546,7 +574,11 @@ class AuthController extends BaseController
                 app()->regenerateCSRFToken();
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_profile_updated'));
-                response()->redirect(base_href('/profile'));
+                response()->redirect(base_href($settingsUrl));
+            }
+
+            if ($action !== 'avatar') {
+                response()->redirect(base_href($settingsUrl));
             }
 
             $avatarFile = new File('avatar_file');
@@ -556,14 +588,14 @@ class AuthController extends BaseController
                     'avatar_file' => [return_translation('auth_profile_avatar_required')],
                 ]);
                 session()->setFlash('error', return_translation('auth_profile_avatar_required'));
-                response()->redirect(base_href('/profile'));
+                response()->redirect(base_href($settingsUrl));
             }
 
             $errors = $this->users->validateAvatarFile($avatarFile);
             if (!empty($errors)) {
                 session()->set('form_errors', $errors);
                 session()->setFlash('error', $errors['avatar_file'][0] ?? return_translation('auth_profile_avatar_upload_error'));
-                response()->redirect(base_href('/profile'));
+                response()->redirect(base_href($settingsUrl));
             }
 
             $avatar = $this->users->storeAvatar($avatarFile, $user['avatar'] ?? null);
@@ -572,20 +604,23 @@ class AuthController extends BaseController
                     'avatar_file' => [return_translation('auth_profile_avatar_upload_error')],
                 ]);
                 session()->setFlash('error', return_translation('auth_profile_avatar_upload_error'));
-                response()->redirect(base_href('/profile'));
+                response()->redirect(base_href($settingsUrl));
             }
 
             $this->users->updateAvatar((int)$user['id'], $avatar);
             Auth::setUser();
             $this->clearFormState();
             session()->setFlash('success', return_translation('auth_profile_avatar_updated'));
-            response()->redirect(base_href('/profile'));
+            response()->redirect(base_href($settingsUrl));
         }
 
-        $recoveryCodes = session()->get('auth.two_factor_recovery_codes', []);
-        session()->remove('auth.two_factor_recovery_codes');
+        $recoveryCodes = [];
+        if ($isSettings && $settingsSection === 'security') {
+            $recoveryCodes = session()->get('auth.two_factor_recovery_codes', []);
+            session()->remove('auth.two_factor_recovery_codes');
+        }
         $twoFactor = new TwoFactorService();
-        $twoFactorUri = is_array($twoFactorSetup)
+        $twoFactorUri = $isSettings && $settingsSection === 'security' && is_array($twoFactorSetup)
             ? $twoFactor->provisioningUri(
                 (string)$twoFactorSetup['secret'],
                 (string)($user['email'] ?? $user['login']),
@@ -594,7 +629,9 @@ class AuthController extends BaseController
             : '';
 
         return view('auth/profile', [
-            'title' => return_translation('auth_profile_title'),
+            'title' => return_translation($isSettings ? 'auth_settings_title' : 'auth_profile_title'),
+            'is_settings' => $isSettings,
+            'settings_section' => $settingsSection,
             'user' => $user,
             'two_factor_setup' => $twoFactorSetup,
             'two_factor_uri' => $twoFactorUri,

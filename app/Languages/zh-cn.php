@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'tpl_auth_settings' => '账户设置',
     // Menu
     'tpl_menu_logo' => 'Fireball',
     'tpl_menu_nav' => '导航',

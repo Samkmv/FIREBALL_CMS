@@ -1,6 +1,23 @@
 <?php
 
 return [
+    'auth_settings_title' => 'Настройки аккаунта',
+    'auth_settings_subtitle' => 'Личные данные, безопасность и уведомления.',
+    'auth_settings_information' => 'Информация и аватар',
+    'auth_settings_information_hint' => 'Измените имя, логин и email.',
+    'auth_settings_identity_password_hint' => 'Нужен только при изменении логина или email.',
+    'auth_settings_security' => 'Безопасность',
+    'auth_settings_notifications' => 'Уведомления',
+    'auth_settings_password' => 'Смена пароля',
+    'auth_settings_password_hint' => 'Для смены пароля подтвердите текущий пароль.',
+    'auth_settings_password_rules' => 'Минимум 8 символов, одна заглавная буква и одна цифра.',
+    'auth_settings_password_required' => 'Введите новый пароль.',
+    'auth_profile_overview' => 'Обзор профиля',
+    'auth_profile_overview_subtitle' => 'Ваш аккаунт, сервисы и быстрый доступ к важному.',
+    'auth_profile_services' => 'Мои сервисы',
+    'auth_profile_services_hint' => 'Ваши сервисы и общение — в одном месте.',
+    'auth_profile_manage_security' => 'Настроить защиту',
+    'auth_profile_manage_notifications' => 'Настроить уведомления',
     'auth_profile_title' => 'Профиль',
     'auth_profile_heading' => 'Профиль пользователя',
     'auth_profile_subtitle' => 'Ваши основные данные аккаунта.',

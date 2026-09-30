@@ -1,6 +1,23 @@
 <?php
 
 return [
+    'auth_settings_title' => 'Account settings',
+    'auth_settings_subtitle' => 'Personal information, security and notifications.',
+    'auth_settings_information' => 'Information and avatar',
+    'auth_settings_information_hint' => 'Update your name, username and email.',
+    'auth_settings_identity_password_hint' => 'Required only when changing your username or email.',
+    'auth_settings_security' => 'Security',
+    'auth_settings_notifications' => 'Notifications',
+    'auth_settings_password' => 'Change password',
+    'auth_settings_password_hint' => 'Confirm your current password to set a new one.',
+    'auth_settings_password_rules' => 'At least 8 characters, one uppercase letter and one digit.',
+    'auth_settings_password_required' => 'Enter a new password.',
+    'auth_profile_overview' => 'Profile overview',
+    'auth_profile_overview_subtitle' => 'Your account, services and useful shortcuts.',
+    'auth_profile_services' => 'My services',
+    'auth_profile_services_hint' => 'Access your services and conversations in one place.',
+    'auth_profile_manage_security' => 'Manage security',
+    'auth_profile_manage_notifications' => 'Manage notifications',
     'auth_profile_title' => 'Profile',
     'auth_profile_heading' => 'User profile',
     'auth_profile_subtitle' => 'Your main account details.',

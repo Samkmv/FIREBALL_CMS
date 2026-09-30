@@ -1,6 +1,23 @@
 <?php
 
 return [
+    'auth_settings_title' => 'Kontoeinstellungen',
+    'auth_settings_subtitle' => 'Persönliche Daten, Sicherheit und Benachrichtigungen.',
+    'auth_settings_information' => 'Informationen und Avatar',
+    'auth_settings_information_hint' => 'Name, Benutzername und E-Mail ändern.',
+    'auth_settings_identity_password_hint' => 'Nur bei Änderung des Benutzernamens oder der E-Mail erforderlich.',
+    'auth_settings_security' => 'Sicherheit',
+    'auth_settings_notifications' => 'Benachrichtigungen',
+    'auth_settings_password' => 'Passwort ändern',
+    'auth_settings_password_hint' => 'Bestätigen Sie Ihr aktuelles Passwort, um ein neues festzulegen.',
+    'auth_settings_password_rules' => 'Mindestens 8 Zeichen, ein Großbuchstabe und eine Ziffer.',
+    'auth_settings_password_required' => 'Geben Sie ein neues Passwort ein.',
+    'auth_profile_overview' => 'Profilübersicht',
+    'auth_profile_overview_subtitle' => 'Ihr Konto, Dienste und wichtige Verknüpfungen.',
+    'auth_profile_services' => 'Meine Dienste',
+    'auth_profile_services_hint' => 'Ihre Dienste und Unterhaltungen an einem Ort.',
+    'auth_profile_manage_security' => 'Sicherheit verwalten',
+    'auth_profile_manage_notifications' => 'Benachrichtigungen verwalten',
     'auth_profile_title' => 'Profil',
     'auth_profile_heading' => 'Benutzerprofil',
     'auth_profile_subtitle' => 'Ihre wichtigsten Kontodaten.',
