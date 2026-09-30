@@ -2954,3 +2954,32 @@
     background: rgba(220, 53, 69, 1) !important;
 }
 
+/* FIREBALL_EDITOR_IOS_PWA_VIEWPORT_FIX_V4_20260930
+ *
+ * iOS standalone/PWA fix:
+ * Avoid viewport-height units for the outer editor workspace.
+ * A fixed element with top:0 + bottom:0 follows the actual standalone
+ * viewport edge directly; the editor form is already safe to pin with
+ * absolute inset:0.
+ */
+@media (max-width: 991.98px) {
+    html.pwa-standalone .fb-editor-workspace {
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    html.pwa-standalone .fb-editor-workspace__form {
+        position: absolute !important;
+        inset: 0 !important;
+
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+}

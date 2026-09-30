@@ -6680,3 +6680,55 @@ body:not(.fb-admin-body) .fb-search-open:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     .profile-service-card { transition: none; }
 }
+
+/* FIREBALL_IOS_PWA_VIEWPORT_FIX_V4_20260930
+ *
+ * iOS standalone/PWA fix:
+ * With the software keyboard CLOSED, do not derive chat height from
+ * innerHeight, visualViewport, dvh or lvh. Anchor the fixed page to
+ * the actual WebKit bottom edge instead.
+ *
+ * When the keyboard is OPEN, .chat-keyboard-visible is added by chat.js,
+ * so this override stops applying and the existing visualViewport
+ * keyboard handling remains in control.
+ */
+@media (max-width: 767.98px) {
+    html.pwa-standalone.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page {
+        top: var(--chat-mobile-viewport-top, 0px) !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    html.pwa-standalone.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-app-shell {
+        position: absolute !important;
+        inset: 0 !important;
+
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    html.pwa-standalone.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-app-layout {
+        position: absolute !important;
+        inset: 0 !important;
+
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    html.pwa-standalone.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-layout-main,
+    html.pwa-standalone.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-thread {
+        min-height: 0 !important;
+        height: 100% !important;
+        max-height: none !important;
+    }
+}
