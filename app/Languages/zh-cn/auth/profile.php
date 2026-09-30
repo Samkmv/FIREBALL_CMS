@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'auth_profile_active_subscriptions' => '有效订阅',
+    'auth_profile_subscriptions_hint' => '在此查看您的有效订阅和服务。',
+    'auth_profile_no_subscriptions' => '您目前没有有效订阅。',
+    'auth_profile_valid_until' => '有效期至',
+    'auth_profile_unlimited' => '永久有效',
+    'auth_profile_plan' => '套餐',
+    'auth_profile_account' => '账户',
+    'auth_profile_account_hint' => '账户安全和通知。',
     'auth_settings_title' => '账户设置',
     'auth_settings_subtitle' => '个人信息、安全和通知。',
     'auth_settings_information' => '信息和头像',

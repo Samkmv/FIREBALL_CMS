@@ -47,25 +47,23 @@
     </div>
 </form>
 
-    <form class="border rounded-5 p-4" action="<?= base_href('/profile/settings?section=information') ?>" method="post" enctype="multipart/form-data">
+    <form class="border rounded-5 p-4 p-md-5" action="<?= base_href('/profile/settings?section=information') ?>" method="post" enctype="multipart/form-data">
         <?= get_csrf_field() ?>
         <input type="hidden" name="profile_action" value="avatar">
 
         <div class="d-flex align-items-center gap-2 mb-3">
-            <i class="ci-camera text-body-tertiary fs-4"></i>
-            <div>
-                <h2 class="h6 mb-1"><?= print_translation('auth_profile_avatar') ?></h2>
-                <p class="text-body-secondary small mb-0"><?= print_translation('auth_profile_avatar_hint') ?></p>
-            </div>
+            <i class="ci-camera text-body-tertiary fs-4 flex-shrink-0" aria-hidden="true"></i>
+            <h2 class="h6 mb-0"><?= print_translation('auth_profile_avatar') ?></h2>
         </div>
 
         <div class="mb-3">
             <label class="form-label" for="profile-avatar-file"><?= print_translation('auth_profile_avatar') ?></label>
-            <input id="profile-avatar-file" class="form-control <?= get_validation_class('avatar_file') ?>" type="file" name="avatar_file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <input id="profile-avatar-file" class="form-control <?= get_validation_class('avatar_file') ?>" type="file" name="avatar_file" accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="profile-avatar-hint">
+            <p id="profile-avatar-hint" class="form-text mb-0"><?= print_translation('auth_profile_avatar_hint') ?></p>
             <?= get_errors('avatar_file') ?>
         </div>
 
-        <button class="btn btn-dark rounded-pill w-100 d-inline-flex align-items-center justify-content-center gap-2" type="submit">
+        <button class="btn btn-dark rounded-pill d-inline-flex align-items-center justify-content-center gap-2" type="submit">
             <i class="ci-image"></i>
             <span><?= print_translation('auth_profile_avatar_save') ?></span>
         </button>

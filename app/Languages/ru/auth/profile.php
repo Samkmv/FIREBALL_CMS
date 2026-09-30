@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'auth_profile_active_subscriptions' => 'Активные подписки',
+    'auth_profile_subscriptions_hint' => 'Ваши активные подписки и сервисы в одном месте.',
+    'auth_profile_no_subscriptions' => 'У вас пока нет активных подписок.',
+    'auth_profile_valid_until' => 'Действует до',
+    'auth_profile_unlimited' => 'Бессрочно',
+    'auth_profile_plan' => 'Тариф',
+    'auth_profile_account' => 'Аккаунт',
+    'auth_profile_account_hint' => 'Безопасность и уведомления вашего аккаунта.',
     'auth_settings_title' => 'Настройки аккаунта',
     'auth_settings_subtitle' => 'Личные данные, безопасность и уведомления.',
     'auth_settings_information' => 'Информация и аватар',

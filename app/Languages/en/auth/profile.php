@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'auth_profile_active_subscriptions' => 'Active subscriptions',
+    'auth_profile_subscriptions_hint' => 'Your active subscriptions and services in one place.',
+    'auth_profile_no_subscriptions' => 'You have no active subscriptions yet.',
+    'auth_profile_valid_until' => 'Valid until',
+    'auth_profile_unlimited' => 'No expiry',
+    'auth_profile_plan' => 'Plan',
+    'auth_profile_account' => 'Account',
+    'auth_profile_account_hint' => 'Account security and notifications.',
     'auth_settings_title' => 'Account settings',
     'auth_settings_subtitle' => 'Personal information, security and notifications.',
     'auth_settings_information' => 'Information and avatar',

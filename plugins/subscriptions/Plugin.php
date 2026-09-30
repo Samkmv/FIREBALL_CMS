@@ -85,6 +85,26 @@ final class FireballPluginSubscriptions implements PluginInterface
             return $items;
         });
 
+        add_filter('profile_subscriptions_available', static fn(bool $available): bool => true);
+
+        add_filter('profile_subscriptions', static function (array $items, array $user = []): array {
+            $subscription = (new AccessService())->activeSubscription((int)($user['id'] ?? 0));
+            if (!$subscription) {
+                return $items;
+            }
+            $plan = (new PlanRepository())->find((int)$subscription['plan_id']);
+            $status = (string)$subscription['status'];
+            $items[] = [
+                'name' => (string)$subscription['plan_name'],
+                'description' => (string)($plan['description'] ?? ''),
+                'status_label' => self::t($status === 'active' ? 'subscriptions_subscription_status_active' : 'subscriptions_status_' . $status),
+                'status' => $status,
+                'ends_at' => $status === 'grace_period' ? ($subscription['grace_ends_at'] ?? $subscription['ends_at']) : $subscription['ends_at'],
+                'href' => base_href('/account/subscription'),
+            ];
+            return $items;
+        });
+
         add_action('admin_post_document_settings', [self::class, 'renderPostSettings']);
         add_action('admin_post_saved', [self::class, 'savePostSettings']);
         add_action('admin_post_deleting', static fn(int $postId) => (new ContentRuleRepository())->delete('post', $postId));

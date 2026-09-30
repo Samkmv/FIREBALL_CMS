@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'auth_profile_active_subscriptions' => 'Aktive Abonnements',
+    'auth_profile_subscriptions_hint' => 'Ihre aktiven Abonnements und Dienste an einem Ort.',
+    'auth_profile_no_subscriptions' => 'Sie haben noch keine aktiven Abonnements.',
+    'auth_profile_valid_until' => 'Gültig bis',
+    'auth_profile_unlimited' => 'Unbefristet',
+    'auth_profile_plan' => 'Tarif',
+    'auth_profile_account' => 'Konto',
+    'auth_profile_account_hint' => 'Sicherheit und Benachrichtigungen Ihres Kontos.',
     'auth_settings_title' => 'Kontoeinstellungen',
     'auth_settings_subtitle' => 'Persönliche Daten, Sicherheit und Benachrichtigungen.',
     'auth_settings_information' => 'Informationen und Avatar',

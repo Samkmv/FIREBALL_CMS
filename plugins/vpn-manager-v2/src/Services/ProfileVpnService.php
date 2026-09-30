@@ -26,6 +26,33 @@ final class ProfileVpnService
         return ($this->repository ?? new ProfileVpnRepository())->hasSubscriptionsForUser($userId);
     }
 
+    /** Summary cards without generating connection URLs or QR codes. */
+    public function profileSubscriptions(int $userId): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+        $cards = [];
+        foreach (($this->repository ?? new ProfileVpnRepository())->subscriptionsForUser($userId) as $row) {
+            $subscription = $this->presentSubscription($row);
+            $status = (string)$subscription['effective_status'];
+            if (!in_array($status, ['active', 'partial_sync', 'sync_error'], true)) {
+                continue;
+            }
+            $cards[] = [
+                'name' => 'VPN · ' . (string)$subscription['plan_name'],
+                'icon' => 'ci-server',
+                'plan_name' => (string)$subscription['plan_name'],
+                'description' => (string)($subscription['plan_description'] ?? ''),
+                'status' => $status,
+                'status_label' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_provisioning_status_' . $status),
+                'ends_at' => $subscription['expires_at'] ?? null,
+                'href' => base_href('/profile/vpn-v2/' . (int)$subscription['id']),
+            ];
+        }
+        return $cards;
+    }
+
     public function dashboard(int $userId, ?int $selectedId = null, ?string $platform = null): array
     {
         $repository = $this->repository ?? new ProfileVpnRepository();

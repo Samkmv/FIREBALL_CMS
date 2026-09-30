@@ -117,6 +117,21 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
             return $items;
         }, 10);
 
+        add_filter('profile_subscriptions_available', static fn(bool $available): bool => true);
+
+        add_filter('profile_subscriptions', static function (array $items, array $user = []): array {
+            $userId = (int)($user['id'] ?? 0);
+            try {
+                if ($userId <= 0 || empty((new SettingsService())->current()['public_account_enabled'])) {
+                    return $items;
+                }
+                return array_merge($items, (new \Fireball\VpnManagerV2\Services\ProfileVpnService())->profileSubscriptions($userId));
+            } catch (\Throwable $exception) {
+                error_log('VPN Manager V2 profile subscriptions failed: ' . get_class($exception));
+                return $items;
+            }
+        }, 10);
+
         // FIREBALL_VPN_NOTIFICATION_DELIVERY_V2
         self::registerNotificationMaintenanceFallback();
     }

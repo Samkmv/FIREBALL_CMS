@@ -67,7 +67,7 @@ namespace {
     function get_validation_class($field) { return ''; }
     function get_errors($field) { return ''; }
     function old($field) { return ''; }
-    function apply_filters($hook, $items, $user) { return $GLOBALS['menu']; }
+    function apply_filters($hook, $items, $user = []) { return match ($hook) { 'profile_menu' => $GLOBALS['menu'], 'profile_subscriptions_available' => $GLOBALS['subscriptions_available'] ?? false, default => $GLOBALS['subscriptions'] ?? [] };  }
     function view($name = null, $data = []) {
         if ($name !== null) { return $data; }
         return new class {
@@ -99,6 +99,19 @@ namespace {
     $html = renderProfile($overview);
     expect(!str_contains($html, 'name="profile_action"'), 'Overview must contain no editing forms');
     expect(str_contains($html, '/my-vpn'), 'Plugin service links must remain accessible');
+    expect(!str_contains($html, return_translation('auth_profile_active_subscriptions')), 'No subscription plugins: hide the block');
+    expect(str_contains($html, return_translation('auth_profile_account')), 'Account block remains visible without subscription plugins');
+    $subscriptions_available = true;
+    $html = renderProfile($overview);
+    expect(str_contains($html, return_translation('auth_profile_no_subscriptions')), 'Empty subscription state');
+    $subscriptions = [['name' => '<Business>', 'description' => '<script>bad</script>', 'status' => 'active', 'status_label' => 'Active', 'ends_at' => '2026-12-31', 'href' => '/account/subscription']];
+    $subscriptionHtml = renderProfile($overview);
+    expect(str_contains($subscriptionHtml, '&lt;Business&gt;'), 'Plan names escaped');
+    expect(!str_contains($subscriptionHtml, '<script>bad</script>'), 'Plan descriptions escaped');
+    expect(str_contains($subscriptionHtml, '31.12.2026'), 'Actual subscription expiry displayed');
+    $subscriptions[0]['ends_at'] = null;
+    expect(str_contains(renderProfile($overview), return_translation('auth_profile_unlimited')), 'Unlimited subscription displayed');
+    $subscriptions = [];
     foreach (['information', 'security', 'notifications'] as $section) {
         $request->query = ['section' => $section];
         $data = $controller->settings();

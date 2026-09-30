@@ -24,94 +24,51 @@ if (is_array($profileMenuItems)) {
 } else {
     $profileMenuItems = [];
 }
+$profileSubscriptionsAvailable = !$isSettings && (bool)apply_filters('profile_subscriptions_available', false);
+$profileSubscriptions = $profileSubscriptionsAvailable ? apply_filters('profile_subscriptions', [], $user) : [];
+$profileSubscriptions = is_array($profileSubscriptions) ? array_filter($profileSubscriptions, 'is_array') : [];
 ?>
-
-<section class="container py-4 py-lg-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4 mb-lg-5">
-        <div>
-            <h1 class="h3 mb-2"><?= print_translation($isSettings ? 'auth_settings_title' : 'auth_profile_heading') ?></h1>
+<section class="container profile-layout">
+    <aside class="profile-sidebar">
+        <div class="profile-identity">
+            <img class="profile-avatar" src="<?= get_user_avatar($user['avatar'] ?? null, 'lg') ?>" alt="<?= htmlSC($user['name']) ?>" width="92" height="92">
+            <span class="badge <?= $roleBadgeClass ?> rounded-pill px-3"><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
+            <h2 class="h6 mb-1 mt-2 text-break"><?= htmlSC($user['name']) ?><?= render_public_verified_badge($roleSlug) ?></h2>
+            <p class="text-body-secondary mb-1 text-break">@<?= htmlSC($user['login'] ?? '') ?></p>
+            <p class="profile-email text-body-secondary mb-0"><i class="ci-mail" aria-hidden="true"></i><span><?= htmlSC($user['email']) ?></span></p>
+        </div>
+        <dl class="profile-meta">
+            <div><dt><i class="ci-id-card" aria-hidden="true"></i><?= print_translation('auth_profile_id') ?>:</dt><dd>#<?= (int)$user['id'] ?></dd></div>
+            <div><dt><i class="ci-calendar" aria-hidden="true"></i><?= print_translation('auth_profile_created_at') ?>:</dt><dd><?= htmlSC($createdAt) ?></dd></div>
+        </dl>
+        <nav class="profile-nav" aria-label="<?= print_translation('auth_profile_heading') ?>">
+            <a href="<?= base_href('/profile') ?>" <?= !$isSettings ? 'aria-current="page"' : '' ?>><i class="ci-user" aria-hidden="true"></i><?= print_translation('auth_profile_overview') ?></a>
+            <?php foreach (['information' => ['ci-settings', 'auth_settings_title'], 'security' => ['ci-shield', 'auth_settings_security'], 'notifications' => ['ci-bell', 'auth_settings_notifications']] as $section => [$icon, $label]): ?>
+                <a href="<?= base_href('/profile/settings?section=' . $section) ?>" <?= $isSettings && $settingsSection === $section ? 'aria-current="page"' : '' ?>><i class="<?= $icon ?>" aria-hidden="true"></i><?= print_translation($label) ?></a>
+            <?php endforeach; ?>
+        </nav>
+        <nav class="profile-nav profile-nav-services" aria-label="<?= print_translation('auth_profile_services') ?>">
+            <h3><?= print_translation('auth_profile_services') ?></h3>
+            <?php foreach ($profileMenuItems as $item): ?>
+                <?php if (empty($item['href']) || empty($item['label'])) { continue; } ?>
+                <a href="<?= htmlSC($item['href']) ?>"><i class="<?= htmlSC($item['icon'] ?? 'ci-chevron-right') ?>" aria-hidden="true"></i><span><?= htmlSC($item['label']) ?></span></a>
+            <?php endforeach; ?>
+            <a href="<?= base_href('/chat') ?>"><i class="ci-chat" aria-hidden="true"></i><?= print_translation('tpl_auth_chat') ?></a>
+        </nav>
+        <div class="profile-nav profile-nav-footer">
+            <?php if (check_admin()): ?><a href="<?= base_href('/admin') ?>"><i class="ci-layout" aria-hidden="true"></i><?= print_translation('auth_profile_admin_link') ?></a><?php endif; ?>
+            <form action="<?= base_href('/logout') ?>" method="post"><?= get_csrf_field() ?><button type="submit"><i class="ci-log-out" aria-hidden="true"></i><?= print_translation('auth_profile_logout') ?></button></form>
+        </div>
+    </aside>
+    <div class="profile-content">
+        <header class="profile-heading">
+            <h1 class="h3 mb-1"><?= print_translation($isSettings ? 'auth_settings_title' : 'auth_profile_heading') ?></h1>
             <p class="text-body-secondary mb-0"><?= print_translation($isSettings ? 'auth_settings_subtitle' : 'auth_profile_overview_subtitle') ?></p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <?php if (check_admin()): ?>
-                <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= base_href('/admin') ?>">
-                    <i class="ci-layout"></i>
-                    <span><?= print_translation('auth_profile_admin_link') ?></span>
-                </a>
-            <?php endif; ?>
-            <form action="<?= base_href('/logout') ?>" method="post">
-                <?= get_csrf_field() ?>
-                <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="submit">
-                    <i class="ci-log-out"></i>
-                    <span><?= print_translation('auth_profile_logout') ?></span>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <div class="row g-4 g-xl-5">
-        <aside class="col-lg-4 col-xl-3">
-            <div class="position-sticky" style="top: 7rem;">
-                <div class="border rounded-5 p-4 mb-4">
-                    <div class="text-center mb-4">
-                        <div class="position-relative d-inline-flex align-items-center justify-content-center mb-3">
-                            <img
-                                src="<?= get_user_avatar($user['avatar'] ?? null, 'lg') ?>"
-                                alt="<?= htmlSC($user['name']) ?>"
-                                class="rounded-circle border object-fit-cover"
-                                style="width: 120px; height: 120px;"
-                            >
-                        </div>
-                        <div class="d-flex justify-content-center mb-3">
-                            <span class="badge <?= $roleBadgeClass ?> rounded-pill px-3"><?= htmlSC(get_user_role_label($roleSlug)) ?></span>
-                        </div>
-                        <h2 class="h5 mb-1"><?= htmlSC($user['name']) ?><?= render_public_verified_badge($roleSlug) ?></h2>
-                        <div class="text-body-secondary">@<?= htmlSC($user['login'] ?? '') ?></div>
-                        <div class="d-flex justify-content-center align-items-center gap-2 text-body-secondary small mt-2 text-break">
-                            <i class="ci-mail"></i>
-                            <span><?= htmlSC($user['email']) ?></span>
-                        </div>
-                    </div>
-
-                    <div class="vstack gap-3 small">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="ci-id-card text-body-tertiary fs-base"></i>
-                            <span class="text-body-secondary"><?= print_translation('auth_profile_id') ?>:</span>
-                            <span class="fw-medium ms-auto">#<?= (int)$user['id'] ?></span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="ci-calendar text-body-tertiary fs-base"></i>
-                            <span class="text-body-secondary"><?= print_translation('auth_profile_created_at') ?>:</span>
-                            <span class="fw-medium ms-auto text-end"><?= htmlSC($createdAt) ?></span>
-                        </div>
-                    </div>
-                </div>
-
-                <nav class="vstack gap-2" aria-label="<?= print_translation('auth_settings_title') ?>">
-                    <a class="btn <?= !$isSettings ? 'btn-dark' : 'btn-outline-secondary' ?> rounded-pill justify-content-start" href="<?= base_href('/profile') ?>" <?= !$isSettings ? 'aria-current="page"' : '' ?>>
-                        <i class="ci-user me-2"></i><?= print_translation('auth_profile_overview') ?>
-                    </a>
-                    <a class="btn <?= $isSettings ? 'btn-dark' : 'btn-outline-secondary' ?> rounded-pill justify-content-start" href="<?= base_href('/profile/settings') ?>" <?= $isSettings ? 'aria-current="location"' : '' ?>>
-                        <i class="ci-settings me-2"></i><?= print_translation('auth_settings_title') ?>
-                    </a>
-                </nav>
-            </div>
-        </aside>
-        <div class="col-lg-8 col-xl-9">
-            <?php if ($isSettings): ?>
-                <nav class="overflow-x-auto mb-4" aria-label="<?= print_translation('auth_settings_title') ?>">
-                    <ul class="nav nav-pills flex-nowrap gap-2 text-nowrap pb-1">
-                        <?php foreach (['information', 'security', 'notifications'] as $section): ?>
-                            <li class="nav-item">
-                                <a class="nav-link <?= $settingsSection === $section ? 'active' : '' ?>" href="<?= base_href('/profile/settings?section=' . $section) ?>" <?= $settingsSection === $section ? 'aria-current="page"' : '' ?>><?= print_translation('auth_settings_' . $section) ?></a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </nav>
-                <?php require __DIR__ . '/profile_' . $settingsSection . '.php'; ?>
-            <?php else: ?>
-                <?php require __DIR__ . '/profile_overview.php'; ?>
-            <?php endif; ?>
-        </div>
+        </header>
+        <?php if ($isSettings): ?>
+            <?php require __DIR__ . '/profile_' . $settingsSection . '.php'; ?>
+        <?php else: ?>
+            <?php require __DIR__ . '/profile_overview.php'; ?>
+        <?php endif; ?>
     </div>
 </section>
