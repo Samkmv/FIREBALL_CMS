@@ -13,6 +13,9 @@ $validation_class = '';
 $editor_id = 'testEditor';
 $config = [
     'userId' => 1,
+    'fileUploadUrl' => '/admin/block-editor/upload-file',
+    'fileUploadExtensions' => ['pdf', 'docx', 'xlsx', 'txt', 'zip'],
+    'fileUploadMaxSize' => 50 * 1024 * 1024,
     'labels' => [],
     'fonts' => [['value' => 'Inter', 'label' => 'Inter']],
     'sizes' => [['value' => '12px', 'label' => '12px']],
@@ -21,6 +24,7 @@ $config = [
         ['machine_name' => 'text', 'title' => 'Text', 'default_content' => ['html' => '']],
         ['machine_name' => 'heading', 'title' => 'Heading', 'default_content' => ['level' => 'h2', 'html' => '']],
         ['machine_name' => 'gallery', 'title' => 'Gallery', 'default_content' => ['items' => []]],
+        ['machine_name' => 'downloads', 'title' => 'Загрузчик', 'icon' => 'ci-download', 'default_content' => ['title' => '', 'description' => '', 'items' => [], 'showIcon' => true, 'showSize' => true]],
         ['machine_name' => 'table', 'title' => 'Table', 'default_content' => ['rows' => [['', ''], ['', '']], 'header' => true]],
         ['machine_name' => 'video', 'title' => 'Видео', 'default_content' => ['src' => '', 'caption' => '']],
     ],

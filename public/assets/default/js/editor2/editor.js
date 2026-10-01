@@ -475,6 +475,10 @@
                 return String(definition.renderEditor(block, this) || '');
             }
 
+            if (block.type === 'downloads') {
+                return this.renderDownloads(block, true);
+            }
+
             if (block.type === 'heading') {
                 const level = /^h[1-6]$/.test(data.level) ? data.level : 'h2';
                 return '<' + level + ' contenteditable="true" spellcheck="true" data-editor-rich data-editor-field="data.html" data-placeholder="' + escapeAttr(this.label('headingPlaceholder', 'Heading')) + '">' + sanitizer.sanitizeHtml(data.html || '') + '</' + level + '>';
@@ -680,6 +684,9 @@
 
         blockSummary(block) {
             const data = block.data || {};
+            if (block.type === 'downloads') {
+                return String(data.title || (Array.isArray(data.items) ? data.items : []).map(item => item && item.name || '').join(', ')).slice(0, 54);
+            }
             if (block.type === 'heading' || block.type === 'text' || block.type === 'quote') {
                 return stripHtml(data.html || '').slice(0, 54);
             }
@@ -774,6 +781,13 @@
 
         renderTypeInspector(block) {
             const data = block.data || {};
+            if (block.type === 'downloads') {
+                return this.textField('data.title', this.label('downloadsTitle', 'Block title'), data.title || '', '') +
+                    '<label class="fb-editor2-inspector-field"><span>' + escapeAttr(this.label('downloadsDescription', 'Description (optional)')) + '</span><textarea rows="3" data-editor-setting="data.description">' + escapeAttr(data.description || '') + '</textarea></label>' +
+                    this.checkField('data.showIcon', this.label('downloadsShowIcon', 'Show file type icons'), data.showIcon !== false) +
+                    this.checkField('data.showSize', this.label('downloadsShowSize', 'Show file sizes'), data.showSize !== false) +
+                    this.downloadButtons(block);
+            }
             if (block.type === 'heading') {
                 return this.selectField('data.level', 'Heading level', data.level || 'h2', [
                     ['h1', 'Heading 1'], ['h2', 'Heading 2'], ['h3', 'Heading 3'],
@@ -1046,6 +1060,10 @@
             const blockElement = target.closest('[data-editor-block]');
             const blockId = blockElement ? blockElement.getAttribute('data-block-id') : '';
 
+            if (this.handleDownloadClick(event)) {
+                return;
+            }
+
             if (target.closest('[data-editor-command-close]')) {
                 event.preventDefault();
                 this.closeCommandPalette();
@@ -1162,6 +1180,9 @@
         }
 
         handleWorkspaceClick(event) {
+            if (event.fireballDownloadsHandled || this.handleDownloadClick(event)) {
+                return;
+            }
             const target = event.target;
             const modeButton = target.closest('button[data-editor-mode]');
             if (modeButton) {
@@ -2942,6 +2963,12 @@
         }
 
         handleDragOver(event) {
+            const drop = event.target.closest('[data-editor-download-drop]');
+            if (drop && event.dataTransfer && Array.from(event.dataTransfer.types || []).includes('Files')) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+                return;
+            }
             if (!this.draggedId) {
                 return;
             }
@@ -2959,6 +2986,12 @@
         }
 
         handleDrop(event) {
+            const drop = event.target.closest('[data-editor-download-drop]');
+            if (drop && event.dataTransfer && event.dataTransfer.files.length) {
+                event.preventDefault();
+                this.uploadDownloadFiles(drop.getAttribute('data-download-block-id'), Array.from(event.dataTransfer.files));
+                return;
+            }
             if (!this.draggedId) {
                 return;
             }
@@ -3114,7 +3147,9 @@
 
             const data = block.data || {};
             let content = '';
-            if (block.type === 'text') {
+            if (block.type === 'downloads') {
+                content = this.renderDownloads(block, false);
+            } else if (block.type === 'text') {
                 content = '<p>' + sanitizer.sanitizeHtml(data.html || '') + '</p>';
             } else if (block.type === 'heading') {
                 const level = /^h[1-6]$/.test(data.level) ? data.level : 'h2';
@@ -3291,6 +3326,11 @@
         }
 
         handleSubmit(event) {
+            if (event && this.downloadUploads && this.downloadUploads.size) {
+                event.preventDefault();
+                window.alert(this.label('downloadsUploading', 'Uploading files…'));
+                return;
+            }
             if (event && this.abortController && this.autosaveFinished) {
                 event.preventDefault();
                 if (this.submitPending) {
@@ -3531,7 +3571,7 @@
         }
 
         handleBeforeUnload(event) {
-            if (!this.dirty) {
+            if (!this.dirty && !(this.downloadUploads && this.downloadUploads.size)) {
                 return;
             }
             event.preventDefault();
@@ -4202,6 +4242,150 @@
             }
         }
 
+        normalizeDownload(file) {
+            if (!file || typeof file !== 'object') return null;
+            const url = sanitizer.safeUrl(file.url || '', false);
+            try {
+                const parsed = new URL(url, window.location.origin);
+                if (!url || !['http:', 'https:'].includes(parsed.protocol)) return null;
+                const filename = decodeURIComponent(parsed.pathname.split('/').pop() || '');
+                const extension = filename.split('.').pop().toLowerCase();
+                const allowed = this.config.fileUploadExtensions || ['pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'md', 'json', 'xml', 'zip', 'rar', '7z', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'mpg'];
+                if (!allowed.includes(extension)) return null;
+                const size = Number(file.size);
+                return { url: url, name: String(file.name || filename), size: Number.isFinite(size) && size > 0 ? size : 0, extension: extension };
+            } catch (error) {
+                return null;
+            }
+        }
+
+        downloadButtons(block) {
+            const busy = Boolean(this.downloadUploads && this.downloadUploads.has(block.id));
+            return '<div class="fb-editor2-downloads__buttons" data-download-block-id="' + escapeAttr(block.id) + '">' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary" data-editor-download-action="upload" ' + (busy ? 'disabled aria-busy="true"' : '') + '><i class="ci-upload me-2" aria-hidden="true"></i>' + escapeAttr(this.label(busy ? 'downloadsUploading' : 'downloadsUpload', busy ? 'Uploading…' : 'Upload from computer')) + '</button>' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary" data-editor-download-action="manager"><i class="ci-folder me-2" aria-hidden="true"></i>' + escapeAttr(this.label('galleryFromManager', 'Choose from file manager')) + '</button></div>';
+        }
+
+        renderDownloads(block, editable) {
+            const data = block.data || {};
+            const items = Array.isArray(data.items) ? data.items : [];
+            const rows = items.map((original, index) => {
+                const item = this.normalizeDownload(original);
+                if (!item) return '';
+                const kind = item.extension === 'pdf' ? 'danger' : /^(docx?|odt|rtf)$/.test(item.extension) ? 'info' : /^(xlsx?|ods|csv)$/.test(item.extension) ? 'success' : /^(pptx?|odp)$/.test(item.extension) ? 'warning' : 'secondary';
+                const icon = data.showIcon !== false ? '<span class="fb-downloads__icon text-' + kind + ' bg-' + kind + '-subtle"><i class="ci-file" aria-hidden="true"></i><small>' + escapeAttr(item.extension.toUpperCase()) + '</small></span>' : '';
+                const unit = Math.max(0, Math.min(3, Math.floor(Math.log(item.size || 1) / Math.log(1024))));
+                const size = data.showSize !== false && item.size > 0 ? ' · ' + Number((item.size / Math.pow(1024, unit)).toFixed(1)) + ' ' + ['B', 'KB', 'MB', 'GB'][unit] : '';
+                const actions = editable ? '<div class="fb-editor2-downloads__actions">' + ['up', 'down', 'remove'].map(action => {
+                    const disabled = action === 'up' && index === 0 || action === 'down' && index === items.length - 1;
+                    const iconName = action === 'up' ? 'arrow-up' : action === 'down' ? 'arrow-down' : 'trash';
+                    const label = this.label(action === 'up' ? 'moveUp' : action === 'down' ? 'moveDown' : 'remove', action);
+                    return '<button type="button" class="btn btn-sm btn-outline-' + (action === 'remove' ? 'danger' : 'secondary') + '" data-editor-download-action="' + action + '" data-download-index="' + index + '" aria-label="' + escapeAttr(label) + '" title="' + escapeAttr(label) + '" ' + (disabled ? 'disabled' : '') + '><i class="ci-' + iconName + '" aria-hidden="true"></i></button>';
+                }).join('') + '</div>' : '<a class="btn btn-sm btn-outline-secondary fb-downloads__button" href="' + escapeAttr(item.url) + '" download="' + escapeAttr(item.name) + '"><i class="ci-download me-2" aria-hidden="true"></i>' + escapeAttr(this.label('download', 'Download')) + '</a>';
+                return '<div class="fb-downloads__row">' + icon + '<div class="fb-downloads__info"><div class="fw-medium text-body">' + escapeAttr(item.name) + '</div><small class="text-body-secondary">' + escapeAttr(item.extension.toUpperCase() + size) + '</small></div>' + actions + '</div>';
+            }).join('');
+            if (!editable && !rows) return '';
+            return '<section class="fb-downloads card" data-download-block-id="' + escapeAttr(block.id) + '"><div class="card-body">' +
+                (data.title ? '<h2 class="h4 mb-2">' + escapeAttr(data.title) + '</h2>' : '') +
+                (data.description ? '<p class="fb-downloads__description text-body-secondary mb-3">' + escapeAttr(data.description) + '</p>' : '') +
+                '<div class="fb-downloads__list">' + rows + '</div>' +
+                (editable ? '<div class="fb-editor2-downloads__drop" data-editor-download-drop data-download-block-id="' + escapeAttr(block.id) + '"><p class="small text-body-secondary mb-2">' + escapeAttr(this.label('downloadsDropHint', 'Drop files here or choose a source below.')) + '</p>' + this.downloadButtons(block) + '</div>' : '') + '</div></section>';
+        }
+
+        handleDownloadClick(event) {
+            const button = event.target.closest('[data-editor-download-action]');
+            if (!button) return false;
+            event.preventDefault();
+            event.fireballDownloadsHandled = true;
+            const container = button.closest('[data-download-block-id]');
+            const block = container ? this.state.blocks[this.blockIndex(container.getAttribute('data-download-block-id'))] : null;
+            if (!block || block.type !== 'downloads' || button.disabled) return true;
+            const action = button.getAttribute('data-editor-download-action');
+            if (action === 'manager') {
+                this.openMediaPicker(block.id, button, 'data.items');
+            } else if (action === 'upload') {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                if (this.config.fileUploadExtensions) input.accept = this.config.fileUploadExtensions.map(ext => '.' + ext).join(',');
+                input.addEventListener('change', () => this.uploadDownloadFiles(block.id, Array.from(input.files || [])), { once: true });
+                // Keep the chooser inside the DOM for Safari, but never in the saved form.
+                input.style.display = 'none';
+                document.body.appendChild(input);
+                const cleanUp = () => input.remove();
+                input.addEventListener('change', cleanUp, { once: true });
+                input.addEventListener('cancel', cleanUp, { once: true });
+                input.click();
+            } else {
+                const items = Array.isArray(block.data.items) ? block.data.items : [];
+                const index = Number(button.getAttribute('data-download-index'));
+                if (!Number.isInteger(index) || index < 0 || index >= items.length) return true;
+                if (action === 'remove') items.splice(index, 1);
+                else if (action === 'up' && index > 0) [items[index - 1], items[index]] = [items[index], items[index - 1]];
+                else if (action === 'down' && index < items.length - 1) [items[index + 1], items[index]] = [items[index], items[index + 1]];
+                else return true;
+                this.activeId = block.id;
+                this.selectedIds = new Set([block.id]);
+                this.commit('downloads', true, true);
+            }
+            return true;
+        }
+
+        async uploadDownloadFiles(blockId, files) {
+            if (!files.length || this.destroyed || !this.config.fileUploadUrl) return;
+            const block = this.state.blocks[this.blockIndex(blockId)];
+            if (!block || block.type !== 'downloads') return;
+            this.downloadUploads = this.downloadUploads || new Set();
+            if (this.downloadUploads.has(blockId)) return;
+            this.downloadUploads.add(blockId);
+            this.refreshBlock(blockId);
+            if (this.activeId === blockId) this.renderInspector();
+            const uploaded = [];
+            const errors = [];
+            try {
+                for (const file of files) {
+                    if (this.destroyed || this.blockIndex(blockId) < 0) break;
+                    try {
+                        if (this.config.fileUploadExtensions && !this.config.fileUploadExtensions.includes(String(file.name).split('.').pop().toLowerCase())) {
+                            throw new Error(this.label('downloadsInvalidFile', 'This file type is not allowed.'));
+                        }
+                        if (!file.size || file.size > (this.config.fileUploadMaxSize || 50 * 1024 * 1024)) {
+                            throw new Error(this.label('downloadsSizeError', 'File exceeds the upload limit.'));
+                        }
+                        const body = new FormData();
+                        const csrf = this.form && this.form.querySelector('input[name="needCSRFToken"]');
+                        const meta = document.querySelector('meta[name="needCSRFToken"]');
+                        const token = csrf ? csrf.value : meta && meta.getAttribute('content');
+                        if (token) body.append('needCSRFToken', token);
+                        body.append('entity_type', this.config.entityType || 'post');
+                        body.append('file', file, file.name);
+                        const response = await window.fetch(this.config.fileUploadUrl, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                        const result = await response.json();
+                        const item = this.normalizeDownload(result.file);
+                        if (!response.ok || result.status !== 'success' || !item) throw new Error(result.message || this.label('downloadsUploadFailed', 'File upload failed.'));
+                        uploaded.push(item);
+                    } catch (error) {
+                        errors.push(file.name + ': ' + String(error.message || this.label('downloadsUploadFailed', 'File upload failed.')));
+                    }
+                }
+            } finally {
+                this.downloadUploads.delete(blockId);
+                const current = this.state.blocks[this.blockIndex(blockId)];
+                if (!this.destroyed && current && current.type === 'downloads') {
+                    if (uploaded.length) {
+                        if (!Array.isArray(current.data.items)) current.data.items = [];
+                        current.data.items.push(...uploaded);
+                        // Upload completion must not change another block's current selection.
+                        this.commit('downloads', true, true);
+                    } else {
+                        this.refreshBlock(blockId);
+                        if (this.activeId === blockId) this.renderInspector();
+                    }
+                }
+                if (!this.destroyed && errors.length) window.alert(errors.join('\n'));
+            }
+        }
+
         openMediaPicker(blockId, anchor, path) {
             const token = 'fireball_editor2_' + blockId + '_' + Date.now();
             this.filePickerTarget = { blockId: blockId, path: path || 'data.src', token: token };
@@ -4269,7 +4453,15 @@
             } else {
                 const block = this.state.blocks[this.blockIndex(this.filePickerTarget.blockId)];
                 if (block) {
-                    if (this.filePickerTarget.path === 'data.items') {
+                    if (block.type === 'downloads' && this.filePickerTarget.path === 'data.items') {
+                        const item = this.normalizeDownload({ url: value, name: payload.name, size: payload.size });
+                        if (!item) {
+                            window.alert(this.label('downloadsInvalidFile', 'This file type is not allowed.'));
+                            return;
+                        }
+                        if (!Array.isArray(block.data.items)) block.data.items = [];
+                        block.data.items.push(item);
+                    } else if (this.filePickerTarget.path === 'data.items') {
                         if (!Array.isArray(block.data.items)) {
                             block.data.items = [];
                         }

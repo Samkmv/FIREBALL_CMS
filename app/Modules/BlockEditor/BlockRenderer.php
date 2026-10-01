@@ -179,6 +179,7 @@ final class BlockRenderer
             'quote' => $this->quote($data),
             'image' => $this->image($data),
             'gallery', 'slider' => $this->gallery($data, $type),
+            'downloads' => $this->downloads($data),
             'video' => $this->video($data),
             'audio' => $this->audio($data),
             'table' => $this->table($data),
@@ -341,6 +342,48 @@ final class BlockRenderer
         }
 
         return '<figure class="figure d-block">' . $image . '</figure>';
+    }
+
+    private function downloads(array $data): string
+    {
+        $rows = '';
+        foreach (is_array($data['items'] ?? null) ? $data['items'] : [] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $url = trim((string)($item['url'] ?? ''));
+            $path = rawurldecode((string)parse_url($url, PHP_URL_PATH));
+            $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+            if ($url === '' || !in_array($scheme, ['', 'http', 'https'], true) || !is_safe_content_url($url) || !in_array($extension, \App\Models\FileManager::allowedUploadExtensions(), true)) {
+                continue;
+            }
+            $name = trim((string)($item['name'] ?? '')) ?: basename($path);
+            $kind = match ($extension) {
+                'pdf' => 'danger',
+                'doc', 'docx', 'odt', 'rtf' => 'info',
+                'xls', 'xlsx', 'ods', 'csv' => 'success',
+                'ppt', 'pptx', 'odp' => 'warning',
+                default => 'secondary',
+            };
+            $icon = ($data['showIcon'] ?? true) !== false
+                ? '<span class="fb-downloads__icon text-' . $kind . ' bg-' . $kind . '-subtle"><i class="ci-file" aria-hidden="true"></i><small>' . htmlSC(strtoupper($extension)) . '</small></span>' : '';
+            $size = max(0, (float)($item['size'] ?? 0));
+            $sizeText = '';
+            if (($data['showSize'] ?? true) !== false && $size > 0 && is_finite($size)) {
+                $unit = max(0, min(3, (int)floor(log($size, 1024))));
+                $sizeText = ' · ' . rtrim(rtrim(number_format($size / (1024 ** $unit), 1, '.', ''), '0'), '.') . ' ' . ['B', 'KB', 'MB', 'GB'][$unit];
+            }
+            $rows .= '<div class="fb-downloads__row">' . $icon . '<div class="fb-downloads__info"><div class="fw-medium text-body">' . htmlSC($name) . '</div><small class="text-body-secondary">' . htmlSC(strtoupper($extension) . $sizeText) . '</small></div>'
+                . '<a class="btn btn-sm btn-outline-secondary fb-downloads__button" href="' . htmlSC($url) . '" download="' . htmlSC($name) . '"><i class="ci-download me-2" aria-hidden="true"></i>' . htmlSC(return_translation('editor_downloads_download')) . '</a></div>';
+        }
+        if ($rows === '') {
+            return '';
+        }
+        return '<section class="fb-downloads card"><div class="card-body">'
+            . (!empty($data['title']) ? '<h2 class="h4 mb-2">' . htmlSC((string)$data['title']) . '</h2>' : '')
+            . (!empty($data['description']) ? '<p class="fb-downloads__description text-body-secondary mb-3">' . htmlSC((string)$data['description']) . '</p>' : '')
+            . '<div class="fb-downloads__list">' . $rows . '</div></div></section>';
     }
 
     private function gallery(array $data, string $type): string

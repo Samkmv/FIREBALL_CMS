@@ -118,6 +118,30 @@ final class BlockEditorController extends BaseController
         }
     }
 
+    public function uploadFile(): void
+    {
+        $file = new \FBL\File('file');
+        if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
+            response()->json(['status' => 'error', 'message' => return_translation('editor_downloads_upload_failed')], 422);
+            return;
+        }
+        $entityType = $this->service->normalizeEntityType((string)request()->post('entity_type', 'post'));
+        try {
+            // The file manager checks size, extension and actual MIME content before storing.
+            $url = (new \App\Models\FileManager())->upload(
+                $entityType === 'page' ? 'pages/downloads' : 'posts/downloads', $file
+            );
+            response()->json(['status' => 'success', 'file' => [
+                'url' => $url,
+                'name' => basename(str_replace('\\', '/', $file->getName())),
+                'size' => $file->getSize(),
+            ]]);
+        } catch (\RuntimeException $exception) {
+            log_error_details('Block editor file upload failed', ['Error' => $exception->getMessage()], $exception);
+            response()->json(['status' => 'error', 'message' => return_translation('editor_downloads_upload_failed')], 422);
+        }
+    }
+
     public function reorder(): void
     {
         $entityType = $this->service->normalizeEntityType((string)request()->post('entity_type', 'post'));

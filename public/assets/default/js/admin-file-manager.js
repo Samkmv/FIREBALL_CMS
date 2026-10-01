@@ -1285,7 +1285,9 @@ $(function () {
         const payload = {
             type: 'fireball:file:selected',
             field: field,
-            value: value
+            value: value,
+            name: String(button.attr('data-file-select-name') || ''),
+            size: Number(button.attr('data-file-select-size') || 0)
         };
         const currentUrl = new URL(window.location.href);
         const returnUrl = String(currentUrl.searchParams.get('return_url') || '');

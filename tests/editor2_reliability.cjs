@@ -175,4 +175,39 @@ const success = id => ({ ok: true, json: async () => ({ status: 'success', id })
     ], null);
     assert.deepEqual(Array.from(attached), ['/one.png'], 'Successful uploads survive a later failure');
     console.log('PASS partial gallery upload recovery');
+
+    const downloads = editor();
+    downloads.config.fileUploadUrl = '/upload-file';
+    downloads.state.blocks = [{ id: 'files', type: 'downloads', data: { items: [] } }];
+    downloads.activeId = 'another-block';
+    downloads.refreshBlock = () => {};
+    downloads.renderInspector = () => {};
+    let commits = 0;
+    downloads.commit = () => { commits++; };
+    let downloadRequests = 0;
+    window.fetch = async () => ++downloadRequests === 2
+        ? { ok: false, json: async () => ({ status: 'error', message: 'failed' }) }
+        : { ok: true, json: async () => ({ status: 'success', file: { url: '/uploads/files/' + downloadRequests + '.txt', name: downloadRequests + '.txt', size: 8 } }) };
+    await downloads.uploadDownloadFiles('files', ['one.txt', 'two.txt', 'three.txt'].map(name => ({ name, size: 8 })));
+    assert.equal(downloads.state.blocks[0].data.items.length, 2, 'Partial downloads upload retains successes and continues after a failure');
+    assert.equal(commits, 1);
+    assert.equal(downloads.activeId, 'another-block', 'An asynchronous upload never steals the active selection');
+    assert.equal(downloads.downloadUploads.size, 0);
+    const pendingFile = deferred();
+    window.fetch = () => pendingFile.promise;
+    const pendingUpload = downloads.uploadDownloadFiles('files', [{ name: 'later.txt', size: 8 }]);
+    let submitPrevented = false;
+    downloads.handleSubmit({ preventDefault() { submitPrevented = true; } });
+    assert.equal(submitPrevented, true, 'Publishing cannot race pending file uploads');
+    const unload = { preventDefault() {} };
+    downloads.dirty = false;
+    downloads.handleBeforeUnload(unload);
+    assert.equal(unload.returnValue, '', 'Navigation warns about unfinished uploads');
+    downloads.state.blocks = [];
+    pendingFile.resolve({ ok: true, json: async () => ({ status: 'success', file: { url: '/uploads/files/later.txt', name: 'later.txt', size: 8 } }) });
+    await pendingUpload;
+    assert.equal(downloads.state.blocks.length, 0, 'Completing an upload cannot resurrect a deleted block');
+    assert.equal(commits, 1);
+    assert.equal(downloads.downloadUploads.size, 0);
+    console.log('PASS partial downloads upload, selection, submit/navigation guard and deleted-block race');
 })().catch(error => { console.error(error); process.exitCode = 1; });

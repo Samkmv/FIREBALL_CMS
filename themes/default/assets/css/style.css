@@ -6698,3 +6698,20 @@ body:not(.fb-admin-body) .fb-search-open:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     .profile-service-card { transition: none; }
 }
+/* Download block: use the CMS card, theme colors and native buttons. */
+.fb-downloads { text-align: start; }
+.fb-downloads__row { display: flex; align-items: center; gap: 1rem; padding: 1rem 0; }
+.fb-downloads__row + .fb-downloads__row { border-top: 1px solid var(--cz-border-color); }
+.fb-downloads__info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.fb-downloads__icon { width: 2.75rem; height: 3.25rem; border-radius: .375rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; flex: none; }
+.fb-downloads__icon > i { font-size: 1.25rem; }
+.fb-downloads__icon > small { font-size: .625rem; font-weight: 700; }
+.fb-downloads__button { flex: none; min-height: 44px; }
+.fb-downloads__description { white-space: pre-line; overflow-wrap: anywhere; }
+@media (max-width: 575.98px) {
+    .fb-downloads__row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .75rem; }
+    .fb-downloads__icon { grid-column: 1; grid-row: 1; }
+    .fb-downloads__info { grid-column: 2; grid-row: 1; }
+    .fb-downloads__info:first-child { grid-column: 1 / -1; }
+    .fb-downloads__button { grid-column: 1 / -1; justify-self: start; }
+}

@@ -615,6 +615,7 @@ body:has(.fb-editor-workspace) {
 .fb-editor-field .form-control,
 .fb-editor-field .form-select,
 .fb-editor2-inspector-field > input,
+.fb-editor2-inspector-field > textarea,
 .fb-editor2-inspector-field > select {
     width: 100%;
     min-height: 38px;
@@ -669,6 +670,7 @@ body:has(.fb-editor-workspace) {
 .fb-editor-field .form-control:focus,
 .fb-editor-field .form-select:focus,
 .fb-editor2-inspector-field > input:focus,
+.fb-editor2-inspector-field > textarea:focus,
 .fb-editor2-inspector-field > select:focus {
     border-color: var(--fb-editor-primary);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--fb-editor-primary) 15%, transparent);
@@ -2719,4 +2721,15 @@ body:has(.fb-editor-workspace) {
 .fb-editor2-gallery .fb-editor2-gallery__item-action.is-danger:hover,
 .fb-editor2-gallery .fb-editor2-gallery__item-action.is-danger:focus-visible {
     background: rgba(220, 53, 69, 1) !important;
+}
+
+.fb-editor2-downloads__drop { margin-top: 1rem; padding: 1rem; border: 1px dashed var(--cz-border-color); border-radius: .5rem; }
+.fb-editor2-downloads__buttons, .fb-editor2-downloads__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.fb-editor2-downloads__actions { flex: none; }
+.fb-editor2-downloads__buttons > button { min-height: 44px; white-space: normal; }
+.fb-editor2-downloads__actions > button { min-width: 44px; min-height: 44px; padding: .5rem; }
+.fb-editor2-inspector .fb-editor2-downloads__buttons { flex-direction: column; }
+@media (max-width: 575.98px) {
+    .fb-editor2-downloads__actions { grid-column: 1 / -1; justify-self: end; }
+    .fb-editor2-downloads__buttons > button { flex: 1 1 100%; }
 }

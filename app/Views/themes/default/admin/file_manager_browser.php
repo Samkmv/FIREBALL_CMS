@@ -91,6 +91,8 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
             data-file-select
             data-file-select-field="<?= htmlSC($pickerField) ?>"
             data-file-select-value="<?= htmlSC((string)($item['public_path'] ?? '')) ?>"
+            data-file-select-name="<?= htmlSC((string)($item['name'] ?? '')) ?>"
+            data-file-select-size="<?= (int)($item['size_bytes'] ?? 0) ?>"
         >
             <i class="ci-check"></i><?= print_translation('admin_files_select') ?>
         </button>

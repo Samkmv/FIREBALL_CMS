@@ -23,7 +23,7 @@ class FileManager
         'posts',
         'seo',
     ];
-    protected array $allowedExtensions = [
+    private const ALLOWED_EXTENSIONS = [
         'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
         'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
         'rtf', 'odt', 'ods', 'odp', 'md', 'json', 'xml',
@@ -31,6 +31,13 @@ class FileManager
         'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac',
         'mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'mpg',
     ];
+
+    protected array $allowedExtensions = self::ALLOWED_EXTENSIONS;
+
+    public static function allowedUploadExtensions(): array
+    {
+        return self::ALLOWED_EXTENSIONS;
+    }
 
     /**
      * Настраивает корневую директорию менеджера и создаёт её при необходимости.
