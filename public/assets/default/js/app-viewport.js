@@ -119,6 +119,15 @@
                 const standalone = root.classList?.contains('pwa-standalone')
                     || window.navigator?.standalone === true
                     || window.matchMedia('(display-mode: standalone)').matches;
+                // Measure the closed extent before detecting the keyboard: on
+                // resume/rotation the first observation may already be reduced.
+                if (mobile && standalone && !extentProbe && document.createElement) {
+                    extentProbe = document.createElement('div');
+                    extentProbe.setAttribute('aria-hidden', 'true');
+                    extentProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100vh;visibility:hidden;pointer-events:none;contain:strict';
+                    document.body.appendChild(extentProbe);
+                }
+                const nativeHeight = Number(extentProbe?.getBoundingClientRect().height) || layoutHeight;
                 const active = document.activeElement;
                 const editable = Boolean(focused || (active && (active.isContentEditable || active.matches?.('input, textarea, select'))));
                 if (referenceWidth && Math.abs(referenceWidth - width) > 40) {
@@ -126,7 +135,7 @@
                     keyboardWasVisible = false;
                 }
                 referenceWidth = width;
-                if (!referenceHeight || (!editable && !keyboardWasVisible)) referenceHeight = visualHeight;
+                if (!referenceHeight || (!editable && !keyboardWasVisible)) referenceHeight = standalone ? nativeHeight : Math.max(layoutHeight, visualHeight);
                 else referenceHeight = Math.max(referenceHeight, visualHeight);
                 // offsetTop is a coordinate, not usable height. Adding it to
                 // height disguises a keyboard when Safari pans the viewport.
@@ -139,13 +148,7 @@
                     // WebKit 254868: a closed PWA visualViewport can exclude
                     // safe-area while fixed layout covers it. Measure CSS's
                     // native extent instead of adding guessed inset pixels.
-                    if (!extentProbe && document.createElement) {
-                        extentProbe = document.createElement('div');
-                        extentProbe.setAttribute('aria-hidden', 'true');
-                        extentProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100vh;visibility:hidden;pointer-events:none;contain:strict';
-                        document.body.appendChild(extentProbe);
-                    }
-                    height = Number(extentProbe?.getBoundingClientRect().height) || layoutHeight;
+                    height = nativeHeight;
                     // offsetTop can remain stale after iOS dismisses keyboard.
                     // Native closed-screen layout must start at its own origin.
                     top = 0;

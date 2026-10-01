@@ -245,7 +245,7 @@ $(function () {
 
         const isMobile = typeof window.matchMedia === 'function'
             && window.matchMedia('(max-width: 767.98px)').matches;
-        const resizeAnchor = isMobile ? readMessageViewportAnchor() : null;
+        const resizeAnchor = isMobile ? (viewportAnchor || readMessageViewportAnchor()) : null;
 
         input.style.height = 'auto';
         const computedStyle = window.getComputedStyle(input);

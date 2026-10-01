@@ -290,7 +290,7 @@ $(function () {
         const el = input[0];
         if (!el) return;
 
-        const resizeAnchor = readViewportAnchor();
+        const resizeAnchor = viewportAnchor || readViewportAnchor();
         el.style.height = 'auto';
         el.style.height = `${Math.max(44, Math.min(el.scrollHeight, 132))}px`;
         el.style.overflowY = el.scrollHeight > 132 ? 'auto' : 'hidden';

@@ -26,7 +26,7 @@ const fixture = `<!doctype html><html class="pwa-standalone chat-mobile-fullscre
     const browser = await (process.env.FIREBALL_BROWSER === 'webkit' ? webkit : chromium).launch({ headless: true });
     try {
         const page = await browser.newPage();
-        for (const theme of ['light', 'dark']) for (const size of [{width:390,height:844}, {width:320,height:568}]) {
+        for (const theme of ['light', 'dark']) for (const size of [{width:390,height:844}, {width:393,height:852}, {width:430,height:932}, {width:360,height:800}, {width:320,height:568}]) {
             await page.setViewportSize(size);
             await page.goto('about:blank'); // setContent alone preserves previous shell globals.
             await page.setContent(fixture);
@@ -52,6 +52,16 @@ const fixture = `<!doctype html><html class="pwa-standalone chat-mobile-fullscre
                 return box.y + box.height;
             };
             assert.ok(Math.abs(await composerBottom() - size.height) < 1, 'Closed keyboard: PWA fills native extent instead of reserving another 60px strip');
+            const mineBubble = page.locator('.chat-message-row--mine .chat-message-bubble');
+            const mineStack = page.locator('.chat-message-row--mine .chat-message-stack');
+            const right = async locator => {const rect = await locator.boundingBox(); return rect.x + rect.width;};
+            assert.ok(Math.abs(await right(mineBubble) - await right(mineStack)) < 1, 'Short outgoing bubble aligns right even when actions are wider');
+            assert.ok(Math.abs(await right(mineBubble) - await right(page.locator('.chat-message-row--mine'))) < 1, 'Bubble reaches the message row inner edge');
+            for (const html of ['Very long message '.repeat(30), '<button class="chat-message-reply-quote">Quoted message</button>Reply', '<img style="width:150px;height:120px" alt="Attachment">']) {
+                await mineBubble.evaluate((element, html) => {element.innerHTML = html;}, html);
+                assert.ok(Math.abs(await right(mineBubble) - await right(mineStack)) < 1, 'Long, reply and attachment bubbles align right');
+            }
+            await mineBubble.evaluate(element => {element.innerHTML = 'Message';});
             for (const direction of ['mine', 'theirs']) {
                 const actionRow = page.locator('.chat-message-row--' + direction + ' .chat-message-actions');
                 await page.mouse.move(0, 0);

@@ -1484,9 +1484,25 @@ html:not([data-video-status="1"]) .fb-plyr-hls-message:not(.fb-plyr-hls-message-
 
 .chat-message-stack {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     width: fit-content;
     max-width: min(76%, 35rem);
     min-width: 0;
+}
+
+.chat-message-row--mine .chat-message-stack {
+    align-items: flex-end;
+    margin-left: auto;
+}
+
+.chat-message-row--mine .chat-message-bubble {
+    align-self: flex-end;
+}
+
+.chat-message-row--mine .chat-message-actions {
+    align-self: flex-end;
 }
 
 .chat-message-avatar {
@@ -2822,11 +2838,10 @@ html.chat-viewport-fullscreen .chat-messages-surface {
         padding: .5rem;
         padding-right: max(.5rem, env(safe-area-inset-right, 0px));
         /*
-         * The composer itself already has .4rem of inner padding. Subtract it
-         * from the outer safe-area reservation so the input does not sit too
-         * high above the iPhone home indicator.
+         * The application covers the full closed viewport. Reserve the home
+         * indicator once here, not in the shell or a keyboard offset.
          */
-        padding-bottom: max(.25rem, calc(env(safe-area-inset-bottom, 0px) - .4rem));
+        padding-bottom: max(.5rem, env(safe-area-inset-bottom, 0px));
         padding-left: max(.5rem, env(safe-area-inset-left, 0px));
     }
 

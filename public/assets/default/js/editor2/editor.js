@@ -408,10 +408,35 @@
             }
         }
 
+        renderBlockActions(block, index) {
+            const actions = [
+                ['moveUp', 'ci-arrow-up', this.label('moveUp', 'Move up'), index === 0],
+                ['moveDown', 'ci-arrow-down', this.label('moveDown', 'Move down'), index === this.state.blocks.length - 1],
+                ['copy', 'ci-clipboard', this.label('copy', 'Copy')],
+                ['duplicate', 'ci-copy', this.label('duplicate', 'Duplicate')],
+                ['hide', block.hidden ? 'ci-eye' : 'ci-eye-off', block.hidden ? this.label('show', 'Show') : this.label('hide', 'Hide')],
+                ['remove', 'ci-trash', this.label('remove', 'Remove')],
+                ['more', 'ci-more-horizontal', this.label('more', 'More')]
+            ];
+            return '<div class="fb-editor2-block__toolbar" role="group" aria-label="' + escapeAttr(this.label('more', 'More')) + '">' + actions.map(function (action) {
+                const secondary = ['copy', 'duplicate', 'hide'].includes(action[0]);
+                return '<button type="button"' + (secondary ? ' class="is-secondary-action"' : '') + ' data-block-action="' + action[0] + '" aria-label="' + escapeAttr(action[2]) + '" title="' + escapeAttr(action[2]) + '"' + (action[3] ? ' disabled' : '') + '><i class="' + action[1] + '" aria-hidden="true"></i></button>';
+            }).join('') + '</div>';
+        }
+
+        renderBlockHeader(block, index, outline = false) {
+            const definition = API.getBlockType(block.type) || {};
+            const title = escapeAttr(definition.title || block.type);
+            const icon = '<i class="' + iconClass(definition.icon) + '" aria-hidden="true"></i>';
+            const identity = outline
+                ? '<button type="button" class="fb-editor2-block__identity" data-editor-outline-block="' + escapeAttr(block.id) + '">' + icon + '<span>' + title + '</span></button>'
+                : '<div class="fb-editor2-block__identity"><button type="button" class="fb-editor2-block__drag" draggable="true" data-editor-drag-handle aria-label="' + escapeAttr(this.label('drag', 'Move block')) + '"><i class="ci-grip-vertical"></i></button>' + icon + '<span>' + title + '</span></div>';
+            return '<div class="fb-editor2-block__header">' + identity + this.renderBlockActions(block, index) + '</div>';
+        }
+
         renderBlock(block, index) {
             const definition = API.getBlockType(block.type) || {};
             const title = definition.title || block.type;
-            const icon = iconClass(definition.icon);
             const selected = this.selectedIds.has(block.id);
             const active = this.activeId === block.id;
             const settings = block.settings || {};
@@ -431,22 +456,9 @@
             ].filter(Boolean).join(';');
 
             return '<article class="' + classes + '" data-editor-block data-block-id="' + escapeAttr(block.id) + '" data-block-type="' + escapeAttr(block.type) + '" style="' + escapeAttr(style) + '" tabindex="-1" aria-label="' + escapeAttr(title) + '">' +
-                '<div class="fb-editor2-block__rail">' +
-                    '<button type="button" class="fb-editor2-block__drag" draggable="true" data-editor-drag-handle aria-label="' + escapeAttr(this.label('drag', 'Move block')) + '"><i class="ci-grip-vertical"></i></button>' +
-                    '<button type="button" class="fb-editor2-block__select" data-editor-select-block aria-label="' + escapeAttr(this.label('selectBlock', 'Select block')) + '"><i class="' + icon + '"></i></button>' +
-                '</div>' +
                 '<div class="fb-editor2-block__surface">' +
-                    '<div class="fb-editor2-block__meta"><i class="' + icon + '"></i><span>' + escapeAttr(title) + '</span><small>' + (index + 1) + '</small></div>' +
+                    this.renderBlockHeader(block, index) +
                     '<div class="fb-editor2-block__content">' + this.renderBlockContent(block) + '</div>' +
-                    '<div class="fb-editor2-block__toolbar" role="toolbar">' +
-                        '<button type="button" data-block-action="moveUp" aria-label="' + escapeAttr(this.label('moveUp', 'Move up')) + '"><i class="ci-arrow-up"></i></button>' +
-                        '<button type="button" data-block-action="moveDown" aria-label="' + escapeAttr(this.label('moveDown', 'Move down')) + '"><i class="ci-arrow-down"></i></button>' +
-                        '<button type="button" data-block-action="copy" aria-label="' + escapeAttr(this.label('copy', 'Copy')) + '"><i class="ci-clipboard"></i></button>' +
-                        '<button type="button" data-block-action="duplicate" aria-label="' + escapeAttr(this.label('duplicate', 'Duplicate')) + '"><i class="ci-copy"></i></button>' +
-                        '<button type="button" data-block-action="hide" aria-label="' + escapeAttr(block.hidden ? this.label('show', 'Show') : this.label('hide', 'Hide')) + '"><i class="' + (block.hidden ? 'ci-eye' : 'ci-eye-off') + '"></i></button>' +
-                        '<button type="button" data-block-action="remove" aria-label="' + escapeAttr(this.label('remove', 'Remove')) + '"><i class="ci-trash"></i></button>' +
-                        '<button type="button" data-block-action="more" aria-label="' + escapeAttr(this.label('more', 'More')) + '"><i class="ci-more-horizontal"></i></button>' +
-                    '</div>' +
                 '</div>' +
                 '<button type="button" class="fb-editor2-block__insert" data-editor-insert-after="' + escapeAttr(block.id) + '" aria-label="' + escapeAttr(this.label('addBlock', 'Add block')) + '"><span><i class="ci-plus"></i></span><small>' + escapeAttr(this.label('addBlock', 'Add block')) + '</small></button>' +
             '</article>';
@@ -660,9 +672,9 @@
                 if (needle && searchable.indexOf(needle) === -1) {
                     return '';
                 }
-                return '<button type="button" class="' + (block.id === this.activeId ? 'is-active' : '') + '" data-editor-outline-block="' + escapeAttr(block.id) + '">' +
-                    '<i class="' + iconClass(definition.icon) + '"></i><span><strong>' + escapeAttr(text) + '</strong><small>' + escapeAttr(definition.title || block.type) + '</small></span><em>' + (index + 1) + '</em>' +
-                '</button>';
+                return '<div class="fb-editor2-outline-item ' + (block.id === this.activeId ? 'is-active' : '') + '" data-editor-outline-item="' + escapeAttr(block.id) + '">' +
+                    this.renderBlockHeader(block, index, true) +
+                    '<button type="button" class="fb-editor2-outline-item__summary" data-editor-outline-block="' + escapeAttr(block.id) + '">' + escapeAttr(text) + '</button></div>';
             }, this).join('');
         }
 
@@ -1271,6 +1283,13 @@
                 }
                 return;
             }
+            const outlineAction = target.closest('[data-editor-outline-item] [data-block-action]');
+            if (outlineAction) {
+                event.preventDefault();
+                const id = outlineAction.closest('[data-editor-outline-item]').getAttribute('data-editor-outline-item');
+                this.handleBlockAction(id, outlineAction.getAttribute('data-block-action'), outlineAction);
+                return;
+            }
             const outlineButton = target.closest('[data-editor-outline-block]');
             if (outlineButton) {
                 const id = outlineButton.getAttribute('data-editor-outline-block');
@@ -1598,6 +1617,7 @@
             if (!id) {
                 return;
             }
+            if (action !== 'more' && this.activeId !== id) this.selectBlock(id, null, true);
             if (action === 'moveUp') {
                 this.moveBlock(id, -1);
             } else if (action === 'moveDown') {
@@ -1778,7 +1798,20 @@
             if (!this.ui.contextMenu) {
                 return;
             }
-            this.activeId = id;
+            const outlineAnchor = anchor && anchor.closest('[data-editor-outline-item]');
+            if (!this.selectedIds.has(id)) this.selectBlock(id, null, true);
+            else if (this.activeId !== id) {
+                // Keep a multi-selection, but make settings and both views
+                // agree about the block whose menu is being opened.
+                this.activeId = id;
+                this.ui.canvas.querySelectorAll('[data-editor-block]').forEach(function (element) {
+                    element.classList.toggle('is-active', element.getAttribute('data-block-id') === id);
+                });
+                this.refreshOutline();
+                this.renderInspector();
+                this.refreshStatus();
+            }
+            if (outlineAnchor) anchor = this.ui.outline.querySelector('[data-editor-outline-item="' + id + '"] [data-block-action="more"]');
             const block = this.activeBlock();
             this.ui.contextMenu.innerHTML =
                 this.contextItem('addAbove', 'ci-plus', this.label('addAbove', 'Add block above'), '') +
@@ -2415,7 +2448,14 @@
         scrollToBlock(id) {
             const element = this.ui.canvas.querySelector('[data-block-id="' + id + '"]');
             if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const scroller = element.closest('.fb-editor-workspace__document');
+                if (scroller) {
+                    const toolbar = this.ui.toolbar || this.root.querySelector('[data-editor-toolbar]');
+                    const inset = toolbar ? toolbar.getBoundingClientRect().height : 0;
+                    scroller.scrollTo({top: scroller.scrollTop + element.getBoundingClientRect().top - scroller.getBoundingClientRect().top - inset - 12, behavior: 'smooth'});
+                } else {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
         }
 

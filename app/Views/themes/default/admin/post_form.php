@@ -143,6 +143,10 @@ $requiredSummary = $translateOrFallback('admin_form_required_summary', 'Запо
                         <i class="ci-more-vertical"></i>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end p-2">
+                        <button type="button" class="dropdown-item rounded-3 d-xl-none" data-editor-preview><?= htmlSC($translateOrFallback('editor_preview', 'Предпросмотр')) ?></button>
+                        <button type="submit" class="dropdown-item rounded-3 d-xl-none" data-editor-submit="draft"><?= htmlSC($translateOrFallback('editor_save_draft', 'Сохранить черновик')) ?></button>
+                        <button type="button" class="dropdown-item rounded-3 d-lg-none" data-editor-mode="document"><?= htmlSC($translateOrFallback('editor_mode_document', 'Документ')) ?></button>
+                        <button type="button" class="dropdown-item rounded-3 d-lg-none" data-editor-mode="structure"><?= htmlSC($translateOrFallback('editor_mode_structure', 'Структура')) ?></button>
                         <button type="button" class="dropdown-item rounded-3" data-editor-focus><i class="ci-maximize-2 me-2"></i><?= htmlSC($translateOrFallback('editor_focus_mode', 'Режим фокуса')) ?></button>
                         <button type="button" class="dropdown-item rounded-3" data-editor-fullscreen><i class="ci-maximize me-2"></i><?= htmlSC($translateOrFallback('editor_fullscreen', 'Полный экран')) ?></button>
                         <button type="button" class="dropdown-item rounded-3" data-editor-preview-right><i class="ci-sidebar me-2"></i><?= htmlSC($translateOrFallback('editor_preview_right', 'Предпросмотр справа')) ?></button>
