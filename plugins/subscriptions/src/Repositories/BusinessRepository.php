@@ -89,6 +89,41 @@ final class BusinessRepository
         return $candidate;
     }
 
+    public function publicCount(string $search = ''): int
+    {
+        [$where, $params] = $this->publicSearch($search);
+        return (int)db()->query('SELECT COUNT(*) FROM subscription_business_pages b WHERE ' . $where, $params)->getColumn();
+    }
+
+    public function publicPages(string $search = '', string $sort = 'newest', int $limit = 20, int $offset = 0): array
+    {
+        [$where, $params] = $this->publicSearch($search);
+        $order = match ($sort) {
+            'rating'=>'COALESCE(r.average_rating,0) DESC, COALESCE(r.review_count,0) DESC, b.id DESC',
+            'name'=>'b.name ASC, b.id DESC',
+            default=>'b.id DESC',
+        };
+        $limit = max(1, min(50, $limit));
+        $offset = max(0, $offset);
+        return db()->query('SELECT b.id,b.slug,b.name,b.description,b.address,b.hours,b.cover,b.avatar,
+            COALESCE(r.review_count,0) AS review_count, r.average_rating FROM subscription_business_pages b
+            LEFT JOIN (SELECT business_id,COUNT(*) AS review_count,AVG(rating) AS average_rating
+                FROM subscription_business_reviews WHERE is_hidden=0 GROUP BY business_id) r ON r.business_id=b.id
+            WHERE ' . $where . " ORDER BY {$order} LIMIT {$limit} OFFSET {$offset}", $params)->get() ?: [];
+    }
+
+    private function publicSearch(string $search): array
+    {
+        $where = 'b.is_published=1';
+        $params = [];
+        if ($search !== '') {
+            $pattern = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search) . '%';
+            $where .= " AND (b.name LIKE ? ESCAPE '!' OR b.address LIKE ? ESCAPE '!' OR b.description LIKE ? ESCAPE '!')";
+            $params = [$pattern, $pattern, $pattern];
+        }
+        return [$where, $params];
+    }
+
     public function save(int $userId, array $data, array $images = []): int
     {
         $this->requireAccess($userId);
@@ -108,10 +143,13 @@ final class BusinessRepository
         $now = date('Y-m-d H:i:s');
         if ($page) {
             db()->query('UPDATE subscription_business_pages SET name=?, slug=?, description=?, address=?, phone=?, email=?, website=?, hours=?, socials_json=?, avatar=?, cover=?, is_published=?, camera_title=?, show_camera=?, updated_at=? WHERE id=? AND user_id=?', [...$values, $now, $page['id'], $userId]);
+            search_sync_entity(\Fireball\Subscriptions\Search\BusinessSearchProvider::NAME, (int)$page['id']);
             return (int)$page['id'];
         }
         db()->query('INSERT INTO subscription_business_pages (name, slug, description, address, phone, email, website, hours, socials_json, avatar, cover, is_published, camera_title, show_camera, created_at, updated_at, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [...$values, $now, $now, $userId]);
-        return (int)db()->getInsertId();
+        $id = (int)db()->getInsertId();
+        search_sync_entity(\Fireball\Subscriptions\Search\BusinessSearchProvider::NAME, $id);
+        return $id;
     }
 
     public function posts(int $businessId, int $offset = 0, ?string $kind = null): array

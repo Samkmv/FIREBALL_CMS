@@ -2,6 +2,8 @@
 
 $requiredAssets = \App\Services\FrontendAssets::requirements((string)$this->content, (array)($assets ?? []));
 extract((new \App\Services\PublicLayoutContext())->navigation(), EXTR_SKIP);
+$headerPageLinks = (array)apply_filters('public_header_links', $headerPageLinks);
+$publicCatalogLinks = (array)apply_filters('public_catalog_links', []);
 $defaultAsset = static fn(string $path): string => asset_versioned_url(base_url($path), WWW . $path);
 $currentPostCategorySlug = trim((string)request()->get('category', ''));
 $siteTitle = site_setting('site_title', SITE_NAME);
@@ -119,6 +121,7 @@ if (site_setting('support_public_enabled', '1') === '1') {
         'label' => return_translation('tpl_menu_nav_support'),
     ];
 }
+$footerNavigationLinks = (array)apply_filters('public_footer_links', $footerNavigationLinks);
 $footerCategoryLinks = $postNavigationCategories;
 $postCategoryUrl = static function (?string $slug = null): string {
     $url = base_href('/posts');
@@ -329,6 +332,13 @@ $postCategoryUrl = static function (?string $slug = null): string {
                             <a class="nav-link animate-underline d-inline-flex justify-content-between gap-3 p-0 <?= $currentPostCategorySlug === '' ? 'fw-semibold' : '' ?>" href="<?= $postCategoryUrl() ?>">
                                 <span class="animate-target"><?= print_translation('tpl_menu_all_posts') ?></span>
                             </a>
+                            <?php foreach ($publicCatalogLinks as $link): ?>
+                                <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0" href="<?= htmlSC($link['href']) ?>">
+                                    <span class="animate-target text-truncate"><?= htmlSC($link['label']) ?></span>
+                                    <?php if (isset($link['total'])): ?><span class="text-body-tertiary fs-xs"><?= (int)$link['total'] ?></span><?php endif; ?>
+                                </a>
+                            <?php endforeach; ?>
+                            <?php if ($publicCatalogLinks): ?><hr class="my-1"><?php endif; ?>
                             <?php foreach ($postNavigationCategories as $category): ?>
                                 <a class="nav-link animate-underline d-inline-flex justify-content-between gap-3 p-0 <?= $currentPostCategorySlug === $category['slug'] ? 'fw-semibold' : '' ?>" href="<?= $postCategoryUrl($category['slug']) ?>">
                                     <span class="animate-target"><?= htmlSC($category['label']) ?></span>
@@ -436,6 +446,13 @@ $postCategoryUrl = static function (?string $slug = null): string {
                     <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0 <?= $currentPostCategorySlug === '' ? 'fw-semibold' : '' ?>" href="<?= $postCategoryUrl() ?>">
                         <span class="animate-target"><?= print_translation('tpl_menu_all_posts') ?></span>
                     </a>
+                    <?php foreach ($publicCatalogLinks as $link): ?>
+                        <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0" href="<?= htmlSC($link['href']) ?>">
+                            <span class="animate-target text-truncate"><?= htmlSC($link['label']) ?></span>
+                            <?php if (isset($link['total'])): ?><span class="text-body-tertiary fs-xs"><?= (int)$link['total'] ?></span><?php endif; ?>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if ($publicCatalogLinks): ?><hr class="my-1"><?php endif; ?>
                     <?php foreach ($postNavigationCategories as $category): ?>
                         <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0 <?= $currentPostCategorySlug === $category['slug'] ? 'fw-semibold' : '' ?>" href="<?= $postCategoryUrl($category['slug']) ?>">
                             <span class="animate-target text-truncate"><?= htmlSC($category['label']) ?></span>

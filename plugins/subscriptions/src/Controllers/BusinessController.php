@@ -53,13 +53,14 @@ final class BusinessController
             $returnSection = match ((string)($data['action'] ?? 'page')) {
                 'camera' => 'camera', 'reply' => 'reviews',
                 'post', 'delete-post' => match ((string)($data['kind'] ?? '')) { 'promotion'=>'promotions', 'photo'=>'gallery', default=>'posts' },
-                default=>'company',
+                default=>'settings',
             };
             response()->redirect(base_href('/account/business?section=' . $returnSection));
         }
         $page = $repo->forUser($userId);
         $section = (string)request()->get('section', 'overview');
-        if (!in_array($section, ['overview','company','posts','promotions','camera','gallery','statistics','settings','reviews'], true)) { $section = 'overview'; }
+        if ($section === 'company') { $section = 'settings'; }
+        if (!in_array($section, ['overview','posts','promotions','camera','gallery','statistics','settings','reviews'], true)) { $section = 'overview'; }
         $kind = match ($section) { 'promotions'=>'promotion', 'gallery'=>'photo', default=>null };
         $postsPagination = new Pagination($page ? $repo->countPosts((int)$page['id'], $kind) : 0, 20);
         $reviewsPagination = new Pagination($page ? $repo->countReviews((int)$page['id']) : 0, 20, pageParam: 'reviews_page');
@@ -84,8 +85,29 @@ final class BusinessController
         ]);
     }
 
+    public function directory(): string
+    {
+        if (!\FireballPluginSubscriptions::businessPublicEnabled()) { abort(); }
+        $repo = new BusinessRepository();
+        $rawSearch = request()->get('q', '');
+        $search = is_scalar($rawSearch) ? mb_substr(trim((string)$rawSearch), 0, 190) : '';
+        $sort = request()->get('sort', 'newest');
+        if (!in_array($sort, ['newest','rating','name'], true)) { $sort = 'newest'; }
+        $total = $repo->publicCount($search);
+        $pagination = new Pagination($total);
+        return $this->view('public/business-directory', [
+            'title'=>\FireballPluginSubscriptions::t('business_directory'), 'search'=>$search, 'sort'=>$sort,
+            'businesses'=>$repo->publicPages($search, $sort, PAGINATION_SETTINGS['perPage'], $pagination->getOffset()),
+            'total_businesses'=>$total, 'pagination'=>$pagination->getHtml(),
+            'top_businesses'=>$repo->publicPages('', 'rating', 5),
+            'seo_canonical'=>base_href('/business'),
+            'seo_robots'=>$search !== '' ? 'noindex,follow' : 'index,follow',
+        ]);
+    }
+
     public function show(): string
     {
+        if (!\FireballPluginSubscriptions::businessPublicEnabled()) { abort(); }
         $repo = new BusinessRepository();
         $slug = (string)get_route_param('slug');
         $page = ctype_digit($slug) ? $repo->find((int)$slug, true) : $repo->findBySlug($slug, true);
@@ -94,11 +116,18 @@ final class BusinessController
         $id = (int)$page['id'];
         $userId = (int)(get_user()['id'] ?? 0);
         $rating = $repo->rating($id);
-        $pagination = new Pagination($repo->countPosts($id), 20);
+        $publicSection = (string)request()->get('section', 'home');
+        $kind = match ($publicSection) { 'promotions'=>'promotion', 'news'=>'news', 'gallery'=>'photo', default=>null };
+        if ($kind === null) { $publicSection = 'home'; }
+        $pagination = new Pagination($repo->countPosts($id, $kind), 20);
         $reviewPagination = new Pagination((int)$rating['total'], 20, pageParam: 'reviews_page');
         $camera = $this->camera($page);
-        return $this->view('public/business', ['title'=>$page['name'], 'page'=>$page, 'camera'=>$camera,
-            'posts'=>$repo->posts($id, $pagination->getOffset()), 'posts_pagination'=>$pagination,
+        return $this->view('public/business', ['use_profile_styles'=>true, 'title'=>$page['name'], 'page'=>$page, 'camera'=>$camera,
+            'public_section'=>$publicSection,
+            'featured_promotion'=>$repo->posts($id, 0, 'promotion')[0] ?? null,
+            'latest_news'=>array_slice($repo->posts($id, 0, 'news'), 0, 3),
+            'photos'=>array_slice($repo->posts($id, 0, 'photo'), 0, 6), 'photo_total'=>$repo->countPosts($id, 'photo'),
+            'posts'=>$repo->posts($id, $pagination->getOffset(), $kind), 'posts_pagination'=>$pagination,
             'reviews'=>$repo->reviews($id, false, $reviewPagination->getOffset()), 'reviews_pagination'=>$reviewPagination,
             'rating'=>$rating, 'user_id'=>$userId, 'own_review'=>$repo->reviewForUser($id, $userId),
             'can_manage'=>(int)$page['user_id'] === $userId && $repo->canManage($userId)]);
@@ -106,6 +135,7 @@ final class BusinessController
 
     public function review(): never
     {
+        if (!\FireballPluginSubscriptions::businessPublicEnabled()) { abort(); }
         $repo = new BusinessRepository();
         $slug = (string)get_route_param('slug');
         $page = ctype_digit($slug) ? $repo->find((int)$slug, true) : $repo->findBySlug($slug, true);
@@ -137,6 +167,7 @@ final class BusinessController
                     db()->query('UPDATE subscription_business_reviews SET is_hidden=?, updated_at=? WHERE id=? AND business_id=?', [!empty(request()->post('is_hidden')) ? 1 : 0, date('Y-m-d H:i:s'), (int)request()->post('review_id', 0), $id]);
                 } elseif (request()->post('action') === 'unpublish') {
                     db()->query('UPDATE subscription_business_pages SET is_published=0, updated_at=? WHERE id=?', [date('Y-m-d H:i:s'), $id]);
+                    search_remove_entity(\Fireball\Subscriptions\Search\BusinessSearchProvider::NAME, $id);
                 } elseif (request()->post('action') === 'camera-links') {
                     $repo->saveCameraLinks($id, request()->getData());
                 } else {

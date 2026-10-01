@@ -81,6 +81,7 @@ $router->post('/admin/subscriptions/address-catalog/clear', [SubscriptionsAdminC
 
 $router->get('/account/business', [BusinessController::class, 'manage'])->middleware(['auth']);
 $router->post('/account/business', [BusinessController::class, 'manage'])->middleware(['auth']);
+$router->get('/business/?', [BusinessController::class, 'directory']);
 $router->get('/business/(?P<slug>[a-z0-9][a-z0-9-]{0,189})/?', [BusinessController::class, 'show']);
 $router->post('/business/(?P<slug>[a-z0-9][a-z0-9-]{0,189})/review', [BusinessController::class, 'review'])->middleware(['auth']);
 $router->get('/admin/subscriptions/business', [BusinessController::class, 'admin'])->middleware(['auth', 'admin']);

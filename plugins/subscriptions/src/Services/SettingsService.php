@@ -31,6 +31,7 @@ final class SettingsService
             'media_token_ttl' => 300,
             'public_offer_page_id' => 0,
             'public_offer_url' => PublicOfferService::LEGACY_URL,
+            'business_public_enabled' => true,
         ];
     }
 
@@ -64,7 +65,7 @@ final class SettingsService
         $settings['payment_timeout_minutes'] = max(5, min(10080, (int)$settings['payment_timeout_minutes']));
         $settings['media_token_ttl'] = max(60, min(1800, (int)$settings['media_token_ttl']));
         $settings['public_offer_page_id'] = max(0, (int)$settings['public_offer_page_id']);
-        foreach (['test_mode', 'recurring_enabled', 'receipt_enabled'] as $flag) {
+        foreach (['test_mode', 'recurring_enabled', 'receipt_enabled', 'business_public_enabled'] as $flag) {
             $settings[$flag] = (bool)$settings[$flag];
         }
 
@@ -150,6 +151,22 @@ final class SettingsService
         }
         if ($mismatches !== []) {
             throw new \RuntimeException(self::CREDENTIALS_NOT_CONFIGURED . ' Verification failed: ' . implode(', ', $mismatches));
+        }
+    }
+
+    /** Called inside the admin settings transaction, independently of payment credentials. */
+    public function saveBusinessPublicSettings(array $data): void
+    {
+        $enabled = !empty($data['business_public_enabled']);
+        plugin_setting_set(self::SLUG, 'business_public_enabled', $enabled);
+        $provider = new \Fireball\Subscriptions\Search\BusinessSearchProvider();
+        $name = $provider::NAME;
+        search_indexer()->removeProvider($name);
+        if ($enabled) {
+            search_register_provider($name, $provider, self::SLUG);
+            foreach ($provider->getDocuments() as $document) {
+                search_indexer()->save($name, $document);
+            }
         }
     }
 

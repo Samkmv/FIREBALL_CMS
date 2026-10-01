@@ -44,6 +44,13 @@
                     <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0 <?= $currentPostCategorySlug === '' ? 'fw-semibold' : '' ?>" href="<?= $postCategoryUrl() ?>">
                         <span class="animate-target"><?= print_translation('tpl_menu_all_posts') ?></span>
                     </a>
+                    <?php foreach ($publicCatalogLinks as $link): ?>
+                        <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0" href="<?= htmlSC($link['href']) ?>">
+                            <span class="animate-target text-truncate"><?= htmlSC($link['label']) ?></span>
+                            <?php if (isset($link['total'])): ?><span class="text-body-tertiary fs-xs"><?= (int)$link['total'] ?></span><?php endif; ?>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if ($publicCatalogLinks): ?><hr class="my-1"><?php endif; ?>
                     <?php foreach ($postNavigationCategories as $category): ?>
                         <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0 <?= $currentPostCategorySlug === $category['slug'] ? 'fw-semibold' : '' ?>" href="<?= $postCategoryUrl($category['slug']) ?>">
                             <span class="animate-target text-truncate"><?= htmlSC($category['label']) ?></span>

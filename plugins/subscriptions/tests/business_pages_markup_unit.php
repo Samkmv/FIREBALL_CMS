@@ -2,7 +2,7 @@
 declare(strict_types=1);
 $checks=0;
 foreach (['ru','en','de','zh-cn'] as $locale) {
-    foreach (['public','guest','manage','locked','admin','owner-overview','owner-posts','owner-camera','owner-statistics','owner-gallery'] as $mode) {
+    foreach (['directory','directory-empty','directory-search','public','public-promotions','public-news','public-gallery','public-empty','guest','manage','locked','admin','owner-overview','owner-posts','owner-camera','owner-statistics','owner-gallery'] as $mode) {
         $command=escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/fixtures/business-page.php').' '.escapeshellarg($mode).' '.escapeshellarg($locale);
         $html=shell_exec($command);
         if (!$html || str_contains($html,'Warning:') || str_contains($html,'Fatal error:')) { throw new RuntimeException('Fixture failed '.$mode.'/'.$locale); }
@@ -10,7 +10,7 @@ foreach (['ru','en','de','zh-cn'] as $locale) {
         $xpath=new DOMXPath($dom);
         if ($xpath->query('//script')->length!==0) { throw new RuntimeException('Stored HTML must be escaped'); }
         foreach ($xpath->query('//form') as $form) {
-            if ($xpath->query('.//input[@name="csrf_token"]',$form)->length!==1) { throw new RuntimeException('Every form needs CSRF'); }
+            if (strtolower($form->getAttribute('method'))!=='get' && $xpath->query('.//input[@name="csrf_token"]',$form)->length!==1) { throw new RuntimeException('Every form needs CSRF'); }
         }
         $ids=[];
         foreach ($xpath->query('//*[@id]') as $node) { $id=$node->getAttribute('id'); if (isset($ids[$id])) { throw new RuntimeException('Duplicate id '.$id); } $ids[$id]=true; }

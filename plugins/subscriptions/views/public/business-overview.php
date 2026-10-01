@@ -19,7 +19,7 @@
         <div><strong><i class="ci-star" aria-hidden="true"></i> <?= $business_stats['rating'] !== null ? number_format((float)$business_stats['rating'],1) : '—' ?></strong><span><?= $t('rating') ?></span></div>
         <div><strong><i class="ci-message-circle" aria-hidden="true"></i> <?= (int)$business_stats['reviews'] ?></strong><span><?= $t('reviews') ?></span></div>
         <div><strong><i class="ci-file-text" aria-hidden="true"></i> <?= (int)$business_stats['posts'] ?></strong><span><?= $t('publications') ?></span></div>
-    </div><div class="business-summary-actions"><a class="business-button btn btn-sm btn-outline-secondary rounded-pill" href="<?= $url('company') ?>"><i class="ci-edit" aria-hidden="true"></i><?= $t('edit') ?></a>
+    </div><div class="business-summary-actions"><a class="business-button btn btn-sm btn-outline-secondary rounded-pill" href="<?= $url('settings') ?>"><i class="ci-edit" aria-hidden="true"></i><?= $t('edit') ?></a>
     <?php if (!empty($page['is_published'])): ?><a class="business-button btn btn-sm btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href(\Fireball\Subscriptions\Repositories\BusinessRepository::publicPath($page))) ?>"><i class="ci-external-link" aria-hidden="true"></i><?= $t('public') ?></a><?php endif; ?></div></div>
 </section>
 <div class="business-dashboard-middle">
@@ -45,6 +45,6 @@
     <section class="profile-panel business-panel"><div class="business-card-heading"><i class="ci-zap" aria-hidden="true"></i><h2><?= $t('quick_actions') ?></h2></div><div class="business-quick-actions">
         <a class="business-button btn btn-sm btn-outline-secondary rounded-pill" href="<?= $url('posts') ?>#publications"><i class="ci-file-text" aria-hidden="true"></i><?= $t('add_news') ?></a>
         <a class="business-button btn btn-sm btn-outline-secondary rounded-pill" href="<?= $url('gallery') ?>#publications"><i class="ci-image" aria-hidden="true"></i><?= $t('upload_photo') ?></a>
-        <a class="business-button btn btn-sm btn-outline-secondary rounded-pill" href="<?= $url('company') ?>#business-address"><i class="ci-settings" aria-hidden="true"></i><?= $t('edit_contacts') ?></a>
+        <a class="business-button btn btn-sm btn-outline-secondary rounded-pill" href="<?= $url('settings') ?>#business-address"><i class="ci-settings" aria-hidden="true"></i><?= $t('edit_contacts') ?></a>
     </div></section>
 </div>

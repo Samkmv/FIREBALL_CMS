@@ -55,6 +55,11 @@ final class FireballPluginSubscriptions implements PluginInterface
             plugin_setting_set(self::SLUG, 'business_slugs_backfilled', true);
         }
 
+        if (self::businessPublicEnabled()) {
+            search_register_provider(\Fireball\Subscriptions\Search\BusinessSearchProvider::NAME,
+                \Fireball\Subscriptions\Search\BusinessSearchProvider::class, self::SLUG);
+        }
+
         add_filter('admin_menu', static function (array $menu): array {
             $menu[] = [
                 'group' => 'applications',
@@ -66,6 +71,36 @@ final class FireballPluginSubscriptions implements PluginInterface
             ];
 
             return $menu;
+        });
+
+        $businessDirectoryLink = static function (array $links): array {
+            $href = base_href('/business');
+            $links = array_values(array_filter($links, static fn(array $link): bool =>
+                rtrim((string)($link['href'] ?? ''), '/') !== rtrim($href, '/')));
+            if (!self::businessPublicEnabled()) { return $links; }
+            $business = ['href'=>$href, 'label'=>self::t('business_directory'), 'after'=>'posts'];
+            foreach ($links as $index => $link) {
+                if (rtrim((string)($link['href'] ?? ''), '/') === rtrim(base_href('/posts'), '/')) {
+                    array_splice($links, $index + 1, 0, [$business]);
+                    return $links;
+                }
+            }
+            $links[] = $business;
+            return $links;
+        };
+        add_filter('public_header_links', $businessDirectoryLink);
+        add_filter('public_footer_links', $businessDirectoryLink);
+        add_filter('public_catalog_links', static function (array $links) use ($businessDirectoryLink): array {
+            $links = $businessDirectoryLink($links);
+            if (self::businessPublicEnabled()) {
+                $total = (new \Fireball\Subscriptions\Repositories\BusinessRepository())->publicCount();
+                foreach ($links as $index => $link) {
+                    if (rtrim((string)($link['href'] ?? ''), '/') === rtrim(base_href('/business'), '/')) {
+                        $links[$index]['total'] = $total;
+                    }
+                }
+            }
+            return $links;
         });
 
         add_filter('profile_menu', static function (array $items, array $user = []): array {
@@ -613,6 +648,11 @@ final class FireballPluginSubscriptions implements PluginInterface
     public static function t(string $key): string
     {
         return return_translation($key);
+    }
+
+    public static function businessPublicEnabled(): bool
+    {
+        return (bool)plugin_setting(self::SLUG, 'business_public_enabled', true);
     }
 
     public static function tabs(string $active): array

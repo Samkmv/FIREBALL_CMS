@@ -33,12 +33,23 @@ final class BusinessTestDb
     public function getInsertId(): int { return (int)$this->pdo->lastInsertId(); }
 }
 function db(): BusinessTestDb { static $db; return $db ??= new BusinessTestDb(); }
-final class FireballPluginSubscriptions { public static function t(string $key): string { return $key; } public static function viewData(array $data): array { return $data; } public static function tabs(string $key): array { return []; } }
+final class FireballPluginSubscriptions { public static function businessPublicEnabled(): bool { return $GLOBALS['businessPublicEnabled'] ?? true; } public static function t(string $key): string { return $key; } public static function viewData(array $data): array { return $data; } public static function tabs(string $key): array { return []; } }
 final class FireballPluginCameraManager { public static function camera(int $id): ?array { return in_array($id,[3,4],true) ? ['id'=>$id] : null; } }
 $helpers = file_get_contents(__DIR__ . '/../../../helpers/helpers.php');
 $slugStart = strpos($helpers, 'function make_slug(');
 $slugEnd = strpos($helpers, 'function get_csrf_field(', $slugStart);
 eval(substr($helpers, $slugStart, $slugEnd - $slugStart));
+require __DIR__ . '/../../../vendor/autoload.php';
+require __DIR__ . '/../src/Search/BusinessSearchProvider.php';
+function search_sync_entity(string $provider, int|string $id): void { $GLOBALS['businessSearchSynced'][]=[$provider,$id]; }
+function search_remove_entity(string $provider, int|string $id): void { $GLOBALS['businessSearchRemoved'][]=[$provider,$id]; }
+function plugin_setting_set(string $plugin,string $key,mixed $value): void { $GLOBALS['businessPublicEnabled']=$value; }
+function search_register_provider(string $name,mixed $provider,?string $owner=null): void { $GLOBALS['businessSearchProvider']=[$name,$owner]; }
+function search_indexer(): object { return new class {
+    public function removeProvider(string $name): void { $GLOBALS['businessSearchDocuments']=[]; }
+    public function save(string $name,App\Search\SearchDocument $doc): void { $GLOBALS['businessSearchDocuments'][]=$doc; }
+}; }
+function abort(string $message='',int $status=404): never { throw new RuntimeException('abort:'.$status); }
 require __DIR__ . '/../src/Repositories/BusinessRepository.php';
 $repo = new Fireball\Subscriptions\Repositories\BusinessRepository();
 $checks=0;
@@ -129,6 +140,7 @@ function request(): object { return new class { public string $uri='/account/bus
 public function post(string $key,mixed $default=null): mixed { return $GLOBALS['testPost'][$key] ?? $default; }
 public function getData(): array { return $GLOBALS['testPost'] ?? []; }
 public function get(string $key,mixed $default=null): mixed { return $key==='section' ? ($GLOBALS['testBusinessSection'] ?? 'overview') : ($GLOBALS['testGet'][$key] ?? $default); } }; }
+function view(): object { return new class { public function renderPartial(string $name,array $data=[]): string { return ''; } }; }
 function plugin_view(string $slug,string $view,array $data): string { $GLOBALS['testBusinessView']=$data; return $view; }
 define('PAGINATION_SETTINGS',['perPage'=>20,'midSize'=>2,'maxPages'=>5,'tpl'=>'pagination']);
 require __DIR__.'/../../../core/Pagination.php';
@@ -184,6 +196,13 @@ function response(): object { return new class { public function redirect(string
 $GLOBALS['testRouteSlug']='novoe-nazvanie';
 $controller->show();
 expect($GLOBALS['testBusinessView']['page']['id']===$id,'Controller renders by slug');
+expect(count($GLOBALS['testBusinessView']['photos'])===1 && $GLOBALS['testBusinessView']['photo_total']===1,'Public gallery loads photos independently of mixed publication pagination');
+$GLOBALS['testBusinessSection']='promotions';
+$controller->show();
+expect($GLOBALS['testBusinessView']['public_section']==='promotions' && count($GLOBALS['testBusinessView']['posts'])===1 && $GLOBALS['testBusinessView']['posts'][0]['kind']==='promotion','Public offer tab filters and paginates offers');
+$GLOBALS['testBusinessSection']='unknown';
+$controller->show();
+expect($GLOBALS['testBusinessView']['public_section']==='home','Unknown public tab returns to homepage');
 $GLOBALS['testRouteSlug']=(string)$id;
 try { $controller->show(); expect(false,'Legacy URL redirects'); }
 catch (RuntimeException $e) { expect($e->getMessage()==='redirect:/business/novoe-nazvanie','Legacy ID redirects to canonical URL'); }
@@ -198,4 +217,48 @@ $controller->admin();
 $display=array_values(array_filter($GLOBALS['testBusinessView']['pages'],fn($page)=>(int)$page['id']===$id))[0];
 expect($display['camera_url']==='' && $display['camera_poster']==='https://example.com/poster.jpg','Admin keeps failed camera inputs after redirect');
 expect(!isset($GLOBALS['testSession']['subscriptions.business_camera_form']),'Failed camera data is consumed once');
+expect($repo->publicCount()===1,'Directory excludes draft businesses');
+expect($repo->publicCount('Новое')===1 && $repo->publicCount('unknown')===0,'Directory search filters business names');
+expect($repo->publicCount("' OR 1=1 --")===0,'Directory search is parameterized');
+$repo->saveReview($id,2,['rating'=>5,'body'=>'Visible']);
+$repo->saveReview($id,3,['rating'=>1,'body'=>'Hidden']);
+db()->query('UPDATE subscription_business_reviews SET is_hidden=1 WHERE business_id=? AND user_id=3',[$id]);
+$catalog=$repo->publicPages();
+expect((int)$catalog[0]['review_count']===1 && (float)$catalog[0]['average_rating']===5.0,'Catalog ratings exclude hidden reviews');
+expect(!array_key_exists('camera_url',$catalog[0]) && !array_key_exists('user_id',$catalog[0]),'Directory projection includes only card data');
+$repo->save(2,['name'=>'Shop 100%_!','description'=>'Books on Main street','address'=>'Main street 9','is_published'=>1]);
+expect($repo->publicCount('%')===1 && $repo->publicCount('_')===1 && $repo->publicCount('100%_!')===1,'Search treats wildcard characters literally');
+expect($repo->publicCount('Books')===1 && $repo->publicCount('Main street')===1,'Search finds descriptions and addresses');
+expect(count($repo->publicPages('', 'newest',1,1))===1 && $repo->publicPages('','newest',1,1)[0]['id']===$id,'Directory pagination uses offset and limit');
+expect($repo->publicPages('','rating')[0]['id']===$id,'Directory orders by actual visitor rating');
+expect(count($repo->publicPages('', 'name; DROP TABLE users'))===2,'Sort input cannot alter SQL');
+$GLOBALS['testGet']=['q'=>'Main street','sort'=>'name'];
+$controller->directory();
+expect($GLOBALS['testBusinessView']['total_businesses']===1 && $GLOBALS['testBusinessView']['businesses'][0]['id']===$second,'Directory controller projects filtered published cards');
+$provider=new Fireball\Subscriptions\Search\BusinessSearchProvider();
+$document=$provider->getDocument($second);
+expect($document->title==='Shop 100%_!' && $document->url==='/business/shop-100','Search documents link to the current business slug');
+expect($document->content==='Books on Main street' && $document->subtitle==='Main street 9','Search includes public descriptions and addresses');
+expect(count(iterator_to_array($provider->getDocuments()))===2,'Search enumeration includes all published businesses');
+expect($provider->canAccess($document),'Published business is searchable');
+db()->query('UPDATE subscription_business_pages SET is_published=0 WHERE id=?',[$second]);
+expect(!$provider->canAccess($document) && $provider->getDocument($second)===null,'Stale search documents cannot expose unpublished businesses');
+expect(count(iterator_to_array($provider->getDocuments()))===1,'Draft businesses are omitted from rebuilds');
+$repo->save(2,['name'=>'Updated shop','description'=>'Public text','is_published'=>1,'email'=>'private-owner@example.com']);
+expect(end($GLOBALS['businessSearchSynced'])===[$provider::NAME,$second],'Page saves synchronize the business search document');
+expect($provider->getDocument($second)->url==='/business/updated-shop','Renaming updates the search destination');
+expect(!str_contains(json_encode($provider->getDocument($second)),'private-owner@example.com'),'Owner contact data is not indexed');
+require __DIR__.'/../src/Services/SettingsService.php';
+$settingsService=new Fireball\Subscriptions\Services\SettingsService();
+$settingsService->saveBusinessPublicSettings([]);
+expect(!FireballPluginSubscriptions::businessPublicEnabled() && $GLOBALS['businessSearchDocuments']===[],'Disabling businesses clears their search index without payment credentials');
+expect($provider->getDocument($second)===null && !$provider->canAccess($document) && iterator_to_array($provider->getDocuments())===[],'Disabled businesses are never searchable');
+foreach (['directory','show','review'] as $action) {
+    try { $controller->$action(); expect(false,'Disabled public route must fail'); }
+    catch (RuntimeException $e) { expect($e->getMessage()==='abort:404','Disabled public routes return 404 before processing data'); }
+}
+expect($repo->forUser(2)['name']==='Updated shop','Disabling the public section preserves business data');
+$settingsService->saveBusinessPublicSettings(['business_public_enabled'=>1]);
+expect(FireballPluginSubscriptions::businessPublicEnabled() && count($GLOBALS['businessSearchDocuments'])===2,'Reenabling rebuilds published businesses immediately');
+expect($GLOBALS['businessSearchProvider']===[$provider::NAME,'subscriptions'],'Business search provider belongs to subscriptions');
 echo "Business page tests passed: {$checks} checks.\n";

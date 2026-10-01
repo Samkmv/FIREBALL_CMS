@@ -14,7 +14,7 @@ $v = static fn(string $key): string => htmlSC((string)($pageValues[$key] ?? ''))
 $socials = $pageValues['socials'] ?? json_decode($page['socials_json'] ?? '{}', true) ?? [];
 $postForm = ($form_data['action'] ?? '') === 'post' ? $form_data : ['kind'=>match($section) { 'promotions'=>'promotion', 'gallery'=>'photo', default=>'news' }];
 $businessName = (string)($page['name'] ?? $owner['name'] ?? FireballPluginSubscriptions::t('business_manage'));
-$nav = ['overview'=>['overview','ci-user'], 'company'=>['company_page','ci-shopping-bag'], 'posts'=>['publications','ci-file-text'],
+$nav = ['overview'=>['overview','ci-user'], 'posts'=>['publications','ci-file-text'],
     'promotions'=>['offers','ci-tag'], 'camera'=>['camera','ci-camera'], 'gallery'=>['gallery','ci-image'],
     'statistics'=>['statistics','ci-bar-chart'], 'reviews'=>['reviews','ci-message-circle'], 'settings'=>['settings','ci-settings']];
 ?>
@@ -44,7 +44,7 @@ $nav = ['overview'=>['overview','ci-user'], 'company'=>['company_page','ci-shopp
         <div class="profile-panel business-panel"><p><?= $t('subscription_required') ?></p><a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/subscriptions')) ?>"><?= $t('plans') ?></a></div>
     <?php elseif ($section === 'overview'): ?>
         <?php require __DIR__ . '/business-overview.php'; ?>
-    <?php elseif (in_array($section, ['company','settings'], true)): ?>
+    <?php elseif ($section === 'settings'): ?>
         <?php require __DIR__ . '/business-company-form.php'; ?>
     <?php elseif (in_array($section, ['posts','promotions','gallery'], true)): ?>
         <?php require __DIR__ . '/business-publications.php'; ?>

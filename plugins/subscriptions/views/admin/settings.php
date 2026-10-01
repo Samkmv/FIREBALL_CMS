@@ -1,4 +1,15 @@
 <?php require __DIR__ . '/shell-open.php'; ?>
+    <form class="border rounded-4 p-4 p-lg-5 mb-4" method="post" action="<?= htmlSC(base_href('/admin/subscriptions/settings/save')) ?>">
+        <?= get_csrf_field() ?>
+        <input type="hidden" name="action" value="business-public">
+        <h2 class="h5 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('business_public_settings')) ?></h2>
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="business-public-enabled" name="business_public_enabled" value="1" <?= !empty($settings['business_public_enabled']) ? 'checked' : '' ?> aria-describedby="business-public-hint">
+            <label class="form-check-label" for="business-public-enabled"><?= htmlSC(FireballPluginSubscriptions::t('business_public_enabled')) ?></label>
+        </div>
+        <p class="text-body-secondary mb-4" id="business-public-hint"><?= htmlSC(FireballPluginSubscriptions::t('business_public_settings_hint')) ?></p>
+        <button type="submit" class="btn btn-primary rounded-pill"><?= htmlSC(FireballPluginSubscriptions::t('business_public_settings_save')) ?></button>
+    </form>
     <form class="border rounded-4 p-4 p-lg-5" method="post" action="<?= htmlSC(base_href('/admin/subscriptions/settings/save')) ?>" autocomplete="off" data-subscriptions-settings-form>
         <?= get_csrf_field() ?>
         <div class="alert alert-info"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_settings_urls_hint')) ?></div>

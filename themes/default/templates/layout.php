@@ -13,6 +13,8 @@
 
 $requiredAssets = \App\Services\FrontendAssets::requirements((string)$this->content, (array)($assets ?? []));
 extract((new \App\Services\PublicLayoutContext())->navigation(), EXTR_SKIP);
+$headerPageLinks = (array)apply_filters('public_header_links', $headerPageLinks);
+$publicCatalogLinks = (array)apply_filters('public_catalog_links', []);
 $currentPostCategorySlug = trim((string)request()->get('category', ''));
 $siteTitle = site_setting('site_title', SITE_NAME);
 $siteDescription = site_setting('site_description', '');
@@ -122,6 +124,7 @@ if (site_setting('support_public_enabled', '1') === '1') {
     ];
 }
 $footerCategoryLinks = $postNavigationCategories;
+$footerNavigationLinks = (array)apply_filters('public_footer_links', $footerNavigationLinks);
 $postCategoryUrl = static function (?string $slug = null): string {
     $url = base_href('/posts');
     if ($slug === null || $slug === '') {

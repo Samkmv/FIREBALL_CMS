@@ -495,7 +495,12 @@ final class AdminController
 
         try {
             $database->beginTransaction();
-            (new SettingsService())->save($data);
+            $settings = new SettingsService();
+            if (($data['action'] ?? '') === 'business-public') {
+                $settings->saveBusinessPublicSettings($data);
+            } else {
+                $settings->save($data);
+            }
             $database->commit();
             session()->setFlash('success', \FireballPluginSubscriptions::t('subscriptions_settings_saved'));
         } catch (\Throwable $exception) {
