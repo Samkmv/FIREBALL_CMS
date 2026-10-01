@@ -22,6 +22,12 @@
 
 Чтобы опубликованная версия появилась в центре обновлений, значение `version` в `plugins/subscriptions/plugin.json` в ветке `main` должно быть выше установленной версии.
 
+### Что нового в 1.4.10
+
+- Cron явно загружает языковые файлы плагина до отправки уведомлений. Предупреждение за 1 или 3 дня до окончания подписки больше не сохраняет ключи перевода вместо текста.
+- Источник «Подписки» и новые уведомления показываются на языке интерфейса (русский, английский, немецкий, китайский). Уже сохранённые ключи переводятся при чтении, без удаления уведомлений или изменения дат. Если число дней в старой записи не сохранено, используется предупреждение без числа.
+- Для локализации ленты используется новый безопасный фильтр `notification_feed_item` в `app/Services/NotificationService.php`: при обновлении боевого сайта нужно включить и этот файл ядра, не только каталог плагина. Миграций БД нет.
+
 ### Что нового в 1.3.6
 
 - **Подписчики → Действия → Удалить подписчика** доступно для любой записи со статусом «Выключено»: ручной, внешней (включая коммунальную) и Robokassa. Отдельная кнопка вне меню не добавляется; мобильное меню поддержано;
@@ -147,6 +153,7 @@ if (!FireballPluginSubscriptions::can($userId, 'videos.view_paid', ['content_id'
 
 ```bash
 php plugins/subscriptions/tests/subscriptions_unit.php
+php plugins/subscriptions/tests/notification_localization_unit.php
 php plugins/subscriptions/tests/address_exclusions_unit.php
 php plugins/subscriptions/tests/subscription_business_rules_unit.php
 php plugins/subscriptions/tests/profile_checkout_unit.php

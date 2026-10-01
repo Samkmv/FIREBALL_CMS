@@ -259,6 +259,7 @@ return array_replace($en, [
     'subscriptions_notification_activated_message' => 'Платёж подтверждён, доступ по подписке активен.',
     'subscriptions_notification_expiring_title' => 'Подписка скоро закончится',
     'subscriptions_notification_expiring_message' => 'До окончания подписки осталось дней: :days.',
+    'subscriptions_notification_expiring_message_generic' => 'Срок действия вашей подписки скоро истекает. Проверьте дату окончания и продлите подписку.',
     'subscriptions_notification_recurring_failed_title' => 'Не удалось продлить подписку',
     'subscriptions_notification_recurring_failed_message' => 'Автоматическое списание не прошло. Пожалуйста, продлите подписку вручную.',
     'subscriptions_error_plan_required' => 'Укажите название и slug тарифа.',

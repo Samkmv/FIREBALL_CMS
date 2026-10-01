@@ -221,6 +221,12 @@ figure[data-aspect-ratio="9:16"] .fireplayer__stage {
     white-space: nowrap;
 }
 
+.fireplayer__times {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
 .fireplayer__seek-wrap,
 .fireplayer__volume label {
     display: flex;
@@ -980,10 +986,6 @@ body:has(.fireplayer.fireplayer--fullscreen) {
         margin-left: auto;
     }
 
-    .fireplayer__controls > [data-fp-action="pip"] {
-        display: none !important;
-    }
-
     .fireplayer__center-play {
         top: 44%;
         width: 3.5rem;
@@ -1024,7 +1026,7 @@ body:has(.fireplayer.fireplayer--fullscreen) {
 }
 
 @container (max-width: 360px) {
-    .fireplayer--live .fireplayer__time--current {
+    .fireplayer--live .fireplayer__times {
         display: none;
     }
 }
@@ -1055,10 +1057,6 @@ body:has(.fireplayer.fireplayer--fullscreen) {
             margin-left: auto;
         }
 
-        .fireplayer__controls > [data-fp-action="pip"] {
-            display: none !important;
-        }
-
         .fireplayer__center-play {
             top: 44%;
             width: 3.5rem;
@@ -1067,7 +1065,7 @@ body:has(.fireplayer.fireplayer--fullscreen) {
     }
 
     @media (max-width: 360px) {
-        .fireplayer--live .fireplayer__time--current {
+        .fireplayer--live .fireplayer__times {
             display: none;
         }
     }

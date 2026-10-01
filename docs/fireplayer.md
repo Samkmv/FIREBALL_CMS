@@ -1,4 +1,4 @@
-# FirePlayer 1.1.0
+# FirePlayer 1.1.2
 
 FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD, and HLS LIVE. New content uses `.fire-player` or `[data-fire-player]`; legacy video/audio inside post content is upgraded automatically while chat and background media remain on their own paths.
 
@@ -14,6 +14,8 @@ FirePlayer is the native FIREBALL CMS media component for video, audio, HLS VOD,
 ```
 
 FirePlayer recognizes file extensions, `Content-Type`, and HLS manifest markers. `#EXT-X-ENDLIST` selects VOD; a rolling playlist selects LIVE. Safari/iOS use native HLS when available, while other supported browsers load the bundled hls.js engine.
+
+The site setting `player_apple_force_hlsjs` prefers hls.js on Apple devices when enabled. Both CMS layouts expose this setting; the HLS adapter applies it to declarative, legacy-upgraded, dynamic and programmatically created players. Save the setting, then reload the playback page and start the stream. If hls.js is unsupported or its script cannot load, native HLS remains a safe fallback when available. Creator diagnostics show the requested mode, actual engine and fallback reason; before an HLS engine is attached, they show a dash rather than incorrectly claiming native playback. Explicit per-player `forceHlsJs: true` still requires hls.js without fallback; an explicit `false` overrides the site preference.
 
 Video controls include a styled settings button with playback-speed choices and zoom (1–3×), plus mouse-drag panning. Loading and reconnect messages use a compact badge at the top left of video; audio messages occupy their own row above the controls. Neither covers the play button. LIVE appears only next to the timeline, in a fixed-width button; its tooltip and accessible label explain how to return to the live edge. In narrow player containers, the timeline gets a full-width row above the buttons.
 
@@ -128,6 +130,8 @@ image requests, scrolling and zero pre-Play HLS/wake requests in Chromium and Fi
 
 ```bash
 node tests/fireplayer_native_startup.cjs
+node tests/fireplayer_engine_selection.cjs
+node tests/fireplayer_diagnostics_i18n.cjs
 node tests/fireplayer_reliability.cjs
 php tests/fireplayer_backend.php
 # Playwright may be installed outside the repository and supplied through NODE_PATH.

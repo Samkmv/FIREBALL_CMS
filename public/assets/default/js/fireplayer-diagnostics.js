@@ -44,6 +44,8 @@
     // Each row has the same locale order so additions cannot silently fall back to field IDs.
     const locales = ['ru', 'en', 'de', 'zh-cn'];
     const extraLabels = {
+        engineRequested: ['Выбранный режим движка', 'Requested engine mode', 'Gewählter Engine-Modus', '所选播放引擎模式'],
+        engineFallback: ['Причина резервного движка', 'Engine fallback reason', 'Grund für Ersatz-Engine', '备用引擎原因'],
         state: ['Состояние', 'State', 'Status', '状态'],
         managed: ['Управляемый поток', 'Managed stream', 'Verwalteter Stream', '受管流'],
         online: ['Подключение к сети', 'Network connection', 'Netzwerkverbindung', '网络连接'],
@@ -80,6 +82,9 @@
         event: ['Событийная трансляция', 'Event stream', 'Ereignisstream', '活动直播'],
         native: ['Встроенный в браузер', 'Browser native', 'Browserintern', '浏览器原生'],
         'hls.js': ['hls.js', 'hls.js', 'hls.js', 'hls.js'],
+        auto: ['Автоматически', 'Automatic', 'Automatisch', '自动'],
+        'hls-unsupported': ['HLS.js не поддерживается устройством', 'HLS.js is not supported on this device', 'HLS.js wird auf diesem Gerät nicht unterstützt', '此设备不支持 HLS.js'],
+        'hls-load-failed': ['Не удалось загрузить HLS.js', 'HLS.js could not be loaded', 'HLS.js konnte nicht geladen werden', '无法加载 HLS.js'],
         initial: ['Первоначальный запуск', 'Initial start', 'Erster Start', '首次启动'],
         manual: ['Ручной повтор', 'Manual retry', 'Manueller Neuversuch', '手动重试'],
         resume: ['Возобновление', 'Resume', 'Fortsetzen', '恢复播放'],
@@ -148,7 +153,7 @@
         const grid = document.createElement('dl');
         grid.className = 'fireplayer-diagnostics__grid';
         const values = {};
-        ['version', 'source', 'media', 'engine', 'resolution', 'time', 'buffer', 'level', 'codecs', 'frames', 'reconnects', 'error',
+        ['version', 'source', 'media', 'engine', 'engineRequested', 'engineFallback', 'resolution', 'time', 'buffer', 'level', 'codecs', 'frames', 'reconnects', 'error',
             'state', 'managed', 'online', 'liveEdge', 'latency', 'liveSyncPosition', 'wakeMs', 'manifestMs', 'firstFrameMs', 'frameAge', 'recoveryStage', 'recoveryReason'].forEach(function (key) {
             const row = document.createElement('div');
             const term = document.createElement('dt');
@@ -205,11 +210,13 @@
             const info = player.info || {};
             const controller = player.controller;
             const hls = controller && controller.hls;
-            const engine = controller && controller.engine || 'native';
+            const engine = controller && controller.engine || (info.protocol === 'file' ? 'native' : null);
             values.version.textContent = token(FirePlayer.version);
             values.source.textContent = source ? host(source) : '—';
             values.media.textContent = [info.media, info.protocol, info.mode].map(termLabel).join(' / ');
             values.engine.textContent = termLabel(engine) + (hls ? ' ' + token((hls.constructor && hls.constructor.version) || (window.Hls && window.Hls.version)) : '');
+            values.engineRequested.textContent = termLabel(controller && controller.engineRequested);
+            values.engineFallback.textContent = termLabel(controller && controller.engineFallback);
             values.resolution.textContent = media.videoWidth > 0 && media.videoHeight > 0 ? media.videoWidth + ' × ' + media.videoHeight : '—';
             values.time.textContent = clock(media.currentTime) + ' / ' + clock(media.duration);
             let ahead = 0;

@@ -101,7 +101,7 @@ $publicationApplied = $settings['connection_mode'] === 'pull'
             <div class="modal-content border-0 rounded-5 overflow-hidden">
                 <div class="modal-header border-0 px-3 px-md-4 pt-3 pt-md-4">
                     <div>
-                        <div class="small text-body-secondary mb-1">Camera Manager · LIVE</div>
+                        <div class="small text-body-secondary mb-1">Управление камерами · LIVE</div>
                         <h2 class="modal-title h5 mb-0" id="cameraManagerPlayerTitle" data-camera-player-title>Камера</h2>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>

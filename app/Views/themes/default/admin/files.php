@@ -236,18 +236,41 @@
             padding: 0;
         }
 
-        [data-file-manager-table] tbody tr {
+        [data-file-manager-shell] [data-file-manager-table] tbody tr {
+            --fm-row-overlay: transparent;
+            --fm-row-outline: transparent;
             cursor: default;
-            transition: background-color .15s ease, box-shadow .15s ease;
         }
 
-        [data-file-manager-table] tbody tr:hover {
-            background: linear-gradient(var(--fm-row-hover), var(--fm-row-hover)), var(--fm-panel);
+        [data-file-manager-shell] [data-file-manager-table] tbody tr:hover {
+            --fm-row-overlay: var(--fm-row-hover);
+            --fm-row-outline: color-mix(in srgb, var(--fm-row-active-border) 65%, transparent);
         }
 
-        [data-file-manager-table] tbody tr.is-selected {
-            background: linear-gradient(var(--fm-row-active), var(--fm-row-active)), var(--fm-panel);
-            box-shadow: inset 0 0 0 1px var(--fm-row-active-border);
+        [data-file-manager-shell] [data-file-manager-table] tbody tr.is-selected,
+        [data-file-manager-shell] [data-file-manager-table] tbody tr.is-drop-target {
+            --fm-row-overlay: var(--fm-row-active);
+            --fm-row-outline: var(--fm-row-active-border);
+        }
+
+        /* Paint every cell, including the opaque sticky actions cell, from
+           the same row state and carry the outline across the entire row. */
+        [data-file-manager-shell] [data-file-manager-table] tbody tr > td {
+            background: linear-gradient(var(--fm-row-overlay), var(--fm-row-overlay)), var(--fm-panel);
+            box-shadow: inset 0 1px var(--fm-row-outline),
+                        inset 0 -1px var(--fm-row-outline);
+        }
+
+        [data-file-manager-shell] [data-file-manager-table] tbody tr > td:first-child {
+            box-shadow: inset 0 1px var(--fm-row-outline),
+                        inset 0 -1px var(--fm-row-outline),
+                        inset 1px 0 var(--fm-row-outline);
+        }
+
+        [data-file-manager-shell] [data-file-manager-table] tbody tr > td:last-child {
+            box-shadow: inset 0 1px var(--fm-row-outline),
+                        inset 0 -1px var(--fm-row-outline),
+                        inset -1px 0 var(--fm-row-outline);
         }
 
         [data-file-manager-row][draggable="true"] {
@@ -604,19 +627,6 @@
                 position: sticky;
                 right: 0;
                 z-index: 1;
-                background: var(--fm-panel);
-            }
-
-            [data-file-manager-shell] [data-file-manager-table] tbody tr:hover td:last-child {
-                background: linear-gradient(var(--fm-row-hover), var(--fm-row-hover)), var(--fm-panel);
-            }
-
-            /* Keep the pinned action cell opaque and carry the selection to the row edge. */
-            [data-file-manager-shell] [data-file-manager-table] tbody tr.is-selected td:last-child {
-                background: linear-gradient(var(--fm-row-active), var(--fm-row-active)), var(--fm-panel);
-                box-shadow: inset 0 1px var(--fm-row-active-border),
-                            inset 0 -1px var(--fm-row-active-border),
-                            inset -1px 0 var(--fm-row-active-border);
             }
 
             [data-file-manager-shell] [data-file-manager-table] thead th:last-child {

@@ -239,7 +239,9 @@
 }
 
 @media (max-width: 767.98px) {
-    [data-chat-app] .chat-message-actions {
+    [data-chat-app] .chat-message-actions,
+    [data-chat-app] .chat-message-row:hover .chat-message-actions,
+    [data-chat-app] .chat-message-row:focus-within .chat-message-actions {
         position: static !important;
         justify-content: flex-end !important;
         margin-top: 3px !important;
@@ -250,6 +252,7 @@
         transform: none !important;
         opacity: 1 !important;
         pointer-events: auto !important;
+        transition: none !important;
     }
 
     [data-chat-app] .chat-message-row--theirs .chat-message-actions {
@@ -258,10 +261,11 @@
 
     [data-chat-app] .chat-message-reply-btn,
     [data-chat-app] .chat-message-delete-btn {
-        width: 26px !important;
-        min-width: 26px !important;
-        height: 26px !important;
-        min-height: 26px !important;
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        transform: none !important;
         background: rgba(148, 163, 184, .09) !important;
     }
 }
@@ -414,10 +418,10 @@
         padding: 7px 8px;
     }
     [data-chat-app] .chat-message-edit-btn {
-        width: 26px;
-        min-width: 26px;
-        height: 26px;
-        min-height: 26px;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
         background: rgba(148, 163, 184, .09);
         color: inherit;
     }
@@ -537,14 +541,26 @@
 [data-chat-app] .chat-reaction-picker__users:empty { display: none; }
 @media (max-width: 767.98px) {
     [data-chat-app] .chat-message-reaction-btn {
-        width: 26px;
-        min-width: 26px;
-        height: 26px;
-        min-height: 26px;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
         background: rgba(148, 163, 184, .09);
         color: inherit;
     }
-    [data-chat-app] .chat-reaction-picker { max-width: min(290px, calc(100vw - 28px)); }
+    /* A popover must not push the action row when it opens. */
+    [data-chat-app] .chat-reaction-picker {
+        position: absolute;
+        /* 44px action hit area plus a 6px popover gap. */
+        bottom: calc(44px + 6px);
+        z-index: 6;
+        margin: 0;
+        max-width: min(290px, calc(100vw - 28px));
+        max-height: min(18rem, 50dvh);
+        overflow-y: auto;
+    }
+    [data-chat-app] .chat-message-row--mine .chat-reaction-picker { right: 0; }
+    [data-chat-app] .chat-message-row--theirs .chat-reaction-picker { left: 0; }
 }
 </style>
 

@@ -389,6 +389,10 @@ final class RecurringService
                 'icon' => 'ci-alert-triangle',
                 'source' => 'subscriptions',
                 'priority' => 'high',
+                'metadata' => [
+                    'subscription_id' => (int)$subscription['id'],
+                    'subscription_notification' => 'recurring_failed',
+                ],
             ]);
         } catch (\Throwable $notificationException) {
             log_error_details('Recurring failure notification failed', ['subscription_id' => (int)$subscription['id']], $notificationException);

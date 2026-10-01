@@ -123,7 +123,7 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
     <div class="fb-editor2__context-menu" data-editor-context-menu hidden></div>
 
     <dialog class="fb-editor2__dialog fb-editor2__command-dialog" data-editor-command-dialog>
-        <form method="dialog" class="fb-editor2__dialog-card">
+        <div class="fb-editor2__dialog-card">
             <div class="fb-editor2__dialog-head">
                 <i class="ci-search"></i>
                 <input type="search" data-editor-command-search placeholder="<?= htmlSC($label('commandSearch', 'Search commands…')) ?>" autocomplete="off">
@@ -139,7 +139,7 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
                 </button>
             </div>
             <div class="fb-editor2__command-list" data-editor-command-list role="listbox"></div>
-        </form>
+        </div>
     </dialog>
 
     <dialog class="fb-editor2__dialog fb-editor2__preview-dialog" data-editor-preview-dialog>
@@ -160,7 +160,7 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
     </dialog>
 
     <dialog class="fb-editor2__dialog fb-editor2__recovery-dialog" data-editor-recovery-dialog>
-        <form method="dialog" class="fb-editor2__recovery-card">
+        <div class="fb-editor2__recovery-card">
             <span class="fb-editor2__dialog-icon"><i class="ci-history"></i></span>
             <h2><?= htmlSC($label('recoveryTitle', 'Restore local version?')) ?></h2>
             <p><?= htmlSC($label('recoveryText', 'A newer local version of this document was found.')) ?></p>
@@ -168,11 +168,11 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
                 <button type="button" class="btn btn-outline-secondary rounded-pill" data-editor-recovery-discard><?= htmlSC($label('discard', 'Discard')) ?></button>
                 <button type="button" class="btn btn-primary rounded-pill" data-editor-recovery-restore><?= htmlSC($label('restore', 'Restore')) ?></button>
             </div>
-        </form>
+        </div>
     </dialog>
 
     <dialog class="fb-editor2__dialog fb-editor2__recovery-dialog" data-editor-delete-dialog>
-        <form method="dialog" class="fb-editor2__recovery-card">
+        <div class="fb-editor2__recovery-card">
             <span class="fb-editor2__dialog-icon"><i class="ci-trash"></i></span>
             <h2><?= htmlSC((string)($delete_title ?? $label('deleteModalTitle', 'Remove block?'))) ?></h2>
             <p><?= htmlSC((string)($delete_text ?? $label('deleteModalText', 'This action cannot be undone.'))) ?></p>
@@ -180,7 +180,7 @@ $label = static fn(string $name, string $fallback): string => trim((string)($lab
                 <button type="button" class="btn btn-outline-secondary rounded-pill" data-editor-delete-cancel><?= htmlSC($label('close', 'Close')) ?></button>
                 <button type="button" class="btn btn-danger rounded-pill" data-editor-delete-confirm><?= htmlSC($label('remove', 'Remove')) ?></button>
             </div>
-        </form>
+        </div>
     </dialog>
 
     <div class="fb-editor2__search-panel" data-editor-search-panel hidden>

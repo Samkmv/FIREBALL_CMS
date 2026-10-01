@@ -26,7 +26,7 @@
     <?php if ($preview_error !== ''): ?>
         <div class="alert alert-danger rounded-4"><?= htmlSC($preview_error) ?></div>
     <?php else: ?>
-        <div class="alert alert-info rounded-4">Публикация заменяет только блок между маркерами Camera Manager. Остальной <code>streams.pl</code> остаётся без изменений.</div>
+        <div class="alert alert-info rounded-4">Публикация заменяет только блок между маркерами плагина «Управление камерами». Остальной <code>streams.pl</code> остаётся без изменений.</div>
         <pre class="border rounded-5 p-4 bg-body-tertiary overflow-auto"><code><?= htmlSC($preview) ?></code></pre>
     <?php endif; ?>
 

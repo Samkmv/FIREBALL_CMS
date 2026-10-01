@@ -7,6 +7,29 @@ const path = require('node:path');
 const { chromium, firefox } = require('playwright');
 const root = path.resolve(__dirname, '../public/assets/default');
 
+async function checkTimeDisplay(page, name) {
+    await page.evaluate(name => {
+        const instance = window[name];
+        Object.defineProperty(instance.media, 'duration', { configurable: true, value: 180 });
+        instance.media.currentTime = 15;
+        instance.setMode('vod');
+        instance._syncTimeline();
+    }, name);
+    const times = page.locator(name === 'player' ? '#player .fireplayer__times' : '.fireplayer--audio .fireplayer__times');
+    assert.equal((await times.innerText()).replace(/\s+/g, ''), '0:15/3:00');
+    assert.equal(await times.locator('[data-fp-time-separator]').isVisible(), true);
+    await page.evaluate(name => { window[name].setMode('live'); window[name]._syncTimeline(); }, name);
+    assert.equal(await times.locator('[data-fp-time-separator]').isVisible(), false);
+    assert.equal(await times.locator('[data-fp-duration]').isVisible(), false);
+    await page.evaluate(name => {
+        const instance = window[name];
+        instance.setMode('vod');
+        Object.defineProperty(instance.media, 'duration', { configurable: true, value: NaN });
+        instance._syncTimeline();
+    }, name);
+    assert.equal(await times.locator('[data-fp-time-separator]').isVisible(), false);
+}
+
 (async () => {
     for (const [name, browserType] of Object.entries({ chromium, firefox })) {
         const browser = await browserType.launch({ headless: true });
@@ -81,6 +104,36 @@ const root = path.resolve(__dirname, '../public/assets/default');
             assert.equal(await page.evaluate(() => player._state), 'paused');
             assert.equal(await page.evaluate(() => typeof player.fullscreen), 'function');
             await page.evaluate(() => {
+                window.pipCalls = 0;
+                Object.defineProperty(document, 'pictureInPictureEnabled', { configurable: true, value: true });
+                player.media.requestPictureInPicture = async () => { window.pipCalls++; };
+                player._syncCapabilities();
+                player._showControls();
+            });
+            for (const width of [800, 390, 320]) {
+                await page.evaluate(width => { player.root.style.width = width + 'px'; }, width);
+                await page.locator('#player').hover();
+                await checkTimeDisplay(page, 'player');
+                const pip = page.locator('#player [data-fp-action="pip"]');
+                assert.equal(await pip.isVisible(), true, `${name}: PiP visible at ${width}px`);
+                const bounds = await pip.boundingBox();
+                const playerBounds = await page.locator('#player').boundingBox();
+                assert.ok(bounds.x >= playerBounds.x && bounds.x + bounds.width <= playerBounds.x + playerBounds.width);
+                await pip.click();
+            }
+            assert.equal(await page.evaluate(() => window.pipCalls), 3);
+            await page.evaluate(() => {
+                Object.defineProperty(document, 'pictureInPictureEnabled', { configurable: true, value: false });
+                player.media.webkitSetPresentationMode = mode => { player.media.webkitPresentationMode = mode; };
+                player._syncCapabilities();
+            });
+            await page.locator('#player [data-fp-action="pip"]').click();
+            assert.equal(await page.evaluate(() => player.media.webkitPresentationMode), 'picture-in-picture');
+            await page.locator('#player [data-fp-action="pip"]').click();
+            assert.equal(await page.evaluate(() => player.media.webkitPresentationMode), 'inline');
+            await page.evaluate(() => { delete player.media.webkitSetPresentationMode; player._syncCapabilities(); });
+            assert.equal(await page.locator('#player [data-fp-action="pip"]').isVisible(), false);
+            await page.evaluate(() => {
                 player.setStatus('Connecting…');
                 if (player.elements.status.hidden) { throw new Error('Normal status hidden from non-creator'); }
                 player._showError('Unavailable', Object.assign(new Error(), { code: 'CAMERA_NOT_READY' }));
@@ -92,11 +145,44 @@ const root = path.resolve(__dirname, '../public/assets/default');
                 player.unload(); player.destroy();
                 const container = document.createElement('div'); document.body.appendChild(container);
                 window.audio = new FirePlayer(container, { src: '/song.mp3', media: 'audio', probe: false, title: 'Test', artist: 'Artist', album: 'Album' });
-                await audio.ready; await audio.play(); audio.pause(); audio.destroy();
+                await audio.ready; await audio.play(); audio.pause();
             });
+            await checkTimeDisplay(page, 'audio');
+            assert.equal(await page.locator('.fireplayer--audio [data-fp-action="pip"]').isVisible(), false);
+            await page.evaluate(() => audio.destroy());
             assert.equal(await page.evaluate(() => window.activeHls), 0);
+            await page.evaluate(() => {
+                Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile Safari/604.1' });
+                Object.defineProperty(navigator, 'platform', { configurable: true, value: 'iPhone' });
+                HTMLMediaElement.prototype.canPlayType = () => 'probably';
+                window.firePlayerConfig = { forceHlsJsOnApple: true };
+                window.canViewVideoDiagnostics = true;
+                const host = document.createElement('section');
+                host.innerHTML = '<div id="engine-auto" class="fire-player" data-src="https://camera.test/stream-one/index.m3u8" data-probe="false"></div>' +
+                    '<div class="post-content"><video controls data-hls-src="https://camera.test/stream-two/index.m3u8"></video></div>' +
+                    '<div id="engine-api"></div>';
+                document.body.appendChild(host);
+            });
+            await page.addScriptTag({ path: path.join(root, 'js/fireplayer-diagnostics.js') });
+            await page.addScriptTag({ path: path.join(root, 'js/fireplayer-init.js') });
+            await page.evaluate(async () => {
+                window.enginePlayers = [FirePlayer.get(document.querySelector('#engine-auto')), FirePlayer.get(document.querySelector('.post-content .fireplayer')),
+                    FirePlayer.mount('#engine-api', { src: 'https://camera.test/stream-three/index.m3u8', probe: false })];
+                for (const instance of enginePlayers) { await instance.play(); }
+            });
+            assert.deepEqual(await page.evaluate(() => enginePlayers.map(instance => instance.controller.engine)), ['hls.js', 'hls.js', 'hls.js']);
+            assert.equal(await page.locator('[data-fp-diagnostic="engine"]').count(), 3);
+            assert.deepEqual(await page.locator('[data-fp-diagnostic="engineRequested"]').allTextContents(), ['hls.js', 'hls.js', 'hls.js']);
+            await page.evaluate(async () => {
+                window.firePlayerConfig.forceHlsJsOnApple = false;
+                for (const instance of enginePlayers) { await instance.load(instance.options.src); await instance.play(); }
+            });
+            assert.deepEqual(await page.evaluate(() => enginePlayers.map(instance => instance.controller.engine)), ['native', 'native', 'native']);
+            assert.deepEqual(await page.locator('[data-fp-diagnostic="engine"]').allTextContents(), ['Browser native', 'Browser native', 'Browser native']);
+            assert.equal(await page.evaluate(() => window.activeHls), 0);
+            await page.evaluate(() => enginePlayers.forEach(instance => instance.destroy()));
             assert.deepEqual(errors, []);
-            console.log(`PASS ${name}: lazy wake, controls, play/pause, quality Auto/manual, subtitles, status/error, source replacement, audio, cleanup`);
+            console.log(`PASS ${name}: lazy wake, controls, play/pause, quality Auto/manual, subtitles, responsive time display, mobile PiP controls (standard/WebKit), status/error, source replacement, audio, Apple engine setting (auto/legacy/API), diagnostics, cleanup`);
         } finally { await browser.close(); }
     }
 })().catch(error => { console.error(error); process.exitCode = 1; });

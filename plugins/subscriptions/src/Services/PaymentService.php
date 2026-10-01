@@ -243,7 +243,10 @@ final class PaymentService
                 'action_url' => base_href('/account/subscription'),
                 'icon' => 'ci-check-circle',
                 'source' => 'subscriptions',
-                'metadata' => ['subscription_id' => (int)($subscription['id'] ?? 0)],
+                'metadata' => [
+                    'subscription_id' => (int)($subscription['id'] ?? 0),
+                    'subscription_notification' => 'activated',
+                ],
             ]);
         } catch (\Throwable $exception) {
             log_error_details('Subscription activation notification failed', ['invoice_id' => $invoiceId], $exception);

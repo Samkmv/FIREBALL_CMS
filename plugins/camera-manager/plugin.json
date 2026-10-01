@@ -1,11 +1,16 @@
 {
-  "name": "Camera Manager",
+  "name": "Управление камерами",
+  "name_i18n": {
+    "ru": "Управление камерами",
+    "en": "Camera Manager"
+  },
   "slug": "camera-manager",
-  "version": "1.3.4",
+  "version": "1.3.5",
 
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Localized the plugin name and remaining administrator labels into Russian without changing its identifier or server protocol.",
     "Added an administrator interface for sites, recorders, and camera channels.",
     "Added encrypted RTSP credential storage and public HLS URL generation.",
     "Added atomic streams.pl publishing with locking, backups, Perl syntax validation, and optional service restart.",
@@ -22,6 +27,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Название плагина и оставшиеся подписи в админ-панели переведены на русский: «Управление камерами». Идентификатор и серверный протокол не изменены.",
       "Добавлена панель объектов, регистраторов и каналов камер.",
       "Пароли RTSP хранятся в зашифрованном виде, публичные HLS-ссылки создаются автоматически.",
       "Публикация streams.pl выполняется атомарно: блокировка, резервная копия, perl -c и необязательный перезапуск службы.",

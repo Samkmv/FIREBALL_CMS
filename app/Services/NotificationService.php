@@ -371,7 +371,7 @@ class NotificationService
 
     protected function feedItem(array $row): array
     {
-        return [
+        $item = [
             'type' => (string)($row['type'] ?? 'system'),
             'notification_id' => (int)$row['id'],
             'source_label' => $this->sourceLabel((string)($row['source'] ?? 'system')),
@@ -385,6 +385,8 @@ class NotificationService
             'time' => (string)$row['created_at'],
             'sort_id' => (int)$row['id'],
         ];
+
+        return (array)apply_filters_safe('notification_feed_item', $item, $row);
     }
 
     protected function pushPayload(array $notification): array

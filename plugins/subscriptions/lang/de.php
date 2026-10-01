@@ -244,6 +244,7 @@ return array_replace($en, [
     'subscriptions_notification_activated_message' => 'Die Zahlung wurde bestätigt und der Abonnementzugriff ist aktiv.',
     'subscriptions_notification_activated_title' => 'Abonnement aktiviert',
     'subscriptions_notification_expiring_message' => 'Ihr Abonnement läuft in :days Tag(en) ab.',
+    'subscriptions_notification_expiring_message_generic' => 'Ihr Abonnement läuft bald ab. Prüfen Sie das Ablaufdatum und verlängern Sie Ihr Abonnement.',
     'subscriptions_notification_expiring_title' => 'Abonnement läuft bald ab',
     'subscriptions_password1' => 'Passwort Nr. 1',
     'subscriptions_password2' => 'Passwort Nr. 2',

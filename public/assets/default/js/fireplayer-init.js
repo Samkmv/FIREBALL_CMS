@@ -25,55 +25,6 @@
         }
     };
 
-    const isAppleHlsTarget = function () {
-        const navigator = window.navigator || {};
-        const agent = String(navigator.userAgent || '');
-        const platform = String(
-            (navigator.userAgentData && navigator.userAgentData.platform)
-            || navigator.platform
-            || ''
-        );
-        const touchPoints = Number(navigator.maxTouchPoints || 0);
-
-        // iPhone / iPad / iPod, including iPadOS desktop-mode user agents.
-        const isIOS = /iPhone|iPad|iPod/i.test(agent)
-            || (/^MacIntel$/i.test(platform) && touchPoints > 1);
-
-        // Any browser running on macOS: Safari, Chrome/Chromium, Firefox, Edge, etc.
-        // Apple Silicon browsers may still expose MacIntel for compatibility.
-        const isMac = /Macintosh|Mac OS X/i.test(agent)
-            || /Mac|macOS/i.test(platform);
-
-        // Apple spatial browsers generally expose Mac-like platform data or visionOS.
-        const isVision = /visionOS|Apple Vision/i.test(agent + ' ' + platform);
-
-        return isIOS || isMac || isVision;
-    };
-
-    const applyGlobalPlayerDefaults = function (scope) {
-        const config = window.firePlayerConfig && typeof window.firePlayerConfig === 'object'
-            ? window.firePlayerConfig
-            : {};
-
-        if (config.forceHlsJsOnApple !== true || !isAppleHlsTarget()) {
-            return;
-        }
-
-        const root = scope instanceof Element ? scope : document;
-        const players = [];
-
-        if (root instanceof Element && root.matches('[data-fire-player], .fire-player')) {
-            players.push(root);
-        }
-        root.querySelectorAll('[data-fire-player], .fire-player').forEach(function (element) {
-            players.push(element);
-        });
-
-        players.forEach(function (element) {
-            setDefaultAttribute(element, 'data-force-hls-js', 'true');
-        });
-    };
-
     const readMediaSource = function (media) {
         const source = media.querySelector('source[src]');
         return media.getAttribute('data-hls-src')
@@ -153,7 +104,6 @@
     const initialize = function (scope) {
         try {
             upgradeLegacyContentMedia(scope || document);
-            applyGlobalPlayerDefaults(scope || document);
             window.FirePlayer.bootstrap(scope || document);
         } catch (error) {
             if (window.console && typeof window.console.error === 'function') {

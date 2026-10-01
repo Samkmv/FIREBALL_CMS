@@ -1,5 +1,5 @@
 <?= view()->renderPartial('admin/shell_open', [
-    'title' => 'Настройки Camera Manager',
+    'title' => 'Настройки управления камерами',
     'subtitle' => 'Безопасная синхронизация с отдельным RTSP-сервером.',
     'actions' => '<form action="' . base_href('/admin/camera-manager/settings/test-connection') . '" method="post">'
         . get_csrf_field() . '<button class="btn btn-outline-secondary rounded-pill" type="submit"><i class="ci-activity me-1"></i>Проверить подключение</button></form>',
@@ -16,7 +16,7 @@
 
         <div class="border rounded-4 p-3 mt-4">
             <h2 class="h5">RTSP-сервер и WireGuard</h2>
-            <p class="text-body-secondary">Общие значения используются только для инструкций, безопасных диагностик и генерации NAT-файлов. Camera Manager не изменяет <code>wg0.conf</code>.</p>
+            <p class="text-body-secondary">Общие значения используются только для инструкций, безопасных диагностик и генерации NAT-файлов. Плагин «Управление камерами» не изменяет <code>wg0.conf</code>.</p>
             <div class="alert alert-warning rounded-4"><strong>PrivateKey запрещён.</strong> В CMS хранится только публичный ключ WireGuard-сервера.</div>
             <div class="row g-3">
                 <div class="col-md-2"><label class="form-label" for="cameraWgInterface">WG interface</label><input class="form-control font-monospace" id="cameraWgInterface" name="wireguard_interface" maxlength="15" value="<?= htmlSC((string)$settings['wireguard_interface']) ?>" placeholder="wg0"></div>

@@ -107,6 +107,13 @@
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
             || (/Safari/.test(agent) && !/Chrome|Chromium|CriOS|Edg|OPR|FxiOS|YaBrowser/.test(agent));
     };
+    const isAppleDevice = function () {
+        const navigator = window.navigator || {};
+        const agent = String(navigator.userAgent || '');
+        const platform = String((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+        return /iPhone|iPad|iPod|Macintosh|Mac OS X|visionOS|Apple Vision/i.test(agent)
+            || /Mac|macOS|visionOS/i.test(platform);
+    };
     const inferStreamId = function (source) {
         const match = String(source || '').match(/\/stream-([^/]+)\/index\.m3u8(?:[?#].*)?$/i);
         return match ? match[1] : '';
@@ -281,7 +288,12 @@
         try {
             await wake(true);
             let Hls = null;
-            let useNative = options.forceHlsJs !== true && isAppleBrowser() && canPlayNatively(media);
+            // A site preference is safe to fall back; an explicit per-player force remains strict.
+            const preferHlsJs = options.forceHlsJs === undefined && config().forceHlsJsOnApple === true && isAppleDevice();
+            const preferNative = isAppleBrowser() && canPlayNatively(media);
+            const engineRequested = options.forceHlsJs === true || preferHlsJs ? 'hls.js' : (preferNative ? 'native' : 'auto');
+            let engineFallback = '';
+            let useNative = options.forceHlsJs !== true && !preferHlsJs && preferNative;
             if (!useNative) {
                 try {
                     Hls = await waitWithSignal(loadHls(), signal);
@@ -289,6 +301,7 @@
                     assertActive();
                     if (options.forceHlsJs === true || !canPlayNatively(media)) { throw error; }
                     useNative = true;
+                    engineFallback = 'hls-load-failed';
                 }
                 assertActive();
                 if (!useNative && typeof Hls.isSupported === 'function' && !Hls.isSupported()) {
@@ -297,6 +310,7 @@
                         return { handled: false };
                     }
                     useNative = true;
+                    engineFallback = 'hls-unsupported';
                 }
             }
             assertActive();
@@ -613,6 +627,8 @@
                 handled: true,
                 controller: {
                     engine: useNative ? 'native' : 'hls.js',
+                    engineRequested: engineRequested,
+                    engineFallback: engineFallback,
                     get hls() { return hls; },
                     get liveSyncPosition() { return liveSyncPosition(); },
                     get needsRecovery() { return pausedFailure; },

@@ -692,9 +692,9 @@
             controls.dataset.fpControls = '';
             controls.innerHTML =
                 '<button class="fireplayer__button" type="button" data-fp-action="play" aria-label="' + t('play') + '">' + icons.play + '</button>' +
-                '<span class="fireplayer__time fireplayer__time--current" data-fp-current>0:00</span>' +
+                '<span class="fireplayer__time fireplayer__times"><span class="fireplayer__time--current" data-fp-current>0:00</span>' +
+                    '<span data-fp-time-separator aria-hidden="true" hidden>/</span><span class="fireplayer__time--duration" data-fp-duration hidden>0:00</span></span>' +
                 '<label class="fireplayer__seek-wrap"><span class="fireplayer__sr-only">' + t('seek') + '</span><input class="fireplayer__range fireplayer__seek" data-fp-seek type="range" min="0" max="100" step="0.05" value="0"></label>' +
-                '<span class="fireplayer__time fireplayer__time--duration" data-fp-duration>0:00</span>' +
                 '<button class="fireplayer__live-button" type="button" data-fp-action="live" hidden><i></i><span>' + t('live') + '</span></button>' +
                 '<div class="fireplayer__volume"><button class="fireplayer__button" type="button" data-fp-action="mute" aria-label="' + t('mute') + '">' + icons.volume + '</button>' +
                 '<label><span class="fireplayer__sr-only">' + t('volume') + '</span><input class="fireplayer__range fireplayer__volume-range" data-fp-volume type="range" min="0" max="1" step="0.02" value="1"></label></div>' +
@@ -718,6 +718,7 @@
                 speed: controls.querySelector('[data-fp-speed]'),
                 current: controls.querySelector('[data-fp-current]'),
                 duration: controls.querySelector('[data-fp-duration]'),
+                timeSeparator: controls.querySelector('[data-fp-time-separator]'),
                 live: controls.querySelector('[data-fp-action="live"]'),
                 pip: controls.querySelector('[data-fp-action="pip"]'),
                 fullscreen: controls.querySelector('[data-fp-action="fullscreen"]'),
@@ -1632,6 +1633,7 @@
             this.elements.current.textContent = formatTime(current, finiteDuration && duration >= 3600);
             this.elements.duration.textContent = finiteDuration ? formatTime(duration, duration >= 3600) : '';
             this.elements.duration.hidden = !finiteDuration || isLive;
+            this.elements.timeSeparator.hidden = this.elements.duration.hidden;
             this.elements.seek.disabled = maximum <= minimum;
             this._syncLiveUi();
         }
@@ -1997,7 +1999,7 @@
         }
     });
 
-    FirePlayer.version = '1.1.0';
+    FirePlayer.version = '1.1.2';
     FirePlayer.icons = icons;
     FirePlayer.labels = labels;
     FirePlayer.translate = t;

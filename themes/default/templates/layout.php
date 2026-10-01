@@ -88,6 +88,7 @@ $hasMobileSidebarToggle = str_contains((string)$this->content, 'data-bs-target="
     || str_contains((string)$this->content, 'data-bs-target="#blogSidebar"')
     || str_contains((string)$this->content, 'data-bs-target="#accountSidebar"');
 $canViewVideoStatus = can_view_video_diagnostics();
+$forceHlsJsOnApple = site_setting('player_apple_force_hlsjs', '0') === '1';
 $streamConfig = stream_config();
 $frontendStreamConfig = [
     'readyTimeoutMs' => (int)$streamConfig['ready_timeout_seconds'] * 1000,
@@ -346,7 +347,8 @@ $postCategoryUrl = static function (?string $slug = null): string {
     window.hlsStreamConfig = <?= json_encode($frontendStreamConfig, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.firePlayerConfig = {
         assetBase: <?= json_encode(base_url('/assets/default'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
-        hlsScriptUrl: <?= json_encode(theme_asset_versioned('vendor/hls.js/hls.min.js'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
+        hlsScriptUrl: <?= json_encode(theme_asset_versioned('vendor/hls.js/hls.min.js'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+        forceHlsJsOnApple: <?= $forceHlsJsOnApple ? 'true' : 'false'; ?>
     };
     if (!window.canViewVideoStatus) {
         (function () {

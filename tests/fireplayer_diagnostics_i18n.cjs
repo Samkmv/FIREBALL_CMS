@@ -24,7 +24,7 @@ function render(lang, allowed = true) {
     Object.assign(document, { documentElement: { lang }, baseURI: 'https://cms.test/', readyState: 'complete',
         createElement: () => new Node(), querySelectorAll: () => [root] });
     let tick;
-    const window = { FirePlayer: { version: '1.1.0', get: () => player }, navigator: { onLine: true },
+    const window = { FirePlayer: { version: '1.1.2', get: () => player }, navigator: { onLine: true },
         canViewVideoDiagnostics: allowed, setInterval: callback => { tick = callback; return 1; }, clearInterval() {} };
     vm.runInNewContext(source, { window, document, URL, Date });
     const panel = parent.children[1];
@@ -50,6 +50,19 @@ for (const [lang, expected] of Object.entries(expectations)) {
     view.window.navigator.onLine = false; view.tick(); assert.notEqual(view.values.online.textContent, 'false');
     view.player._metrics.recoveryReason = '<img src=secret>'; view.tick(); assert.equal(view.values.recoveryReason.textContent, '—');
     assert.equal(view.values.source.textContent, 'camera.test');
+    view.player.controller = { engine: 'hls.js', engineRequested: 'hls.js', engineFallback: '', hls: { constructor: { version: '1.6.0' } } };
+    view.tick();
+    assert.equal(view.values.engine.textContent, 'hls.js 1.6.0');
+    assert.equal(view.values.engineRequested.textContent, 'hls.js');
+    assert.equal(view.values.engineFallback.textContent, '—');
+    view.player.controller = { engine: 'native', engineRequested: 'hls.js', engineFallback: 'hls-unsupported' };
+    view.tick();
+    assert.equal(view.values.engine.textContent, expected[2]);
+    assert.notEqual(view.values.engineFallback.textContent, '—');
+    view.player.controller.engineFallback = 'hls-load-failed'; view.tick();
+    assert.notEqual(view.values.engineFallback.textContent, '—');
+    view.player.controller = null; view.tick();
+    assert.equal(view.values.engine.textContent, '—', 'Do not claim native HLS before engine attachment');
     console.log('PASS diagnostics labels, states, values, units and safe fallback: ' + lang);
 }
 assert.equal(render('de-DE').values.state.textContent, expectations.de[0]);

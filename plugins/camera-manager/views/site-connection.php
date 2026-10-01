@@ -68,7 +68,7 @@ $copyBlock = static function (string $id, string $contents): string {
     <?php endif; ?>
     <?php if (!in_array('diagnostics_v1', $settings['pull_agent_capabilities'] ?? [], true)): ?><div class="alert alert-info rounded-4">Публикация совместима с текущим агентом, но удалённая диагностика начнёт выполняться после установки <code>fireball-camera-diagnostics</code> и обновлённого pull-agent на RTSP-сервере.</div><?php endif; ?>
     <?php foreach (($network['warnings'] ?? []) as $warning): ?><div class="alert alert-warning rounded-4"><?= htmlSC((string)$warning) ?></div><?php endforeach; ?>
-    <div class="alert alert-warning rounded-4"><strong>Безопасный режим:</strong> Camera Manager не хранит PrivateKey, не изменяет <code>/etc/wireguard/wg0.conf</code>, не запускает iptables и не перезапускает WireGuard. Root-команды применяются только вручную.</div>
+    <div class="alert alert-warning rounded-4"><strong>Безопасный режим:</strong> плагин «Управление камерами» не хранит PrivateKey, не изменяет <code>/etc/wireguard/wg0.conf</code>, не запускает iptables и не перезапускает WireGuard. Root-команды применяются только вручную.</div>
 
     <div class="row g-3 mb-4">
         <?php foreach ([

@@ -27,6 +27,8 @@ const fixture = execFileSync(process.env.FIREBALL_PHP || 'php', [path.join(__dir
                 await page.addScriptTag({ path: path.join(root, 'public/assets/default/js/editor2', file + '.js') });
             }
             assert.equal(await page.locator('[data-editor-block]').count(), 3);
+            assert.ok(await page.locator('.fb-editor-workspace__statusbar').evaluate(element => !!element.closest('form[data-post-autosave]')), 'Dialog markup does not prematurely close the document form');
+            assert.ok(await page.locator('[data-editor-document-title]').evaluate(element => element.form === document.querySelector('form[data-post-autosave]')), 'Document settings belong to the save form');
             const first = page.locator('[data-block-id="first"]');
             await first.locator('[data-editor-rich]').fill('Changed paragraph');
             await first.locator('[data-block-action="duplicate"]').click();
@@ -77,6 +79,44 @@ const fixture = execFileSync(process.env.FIREBALL_PHP || 'php', [path.join(__dir
             }
             assert.deepEqual(errors, []);
             console.log('PASS typing, duplicate, undo/redo, reorder, hide, delete, snapshot and layout at ' + width + 'px');
+        }
+
+        // PWA shell: the editor and sheet must share the same bottom edge.
+        // Check real theme styles as well, including loading the theme copy
+        // after the served editor stylesheet (it used to override geometry).
+        for (const size of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+            await page.setViewportSize(size);
+            await page.goto('https://editor.test/');
+            await page.evaluate(() => {
+                document.documentElement.classList.add('pwa-standalone');
+                document.body.classList.add('fb-admin-body');
+            });
+            for (const file of ['theme.min.css', 'style.css', 'admin-ui.css', 'block-editor.css']) {
+                await page.addStyleTag({ path: path.join(root, 'public/assets/default/css', file) });
+            }
+            await page.addStyleTag({ path: path.join(root, 'themes/default/assets/css/block-editor.css') });
+            for (const file of ['registry', 'sanitizer', 'importer', 'history', 'editor']) {
+                await page.addScriptTag({ path: path.join(root, 'public/assets/default/js/editor2', file + '.js') });
+            }
+            const bottom = async selector => {
+                const rect = await page.locator(selector).boundingBox();
+                return rect.y + rect.height;
+            };
+            assert.ok(Math.abs(await bottom('[data-editor-workspace]') - size.height) < 1, 'Workspace reaches full PWA viewport');
+            assert.ok(Math.abs(await bottom('.fb-editor-workspace__form') - size.height) < 1, 'Form fills workspace');
+            assert.ok(Math.abs(await bottom('.fb-editor-workspace__statusbar') - size.height) < 1, 'No unused area below editor footer');
+            await page.locator('.fb-editor-workspace__document').evaluate(element => { element.scrollTop = 120; });
+            const scrollBefore = await page.locator('.fb-editor-workspace__document').evaluate(element => element.scrollTop);
+            await page.evaluate(() => FireballEditor2.getEditors()[0].openMobilePanels());
+            await page.waitForTimeout(250);
+            assert.ok(Math.abs(await bottom('[data-editor-inspector-panel]') - size.height) < 1, 'Sheet reaches same bottom edge');
+            const sheet = await page.locator('[data-editor-inspector-panel]').boundingBox();
+            assert.ok(sheet.y >= 0, 'Sheet stays inside viewport in landscape too');
+            await page.evaluate(() => FireballEditor2.getEditors()[0].closeMobilePanels());
+            await page.waitForTimeout(250);
+            assert.equal(await page.locator('.fb-editor-workspace__document').evaluate(element => element.scrollTop), scrollBefore, 'Closing sheet preserves document scroll');
+            assert.deepEqual(errors, []);
+            console.log('PASS PWA workspace/sheet bottom edges, orientation and scroll restoration at ' + size.width + 'x' + size.height);
         }
     } finally {
         await browser.close();

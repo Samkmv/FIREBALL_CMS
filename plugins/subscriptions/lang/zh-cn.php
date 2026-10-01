@@ -244,6 +244,7 @@ return array_replace($en, [
     'subscriptions_notification_activated_message' => '付款已确认，订阅访问权限已生效。',
     'subscriptions_notification_activated_title' => '订阅已激活',
     'subscriptions_notification_expiring_message' => '您的订阅将在 :days 天后到期。',
+    'subscriptions_notification_expiring_message_generic' => '您的订阅即将到期。请查看到期日期并续订。',
     'subscriptions_notification_expiring_title' => '订阅即将到期',
     'subscriptions_password1' => '密码 #1',
     'subscriptions_password2' => '密码 #2',

@@ -67,6 +67,11 @@ final class MaintenanceService
                     'action_url' => base_href('/account/subscription'),
                     'icon' => 'ci-clock',
                     'source' => 'subscriptions',
+                    'metadata' => [
+                        'subscription_id' => (int)$row['id'],
+                        'subscription_notification' => 'expiring',
+                        'days' => (int)$row['days_left'],
+                    ],
                 ]);
                 (new SubscriptionService())->event($eventKey, (int)$row['id'], null, (int)$row['user_id'], (string)$row['days_left'], (string)$row['days_left']);
                 $sent++;

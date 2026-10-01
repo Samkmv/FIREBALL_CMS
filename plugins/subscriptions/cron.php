@@ -13,6 +13,8 @@ $app = new \FBL\Application();
 require_once __DIR__ . '/Plugin.php';
 
 try {
+    // CLI maintenance bypasses the plugin manager's language registration.
+    \FBL\Language::registerPluginLanguage(FireballPluginSubscriptions::SLUG, __DIR__ . '/lang');
     $result = (new \Fireball\Subscriptions\Services\MaintenanceService())->run();
     fwrite(STDOUT, json_encode(['status' => 'ok', 'result' => $result], JSON_UNESCAPED_SLASHES) . PHP_EOL);
     exit(0);

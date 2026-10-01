@@ -257,6 +257,7 @@ return [
     'subscriptions_notification_activated_message' => 'Your payment is confirmed and subscription access is active.',
     'subscriptions_notification_expiring_title' => 'Subscription expires soon',
     'subscriptions_notification_expiring_message' => 'Your subscription expires in :days day(s).',
+    'subscriptions_notification_expiring_message_generic' => 'Your subscription expires soon. Check the expiry date and renew your subscription.',
     'subscriptions_notification_recurring_failed_title' => 'Automatic renewal failed',
     'subscriptions_notification_recurring_failed_message' => 'We could not renew your subscription automatically. Please renew it manually.',
     'subscriptions_error_plan_required' => 'Plan name and slug are required.',

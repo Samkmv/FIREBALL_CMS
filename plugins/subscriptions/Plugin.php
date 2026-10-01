@@ -51,6 +51,8 @@ final class FireballPluginSubscriptions implements PluginInterface
     {
         (new SettingsService())->ensureDefaults();
 
+        add_filter('notification_feed_item', [\Fireball\Subscriptions\Support\NotificationPresentation::class, 'localize']);
+
         add_filter('admin_menu', static function (array $menu): array {
             $menu[] = [
                 'group' => 'applications',
