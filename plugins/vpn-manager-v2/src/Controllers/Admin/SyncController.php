@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Controllers\Admin;
 
+use FBL\Pagination;
 use Fireball\VpnManagerV2\Repositories\OperationQueueRepository;
 use Fireball\VpnManagerV2\Repositories\ConfigurationSyncRepository;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
@@ -17,10 +18,17 @@ final class SyncController
     {
         Permissions::authorize(Permissions::VIEW);
 
+        $repository = new OperationQueueRepository();
+        $total = $repository->countAll();
+        $lastPage = max(1, (int)ceil($total / 20));
+        request()->get['page'] = (string)max(1, min($lastPage, (int)request()->get('page', 1)));
+        $pagination = new Pagination($total, 20);
+
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/operations', \FireballPluginVpnManagerV2::viewData('operations', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_operations_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_operations_subtitle'),
-            'operations' => (new OperationQueueRepository())->recent(),
+            'operations' => $repository->page(20, $pagination->getOffset()),
+            'pagination' => $pagination,
         ]));
     }
 

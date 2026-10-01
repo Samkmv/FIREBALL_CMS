@@ -470,6 +470,27 @@
         };
         var coresLabel = container.getAttribute('data-cores-label') || 'cores';
 
+        function status(card, value) {
+            var badge = card.querySelector('[data-vpn-v2-server-status]');
+            if (!badge) return;
+            var classes = {online: 'text-bg-success', offline: 'text-bg-danger', error: 'text-bg-warning', disabled: 'text-bg-secondary', unchecked: 'text-bg-light border text-body-secondary'};
+            var labelKey = value === 'error' ? 'data-error-status-label' : value === 'disabled' ? 'data-disabled-status-label' : 'data-' + value + '-label';
+            badge.className = 'badge rounded-pill ' + classes[value];
+            badge.textContent = container.getAttribute(labelKey) || value;
+        }
+
+        function clear(card) {
+            card.querySelectorAll('[data-vpn-v2-metric]').forEach(function (target) {
+                if (/-bar$/.test(target.getAttribute('data-vpn-v2-metric') || '')) {
+                    target.style.width = '0%';
+                    target.className = 'progress-bar';
+                    target.parentElement.setAttribute('aria-valuenow', '0');
+                } else {
+                    target.textContent = '—';
+                }
+            });
+        }
+
         function node(card, name) {
             return card.querySelector('[data-vpn-v2-metric="' + name + '"]');
         }
@@ -484,10 +505,10 @@
         function usage(card, key, data) {
             data = data || {};
             var percent = Number(data.percent);
-            var valid = Number.isFinite(percent);
+            var valid = data.percent !== null && data.percent !== undefined && Number.isFinite(percent);
             var shown = valid ? Math.max(0, Math.min(100, percent)) : 0;
             text(card, key + '-value', valid ? shown.toFixed(1).replace('.0', '') + '%' : '—');
-            text(card, key + '-details', data.current !== null && data.total !== null
+            text(card, key + '-details', data.current != null && data.total != null
                 ? formatMetricBytes(data.current) + ' / ' + formatMetricBytes(data.total)
                 : '—');
             var bar = node(card, key + '-bar');
@@ -539,39 +560,61 @@
 
         function load(card) {
             var state = card.querySelector('[data-vpn-v2-metric-state]');
+            clear(card);
             if (card.getAttribute('data-enabled') !== '1') {
+                status(card, 'disabled');
                 if (state) {
                     state.textContent = disabledLabel;
                 }
                 return Promise.resolve();
             }
+            status(card, 'unchecked');
             if (state) {
                 state.className = 'small text-body-secondary mb-3';
                 state.textContent = loadingLabel;
             }
 
+            var controller = new AbortController();
+            var timeout = window.setTimeout(function () { controller.abort(); }, 20000);
+
             return fetch(card.getAttribute('data-url') || '', {
                 method: 'GET',
                 credentials: 'same-origin',
+                signal: controller.signal,
                 headers: {'Accept': 'application/json'}
             }).then(function (response) {
-                return response.json().then(function (data) {
+                return response.json().catch(function () {
+                    var invalid = new Error(errorLabel);
+                    invalid.serverStatus = response.status >= 502 && response.status <= 504 ? 'offline' : 'error';
+                    throw invalid;
+                }).then(function (data) {
                     if (!response.ok) {
-                        throw new Error(data.error || errorLabel);
+                        var failure = new Error(data && data.error || errorLabel);
+                        failure.serverStatus = response.status === 502 || response.status === 503 || response.status === 504 ? 'offline' : 'error';
+                        throw failure;
                     }
                     return data;
                 });
             }).then(function (data) {
+                if (!data || typeof data !== 'object' || !data.cpu || !data.memory || data.error) {
+                    var invalid = new Error(errorLabel);
+                    invalid.serverStatus = 'error';
+                    throw invalid;
+                }
                 render(card, data);
+                status(card, 'online');
             }).catch(function (error) {
+                clear(card);
+                status(card, error.serverStatus || 'offline');
                 if (state) {
                     state.className = 'small text-danger mb-3';
-                    state.textContent = error.message || errorLabel;
+                    state.textContent = error.serverStatus ? error.message || errorLabel : errorLabel;
                 }
-            });
+            }).finally(function () { window.clearTimeout(timeout); });
         }
 
         function loadAll() {
+            if (refresh && refresh.disabled) return;
             if (refresh) {
                 refresh.disabled = true;
             }

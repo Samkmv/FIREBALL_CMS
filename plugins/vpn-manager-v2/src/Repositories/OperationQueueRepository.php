@@ -339,11 +339,23 @@ final class OperationQueueRepository
     {
         $limit = max(1, min(500, $limit));
 
+        return $this->page($limit, 0);
+    }
+
+    public function countAll(): int
+    {
+        return (int)db()->query('SELECT COUNT(*) FROM vpn_v2_operations')->getColumn();
+    }
+
+    public function page(int $limit = 20, int $offset = 0): array
+    {
+        $limit = max(1, min(500, $limit));
+        $offset = max(0, $offset);
         return db()->query(
             'SELECT operation_id, operation_type, source, server_id, subscription_id, connection_id,
                     status, attempts, max_attempts, processed_count, total_count, next_attempt_at,
                     last_error, created_at, updated_at, finished_at
-             FROM vpn_v2_operations ORDER BY id DESC LIMIT ' . $limit
+             FROM vpn_v2_operations ORDER BY id DESC LIMIT ' . $limit . ' OFFSET ' . $offset
         )->get() ?: [];
     }
 

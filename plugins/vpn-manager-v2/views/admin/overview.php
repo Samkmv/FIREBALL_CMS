@@ -103,6 +103,11 @@ $summaryCards = [
          data-loading-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_loading_metrics')) ?>"
          data-error-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_metrics_unavailable')) ?>"
          data-disabled-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_server_disabled_metrics')) ?>"
+         data-online-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_online')) ?>"
+         data-offline-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_offline')) ?>"
+         data-unchecked-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_unchecked')) ?>"
+         data-error-status-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_error')) ?>"
+         data-disabled-status-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_disabled')) ?>"
          data-days-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_days_short')) ?>"
          data-hours-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_hours_short')) ?>"
          data-minutes-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_minutes_short')) ?>"
@@ -130,7 +135,8 @@ $summaryCards = [
                 <?php
                 $serverId = (int)($server['id'] ?? 0);
                 $enabled = !empty($server['is_enabled']);
-                $serverStatus = $enabled ? (string)($server['status'] ?? 'unchecked') : 'disabled';
+                // A saved status is not evidence that the current metrics request succeeded.
+                $serverStatus = $enabled ? 'unchecked' : 'disabled';
                 $badgeClass = match ($serverStatus) {
                     'online' => 'text-bg-success',
                     'offline' => 'text-bg-danger',
@@ -152,7 +158,7 @@ $summaryCards = [
                                 </a>
                                 <div class="small text-body-secondary"><?= htmlSC(trim(implode(' · ', array_filter([(string)($server['country_name'] ?? ''), (string)($server['city'] ?? '')])))) ?></div>
                             </div>
-                            <span class="badge rounded-pill <?= $badgeClass ?>"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_' . $serverStatus)) ?></span>
+                            <span class="badge rounded-pill <?= $badgeClass ?>" data-vpn-v2-server-status aria-live="polite"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_' . $serverStatus)) ?></span>
                         </div>
 
                         <div class="small text-body-secondary mb-3" data-vpn-v2-metric-state aria-live="polite">

@@ -3,6 +3,7 @@ use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 use Fireball\VpnManagerV2\Support\LocalizedValue;
 
 $operations = is_array($operations ?? null) ? $operations : [];
+$pagination = $pagination ?? null;
 $rows = [];
 foreach ($operations as $operation) {
     $status = (string)$operation['status'];
@@ -69,6 +70,11 @@ foreach ($operations as $operation) {
     ],
     'rows' => $rows,
     'empty_text' => FireballPluginVpnManagerV2::t('vpn_manager_v2_empty_operations'),
+]) ?>
+<?= view()->renderPartial('admin/partials/table_footer', [
+    'visible' => count($operations),
+    'total' => (int)($pagination['total_records'] ?? count($operations)),
+    'pagination' => $pagination && (int)($pagination['total_pages'] ?? 1) > 1 ? $pagination : null,
 ]) ?>
 </div>
 <?= view()->renderPartial('admin/shell_close') ?>

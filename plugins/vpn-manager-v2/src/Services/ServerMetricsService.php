@@ -37,7 +37,7 @@ final class ServerMetricsService
             'server' => [
                 'id' => (int)$server['id'],
                 'name' => (string)$server['name'],
-                'status' => (string)$server['status'],
+                'status' => 'online', // The live panel request succeeded; do not return stale database health.
             ],
             'checked_at' => date('Y-m-d H:i:s'),
         ]);

@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "type": "system",
   "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
   "author": "FIREBALL CMS",
@@ -13,6 +13,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Server-load badges now reflect live 3x-ui responses and clear stale metrics on connection failure; operations use native CMS pagination with 20 records per page.",
     "Completed synchronization with 3x-ui 3.8.5: preserved panel traffic-renewal settings, fixed Trojan/Shadowsocks credentials, protected expired statuses, and displayed HWID/IP limits separately.",
     "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
     "Added a native 3x-ui HWID gateway for FIREBALL subscriptions: device headers are validated by the 3x-ui subscription server before FIREBALL returns configs.",
@@ -31,6 +32,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Статус в карточках нагрузки серверов теперь определяется по текущему ответу 3x-ui; при ошибке подключения старые показатели очищаются. В операциях добавлена стандартная пагинация CMS по 20 записей на страницу.",
       "Завершена синхронизация с 3x-ui 3.8.5: сохраняются настройки автопродления трафика панели, исправлены учётные данные Trojan/Shadowsocks, защищены истёкшие статусы, а лимиты HWID/IP показываются раздельно.",
       "Несколько VPN-серверов могут иметь один код страны; повторяющиеся внутренние коды автоматически получают номер (nl, nl-2, nl-3).",
       "Добавлен нативный HWID-шлюз 3x-ui для подписок FIREBALL: заголовки устройства проверяются сервером подписок 3x-ui до выдачи конфигураций FIREBALL.",
@@ -48,6 +50,7 @@
       "Исправлено продление истёкшей подписки: будущая дата повторно активирует клиентов 3x-ui, а ошибка повторного создания больше не показывается как успешное обновление."
     ],
     "en": [
+      "Server-load badges now reflect live 3x-ui responses and clear stale metrics on connection failure; operations use native CMS pagination with 20 records per page.",
       "Completed synchronization with 3x-ui 3.8.5: preserved panel traffic-renewal settings, fixed Trojan/Shadowsocks credentials, protected expired statuses, and displayed HWID/IP limits separately.",
       "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
       "Added a native 3x-ui HWID gateway for FIREBALL subscriptions: device headers are validated by the 3x-ui subscription server before FIREBALL returns configs.",
@@ -65,6 +68,7 @@
       "Fixed expired-subscription renewal: a future expiration reactivates 3x-ui clients, and failed reconciliation can no longer be reported as a successful update."
     ],
     "de": [
+      "Statusanzeigen der Serverlast basieren jetzt auf aktuellen 3x-ui-Antworten; bei Verbindungsfehlern werden veraltete Kennzahlen entfernt. Vorgänge verwenden die standardmäßige CMS-Paginierung mit 20 Einträgen pro Seite.",
       "Die Synchronisierung mit 3x-ui 3.8.5 wurde abgeschlossen: Einstellungen zur Traffic-Erneuerung bleiben erhalten, Trojan-/Shadowsocks-Zugangsdaten wurden korrigiert, abgelaufene Status werden geschützt und HWID-/IP-Limits getrennt angezeigt.",
       "Mehrere VPN-Server können denselben Ländercode verwenden; doppelte interne Servercodes werden automatisch nummeriert (nl, nl-2, nl-3).",
       "Ein nativer 3x-ui-HWID-Gateway für FIREBALL-Abonnements wurde hinzugefügt: Geräte-Header werden vom 3x-ui-Abonnementserver geprüft, bevor FIREBALL Konfigurationen ausliefert.",
@@ -82,6 +86,7 @@
       "Die Verlängerung abgelaufener Abonnements wurde korrigiert: Ein zukünftiges Datum reaktiviert 3x-ui-Clients und fehlgeschlagene Wiederherstellungen werden nicht mehr als Erfolg gemeldet."
     ],
     "zh-cn": [
+      "服务器负载卡片的状态现在依据实时 3x-ui 响应显示，连接失败时会清除旧指标；操作列表采用 CMS 标准分页，每页显示 20 条记录。",
       "已完成与 3x-ui 3.8.5 的同步：保留面板流量续期设置，修复 Trojan/Shadowsocks 凭据，保护已到期状态，并分别显示 HWID/IP 限制。",
       "多个 VPN 服务器可以使用相同的国家代码；重复的内部服务器代码会自动编号（nl、nl-2、nl-3）。",
       "为 FIREBALL 订阅新增原生 3x-ui HWID 网关：FIREBALL 返回配置前，设备请求头会先由 3x-ui 订阅服务器校验。",
