@@ -49,7 +49,8 @@ $payload = (new ClientPayloadFactory())->build([
 ]);
 $assert($payload['id'] === '9fd7c35e-256a-4b5c-9c10-df3f36f08b6b', 'VLESS UUID is missing from payload.');
 $assert($payload['flow'] === VpnFlowResolver::VISION, 'Vision is missing from payload.');
-$assert($payload['limitIp'] === 3 && $payload['totalGB'] === 107374182400, 'Limits are invalid.');
+$assert($payload['limitHwid'] === 3 && $payload['limitIp'] === 0
+    && $payload['totalGB'] === 107374182400, 'Limits are invalid.');
 $assert($payload['enable'] === true && $payload['subId'] === 'a1b2c3d4e5f60708', 'Client flags are invalid.');
 $assert($payload['tgId'] === 0 && $payload['security'] === 'auto', '3x-ui universal client fields have invalid types.');
 
@@ -58,6 +59,17 @@ $remote = $payload;
 $verifier->verify($remote, $payload);
 $inbound = ['settings' => json_encode(['clients' => [$remote]], JSON_UNESCAPED_SLASHES)];
 $assert($verifier->findInInbound($inbound, (string)$payload['id'], (string)$payload['email']) !== null, 'Client lookup failed.');
+
+$passwordPayload = array_replace($payload, [
+    'password' => 'trojan-fixture-password',
+    'email' => 'trojan-fixture',
+]);
+unset($passwordPayload['id']);
+$globalPasswordClient = array_replace($passwordPayload, ['id' => 8421]);
+$verifier->assertIdentity($globalPasswordClient, $passwordPayload);
+$passwordInbound = ['settings' => ['clients' => [$globalPasswordClient]]];
+$assert($verifier->findInInbound($passwordInbound, 'trojan-fixture-password', 'trojan-fixture') !== null,
+    'Password client was hidden by the numeric global database id.');
 
 $flowMismatch = false;
 try {
@@ -93,6 +105,7 @@ echo json_encode([
         'subscription_input_validation',
         'vless_payload',
         'client_confirmation',
+        'password_client_confirmation',
         'flow_mismatch_classification',
         'generic_mismatch_rejection',
         'uuid_v4',

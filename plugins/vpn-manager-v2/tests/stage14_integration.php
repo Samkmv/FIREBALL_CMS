@@ -16,8 +16,11 @@ use Fireball\VpnManagerV2\Jobs\VpnV2ReconcilePlanSubscriptionsJob;
 use Fireball\VpnManagerV2\Repositories\AutomationRepository;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Repositories\ProfileVpnRepository;
+use Fireball\VpnManagerV2\Repositories\VpnProfileRepository;
 use Fireball\VpnManagerV2\Services\RemoteClientDeletionService;
+use Fireball\VpnManagerV2\Services\RemoteClientSyncService;
 use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
+use Fireball\VpnManagerV2\Services\SubscriptionHwidGatewayService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionEndpointService;
 use Fireball\VpnManagerV2\Support\VpnReconciliationLock;
@@ -93,6 +96,11 @@ final class Stage14FakeThreeXuiClient implements ThreeXuiClientInterface
     {
         return ['success' => true];
     }
+
+    public function probeSubscriptionHwid(string $subId, array $deviceHeaders): int
+    {
+        return 200;
+    }
 }
 
 $assert = static function (bool $condition, string $message): void {
@@ -110,6 +118,7 @@ $past = date('Y-m-d H:i:s', time() - 3600);
 $serverIds = [];
 $inboundIds = [];
 $subscriptionIds = [];
+$profileIds = [];
 $planId = 0;
 $remote = new Stage14FakeThreeXuiClient();
 
@@ -157,15 +166,24 @@ $createSubscription = static function (
     int $inboundId,
     int $remoteInboundId,
     bool $enabled
-) use ($now, &$subscriptionIds, $remote): array {
+) use ($now, $adminId, &$subscriptionIds, &$profileIds, $remote): array {
     $token = bin2hex(random_bytes(32));
+    $profile = $userId > 0
+        ? (new VpnProfileRepository())->getOrCreate($userId)
+        : (new VpnProfileRepository())->createManual();
+    $profileIds[] = (int)$profile['id'];
     db()->query(
         'INSERT INTO vpn_v2_subscriptions
-            (user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-             traffic_used_bytes, device_limit, subscription_token, revision, config_updated_at,
+            (user_id, manual_customer_name, profile_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+             traffic_used_bytes, device_limit, subscription_token, subscription_token_hash, revision, config_updated_at,
              created_by, internal_comment, last_error, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 1048576, 77, 2, ?, 1, ?, ?, NULL, NULL, ?, ?)',
-        [$userId, $planId, $status, $now, $expiresAt, $token, $now, $userId, $now, $now]
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1048576, 77, 2, ?, ?, 1, ?, ?, NULL, NULL, ?, ?)',
+        [
+            $userId > 0 ? $userId : null,
+            $userId > 0 ? null : 'Stage 14 manual ' . count($subscriptionIds),
+            (int)$profile['id'], $planId, $status, $now, $expiresAt,
+            $token, hash('sha256', $token), $now, $adminId, $now, $now,
+        ]
     );
     $subscriptionId = (int)db()->getInsertId();
     $subscriptionIds[] = $subscriptionId;
@@ -227,23 +245,30 @@ try {
     }
 
     $main = $createSubscription('active', $future, $planId, $adminId, $serverA, $inboundA, 14001, true);
-    $suspended = $createSubscription('suspended', $future, $planId, $adminId, $serverA, $inboundA, 14001, false);
-    $expired = $createSubscription('expired', $past, $planId, $adminId, $serverA, $inboundA, 14001, false);
-    $failed = $createSubscription('active', $future, $planId, $adminId, $serverA, $inboundA, 14001, true);
+    $suspended = $createSubscription('suspended', $future, $planId, 0, $serverA, $inboundA, 14001, false);
+    $expired = $createSubscription('expired', $past, $planId, 0, $serverA, $inboundA, 14001, false);
+    $failed = $createSubscription('active', $future, $planId, 0, $serverA, $inboundA, 14001, true);
 
     $factory = static fn(): ThreeXuiClientInterface => $remote;
     $provisioning = new SubscriptionProvisioningService(
         clientFactory: $factory,
         notificationCallback: static function (): void {}
     );
-    $reconciler = new VpnPlanSubscriptionReconciler(provisioning: $provisioning);
-    $endpoint = new VpnSubscriptionEndpointService();
+    $remoteSync = new RemoteClientSyncService(clientFactory: $factory);
+    $reconciler = new VpnPlanSubscriptionReconciler(
+        provisioning: $provisioning,
+        remoteSync: $remoteSync
+    );
+    $endpoint = new VpnSubscriptionEndpointService(
+        hwidGateway: new SubscriptionHwidGatewayService(clientFactory: $factory)
+    );
+    $deviceHeaders = ['X-HWID' => 'stage14-device-fixture'];
 
     db()->query(
         'UPDATE vpn_v2_subscriptions SET config_updated_at = ? WHERE id = ?',
         [date('Y-m-d H:i:s', time() - 60), $main['subscriptionId']]
     );
-    $before = $endpoint->respond($main['token']);
+    $before = $endpoint->respond($main['token'], requestHeaders: $deviceHeaders);
     $oldEtag = (string)($before->headers['ETag'] ?? '');
     $oldLastModified = (string)($before->headers['Last-Modified'] ?? '');
     $result = $reconciler->reconcileSubscription($main['subscriptionId'], ['authorized' => true]);
@@ -256,7 +281,7 @@ try {
          FROM vpn_v2_subscription_nodes WHERE subscription_id = ? ORDER BY id',
         [$main['subscriptionId']]
     )->get() ?: [];
-    $after = $endpoint->respond($main['token'], 'base64', $oldEtag);
+    $after = $endpoint->respond($main['token'], 'base64', $oldEtag, requestHeaders: $deviceHeaders);
     $assert($before->status === 200 && $before->configCount === 1
         && $result->created === 1 && count($mainNodes) === 2
         && $after->status === 200 && $after->configCount === 2
@@ -299,6 +324,13 @@ try {
     )->getColumn();
     $assert($expiredResult->skipped === 1 && $expiredNodes === 1,
         'Expired subscription received a new connection.');
+    (new PlanReconciliationRepository())->finishSubscription($expired['subscriptionId'], 'active', null);
+    $expiredStatus = (string)db()->query(
+        'SELECT status FROM vpn_v2_subscriptions WHERE id = ?',
+        [$expired['subscriptionId']]
+    )->getColumn();
+    $assert($expiredStatus === 'expired',
+        'Reconciliation completion reactivated an expired subscription.');
 
     $remote->failAdds = true;
     $failedResult = $reconciler->reconcileSubscription($failed['subscriptionId'], ['authorized' => true]);
@@ -413,7 +445,7 @@ try {
     $afterRemovalRevision = (int)db()->query(
         'SELECT revision FROM vpn_v2_subscriptions WHERE id = ?', [$main['subscriptionId']]
     )->getColumn();
-    $afterRemoval = $endpoint->respond($main['token']);
+    $afterRemoval = $endpoint->respond($main['token'], requestHeaders: $deviceHeaders);
     $assert($removal->removed === 1 && $removedNodeStatus === 'deleted'
         && $afterRemovalRevision === $beforeRemovalRevision + 1 && $afterRemoval->configCount === 1
         && $remote->findClient(14002, (string)$mainNodes[1]['client_uuid']) === null,
@@ -430,6 +462,7 @@ try {
             'repeated_run_idempotent',
             'suspended_disabled',
             'expired_skipped',
+            'expired_finish_not_reactivated',
             'unavailable_server_recoverable',
             'failed_node_reused',
             'traffic_selection_absolute_counters',
@@ -445,6 +478,9 @@ try {
         $placeholders = implode(',', array_fill(0, count($subscriptionIds), '?'));
         db()->query("DELETE FROM vpn_v2_events WHERE subscription_id IN ({$placeholders})", $subscriptionIds);
         db()->query("DELETE FROM vpn_v2_subscriptions WHERE id IN ({$placeholders})", $subscriptionIds);
+    }
+    foreach (array_unique($profileIds) as $profileId) {
+        (new VpnProfileRepository())->deleteManualIfUnused((int)$profileId);
     }
     if ($planId > 0) {
         db()->query('DELETE FROM vpn_v2_reconcile_operations WHERE plan_id = ?', [$planId]);

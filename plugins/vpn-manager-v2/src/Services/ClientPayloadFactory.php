@@ -37,6 +37,8 @@ final class ClientPayloadFactory
             'comment' => '',
             'reset' => 0,
             'resetDay' => 0,
+            'resetWeekday' => 0,
+            'resetMax' => 0,
         ];
 
         if ($this->requiresSubId($protocol) && trim((string)($node['client_sub_id'] ?? '')) !== '') {
@@ -60,10 +62,13 @@ final class ClientPayloadFactory
                 unset($expected[$field]);
             }
         }
+        // These fields belong to 3x-ui's automatic traffic-renewal feature.
+        // FIREBALL does not expose that feature, so an ordinary limit/expiry
+        // synchronization must preserve the values configured in the panel.
+        foreach (['reset', 'resetDay', 'resetWeekday', 'resetMax'] as $field) {
+            unset($expected[$field]);
+        }
         $payload = array_replace($remoteClient, $expected);
-        // 3x-ui treats reset as an explicit command. Ordinary edits must always preserve counters.
-        $payload['reset'] = 0;
-        $payload['resetDay'] = 0;
 
         return $payload;
     }

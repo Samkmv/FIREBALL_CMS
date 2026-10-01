@@ -8,7 +8,7 @@ final class SubscriptionConfigRepository
     {
         $rows = db()->query(
             'SELECT id, user_id, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
-                    traffic_used_bytes, device_limit, subscription_token, revision, config_updated_at, created_by,
+                    traffic_used_bytes, device_limit, ip_limit, subscription_token, revision, config_updated_at, created_by,
                     created_at, updated_at
              FROM vpn_v2_subscriptions WHERE subscription_token_hash = ? LIMIT 3',
             [hash('sha256', $token)]

@@ -91,7 +91,10 @@ foreach ($subscriptions as $subscription) {
         ['value' => (string)$subscription['starts_at']],
         ['value' => $expiresDisplay],
         ['html' => htmlSC($nodeText) . '<div class="small text-body-secondary">'
-            . htmlSC($traffic) . ' · ' . (int)$subscription['device_limit'] . '</div>'],
+            . htmlSC($traffic) . ' · '
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_device_limit')) . ': ' . (int)$subscription['device_limit'] . ' · '
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_ip_limit')) . ': ' . (int)($subscription['ip_limit'] ?? 0)
+            . '</div>'],
         ['html' => '<div class="text-end">' . $desktopAction . '</div>'],
     ]];
 

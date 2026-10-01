@@ -102,9 +102,13 @@ $disabledPayload = $factory->build([
 ], $node);
 $assert($disabledPayload['enable'] === false, 'Suspended subscription payload remained enabled.');
 
-$remote = array_replace($disabledPayload, ['reset' => 9, 'up' => 123, 'down' => 456]);
+$remote = array_replace($disabledPayload, [
+    'reset' => 9, 'resetDay' => 0, 'resetWeekday' => 3, 'resetMax' => 4,
+    'up' => 123, 'down' => 456,
+]);
 $merged = $factory->mergeForUpdate($remote, array_replace($disabledPayload, ['totalGB' => 20 * (1024 ** 3)]));
-$assert($merged['reset'] === 0, 'Ordinary update did not force reset=0.');
+$assert($merged['reset'] === 9 && $merged['resetWeekday'] === 3 && $merged['resetMax'] === 4,
+    'Ordinary update overwrote 3x-ui automatic traffic renewal.');
 $assert($merged['up'] === 123 && $merged['down'] === 456, 'Remote counter fields were not preserved in the update payload.');
 $assert($merged['id'] === $node['client_uuid'] && $merged['email'] === $node['client_email'], 'Identity changed during payload merge.');
 

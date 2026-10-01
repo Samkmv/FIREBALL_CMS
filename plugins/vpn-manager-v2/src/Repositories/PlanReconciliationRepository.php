@@ -464,9 +464,23 @@ final class PlanReconciliationRepository
 
     public function finishSubscription(int $subscriptionId, string $originalStatus, ?string $error): void
     {
-        $status = $error === null
-            ? ($originalStatus === 'suspended' ? 'suspended' : 'active')
-            : ($originalStatus === 'suspended' ? 'suspended' : 'partial_sync');
+        $current = db()->query(
+            'SELECT status, expires_at FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
+            [$subscriptionId]
+        )->getOne();
+        if (!is_array($current)) {
+            return;
+        }
+        $currentStatus = (string)($current['status'] ?? $originalStatus);
+        $expiresAt = trim((string)($current['expires_at'] ?? ''));
+        $expired = $expiresAt !== '' && strtotime($expiresAt) !== false && strtotime($expiresAt) <= time();
+        $status = match (true) {
+            in_array($currentStatus, ['deleting', 'delete_failed', 'deleted', 'traffic_exceeded'], true) => $currentStatus,
+            $expired => 'expired',
+            $originalStatus === 'suspended' || $currentStatus === 'suspended' => 'suspended',
+            $error !== null => 'partial_sync',
+            default => 'active',
+        };
         db()->query(
             'UPDATE vpn_v2_subscriptions SET status = ?, last_error = ?, updated_at = ? WHERE id = ?',
             [$status, $error !== null ? mb_substr($error, 0, 1000) : null, date('Y-m-d H:i:s'), $subscriptionId]
@@ -549,13 +563,18 @@ final class PlanReconciliationRepository
         )->get() ?: [];
     }
 
-    public function duplicateDiagnostics(): array
+    public function duplicateDiagnostics(?int $planId = null): array
     {
+        $join = $planId !== null
+            ? ' INNER JOIN vpn_v2_subscriptions sub ON sub.id = node.subscription_id'
+            : '';
+        $where = $planId !== null ? ' WHERE sub.plan_id = ?' : '';
         return db()->query(
-            'SELECT subscription_id, server_id, inbound_id, COUNT(*) AS duplicate_count,
-                    GROUP_CONCAT(id ORDER BY id) AS node_ids
-             FROM vpn_v2_subscription_nodes
-             GROUP BY subscription_id, server_id, inbound_id HAVING COUNT(*) > 1'
+            'SELECT node.subscription_id, node.server_id, node.inbound_id, COUNT(*) AS duplicate_count,
+                    GROUP_CONCAT(node.id ORDER BY node.id) AS node_ids
+             FROM vpn_v2_subscription_nodes node' . $join . $where . '
+             GROUP BY node.subscription_id, node.server_id, node.inbound_id HAVING COUNT(*) > 1',
+            $planId !== null ? [$planId] : []
         )->get() ?: [];
     }
 

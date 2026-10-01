@@ -199,9 +199,9 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
                 continue;
             }
 
-            $id = (string)($client['id'] ?? $client['uuid'] ?? $client['password'] ?? '');
             $email = (string)($client['email'] ?? '');
-            if (($clientId !== '' && hash_equals($id, $clientId)) || ($clientEmail !== '' && hash_equals($email, $clientEmail))) {
+            if (($clientId !== '' && $this->clientCredentialMatches($client, $clientId))
+                || ($clientEmail !== '' && hash_equals($email, $clientEmail))) {
                 return $client;
             }
         }
@@ -809,7 +809,7 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => $this->config->verifySsl,
             CURLOPT_SSL_VERIFYHOST => $this->config->verifySsl ? 2 : 0,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/0.20.0',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/1.4.8',
         ]);
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
             curl_setopt($handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
@@ -924,10 +924,8 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
                 continue;
             }
             foreach ($mapper->clients($inbound) as $candidate) {
-                $remoteId = trim((string)($candidate['id'] ?? $candidate['uuid']
-                    ?? $candidate['password'] ?? ''));
                 $remoteEmail = trim((string)($candidate['email'] ?? ''));
-                if (($clientId !== '' && $remoteId !== '' && hash_equals($clientId, $remoteId))
+                if (($clientId !== '' && $this->clientCredentialMatches($candidate, $clientId))
                     || ($email !== '' && $remoteEmail !== '' && hash_equals($email, $remoteEmail))) {
                     $ids[$inboundId] = true;
                     break;
@@ -936,6 +934,26 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
         }
 
         return array_keys($ids);
+    }
+
+    private function clientCredentialMatches(array $client, string $expected): bool
+    {
+        $expected = trim($expected);
+        if ($expected === '') {
+            return false;
+        }
+
+        // Global client records use a numeric database id, while the actual
+        // protocol credential is stored in uuid or password. Inbound records
+        // may expose the credential directly as id, so accept all three forms.
+        foreach (['uuid', 'password', 'id'] as $field) {
+            $candidate = trim((string)($client[$field] ?? ''));
+            if ($candidate !== '' && hash_equals($candidate, $expected)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

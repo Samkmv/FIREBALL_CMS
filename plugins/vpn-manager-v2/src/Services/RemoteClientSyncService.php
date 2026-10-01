@@ -62,7 +62,6 @@ final class RemoteClientSyncService
         }
         // Confirm every owned field, including HWID stored outside inbound settings.
         $verifier->verify($confirmed, $expected);
-        $verifier->verifyFields($confirmed, $expected, ['reset', 'resetDay']);
 
         return [
             'remote_updated' => $changedFields !== [],
@@ -88,8 +87,13 @@ final class RemoteClientSyncService
             if ($global !== null) {
                 $record = $global['client'];
                 $verifier->assertStableCredential($record, $remote);
-                if (array_key_exists('limitHwid', $record)) {
-                    $remote['limitHwid'] = $record['limitHwid'];
+                // Current 3x-ui keeps these values on the global client record.
+                // The inbound JSON is a projection and may lag behind it.
+                foreach (['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable', 'flow',
+                    'reset', 'resetDay', 'resetWeekday', 'resetMax'] as $field) {
+                    if (array_key_exists($field, $record)) {
+                        $remote[$field] = $record[$field];
+                    }
                 }
             }
         }
@@ -112,7 +116,7 @@ final class RemoteClientSyncService
         $differences = [];
         foreach ($fields as $field) {
             // Do not persist remote strings, identifiers, credentials or metadata in preview.
-            $differences[$field] = in_array($field, ['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable', 'reset', 'resetDay'], true)
+            $differences[$field] = in_array($field, ['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable'], true)
                 ? ['actual' => isset($remote[$field]) ? (int)$remote[$field] : null, 'expected' => (int)$expected[$field]]
                 : ['changed' => true];
         }

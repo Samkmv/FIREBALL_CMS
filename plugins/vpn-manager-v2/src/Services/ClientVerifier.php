@@ -29,7 +29,7 @@ final class ClientVerifier
             static fn(mixed $client): bool => is_array($client)
         ));
         foreach ([
-            ['id', $clientId],
+            ['credential', $clientId],
             ['remote', $remoteClientId],
             ['email', $clientEmail],
             ['sub_id', $clientSubId],
@@ -41,7 +41,7 @@ final class ClientVerifier
             $matches = [];
             foreach ($clients as $client) {
                 $actual = match ($dimension) {
-                    'id' => trim((string)($client['id'] ?? $client['uuid'] ?? $client['password'] ?? '')),
+                    'credential' => $this->credentialMatches($client, $expected) ? $expected : '',
                     'remote' => trim((string)($client['remote_client_id'] ?? $client['clientId'] ?? '')),
                     'email' => trim((string)($client['email'] ?? '')),
                     'sub_id' => trim((string)($client['subId'] ?? $client['subid'] ?? '')),
@@ -64,9 +64,8 @@ final class ClientVerifier
                 continue;
             }
 
-            $remoteId = trim((string)($client['id'] ?? $client['uuid'] ?? $client['password'] ?? ''));
             $remoteEmail = trim((string)($client['email'] ?? ''));
-            if ($clientId !== '' && $remoteId !== '' && hash_equals($remoteId, $clientId)
+            if ($clientId !== '' && $this->credentialMatches($client, $clientId)
                 && $clientEmail !== '' && $remoteEmail !== '' && hash_equals($remoteEmail, $clientEmail)) {
                 return $client;
             }
@@ -78,8 +77,6 @@ final class ClientVerifier
     public function verify(array $remoteClient, array $expectedPayload): void
     {
         $this->assertIdentity($remoteClient, $expectedPayload);
-        $expectedId = trim((string)($expectedPayload['id'] ?? $expectedPayload['password'] ?? ''));
-        $remoteId = trim((string)($remoteClient['id'] ?? $remoteClient['uuid'] ?? $remoteClient['password'] ?? ''));
         $expectedEmail = trim((string)($expectedPayload['email'] ?? ''));
         $remoteEmail = trim((string)($remoteClient['email'] ?? ''));
 
@@ -93,10 +90,7 @@ final class ClientVerifier
             );
         }
 
-        $matches = $expectedId !== ''
-            && $remoteId !== ''
-            && hash_equals($expectedId, $remoteId)
-            && $expectedEmail !== ''
+        $matches = $expectedEmail !== ''
             && $remoteEmail !== ''
             && hash_equals($expectedEmail, $remoteEmail)
             && $this->enabled($remoteClient['enable'] ?? false) === $this->enabled($expectedPayload['enable'] ?? false)
@@ -116,12 +110,10 @@ final class ClientVerifier
 
     public function assertIdentity(array $remoteClient, array $expectedPayload): void
     {
-        $expectedId = trim((string)($expectedPayload['id'] ?? $expectedPayload['password'] ?? ''));
-        $remoteId = trim((string)($remoteClient['id'] ?? $remoteClient['uuid'] ?? $remoteClient['password'] ?? ''));
+        $this->assertStableCredential($remoteClient, $expectedPayload);
         $expectedEmail = trim((string)($expectedPayload['email'] ?? ''));
         $remoteEmail = trim((string)($remoteClient['email'] ?? ''));
-        if ($expectedId === '' || $remoteId === '' || !hash_equals($expectedId, $remoteId)
-            || $expectedEmail === '' || $remoteEmail === '' || !hash_equals($expectedEmail, $remoteEmail)) {
+        if ($expectedEmail === '' || $remoteEmail === '' || !hash_equals($expectedEmail, $remoteEmail)) {
             throw new ClientVerificationException(
                 \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_identity_changed')
             );
@@ -130,9 +122,8 @@ final class ClientVerifier
 
     public function assertStableCredential(array $remoteClient, array $expectedPayload): void
     {
-        $expectedId = trim((string)($expectedPayload['id'] ?? $expectedPayload['password'] ?? ''));
-        $remoteId = trim((string)($remoteClient['id'] ?? $remoteClient['uuid'] ?? $remoteClient['password'] ?? ''));
-        if ($expectedId === '' || $remoteId === '' || !hash_equals($expectedId, $remoteId)) {
+        $expectedId = $this->expectedCredential($expectedPayload);
+        if ($expectedId === '' || !$this->credentialMatches($remoteClient, $expectedId)) {
             throw new ClientVerificationException(
                 \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_identity_changed')
             );
@@ -142,7 +133,7 @@ final class ClientVerifier
     public function changedFields(array $remoteClient, array $expectedPayload): array
     {
         $changed = [];
-        foreach (['email', 'expiryTime', 'totalGB', 'limitHwid', 'limitIp', 'enable', 'flow', 'reset', 'resetDay'] as $field) {
+        foreach (['email', 'expiryTime', 'totalGB', 'limitHwid', 'limitIp', 'enable', 'flow'] as $field) {
             if (!array_key_exists($field, $expectedPayload)) {
                 continue;
             }
@@ -176,7 +167,8 @@ final class ClientVerifier
                 === ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow((string)$expected),
             'enable' => $this->enabled($actual) === $this->enabled($expected),
             'limitHwid' => $actual !== null && (int)$actual === (int)$expected,
-            'expiryTime', 'totalGB', 'limitIp', 'reset', 'resetDay' => (int)$actual === (int)$expected,
+            'expiryTime', 'totalGB', 'limitIp', 'reset', 'resetDay', 'resetWeekday', 'resetMax'
+                => (int)$actual === (int)$expected,
             default => (string)$actual === (string)$expected,
         };
     }
@@ -191,5 +183,39 @@ final class ClientVerifier
         }
 
         return filter_var($value, FILTER_VALIDATE_BOOL) === true;
+    }
+
+    private function expectedCredential(array $payload): string
+    {
+        $password = trim((string)($payload['password'] ?? ''));
+        if ($password !== '') {
+            return $password;
+        }
+
+        foreach (['uuid', 'id'] as $field) {
+            $credential = trim((string)($payload[$field] ?? ''));
+            if ($credential !== '') {
+                return $credential;
+            }
+        }
+
+        return '';
+    }
+
+    private function credentialMatches(array $client, string $expected): bool
+    {
+        $expected = trim($expected);
+        if ($expected === '') {
+            return false;
+        }
+
+        foreach (['uuid', 'password', 'id'] as $field) {
+            $candidate = trim((string)($client[$field] ?? ''));
+            if ($candidate !== '' && hash_equals($candidate, $expected)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

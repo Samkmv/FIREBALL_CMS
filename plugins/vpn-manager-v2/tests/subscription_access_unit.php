@@ -49,10 +49,13 @@ $assert($lifetime['enable'] === true && $lifetime['expiryTime'] === 0, 'Lifetime
 $renewed = $factory->build($active, $node);
 $assert($renewed['enable'] === true && $renewed['expiryTime'] === ($now + 3600) * 1000,
     'Renewed subscription did not receive a finite future expiration.');
-$updated = $factory->mergeForUpdate(['reset' => 1, 'resetDay' => 15, 'limitHwid' => 2], $renewed);
-$assert($updated['reset'] === 0 && $updated['resetDay'] === 0
+$updated = $factory->mergeForUpdate([
+    'reset' => 1, 'resetDay' => 15, 'resetWeekday' => 0, 'resetMax' => 6, 'limitHwid' => 2,
+], $renewed);
+$assert($updated['reset'] === 1 && $updated['resetDay'] === 15
+    && $updated['resetWeekday'] === 0 && $updated['resetMax'] === 6
     && $updated['limitHwid'] === 2 && $updated['limitIp'] === 0,
-    'Ordinary synchronization changed counters or did not apply the CMS HWID/IP limits.');
+    'Ordinary synchronization changed 3x-ui auto-renewal or did not apply the CMS HWID/IP limits.');
 
 echo json_encode(['status' => 'ok', 'cases' => ['expiration_boundary', 'stale_enable', 'suspension',
     'traffic_limit', 'malformed_expiration', 'lifetime', 'renewal', 'reset_and_device_limit_preserved']]), PHP_EOL;

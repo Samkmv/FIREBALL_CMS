@@ -324,7 +324,11 @@ foreach ($nodes as $node) {
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_period')) ?></dt>
         <dd class="col-sm-9 mb-0"><?= htmlSC((string)$subscription['starts_at']) ?> — <?= htmlSC((string)($subscription['expires_at'] ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_lifetime_short'))) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_limits')) ?></dt>
-        <dd class="col-sm-9 mb-0"><?= htmlSC(TrafficFormatter::limit(isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null)) ?> · <?= (int)$subscription['device_limit'] ?> IP</dd>
+        <dd class="col-sm-9 mb-0">
+            <?= htmlSC(TrafficFormatter::limit(isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null)) ?> ·
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_device_limit')) ?>: <?= (int)$subscription['device_limit'] ?> ·
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_ip_limit')) ?>: <?= (int)($subscription['ip_limit'] ?? 0) ?>
+        </dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_token_preview')) ?></dt>
         <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)$subscription['token_preview']) ?></code></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_revision')) ?></dt>

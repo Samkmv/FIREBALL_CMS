@@ -1,6 +1,6 @@
 # VPN Manager V2
 
-Current implementation: version 0.21, bidirectional CMS/3x-ui reconciliation, dependent subscriptions and editable ordering for native and external configurations. The historical stage notes below remain as an implementation record.
+Current implementation: version 1.4.8, bidirectional CMS/3x-ui reconciliation tested against the 3x-ui 3.8.5 client and HWID API, dependent subscriptions and editable ordering for native and external configurations. The historical stage notes below remain as an implementation record.
 
 Version 0.20 supports both the current first-class `/panel/api/clients/*` API and
 the historical inbound-scoped client API. Password sessions obtain the panel's

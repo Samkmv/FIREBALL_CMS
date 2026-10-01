@@ -216,7 +216,7 @@ final class SubscriptionRepository
     {
         return db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                    s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
@@ -227,7 +227,7 @@ final class SubscriptionRepository
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
              WHERE s.status <> 'deleted'
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                      s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                      s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                       s.manual_customer_name, u.name, u.login, u.email, p.name
              ORDER BY s.created_at DESC, s.id DESC"
@@ -294,7 +294,7 @@ final class SubscriptionRepository
 
         return db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                    s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
@@ -305,7 +305,7 @@ final class SubscriptionRepository
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = s.id
              WHERE s.status <> 'deleted'{$searchSql}
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                      s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                      s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                       s.manual_customer_name, u.name, u.login, u.email, p.name
              ORDER BY s.created_at DESC, s.id DESC
@@ -318,7 +318,7 @@ final class SubscriptionRepository
     {
         $row = db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                    s.traffic_limit_bytes, s.device_limit, s.revision, s.config_updated_at,
+                    s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     CONCAT(LEFT(s.subscription_token, 4), '…', RIGHT(s.subscription_token, 4)) AS token_preview,
                     COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name

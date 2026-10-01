@@ -43,6 +43,10 @@ foreach (['modern', 'legacy', 'unavailable', 'malformed'] as $mode) {
                     'enable' => true,
                     'expiryTime' => 0,
                     'limitHwid' => 3,
+                    'reset' => 30,
+                    'resetDay' => 0,
+                    'resetWeekday' => 0,
+                    'resetMax' => 6,
                     'adTag' => 'preserved',
                     'allowedIPs' => '10.0.0.2/32,10.0.0.3/32',
                 ])]]);
@@ -69,6 +73,7 @@ foreach (['modern', 'legacy', 'unavailable', 'malformed'] as $mode) {
     } else {
         $assert($write['encoding'] === 'json' && str_contains($write['url'], '?inboundIds=11')
             && $write['payload']['limitHwid'] === 3 && $write['payload']['adTag'] === 'preserved'
+            && $write['payload']['reset'] === 0 && $write['payload']['resetMax'] === 6
             && $write['payload']['enable'] === false && $write['payload']['expiryTime'] === $client['expiryTime']
             && ($write['payload']['allowedIPs'] ?? null) === ['10.0.0.2/32', '10.0.0.3/32'],
             'Current API lost fields or allowedIPs was not normalized to []string.');

@@ -143,6 +143,10 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                                     FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_device_limit'),
                                     (int)$selected['device_limit']
                                 )) ?></div>
+                                <div class="small text-body-secondary"><?= htmlSC(sprintf(
+                                    FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_ip_limit'),
+                                    (int)($selected['ip_limit'] ?? 0)
+                                )) ?></div>
                             </div>
                         </div>
                     </div>

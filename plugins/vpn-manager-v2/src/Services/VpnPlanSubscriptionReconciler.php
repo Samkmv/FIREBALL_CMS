@@ -36,7 +36,7 @@ final class VpnPlanSubscriptionReconciler
         }
 
         $checked = $missing = $obsolete = $matching = 0;
-        $parameterCounts = array_fill_keys(['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable', 'flow', 'email', 'reset', 'resetDay'], 0);
+        $parameterCounts = array_fill_keys(['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable', 'flow', 'email'], 0);
         $details = $errors = [];
         foreach ($repository->eligibleSubscriptions($planId) as $subscription) {
             $checked++;
@@ -100,7 +100,7 @@ final class VpnPlanSubscriptionReconciler
                 $disabledInbounds[(int)$planNode['inbound_id']] = (string)$planNode['inbound_name'];
             }
         }
-        $conflicts = $repository->duplicateDiagnostics();
+        $conflicts = $repository->duplicateDiagnostics($planId);
         $this->events()->logEvent('plan_reconcile_previewed', null, null, null, null, $this->adminId(), [
             'plan_id' => $planId,
             'processed_count' => $checked,

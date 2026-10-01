@@ -24,7 +24,7 @@ final class ProfileVpnRepository
 
         return db()->query(
             'SELECT sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
-                    sub.traffic_limit_bytes, sub.device_limit, sub.revision,
+                    sub.traffic_limit_bytes, sub.device_limit, sub.ip_limit, sub.revision,
                     p.name AS plan_name, p.description AS plan_description,
                     COUNT(CASE WHEN n.status IN (\'active\', \'disabled\') THEN 1 END) AS connection_count,
                     COUNT(CASE WHEN n.status = \'creating\' THEN 1 END) AS creating_count,
@@ -47,7 +47,7 @@ final class ProfileVpnRepository
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
              WHERE sub.user_id = ? AND sub.status <> \'deleted\'
              GROUP BY sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
-                      sub.traffic_limit_bytes, sub.device_limit, sub.revision,
+                      sub.traffic_limit_bytes, sub.device_limit, sub.ip_limit, sub.revision,
                       p.name, p.description
              ORDER BY sub.id DESC',
             [$userId]
@@ -62,7 +62,7 @@ final class ProfileVpnRepository
 
         $row = db()->query(
             'SELECT sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
-                    sub.traffic_limit_bytes, sub.device_limit, sub.revision,
+                    sub.traffic_limit_bytes, sub.device_limit, sub.ip_limit, sub.revision,
                     p.name AS plan_name, p.description AS plan_description,
                     COUNT(CASE WHEN n.status IN (\'active\', \'disabled\') THEN 1 END) AS connection_count,
                     COUNT(CASE WHEN n.status = \'creating\' THEN 1 END) AS creating_count,
@@ -85,7 +85,7 @@ final class ProfileVpnRepository
              LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
              WHERE sub.id = ? AND sub.user_id = ? AND sub.status <> \'deleted\'
              GROUP BY sub.id, sub.user_id, sub.plan_id, sub.status, sub.starts_at, sub.expires_at,
-                      sub.traffic_limit_bytes, sub.device_limit, sub.revision,
+                      sub.traffic_limit_bytes, sub.device_limit, sub.ip_limit, sub.revision,
                       p.name, p.description
              LIMIT 1',
             [$subscriptionId, $userId]
