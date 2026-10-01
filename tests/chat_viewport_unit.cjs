@@ -36,7 +36,9 @@ function fixture({standalone = true, width = 390, height = 844, visible = 784, h
         const top = parseFloat(properties.get('--chat-mobile-viewport-top'));
         const height = parseFloat(properties.get('--chat-mobile-viewport-height'));
         const mobile = context.window.innerWidth < 768;
-        const visibleBottom = mobile ? context.window.visualViewport.offsetTop + context.window.visualViewport.height : context.window.innerHeight;
+        const keyboard = root.classList.contains('chat-keyboard-visible');
+        const visibleBottom = mobile && (!standalone || keyboard)
+            ? context.window.visualViewport.offsetTop + context.window.visualViewport.height : context.window.innerHeight;
         check(top + height === visibleBottom, 'Composer bottom follows visible viewport, not oversized layout height');
         check(height >= 0, 'Non-negative usable chat height');
     };
@@ -46,7 +48,7 @@ for (const standalone of [true, false]) {
     const test = fixture({standalone});
     const viewport = test.context.window.visualViewport;
     test.sync(false);
-    check(parseFloat(test.properties.get('--chat-mobile-viewport-height')) === 684, 'Initial short visual viewport is respected');
+    check(parseFloat(test.properties.get('--chat-mobile-viewport-height')) === (standalone ? 744 : 684), 'Closed PWA uses full native extent; browser keeps chrome inset');
     check(!test.root.classList.contains('chat-keyboard-visible'), 'Browser chrome alone is not a keyboard');
     viewport.height = 400;
     test.sync(true);
@@ -65,8 +67,8 @@ for (const standalone of [true, false]) {
     viewport.offsetTop = 20;
     viewport.height = 764;
     test.sync(false);
-    check(test.properties.get('--chat-visual-viewport-top') === '20px', 'Header follows Safari viewport offset');
-    check(test.properties.get('--chat-mobile-viewport-top') === '120px', 'Header and chat use the same coordinate system');
+    check(test.properties.get('--chat-visual-viewport-top') === (standalone ? '0px' : '20px'), 'Closed PWA discards stale offset; browser follows visual viewport');
+    check(test.properties.get('--chat-mobile-viewport-top') === (standalone ? '100px' : '120px'), 'Header and chat use the same coordinate system');
     viewport.offsetTop = 0;
     viewport.height = 844;
     test.sync(false);

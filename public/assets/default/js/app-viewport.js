@@ -3,8 +3,8 @@
     if (window.FireballAppViewport) return;
 
     // Only fullscreen applications opt in. Ordinary public pages keep their
-    // document scroll. Fix the body as well as sizing the chat/editor: iOS
-    // can pan the native root view even when it has overflow:hidden.
+    // document scroll. The application is fixed, not body: nesting fixed
+    // chrome inside a fixed body creates a second viewport/clip layer on iOS.
     const owners = new Set();
     let savedStyles = [];
     let touch = null;
@@ -18,7 +18,7 @@
         if (owners.has(owner)) return;
         if (!owners.size) {
             lockStyles(document.documentElement, {height: '100%', overflow: 'hidden', 'overscroll-behavior': 'none', 'scroll-behavior': 'auto'});
-            lockStyles(document.body, {position: 'fixed', inset: '0', width: '100%', height: '100%', 'min-height': '0', overflow: 'hidden', 'overscroll-behavior': 'none'});
+            lockStyles(document.body, {height: '100%', 'min-height': '0', overflow: 'hidden', 'overscroll-behavior': 'none'});
             document.addEventListener('touchstart', startTouch, {passive: true});
             document.addEventListener('touchmove', moveTouch, {passive: false});
         }
@@ -61,6 +61,27 @@
     };
 
     window.FireballAppViewport = {
+        inspect() {
+            const geometry = selector => {
+                const element = document.querySelector(selector);
+                if (!element) return null;
+                const rect = element.getBoundingClientRect();
+                const style = window.getComputedStyle(element);
+                return {top: rect.top, bottom: rect.bottom, height: rect.height, position: style.position, transform: style.transform, visibility: style.visibility, overflow: style.overflow};
+            };
+            const viewport = window.visualViewport;
+            return {
+                userAgent: window.navigator?.userAgent,
+                layout: {height: window.innerHeight, clientHeight: document.documentElement.clientHeight, scrollY: window.scrollY},
+                visual: viewport ? {height: viewport.height, offsetTop: viewport.offsetTop, pageTop: viewport.pageTop, scale: viewport.scale} : null,
+                applications: [...owners].map(owner => owner.metrics),
+                header: geometry('body > header'),
+                headerContent: geometry('body > header > .container'),
+                chat: geometry('.chat-page'),
+                composer: geometry('.chat-thread__composer'),
+                editor: geometry('[data-editor-workspace]')
+            };
+        },
         create({media = '(max-width: 767.98px)', observe = true, onChange = () => {}} = {}) {
             const query = window.matchMedia(media);
             let referenceHeight = 0;
@@ -70,6 +91,19 @@
             let destroyed = false;
             const subscriptions = [];
             const owner = {};
+            let extentProbe = null;
+            let diagnosticButton = null;
+            if (window.location?.search && new URLSearchParams(window.location.search).get('viewport_debug') === '1') {
+                diagnosticButton = document.createElement('button');
+                diagnosticButton.type = 'button';
+                diagnosticButton.textContent = 'Viewport';
+                diagnosticButton.style.cssText = 'position:fixed;right:8px;top:env(safe-area-inset-top,0px);z-index:1055;font:12px monospace;padding:8px;border-radius:8px';
+                diagnosticButton.addEventListener('click', () => {
+                    // Geometry only: no account, messages or form field values.
+                    window.prompt('Viewport diagnostics', JSON.stringify(window.FireballAppViewport.inspect()));
+                });
+                document.body.appendChild(diagnosticButton);
+            }
             const sync = focused => {
                 if (destroyed || !document.body) return;
                 const root = document.documentElement;
@@ -81,8 +115,10 @@
                 if (mobile && viewport && Math.abs((Number(viewport.scale) || 1) - 1) > .02) return;
                 const width = Number(window.innerWidth) || root.clientWidth;
                 const layoutHeight = Number(window.innerHeight) || root.clientHeight;
-                const height = mobile && Number(viewport?.height) > 0 ? Number(viewport.height) : layoutHeight;
-                const top = mobile ? Math.max(0, Number(viewport?.offsetTop) || 0) : 0;
+                const visualHeight = mobile && Number(viewport?.height) > 0 ? Number(viewport.height) : layoutHeight;
+                const standalone = root.classList?.contains('pwa-standalone')
+                    || window.navigator?.standalone === true
+                    || window.matchMedia('(display-mode: standalone)').matches;
                 const active = document.activeElement;
                 const editable = Boolean(focused || (active && (active.isContentEditable || active.matches?.('input, textarea, select'))));
                 if (referenceWidth && Math.abs(referenceWidth - width) > 40) {
@@ -90,14 +126,32 @@
                     keyboardWasVisible = false;
                 }
                 referenceWidth = width;
-                if (!referenceHeight || (!editable && !keyboardWasVisible)) referenceHeight = height;
-                else referenceHeight = Math.max(referenceHeight, height);
+                if (!referenceHeight || (!editable && !keyboardWasVisible)) referenceHeight = visualHeight;
+                else referenceHeight = Math.max(referenceHeight, visualHeight);
                 // offsetTop is a coordinate, not usable height. Adding it to
                 // height disguises a keyboard when Safari pans the viewport.
                 const keyboard = mobile && (editable || keyboardWasVisible)
-                    && referenceHeight - height > Math.max(80, referenceHeight * .12);
+                    && referenceHeight - visualHeight > Math.max(80, referenceHeight * .12);
                 keyboardWasVisible = keyboard;
-                onChange({mobile, height, top, keyboard});
+                let height = visualHeight;
+                let top = mobile ? Math.max(0, Number(viewport?.offsetTop) || 0) : 0;
+                if (mobile && standalone && !keyboard) {
+                    // WebKit 254868: a closed PWA visualViewport can exclude
+                    // safe-area while fixed layout covers it. Measure CSS's
+                    // native extent instead of adding guessed inset pixels.
+                    if (!extentProbe && document.createElement) {
+                        extentProbe = document.createElement('div');
+                        extentProbe.setAttribute('aria-hidden', 'true');
+                        extentProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100vh;visibility:hidden;pointer-events:none;contain:strict';
+                        document.body.appendChild(extentProbe);
+                    }
+                    height = Number(extentProbe?.getBoundingClientRect().height) || layoutHeight;
+                    // offsetTop can remain stale after iOS dismisses keyboard.
+                    // Native closed-screen layout must start at its own origin.
+                    top = 0;
+                }
+                owner.metrics = {mobile, standalone: Boolean(standalone), height, top, visualHeight, keyboard};
+                onChange(owner.metrics);
             };
             const schedule = () => {
                 if (!frame && !destroyed) frame = window.requestAnimationFrame(() => {frame = 0; sync();});
@@ -124,6 +178,8 @@
                     destroyed = true;
                     window.cancelAnimationFrame(frame);
                     subscriptions.forEach(remove => remove());
+                    extentProbe?.remove();
+                    diagnosticButton?.remove();
                     unlock(owner);
                 }
             };

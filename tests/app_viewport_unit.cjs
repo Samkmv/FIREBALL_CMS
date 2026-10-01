@@ -33,7 +33,7 @@ function fixture() {
     let sequence = 0;
     const window = Object.assign(target(), {
         innerHeight: 844, innerWidth: 390, visualViewport: viewport,
-        matchMedia(media) {return Object.defineProperty(target(), 'matches', {get() {return window.innerWidth < (media.includes('991') ? 992 : 768);}});},
+        matchMedia(media) {return Object.defineProperty(target(), 'matches', {get() {return !media.includes('display-mode') && window.innerWidth < (media.includes('991') ? 992 : 768);}});},
         requestAnimationFrame(callback) {frames.set(++sequence, callback); return sequence;},
         cancelAnimationFrame(id) {frames.delete(id);},
         getComputedStyle: element => ({overflowY: element.overflowY || 'visible'}),
@@ -49,7 +49,7 @@ function fixture() {
 }
 const test = fixture();
 test.controller.sync();
-assert.equal(test.body.style.getPropertyValue('position'), 'fixed');
+assert.equal(test.body.style.getPropertyValue('position'), 'relative', 'Document is not a second fixed viewport');
 assert.equal(test.body.style.getPropertyValue('min-height'), '0', 'PWA 100svh minimum cannot expand the root');
 test.document.activeElement = {matches: () => true};
 test.viewport.height = 400;
@@ -125,7 +125,24 @@ const second = multiple.window.FireballAppViewport.create({observe: false});
 multiple.controller.sync();
 second.sync();
 multiple.controller.destroy();
-assert.equal(multiple.body.style.getPropertyValue('position'), 'fixed', 'One owner cannot release another shell');
+assert.equal(multiple.body.style.getPropertyValue('overflow'), 'hidden', 'One owner cannot release another shell');
 second.destroy();
 assert.equal(multiple.body.style.getPropertyValue('position'), 'relative');
+const pwa = fixture();
+pwa.window.navigator = {standalone: true};
+pwa.viewport.offsetTop = 20;
+pwa.controller.sync();
+assert.equal(pwa.changes.at(-1).height, 844, 'Closed PWA cannot reserve a second 60px safe-area gap');
+assert.equal(pwa.changes.at(-1).top, 0, 'Closed PWA cannot keep a stale keyboard offset');
+pwa.document.activeElement = {matches: () => true};
+pwa.viewport.height = 400;
+pwa.viewport.offsetTop = 384;
+pwa.controller.sync();
+assert.equal(pwa.changes.at(-1).height, 400, 'PWA keeps visual height above keyboard, not 100vh');
+assert.equal(pwa.changes.at(-1).top, 384);
+pwa.viewport.height = 784;
+pwa.viewport.offsetTop = 20;
+pwa.controller.sync();
+assert.equal(pwa.changes.at(-1).height, 844, 'Full extent recovers even if input stays focused');
+assert.equal(pwa.changes.at(-1).top, 0);
 console.log('PASS shared app viewport: keyboard/pan/blur recovery, touch boundaries, zoom, event coalescing, desktop and cleanup');
