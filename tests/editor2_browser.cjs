@@ -23,6 +23,7 @@ const fixture = execFileSync(process.env.FIREBALL_PHP || 'php', [path.join(__dir
             await page.goto('https://editor.test/');
             await page.evaluate(() => localStorage.clear());
             await page.addStyleTag({ path: path.join(root, 'public/assets/default/css/block-editor.css') });
+            await page.addScriptTag({ path: path.join(root, 'public/assets/default/js/app-viewport.js') });
             for (const file of ['registry', 'sanitizer', 'importer', 'history', 'editor']) {
                 await page.addScriptTag({ path: path.join(root, 'public/assets/default/js/editor2', file + '.js') });
             }
@@ -88,13 +89,18 @@ const fixture = execFileSync(process.env.FIREBALL_PHP || 'php', [path.join(__dir
             await page.setViewportSize(size);
             await page.goto('https://editor.test/');
             await page.evaluate(() => {
+                localStorage.clear(); // Geometry tests must not open recovery from earlier edit tests.
                 document.documentElement.classList.add('pwa-standalone');
                 document.body.classList.add('fb-admin-body');
+                Object.defineProperty(window, 'visualViewport', {configurable: true, value: Object.assign(new EventTarget(), {
+                    height: innerHeight, width: innerWidth, offsetTop: 0, offsetLeft: 0, scale: 1
+                })});
             });
             for (const file of ['theme.min.css', 'style.css', 'admin-ui.css', 'block-editor.css']) {
                 await page.addStyleTag({ path: path.join(root, 'public/assets/default/css', file) });
             }
             await page.addStyleTag({ path: path.join(root, 'themes/default/assets/css/block-editor.css') });
+            await page.addScriptTag({ path: path.join(root, 'public/assets/default/js/app-viewport.js') });
             for (const file of ['registry', 'sanitizer', 'importer', 'history', 'editor']) {
                 await page.addScriptTag({ path: path.join(root, 'public/assets/default/js/editor2', file + '.js') });
             }
@@ -112,8 +118,26 @@ const fixture = execFileSync(process.env.FIREBALL_PHP || 'php', [path.join(__dir
             assert.ok(Math.abs(await bottom('[data-editor-inspector-panel]') - size.height) < 1, 'Sheet reaches same bottom edge');
             const sheet = await page.locator('[data-editor-inspector-panel]').boundingBox();
             assert.ok(sheet.y >= 0, 'Sheet stays inside viewport in landscape too');
+            const keyboardHeight = Math.round(size.height * .55);
+            await page.locator('[data-editor-setting="settings.marginTop"]').focus();
+            await page.evaluate(height => {
+                visualViewport.height = height;
+                visualViewport.offsetTop = 80;
+                visualViewport.dispatchEvent(new Event('resize'));
+                visualViewport.dispatchEvent(new Event('scroll'));
+            }, keyboardHeight);
+            await page.waitForTimeout(50);
+            assert.ok(Math.abs(await bottom('[data-editor-workspace]') - (80 + keyboardHeight)) < 1, 'Workspace follows keyboard viewport even with Safari pan');
+            assert.ok(Math.abs(await bottom('[data-editor-inspector-panel]') - (80 + keyboardHeight)) < 1, 'Sheet stays above keyboard');
+            assert.equal(await page.locator('[data-editor-workspace]').evaluate(element => element.style.getPropertyValue('--fb-editor-safe-bottom')), '0px', 'Keyboard does not reserve home-indicator inset twice');
             await page.evaluate(() => FireballEditor2.getEditors()[0].closeMobilePanels());
+            await page.evaluate(() => {
+                visualViewport.height = innerHeight;
+                visualViewport.offsetTop = 0;
+                visualViewport.dispatchEvent(new Event('resize'));
+            });
             await page.waitForTimeout(250);
+            assert.ok(Math.abs(await bottom('[data-editor-workspace]') - size.height) < 1, 'Workspace recovers full height after keyboard closes');
             assert.equal(await page.locator('.fb-editor-workspace__document').evaluate(element => element.scrollTop), scrollBefore, 'Closing sheet preserves document scroll');
             assert.deepEqual(errors, []);
             console.log('PASS PWA workspace/sheet bottom edges, orientation and scroll restoration at ' + size.width + 'x' + size.height);

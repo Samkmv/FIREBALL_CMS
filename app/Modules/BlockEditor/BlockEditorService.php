@@ -18,6 +18,7 @@ final class BlockEditorService
     public static function scriptAssets(): array
     {
         $editorAssets = [
+            '/assets/default/js/app-viewport.js',
             '/assets/default/js/editor2/registry.js',
             '/assets/default/js/editor2/sanitizer.js',
             '/assets/default/js/editor2/importer.js',

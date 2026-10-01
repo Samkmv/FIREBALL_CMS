@@ -19,6 +19,7 @@ final class PluginController extends BaseController
         return view('admin/plugins', [
             'title' => \FBL\Language::get('admin_plugins_title'),
             'plugins' => $plugins,
+            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/plugin-updates.js'), WWW . '/assets/default/js/plugin-updates.js')],
         ]);
     }
 
@@ -143,6 +144,10 @@ final class PluginController extends BaseController
         $slug = (string)request()->post('slug', '');
         try {
             $result = (new PluginUpdateService())->update($slug, (array)get_user());
+            if (request()->isAjax()) {
+                response()->json(['status' => true, 'result' => $result]);
+                return;
+            }
             session()->setFlash(
                 ($result['status'] ?? '') === 'source_older'
                     ? 'warning'
@@ -151,10 +156,39 @@ final class PluginController extends BaseController
             );
         } catch (Throwable $exception) {
             log_error_details('Plugin update failed', ['Plugin' => $slug], $exception);
+            if (request()->isAjax()) {
+                response()->json(['status' => false, 'message' => $exception->getMessage()], 500);
+                return;
+            }
             session()->setFlash('error', $exception->getMessage());
         }
 
         $this->redirectToPlugin($slug);
+    }
+
+    public function updateAll(): void
+    {
+        $this->requirePluginUpdatePermission();
+        try {
+            $result = (new PluginUpdateService())->updateAll((array)get_user());
+            $message = str_replace(
+                [':updated', ':skipped', ':failed'],
+                [(string)$result['updated'], (string)$result['skipped'], (string)$result['failed']],
+                \FBL\Language::get('admin_plugin_updates_bulk_result')
+            );
+            if ($result['failures'] !== []) {
+                $message .= ' ' . implode('; ', array_map(
+                    static fn(string $slug, string $error): string => $slug . ': ' . $error,
+                    array_keys($result['failures']), array_values($result['failures'])
+                ));
+            }
+            session()->setFlash($result['failed'] > 0 ? 'warning' : ($result['updated'] > 0 ? 'success' : 'info'), $message);
+        } catch (Throwable $exception) {
+            log_error_details('Plugin bulk update failed', [], $exception);
+            session()->setFlash('error', $exception->getMessage());
+        }
+
+        response()->redirect(base_href('/admin/plugins'));
     }
 
     private function requirePluginUpdatePermission(): void

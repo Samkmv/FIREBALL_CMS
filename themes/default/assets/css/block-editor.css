@@ -2954,17 +2954,17 @@
     background: rgba(220, 53, 69, 1) !important;
 }
 
-/* Match the standalone workspace geometry in the served Editor 2 stylesheet.
-   Do not reintroduce the inset-sized fixed viewport override here. */
+/* Match the measured mobile workspace in the served Editor 2 stylesheet. */
 @media (max-width: 991.98px) {
-    html.pwa-standalone .fb-editor-workspace {
+    .fb-editor-workspace {
+        top: var(--fb-editor-viewport-top, 0px);
         bottom: auto;
         height: 100vh;
-        height: 100lvh;
+        height: var(--fb-editor-viewport-height, 100dvh);
         min-height: 0;
     }
 
-    html.pwa-standalone .fb-editor-workspace__inspector-panel {
+    .fb-editor-workspace__inspector-panel {
         position: absolute;
         max-height: min(calc(100% - max(.75rem, env(safe-area-inset-top, 0px))), 720px);
     }

@@ -1,6 +1,6 @@
 'use strict';
 // Offline geometry regression: real chat styles, no login or network traffic.
-const { chromium } = require(process.env.FIREBALL_PLAYWRIGHT_MODULE || 'playwright');
+const { chromium, webkit } = require(process.env.FIREBALL_PLAYWRIGHT_MODULE || 'playwright');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -23,28 +23,34 @@ const fixture = `<!doctype html><html class="pwa-standalone chat-mobile-fullscre
     <div class="chat-thread__composer"><div class="chat-composer"><input placeholder="Message"></div></div>
     </div></div></div></div></main></body></html>`;
 (async () => {
-    const browser = await chromium.launch({ headless: true });
+    const browser = await (process.env.FIREBALL_BROWSER === 'webkit' ? webkit : chromium).launch({ headless: true });
     try {
         const page = await browser.newPage();
         for (const theme of ['light', 'dark']) for (const size of [{width:390,height:844}, {width:320,height:568}]) {
             await page.setViewportSize(size);
+            await page.goto('about:blank'); // setContent alone preserves previous shell globals.
             await page.setContent(fixture);
             await page.evaluate(theme => {
                 document.documentElement.setAttribute('data-bs-theme', theme);
-                document.documentElement.style.setProperty('--chat-mobile-viewport-top', '100px');
-                // Model WebKit reporting a shorter layout viewport with keyboard closed.
-                document.documentElement.style.setProperty('--chat-mobile-viewport-height', (innerHeight - 160) + 'px');
+                // Model visualViewport being 60px shorter than the layout viewport.
+                Object.defineProperty(window, 'visualViewport', {configurable: true, value: Object.assign(new EventTarget(), {
+                    height: innerHeight - 60, offsetTop: 0, scale: 1
+                })});
             }, theme);
             for (const file of ['theme.min.css', 'style.css']) {
                 await page.addStyleTag({ path: path.join(root, 'public/assets/default/css', file) });
             }
             await page.addStyleTag({ path: path.join(root, 'themes/default/assets/css/style.css') });
             await page.addStyleTag({ content: inline });
+            for (const file of ['app-viewport.js', 'chat-viewport.js']) {
+                await page.addScriptTag({path: path.join(root, 'public/assets/default/js', file)});
+            }
+            await page.evaluate(() => FireballChatViewport.sync(false));
             const composerBottom = async () => {
                 const box = await page.locator('.chat-thread__composer').boundingBox();
                 return box.y + box.height;
             };
-            assert.ok(Math.abs(await composerBottom() - size.height) < 1, 'Closed keyboard: composer reaches full PWA bottom');
+            assert.ok(Math.abs(await composerBottom() - (size.height - 60)) < 1, 'Closed keyboard: composer reaches the usable PWA bottom without clipping');
             for (const direction of ['mine', 'theirs']) {
                 const actionRow = page.locator('.chat-message-row--' + direction + ' .chat-message-actions');
                 await page.mouse.move(0, 0);
@@ -63,22 +69,35 @@ const fixture = `<!doctype html><html class="pwa-standalone chat-mobile-fullscre
                 assert.ok(Math.abs((await actionRow.boundingBox()).y - before.y) < .1, 'Reaction picker cannot push action row');
             }
             await page.evaluate(() => {
-                document.documentElement.classList.add('chat-keyboard-visible');
-                document.documentElement.style.setProperty('--chat-mobile-viewport-height', '250px');
+                visualViewport.height = 350;
+                FireballChatViewport.sync(true);
             });
             assert.ok(Math.abs(await composerBottom() - 350) < 1, 'Open keyboard: JS visualViewport height remains in control');
-            await page.evaluate(() => document.documentElement.classList.remove('chat-keyboard-visible'));
-            assert.ok(Math.abs(await composerBottom() - size.height) < 1, 'Closing keyboard restores full PWA height');
+            await page.evaluate(() => {
+                visualViewport.offsetTop = 200;
+                FireballChatViewport.sync(true);
+            });
+            assert.ok(Math.abs(await composerBottom() - 550) < 1, 'Composer and navigation follow the same panned viewport');
+            assert.ok(await page.evaluate(() => document.documentElement.classList.contains('chat-keyboard-visible')), 'Pan does not cancel keyboard detection');
+            await page.evaluate(() => {
+                visualViewport.height = innerHeight - 60;
+                visualViewport.offsetTop = 0;
+                FireballChatViewport.sync(false);
+            });
+            assert.ok(Math.abs(await composerBottom() - (size.height - 60)) < 1, 'Closing keyboard restores the measured PWA height, not 100lvh');
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No horizontal overflow');
+            assert.equal(await page.evaluate(() => getComputedStyle(document.body).position), 'fixed', 'Mobile document is locked, not only overflow:hidden');
             console.log(`PASS ${theme} ${size.width}: PWA bottom, keyboard restore, hover/focus, reactions and touch areas`);
         }
         await page.setViewportSize({width:1440,height:1000});
         await page.evaluate(() => {
+            FireballChatViewport.sync(false);
             document.documentElement.classList.remove('chat-mobile-fullscreen', 'pwa-standalone');
             document.documentElement.style.setProperty('--chat-mobile-viewport-height', '800px');
         });
         assert.equal(await page.locator('.chat-page').evaluate(element => getComputedStyle(element).height), '800px', 'Desktop keeps JS viewport sizing');
         assert.equal(await page.locator('.chat-message-actions').first().evaluate(element => getComputedStyle(element).position), 'absolute', 'Desktop action positioning is unchanged');
+        assert.notEqual(await page.evaluate(() => getComputedStyle(document.body).position), 'fixed', 'Desktop document lock is released');
         console.log('PASS desktop geometry preserved');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

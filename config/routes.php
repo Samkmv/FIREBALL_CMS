@@ -259,6 +259,7 @@ $app->router->post('/admin/plugins/deactivate', [PluginController::class, 'deact
 $app->router->post('/admin/plugins/check-update', [PluginController::class, 'checkUpdate'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/check-updates', [PluginController::class, 'checkAllUpdates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/update', [PluginController::class, 'update'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/plugins/update-all', [PluginController::class, 'updateAll'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/updates', [AdminController::class, 'updates'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/settings/update-center/check', [AdminController::class, 'checkForUpdates'])->middleware(['auth', 'admin']);

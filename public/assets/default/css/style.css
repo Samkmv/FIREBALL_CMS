@@ -2650,7 +2650,7 @@ html.chat-viewport-fullscreen body > .floating-buttons {
 
 html.chat-mobile-fullscreen body > header.navbar-sticky {
     position: fixed !important;
-    top: 0;
+    top: var(--chat-visual-viewport-top, 0px);
     right: 0;
     left: 0;
     z-index: 1040;
@@ -2677,12 +2677,8 @@ html.chat-viewport-fullscreen .chat-page-header {
     display: none !important;
 }
 
-/* FIREBALL_MOBILE_BOTTOM_GAP_FIX_V2_20260930
- * Keep a definite fixed-page height on iOS. The previous bottom:0/height:auto
- * workaround made the parent height indefinite for WebKit, so descendants
- * using height:100% could stop above the physical bottom of the screen.
- * chat.js now publishes the full layout height while the keyboard is closed.
- */
+/* Keep a definite parent height for WebKit's height:100% descendants.
+ * The shared chat viewport supplies usable height in both keyboard states. */
 @media (max-width: 767.98px) {
     html.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page {
         top: var(--chat-mobile-viewport-top, 0px);
@@ -7737,17 +7733,4 @@ body:not(.fb-admin-body) .search-suggest-menu {
 }
 @media (prefers-reduced-motion: reduce) {
     .profile-service-card { transition: none; }
-}
-
-/* Standalone WebKit may shorten an inset-sized fixed viewport. Keep a
- * definite full-screen height with the keyboard closed. While it is open,
- * chat.js / chat-group.js continue to supply the visualViewport height. */
-@media (max-width: 767.98px) {
-    html.pwa-standalone.chat-mobile-fullscreen.chat-viewport-fullscreen:not(.chat-keyboard-visible) .chat-page {
-        bottom: auto;
-        height: calc(100vh - var(--chat-mobile-viewport-top, 0px));
-        height: calc(100lvh - var(--chat-mobile-viewport-top, 0px));
-        min-height: 0;
-        max-height: none;
-    }
 }

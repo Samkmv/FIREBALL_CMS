@@ -63,6 +63,10 @@ class ChatController extends BaseController
         return view('chat/index', [
             'title' => return_translation('chat_index_title'),
             'contacts' => $contacts,
+            'header_scripts' => [
+                asset_versioned_url(base_url('/assets/default/js/app-viewport.js'), WWW . '/assets/default/js/app-viewport.js'),
+                asset_versioned_url(base_url('/assets/default/js/chat-viewport.js'), WWW . '/assets/default/js/chat-viewport.js'),
+            ],
             'active_contact' => $activeContact,
             'chat_fetch_url' => base_href('/chat/messages'),
             'chat_stream_url' => base_href('/chat/stream'),
@@ -605,6 +609,10 @@ class ChatController extends BaseController
 
         return view('chat/group', [
             'title' => (string)$group['title'],
+            'header_scripts' => [
+                asset_versioned_url(base_url('/assets/default/js/app-viewport.js'), WWW . '/assets/default/js/app-viewport.js'),
+                asset_versioned_url(base_url('/assets/default/js/chat-viewport.js'), WWW . '/assets/default/js/chat-viewport.js'),
+            ],
             'group' => $group,
             'members' => $groups->getMembers($conversationId),
             'chat_index_url' => base_href('/chat'),

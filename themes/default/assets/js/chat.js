@@ -5,7 +5,6 @@ $(function () {
     }
 
     const mobileFullscreenQuery = window.matchMedia('(max-width: 767.98px)');
-    const rootElement = document.documentElement;
     let mobileViewportFrame = 0;
     let messageViewportFrame = 0;
     let viewportAnchorReleaseTimer = 0;
@@ -43,59 +42,10 @@ $(function () {
 
     const syncMobileFullscreen = () => {
         mobileViewportFrame = 0;
-        const isMobile = mobileFullscreenQuery.matches;
-        const isStandalone = rootElement.classList.contains('pwa-standalone')
-            || window.matchMedia('(display-mode: standalone)').matches
-            || window.navigator.standalone === true;
-
-        rootElement.classList.add('chat-viewport-fullscreen');
-        document.body.classList.add('chat-viewport-fullscreen');
-        rootElement.classList.toggle('chat-mobile-fullscreen', isMobile);
-        document.body.classList.toggle('chat-mobile-fullscreen', isMobile);
-        rootElement.classList.toggle('chat-pwa-fullscreen', isStandalone);
-        document.body.classList.toggle('chat-pwa-fullscreen', isStandalone);
-
-        const viewport = window.visualViewport;
-        const layoutViewportHeight = Math.max(
-            Number(window.innerHeight) || 0,
-            Number(rootElement.clientHeight) || 0
-        );
-        const visualViewportTop = Math.max(0, Number(viewport ? viewport.offsetTop : 0) || 0);
-        const visualViewportHeight = Math.max(
-            0,
-            Number(viewport ? viewport.height : layoutViewportHeight) || layoutViewportHeight
-        );
-        const siteHeader = isStandalone && !isMobile
-            ? null
-            : (document.querySelector('body > header') || document.querySelector('header'));
-        const headerRect = siteHeader ? siteHeader.getBoundingClientRect() : null;
-        const visibleHeaderHeight = headerRect
-            ? Math.max(0, Math.min(
-                visualViewportHeight,
-                Number(headerRect.height) || Number(siteHeader.offsetHeight) || 0
-            ))
-            : 0;
-        const composerHasFocus = Boolean(
-            isMobile
-            && document.activeElement
-            && chatApp[0].contains(document.activeElement)
-            && document.activeElement.matches('input, textarea, [contenteditable="true"]')
-        );
-        const keyboardLikelyVisible = composerHasFocus
-            && (layoutViewportHeight - visualViewportHeight - visualViewportTop) > Math.max(80, layoutViewportHeight * .12);
-        rootElement.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
-        document.body.classList.toggle('chat-keyboard-visible', keyboardLikelyVisible);
-
-        // FIREBALL_CHAT_BOTTOM_GAP_FIX_V2_20260930
-        const visibleViewportBottom = isMobile && keyboardLikelyVisible
-            ? Math.max(0, Math.min(layoutViewportHeight, visualViewportTop + visualViewportHeight))
-            : layoutViewportHeight;
-
-        rootElement.style.setProperty('--chat-mobile-viewport-top', `${visibleHeaderHeight}px`);
-        rootElement.style.setProperty(
-            '--chat-mobile-viewport-height',
-            `${Math.max(0, visibleViewportBottom - visibleHeaderHeight)}px`
-        );
+        const active = document.activeElement;
+        const focused = Boolean(active && chatApp[0].contains(active)
+            && active.matches('input, textarea, [contenteditable="true"]'));
+        window.FireballChatViewport.sync(focused);
         restoreMessageViewportAnchor(viewportAnchor);
     };
 
@@ -117,6 +67,13 @@ $(function () {
         window.visualViewport.addEventListener('resize', scheduleMobileFullscreenSync, {passive: true});
         window.visualViewport.addEventListener('scroll', scheduleMobileFullscreenSync, {passive: true});
     }
+    document.addEventListener('focusin', scheduleMobileFullscreenSync, {passive: true});
+    document.addEventListener('focusout', scheduleMobileFullscreenSync, {passive: true});
+    window.addEventListener('pageshow', scheduleMobileFullscreenSync, {passive: true});
+    window.addEventListener('orientationchange', scheduleMobileFullscreenSync, {passive: true});
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) scheduleMobileFullscreenSync();
+    }, {passive: true});
     syncMobileFullscreen();
 
     const fetchUrl = String(chatApp.data('fetch-url') || '');

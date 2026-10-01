@@ -16,7 +16,7 @@ fs.mkdirSync(output,{recursive:true});
    let release, entered;const hold=new Promise(r=>release=r);
    const requested=new Promise(r=>entered=r);
    const route='**/assets/default/js/chat*.js*';
-   await p.route(route,async r=>{entered();await hold;await r.continue();});
+   await p.route(route,async r=>{if(r.request().url().includes('chat-viewport.js')){await r.continue();return;}entered();await hold;await r.continue();});
    const navigation=p.goto(url,{waitUntil:'domcontentloaded'});
    await requested;
    await p.waitForTimeout(150);

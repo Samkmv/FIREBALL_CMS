@@ -175,6 +175,16 @@
             this.mobilePanelScrollTop = null;
             this.history = new API.EditorHistory(this.historyState(), { limit: 120, coalesceMs: 700 });
             this.ui = this.collectUi();
+            this.appViewport = this.workspace && window.FireballAppViewport
+                ? window.FireballAppViewport.create({
+                    media: '(max-width: 991.98px)',
+                    onChange: function (viewport) {
+                        this.workspace.style.setProperty('--fb-editor-viewport-top', viewport.top + 'px');
+                        this.workspace.style.setProperty('--fb-editor-viewport-height', viewport.height + 'px');
+                        this.workspace.style.setProperty('--fb-editor-safe-bottom', viewport.keyboard ? '0px' : 'env(safe-area-inset-bottom, 0px)');
+                    }.bind(this)
+                }) : null;
+            if (this.appViewport) this.appViewport.sync();
             this.refreshOutlineSoon = debounce(this.refreshOutline.bind(this), 160);
             this.refreshStatusSoon = debounce(this.refreshStatus.bind(this), 120);
             this.refreshSplitPreviewSoon = debounce(this.refreshSplitPreview.bind(this), 250);
@@ -4253,6 +4263,7 @@
 
         destroy() {
             this.destroyed = true;
+            if (this.appViewport) this.appViewport.destroy();
             window.clearTimeout(this.autosaveTimer);
             window.clearTimeout(this.localSaveTimer);
             if (this.abortController) {

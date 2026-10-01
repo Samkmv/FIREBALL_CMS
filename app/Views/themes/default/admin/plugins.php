@@ -9,10 +9,12 @@ $configuredUpdateCount = count(array_filter(
     $plugins,
     static fn(array $plugin): bool => !empty($plugin['update']['configured'])
 ));
-$availableUpdateCount = count(array_filter(
+$availableUpdatePlugins = array_values(array_filter(
     $plugins,
-    static fn(array $plugin): bool => !empty($plugin['update']['update_available'])
+    static fn(array $plugin): bool => !empty($plugin['installed']) && !empty($plugin['valid'])
+        && !empty($plugin['update']['configured']) && !empty($plugin['update']['update_available'])
 ));
+$availableUpdateCount = count($availableUpdatePlugins);
 $olderSourceCount = count(array_filter(
     $plugins,
     static fn(array $plugin): bool => !empty($plugin['update']['source_older'])
@@ -29,6 +31,28 @@ if ($canUpdatePlugins && $configuredUpdateCount > 0) {
         . htmlSC(return_translation('admin_plugin_updates_check_all'))
         . '</button></form>';
 }
+if ($canUpdatePlugins && $availableUpdateCount > 0) {
+    $pageActions .= '<form action="' . htmlSC(base_href('/admin/plugins/update-all')) . '" method="post" class="d-inline-flex"'
+        . ' data-plugin-update-all data-admin-delete-form'
+        . ' data-update-url="' . htmlSC(base_href('/admin/plugins/update')) . '"'
+        . ' data-plugins="' . htmlSC(json_encode(array_map(static fn(array $plugin): array => ["slug" => $plugin["slug"], "name" => $plugin["name"]], $availableUpdatePlugins), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '"'
+        . ' data-delete-message="' . htmlSC(return_translation('admin_plugin_updates_bulk_confirm')) . '"'
+        . ' data-delete-item="' . htmlSC(implode(', ', array_column($availableUpdatePlugins, 'name'))) . '"'
+        . ' data-delete-confirm-label="' . htmlSC(return_translation('admin_plugin_updates_install_all')) . '"'
+        . ' data-confirm-title="' . htmlSC(return_translation('admin_plugin_updates_modal_title')) . '"'
+        . ' data-confirm-item-label="' . htmlSC(return_translation('admin_plugin_updates_bulk_item_label')) . '"'
+        . ' data-confirm-hint="' . htmlSC(return_translation('admin_plugin_updates_bulk_hint')) . '"'
+        . ' data-confirm-icon="ci-download" data-confirm-variant="warning"'
+        . ' data-progress-label="' . htmlSC(return_translation('admin_plugin_updates_bulk_progress')) . '"'
+        . ' data-result-label="' . htmlSC(return_translation('admin_plugin_updates_bulk_result')) . '"'
+        . ' data-interrupted-label="' . htmlSC(return_translation('admin_plugin_updates_bulk_interrupted')) . '"'
+        . ' data-leave-label="' . htmlSC(return_translation('admin_plugin_updates_bulk_leave')) . '">'
+        . get_csrf_field()
+        . '<button class="btn btn-warning rounded-pill d-inline-flex align-items-center gap-2" type="submit">'
+        . '<i class="ci-download" aria-hidden="true"></i>'
+        . '<span data-plugin-update-all-label>' . htmlSC(return_translation('admin_plugin_updates_install_all')) . ' (' . $availableUpdateCount . ')</span>'
+        . '</button></form>';
+}
 $pageActions .= '</div>';
 ?>
 
@@ -37,6 +61,12 @@ $pageActions .= '</div>';
     'subtitle' => return_translation('admin_plugins_subtitle'),
     'actions' => $pageActions,
 ]) ?>
+
+    <div class="alert alert-info rounded-4 mb-4" data-plugin-update-all-status role="status" aria-live="polite" hidden>
+        <p class="mb-0" data-plugin-update-all-summary></p>
+        <ul class="mt-2 mb-0" data-plugin-update-all-errors hidden></ul>
+        <a class="btn btn-outline-secondary rounded-pill mt-3" href="<?= htmlSC(base_href('/admin/plugins')) ?>" data-plugin-update-all-refresh hidden><?= print_translation('admin_plugin_updates_bulk_refresh') ?></a>
+    </div>
 
     <section class="fb-plugin-overview mb-4" aria-label="<?= htmlSC(return_translation('admin_plugin_updates_independent_title')) ?>">
         <div class="fb-plugin-overview-copy">

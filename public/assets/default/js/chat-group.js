@@ -17,7 +17,6 @@ $(function () {
     const sendButton = form.find('button[type="submit"]');
 
     // Use the same viewport shell as direct chat, including the on-screen keyboard.
-    const root = document.documentElement;
     let viewportFrame = 0;
     let messageViewportFrame = 0;
     let viewportAnchor = null;
@@ -52,35 +51,10 @@ $(function () {
     };
     const syncViewport = () => {
         viewportFrame = 0;
-        const mobile = window.matchMedia('(max-width: 767.98px)').matches;
-        const standalone = root.classList.contains('pwa-standalone')
-            || window.matchMedia('(display-mode: standalone)').matches
-            || navigator.standalone === true;
-        const viewport = window.visualViewport;
-        const layoutHeight = Math.max(
-            Number(window.innerHeight) || 0,
-            Number(root.clientHeight) || 0
-        );
-        const visualTop = Math.max(0, Number(viewport?.offsetTop || 0));
-        const visualHeight = Math.max(0, Number(viewport?.height || layoutHeight));
-        const visualBottom = mobile
-            ? Math.max(0, Math.min(layoutHeight, visualTop + visualHeight))
-            : layoutHeight;
-        const keyboard = mobile && input.is(':focus') && (layoutHeight - visualBottom) > 80;
-        // FIREBALL_CHAT_BOTTOM_GAP_FIX_V2_20260930
-        // A shorter visualViewport with the keyboard closed is browser chrome,
-        // not usable chat geometry. Only shrink to it while the keyboard is open.
-        const visibleBottom = mobile && keyboard ? visualBottom : layoutHeight;
-        [root, document.body].forEach(element => {
-            element.classList.add('chat-viewport-fullscreen');
-            element.classList.toggle('chat-mobile-fullscreen', mobile);
-            element.classList.toggle('chat-pwa-fullscreen', standalone);
-            element.classList.toggle('chat-keyboard-visible', keyboard);
-        });
-        const header = standalone && !mobile ? null : document.querySelector('body > header');
-        const headerHeight = header ? header.getBoundingClientRect().height : 0;
-        root.style.setProperty('--chat-mobile-viewport-top', `${headerHeight}px`);
-        root.style.setProperty('--chat-mobile-viewport-height', `${Math.max(0, visibleBottom - headerHeight)}px`);
+        const active = document.activeElement;
+        const focused = Boolean(active && app[0].contains(active)
+            && active.matches('input, textarea, [contenteditable="true"]'));
+        window.FireballChatViewport.sync(focused);
         restoreViewportAnchor(viewportAnchor);
     };
     const scheduleViewport = () => {
@@ -89,10 +63,14 @@ $(function () {
     };
     window.addEventListener('resize', scheduleViewport, {passive: true});
     window.addEventListener('pageshow', scheduleViewport, {passive: true});
+    window.addEventListener('orientationchange', scheduleViewport, {passive: true});
     window.visualViewport?.addEventListener('resize', scheduleViewport, {passive: true});
     window.visualViewport?.addEventListener('scroll', scheduleViewport, {passive: true});
     document.addEventListener('focusin', scheduleViewport);
     document.addEventListener('focusout', scheduleViewport);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) scheduleViewport();
+    }, {passive: true});
 
     let source = null;
     let realtimeConnected = false;

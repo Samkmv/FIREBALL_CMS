@@ -245,6 +245,38 @@ final class PluginUpdateService extends UpdateCenter
         return $summary;
     }
 
+    /**
+     * Non-JavaScript fallback. Each package retains its own lock, backup and rollback.
+     * Snapshot the candidates before replacements invalidate runtime caches.
+     */
+    public function updateAll(array $user = []): array
+    {
+        $candidates = array_filter(
+            $this->decoratePlugins($this->pluginManager->all()),
+            static fn(array $plugin): bool => !empty($plugin['installed'])
+                && !empty($plugin['valid']) && !empty($plugin['update']['configured'])
+                && !empty($plugin['update']['update_available'])
+        );
+        $summary = ['updated' => 0, 'skipped' => 0, 'failed' => 0, 'failures' => []];
+        foreach ($candidates as $plugin) {
+            $slug = (string)$plugin['slug'];
+            try {
+                if (function_exists('set_time_limit')) {
+                    @set_time_limit(300);
+                }
+                // update() rechecks the remote version; never install a stale/downgrade package.
+                $result = $this->update($slug, $user);
+                $summary[($result['status'] ?? '') === 'success' ? 'updated' : 'skipped']++;
+            } catch (Throwable $exception) {
+                $summary['failed']++;
+                $summary['failures'][$slug] = $this->safeError($exception, 'admin_plugin_updates_failed');
+                log_error_details('Plugin bulk update failed', ['Plugin' => $slug], $exception);
+            }
+        }
+
+        return $summary;
+    }
+
     public function update(string $slug, array $user = []): array
     {
         $plugin = $this->installedPlugin($slug);

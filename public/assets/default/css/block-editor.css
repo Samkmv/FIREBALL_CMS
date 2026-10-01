@@ -2275,17 +2275,17 @@ body:has(.fb-editor-workspace) {
         left: 0;
     }
 
-    /* Standalone WebKit can shorten the inset-sized fixed viewport by the
-       safe areas. Give the workspace a definite full viewport height and
-       anchor its sheet to the form, not a second fixed viewport. */
-    html.pwa-standalone .fb-editor-workspace {
+    /* Size the application to the visual viewport, not the large layout
+       viewport that remains behind the iOS keyboard. */
+    .fb-editor-workspace {
+        top: var(--fb-editor-viewport-top, 0px);
         bottom: auto;
         height: 100vh;
-        height: 100lvh;
+        height: var(--fb-editor-viewport-height, 100dvh);
         min-height: 0;
     }
 
-    html.pwa-standalone .fb-editor-workspace__inspector-panel {
+    .fb-editor-workspace__inspector-panel {
         position: absolute;
         max-height: min(calc(100% - max(.75rem, env(safe-area-inset-top, 0px))), 720px);
     }
@@ -2331,16 +2331,16 @@ body:has(.fb-editor-workspace) {
     }
 
     .fb-editor-workspace__inspector-panel {
-        position: fixed;
+        position: absolute;
         right: 0;
         bottom: 0;
         left: 0;
         z-index: 80;
         display: flex;
         height: auto;
-        max-height: min(calc(100dvh - max(.75rem, env(safe-area-inset-top, 0px))), 720px);
+        max-height: min(calc(100% - max(.75rem, env(safe-area-inset-top, 0px))), 720px);
         padding-right: env(safe-area-inset-right, 0px);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding-bottom: var(--fb-editor-safe-bottom, env(safe-area-inset-bottom, 0px));
         padding-left: env(safe-area-inset-left, 0px);
         overflow: hidden;
         border-top: 1px solid var(--fb-editor-border);
@@ -2467,7 +2467,7 @@ body:has(.fb-editor-workspace) {
         grid-template-rows:
             calc(58px + env(safe-area-inset-top, 0px))
             minmax(0, 1fr)
-            calc(25px + env(safe-area-inset-bottom, 0px));
+            calc(25px + var(--fb-editor-safe-bottom, env(safe-area-inset-bottom, 0px)));
     }
 
     .fb-editor-workspace__topbar {
@@ -2486,7 +2486,7 @@ body:has(.fb-editor-workspace) {
 
     .fb-editor-workspace__statusbar {
         padding-right: calc(10px + env(safe-area-inset-right, 0px));
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding-bottom: var(--fb-editor-safe-bottom, env(safe-area-inset-bottom, 0px));
         padding-left: calc(10px + env(safe-area-inset-left, 0px));
     }
 
