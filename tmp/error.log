@@ -1,0 +1,35 @@
+[2026-10-02 00:53:44] Database connection error
+Request URI: -
+Request Method: -
+Remote IP: -
+Exception: PDOException
+Message: SQLSTATE[HY000] [2002] Operation not permitted
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 31
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(31): PDO->__construct('mysql:host=loca...', 'root', Object(SensitiveParameterValue), Array)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(241): FBL\Database->__construct()
+#2 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(53): FBL\Application->bootInstalledServices()
+#3 Command line code(1): FBL\Application->__construct()
+#4 {main}
+Driver: mysql
+Host: localhost
+Port: 3306
+Database: fbl
+Username: root
+DSN: mysql:host=localhost;dbname=fbl;charset=utf8mb4;port=3306
+========================================================================
+[2026-10-02 00:55:18] Database query error
+Request URI: -
+Request Method: GET
+Remote IP: -
+Exception: PDOException
+Message: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'connection_id' in 'field list'
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php
+Line: 73
+Trace: #0 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Database.php(73): PDOStatement->execute(Array)
+#1 Command line code(1): FBL\Database->query('SELECT event_ty...')
+#2 {main}
+SQL: SELECT event_type,server_id,subscription_id,connection_id,created_at FROM vpn_v2_events WHERE server_id=1 OR subscription_id IN (1,6) ORDER BY id DESC LIMIT 30
+Param Count: 0
+Param Keys: []
+========================================================================

@@ -1,9 +1,15 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "type": "system",
-  "description": "Bidirectional 3x-ui subscription and configuration manager for FIREBALL CMS",
+  "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
+  "description_i18n": {
+    "ru": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
+    "en": "Manage VPN servers, plans, subscriptions and connections with bidirectional 3x-ui synchronization and Happ support.",
+    "de": "Verwaltung von VPN-Servern, Tarifen, Abonnements und Verbindungen mit bidirektionaler 3x-ui-Synchronisierung und Happ-Unterstützung.",
+    "zh-cn": "管理 VPN 服务器、套餐、订阅和连接，支持与 3x-ui 面板双向同步及 Happ 集成。"
+  },
   "author": "FIREBALL CMS",
   "name_i18n": {
     "ru": "Управление VPN",
@@ -13,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Added guided server recovery using the existing subscription synchronizer: remap replacement panel connections, restore missing manual and archived clients, show per-subscription results and retry failures.",
     "Server-load badges now reflect live 3x-ui responses and clear stale metrics on connection failure; operations use native CMS pagination with 20 records per page.",
     "Completed synchronization with 3x-ui 3.8.5: preserved panel traffic-renewal settings, fixed Trojan/Shadowsocks credentials, protected expired statuses, and displayed HWID/IP limits separately.",
     "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
@@ -21,17 +28,11 @@
     "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
     "Added a Lifetime option when editing subscriptions; administrator lists and details show expiration immediately from the actual date without waiting for cron.",
     "Fixed inactive subscription refresh in Happ: previous servers are replaced by an inactive placeholder, including managed subscriptions and stale caches.",
-    "CLI cron now enforces expiration and reports failures; client updates through the current 3x-ui API preserve the HWID limit.",
-    "Added manual VPN customers without CMS accounts, with stable VPN profiles and reconciliation support.",
-    "Added manual subscription expiration dates and lifetime VPN subscriptions for administrator-created subscriptions.",
-    "Added Happ routing links and JSON profile import, automatic subscription routing headers, and apply/copy actions in the customer profile.",
-    "Moved server removal, log clearing, and traffic reset confirmations to the standard administrator modal.",
-    "Renamed the plugin to VPN Management, moved quick actions to the top, added safe server removal, and introduced persistent VPN access requests with administrator notifications.",
-    "Reworked the VPN control center with simplified navigation, live 3x-ui server load metrics, and confirmed clearing of all VPN technical logs.",
-    "Fixed expired-subscription renewal: a future expiration reactivates 3x-ui clients, and failed reconciliation can no longer be reported as a successful update."
+    "CLI cron now enforces expiration and reports failures; client updates through the current 3x-ui API preserve the HWID limit."
   ],
   "release_notes_i18n": {
     "ru": [
+      "Добавлено пошаговое восстановление сервера через существующий механизм синхронизации: замена подключений панели, восстановление ручных и архивных клиентов, результаты по подпискам и повтор ошибок.",
       "Статус в карточках нагрузки серверов теперь определяется по текущему ответу 3x-ui; при ошибке подключения старые показатели очищаются. В операциях добавлена стандартная пагинация CMS по 20 записей на страницу.",
       "Завершена синхронизация с 3x-ui 3.8.5: сохраняются настройки автопродления трафика панели, исправлены учётные данные Trojan/Shadowsocks, защищены истёкшие статусы, а лимиты HWID/IP показываются раздельно.",
       "Несколько VPN-серверов могут иметь один код страны; повторяющиеся внутренние коды автоматически получают номер (nl, nl-2, nl-3).",
@@ -40,16 +41,10 @@
       "Завершена синхронизация тарифов с 3x-ui: лимит HWID-устройств, отдельный лимит IP, управление устройствами в админке и подробная диагностика расхождений.",
       "При редактировании подписки добавлен переключатель «Бессрочно»; таблица и карточка администратора показывают истечение по фактической дате без ожидания cron.",
       "Исправлено обновление неактивной подписки в Happ: прежние серверы заменяются записью «VPN-подписка неактивна», включая обычные подписки и устаревший кеш.",
-      "CLI cron теперь отключает истёкшие подписки и сообщает об ошибках; обновления клиента через актуальный API 3x-ui сохраняют лимит HWID.",
-      "Добавлены ручные VPN-клиенты без аккаунта CMS со стабильным VPN-профилем и поддержкой синхронизации.",
-      "Добавлены ручная дата окончания и бессрочные VPN-подписки при создании подписки администратором.",
-      "Добавлены маршрутизация Happ по ссылке или JSON-профилю, автоматическая передача правил с подпиской и кнопки применения и копирования в кабинете.",
-      "Удаление серверов, очистка журналов и сброс трафика теперь подтверждаются в стандартном модальном окне админки.",
-      "Плагин переименован в «Управление VPN», быстрые действия перенесены вверх, добавлено безопасное удаление серверов и заявки на VPN с уведомлением создателя и администраторов.",
-      "Переработан центр управления VPN: упрощена навигация, добавлены живые показатели нагрузки серверов 3x-ui и подтверждаемая очистка всех технических журналов VPN.",
-      "Исправлено продление истёкшей подписки: будущая дата повторно активирует клиентов 3x-ui, а ошибка повторного создания больше не показывается как успешное обновление."
+      "CLI cron теперь отключает истёкшие подписки и сообщает об ошибках; обновления клиента через актуальный API 3x-ui сохраняют лимит HWID."
     ],
     "en": [
+      "Added guided server recovery using the existing subscription synchronizer: remap replacement panel connections, restore missing manual and archived clients, show per-subscription results and retry failures.",
       "Server-load badges now reflect live 3x-ui responses and clear stale metrics on connection failure; operations use native CMS pagination with 20 records per page.",
       "Completed synchronization with 3x-ui 3.8.5: preserved panel traffic-renewal settings, fixed Trojan/Shadowsocks credentials, protected expired statuses, and displayed HWID/IP limits separately.",
       "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
@@ -58,16 +53,10 @@
       "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
       "Added a Lifetime option when editing subscriptions; administrator lists and details show expiration immediately from the actual date without waiting for cron.",
       "Fixed inactive subscription refresh in Happ: previous servers are replaced by an inactive placeholder, including managed subscriptions and stale caches.",
-      "CLI cron now enforces expiration and reports failures; client updates through the current 3x-ui API preserve the HWID limit.",
-      "Added manual VPN customers without CMS accounts, with stable VPN profiles and reconciliation support.",
-      "Added manual subscription expiration dates and lifetime VPN subscriptions for administrator-created subscriptions.",
-      "Added Happ routing links and JSON profile import, automatic subscription routing headers, and apply/copy actions in the customer profile.",
-      "Moved server removal, log clearing, and traffic reset confirmations to the standard administrator modal.",
-      "Renamed the plugin to VPN Management, moved quick actions to the top, added safe server removal, and introduced persistent VPN access requests with administrator notifications.",
-      "Reworked the VPN control center with simplified navigation, live 3x-ui server load metrics, and confirmed clearing of all VPN technical logs.",
-      "Fixed expired-subscription renewal: a future expiration reactivates 3x-ui clients, and failed reconciliation can no longer be reported as a successful update."
+      "CLI cron now enforces expiration and reports failures; client updates through the current 3x-ui API preserve the HWID limit."
     ],
     "de": [
+      "Geführte Serverwiederherstellung über die bestehende Synchronisierung: Verbindungen neu zuordnen, manuelle und archivierte Clients wiederherstellen, Ergebnisse pro Abonnement und Fehler wiederholen.",
       "Statusanzeigen der Serverlast basieren jetzt auf aktuellen 3x-ui-Antworten; bei Verbindungsfehlern werden veraltete Kennzahlen entfernt. Vorgänge verwenden die standardmäßige CMS-Paginierung mit 20 Einträgen pro Seite.",
       "Die Synchronisierung mit 3x-ui 3.8.5 wurde abgeschlossen: Einstellungen zur Traffic-Erneuerung bleiben erhalten, Trojan-/Shadowsocks-Zugangsdaten wurden korrigiert, abgelaufene Status werden geschützt und HWID-/IP-Limits getrennt angezeigt.",
       "Mehrere VPN-Server können denselben Ländercode verwenden; doppelte interne Servercodes werden automatisch nummeriert (nl, nl-2, nl-3).",
@@ -76,16 +65,10 @@
       "Die Tarifsynchronisierung mit 3x-ui wurde vervollständigt: HWID-Gerätelimit, separates IP-Limit, Geräteverwaltung im Adminbereich und detaillierte Abweichungsdiagnose.",
       "Die Abonnementbearbeitung bietet jetzt Unbefristet; Adminlisten und Detailansichten zeigen den Ablauf anhand des Datums ohne Warten auf Cron.",
       "Die Aktualisierung inaktiver Happ-Abonnements ersetzt bisherige Server durch einen Inaktiv-Hinweis, auch bei verwalteten Abonnements und veraltetem Cache.",
-      "CLI-Cron deaktiviert jetzt abgelaufene Abonnements und meldet Fehler; Client-Updates über die aktuelle 3x-ui-API erhalten das HWID-Limit.",
-      "Manuelle VPN-Kunden ohne CMS-Konto mit stabilem VPN-Profil und Synchronisierungsunterstützung hinzugefügt.",
-      "Manuelle Ablaufdaten und unbefristete VPN-Abonnements für vom Administrator erstellte Abonnements hinzugefügt.",
-      "Happ-Routing per Link oder JSON-Profil, automatische Routing-Header im Abonnement und Anwenden/Kopieren im Kundenkonto ergänzt.",
-      "Bestätigungen für Serverlöschung, Protokollbereinigung und Traffic-Zurücksetzung verwenden jetzt den standardmäßigen Administrator-Dialog.",
-      "Das Plugin heißt jetzt VPN-Verwaltung; Schnellaktionen wurden nach oben verschoben, sicheres Löschen von Servern und dauerhafte VPN-Anfragen mit Administratorbenachrichtigungen wurden ergänzt.",
-      "Die VPN-Steuerzentrale wurde mit vereinfachter Navigation, aktuellen 3x-ui-Serverkennzahlen und bestätigtem Leeren aller technischen VPN-Protokolle überarbeitet.",
-      "Die Verlängerung abgelaufener Abonnements wurde korrigiert: Ein zukünftiges Datum reaktiviert 3x-ui-Clients und fehlgeschlagene Wiederherstellungen werden nicht mehr als Erfolg gemeldet."
+      "CLI-Cron deaktiviert jetzt abgelaufene Abonnements und meldet Fehler; Client-Updates über die aktuelle 3x-ui-API erhalten das HWID-Limit."
     ],
     "zh-cn": [
+      "通过现有同步机制新增服务器恢复向导：映射替代面板连接、恢复手动及归档客户端、逐项显示订阅结果并重试错误。",
       "服务器负载卡片的状态现在依据实时 3x-ui 响应显示，连接失败时会清除旧指标；操作列表采用 CMS 标准分页，每页显示 20 条记录。",
       "已完成与 3x-ui 3.8.5 的同步：保留面板流量续期设置，修复 Trojan/Shadowsocks 凭据，保护已到期状态，并分别显示 HWID/IP 限制。",
       "多个 VPN 服务器可以使用相同的国家代码；重复的内部服务器代码会自动编号（nl、nl-2、nl-3）。",
@@ -94,14 +77,7 @@
       "已完成与 3x-ui 的套餐同步：支持 HWID 设备限制、独立 IP 限制、后台设备管理和详细差异诊断。",
       "编辑订阅时新增永久选项；管理列表和详情会按实际到期时间显示已过期，无需等待 cron。",
       "修复 Happ 非活动订阅更新：旧服务器将替换为订阅未激活提示，适用于托管订阅和过期缓存。",
-      "CLI cron 现在执行到期停用并报告错误；通过当前 3x-ui API 更新客户端时会保留 HWID 限制。",
-      "新增无需 CMS 帐户的手动 VPN 客户，并支持稳定的 VPN 配置和同步。",
-      "管理员创建订阅时现可手动设置到期时间或创建永久 VPN 订阅。",
-      "新增 Happ 路由链接和 JSON 配置导入、订阅自动下发路由，以及用户中心的应用和复制按钮。",
-      "删除服务器、清空日志和重置流量现在使用标准管理员确认对话框。",
-      "插件已更名为 VPN 管理；快捷操作移至顶部，并新增安全删除服务器和向创建者及管理员发送通知的 VPN 申请功能。",
-      "重新设计 VPN 控制中心：简化导航，新增实时 3x-ui 服务器负载指标，并支持经确认后清空所有 VPN 技术日志。",
-      "修复已到期订阅的续期：未来日期会重新激活 3x-ui 客户端，重新创建失败也不会再显示为更新成功。"
+      "CLI cron 现在执行到期停用并报告错误；通过当前 3x-ui API 更新客户端时会保留 HWID 限制。"
     ]
   },
   "update": {

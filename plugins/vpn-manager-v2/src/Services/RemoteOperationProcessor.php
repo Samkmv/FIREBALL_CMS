@@ -133,6 +133,15 @@ final class RemoteOperationProcessor
         $nodeId = (int)($operation['connection_id'] ?? 0);
         $source = (string)($operation['source'] ?? 'reconciliation');
         $operationId = (string)$operation['operation_id'];
+        $payload = json_decode((string)($operation['payload_json'] ?? ''), true);
+        if (!empty($payload['repair_server_signature'])) {
+            $server = (new ServerRepository())->findWithSecrets($serverId) ?? [];
+            if (!hash_equals((string)$payload['repair_server_signature'],
+                \Fireball\VpnManagerV2\Support\ServerConfigurationSignature::hash($server))) {
+                throw new \Fireball\VpnManagerV2\Exceptions\ValidationException(
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_check_required'));
+            }
+        }
 
         return match ($type) {
             'sync_server', 'sync_inbound' => ($this->sync ?? new ConfigurationSyncService())
@@ -142,7 +151,8 @@ final class RemoteOperationProcessor
                 $subscriptionId,
                 $source,
                 $operationId,
-                isset($operation['initiated_by']) ? (int)$operation['initiated_by'] : null
+                isset($operation['initiated_by']) ? (int)$operation['initiated_by'] : null,
+                (int)($payload['repair_server_id'] ?? 0)
             ),
             'full_reconcile' => ($this->sync ?? new ConfigurationSyncService())->syncAllPages(1000, 100, $source),
             'create_client' => $this->provision($nodeId),
@@ -219,7 +229,8 @@ final class RemoteOperationProcessor
         int $subscriptionId,
         string $source,
         string $operationId,
-        ?int $adminId = null
+        ?int $adminId = null,
+        int $repairServerId = 0
     ): array {
         // FIREBALL_VPN_RENEW_SYNC_PATCH_V1: subscription-repair
         // Manual subscription sync is a repair operation:
@@ -228,6 +239,24 @@ final class RemoteOperationProcessor
         $subscription = $plans->subscription($subscriptionId);
         if (!$subscription) {
             throw new \RuntimeException('VPN subscription not found.');
+        }
+
+        // Explicit server replacement is allowed to restore clients which the
+        // old inventory scan archived. Scheduled scans keep deletion semantics.
+        if ($repairServerId > 0 && $plans->eligibleSubscription($subscriptionId)) {
+            foreach ($plans->subscriptionNodes($subscriptionId) as $summary) {
+                if ((int)$summary['server_id'] !== $repairServerId
+                    || in_array($summary['status'], ['deleting', 'pending_remote_delete'], true)
+                    || ($summary['status'] === 'deleted' && $summary['sync_status'] !== 'remote_deleted')
+                    || !$plans->planNodeForTarget((int)$subscription['plan_id'], $repairServerId, (int)$summary['inbound_id'])) {
+                    continue;
+                }
+                $node = $plans->node((int)$summary['id']);
+                $inspection = ($this->remoteSync ?? new RemoteClientSyncService())->inspect($node, $subscription);
+                if (!empty($inspection['missing']) || $summary['status'] === 'deleted') {
+                    ($this->configuration ?? new ConfigurationSyncRepository())->markMissingRemote($node, $operationId);
+                }
+            }
         }
 
         $reconcile = ($this->reconciler ?? new VpnPlanSubscriptionReconciler())
@@ -300,9 +329,10 @@ final class RemoteOperationProcessor
         foreach ($serverIds as $serverId) {
             try {
                 $sync = ($this->sync ?? new ConfigurationSyncService())
-                    ->syncServer($serverId, $source, $operationId);
+                    ->syncServer($serverId, $source, $operationId, $repairServerId === $serverId);
                 $result['changed'] += (int)($sync['changed'] ?? 0);
                 $result['errors'] += (int)($sync['errors'] ?? 0);
+                $result['errors'] += (int)($sync['conflicts'] ?? 0);
             } catch (\Throwable) {
                 $result['errors']++;
             }
@@ -330,6 +360,14 @@ final class RemoteOperationProcessor
                 null
             );
             $result['errors'] = 0;
+        } else {
+            $result['errors'] = max(1, $result['errors']);
+            $plans->finishSubscription(
+                $subscriptionId,
+                (string)($finalSubscription['status'] ?? 'active'),
+                $finalSubscription['last_error']
+                    ?: \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed')
+            );
         }
 
         return $result;
@@ -370,6 +408,16 @@ final class RemoteOperationProcessor
             if (!is_array($node)
                 || !in_array((string)($node['status'] ?? ''), $allowedStatuses, true)
                 || (string)($node['sync_status'] ?? '') !== 'synced') {
+                return false;
+            }
+            try {
+                $inspection = ($this->remoteSync ?? new RemoteClientSyncService())->inspect(
+                    $plans->node((int)$node['id']), $subscription
+                );
+                if (!empty($inspection['missing']) || $inspection['changed_fields'] !== []) {
+                    return false;
+                }
+            } catch (\Throwable) {
                 return false;
             }
         }

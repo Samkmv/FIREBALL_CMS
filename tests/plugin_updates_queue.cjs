@@ -14,7 +14,6 @@ async function scenario(failure) {
     const label = element();
     const summary = element();
     const errors = element();
-    const refresh = element();
     const status = element();
     const handlers = {};
     form.dataset = {
@@ -24,15 +23,19 @@ async function scenario(failure) {
     };
     form.addEventListener = (type, handler) => {handlers[type] = handler;};
     form.querySelector = selector => selector.includes('label') ? label : button;
-    status.querySelector = selector => selector.includes('summary') ? summary : selector.includes('errors') ? errors : refresh;
+    status.querySelector = selector => selector.includes('summary') ? summary : errors;
     const controls = [button, element()];
     controls[1].disabled = true;
     const calls = [];
+    const savedResults = new Map();
+    const windowHandlers = {};
+    let reloads = 0;
+    let hasForm = true;
     let active = 0, maxActive = 0;
     const context = {
         document: {
             readyState: 'complete',
-            querySelector: selector => selector === '[data-plugin-update-all]' ? form : selector === '[data-plugin-update-all-status]' ? status : null,
+            querySelector: selector => selector === '[data-plugin-update-all]' ? (hasForm ? form : null) : selector === '[data-plugin-update-all-status]' ? status : null,
             querySelectorAll: selector => selector.startsWith('form[action=') ? [button] : controls,
             createElement: () => element()
         },
@@ -50,7 +53,25 @@ async function scenario(failure) {
                 json: async () => bad ? {status: false, message: 'Package error'} : {status: true, result: {status: calls.length === 3 ? 'current' : 'success'}}
             };
         },
-        window: {fetch: true, FormData: true, addEventListener() {}},
+        window: {
+            fetch: true, FormData: true,
+            addEventListener(type, handler) {windowHandlers[type] = handler;},
+            sessionStorage: {
+                getItem: key => savedResults.get(key) || null,
+                setItem: (key, value) => savedResults.set(key, value),
+                removeItem: key => savedResults.delete(key),
+            },
+            location: {
+                pathname: '/admin/plugins',
+                reload() {
+                    assert.equal(active, 0, 'Refresh waits for pending update responses');
+                    let blocked = false;
+                    windowHandlers.beforeunload({preventDefault() {blocked = true;}});
+                    assert.equal(blocked, false, 'Automatic refresh is not blocked by the running-queue guard');
+                    reloads++;
+                },
+            },
+        },
     };
     vm.runInNewContext(source, context);
     const event = {preventDefault() {}, stopPropagation() {}};
@@ -65,9 +86,20 @@ async function scenario(failure) {
     assert.ok(calls.every(call => call.csrf === 'fixture-csrf' && call.headers['X-Requested-With'] === 'XMLHttpRequest'));
     assert.equal(errors.children.length, failure === 'none' ? 0 : 1);
     assert.ok(!/:updated|:skipped|:failed/.test(summary.textContent));
-    assert.equal(refresh.hidden, false);
+    assert.equal(reloads, 1, 'Exactly one automatic refresh after the queue finishes or stops');
     assert.equal(button.disabled, true);
     assert.equal(controls[1].disabled, true, 'Pre-disabled buttons remain disabled');
+    assert.equal(savedResults.size, failure === 'none' ? 0 : 1, 'Only failures persist across refresh');
+    // On the refreshed page, the update form may disappear. Show saved errors
+    // once without restarting the queue or refreshing again.
+    hasForm = false;
+    errors.children = [];
+    status.hidden = true;
+    vm.runInNewContext(source, context);
+    assert.equal(errors.children.length, failure === 'none' ? 0 : 1);
+    assert.equal(status.hidden, failure === 'none');
+    assert.equal(savedResults.size, 0, 'Saved result is consumed after refresh');
+    assert.equal(reloads, 1, 'Rendering the saved result never restarts a refresh loop');
 }
 (async () => {
     for (const failure of ['none', 'package', 'csrf', 'network', 'html', 'redirect']) await scenario(failure);

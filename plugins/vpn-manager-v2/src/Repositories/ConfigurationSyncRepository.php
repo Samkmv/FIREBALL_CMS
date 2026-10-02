@@ -20,7 +20,7 @@ final class ConfigurationSyncRepository
     public function nodesForServer(int $serverId): array
     {
         return db()->query(
-            'SELECT n.*, sub.user_id, sub.plan_id, sub.status AS subscription_status,
+            'SELECT n.*, sub.user_id, sub.profile_id, sub.manual_customer_name, sub.plan_id, sub.status AS subscription_status,
                     sub.starts_at, sub.expires_at, sub.device_limit, sub.ip_limit,
                     sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
                     u.name AS cms_user_name, u.login AS cms_user_login,
@@ -31,7 +31,7 @@ final class ConfigurationSyncRepository
                     i.security AS inbound_security, i.settings_json, i.stream_settings_json
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
-             INNER JOIN users u ON u.id = sub.user_id
+             LEFT JOIN users u ON u.id = sub.user_id
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id
              WHERE n.server_id = ? AND n.status NOT IN (\'deleted\', \'deleting\')

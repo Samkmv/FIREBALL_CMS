@@ -631,11 +631,101 @@
         loadAll();
     }
 
+    function setupServerRecovery(container) {
+        var busy = false;
+        var progress = container.querySelector('[data-vpn-recovery-progress]');
+        var csrf = container.querySelector('input[type="hidden"]');
+        var resumeForms = container.querySelectorAll('[data-vpn-recovery-resume]');
+
+        async function json(url, options) {
+            var response = await fetch(url, Object.assign({credentials: 'same-origin', headers: {'Accept': 'application/json'}}, options));
+            var data = await response.json();
+            if (!response.ok) throw new Error(data.error || container.dataset.failed);
+            return data;
+        }
+
+        async function run(ids, retry) {
+            var succeeded = 0;
+            var failures = [];
+            var remaining = [];
+            var failureMessage = '';
+            for (var index = 0; index < ids.length; index++) {
+                progress.textContent = (index + 1) + ' / ' + ids.length;
+                try {
+                    var body = new FormData();
+                    if (csrf) body.append(csrf.name, csrf.value);
+                    body.append('operation_id', ids[index]);
+                    body.append('retry', retry ? '1' : '0');
+                    var data = await json(container.dataset.processUrl, {method: 'POST', body: body});
+                    // Another worker may already own this subscription; wait for its persisted result.
+                    for (var poll = 0; data.status === 'running' && poll < 150; poll++) {
+                        await new Promise(function (resolve) { window.setTimeout(resolve, 2000); });
+                        data = await json(container.dataset.progressBase + ids[index]);
+                    }
+                    container.querySelectorAll('[data-vpn-recovery-status="' + Number(data.subscription_id) + '"]').forEach(function (row) {
+                        row.textContent = data.status_label || data.status;
+                    });
+                    container.querySelectorAll('[data-vpn-recovery-error="' + Number(data.subscription_id) + '"]').forEach(function (row) {
+                        row.textContent = data.last_error || '';
+                    });
+                    if (data.status === 'completed') succeeded++;
+                    else if (data.status === 'pending' || data.status === 'running') remaining.push(ids[index]);
+                    else failures.push(ids[index]);
+                } catch (error) {
+                    failures.push(ids[index]);
+                    failureMessage = error.message || container.dataset.failed;
+                }
+            }
+            progress.textContent = container.dataset.completed.replace('%d', succeeded).replace('%d', ids.length - succeeded);
+            if (failureMessage) progress.textContent += ' ' + failureMessage;
+            resumeForms.forEach(function (form) {
+                var nextIds = form.dataset.retry === '1' ? failures : remaining;
+                form.dataset.operationIds = JSON.stringify(nextIds);
+                form.hidden = nextIds.length === 0;
+                form.querySelector('button').disabled = nextIds.length === 0;
+            });
+        }
+
+        async function start(form, apply) {
+            if (busy) return;
+            busy = true;
+            var button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            try {
+                var ids;
+                if (apply) {
+                    var data = await json(form.action, {method: 'POST', body: new FormData(form)});
+                    ids = data.operation_ids || [];
+                    progress.textContent = data.message || '';
+                } else ids = JSON.parse(form.dataset.operationIds || '[]');
+                await run(ids, !apply && form.dataset.retry === '1');
+            } catch (error) {
+                progress.textContent = error.message || container.dataset.failed;
+            } finally {
+                busy = false;
+                if (apply) button.disabled = false;
+                else button.disabled = JSON.parse(form.dataset.operationIds || '[]').length === 0;
+            }
+        }
+
+        container.querySelector('[data-vpn-recovery-apply]').addEventListener('submit', function (event) {
+            event.preventDefault();
+            start(event.currentTarget, true);
+        });
+        resumeForms.forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                start(form, false);
+            });
+        });
+    }
+
     ready(function () {
         document.querySelectorAll('[data-vpn-v2-plan-nodes]').forEach(setupPlanNodes);
         document.querySelectorAll('[data-vpn-v2-connection-order]').forEach(setupConnectionOrder);
         setupProfileCopy();
         setupAsyncOperations();
+        document.querySelectorAll('[data-vpn-recovery]').forEach(setupServerRecovery);
         document.querySelectorAll('[data-vpn-v2-server-metrics]').forEach(setupServerMetrics);
     });
 }());

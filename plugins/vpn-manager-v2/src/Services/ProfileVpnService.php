@@ -40,7 +40,8 @@ final class ProfileVpnService
                 continue;
             }
             $cards[] = [
-                'name' => 'VPN · ' . (string)$subscription['plan_name'],
+                'name' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_connection')
+                    . ' · ' . (string)$subscription['plan_name'],
                 'icon' => 'ci-server',
                 'plan_name' => (string)$subscription['plan_name'],
                 'description' => (string)($subscription['plan_description'] ?? ''),

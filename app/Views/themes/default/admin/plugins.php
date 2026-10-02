@@ -65,7 +65,6 @@ $pageActions .= '</div>';
     <div class="alert alert-info rounded-4 mb-4" data-plugin-update-all-status role="status" aria-live="polite" hidden>
         <p class="mb-0" data-plugin-update-all-summary></p>
         <ul class="mt-2 mb-0" data-plugin-update-all-errors hidden></ul>
-        <a class="btn btn-outline-secondary rounded-pill mt-3" href="<?= htmlSC(base_href('/admin/plugins')) ?>" data-plugin-update-all-refresh hidden><?= print_translation('admin_plugin_updates_bulk_refresh') ?></a>
     </div>
 
     <section class="fb-plugin-overview mb-4" aria-label="<?= htmlSC(return_translation('admin_plugin_updates_independent_title')) ?>">

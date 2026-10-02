@@ -32,6 +32,25 @@ final class SyncController
         ]));
     }
 
+    public function clearOperations(): void
+    {
+        Permissions::authorize(Permissions::RECONCILE);
+        if (!hash_equals('clear_vpn_operations', trim((string)request()->post('confirmation', '')))) {
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_clear_operations_confirmation'));
+            response()->redirect(base_href('/admin/plugins/vpn-manager-v2/operations'));
+            return;
+        }
+        try {
+            $count = (new OperationQueueRepository())->clearNotRunning();
+            session()->setFlash('success', sprintf(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_operations_cleared'), $count));
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 clear operations failed', [], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_clear_operations'));
+        }
+        response()->redirect(base_href('/admin/plugins/vpn-manager-v2/operations'));
+    }
+
     public function conflicts(): string
     {
         Permissions::authorize(Permissions::VIEW);

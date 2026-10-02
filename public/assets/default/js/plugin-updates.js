@@ -2,14 +2,36 @@
     'use strict';
 
     const init = () => {
+        const status = document.querySelector('[data-plugin-update-all-status]');
+        if (!status) return;
+        const summary = status.querySelector('[data-plugin-update-all-summary]');
+        const errors = status.querySelector('[data-plugin-update-all-errors]');
+        const resultKey = 'fireball.plugin-updates.result:' + window.location.pathname;
+        // Keep failures visible after refreshing versions, even if every other
+        // plugin is now current and the bulk update form is no longer rendered.
+        try {
+            const saved = window.sessionStorage.getItem(resultKey);
+            window.sessionStorage.removeItem(resultKey);
+            const result = saved ? JSON.parse(saved) : null;
+            if (result && typeof result.summary === 'string'
+                && Array.isArray(result.errors) && result.errors.length
+                && result.errors.every(message => typeof message === 'string')) {
+                summary.textContent = result.summary;
+                for (const message of result.errors) {
+                    const item = document.createElement('li');
+                    item.textContent = message;
+                    errors.append(item);
+                }
+                errors.hidden = false;
+                status.hidden = false;
+                status.classList.remove('alert-info');
+                status.classList.add('alert-warning');
+            }
+        } catch (_) { /* Storage may be unavailable in private browsing. */ }
         const form = document.querySelector('[data-plugin-update-all]');
         if (!form || !window.fetch || !window.FormData) return;
         const plugins = JSON.parse(form.dataset.plugins || '[]');
         if (!plugins.length) return;
-        const status = document.querySelector('[data-plugin-update-all-status]');
-        const summary = status.querySelector('[data-plugin-update-all-summary]');
-        const errors = status.querySelector('[data-plugin-update-all-errors]');
-        const refresh = status.querySelector('[data-plugin-update-all-refresh]');
         const label = form.querySelector('[data-plugin-update-all-label]');
         let running = false;
         const format = (template, values) => Object.entries(values).reduce(
@@ -38,7 +60,10 @@
             const bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : window.bootstrap;
             if (modal && bootstrapApi) bootstrapApi.Modal.getInstance(modal)?.hide();
             status.hidden = false;
+            errors.textContent = '';
+            errors.hidden = true;
             const counts = {updated: 0, skipped: 0, failed: 0};
+            const failureMessages = [];
             let interrupted = false;
             try {
                 for (const [index, plugin] of plugins.entries()) {
@@ -71,6 +96,7 @@
                         const item = document.createElement('li');
                         item.textContent = plugin.name + ': ' + (interrupted
                             ? form.dataset.interruptedLabel : (payload?.message || form.dataset.interruptedLabel));
+                        failureMessages.push(item.textContent);
                         errors.append(item);
                         errors.hidden = false;
                         if (interrupted) break;
@@ -89,7 +115,14 @@
                 summary.textContent = format(form.dataset.resultLabel, counts) + (interrupted ? ' ' + form.dataset.interruptedLabel : '');
                 status.classList.remove('alert-info');
                 status.classList.add(counts.failed ? 'alert-warning' : 'alert-success');
-                refresh.hidden = false;
+                if (failureMessages.length) {
+                    try {
+                        window.sessionStorage.setItem(resultKey, JSON.stringify({
+                            summary: summary.textContent, errors: failureMessages
+                        }));
+                    } catch (_) { /* Refresh still works without browser storage. */ }
+                }
+                window.location.reload();
             }
         });
     };

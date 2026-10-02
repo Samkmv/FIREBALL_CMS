@@ -159,7 +159,7 @@ $secretPlaceholder = static function (string $key) use ($server): string {
     </div>
 
     <div class="d-flex flex-wrap gap-2 mt-4">
-        <button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_save')) ?></button>
+        <button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_save_continue')) ?></button>
         <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers')) ?>"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_cancel')) ?></a>
     </div>
 </form>

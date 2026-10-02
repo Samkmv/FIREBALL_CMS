@@ -77,6 +77,7 @@ namespace {
             $dom->loadHTML('<?xml encoding="UTF-8">' . $html);
             libxml_clear_errors(); libxml_use_internal_errors($previous);
             $xpath = new DOMXPath($dom);
+            assertPlugin($xpath->query('//*[@data-plugin-update-all-refresh]')->length === 0, "$locale/$scenario: manual refresh button removed");
             $forms = $xpath->query('//form[@data-plugin-update-all]');
             assertPlugin($forms->length === ($scenario === 'available' ? 1 : 0), "$locale/$scenario: button conditional");
             if ($scenario !== 'available') continue;

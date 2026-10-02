@@ -34,9 +34,9 @@ final class ServerController
         Permissions::authorize(Permissions::MANAGE_SERVERS);
 
         try {
-            (new ServerManagerService())->create(request()->getData());
+            $id = (new ServerManagerService())->create(request()->getData());
             session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_server_created'));
-            $this->redirect('/admin/plugins/vpn-manager-v2/servers');
+            $this->redirect('/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery');
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());
             $this->redirect('/admin/plugins/vpn-manager-v2/servers/create');
@@ -67,7 +67,7 @@ final class ServerController
         try {
             (new ServerManagerService())->update($id, request()->getData());
             session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_server_updated'));
-            $this->redirect('/admin/plugins/vpn-manager-v2/servers');
+            $this->redirect('/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery');
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());
             $this->redirect('/admin/plugins/vpn-manager-v2/servers/edit/' . $id);

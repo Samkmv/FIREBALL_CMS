@@ -305,10 +305,23 @@ final class OperationQueueRepository
         }
     }
 
+    public function retryOperation(string $operationId): void
+    {
+        $row = db()->query('SELECT id, status FROM vpn_v2_operations WHERE operation_id = ? LIMIT 1', [$operationId])->getOne();
+        if (($row['status'] ?? '') === 'failed') {
+            $this->retryFailed((int)$row['id']);
+            return;
+        }
+        db()->query("UPDATE vpn_v2_operations SET status = 'retry', next_attempt_at = ?,
+                        attempts = 0, finished_at = NULL, updated_at = ?
+                     WHERE operation_id = ? AND status = 'retry'",
+            [date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $operationId]);
+    }
+
     public function progress(string $operationId): ?array
     {
         $row = db()->query(
-            'SELECT operation_id, operation_type, status, attempts, max_attempts, processed_count,
+            'SELECT operation_id, operation_type, server_id, subscription_id, connection_id, status, attempts, max_attempts, processed_count,
                     total_count, next_attempt_at, last_error, created_at, updated_at, finished_at
              FROM vpn_v2_operations WHERE operation_id = ? LIMIT 1',
             [$operationId]
@@ -345,6 +358,16 @@ final class OperationQueueRepository
     public function countAll(): int
     {
         return (int)db()->query('SELECT COUNT(*) FROM vpn_v2_operations')->getColumn();
+    }
+
+    public function clearNotRunning(): int
+    {
+        // Claiming a job and deleting it compete for the same row lock. A job
+        // already claimed by a worker stays visible until that worker finishes.
+        db()->query("DELETE FROM vpn_v2_operations
+                     WHERE status IN ('pending', 'retry', 'completed', 'completed_partial', 'failed', 'cancelled')");
+
+        return db()->rowCount();
     }
 
     public function page(int $limit = 20, int $offset = 0): array

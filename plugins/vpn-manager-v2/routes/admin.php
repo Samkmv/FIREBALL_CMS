@@ -4,6 +4,7 @@ use Fireball\VpnManagerV2\Controllers\Admin\OverviewController;
 use Fireball\VpnManagerV2\Controllers\Admin\InboundController;
 use Fireball\VpnManagerV2\Controllers\Admin\PlanController;
 use Fireball\VpnManagerV2\Controllers\Admin\ServerController;
+use Fireball\VpnManagerV2\Controllers\Admin\ServerRecoveryController;
 use Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController;
 use Fireball\VpnManagerV2\Controllers\Admin\SubscriptionDeviceController;
 use Fireball\VpnManagerV2\Controllers\Admin\ConnectionController;
@@ -17,6 +18,14 @@ $router->get('/admin/plugins/vpn-manager-v2', static function (): string {
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2/servers', [ServerController::class, 'index'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/recovery/?', [ServerRecoveryController::class, 'index'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/recovery/inspect/?', [ServerRecoveryController::class, 'inspect'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/recovery/apply/?', [ServerRecoveryController::class, 'apply'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/recovery/process/?', [ServerRecoveryController::class, 'process'])
     ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/servers/create', [ServerController::class, 'create'])
     ->middleware(['auth', 'admin']);
@@ -156,6 +165,8 @@ $router->post('/admin/plugins/vpn-manager-v2/sync/full/?', [SyncController::clas
 $router->post('/admin/plugins/vpn-manager-v2/operations/retry/?', [SyncController::class, 'retry'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/operations/process/?', [SyncController::class, 'processPending'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/operations/clear/?', [SyncController::class, 'clearOperations'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/operations/(?P<operation>[a-fA-F0-9-]{36})/cancel/?', [SyncController::class, 'cancel'])
     ->middleware(['auth', 'admin']);

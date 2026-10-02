@@ -4,7 +4,6 @@ namespace Fireball\VpnManagerV2\Controllers\Admin;
 
 use FBL\Pagination;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
-use Fireball\VpnManagerV2\Repositories\ConfigurationSyncRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Services\ConnectionEditingService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
@@ -18,29 +17,6 @@ final class ConnectionController
     public function index(): string
     {
         Permissions::authorize(Permissions::VIEW);
-
-        // FIREBALL_VPN_CONNECTIONS_REMOTE_CLEANUP_PAGINATION_V1
-        // Дочищаем старые missing_remote, которые раньше действительно
-        // существовали в 3x-ui, но уже отсутствуют там.
-        $cleanupRepository = new ConfigurationSyncRepository();
-        $cleanedSubscriptionIds = $cleanupRepository->archiveConfirmedMissingRemoteNodes();
-        if ($cleanedSubscriptionIds !== []) {
-            $revisions = new VpnSubscriptionRevisionService();
-            foreach ($cleanedSubscriptionIds as $subscriptionId) {
-                try {
-                    $revisions->touchConfig((int)$subscriptionId);
-                } catch (\Throwable $exception) {
-                    log_error_details(
-                        'VPN Manager V2 remote-deleted connection revision update failed',
-                        [
-                            'Subscription' => (int)$subscriptionId,
-                            'Error Class' => get_class($exception),
-                        ],
-                        $exception
-                    );
-                }
-            }
-        }
 
         $repository = new SubscriptionRepository();
         $total = $repository->countConnections();

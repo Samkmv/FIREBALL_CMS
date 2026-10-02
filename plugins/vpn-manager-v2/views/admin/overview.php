@@ -40,8 +40,8 @@ $summaryCards = [
         <div class="d-flex align-items-start gap-3">
             <i class="<?= $isReady ? 'ci-check-circle' : 'ci-alert-triangle' ?> fs-4" aria-hidden="true"></i>
             <div>
-                <div class="fw-semibold"><?= htmlSC(FireballPluginVpnManagerV2::t($isReady ? 'vpn_manager_v2_overview_everything_ready' : 'vpn_manager_v2_overview_attention')) ?></div>
-                <div class="small mt-1"><?= htmlSC(FireballPluginVpnManagerV2::t($isReady ? 'vpn_manager_v2_overview_ready_help' : 'vpn_manager_v2_schema_incomplete')) ?></div>
+                <div class="fw-semibold"><?= htmlSC(FireballPluginVpnManagerV2::t($isReady ? 'vpn_manager_v2_recovery_schema_ready' : 'vpn_manager_v2_overview_attention')) ?></div>
+                <div class="small mt-1"><?= htmlSC(FireballPluginVpnManagerV2::t($isReady ? 'vpn_manager_v2_recovery_schema_help' : 'vpn_manager_v2_schema_incomplete')) ?></div>
             </div>
         </div>
         <a class="btn btn-sm <?= $isReady ? 'btn-success' : 'btn-warning' ?> rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync-logs')) ?>">

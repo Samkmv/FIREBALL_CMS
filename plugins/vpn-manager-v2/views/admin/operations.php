@@ -22,7 +22,13 @@ foreach ($operations as $operation) {
     ]] : [];
     $cancel = AdminActionDropdown::render($cancelActions);
     $rows[] = ['cells' => [
-        ['html' => '<code>' . htmlSC((string)$operation['operation_id']) . '</code>'],
+        ['html' => (!empty($operation['subscription_id'])
+            ? '<a href="' . htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . (int)$operation['subscription_id'])) . '">'
+                . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_tab_subscriptions')) . ' #' . (int)$operation['subscription_id'] . '</a><br>' : '')
+            . (!empty($operation['server_id'])
+                ? '<a href="' . htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/' . (int)$operation['server_id'] . '/recovery')) . '">'
+                    . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_action')) . ' #' . (int)$operation['server_id'] . '</a><br>' : '')
+            . '<code class="small">' . htmlSC((string)$operation['operation_id']) . '</code>'],
         ['value' => LocalizedValue::operationType($operation['operation_type'] ?? '')],
         ['value' => LocalizedValue::operationSource($operation['source'] ?? '')],
         ['html' => '<span class="badge rounded-pill ' . $class . '">'
@@ -41,21 +47,46 @@ foreach ($operations as $operation) {
      data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
      data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
      aria-live="polite"></div>
-<div class="d-flex flex-wrap gap-2 mb-3">
-    <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/full')) ?>" data-vpn-v2-async-operation>
-        <?= get_csrf_field() ?>
-        <button class="btn btn-dark rounded-pill" type="submit"><i class="ci-refresh-cw me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_full_sync')) ?></button>
-    </form>
-    <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/retry')) ?>" data-vpn-v2-async-operation>
-        <?= get_csrf_field() ?>
-        <button class="btn btn-outline-warning rounded-pill" type="submit"><i class="ci-rotate-ccw me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_operations')) ?></button>
-    </form>
-    <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/process')) ?>" data-vpn-v2-async-operation>
-        <?= get_csrf_field() ?>
-        <button class="btn btn-outline-primary rounded-pill" type="submit"><i class="ci-play me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_process_operations')) ?></button>
-    </form>
-</div>
+<details class="fb-plugin-details border rounded-5 p-3 p-md-4 mb-4 mt-0">
+    <summary class="p-0 fs-6">
+        <span>
+            <span class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center" style="width:2.5rem;height:2.5rem" aria-hidden="true"><i class="ci-settings"></i></span>
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_advanced')) ?>
+        </span>
+        <i class="ci-chevron-down" aria-hidden="true"></i>
+    </summary>
+    <div class="d-flex flex-wrap gap-2 border-top pt-3 mt-3">
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/full')) ?>" data-vpn-v2-async-operation>
+            <?= get_csrf_field() ?>
+            <button class="btn btn-dark rounded-pill" type="submit"><i class="ci-refresh-cw me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_full_sync')) ?></button>
+        </form>
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/retry')) ?>" data-vpn-v2-async-operation>
+            <?= get_csrf_field() ?>
+            <button class="btn btn-outline-warning rounded-pill" type="submit"><i class="ci-rotate-ccw me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_operations')) ?></button>
+        </form>
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/process')) ?>" data-vpn-v2-async-operation>
+            <?= get_csrf_field() ?>
+            <button class="btn btn-outline-primary rounded-pill" type="submit"><i class="ci-play me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_process_operations')) ?></button>
+        </form>
+    </div>
+</details>
 <div class="border rounded-5 p-3 p-md-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="h5 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_tab_operations')) ?></h2>
+        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/clear')) ?>"
+              data-admin-delete-form
+              data-confirm-title="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_clear_operations_title')) ?>"
+              data-delete-message="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_clear_operations')) ?>"
+              data-confirm-hint="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_clear_operations_hint')) ?>"
+              data-delete-confirm-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_clear_operations')) ?>">
+            <?= get_csrf_field() ?>
+            <input type="hidden" name="confirmation" value="clear_vpn_operations">
+            <button class="btn btn-danger rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 py-2" type="submit" <?= (int)($pagination['total_records'] ?? count($operations)) === 0 ? 'disabled' : '' ?>>
+                <i class="ci-trash" aria-hidden="true"></i>
+                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_clear_operations')) ?></span>
+            </button>
+        </form>
+    </div>
 <?= view()->renderPartial('admin/partials/table', [
     'columns' => [
         ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_operation_id')],
@@ -74,7 +105,7 @@ foreach ($operations as $operation) {
 <?= view()->renderPartial('admin/partials/table_footer', [
     'visible' => count($operations),
     'total' => (int)($pagination['total_records'] ?? count($operations)),
-    'pagination' => $pagination && (int)($pagination['total_pages'] ?? 1) > 1 ? $pagination : null,
+    'pagination' => $pagination,
 ]) ?>
 </div>
 <?= view()->renderPartial('admin/shell_close') ?>

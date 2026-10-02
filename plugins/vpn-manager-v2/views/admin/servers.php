@@ -29,6 +29,11 @@ $serverActions = static function (array $server): array {
 
     return [
         [
+            'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_action'),
+            'href' => base_href('/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery'),
+            'icon' => 'ci-refresh-cw',
+        ],
+        [
             'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit'),
             'href' => base_href('/admin/plugins/vpn-manager-v2/servers/edit/' . $id),
             'icon' => 'ci-edit',
@@ -39,20 +44,6 @@ $serverActions = static function (array $server): array {
             'action' => base_href('/admin/plugins/vpn-manager-v2/servers/test'),
             'hidden' => ['id' => $id],
             'icon' => 'ci-activity',
-        ],
-        [
-            'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_inbounds'),
-            'type' => 'form',
-            'action' => base_href('/admin/plugins/vpn-manager-v2/inbounds/sync'),
-            'hidden' => ['server_id' => $id],
-            'icon' => 'ci-refresh-cw',
-        ],
-        [
-            'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_server'),
-            'type' => 'form',
-            'action' => base_href('/admin/plugins/vpn-manager-v2/sync/server/' . $id),
-            'form_attributes' => ['data-vpn-v2-async-operation' => true],
-            'icon' => 'ci-repeat',
         ],
         [
             'label' => FireballPluginVpnManagerV2::t(!empty($server['is_enabled'])
@@ -121,7 +112,7 @@ foreach ($servers as $server) {
             ['value' => $counts],
             ['value' => $lastSync],
             ['html' => $lastCheckHtml],
-            ['html' => '<div class="text-end">' . AdminActionDropdown::render($serverActions($server)) . '</div>'],
+            ['html' => AdminActionDropdown::render($serverActions($server))],
         ],
     ];
 
@@ -131,7 +122,7 @@ foreach ($servers as $server) {
             . htmlSC((string)$server['code']) . '</div>'],
         'icon' => 'ci-server',
         'status' => [['html' => $badge]],
-        'actions' => $serverActions($server),
+        'actions' => AdminActionDropdown::render($serverActions($server)),
         'extra_fields' => [
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_location'), 'value' => $location],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_panel'), 'value' => $panel],

@@ -13,3 +13,18 @@
 @media(max-width:359.98px){.profile-sidebar{grid-template-columns:1fr}.profile-sidebar>.profile-nav:first-of-type{grid-column:1;grid-row:auto;border-top:1px solid var(--profile-line);padding-top:10px}.profile-nav-services{grid-template-columns:1fr}.profile-account-card{padding:12px}.profile-status-icon{width:32px;height:36px;font-size:20px}.profile-status-body .btn{padding:8px 12px}}
 
 @media(max-width:575.98px){.profile-sidebar{grid-template-columns:1fr}.profile-sidebar>.profile-nav:first-of-type{grid-column:1;grid-row:auto;border-top:1px solid var(--profile-line);padding-top:10px}.profile-nav-services{grid-template-columns:1fr}.profile-nav-footer{flex-wrap:wrap}.profile-meta{font-size:.875rem}}
+
+@media(max-width:575.98px){
+    .profile-nav a,.profile-nav button{min-height:44px}
+    .profile-nav a span{min-width:0;overflow-wrap:anywhere}
+    .profile-subscription{display:grid;grid-template-columns:40px minmax(0,1fr) 16px;align-items:start;gap:12px;padding:16px}
+    .profile-subscription-icon{width:40px;height:40px;font-size:22px}
+    .profile-subscription-body{display:contents}
+    .profile-subscription .profile-card-title{grid-column:2;grid-row:1;margin-bottom:0;min-width:0}
+    .profile-subscription>i{grid-column:3;grid-row:1;margin-top:12px}
+    .profile-subscription-description,.profile-subscription-meta{grid-column:1/-1;margin:0}
+    .profile-subscription-meta{flex-direction:column;gap:8px;overflow-wrap:anywhere}
+    .profile-subscription-meta span{min-width:0}
+    .profile-subscription-meta i{flex-shrink:0}
+    .profile-status-body .btn{max-width:100%;white-space:normal}
+}

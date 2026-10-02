@@ -31,7 +31,7 @@ final class ConfigurationSyncService
     ) {
     }
 
-    public function syncServer(int $serverId, string $source = 'reconciliation', ?string $operationId = null): array
+    public function syncServer(int $serverId, string $source = 'reconciliation', ?string $operationId = null, bool $preserveMissing = false): array
     {
         $started = microtime(true);
         $repository = $this->repository ?? new ConfigurationSyncRepository();
@@ -90,7 +90,7 @@ final class ConfigurationSyncService
 
                     // Раньше подтверждённый клиент, исчезнувший из успешной
                     // инвентаризации 3x-ui, считается удалённым на стороне 3x-ui.
-                    if ($this->wasConfirmedRemote($node)) {
+                    if (!$preserveMissing && $this->wasConfirmedRemote($node)) {
                         if ($repository->archiveRemoteDeletedNode($node, $operationId)) {
                             $counts['deleted']++;
                             $changedSubscriptions[(int)$node['subscription_id']] = true;
@@ -162,7 +162,9 @@ final class ConfigurationSyncService
                 }
 
                 $identity = ($this->identities ?? new RemoteClientIdentityService())->forSubscription(
-                    ['id' => (int)$node['subscription_id'], 'user_id' => (int)$node['user_id']],
+                    ['id' => (int)$node['subscription_id'], 'user_id' => (int)$node['user_id'],
+                        'profile_id' => $node['profile_id'] ?? null,
+                        'manual_customer_name' => $node['manual_customer_name'] ?? null],
                     [
                         'server_id' => $serverId,
                         'inbound_id' => (int)$node['inbound_id'],
@@ -180,6 +182,9 @@ final class ConfigurationSyncService
                 // names apply to newly provisioned rows without renaming legacy
                 // clients during an ordinary configuration poll.
                 $expectedName = trim((string)($node['remote_client_name'] ?? ''));
+                if ($expectedName === '') {
+                    $expectedName = trim((string)($node['client_email'] ?? ''));
+                }
                 $expectedName = $expectedName !== ''
                     ? $expectedName
                     : (string)$identity['remote_client_name'];

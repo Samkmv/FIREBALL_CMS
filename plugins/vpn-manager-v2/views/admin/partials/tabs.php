@@ -1,6 +1,6 @@
 <?php
 $tabs = is_array($tabs ?? null) ? $tabs : [];
-$primaryKeys = ['overview', 'servers', 'plans', 'subscriptions', 'connections'];
+$primaryKeys = ['overview', 'servers', 'plans', 'subscriptions', 'operations'];
 $primaryTabs = array_values(array_filter(
     $tabs,
     static fn(array $tab): bool => in_array((string)($tab['key'] ?? ''), $primaryKeys, true)
