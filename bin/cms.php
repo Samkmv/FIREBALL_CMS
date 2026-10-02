@@ -32,6 +32,30 @@ try {
         }
         exit;
     }
+    if ($command === 'scheduler:run') {
+        $app->bootInstalledServices();
+
+        // Loading routes boots active plugins, so their scheduled jobs
+        // are registered through fireball_scheduled_jobs.
+        require CONFIG . '/routes.php';
+
+        $result = (new \App\Services\SchedulerService())->run();
+        $failed = (int)($result['failed'] ?? 0);
+
+        echo json_encode(
+            [
+                'status' => $failed > 0 ? 'partial' : 'ok',
+                'scheduler' => $result,
+            ],
+            JSON_PRETTY_PRINT
+                | JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_PARTIAL_OUTPUT_ON_ERROR
+        ) . PHP_EOL;
+
+        exit($failed > 0 ? 1 : 0);
+    }
+
     if ($command === 'assets:rebuild') {
         echo 'Versioned assets: ' . \FBL\AssetManifest::rebuild() . PHP_EOL;
         exit;
@@ -47,7 +71,7 @@ try {
         echo "Search index refreshed.\n";
         exit;
     }
-    echo "Usage: php bin/cms.php diagnose|migrate|cache:clear|assets:rebuild|search:reindex [--allow-empty]\n";
+    echo "Usage: php bin/cms.php diagnose|migrate|scheduler:run|cache:clear|assets:rebuild|search:reindex [--allow-empty]\n";
 } catch (Throwable $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
     exit(1);

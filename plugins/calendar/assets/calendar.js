@@ -282,7 +282,9 @@
 
     function updateToolbar() {
         root.querySelectorAll('[data-calendar-view]').forEach((button) => {
-            button.classList.toggle('is-active', button.dataset.calendarView === state.view);
+            const active = button.dataset.calendarView === state.view;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
         const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' });
         if (state.view === 'month') {

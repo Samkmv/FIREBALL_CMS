@@ -2,7 +2,7 @@
   "name": "Calendar",
   "slug": "calendar",
   "class": "FireballPluginCalendar",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "system",
   "description": "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery.",
   "name_i18n": {
@@ -24,5 +24,12 @@
     "icon": "ci-calendar",
     "route": "/admin/calendar",
     "position": 35
+  },
+  "update": {
+    "enabled": true,
+    "provider": "github_directory",
+    "repository": "Samkmv/FIREBALL_CMS",
+    "branch": "main",
+    "path": "plugins/calendar"
   }
 }

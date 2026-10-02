@@ -81,7 +81,7 @@ $config = [
                 </div>
                 <div class="fb-calendar-view-switch" role="group" aria-label="<?= $t('calendar_title') ?>">
                     <?php foreach (['month', 'week', 'day', 'list'] as $view): ?>
-                        <button class="btn" type="button" data-calendar-view="<?= $view ?>"><?= $t('calendar_' . $view) ?></button>
+                        <button class="btn" type="button" data-calendar-view="<?= $view ?>" aria-pressed="false"><?= $t('calendar_' . $view) ?></button>
                     <?php endforeach; ?>
                 </div>
             </header>
