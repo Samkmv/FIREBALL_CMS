@@ -2,7 +2,7 @@
   "name": "Calendar",
   "slug": "calendar",
   "class": "FireballPluginCalendar",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "type": "system",
   "description": "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery.",
   "name_i18n": {
