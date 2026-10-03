@@ -239,6 +239,10 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Bootstrap + Theme styles -->
     <link rel="stylesheet" href="<?= theme_asset_versioned('css/theme.min.css') ?>" id="theme-styles">
 
+    <?php if (isset($is_settings)): ?>
+        <link rel="stylesheet" href="<?= theme_asset_versioned('css/profile.css') ?>">
+    <?php endif; ?>
+
     <!-- Customs styles -->
     <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= theme_asset_versioned('css/style.css') ?>">
@@ -467,6 +471,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <script src="<?= theme_asset_versioned('js/theme.min.js') ?>"></script>
 
 <!-- Customs scripts -->
+<script src="<?= theme_asset_versioned('js/password-field.js') ?>"></script>
 <?php if (!empty($requiredAssets['choices'])): ?>
 <script src="<?= theme_asset_versioned('js/select-init.js') ?>"></script>
 <?php endif; ?>

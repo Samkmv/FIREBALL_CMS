@@ -13,18 +13,31 @@ $(function () {
     // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
     const readMessageViewportAnchor = () => {
         const box = chatApp.find('[data-chat-messages]')[0];
-        if (!box) return null;
+        if (!box) {
+            return null;
+        }
+
         const distanceFromBottom = Math.max(0, box.scrollHeight - box.scrollTop - box.clientHeight);
-        return {distanceFromBottom, stickToBottom: distanceFromBottom <= 48};
+        return {
+            distanceFromBottom,
+            stickToBottom: distanceFromBottom <= 48,
+        };
     };
 
     const restoreMessageViewportAnchor = (anchor) => {
-        if (!anchor) return;
-        if (messageViewportFrame) cancelAnimationFrame(messageViewportFrame);
+        if (!anchor) {
+            return;
+        }
+        if (messageViewportFrame) {
+            cancelAnimationFrame(messageViewportFrame);
+        }
         messageViewportFrame = requestAnimationFrame(() => {
             messageViewportFrame = 0;
             const box = chatApp.find('[data-chat-messages]')[0];
-            if (!box) return;
+            if (!box) {
+                return;
+            }
+
             box.scrollTop = anchor.stickToBottom
                 ? box.scrollHeight
                 : Math.max(0, box.scrollHeight - box.clientHeight - anchor.distanceFromBottom);
@@ -32,8 +45,12 @@ $(function () {
     };
 
     const beginMessageViewportAnchorSession = () => {
-        if (!viewportAnchor) viewportAnchor = readMessageViewportAnchor();
-        if (viewportAnchorReleaseTimer) clearTimeout(viewportAnchorReleaseTimer);
+        if (!viewportAnchor) {
+            viewportAnchor = readMessageViewportAnchor();
+        }
+        if (viewportAnchorReleaseTimer) {
+            clearTimeout(viewportAnchorReleaseTimer);
+        }
         viewportAnchorReleaseTimer = window.setTimeout(() => {
             viewportAnchorReleaseTimer = 0;
             viewportAnchor = null;
@@ -72,7 +89,9 @@ $(function () {
     window.addEventListener('pageshow', scheduleMobileFullscreenSync, {passive: true});
     window.addEventListener('orientationchange', scheduleMobileFullscreenSync, {passive: true});
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) scheduleMobileFullscreenSync();
+        if (!document.hidden) {
+            scheduleMobileFullscreenSync();
+        }
     }, {passive: true});
     syncMobileFullscreen();
 
@@ -108,6 +127,7 @@ $(function () {
     const currentName = chatApp.find('[data-chat-current-name]');
     const currentRole = chatApp.find('[data-chat-current-role]');
     const currentAvatar = chatApp.find('[data-chat-current-avatar]');
+    const currentAvatarPresence = chatApp.find('[data-chat-current-presence]');
     const currentStatus = chatApp.find('[data-chat-current-status]');
     const typingIndicator = chatApp.find('[data-chat-typing-indicator]');
     const messageSearchInput = chatApp.find('[data-chat-message-search]');
@@ -262,7 +282,9 @@ $(function () {
         const baseHeight = Number(input.dataset.chatBaseHeight) || nextHeight;
         const composerGrowth = isMobile ? Math.max(0, nextHeight - baseHeight) : 0;
         chatApp[0].style.setProperty('--chat-composer-growth', `${composerGrowth}px`);
-        if (isMobile) restoreMessageViewportAnchor(resizeAnchor);
+        if (isMobile) {
+            restoreMessageViewportAnchor(resizeAnchor);
+        }
     };
 
     const formatBytes = (bytes) => {
@@ -529,6 +551,9 @@ $(function () {
     `;
 
     const updateCurrentContactPresence = (isOnline) => {
+        currentAvatarPresence
+            .toggleClass('is-online', isOnline)
+            .toggleClass('is-offline', !isOnline);
         currentStatus
             .toggleClass('text-success', isOnline)
             .toggleClass('text-body-secondary', !isOnline)
@@ -1081,6 +1106,10 @@ $(function () {
                     .toggleClass('text-success', isOnline)
                     .toggleClass('text-body-secondary', !isOnline)
                     .html(renderPresenceBadge(isOnline));
+
+                button.find('.chat-contact-presence')
+                    .toggleClass('is-online', isOnline)
+                    .toggleClass('is-offline', !isOnline);
 
                 button.find(`[data-chat-contact-preview="${contactId}"]`).text(getPreviewText(item.last_message_preview));
             });

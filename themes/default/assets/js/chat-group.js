@@ -49,7 +49,6 @@ $(function () {
             viewportAnchor = null;
         }, 220);
     };
-
     const syncViewport = () => {
         viewportFrame = 0;
         const active = document.activeElement;

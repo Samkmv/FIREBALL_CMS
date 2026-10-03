@@ -1546,10 +1546,15 @@ class AdminController extends BaseController
      */
     public function themes()
     {
+        $themeDiagnostics = [];
+        foreach (Theme::getThemes() as $installedTheme) {
+            $themeDiagnostics[$installedTheme['slug']] = Theme::diagnostics($installedTheme['slug']);
+        }
         return view('admin/themes', [
             'title' => return_translation('admin_themes_title'),
             'themes' => Theme::getThemes(),
             'active_theme' => Theme::getActiveTheme(),
+            'theme_diagnostics' => $themeDiagnostics,
         ]);
     }
 

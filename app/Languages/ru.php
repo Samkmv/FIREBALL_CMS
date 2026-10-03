@@ -1,6 +1,16 @@
 <?php
 
 return [
+    'theme_diagnostics_title' => 'Диагностика и покрытие',
+    'theme_diagnostics_active' => 'Активная тема',
+    'theme_diagnostics_required' => 'Обязательные файлы',
+    'theme_diagnostics_file' => 'Файл',
+    'theme_diagnostics_selected' => 'В выбранной теме',
+    'theme_diagnostics_source' => 'Источник',
+    'theme_diagnostics_present' => 'Есть',
+    'theme_diagnostics_absent' => 'Отсутствует',
+    'theme_diagnostics_unresolved' => 'Отсутствует после fallback',
+
     'tpl_auth_settings' => 'Настройки аккаунта',
     // Menu
     'tpl_menu_logo' => 'Fireball',

@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Services\PwaService;
 use App\Models\NotificationCenter;
+use FBL\Theme;
 
 class PwaController extends BaseController
 {
@@ -33,7 +34,7 @@ class PwaController extends BaseController
 
     public function offline(): string
     {
-        return view('pwa/offline', [
+        return Theme::render('offline', [
             'title' => return_translation('pwa_offline_title'),
             'seo_robots' => 'noindex,nofollow',
         ]);

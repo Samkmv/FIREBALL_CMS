@@ -2865,19 +2865,39 @@ html.chat-viewport-fullscreen .chat-messages-surface {
         width: min(88vw, 22rem);
     }
 
+    [data-chat-preview-modal],
+    [data-chat-audit-modal],
+    [data-chat-confirm-modal] {
+        --chat-modal-mobile-top: max(.875rem, calc(env(safe-area-inset-top, 0px) + .25rem));
+        --chat-modal-mobile-bottom: max(.875rem, calc(env(safe-area-inset-bottom, 0px) + .25rem));
+    }
+
+    [data-chat-preview-modal] .modal-dialog,
+    [data-chat-audit-modal] .modal-dialog,
+    [data-chat-confirm-modal] .modal-dialog {
+        margin-top: var(--chat-modal-mobile-top);
+        margin-bottom: var(--chat-modal-mobile-bottom);
+    }
+
+    [data-chat-audit-modal] .modal-dialog-centered,
+    [data-chat-confirm-modal] .modal-dialog-centered {
+        min-height: calc(100% - var(--chat-modal-mobile-top) - var(--chat-modal-mobile-bottom));
+    }
+
     [data-chat-preview-modal] .modal-dialog {
         width: calc(100vw - 1rem);
         max-width: calc(100vw - 1rem);
         height: auto;
         min-height: 0;
-        margin: .5rem auto;
+        margin-right: auto;
+        margin-left: auto;
         align-items: center;
     }
 
     [data-chat-preview-modal] .modal-content {
         height: auto;
         min-height: 0;
-        max-height: calc(100dvh - 1rem);
+        max-height: calc(100dvh - var(--chat-modal-mobile-top) - var(--chat-modal-mobile-bottom));
         border-radius: 1.25rem !important;
     }
 
@@ -3077,6 +3097,20 @@ html.chat-viewport-fullscreen .chat-messages-surface {
     border-top: 1px solid rgba(13, 110, 253, 0.12);
 }
 
+.app-toast-stack .toast.app-toast--rental {
+    border-color: #dc3545 !important;
+    cursor: pointer;
+}
+
+.app-toast-stack .toast.app-toast--rental .toast-header {
+    background-color: rgba(220, 53, 69, 0.08) !important;
+    color: #b02a37 !important;
+}
+
+.app-toast-stack .toast.app-toast--rental .toast-body {
+    border-top: 1px solid rgba(220, 53, 69, 0.12);
+}
+
 .app-toast-stack .toast.app-toast--warning {
     border-color: #ffc107 !important;
 }
@@ -3148,6 +3182,15 @@ html.chat-viewport-fullscreen .chat-messages-surface {
     border-top-color: rgba(13, 110, 253, 0.24);
 }
 
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--rental .toast-header {
+    background-color: rgba(220, 53, 69, 0.18) !important;
+    color: #fca5a5 !important;
+}
+
+[data-bs-theme="dark"] .app-toast-stack .toast.app-toast--rental .toast-body {
+    border-top-color: rgba(220, 53, 69, 0.24);
+}
+
 [data-bs-theme="dark"] .app-toast-stack .toast.app-toast--warning .toast-header {
     background-color: rgba(255, 193, 7, 0.2) !important;
     color: #fde68a !important;
@@ -3155,6 +3198,28 @@ html.chat-viewport-fullscreen .chat-messages-surface {
 
 [data-bs-theme="dark"] .app-toast-stack .toast.app-toast--warning .toast-body {
     border-top-color: rgba(255, 193, 7, 0.24);
+}
+
+.pwa-ios-install-banner {
+    position: fixed;
+    right: max(1rem, calc(env(safe-area-inset-right) + 1rem));
+    bottom: max(1rem, calc(env(safe-area-inset-bottom) + 1rem));
+    left: max(1rem, calc(env(safe-area-inset-left) + 1rem));
+    z-index: 12040;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: .8rem 2.75rem .8rem .95rem;
+    border-radius: 1rem;
+}
+
+[data-bs-theme="dark"] .pwa-ios-install-banner {
+    color: var(--cz-info-text-emphasis);
+    background-color: var(--cz-info-bg-subtle);
+    border-color: var(--cz-info-border-subtle);
 }
 
 @media (max-width: 575.98px) {
@@ -3275,6 +3340,113 @@ html.chat-viewport-fullscreen .chat-messages-surface {
         padding: .8rem .8rem .9rem !important;
         font-size: .95rem;
     }
+}
+
+[data-admin-shell] .table-responsive,
+[data-admin-shell] .admin-table-responsive {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-table-card,
+[data-file-manager-shell] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.admin-table-card {
+    overflow: visible;
+}
+
+[data-file-manager-shell] {
+    overflow: hidden;
+}
+
+.admin-table-footer {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    padding-top: 1.5rem;
+}
+
+.admin-table-info {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    font-size: .875rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.admin-pagination-wrap {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: visible;
+    padding-bottom: .25rem;
+}
+
+.admin-pagination-nav {
+    width: 100%;
+    min-width: 100%;
+}
+
+.admin-pagination-wrap .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .375rem;
+    width: 100%;
+    min-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.admin-pagination-wrap .page-item,
+.admin-pagination-wrap .page-link {
+    flex: 0 0 auto;
+}
+
+.admin-pagination-wrap .page-link {
+    min-width: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-pagination-ellipsis .page-link {
+    pointer-events: none;
+}
+
+.admin-analytics-card {
+    min-height: 9rem;
+}
+
+.admin-analytics-card__label {
+    min-height: 2.6rem;
+    line-height: 1.25;
+}
+
+.admin-analytics-card__label i {
+    flex: 0 0 1.1rem;
+    width: 1.1rem;
+    line-height: 1.25;
+    margin-top: .1rem;
+}
+
+.admin-analytics-card__value {
+    margin-top: auto;
 }
 
 [data-admin-analytics] {
@@ -6714,4 +6886,87 @@ body:not(.fb-admin-body) .fb-search-open:focus-visible {
     .fb-downloads__info { grid-column: 2; grid-row: 1; }
     .fb-downloads__info:first-child { grid-column: 1 / -1; }
     .fb-downloads__button { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* Public authentication controls shared with the existing CMS UI. */
+.password-field {
+    position: relative;
+}
+
+.password-field__control {
+    --password-toggle-width: 3rem;
+    --password-validation-icon-offset: 3.75rem;
+    position: relative;
+}
+
+.password-field__input {
+    padding-inline-end: 5.5rem;
+}
+
+.password-field__input.is-invalid,
+.password-field__input.is-valid,
+.was-validated .password-field__input:invalid,
+.was-validated .password-field__input:valid {
+    padding-inline-end: 5.5rem;
+    background-position: right var(--password-validation-icon-offset) center;
+}
+
+.password-field .password-toggle-button {
+    position: absolute;
+    z-index: 2;
+    inset: 0 0 0 auto;
+    display: flex;
+    align-items: center;
+    width: var(--password-toggle-width);
+    height: 100%;
+    padding: 0;
+    justify-content: center;
+    color: var(--cz-body-color, var(--bs-body-color));
+    cursor: pointer;
+    transition: color .2s ease-in-out;
+}
+
+.password-field .password-toggle-button:hover {
+    color: var(--cz-emphasis-color, var(--bs-emphasis-color));
+}
+
+.password-field .password-toggle-button-icon {
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.password-field .password-toggle-button:has(input:disabled) {
+    pointer-events: none;
+    opacity: .45;
+}
+
+.password-field .password-toggle-button:has(input:focus-visible) {
+    outline: 3px solid color-mix(in srgb, var(--bs-primary) 35%, transparent);
+    outline-offset: 1px;
+}
+
+.password-field > .invalid-feedback {
+    margin-top: .25rem;
+}
+
+.was-validated .password-field:has(.password-field__input:invalid) > .invalid-feedback,
+.was-validated .password-field:has(.password-field__input:invalid) > .invalid-tooltip {
+    display: block;
+}
+
+.password-field:has(.password-field__input.is-invalid) .password-field__hint,
+.was-validated .password-field:has(.password-field__input:invalid) .password-field__hint {
+    display: none;
+}
+
+[dir="rtl"] .password-field__input.is-invalid,
+[dir="rtl"] .password-field__input.is-valid,
+[dir="rtl"] .was-validated .password-field__input:invalid,
+[dir="rtl"] .was-validated .password-field__input:valid {
+    background-position: left var(--password-validation-icon-offset) center;
+}
+
+[dir="rtl"] .password-field .password-toggle-button {
+    inset: 0 auto 0 0;
 }

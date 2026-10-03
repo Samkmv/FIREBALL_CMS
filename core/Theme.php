@@ -82,6 +82,12 @@ class Theme
         return theme()->render($template, $data);
     }
 
+    public static function diagnostics(?string $slug = null): array { return theme()->diagnostics($slug); }
+    public static function resolveFile(string $directory, string $name, ?string $slug = null): ?array { return theme()->resolveFile($directory, $name, $slug); }
+    public static function resolvePluginFile(string $slug, string $view, string $file, ?string $themeSlug = null): ?array { return theme()->resolvePluginFile($slug, $view, $file, $themeSlug); }
+    public static function publicTemplates(): array { return theme()->publicTemplates(); }
+    public static function renderPlugin(string $slug, string $view, array $data, string $file): string { return theme()->renderPlugin($slug, $view, $data, $file); }
+
     public static function partial($name, $data = []): string
     {
         return theme()->partial($name, $data);

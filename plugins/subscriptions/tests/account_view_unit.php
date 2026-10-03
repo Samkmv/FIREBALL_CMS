@@ -43,7 +43,7 @@ foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
         accountCheck($xpath->query($card . '//ul/li')->length === ($scenario === 'account-no-permissions' ? 0 : ($scenario === 'account-long' ? 4 : 3)), $context . ': only enabled permissions are displayed');
         accountCheck(!str_contains($body, $t['subscriptions_permission_camera_archive_download']), $context . ': unavailable permission is not advertised');
         $recurring = $scenario === 'account-recurring';
-        accountCheck($xpath->query('//article//form[@action="/account/subscription/auto-renew"]')->length === ($recurring ? 1 : 0), $context . ': renewal action uses subscription snapshot');
+        accountCheck($xpath->query('//form[@action="/account/subscription/auto-renew"]')->length === ($recurring ? 1 : 0), $context . ': modal renewal action uses subscription snapshot');
         if ($recurring) {
             accountCheck(str_contains($body, $t['subscriptions_disable_auto_renew']), $context . ': cancel renewal action is explicit');
             accountCheck(str_contains($body, $t['subscriptions_auto_renew_cancel_hint']), $context . ': retained access is explained before cancellation');

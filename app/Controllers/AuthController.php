@@ -11,6 +11,7 @@ use App\Services\TwoFactorService;
 use FBL\Auth;
 use FBL\File;
 use FBL\RateLimiter;
+use FBL\Theme;
 
 /**
  * Обрабатывает аутентификацию, регистрацию, восстановление пароля и профиль пользователя.
@@ -44,7 +45,7 @@ class AuthController extends BaseController
     public function login()
     {
         if (request()->isGet()) {
-            return view('auth/login', [
+            return Theme::render('auth/login', [
                 'title' => return_translation('auth_login_title'),
                 'password_recovery_available' => $this->isSettingEnabled('allow_email_password_reset') && (new MailService())->isEnabled(),
             ]);
@@ -127,7 +128,7 @@ class AuthController extends BaseController
         }
 
         if (request()->isGet()) {
-            return view('auth/two_factor_challenge', [
+            return Theme::render('auth/two_factor_challenge', [
                 'title' => return_translation('auth_two_factor_challenge_title'),
             ]);
         }
@@ -178,7 +179,7 @@ class AuthController extends BaseController
         }
 
         if (request()->isGet()) {
-            return view('auth/two_factor_recovery', [
+            return Theme::render('auth/two_factor_recovery', [
                 'title' => return_translation('auth_two_factor_recovery_title'),
                 'two_factor_recovery_available' => $this->isSettingEnabled('allow_2fa_email_recovery') && (new MailService())->isEnabled(),
             ]);
@@ -325,7 +326,7 @@ class AuthController extends BaseController
                 response()->redirect(base_href('/login'));
             }
 
-            return view('auth/reset_password', [
+            return Theme::render('auth/reset_password', [
                 'title' => return_translation('auth_reset_title'),
                 'token' => $token,
                 'reset_request' => $resetRequest,
@@ -372,7 +373,7 @@ class AuthController extends BaseController
     public function register()
     {
         if (request()->isGet()) {
-            return view('auth/register', [
+            return Theme::render('auth/register', [
                 'title' => return_translation('auth_register_title'),
             ]);
         }
@@ -628,7 +629,7 @@ class AuthController extends BaseController
             )
             : '';
 
-        return view('auth/profile', [
+        return Theme::render($isSettings ? 'auth/settings' : 'auth/profile', [
             'title' => return_translation($isSettings ? 'auth_settings_title' : 'auth_profile_title'),
             'is_settings' => $isSettings,
             'settings_section' => $settingsSection,

@@ -51,6 +51,38 @@ $actions .= $canManageThemes
                             <dd class="col-7 mb-0 text-end"><code><?= htmlSC((string)$theme['slug']) ?></code></dd>
                         </dl>
                     </div>
+                    <?php $diagnostics = $theme_diagnostics[$theme['slug']] ?? null; ?>
+                    <?php if ($diagnostics && check_admin()): ?>
+                    <div class="px-4 pb-4">
+                        <details>
+                            <summary class="fw-semibold"><?= print_translation('theme_diagnostics_title') ?></summary>
+                            <p class="small mt-3 mb-2"><?= print_translation('theme_diagnostics_active') ?>: <code><?= htmlSC($diagnostics['active_theme']) ?></code></p>
+                            <p class="small mb-2"><?= print_translation('theme_diagnostics_required') ?>:
+                                <?= count(array_filter($diagnostics['required'])) ?>/<?= count($diagnostics['required']) ?>
+                            </p>
+                            <ul class="small ps-3">
+                                <?php foreach ($diagnostics['required'] as $file => $present): ?>
+                                <li><code><?= htmlSC($file) ?></code> — <?= print_translation($present ? 'theme_diagnostics_present' : 'theme_diagnostics_absent') ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <p class="small mb-2"><?= print_translation('theme_diagnostics_title') ?>:
+                                <?= count(array_filter($diagnostics['coverage'], static fn(array $entry): bool => !$entry['missing'])) ?>/<?= count($diagnostics['coverage']) ?>
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-sm small">
+                                    <thead><tr><th><?= print_translation('theme_diagnostics_file') ?></th><th><?= print_translation('theme_diagnostics_selected') ?></th><th><?= print_translation('theme_diagnostics_source') ?></th></tr></thead>
+                                    <tbody>
+                                    <?php foreach ($diagnostics['coverage'] as $file => $coverage): ?>
+                                        <tr><td><code><?= htmlSC($file) ?></code></td>
+                                            <td><?= print_translation($coverage['present'] ? 'theme_diagnostics_present' : 'theme_diagnostics_absent') ?></td>
+                                            <td class="<?= $coverage['missing'] ? 'text-danger' : '' ?>"><?= $coverage['source'] !== null ? htmlSC($coverage['source']) : return_translation('theme_diagnostics_unresolved') ?></td></tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                    <?php endif; ?>
                     <div class="card-footer bg-transparent border-0 p-4 pt-0">
                         <div class="d-grid gap-2">
                             <?php if (!$isActive): ?>

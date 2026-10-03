@@ -303,7 +303,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                         <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_title')) ?></h2>
                         <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_profile_help')) ?></p>
                         <?php $routingLink = $happRoutingLink; ?>
-                        <?php require __DIR__ . '/../partials/happ-routing-link.php'; ?>
+                        <?= render_partial('plugins/vpn-manager-v2/happ-routing-link', get_defined_vars()) ?>
                     </section>
                 <?php endif; ?>
 

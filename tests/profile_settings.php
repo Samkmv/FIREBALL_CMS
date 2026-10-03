@@ -1,6 +1,7 @@
 <?php
 /** Standalone regression checks; no database or real account changes. */
 namespace FBL {
+    class Theme { public static function render($name, $data): array { return $data; } }
     class Auth { public static function setUser(): void {} }
 }
 namespace App\Models {
@@ -81,10 +82,20 @@ namespace {
     }
     function expect($condition, $message) { if (!$condition) { throw new RuntimeException($message); } }
     function renderProfile($data) {
-        extract($data);
-        ob_start();
-        require __DIR__ . '/../app/Views/themes/default/auth/profile.php';
-        return ob_get_clean();
+        $renderer = new class {
+            public function partial($name, $data) {
+                ob_start();
+                (function () { extract(func_get_arg(1)); require __DIR__ . '/../themes/default/partials/' . func_get_arg(0) . '.php'; })($name, $data);
+                return ob_get_clean();
+            }
+            public function render($data) {
+                extract($data);
+                ob_start();
+                require __DIR__ . '/../themes/default/templates/auth/' . (!empty($is_settings) ? 'settings' : 'profile') . '.php';
+                return ob_get_clean();
+            }
+        };
+        return $renderer->render($data);
     }
     define('SITE_NAME', 'Test');
     $session = new TestSession();

@@ -4,10 +4,10 @@ namespace App\Services\Themes;
 
 final class ThemeAssets
 {
-    private array $files = [];
     public function asset(string $path, array $theme, ?array $defaultTheme = null): string
     {
         if (trim($path) === '') {
+            if ($this->hasUnsafeAncestor(rtrim((string)$theme['path'], '/') . '/assets', (string)$theme['path'])) { return ''; }
             return base_url('/themes/' . rawurlencode((string)$theme['slug']) . '/assets');
         }
 
@@ -20,6 +20,10 @@ final class ThemeAssets
             if ($this->assetFile($defaultTheme, $assetPath) !== null) {
                 $theme = $defaultTheme;
             }
+        }
+
+        if ($this->assetFile($theme, $assetPath) === null && $this->hasUnsafeAncestor(rtrim((string)$theme['path'], '/') . '/assets/' . $assetPath, (string)$theme['path'])) {
+            return ''; // Do not emit a URL for a rejected symlink.
         }
 
         return base_url('/themes/' . rawurlencode((string)$theme['slug']) . '/assets/' . str_replace('%2F', '/', rawurlencode($assetPath)));
@@ -39,7 +43,7 @@ final class ThemeAssets
 
         $defaultAsset = $defaultTheme ? $this->assetFile($defaultTheme, $assetPath) : null;
 
-        return $defaultAsset ?: rtrim((string)$theme['path'], '/') . '/assets/' . $assetPath;
+        return $defaultAsset ?: '';
     }
 
     public function previewUrl(array $theme): string
@@ -52,23 +56,33 @@ final class ThemeAssets
     private function assetFile(array $theme, string $path): ?string
     {
         $file = rtrim((string)$theme['path'], '/') . '/assets/' . $path;
-        if (array_key_exists($file, $this->files)) {
-            return $this->files[$file];
-        }
         $realFile = realpath($file);
         $realBase = realpath(rtrim((string)$theme['path'], '/') . '/assets');
-        if ($realFile === false || $realBase === false || !$this->isInside($realFile, $realBase) || !is_file($realFile)) {
-            return $this->files[$file] = null;
+        if ($realFile === false || $realBase === false || !$this->isInside($realBase, (string)$theme['path']) || !$this->isInside($realFile, $realBase) || !is_file($realFile)) {
+            return null;
         }
 
-        return $this->files[$file] = $realFile;
+        return $realFile;
+    }
+
+    private function hasUnsafeAncestor(string $file, string $root): bool
+    {
+        while ($file !== $root && strlen($file) > strlen($root)) {
+            if (is_link($file)) {
+                $real = realpath($file);
+                if ($real === false || !$this->isInside($real, $root)
+                    || ($real !== $root . '/assets' && !$this->isInside($real, $root . '/assets'))) { return true; }
+            }
+            $file = dirname($file);
+        }
+        return false;
     }
 
     private function safePath(string $path): ?string
     {
         $path = trim(str_replace('\\', '/', $path));
         $path = ltrim($path, '/');
-        if ($path === '' || str_contains($path, '../') || str_contains($path, '..\\') || $path === '..' || str_contains($path, "\0")) {
+        if ($path === '' || array_intersect(explode('/', $path), ['.', '..']) || str_contains($path, '../') || str_contains($path, '..\\') || $path === '..' || str_contains($path, "\0")) {
             return null;
         }
 

@@ -15,6 +15,7 @@ use App\Services\SafeUploadService;
 use App\Services\UploadSettings;
 use FBL\File;
 use FBL\Language;
+use FBL\Theme;
 
 /**
  * Обрабатывает интерфейс личных сообщений, загрузку вложений и счётчики непрочитанных сообщений.
@@ -53,19 +54,19 @@ class ChatController extends BaseController
         $contacts = $this->chatMessages->getContactsForUser($currentUserId, $this->isPrivilegedChatUser());
         $activeContact = $this->resolveActiveContact($contacts);
         $footerScripts = [
-            base_url('/assets/default/js/chat.js?v=' . filemtime(WWW . '/assets/default/js/chat.js')),
+            theme_asset_versioned('js/chat.js'),
         ];
 
         if (check_admin()) {
-            $footerScripts[] = base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js'));
+            $footerScripts[] = theme_asset_versioned('js/admin-file-manager.js');
         }
 
-        return view('chat/index', [
+        return Theme::render('chat/index', [
             'title' => return_translation('chat_index_title'),
             'contacts' => $contacts,
             'header_scripts' => [
-                asset_versioned_url(base_url('/assets/default/js/app-viewport.js'), WWW . '/assets/default/js/app-viewport.js'),
-                asset_versioned_url(base_url('/assets/default/js/chat-viewport.js'), WWW . '/assets/default/js/chat-viewport.js'),
+                theme_asset_versioned('js/app-viewport.js'),
+                theme_asset_versioned('js/chat-viewport.js'),
             ],
             'active_contact' => $activeContact,
             'chat_fetch_url' => base_href('/chat/messages'),
@@ -607,11 +608,11 @@ class ChatController extends BaseController
 
         $groups->markRead($conversationId, $currentUserId);
 
-        return view('chat/group', [
+        return Theme::render('chat/group', [
             'title' => (string)$group['title'],
             'header_scripts' => [
-                asset_versioned_url(base_url('/assets/default/js/app-viewport.js'), WWW . '/assets/default/js/app-viewport.js'),
-                asset_versioned_url(base_url('/assets/default/js/chat-viewport.js'), WWW . '/assets/default/js/chat-viewport.js'),
+                theme_asset_versioned('js/app-viewport.js'),
+                theme_asset_versioned('js/chat-viewport.js'),
             ],
             'group' => $group,
             'members' => $groups->getMembers($conversationId),
@@ -620,9 +621,7 @@ class ChatController extends BaseController
             'chat_group_send_url' => base_href('/chat/group/send'),
             'chat_group_stream_url' => base_href('/chat/group/stream'),
             'footer_scripts' => [
-                base_url('/assets/default/js/chat-group.js?v=' . filemtime(
-                    WWW . '/assets/default/js/chat-group.js'
-                )),
+                theme_asset_versioned('js/chat-group.js'),
             ],
         ]);
     }

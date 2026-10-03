@@ -25,6 +25,20 @@ function get_alerts(): void {}
 function plugin_setting(string $slug, string $key, mixed $default = null): mixed { return $default; }
 function return_translation(string $key): string { return ['admin_table_showing' => 'Показано', 'admin_table_of' => 'из'][$key] ?? $key; }
 function print_translation(string $key): string { return return_translation($key); }
+function render_partial(string $name, array $data = []): string
+{
+    $renderer = new class {
+        public function partial(string $name, array $data = []): string
+        {
+            $allowed = ['plugins/subscriptions/table', 'plugins/subscriptions/table_footer', 'plugins/subscriptions/responsive_table_cards'];
+            if (!in_array($name, $allowed, true)) throw new RuntimeException('Unexpected public fixture partial');
+            ob_start();
+            (function () { extract(func_get_arg(1)); require __DIR__ . '/../../../../themes/default/partials/' . func_get_arg(0) . '.php'; })($name, $data);
+            return (string)ob_get_clean();
+        }
+    };
+    return $renderer->partial($name, $data);
+}
 function view(): object
 {
     return new class {

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const root = path.join(__dirname, '..');
-const inline = Array.from(fs.readFileSync(path.join(root, 'app/Views/themes/default/chat/index.php'), 'utf8')
+const inline = Array.from(fs.readFileSync(path.join(root, 'themes/default/templates/chat/index.php'), 'utf8')
     .matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g), match => match[1]).join('\n');
 const actions = ['reply', 'reaction', 'edit', 'delete'].map(name =>
     `<button type="button" class="chat-message-${name}-btn">${name[0]}</button>`).join('');
@@ -43,7 +43,7 @@ const fixture = `<!doctype html><html class="pwa-standalone chat-mobile-fullscre
             await page.addStyleTag({ path: path.join(root, 'themes/default/assets/css/style.css') });
             await page.addStyleTag({ content: inline });
             for (const file of ['app-viewport.js', 'chat-viewport.js']) {
-                await page.addScriptTag({path: path.join(root, 'public/assets/default/js', file)});
+                await page.addScriptTag({path: path.join(root, 'themes/default/assets/js', file)});
             }
             await page.evaluate(() => FireballChatViewport.sync(false));
             assert.equal(await page.getByText('Viewport', {exact: true}).count(), 0, 'Diagnostics does not add controls to normal CMS UI');
@@ -120,7 +120,7 @@ const fixture = `<!doctype html><html class="pwa-standalone chat-mobile-fullscre
             await page.addStyleTag({path: path.join(root, 'public/assets/default/css', file)});
         }
         for (const file of ['app-viewport.js', 'chat-viewport.js']) {
-            await page.addScriptTag({path: path.join(root, 'public/assets/default/js', file)});
+            await page.addScriptTag({path: path.join(root, 'themes/default/assets/js', file)});
         }
         await page.evaluate(() => FireballChatViewport.sync(false));
         const report = new Promise(resolve => page.once('dialog', async dialog => {

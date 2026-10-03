@@ -346,17 +346,35 @@ function abort($error = '', $code = 404)
     response()->setResponseCode($code);
     if ($code === 404 && isset(app()->theme)) {
         try {
-            echo theme()->render('404', [
+            $html = theme()->render('404', [
                 'title' => '404',
                 'error' => $error,
                 'seo_robots' => 'noindex,follow',
             ]);
+            response()->setResponseCode(404);
+            echo $html;
             die;
         } catch (\Throwable) {
             // Installation and broken-theme errors still use the system error view.
         }
     }
-    echo view("errors/{$code}", ['error' => $error], false);
+    // A failed theme may alter status or buffers; the system reserve preserves the requested code.
+    response()->setResponseCode($code);
+    $reserveLevel = ob_get_level();
+    try {
+        $systemFile = VIEWS . '/themes/default/errors/' . (int)$code . '.php';
+        if (!is_file($systemFile)) { throw new \RuntimeException('System error view unavailable.'); }
+        ob_start();
+        (static function (string $file, $error) { require $file; })($systemFile, $error);
+        $systemHtml = (string)ob_get_clean();
+        response()->setResponseCode($code);
+        echo $systemHtml;
+    } catch (\Throwable) {
+        while (ob_get_level() > $reserveLevel) { ob_end_clean(); }
+        response()->setResponseCode($code);
+        echo '<!doctype html><html><head><meta charset="utf-8"><title>' . (int)$code
+            . '</title></head><body><h1>' . (int)$code . '</h1></body></html>';
+    }
     die;
 }
 

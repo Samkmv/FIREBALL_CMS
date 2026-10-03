@@ -1,6 +1,16 @@
 <?php
 
 return [
+    'theme_diagnostics_title' => '诊断与覆盖',
+    'theme_diagnostics_active' => '当前主题',
+    'theme_diagnostics_required' => '必需文件',
+    'theme_diagnostics_file' => '文件',
+    'theme_diagnostics_selected' => '所选主题',
+    'theme_diagnostics_source' => '来源',
+    'theme_diagnostics_present' => '存在',
+    'theme_diagnostics_absent' => '缺失',
+    'theme_diagnostics_unresolved' => '回退后仍缺失',
+
     'tpl_auth_settings' => '账户设置',
     // Menu
     'tpl_menu_logo' => 'Fireball',

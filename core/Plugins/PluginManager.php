@@ -328,8 +328,17 @@ final class PluginManager
         $file = $metadata['path'] . '/views/' . $safeView . '.php';
         $realFile = realpath($file);
         $viewsRoot = realpath($metadata['path'] . '/views');
-        if ($realFile === false || $viewsRoot === false || !$this->isInside($realFile, $viewsRoot)) {
+        if ($realFile === false || $viewsRoot === false || !$this->isInside($viewsRoot, $metadata['path']) || !$this->isInside($realFile, $viewsRoot) || !is_file($realFile)) {
             abort('Plugin view not found.', 500);
+        }
+
+        // Public pages retain plugin_view(), but use the active theme's layout and overrides.
+        // Admin views and explicit fragments retain their legacy rendering contract.
+        $path = '/' . ltrim((string)uri_without_lang(), '/');
+        $adminContext = str_starts_with($path, '/admin/') || $path === '/admin'
+            || !empty($data['admin_context']);
+        if ($layout && !$adminContext) {
+            return \FBL\Theme::renderPlugin($pluginSlug, $safeView, $data, $realFile);
         }
 
         extract($data);

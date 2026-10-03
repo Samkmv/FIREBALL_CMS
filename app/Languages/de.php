@@ -1,6 +1,16 @@
 <?php
 
 return [
+    'theme_diagnostics_title' => 'Diagnose und Abdeckung',
+    'theme_diagnostics_active' => 'Aktives Theme',
+    'theme_diagnostics_required' => 'Pflichtdateien',
+    'theme_diagnostics_file' => 'Datei',
+    'theme_diagnostics_selected' => 'Ausgewähltes Theme',
+    'theme_diagnostics_source' => 'Quelle',
+    'theme_diagnostics_present' => 'Vorhanden',
+    'theme_diagnostics_absent' => 'Fehlt',
+    'theme_diagnostics_unresolved' => 'Fehlt auch nach Fallback',
+
     'tpl_auth_settings' => 'Kontoeinstellungen',
     // Menu
     'tpl_menu_logo' => 'Fireball',

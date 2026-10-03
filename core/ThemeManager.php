@@ -103,7 +103,7 @@ class ThemeManager
 
         $theme = $this->loadTheme($slug) ?: $this->loadTheme(self::DEFAULT_THEME);
         if ($theme === null) {
-            abort('Default theme is not available.', 500);
+            throw new RuntimeException('Default theme is not available.');
         }
 
         if ($theme['slug'] !== $slug) {
@@ -399,6 +399,7 @@ class ThemeManager
         $this->writeThemeFile($themeRoot, 'templates/layout.php', $this->defaultLayoutTemplate());
         $this->writeThemeFile($themeRoot, 'templates/home.php', $this->defaultHomeTemplate());
         $this->writeThemeFile($themeRoot, 'templates/page.php', $this->defaultPageTemplate());
+        $this->writeThemeFile($themeRoot, 'templates/posts.php', $this->defaultPostsTemplate());
         $this->writeThemeFile($themeRoot, 'templates/post.php', $this->defaultPostTemplate());
         $this->writeThemeFile($themeRoot, 'templates/category.php', $this->defaultCategoryTemplate());
         $this->writeThemeFile($themeRoot, 'templates/search.php', $this->defaultSearchTemplate());
@@ -520,38 +521,153 @@ class ThemeManager
         return $files;
     }
 
+    /** Resolve exactly as rendering does, independently for templates and partials. */
+    public function resolveFile(string $directory, string $name, ?string $slug = null): ?array
+    {
+        if (!in_array($directory, ['templates', 'partials'], true)) {
+            throw new InvalidArgumentException('Invalid theme file type.');
+        }
+        $theme = $slug === null ? $this->getActiveTheme() : $this->loadTheme($slug);
+        if ($theme === null) {
+            throw new InvalidArgumentException('Unknown theme.');
+        }
+        foreach (array_unique([$theme['slug'], self::DEFAULT_THEME]) as $candidate) {
+            $source = $candidate === $theme['slug'] ? $theme : $this->loadTheme($candidate);
+            $file = $source ? $this->themeFile($source, $directory, $name) : null;
+            if ($file !== null) {
+                return ['path' => $file, 'source' => $candidate, 'fallback' => $candidate !== $theme['slug']];
+            }
+        }
+        return null;
+    }
+
+    public function publicTemplates(): array
+    {
+        return ['home', 'page', 'posts', 'post', 'category', 'archive', 'search',
+            'contacts', 'support', 'support_article', 'auth/login', 'auth/two_factor_challenge',
+            'auth/two_factor_recovery', 'auth/reset_password', 'auth/register', 'auth/profile',
+            'auth/settings', 'chat/index', 'chat/group', 'offline', '404'];
+    }
+
+    /** Intended for the existing administrator-only theme management screen. */
+    public function diagnostics(?string $slug = null): array
+    {
+        if (!check_admin()) {
+            throw new RuntimeException('Theme diagnostics require administrator access.');
+        }
+        $active = $this->getActiveTheme()['slug'];
+        $slug ??= $active;
+        $theme = $this->loadTheme($slug);
+        if ($theme === null) {
+            throw new InvalidArgumentException('Unknown theme.');
+        }
+        $required = [];
+        foreach ($this->requiredThemeFiles() as $name) {
+            $real = realpath($theme['path'] . '/' . $name);
+            $required[$name] = $real !== false && is_file($real) && $this->isInside($real, $theme['path']);
+        }
+        $coverage = [];
+        $files = array_merge(array_map(fn($name) => 'templates/' . $name . '.php', $this->publicTemplates()),
+            ['templates/layout.php', 'partials/header.php', 'partials/footer.php', 'partials/menu.php',
+             'partials/menu-links.php', 'partials/mini-cart.php', 'partials/sidebar.php',
+             'partials/password_field.php', 'partials/chat/viewport.php', 'partials/auth/profile.php',
+             'partials/auth/profile_overview.php', 'partials/auth/profile_information.php',
+             'partials/auth/profile_security.php', 'partials/auth/profile_notifications.php',
+             'partials/plugins/subscriptions/table.php', 'partials/plugins/subscriptions/table_footer.php',
+             'partials/plugins/subscriptions/responsive_table_cards.php',
+             'partials/plugins/vpn-manager-v2/happ-routing-link.php']);
+        foreach ($files as $file) {
+            [$directory, $name] = explode('/', $file, 2);
+            $name = substr($name, 0, -4);
+            $resolved = $this->resolveFile($directory, $name, $slug);
+            $coverage[$file] = ['present' => $this->themeFile($theme, $directory, $name) !== null,
+                'source' => $resolved['source'] ?? null, 'missing' => $resolved === null];
+        }
+        foreach (['calendar' => ['calendar'], 'toy-car-rental' => ['frontend'],
+            'vpn-manager-v2' => ['public/my-vpn'],
+            'subscriptions' => ['public/plans', 'public/checkout', 'public/account', 'public/profile', 'public/payment-result']] as $plugin => $views) {
+            foreach ($views as $view) {
+                $pluginFile = (defined('PLUGINS') ? PLUGINS : ROOT . '/plugins') . '/' . $plugin . '/views/' . $view . '.php';
+                if (!is_dir((defined('PLUGINS') ? PLUGINS : ROOT . '/plugins') . '/' . $plugin)) { continue; }
+                $name = 'plugins/' . $plugin . '/' . $view;
+                $resolved = $this->resolvePluginFile($plugin, $view, $pluginFile, $slug);
+                $coverage['templates/' . $name . '.php'] = [
+                    'present' => $this->themeFile($theme, 'templates', $name) !== null,
+                    'source' => $resolved['source'] ?? null,
+                    'missing' => $resolved === null,
+                ];
+            }
+        }
+        return ['active_theme' => $active, 'selected_theme' => $slug, 'required' => $required,
+            'valid' => $this->validateThemeStructure($slug), 'coverage' => $coverage];
+    }
+
     public function render($template, $data = []): string
     {
-        $renderStarted = PerformanceProfiler::begin();
+        return $this->renderPage((string)$template, $data);
+    }
+
+    /** PluginManager supplies the original view; theme overrides use plugins/<slug>/<view>. */
+    public function renderPlugin(string $slug, string $view, array $data, string $file): string
+    {
+        $resolved = $this->resolvePluginFile($slug, $view, $file);
+        if ($resolved === null) { throw new RuntimeException('Plugin template not found.'); }
+        return $this->renderPage('plugins/' . $slug . '/' . $view, $data, $resolved['path']);
+    }
+
+    public function resolvePluginFile(string $slug, string $view, string $file, ?string $themeSlug = null): ?array
+    {
+        if (!$this->isValidSlug($slug) || $this->safePath($view) === null) {
+            throw new InvalidArgumentException('Invalid plugin template.');
+        }
+        $resolved = $this->resolveFile('templates', 'plugins/' . $slug . '/' . $view, $themeSlug);
+        if ($resolved !== null) { return $resolved; }
+        $pluginsRoot = realpath(defined('PLUGINS') ? PLUGINS : ROOT . '/plugins');
+        $pluginRoot = $pluginsRoot ? realpath($pluginsRoot . '/' . $slug) : false;
+        $base = $pluginRoot ? realpath($pluginRoot . '/views') : false;
+        $real = realpath($file);
+        if ($pluginsRoot === false || $pluginRoot === false || $base === false || $real === false
+            || !$this->isInside($pluginRoot, $pluginsRoot) || !$this->isInside($base, $pluginRoot)
+            || !$this->isInside($real, $base) || !is_file($real)) {
+            return null;
+        }
+        return ['path' => $real, 'source' => 'plugin:' . $slug, 'fallback' => true];
+    }
+
+    protected function renderPage(string $template, array $data, ?string $fallback = null): string
+    {
+        $started = PerformanceProfiler::begin();
+        $templateFile = $this->resolveFile('templates', $template)['path'] ?? $fallback;
+        $layoutFile = $this->resolveFile('templates', 'layout')['path'] ?? null;
+        if ($templateFile === null || $layoutFile === null) {
+            throw new RuntimeException('Theme template or layout not found.');
+        }
+        $data = $this->standardizeTemplateData($template, $data);
+        $previousContent = $this->content;
+        $completed = false;
+        try {
+            $this->content = $this->evaluateFile($templateFile, $data);
+            $html = $this->injectCmsComponents($this->evaluateFile($layoutFile, $data));
+            $completed = true;
+            return $html;
+        } finally {
+            if (!$completed) { $this->content = $previousContent; }
+            PerformanceProfiler::end('render', $started);
+        }
+    }
+
+    protected function evaluateFile(string $file, array $data): string
+    {
         unset($data['this']);
-
-        $theme = $this->getActiveTheme();
-        $defaultTheme = $theme['slug'] === self::DEFAULT_THEME ? $theme : $this->loadTheme(self::DEFAULT_THEME);
-        $templateFile = $this->themeFile($theme, 'templates', (string)$template)
-            ?: ($defaultTheme ? $this->themeFile($defaultTheme, 'templates', (string)$template) : null);
-        $layoutFile = $this->themeFile($theme, 'templates', 'layout')
-            ?: ($defaultTheme ? $this->themeFile($defaultTheme, 'templates', 'layout') : null);
-
-        if ($templateFile === null) {
-            abort('Theme template not found: ' . (string)$template, 500);
-        }
-
-        if ($layoutFile === null) {
-            abort('Theme layout not found.', 500);
-        }
-
-        $data = $this->standardizeTemplateData((string)$template, $data);
-        extract($data);
+        $level = ob_get_level();
         ob_start();
-        require $templateFile;
-        $this->content = ob_get_clean();
-
-        ob_start();
-        require $layoutFile;
-
-        $html = $this->injectCmsComponents((string)ob_get_clean());
-        PerformanceProfiler::end('render', $renderStarted);
-        return $html;
+        try {
+            // Isolate implementation locals from template data and clean buffers on errors.
+            (function () { extract(func_get_arg(1), EXTR_SKIP); require func_get_arg(0); })($file, $data);
+            return (string)ob_get_clean();
+        } finally {
+            while (ob_get_level() > $level) { ob_end_clean(); }
+        }
     }
 
     protected function injectCmsComponents(string $html): string
@@ -570,25 +686,8 @@ class ThemeManager
 
     public function partial($name, $data = []): string
     {
-        unset($data['this']);
-
-        $theme = $this->getActiveTheme();
-        $partialFile = $this->themeFile($theme, 'partials', (string)$name);
-
-        if ($partialFile === null && $theme['slug'] !== self::DEFAULT_THEME) {
-            $default = $this->loadTheme(self::DEFAULT_THEME);
-            $partialFile = $default ? $this->themeFile($default, 'partials', (string)$name) : null;
-        }
-
-        if ($partialFile === null) {
-            return '';
-        }
-
-        extract($data);
-        ob_start();
-        require $partialFile;
-
-        return ob_get_clean();
+        $file = $this->resolveFile('partials', (string)$name)['path'] ?? null;
+        return $file === null ? '' : $this->evaluateFile($file, $data);
     }
 
     public function getLegalInformationMenu(): array
@@ -1287,7 +1386,7 @@ class ThemeManager
         $file = $theme['path'] . '/' . $directory . '/' . $safeName . '.php';
         $realFile = realpath($file);
         $realBase = realpath($theme['path'] . '/' . $directory);
-        if ($realFile === false || $realBase === false || !$this->isInside($realFile, $realBase) || !is_file($realFile)) {
+        if ($realFile === false || $realBase === false || !$this->isInside($realBase, $theme['path']) || !$this->isInside($realFile, $realBase) || !is_file($realFile)) {
             return null;
         }
 
@@ -1299,7 +1398,7 @@ class ThemeManager
         $file = $theme['path'] . '/assets/' . $path;
         $realFile = realpath($file);
         $realBase = realpath($theme['path'] . '/assets');
-        if ($realFile === false || $realBase === false || !$this->isInside($realFile, $realBase) || !is_file($realFile)) {
+        if ($realFile === false || $realBase === false || !$this->isInside($realBase, $theme['path']) || !$this->isInside($realFile, $realBase) || !is_file($realFile)) {
             return null;
         }
 
@@ -1310,7 +1409,7 @@ class ThemeManager
     {
         $path = trim(str_replace('\\', '/', $path));
         $path = ltrim($path, '/');
-        if ($path === '' || str_contains($path, '../') || str_contains($path, '..\\') || $path === '..' || str_contains($path, "\0")) {
+        if ($path === '' || array_intersect(explode('/', $path), ['.', '..']) || str_contains($path, '../') || str_contains($path, '..\\') || $path === '..' || str_contains($path, "\0")) {
             return null;
         }
 
@@ -1393,6 +1492,7 @@ class ThemeManager
             'templates/home.php',
             'templates/page.php',
             'templates/post.php',
+            'templates/posts.php',
             'templates/category.php',
             'templates/search.php',
             'templates/archive.php',
@@ -1447,6 +1547,26 @@ class ThemeManager
     <script src="<?= theme_asset('js/theme.js') ?>"></script>
 </body>
 </html>
+PHP;
+    }
+
+    protected function defaultPostsTemplate(): string
+    {
+        return <<<'PHP'
+<?php
+/** Posts listing: $posts, $pagination, $title. Other public pages fall back to default. */
+?>
+<section class="theme-section"><div class="theme-container">
+    <h1><?= htmlSC($title ?? return_translation('posts_index_title')) ?></h1>
+    <?php foreach (($posts ?? []) as $post): ?>
+        <article class="theme-card">
+            <h2><a href="<?= htmlSC($post['url'] ?? base_href('/posts/' . rawurlencode($post['slug'] ?? ''))) ?>"><?= htmlSC($post['title'] ?? '') ?></a></h2>
+            <p><?= htmlSC($post['excerpt'] ?? '') ?></p>
+        </article>
+    <?php endforeach; ?>
+    <?php if (empty($posts)): ?><p><?= htmlSC(return_translation('posts_index_empty')) ?></p><?php endif; ?>
+    <?= $pagination ?? '' ?>
+</div></section>
 PHP;
     }
 

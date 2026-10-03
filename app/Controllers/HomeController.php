@@ -187,7 +187,7 @@ class HomeController extends BaseController
             response()->redirect(base_href('/contacts'));
         }
 
-        return view('home/contacts', [
+        return Theme::render('contacts', [
             'title' => return_translation('contacts_page_title'),
             'contact_subjects' => $this->getContactSubjectOptions(),
             'privacy_policy_url' => $this->getPrivacyPolicyUrl(),
@@ -230,7 +230,7 @@ class HomeController extends BaseController
             response()->redirect($this->supportQuestionFormRedirectUrl());
         }
 
-        return view('home/support', [
+        return Theme::render('support', [
             'title' => return_translation('support_page_title'),
             'search' => $search,
             'faq_items' => $this->support->getPublishedFaq(10, $search),
@@ -255,7 +255,7 @@ class HomeController extends BaseController
 
         $this->support->recordKbArticleView((int)$article['id']);
 
-        return view('home/support_article', [
+        return Theme::render('support_article', [
             'title' => (string)$article['title'],
             'article' => $article,
             'related_articles' => $this->support->getRelatedPublishedKbArticles($article, 8),

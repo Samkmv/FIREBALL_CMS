@@ -237,7 +237,7 @@ foreach ($payments as $payment) {
 
     <h2 class="h5 mt-5 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_payment_history')) ?></h2>
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
-        <?= view()->renderPartial('admin/partials/table', [
+        <?= render_partial('plugins/subscriptions/table', [
             'columns' => [
                 ['label' => FireballPluginSubscriptions::t('subscriptions_invoice')],
                 ['label' => FireballPluginSubscriptions::t('subscriptions_plan')],
@@ -249,7 +249,7 @@ foreach ($payments as $payment) {
             'mobile_cards' => $paymentCards,
             'empty_text' => FireballPluginSubscriptions::t('subscriptions_empty'),
         ]) ?>
-        <?= view()->renderPartial('admin/partials/table_footer', [
+        <?= render_partial('plugins/subscriptions/table_footer', [
             'visible' => count($paymentRows),
             'total' => (int)($payments_total ?? count($paymentRows)),
             'pagination' => $payments_pagination ?? null,
