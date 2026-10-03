@@ -25,7 +25,7 @@ $fileIcon = static function (array $node): string {
     }
     return match (strtolower((string)($node['extension'] ?? pathinfo((string)($node['name'] ?? ''), PATHINFO_EXTENSION)))) {
         'php', 'html', 'htm' => 'ci-code',
-        'css' => 'ci-palette',
+        'css' => 'ci-paint',
         'js' => 'ci-terminal',
         'json' => 'ci-code',
         'md', 'txt' => 'ci-file-text',
@@ -58,7 +58,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 ?>
                 <li>
                     <a class="theme-editor-tree-file <?= $path === $selectedPath ? 'active' : '' ?>" href="<?= htmlSC($href) ?>" data-theme-editor-file-link <?= $path === $selectedPath ? 'aria-current="true"' : '' ?>>
-                        <i class="<?= htmlSC($fileIcon($node)) ?> flex-shrink-0"></i>
+                        <i class="<?= htmlSC($fileIcon($node)) ?> theme-editor-file-icon flex-shrink-0" data-extension="<?= htmlSC(strtolower((string)($node['extension'] ?? ''))) ?>"></i>
                         <span><?= htmlSC((string)$node['name']) ?></span>
                     </a>
                 </li>
@@ -86,7 +86,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 <h1 class="h4 mb-1"><?= print_translation('admin_theme_editor_heading') ?></h1>
                 <p class="small text-body-secondary mb-0"><?= print_translation('admin_theme_editor_subtitle') ?></p>
             </div>
-            <div class="theme-editor-summary border rounded-3">
+            <div class="theme-editor-summary card border rounded-3">
                 <?php if (!empty($theme['preview_url'])): ?><img class="theme-editor-thumbnail" src="<?= htmlSC((string)$theme['preview_url']) ?>" alt=""><?php endif; ?>
                 <div class="theme-editor-summary-name">
                     <strong><?= htmlSC((string)($theme['name'] ?? $slug)) ?></strong>
@@ -119,10 +119,10 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
 
                 <?php if ($selected && ($selected['type'] ?? '') === 'file' && empty($selected['is_image'])): ?>
                     <button class="btn btn-sm btn-primary" type="submit" form="themeEditorSaveForm">
-                        <i class="ci-save me-1"></i><?= print_translation('admin_theme_editor_save') ?>
+                        <i class="ci-save me-1"></i><?= print_translation('admin_theme_editor_save') ?><kbd class="theme-editor-shortcut d-none d-md-inline ms-2">Ctrl/Cmd+S</kbd>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" type="button" data-theme-editor-reset>
-                        <i class="ci-rotate-ccw me-1"></i><?= print_translation('admin_theme_editor_discard') ?>
+                    <button class="btn btn-icon btn-sm btn-outline-secondary" type="button" data-theme-editor-reset title="<?= htmlSC(return_translation('admin_theme_editor_discard')) ?>" aria-label="<?= htmlSC(return_translation('admin_theme_editor_discard')) ?>">
+                        <i class="ci-rotate-ccw"></i>
                     </button>
                 <?php endif; ?>
 
@@ -137,6 +137,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 </button>
 
                 <?php if ($selected && empty($selected['protected'])): ?>
+                    <hr class="dropdown-divider">
                     <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#themeRenameModal">
                         <i class="ci-edit me-1"></i><?= print_translation('admin_theme_editor_rename') ?>
                     </button>
@@ -145,6 +146,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                     </button>
                 <?php endif; ?>
                 <?php if ($selected && ($selected['type'] ?? '') === 'file'): ?>
+                    <hr class="dropdown-divider">
                     <button class="dropdown-item" type="button" data-bs-toggle="offcanvas" data-bs-target="#themeHistory">
                         <i class="ci-clock me-1"></i><?= print_translation('admin_theme_editor_backups') ?>
                     </button>
@@ -152,7 +154,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                     </div>
                 </div>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-theme-preview-toggle aria-expanded="true" aria-controls="themeEditorPreview"><i class="ci-eye me-1"></i><?= print_translation('admin_theme_editor_preview') ?></button>
-                <a class="btn btn-sm btn-outline-secondary" href="<?= htmlSC($previewUrl) ?>" target="_blank" rel="noopener noreferrer"><i class="ci-external-link"></i><span class="visually-hidden"><?= print_translation('admin_theme_editor_open_site') ?></span></a>
+                <a class="btn btn-icon btn-sm btn-outline-secondary" title="<?= htmlSC(return_translation('admin_theme_editor_open_site')) ?>" href="<?= htmlSC($previewUrl) ?>" target="_blank" rel="noopener noreferrer"><i class="ci-external-link"></i><span class="visually-hidden"><?= print_translation('admin_theme_editor_open_site') ?></span></a>
             </div>
         </div>
 
@@ -227,10 +229,12 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 <div class="theme-editor-preview-toolbar border-bottom">
                     <strong class="small"><?= print_translation('admin_theme_editor_preview') ?></strong>
                     <div class="d-flex gap-1">
+                        <div class="btn-group btn-group-sm theme-editor-device-group" role="group" aria-label="<?= htmlSC(return_translation('admin_theme_editor_preview')) ?>">
                         <?php foreach (['desktop' => 'ci-monitor', 'tablet' => 'ci-tablet', 'mobile' => 'ci-smartphone'] as $device => $icon): ?>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-theme-preview-device="<?= $device ?>" aria-label="<?= htmlSC(return_translation('admin_theme_editor_' . $device)) ?>" aria-pressed="<?= $device === 'desktop' ? 'true' : 'false' ?>"><i class="<?= $icon ?>"></i></button>
+                            <button type="button" class="btn btn-icon btn-sm btn-outline-secondary" data-theme-preview-device="<?= $device ?>" aria-label="<?= htmlSC(return_translation('admin_theme_editor_' . $device)) ?>" aria-pressed="<?= $device === 'desktop' ? 'true' : 'false' ?>"><i class="<?= $icon ?>"></i></button>
                         <?php endforeach; ?>
-                        <button class="btn btn-sm btn-outline-secondary" type="button" data-theme-preview-reload aria-label="<?= htmlSC(return_translation('admin_theme_editor_reload')) ?>"><i class="ci-refresh-cw"></i></button>
+                        </div>
+                        <button class="btn btn-icon btn-sm btn-outline-secondary" type="button" data-theme-preview-reload aria-label="<?= htmlSC(return_translation('admin_theme_editor_reload')) ?>"><i class="ci-refresh-cw"></i></button>
                     </div>
                 </div>
                 <div class="small text-body-secondary border-bottom px-3 py-2"><?= print_translation('admin_theme_editor_preview_saved') ?></div>

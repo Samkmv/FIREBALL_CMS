@@ -66,3 +66,24 @@
     .theme-editor-page .theme-editor-toolbar-actions .ms-auto { margin-left: 0 !important; }
     .theme-editor-page .theme-editor-workspace { height: 65dvh; min-height: 24rem; }
 }
+
+/* Adapted from Cartzilla docs/buttons, button-group, dropdowns and account cards. */
+.theme-editor-page .theme-editor-summary { flex-direction: row; box-shadow: var(--fb-shadow-sm); }
+.theme-editor-page .theme-editor-toolbar { background: var(--bs-tertiary-bg); }
+.theme-editor-page .theme-editor-toolbar-actions .btn-icon,
+.theme-editor-page .theme-editor-preview-toolbar .btn-icon { width: 2rem; height: 2rem; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.theme-editor-page .theme-editor-shortcut { padding: .15rem .3rem; border-radius: .25rem; background: rgba(255,255,255,.15); color: inherit; font-size: .65rem; font-family: inherit; }
+.theme-editor-page .theme-editor-device-group .btn { border-radius: 0; }
+.theme-editor-page .theme-editor-device-group .btn:first-child { border-radius: .35rem 0 0 .35rem; }
+.theme-editor-page .theme-editor-device-group .btn:last-child { border-radius: 0 .35rem .35rem 0; }
+.theme-editor-page .theme-editor-device-group [aria-pressed="true"] { z-index: 1; }
+.theme-editor-page .theme-editor-toolbar .dropdown-menu { padding: .4rem; border-radius: .6rem; box-shadow: var(--fb-shadow-md); font-size: .8rem; }
+.theme-editor-page .theme-editor-toolbar .dropdown-item { border-radius: .35rem; padding: .5rem .65rem; }
+.theme-editor-page .theme-editor-file-header { position: relative; }
+.theme-editor-page .theme-editor-file-tab { display: inline-flex; align-items: center; position: relative; padding-block: .25rem; }
+.theme-editor-page .theme-editor-file-tab::after { content: ''; position: absolute; inset: auto 0 -.65rem; height: 2px; background: var(--bs-primary); }
+.theme-editor-page .theme-editor-file-icon { display: inline-flex; align-items: center; justify-content: center; height: 1.1rem; border-radius: .2rem; font-size: .7rem; }
+.theme-editor-page .theme-editor-file-icon[data-extension="php"] { color: #a78bfa; background: rgba(167,139,250,.15); }
+.theme-editor-page .theme-editor-file-icon[data-extension="css"] { color: #60a5fa; background: rgba(96,165,250,.15); }
+.theme-editor-page .theme-editor-file-icon[data-extension="js"] { color: #eab308; background: rgba(234,179,8,.15); }
+.theme-editor-page .theme-editor-file-icon[data-extension="json"] { color: #34d399; background: rgba(52,211,153,.15); }
