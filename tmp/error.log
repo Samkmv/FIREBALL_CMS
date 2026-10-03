@@ -33,3 +33,19 @@ SQL: SELECT event_type,server_id,subscription_id,connection_id,created_at FROM v
 Param Count: 0
 Param Keys: []
 ========================================================================
+[2026-10-03 12:47:38] Unhandled application exception
+Request URI: /admin/themes/files/my_test
+Request Method: GET
+Remote IP: ::1
+Exception: Whoops\Exception\ErrorException
+Message: filemtime(): stat failed for /Applications/MAMP/htdocs/FIREBALL_CMS/public/assets/default/css/admin-theme-editor.css
+File: /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ThemeEditorController.php
+Line: 59
+Trace: #0 [internal function]: Whoops\Run->handleError(2, 'filemtime(): st...', '/Applications/M...', 59)
+#1 /Applications/MAMP/htdocs/FIREBALL_CMS/app/Controllers/ThemeEditorController.php(59): filemtime('/Applications/M...')
+#2 [internal function]: App\Controllers\ThemeEditorController->index()
+#3 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Router.php(119): call_user_func(Array)
+#4 /Applications/MAMP/htdocs/FIREBALL_CMS/core/Application.php(87): FBL\Router->dispatch()
+#5 /Applications/MAMP/htdocs/FIREBALL_CMS/public/index.php(86): FBL\Application->run()
+#6 {main}
+========================================================================
