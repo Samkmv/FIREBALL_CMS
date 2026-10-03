@@ -24,7 +24,7 @@ async function scenario(fail) {
         executeEdits: (_, edits) => {value = edits[0].text; change();}, pushUndoStop() {},
         onDidChangeModelContent: fn => {change = fn;}, addCommand: (_, fn) => {command = fn;},
         onDidChangeCursorPosition() {}, focus() {}, dispose() {}};
-    const monaco = {editor: {create: (_, opts) => {options = opts; value = opts.value; return instance;}, setTheme: name => {theme = name;}},
+    const monaco = {editor: {defineTheme() {}, create: (_, opts) => {options = opts; value = opts.value; return instance;}, setTheme: name => {theme = name;}},
         KeyMod: {CtrlCmd: 1}, KeyCode: {KeyS: 2}};
     const promise = fail ? 'Promise.reject(new Error("offline"))' : 'Promise.resolve({monaco})';
     vm.runInNewContext(source.replace('import(editor.dataset.monacoUrl)', promise), {
@@ -39,7 +39,7 @@ async function scenario(fail) {
         reset.handlers.click(); assert.equal(textarea.value, 'original');
         return;
     }
-    assert.equal(options.language, 'php'); assert.equal(options.theme, 'vs-dark');
+    assert.equal(options.language, 'php'); assert.equal(options.theme, 'fireball-dark');
     assert.equal(value, 'typed while loading'); assert.equal(textarea.hidden, true);
     value = '<?php edited'; change(); assert.equal(textarea.value, value);
     let prevented = false; win.handlers.beforeunload({preventDefault() {prevented = true;}}); assert.ok(prevented);

@@ -4,6 +4,7 @@ $slug = (string)($theme['slug'] ?? '');
 $selected = $selected_file ?? null;
 $selectedPath = (string)($selected_path ?? '');
 $editorBase = base_href('/admin/theme-editor/');
+$previewUrl = base_href('/') . '?preview_theme=' . rawurlencode($slug);
 
 $directories = [];
 $collectDirectories = static function (array $nodes) use (&$collectDirectories, &$directories): void {
@@ -16,7 +17,7 @@ $collectDirectories = static function (array $nodes) use (&$collectDirectories, 
     }
 };
 $collectDirectories($tree ?? []);
-$displayedCurrentPath = '/themes/' . $slug . ($selectedPath !== '' ? '/' . $selectedPath : '');
+$displayedCurrentPath = '/themes/' . $slug;
 
 $fileIcon = static function (array $node): string {
     if (!empty($node['is_image'])) {
@@ -72,17 +73,33 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
 <?= view()->renderPartial('admin/shell_open', [
     'title' => return_translation('admin_theme_editor_heading'),
     'subtitle' => return_translation('admin_theme_editor_subtitle'),
-    'container_class' => 'container-fluid px-3 px-lg-4 px-xxl-5',
+    'show_header' => false,
+    'container_class' => 'theme-editor-page',
     'sidebar_col_class' => 'col-lg-4 col-xl-3',
     'main_col_class' => 'col-lg-8 col-xl-9',
 ]) ?>
 
     <div class="theme-editor" data-theme-editor data-editor-adapter="monaco" data-monaco-url="<?= htmlSC(base_url('/assets/default/vendor/monaco-0.55.1/editor.js')) ?>" data-editor-fallback-message="<?= htmlSC(return_translation('admin_theme_editor_fallback')) ?>" data-unsaved-message="<?= htmlSC(return_translation('admin_theme_editor_unsaved')) ?>">
+        <header class="theme-editor-heading">
+            <div>
+                <div class="small text-body-secondary mb-1"><?= print_translation('admin_nav_group_appearance') ?> / <?= print_translation('admin_theme_editor_heading') ?></div>
+                <h1 class="h4 mb-1"><?= print_translation('admin_theme_editor_heading') ?></h1>
+                <p class="small text-body-secondary mb-0"><?= print_translation('admin_theme_editor_subtitle') ?></p>
+            </div>
+            <div class="theme-editor-summary border rounded-3">
+                <?php if (!empty($theme['preview_url'])): ?><img class="theme-editor-thumbnail" src="<?= htmlSC((string)$theme['preview_url']) ?>" alt=""><?php endif; ?>
+                <div class="theme-editor-summary-name">
+                    <strong><?= htmlSC((string)($theme['name'] ?? $slug)) ?></strong>
+                    <?php if (($active_theme['slug'] ?? '') === $slug): ?><span class="badge text-bg-success ms-1"><?= print_translation('admin_themes_active') ?></span><?php endif; ?>
+                    <div class="small text-body-secondary text-truncate"><?= htmlSC((string)($theme['description'] ?? '')) ?></div>
+                </div>
+                <a class="btn btn-sm btn-outline-secondary" href="<?= base_href('/admin/themes/edit/' . rawurlencode($slug)) ?>" data-theme-editor-file-link><i class="ci-settings me-1"></i><?= print_translation('admin_theme_editor_settings') ?></a>
+            </div>
+        </header>
         <?php if ($slug === 'default'): ?>
-            <div class="alert alert-warning d-flex align-items-start justify-content-between flex-wrap gap-3" role="alert">
+            <div class="alert alert-warning theme-editor-notice d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert">
                 <div>
-                    <div class="fw-semibold"><?= print_translation('admin_theme_editor_default_warning_title') ?></div>
-                    <div><?= print_translation('admin_theme_editor_default_warning') ?></div>
+                    <span class="fw-semibold"><?= print_translation('admin_theme_editor_default_warning_title') ?></span> <?= print_translation('admin_theme_editor_default_warning') ?>
                 </div>
                 <button class="btn btn-sm btn-warning rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#themeCopyModal">
                     <?= print_translation('admin_theme_editor_copy') ?>
@@ -90,7 +107,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
             </div>
         <?php endif; ?>
 
-        <div class="theme-editor-toolbar border rounded-4 p-3 mb-3 overflow-x-auto pb-4" data-simplebar data-simplebar-auto-hide="false">
+        <div class="theme-editor-toolbar border rounded-top-3 p-2">
             <div class="d-flex align-items-center gap-2 theme-editor-toolbar-actions">
                 <select class="form-select theme-editor-theme-select" aria-label="<?= htmlSC(return_translation('admin_theme_editor_select_theme')) ?>" data-theme-editor-theme-select>
                     <?php foreach ($themes as $item): ?>
@@ -101,47 +118,54 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                 </select>
 
                 <?php if ($selected && ($selected['type'] ?? '') === 'file' && empty($selected['is_image'])): ?>
-                    <button class="btn btn-primary rounded-pill" type="submit" form="themeEditorSaveForm">
+                    <button class="btn btn-sm btn-primary" type="submit" form="themeEditorSaveForm">
                         <i class="ci-save me-1"></i><?= print_translation('admin_theme_editor_save') ?>
                     </button>
-                    <button class="btn btn-outline-secondary rounded-pill" type="button" data-theme-editor-reset>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-theme-editor-reset>
                         <i class="ci-rotate-ccw me-1"></i><?= print_translation('admin_theme_editor_discard') ?>
                     </button>
                 <?php endif; ?>
 
-                <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#themeCreateFileModal">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="ci-folder me-1"></i><?= print_translation('admin_themes_files') ?></button>
+                    <div class="dropdown-menu">
+                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#themeCreateFileModal">
                     <i class="ci-file-plus me-1"></i><?= print_translation('admin_theme_editor_create_file') ?>
                 </button>
-                <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#themeCreateFolderModal">
+                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#themeCreateFolderModal">
                     <i class="ci-folder-plus me-1"></i><?= print_translation('admin_theme_editor_create_folder') ?>
                 </button>
 
                 <?php if ($selected && empty($selected['protected'])): ?>
-                    <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#themeRenameModal">
+                    <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#themeRenameModal">
                         <i class="ci-edit me-1"></i><?= print_translation('admin_theme_editor_rename') ?>
                     </button>
-                    <button class="btn btn-outline-danger rounded-pill" type="submit" form="themeDeleteForm">
+                    <button class="dropdown-item text-danger" type="submit" form="themeDeleteForm">
                         <i class="ci-trash me-1"></i><?= print_translation('admin_theme_editor_delete') ?>
                     </button>
                 <?php endif; ?>
                 <?php if ($selected && ($selected['type'] ?? '') === 'file'): ?>
-                    <button class="btn btn-outline-secondary rounded-pill" type="button" data-bs-toggle="offcanvas" data-bs-target="#themeHistory">
+                    <button class="dropdown-item" type="button" data-bs-toggle="offcanvas" data-bs-target="#themeHistory">
                         <i class="ci-clock me-1"></i><?= print_translation('admin_theme_editor_backups') ?>
                     </button>
                 <?php endif; ?>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-theme-preview-toggle aria-expanded="true" aria-controls="themeEditorPreview"><i class="ci-eye me-1"></i><?= print_translation('admin_theme_editor_preview') ?></button>
+                <a class="btn btn-sm btn-outline-secondary" href="<?= htmlSC($previewUrl) ?>" target="_blank" rel="noopener noreferrer"><i class="ci-external-link"></i><span class="visually-hidden"><?= print_translation('admin_theme_editor_open_site') ?></span></a>
             </div>
         </div>
 
-        <div class="row g-3 theme-editor-layout">
-            <div class="col-xl-3 theme-editor-sidebar-col">
-                <div class="theme-editor-tree border rounded-4 p-3">
-                    <div class="theme-editor-current-path fw-semibold mb-3"><?= htmlSC($displayedCurrentPath) ?></div>
+        <div class="theme-editor-layout">
+            <div class="theme-editor-sidebar-col">
+                <div class="theme-editor-tree p-2">
+                    <div class="theme-editor-current-path small fw-semibold px-2 py-2 border-bottom mb-2"><?= htmlSC($displayedCurrentPath) ?></div>
                     <?= $renderTree($tree ?? []) ?>
                 </div>
             </div>
 
-            <div class="col-xl-9 theme-editor-main-col">
-                <div class="theme-editor-workspace border rounded-4 overflow-hidden">
+            <div class="theme-editor-main-col">
+                <div class="theme-editor-workspace overflow-hidden">
                     <?php if ($editor_error !== ''): ?>
                         <div class="alert alert-danger rounded-0 mb-0"><?= htmlSC($editor_error) ?></div>
                     <?php elseif (!$selected): ?>
@@ -155,8 +179,8 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                     <?php else: ?>
                         <div class="theme-editor-file-header d-flex align-items-center justify-content-between gap-3 border-bottom px-3 py-2">
                             <div class="min-w-0">
-                                <div class="small text-body-secondary"><?= print_translation('admin_theme_editor_current_path') ?></div>
-                                <code class="theme-editor-current-path text-break"><?= htmlSC((string)$selected['path']) ?></code>
+                                <span class="theme-editor-file-tab"><i class="<?= htmlSC($fileIcon($selected)) ?> me-2"></i><?= htmlSC((string)$selected['name']) ?><span class="theme-editor-dirty-dot" data-theme-editor-dirty hidden aria-label="<?= htmlSC(return_translation('admin_theme_editor_unsaved')) ?>">●</span></span>
+                                <span class="small text-body-secondary ms-2 d-none d-xxl-inline"><?= htmlSC((string)$selected['path']) ?></span>
                             </div>
                             <span class="badge text-bg-secondary">
                                 <?= ($selected['type'] ?? '') === 'directory'
@@ -199,6 +223,21 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                     <?php endif; ?>
                 </div>
             </div>
+            <aside class="theme-editor-preview" id="themeEditorPreview" data-theme-preview-pane>
+                <div class="theme-editor-preview-toolbar border-bottom">
+                    <strong class="small"><?= print_translation('admin_theme_editor_preview') ?></strong>
+                    <div class="d-flex gap-1">
+                        <?php foreach (['desktop' => 'ci-monitor', 'tablet' => 'ci-tablet', 'mobile' => 'ci-smartphone'] as $device => $icon): ?>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-theme-preview-device="<?= $device ?>" aria-label="<?= htmlSC(return_translation('admin_theme_editor_' . $device)) ?>" aria-pressed="<?= $device === 'desktop' ? 'true' : 'false' ?>"><i class="<?= $icon ?>"></i></button>
+                        <?php endforeach; ?>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-theme-preview-reload aria-label="<?= htmlSC(return_translation('admin_theme_editor_reload')) ?>"><i class="ci-refresh-cw"></i></button>
+                    </div>
+                </div>
+                <div class="small text-body-secondary border-bottom px-3 py-2"><?= print_translation('admin_theme_editor_preview_saved') ?></div>
+                <div class="theme-editor-preview-stage" data-theme-preview-stage data-device="desktop">
+                    <iframe data-theme-preview-frame src="<?= htmlSC($previewUrl) ?>" title="<?= htmlSC(return_translation('admin_theme_editor_preview')) ?>" sandbox="allow-scripts allow-same-origin allow-forms" loading="lazy"></iframe>
+                </div>
+            </aside>
         </div>
 
         <?php if ($selected && empty($selected['protected'])): ?>

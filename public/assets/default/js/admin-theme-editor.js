@@ -50,8 +50,10 @@
     var initialValue = codeAdapter ? codeAdapter.getValue() : '';
     var dirty = false;
 
+    var dirtyIndicator = editor.querySelector('[data-theme-editor-dirty]');
     function updateDirtyState() {
         dirty = Boolean(codeAdapter && codeAdapter.getValue() !== initialValue);
+        if (dirtyIndicator) { dirtyIndicator.hidden = !dirty; }
     }
 
     if (codeAdapter) {
@@ -69,17 +71,29 @@
     var monacoEditor = null;
     var monacoModel = null;
     var themeObserver = null;
+    var previewObserver = null;
     var mount = editor.querySelector('[data-theme-editor-monaco]');
     var status = editor.querySelector('[data-theme-editor-status]');
 
     if (textarea && mount && editor.dataset.monacoUrl) {
         import(editor.dataset.monacoUrl).then(function (module) {
             var monaco = module.monaco;
+            monaco.editor.defineTheme('fireball-dark', {
+                base: 'vs-dark', inherit: true, rules: [],
+                colors: {
+                    'editor.background': '#101722',
+                    'editorLineNumber.foreground': '#64748b',
+                    'editorLineNumber.activeForeground': '#dce4ef',
+                    'editor.lineHighlightBackground': '#192436',
+                    'editor.selectionBackground': '#33445f',
+                    'editorCursor.foreground': '#ff5a3c'
+                }
+            });
             mount.hidden = false;
             monacoEditor = monaco.editor.create(mount, {
                 value: textarea.value,
                 language: textarea.dataset.editorLanguage === 'text' ? 'plaintext' : textarea.dataset.editorLanguage,
-                theme: document.documentElement.dataset.bsTheme === 'dark' ? 'vs-dark' : 'vs',
+                theme: document.documentElement.dataset.bsTheme === 'dark' ? 'fireball-dark' : 'vs',
                 automaticLayout: true,
                 tabSize: 4,
                 insertSpaces: true,
@@ -114,7 +128,7 @@
                 if (status) { status.textContent = 'Monaco · ' + event.position.lineNumber + ':' + event.position.column + ' · Ctrl/Cmd+S · Tab · Ctrl/Cmd+F'; }
             });
             themeObserver = new MutationObserver(function () {
-                monaco.editor.setTheme(document.documentElement.dataset.bsTheme === 'dark' ? 'vs-dark' : 'vs');
+                monaco.editor.setTheme(document.documentElement.dataset.bsTheme === 'dark' ? 'fireball-dark' : 'vs');
             });
             themeObserver.observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
             updateDirtyState();
@@ -138,9 +152,57 @@
     window.addEventListener('pagehide', function (event) {
         if (event.persisted) { return; }
         if (themeObserver) { themeObserver.disconnect(); }
+        if (previewObserver) { previewObserver.disconnect(); }
         if (monacoEditor) { monacoEditor.dispose(); }
         if (monacoModel) { monacoModel.dispose(); }
     });
+
+    var previewPane = editor.querySelector('[data-theme-preview-pane]');
+    var previewToggle = editor.querySelector('[data-theme-preview-toggle]');
+    var previewLayout = editor.querySelector('.theme-editor-layout');
+    var previewStage = editor.querySelector('[data-theme-preview-stage]');
+    var previewFrame = editor.querySelector('[data-theme-preview-frame]');
+    var previewReload = editor.querySelector('[data-theme-preview-reload]');
+    function fitPreview() {
+        if (!previewStage || !previewFrame || !previewStage.clientWidth) { return; }
+        var width = {desktop: 1280, tablet: 768, mobile: 375}[previewStage.dataset.device] || 1280;
+        var available = Math.max(1, previewStage.clientWidth - 16);
+        var scale = Math.min(1, available / width);
+        previewFrame.style.width = width + 'px';
+        previewFrame.style.height = Math.max(1, (previewStage.clientHeight - 16) / scale) + 'px';
+        previewFrame.style.transform = 'scale(' + scale + ')';
+        previewFrame.style.left = (8 + (available - width * scale) / 2) + 'px';
+    }
+    if (previewStage && previewFrame) {
+        previewObserver = new ResizeObserver(fitPreview);
+        previewObserver.observe(previewStage);
+        fitPreview();
+    }
+    if (previewPane && previewToggle && previewLayout) {
+        previewToggle.addEventListener('click', function () {
+            previewPane.hidden = !previewPane.hidden;
+            previewToggle.setAttribute('aria-expanded', String(!previewPane.hidden));
+            previewLayout.classList.toggle('preview-hidden', previewPane.hidden);
+            fitPreview();
+        });
+    }
+    editor.querySelectorAll('[data-theme-preview-device]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (!previewStage) { return; }
+            previewStage.dataset.device = button.dataset.themePreviewDevice;
+            fitPreview();
+            editor.querySelectorAll('[data-theme-preview-device]').forEach(function (item) {
+                item.setAttribute('aria-pressed', String(item === button));
+            });
+        });
+    });
+    if (previewFrame && previewReload) {
+        previewReload.addEventListener('click', function () {
+            // Reload the page currently visited inside preview, preserving its URL.
+            try { previewFrame.contentWindow.location.reload(); }
+            catch (error) { previewFrame.src = previewFrame.getAttribute('src'); }
+        });
+    }
 
     var resetButton = editor.querySelector('[data-theme-editor-reset]');
     if (resetButton && codeAdapter) {

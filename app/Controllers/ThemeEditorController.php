@@ -48,13 +48,17 @@ class ThemeEditorController extends BaseController
         return view('admin/theme_files', [
             'title' => return_translation('admin_theme_editor_title'),
             'theme_item' => $theme,
+            'active_theme' => Theme::getActiveTheme(),
             'themes' => Theme::getThemes(),
             'tree' => $this->editor->tree($slug),
             'selected_file' => $selectedFile,
             'selected_path' => $selectedPath,
             'history' => $history,
             'editor_error' => $editorError,
-            'styles' => [base_url('/assets/default/vendor/monaco-0.55.1/editor.css')],
+            'styles' => [
+                base_url('/assets/default/vendor/monaco-0.55.1/editor.css'),
+                base_url('/assets/default/css/admin-theme-editor.css?v=' . filemtime(WWW . '/assets/default/css/admin-theme-editor.css')),
+            ],
             'footer_scripts' => [
                 base_url('/assets/default/js/admin-theme-editor.js?v=' . filemtime(WWW . '/assets/default/js/admin-theme-editor.js')),
             ],
