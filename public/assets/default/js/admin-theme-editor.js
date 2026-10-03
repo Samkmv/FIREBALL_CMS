@@ -61,9 +61,86 @@
     var saveForm = document.getElementById('themeEditorSaveForm');
     if (saveForm) {
         saveForm.addEventListener('submit', function () {
+            if (textarea && codeAdapter) { textarea.value = codeAdapter.getValue(); }
             dirty = false;
         });
     }
+
+    var monacoEditor = null;
+    var monacoModel = null;
+    var themeObserver = null;
+    var mount = editor.querySelector('[data-theme-editor-monaco]');
+    var status = editor.querySelector('[data-theme-editor-status]');
+
+    if (textarea && mount && editor.dataset.monacoUrl) {
+        import(editor.dataset.monacoUrl).then(function (module) {
+            var monaco = module.monaco;
+            mount.hidden = false;
+            monacoEditor = monaco.editor.create(mount, {
+                value: textarea.value,
+                language: textarea.dataset.editorLanguage === 'text' ? 'plaintext' : textarea.dataset.editorLanguage,
+                theme: document.documentElement.dataset.bsTheme === 'dark' ? 'vs-dark' : 'vs',
+                automaticLayout: true,
+                tabSize: 4,
+                insertSpaces: true,
+                detectIndentation: true,
+                autoIndent: 'full',
+                fontSize: 14,
+                minimap: {enabled: false},
+                scrollBeyondLastLine: false,
+                bracketPairColorization: {enabled: true},
+                padding: {top: 16, bottom: 16}
+            });
+            monacoModel = monacoEditor.getModel();
+            textarea.hidden = true;
+            textarea.dataset.editorAdapter = 'monaco';
+            codeAdapter = {
+                getValue: function () { return monacoEditor.getValue(); },
+                setValue: function (value) {
+                    monacoEditor.pushUndoStop();
+                    monacoEditor.executeEdits('discard', [{range: monacoModel.getFullModelRange(), text: value}]);
+                    monacoEditor.pushUndoStop();
+                },
+                focus: function () { monacoEditor.focus(); }
+            };
+            monacoEditor.onDidChangeModelContent(function () {
+                textarea.value = codeAdapter.getValue();
+                updateDirtyState();
+            });
+            monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+                if (saveForm) { saveForm.requestSubmit(); }
+            });
+            monacoEditor.onDidChangeCursorPosition(function (event) {
+                if (status) { status.textContent = 'Monaco · ' + event.position.lineNumber + ':' + event.position.column + ' · Ctrl/Cmd+S · Tab · Ctrl/Cmd+F'; }
+            });
+            themeObserver = new MutationObserver(function () {
+                monaco.editor.setTheme(document.documentElement.dataset.bsTheme === 'dark' ? 'vs-dark' : 'vs');
+            });
+            themeObserver.observe(document.documentElement, {attributes: true, attributeFilter: ['data-bs-theme']});
+            updateDirtyState();
+        }).catch(function () {
+            if (monacoEditor) { monacoEditor.dispose(); monacoEditor = null; }
+            if (monacoModel) { monacoModel.dispose(); monacoModel = null; }
+            mount.hidden = true;
+            textarea.hidden = false;
+            codeAdapter = createTextareaAdapter(textarea);
+            editor.dataset.editorAdapter = 'textarea';
+            if (status) { status.textContent = editor.dataset.editorFallbackMessage; }
+        });
+    }
+
+    document.addEventListener('keydown', function (event) {
+        if (!monacoEditor && textarea === document.activeElement && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+            event.preventDefault();
+            if (saveForm) { saveForm.requestSubmit(); }
+        }
+    });
+    window.addEventListener('pagehide', function (event) {
+        if (event.persisted) { return; }
+        if (themeObserver) { themeObserver.disconnect(); }
+        if (monacoEditor) { monacoEditor.dispose(); }
+        if (monacoModel) { monacoModel.dispose(); }
+    });
 
     var resetButton = editor.querySelector('[data-theme-editor-reset]');
     if (resetButton && codeAdapter) {

@@ -77,7 +77,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
     'main_col_class' => 'col-lg-8 col-xl-9',
 ]) ?>
 
-    <div class="theme-editor" data-theme-editor data-editor-adapter="textarea" data-unsaved-message="<?= htmlSC(return_translation('admin_theme_editor_unsaved')) ?>">
+    <div class="theme-editor" data-theme-editor data-editor-adapter="monaco" data-monaco-url="<?= htmlSC(base_url('/assets/default/vendor/monaco-0.55.1/editor.js')) ?>" data-editor-fallback-message="<?= htmlSC(return_translation('admin_theme_editor_fallback')) ?>" data-unsaved-message="<?= htmlSC(return_translation('admin_theme_editor_unsaved')) ?>">
         <?php if ($slug === 'default'): ?>
             <div class="alert alert-warning d-flex align-items-start justify-content-between flex-wrap gap-3" role="alert">
                 <div>
@@ -183,7 +183,9 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                                 <?= get_csrf_field() ?>
                                 <input type="hidden" name="slug" value="<?= htmlSC($slug) ?>">
                                 <input type="hidden" name="path" value="<?= htmlSC((string)$selected['path']) ?>">
+                                <div class="theme-editor-monaco" data-theme-editor-monaco hidden></div>
                                 <textarea
+                                    aria-label="<?= htmlSC(return_translation('admin_theme_editor_current_path')) ?>"
                                     class="form-control theme-editor-code"
                                     name="content"
                                     spellcheck="false"
@@ -191,6 +193,7 @@ $renderTree = static function (array $nodes) use (&$renderTree, $slug, $selected
                                     data-editor-adapter="textarea"
                                     data-editor-language="<?= htmlSC((string)$selected['language']) ?>"
                                 ><?= htmlSC((string)$selected['content']) ?></textarea>
+                                <div class="small text-body-secondary border-top px-3 py-1" data-theme-editor-status role="status">Monaco · Ctrl/Cmd+S · Tab · Ctrl/Cmd+F</div>
                             </form>
                         <?php endif; ?>
                     <?php endif; ?>

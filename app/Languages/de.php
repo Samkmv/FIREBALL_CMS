@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'admin_theme_editor_fallback' => 'Monaco konnte nicht geladen werden. Ihre Änderungen bleiben im Texteditor erhalten.',
     'theme_diagnostics_title' => 'Diagnose und Abdeckung',
     'theme_diagnostics_active' => 'Aktives Theme',
     'theme_diagnostics_required' => 'Pflichtdateien',
@@ -1223,7 +1224,7 @@ return [
     'admin_themes_slug_hint' => 'Nur kleine lateinische Buchstaben, Zahlen, Bindestrich und Unterstrich. Keine Leerzeichen.',
     'admin_themes_preview_hint' => 'Dateiname im Theme-Ordner, z.B. preview.png. Uploads kommen spaeter.',
     'admin_themes_preview_source_hint' => 'Bild im Dateimanager auswaehlen. CMS kopiert es in den Theme-Ordner.',
-    'admin_themes_preview_upload_hint' => 'PNG, JPG, WEBP, GIF oder SVG bis 5 MB. Funktioniert mit Desktop und Telefon.',
+    'admin_themes_preview_upload_hint' => 'PNG, JPG, WEBP, GIF bis 5 MB. Funktioniert mit Desktop und Telefon.',
     'admin_themes_created' => 'Theme erfolgreich erstellt.',
     'admin_themes_updated' => 'Theme-Informationen aktualisiert.',
     'admin_themes_deleted' => 'Theme geloescht.',

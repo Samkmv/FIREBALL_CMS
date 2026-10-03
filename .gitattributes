@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Generated upstream bundles contain significant whitespace in template literals.
+public/assets/default/vendor/monaco-0.55.1/* -whitespace linguist-vendored

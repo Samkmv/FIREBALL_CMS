@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'admin_theme_editor_fallback' => 'Monaco 无法加载。可继续使用文本编辑器，修改内容已保留。',
     'theme_diagnostics_title' => '诊断与覆盖',
     'theme_diagnostics_active' => '当前主题',
     'theme_diagnostics_required' => '必需文件',
@@ -1223,7 +1224,7 @@ return [
     'admin_themes_slug_hint' => '仅允许小写拉丁字母、数字、连字符和下划线。不能有空格。',
     'admin_themes_preview_hint' => '主题目录内的文件名，例如 preview.png。上传功能稍后添加。',
     'admin_themes_preview_source_hint' => '从文件管理器选择图片，CMS 会复制到主题目录。',
-    'admin_themes_preview_upload_hint' => 'PNG、JPG、WEBP、GIF 或 SVG，最大 5 MB。支持电脑和手机。',
+    'admin_themes_preview_upload_hint' => 'PNG、JPG、WEBP、GIF，最大 5 MB。支持电脑和手机。',
     'admin_themes_created' => '主题创建成功。',
     'admin_themes_updated' => '主题信息已更新。',
     'admin_themes_deleted' => '主题已删除。',

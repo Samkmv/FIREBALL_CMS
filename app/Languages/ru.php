@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'admin_theme_editor_fallback' => 'Monaco не загрузился. Доступен обычный редактор; ваши изменения сохранены в поле.',
     'theme_diagnostics_title' => 'Диагностика и покрытие',
     'theme_diagnostics_active' => 'Активная тема',
     'theme_diagnostics_required' => 'Обязательные файлы',
@@ -1229,7 +1230,7 @@ return [
     'admin_themes_slug_hint' => 'Только маленькие латинские буквы, цифры, дефис и подчёркивание. Без пробелов.',
     'admin_themes_preview_hint' => 'Имя файла внутри папки темы, например preview.png. Загрузка файла будет добавлена позже.',
     'admin_themes_preview_source_hint' => 'Выберите изображение из файлового менеджера. CMS скопирует его в папку темы.',
-    'admin_themes_preview_upload_hint' => 'PNG, JPG, WEBP, GIF или SVG до 5 МБ. Работает с ПК и телефона.',
+    'admin_themes_preview_upload_hint' => 'PNG, JPG, WEBP, GIF до 5 МБ. Работает с ПК и телефона.',
     'admin_themes_created' => 'Тема успешно создана.',
     'admin_themes_updated' => 'Информация темы обновлена.',
     'admin_themes_deleted' => 'Тема удалена.',

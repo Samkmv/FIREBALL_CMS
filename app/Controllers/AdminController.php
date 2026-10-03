@@ -1596,6 +1596,7 @@ class AdminController extends BaseController
             'is_edit' => false,
             'created' => false,
             'footer_scripts' => [
+                asset_versioned_url(base_url('/assets/default/js/admin-theme-form.js'), WWW . '/assets/default/js/admin-theme-form.js'),
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
             ],
         ]);
@@ -1666,6 +1667,7 @@ class AdminController extends BaseController
             'is_edit' => true,
             'created' => request()->get('created') === '1',
             'footer_scripts' => [
+                asset_versioned_url(base_url('/assets/default/js/admin-theme-form.js'), WWW . '/assets/default/js/admin-theme-form.js'),
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
             ],
         ]);

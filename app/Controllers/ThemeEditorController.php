@@ -54,6 +54,7 @@ class ThemeEditorController extends BaseController
             'selected_path' => $selectedPath,
             'history' => $history,
             'editor_error' => $editorError,
+            'styles' => [base_url('/assets/default/vendor/monaco-0.55.1/editor.css')],
             'footer_scripts' => [
                 base_url('/assets/default/js/admin-theme-editor.js?v=' . filemtime(WWW . '/assets/default/js/admin-theme-editor.js')),
             ],

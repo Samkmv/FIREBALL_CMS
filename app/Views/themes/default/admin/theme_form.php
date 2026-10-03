@@ -62,49 +62,53 @@ $formAction = $isEdit ? base_href('/admin/themes/edit/' . $slug) : base_href('/a
                 <label class="form-label"><?= print_translation('admin_themes_field_description') ?></label>
                 <textarea class="form-control" name="description" rows="4"><?= htmlSC($description) ?></textarea>
             </div>
-            <div class="col-12">
-                <label class="form-label"><?= print_translation('admin_themes_field_preview') ?></label>
-                <input class="form-control <?= get_validation_class('preview') ?>" type="text" name="preview" value="<?= htmlSC($preview) ?>" placeholder="preview.png">
-                <div class="form-text"><?= print_translation('admin_themes_preview_hint') ?></div>
+            <fieldset class="col-12" data-theme-preview>
+                <legend class="form-label fs-base"><?= print_translation('admin_themes_field_preview') ?></legend>
+                <input type="hidden" name="preview" value="<?= htmlSC($preview) ?>">
                 <?= get_errors('preview') ?>
-            </div>
-            <div class="col-12">
-                <label class="form-label"><?= print_translation('admin_themes_field_preview_source') ?></label>
-                <div class="input-group">
-                    <input
-                        class="form-control <?= get_validation_class('preview_source') ?>"
-                        type="text"
-                        id="theme_preview_source"
-                        name="preview_source"
-                        value="<?= htmlSC($previewSource) ?>"
-                        placeholder="/uploads/themes/preview.png"
-                        data-file-preview-image="#theme_preview_source_preview_image"
-                        data-file-preview-text="#theme_preview_source_preview_text"
-                    >
-                    <button
-                        class="btn btn-outline-secondary"
-                        type="button"
-                        data-file-manager-open
-                        data-file-manager-input="theme_preview_source"
-                        data-file-manager-dir="themes"
-                        data-file-manager-url="<?= base_href('/admin/files') ?>"
-                    ><i class="ci-folder me-2"></i><?= print_translation('admin_btn_choose_file') ?></button>
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                    <label class="form-check"><input class="form-check-input" type="radio" name="preview_method" value="manager" <?= $previewSource !== '' ? 'checked' : '' ?>> <span><?= print_translation('admin_themes_field_preview_source') ?></span></label>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="preview_method" value="upload" <?= $previewSource === '' ? 'checked' : '' ?>> <span><?= print_translation('admin_themes_field_preview_upload') ?></span></label>
                 </div>
-                <div class="form-text"><?= print_translation('admin_themes_preview_source_hint') ?></div>
-                <?= get_errors('preview_source') ?>
+                <div data-preview-panel="manager">
+                    <label class="form-label visually-hidden" for="theme_preview_source"><?= print_translation('admin_themes_field_preview_source') ?></label>
+                    <div class="input-group">
+                        <input
+                            class="form-control <?= get_validation_class('preview_source') ?>"
+                            type="text"
+                            id="theme_preview_source"
+                            name="preview_source"
+                            value="<?= htmlSC($previewSource) ?>"
+                            placeholder="/uploads/themes/preview.png"
+                            data-file-preview-image="#theme_preview_source_preview_image"
+                            data-file-preview-text="#theme_preview_source_preview_text"
+                        >
+                        <button
+                            class="btn btn-outline-secondary"
+                            type="button"
+                            data-file-manager-open
+                            data-file-manager-input="theme_preview_source"
+                            data-file-manager-dir="themes"
+                            data-file-manager-url="<?= base_href('/admin/files') ?>"
+                        ><i class="ci-folder me-2"></i><?= print_translation('admin_btn_choose_file') ?></button>
+                    </div>
+                    <div class="form-text"><?= print_translation('admin_themes_preview_source_hint') ?></div>
+                    <?= get_errors('preview_source') ?>
+
+                </div>
+                <div data-preview-panel="upload">
+                    <label class="form-label visually-hidden" for="theme_preview_upload"><?= print_translation('admin_themes_field_preview_upload') ?></label>
+                    <input class="form-control <?= get_validation_class('preview_upload') ?>" type="file" id="theme_preview_upload" name="preview_upload" accept="image/png,image/jpeg,image/webp,image/gif">
+                    <div class="form-text"><?= print_translation('admin_themes_preview_upload_hint') ?></div>
+                    <?= get_errors('preview_upload') ?>
+                </div>
                 <div class="d-flex align-items-center gap-3 mt-3 <?= $previewUrl === '' ? 'd-none' : '' ?>" id="theme_preview_source_preview_wrap">
                     <span class="border rounded-3 d-inline-flex align-items-center justify-content-center bg-body-tertiary overflow-hidden" style="width: 5rem; height: 3rem;">
                         <img id="theme_preview_source_preview_image" src="<?= htmlSC($previewUrl) ?>" alt="theme preview" style="width: 100%; height: 100%; object-fit: cover;">
                     </span>
                     <code class="small text-break" id="theme_preview_source_preview_text"><?= htmlSC($previewSource !== '' ? $previewSource : $preview) ?></code>
                 </div>
-            </div>
-            <div class="col-12">
-                <label class="form-label"><?= print_translation('admin_themes_field_preview_upload') ?></label>
-                <input class="form-control <?= get_validation_class('preview_upload') ?>" type="file" name="preview_upload" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
-                <div class="form-text"><?= print_translation('admin_themes_preview_upload_hint') ?></div>
-                <?= get_errors('preview_upload') ?>
-            </div>
+            </fieldset>
             <div class="col-12 d-flex flex-wrap gap-2 pt-2">
                 <button class="btn btn-dark rounded-pill" type="submit"><?= print_translation('admin_btn_save') ?></button>
                 <?php if ($isEdit): ?>
