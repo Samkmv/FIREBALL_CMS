@@ -46,9 +46,14 @@ try {
     $old = $manager->createTheme(['slug' => 'classic', 'name' => 'Classic']);
     expect(is_file($old['path'] . '/templates/posts.php'), 'Generator creates posts.php');
     expect(str_contains(file_get_contents($old['path'] . '/templates/posts.php'), 'foreach'), 'Generated listing is substantive');
+    $placeholderHash = hash_file('sha256', $old['path'] . '/preview.png');
+    expect(getimagesize($old['path'] . '/preview.png')[0] === 800, 'Generator creates a visible neutral placeholder');
     rename($fixture . '/themes/classic', $fixture . '/themes/default');
+    put($fixture . '/themes/default/preview.png', 'existing default screenshot');
     put($fixture . '/themes/default/theme.json', json_encode(['slug' => 'default', 'name' => 'Default']));
     $old = $manager->createTheme(['slug' => 'classic', 'name' => 'Classic']);
+    expect(hash_file('sha256', $old['path'] . '/preview.png') === $placeholderHash, 'New theme preview does not copy the default screenshot');
+    expect(file_get_contents($fixture . '/themes/default/preview.png') === 'existing default screenshot', 'Existing preview remains unchanged');
     unlink($old['path'] . '/templates/posts.php');
     expect($manager->validateThemeStructure('classic'), 'Older theme without posts/new public templates remains valid');
     $manager->select('classic');

@@ -50,15 +50,13 @@ async function scenario(fail) {
     doc.documentElement.dataset.bsTheme = 'light'; observer(); assert.equal(theme, 'vs');
 }
 (async () => {await scenario(false); await scenario(true); console.log('Theme editor adapter: async input, save, discard, dirty guard, theme switch and load failure passed.');})().catch(error => {console.error(error); process.exit(1);});
-// Only the selected preview source may be posted; avoid upload/source precedence surprises.
+// The last chosen source wins without disabling the native file selector.
 {
-    const managerInput = element(); const uploadInput = element();
-    const managerPanel = {dataset: {previewPanel: 'manager'}, querySelectorAll: () => [managerInput]};
-    const uploadPanel = {dataset: {previewPanel: 'upload'}, querySelectorAll: () => [uploadInput]};
-    const managerChoice = element(); const uploadChoice = element(); let selected = {value: 'upload'};
-    const section = {querySelectorAll: selector => selector === '[data-preview-panel]' ? [managerPanel, uploadPanel] : [managerChoice, uploadChoice], querySelector: () => selected};
+    const managerInput = element('/uploads/old.png'); const uploadInput = element('new.png');
+    uploadInput.files = [{}];
+    const section = {querySelector: selector => selector === '[name="preview_source"]' ? managerInput : uploadInput};
     vm.runInNewContext(fs.readFileSync('public/assets/default/js/admin-theme-form.js', 'utf8'), {document: {querySelectorAll: () => [section]}});
-    assert.equal(managerPanel.hidden, true); assert.equal(managerInput.disabled, true); assert.equal(uploadInput.disabled, false);
-    selected = {value: 'manager'}; managerChoice.handlers.change();
-    assert.equal(uploadPanel.hidden, true); assert.equal(uploadInput.disabled, true); assert.equal(managerInput.disabled, false);
+    uploadInput.handlers.change(); assert.equal(managerInput.value, '');
+    managerInput.value = '/uploads/selected.png'; managerInput.handlers.input(); assert.equal(uploadInput.value, '');
+    uploadInput.value = 'keep.png'; managerInput.value = ''; managerInput.handlers.input(); assert.equal(uploadInput.value, 'keep.png');
 }

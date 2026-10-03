@@ -20,12 +20,14 @@ foreach ([false, true] as $is_edit) {
     $dom->loadHTML('<?xml encoding="UTF-8">' . $html);
     $xpath = new DOMXPath($dom);
     foreach ([
-        '//fieldset[@data-theme-preview]' => 1,
+        '//div[@data-theme-preview]' => 1,
         '//input[@name="preview" and @type="hidden" and @value="custom.webp"]' => 1,
         '//input[@name="preview" and @type="text"]' => 0,
         '//input[@name="preview_source"]' => 1,
         '//input[@name="preview_upload"]' => 1,
-        '//input[@name="preview_method" and @checked and @value="upload"]' => 1,
+        '//input[@name="preview_method"]' => 0,
+        '//div[@data-theme-preview]/input[@name="preview_upload" and @type="file" and not(@hidden) and not(@disabled)]' => 1,
+        '//details[not(@open)]//input[@name="preview_source"]' => 1,
         '//input[@name="csrf"]' => 1,
     ] as $query => $expected) {
         if ($xpath->query($query)->length !== $expected) { throw new RuntimeException('Preview form: ' . $query); }
