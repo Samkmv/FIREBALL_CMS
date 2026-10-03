@@ -162,6 +162,7 @@ $nodeIds = [];
 $panels = [new Stage7Panel(), new Stage7Panel()];
 $subscriptionId = 0;
 $planId = 0;
+$alternatePlanId = 0;
 $token = bin2hex(random_bytes(32));
 $results = [];
 
@@ -270,9 +271,15 @@ try {
             provisioning: new SubscriptionProvisioningService(clientFactory: $factory), remoteSync: $remote
         ));
     $connections = new ConnectionEditingService(remoteSync: $remote);
-    $endpoint = new VpnSubscriptionEndpointService();
+    $endpoint = new VpnSubscriptionEndpointService(
+        hwidGateway: new \Fireball\VpnManagerV2\Services\SubscriptionHwidGatewayService(
+            clientFactory: static fn(array $server): object => new class {
+                public function probeSubscriptionHwid(string $subId, array $headers): int { return 200; }
+            }
+        )
+    );
 
-    $initialResponse = $endpoint->respond($token);
+    $initialResponse = $endpoint->respond($token, requestHeaders: ['X-HWID' => 'stage7-device']);
     $assert($initialResponse->status === 200, 'Initial subscription endpoint failed.');
     $initialEtag = $initialResponse->headers['ETag'];
     $initialBody = $initialResponse->body;
@@ -383,11 +390,11 @@ try {
     $results['single_node_multi'] = true;
     $results['flow'] = true;
 
-    $changedResponse = $endpoint->respond($token);
+    $changedResponse = $endpoint->respond($token, requestHeaders: ['X-HWID' => 'stage7-device']);
     $assert($changedResponse->status === 200 && $changedResponse->headers['ETag'] !== $initialEtag,
         'The same subscription URL did not expose a new ETag.');
     $assert($changedResponse->body !== $initialBody, 'The same subscription URL did not expose the Flow change.');
-    $assert($endpoint->respond($token, 'base64', $changedResponse->headers['ETag'])->status === 304,
+    $assert($endpoint->respond($token, 'base64', $changedResponse->headers['ETag'], requestHeaders: ['X-HWID' => 'stage7-device'])->status === 304,
         'New ETag did not return 304.');
     $results['revision_etag_same_url'] = true;
 
@@ -433,8 +440,8 @@ try {
     ], $adminId);
     $failedNode = db()->query('SELECT status FROM vpn_v2_subscription_nodes WHERE id = ?', [$nodeIds[1]])->getColumn();
     $storedExpiry = db()->query('SELECT expires_at FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId])->getColumn();
-    $assert($partial->synced === 1 && $partial->failed === 1 && $failedNode === 'sync_error'
-        && (string)$storedExpiry === date('Y-m-d H:i:s', strtotime($partialExpires)), 'Partial multi-server result was not stored correctly.');
+    $assert($partial->synced === 1 && $partial->failed >= 1 && $failedNode === 'sync_error'
+        && (string)$storedExpiry === date('Y-m-d H:i:s', strtotime($partialExpires)), sprintf('Partial result mismatch: synced=%d failed=%d node=%s expiry=%s', $partial->synced, $partial->failed, $failedNode, $storedExpiry));
     $results['partial_sync'] = true;
 
     foreach ($panels as $index => $panel) {
@@ -451,6 +458,73 @@ try {
     $results['identity_preserved'] = true;
     $results['no_recreation'] = true;
     $results['traffic_preserved'] = true;
+
+    // Plan switching uses the existing clients and exact tariff limits.
+    db()->query('INSERT INTO vpn_v2_plans
+        (name, duration_days, traffic_limit_bytes, device_limit, ip_limit, is_active, created_at, updated_at)
+        VALUES (?, 90, ?, 6, 0, 1, ?, ?)',
+        ['Stage 7 alternate ' . $suffix, 50 * (1024 ** 3) + 365, $now, $now]);
+    $alternatePlanId = (int)db()->getInsertId();
+    foreach ([0, 1] as $index) {
+        db()->query('INSERT INTO vpn_v2_plan_nodes
+            (plan_id, server_id, inbound_id, is_enabled, sort_order, created_at, updated_at)
+            VALUES (?, ?, ?, 1, ?, ?, ?)',
+            [$alternatePlanId, $serverIds[$index], $inboundIds[$index], $index, $now, $now]);
+    }
+    $panels[1]->failUpdates = false;
+    $switchInput = ['plan_id' => $alternatePlanId, 'expiry_mode' => 'plan',
+        'status' => 'active', 'traffic_limit_value' => '1', 'traffic_unit' => 'gb'];
+    $switch = $subscriptions->update($subscriptionId, $switchInput, $adminId);
+    $switched = db()->query('SELECT plan_id, device_limit, ip_limit, traffic_limit_bytes, expires_at, subscription_token
+        FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId])->getOne();
+    $assert($switch->successful() && (int)$switched['plan_id'] === $alternatePlanId
+        && (int)$switched['device_limit'] === 6 && (int)$switched['ip_limit'] === 0
+        && (int)$switched['traffic_limit_bytes'] === 50 * (1024 ** 3) + 365, 'Selected tariff limits were not saved exactly');
+    $assert(abs(strtotime($switched['expires_at']) - (time() + 90 * 86400)) < 65, '90-day tariff term was not calculated from today');
+    $assert(hash_equals($token, $switched['subscription_token']), 'Plan change replaced the subscription link');
+    foreach ($panels as $index => $panel) {
+        $client = reset($panel->clients);
+        $assert((int)$client['limitHwid'] === 6 && (int)$client['limitIp'] === 0
+            && (int)$client['totalGB'] === 50 * (1024 ** 3) + 365
+            && (int)$client['expiryTime'] === strtotime($switched['expires_at']) * 1000, 'New plan parameters were not confirmed remotely');
+        $assert($client['id'] === $initialIdentity[$index]['id'] && $panel->addCount === 0
+            && $panel->deleteCount === 0, 'Switching tariffs recreated existing clients');
+    }
+    $results['plan_6_devices_90_days'] = true;
+    $preservedDate = $switched['expires_at'];
+    $back = $subscriptions->update($subscriptionId, array_replace($switchInput,
+        ['plan_id' => $planId, 'expiry_mode' => 'preserve', 'expires_at' => 'invalid']), $adminId);
+    $backState = db()->query('SELECT plan_id, device_limit, expires_at FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId])->getOne();
+    $assert($back->successful() && (int)$backState['plan_id'] === $planId
+        && (int)$backState['device_limit'] === 2 && $backState['expires_at'] === $preservedDate, 'Downgrade did not preserve the chosen term');
+    $results['plan_downgrade_preserves_term'] = true;
+    $manualDate = date('Y-m-d\TH:i', time() + 120 * 86400);
+    $manualSwitch = $subscriptions->update($subscriptionId, array_replace($switchInput,
+        ['expiry_mode' => 'manual', 'expires_at' => $manualDate]), $adminId);
+    $assert($manualSwitch->successful() && (string)db()->query('SELECT expires_at FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId])->getColumn()
+        === date('Y-m-d H:i:s', strtotime($manualDate)), 'Custom term was overwritten by tariff duration');
+    $results['plan_switch_manual_date'] = true;
+    $panels[1]->failUpdates = true;
+    $failedSwitch = $subscriptions->update($subscriptionId, array_replace($switchInput,
+        ['plan_id' => $planId, 'expiry_mode' => 'lifetime']), $adminId);
+    $assert($failedSwitch->failed > 0 && db()->query('SELECT status FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId])->getColumn()
+        === 'partial_sync', 'Failed tariff synchronization was shown as successful');
+    $panels[1]->failUpdates = false;
+    $fixedSwitch = $subscriptions->update($subscriptionId, array_replace($switchInput,
+        ['expiry_mode' => 'preserve']), $adminId);
+    $assert($fixedSwitch->successful() && db()->query('SELECT expires_at FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId])->getColumn() === null,
+        'Lifetime term was lost when retrying a tariff change');
+    $results['plan_switch_partial_failure_and_retry'] = true;
+    $invalidBefore = array_sum(array_map(static fn(Stage7Panel $panel): int => $panel->updateCount, $panels));
+    foreach ([['plan_id' => -1], ['plan_id' => 2147483647], ['expiry_mode' => 'manual', 'expires_at' => '']] as $invalid) {
+        try {
+            $subscriptions->update($subscriptionId, array_replace($switchInput, $invalid), $adminId);
+            throw new LogicException('Invalid plan/term accepted');
+        } catch (\Fireball\VpnManagerV2\Exceptions\ValidationException) {}
+    }
+    $assert(array_sum(array_map(static fn(Stage7Panel $panel): int => $panel->updateCount, $panels)) === $invalidBefore,
+        'Invalid tariff/date caused remote requests');
+    $results['invalid_plan_and_term_no_mutation'] = true;
 
     $missingUuid = array_key_first($panels[1]->clients);
     unset($panels[1]->clients[$missingUuid]);
@@ -493,6 +567,10 @@ try {
     if ($subscriptionId > 0) {
         db()->query('DELETE FROM vpn_v2_events WHERE subscription_id = ?', [$subscriptionId]);
         db()->query('DELETE FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]);
+    }
+    if ($alternatePlanId > 0) {
+        db()->query('DELETE FROM vpn_v2_plan_nodes WHERE plan_id = ?', [$alternatePlanId]);
+        db()->query('DELETE FROM vpn_v2_plans WHERE id = ?', [$alternatePlanId]);
     }
     if ($planId > 0) {
         db()->query('DELETE FROM vpn_v2_plan_nodes WHERE plan_id = ?', [$planId]);

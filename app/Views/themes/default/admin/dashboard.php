@@ -48,7 +48,6 @@ $statCards = [
         'icon' => 'ci-bell',
         'variant' => 'is-primary',
         'href' => base_href('/admin/support/requests?status=new'),
-        'meta' => return_translation('admin_dashboard_requires_attention'),
     ],
     [
         'label' => return_translation('admin_stat_contacts'),
@@ -56,7 +55,6 @@ $statCards = [
         'icon' => 'ci-inbox',
         'variant' => 'is-blue',
         'href' => base_href('/admin/support/requests'),
-        'meta' => return_translation('admin_dashboard_all_requests'),
     ],
     [
         'label' => return_translation('admin_stat_users'),
@@ -64,7 +62,6 @@ $statCards = [
         'icon' => 'ci-user',
         'variant' => 'is-pink',
         'href' => base_href('/admin/users'),
-        'meta' => return_translation('admin_dashboard_team'),
     ],
     [
         'label' => return_translation('admin_stat_posts'),

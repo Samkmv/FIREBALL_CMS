@@ -10,11 +10,12 @@ $shouldScrollToUpdateCenter = (string)request()->get('scroll', '') === 'update-c
 $updaterRepository = $formData['updater_github_repository'] ?? ($settings['updater_github_repository'] ?? ($updateConfig['repository'] ?? ''));
 $updaterBranch = $formData['updater_github_branch'] ?? ($settings['updater_github_branch'] ?? ($updateConfig['branch'] ?? 'main'));
 $updaterToken = $formData['updater_github_token'] ?? '';
-$updaterChannel = $formData['update_channel'] ?? ($settings['update_channel'] ?? ($updateConfig['channel'] ?? 'stable'));
-$updaterChannel = $isCreator && $updaterChannel === 'dev' ? 'dev' : 'stable';
-$updaterChannelLabel = $updaterChannel === 'dev'
-    ? return_translation('admin_update_channel_dev')
-    : return_translation('admin_update_channel_stable');
+$updaterChannel = $updateConfig['channel'] ?? ($isCreator ? 'beta' : 'stable');
+$updaterChannelLabel = return_translation(match ($updaterChannel) {
+    'beta' => 'admin_update_channel_beta',
+    'dev' => 'admin_update_channel_dev',
+    default => 'admin_update_channel_stable',
+});
 $isGitRepo = !empty($updateLocal['is_git_repo']);
 $updateSourceLabel = $updaterChannel === 'dev'
     ? return_translation('admin_update_source_main_branch')
@@ -156,6 +157,13 @@ $statusIcon = match ($statusVariant) {
                         <strong><?= print_translation('admin_update_dev_warning_title') ?></strong>
                         <div class="small mt-1"><?= print_translation('admin_update_dev_warning_text') ?></div>
                     </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($release['prerelease'])): ?>
+                <div class="admin-update-notice admin-update-notice--warning">
+                    <i class="ci-alert-triangle" aria-hidden="true"></i>
+                    <div><?= print_translation('admin_update_beta_warning') ?></div>
                 </div>
             <?php endif; ?>
 
@@ -346,11 +354,8 @@ $statusIcon = match ($statusVariant) {
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label" for="update-channel"><?= print_translation('admin_update_channel_label') ?></label>
-                                <select class="form-select <?= get_validation_class('update_channel') ?>" id="update-channel" name="update_channel">
-                                    <option value="stable" <?= $updaterChannel === 'stable' ? 'selected' : '' ?>><?= print_translation('admin_update_channel_stable') ?></option>
-                                    <option value="dev" <?= $updaterChannel === 'dev' ? 'selected' : '' ?>><?= print_translation('admin_update_channel_dev') ?></option>
-                                </select>
-                                <?= get_errors('update_channel') ?>
+                                <input class="form-control" id="update-channel" value="<?= htmlSC($updaterChannelLabel) ?>" readonly aria-describedby="update-channel-help">
+                                <div class="form-text" id="update-channel-help"><?= print_translation('admin_update_role_policy') ?></div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label"><?= print_translation('admin_settings_update_branch') ?></label>

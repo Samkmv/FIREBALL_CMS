@@ -110,7 +110,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                             <span class="vpn-plan-icon" aria-hidden="true"><i class="ci-shield"></i></span>
                             <div class="vpn-plan-title">
                                 <h2 class="vpn-plan-name mb-0"><?= htmlSC((string)$selected['plan_name']) ?></h2>
-                                <?= ProvisioningStatus::badge((string)$selected['effective_status']) ?>
+                                <?= ProvisioningStatus::badge((string)$selected['effective_status'], true) ?>
                             </div>
                             <?php if (trim((string)($selected['plan_description'] ?? '')) !== ''): ?>
                                 <p class="vpn-plan-description text-body-secondary mb-0"><?= htmlSC((string)$selected['plan_description']) ?></p>

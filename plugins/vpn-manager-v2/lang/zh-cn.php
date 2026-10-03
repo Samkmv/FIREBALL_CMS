@@ -278,7 +278,7 @@ return [
     'vpn_manager_v2_subscription_show_subtitle' => '订阅及其所有连接的状态。',
     'vpn_manager_v2_connection_show_title' => 'VPN V2 连接 #%d',
     'vpn_manager_v2_connection_show_subtitle' => '本地参数和已确认的 3x-ui 客户端状态。',
-    'vpn_manager_v2_subscription_local_first_note' => '先在本地保存订阅和所有节点。数据库提交后才开始向 3x-ui 发起 HTTP 请求。',
+    'vpn_manager_v2_subscription_local_first_note' => '请选择客户、套餐和订阅有效期。保存后将在所选套餐的服务器上创建连接。',
     'vpn_manager_v2_subscription_expiry_note' => '可手动设置到期时间；留空则使用所选套餐的时长。',
     'vpn_manager_v2_warning_subscription_prerequisites' => '需要 CMS 用户以及包含可用节点的活动套餐。',
     'vpn_manager_v2_create_and_provision' => '创建并配置',
@@ -293,7 +293,7 @@ return [
     'vpn_manager_v2_plan_duration_label' => '套餐有效期',
     'vpn_manager_v2_plan_duration_help' => '从所选套餐读取，通常无需手动输入。',
     'vpn_manager_v2_calculated_expires_at' => '到期时间',
-    'vpn_manager_v2_calculated_expires_help' => '根据订阅开始时间加套餐有效期自动计算。',
+    'vpn_manager_v2_calculated_expires_help' => '套餐有效期从开始日期计算。也可以手动设置到期日期或创建永久订阅。',
     'vpn_manager_v2_manual_expiry_override' => '手动设置到期时间',
     'vpn_manager_v2_lifetime_short' => '永久',
     'vpn_manager_v2_field_plan' => '套餐',
@@ -408,7 +408,7 @@ return [
     'vpn_manager_v2_field_status' => '状态',
     'vpn_manager_v2_field_internal_comment' => '内部备注',
     'vpn_manager_v2_internal_comment_help' => '备注仅保存在 CMS 中，不会发送到 3x-ui。',
-    'vpn_manager_v2_subscription_edit_sync_note' => '更改到期时间、限额或状态会更新每个 3x-ui 客户端，并通过再次读取进行验证。',
+    'vpn_manager_v2_subscription_edit_sync_note' => '保存套餐、有效期、限制或状态时会更新 3x-ui 中的连接，并校验同步结果。',
     'vpn_manager_v2_subscription_renewal_note' => '请选择未来日期或永久：已到期的订阅会恢复为活动状态，并重新启用其 3x-ui 连接。',
     'vpn_manager_v2_connection_edit_identity_note' => '编辑期间不会更改 UUID、技术邮箱和订阅 token。',
     'vpn_manager_v2_save_and_sync' => '保存并同步',
@@ -1059,4 +1059,16 @@ return [
     'vpn_manager_v2_error_clear_operations' => '无法清空操作表。',
     'vpn_manager_v2_error_clear_operations_confirmation' => '请确认清空操作表。',
 
+    // Subscription plan and term selection
+    'vpn_manager_v2_subscription_period' => '订阅期限',
+    'vpn_manager_v2_period_preserve' => '保留当前期限',
+    'vpn_manager_v2_period_plan' => '按所选套餐',
+    'vpn_manager_v2_period_edit_help' => '套餐期限从今天开始计算；未来生效的订阅则从开始日期计算。您可以保留当前期限或指定日期。',
+    'vpn_manager_v2_current_plan_unavailable' => '当前套餐不适用于新订阅',
+    'vpn_manager_v2_plan_devices_summary' => '设备数：%d',
+    'vpn_manager_v2_subscription_plan_change_help' => '更换套餐将应用其设备、IP 和流量限制。订阅链接保持不变。',
+
+    'vpn_manager_v2_profile_status_deleted' => '已删除',
+    'vpn_manager_v2_profile_status_missing_remote' => '连接不可用',
+    'vpn_manager_v2_profile_status_pending_remote_delete' => '等待删除',
 ];

@@ -2388,7 +2388,7 @@ class AdminController extends BaseController
             'updater_github_repository' => trim((string)($data['updater_github_repository'] ?? '')),
             'updater_github_branch' => trim((string)($data['updater_github_branch'] ?? 'main')),
             'updater_github_token' => $submittedToken !== '' ? $submittedToken : $currentToken,
-            'update_channel' => trim(mb_strtolower((string)($data['update_channel'] ?? 'stable'))),
+            'update_channel' => trim(mb_strtolower((string)($data['update_channel'] ?? $this->siteSettings->get('update_channel', 'stable')))),
         ];
     }
 
@@ -2405,7 +2405,7 @@ class AdminController extends BaseController
         if ($data['updater_github_branch'] !== '' && !$this->isValidGithubBranch($data['updater_github_branch'])) {
             $errors['updater_github_branch'][] = return_translation('admin_validation_updater_branch_invalid');
         }
-        if (!in_array($data['update_channel'], ['stable', 'dev'], true)) {
+        if (!in_array($data['update_channel'], ['stable', 'beta', 'dev'], true)) {
             $errors['update_channel'][] = return_translation('admin_validation_update_channel_invalid');
         }
 

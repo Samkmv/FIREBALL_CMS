@@ -75,12 +75,12 @@ final class SubscriptionRepository
     public function activePlansForForm(): array
     {
         return db()->query(
-            'SELECT p.id, p.name, p.duration_days, p.traffic_limit_bytes, p.device_limit,
+            'SELECT p.id, p.name, p.duration_days, p.traffic_limit_bytes, p.device_limit, p.ip_limit,
                     COUNT(n.id) AS node_count
              FROM vpn_v2_plans p
              LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
              WHERE p.is_active = 1 AND p.deleted_at IS NULL
-             GROUP BY p.id, p.name, p.duration_days, p.traffic_limit_bytes, p.device_limit
+             GROUP BY p.id, p.name, p.duration_days, p.traffic_limit_bytes, p.device_limit, p.ip_limit
              HAVING COUNT(n.id) > 0
              ORDER BY p.id ASC'
         )->get() ?: [];
@@ -607,13 +607,16 @@ final class SubscriptionRepository
         ?int $trafficLimitBytes,
         ?int $trafficUsedBytes = null,
         string $status = 'active',
-        ?bool $desiredEnabled = null
+        ?bool $desiredEnabled = null,
+        ?array $confirmedSubscription = null
     ): void {
         $status = $status === 'disabled' ? 'disabled' : 'active';
         $now = date('Y-m-d H:i:s');
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
              SET flow = ?, traffic_limit_bytes = ?,
+                 device_limit = COALESCE(?, device_limit),
+                 expires_at = CASE WHEN ? = 1 THEN ? ELSE expires_at END,
                  traffic_used_bytes = COALESCE(?, traffic_used_bytes), status = ?,
                  desired_enabled = COALESCE(?, desired_enabled), is_obsolete = 0,
                  sync_status = 'synced', sync_error = NULL,
@@ -622,6 +625,9 @@ final class SubscriptionRepository
             [
                 $flow,
                 $trafficLimitBytes,
+                $confirmedSubscription['device_limit'] ?? null,
+                $confirmedSubscription !== null ? 1 : 0,
+                $confirmedSubscription['expires_at'] ?? null,
                 $trafficUsedBytes,
                 $status,
                 $desiredEnabled === null ? null : ($desiredEnabled ? 1 : 0),
@@ -640,6 +646,8 @@ final class SubscriptionRepository
         db()->query(
             'UPDATE vpn_v2_subscriptions
              SET expires_at = ?, traffic_limit_bytes = ?, status = ?, internal_comment = ?,
+                 plan_id = COALESCE(?, plan_id), device_limit = COALESCE(?, device_limit),
+                 ip_limit = COALESCE(?, ip_limit),
                  last_error = ?, updated_at = ?
              WHERE id = ?',
             [
@@ -647,6 +655,9 @@ final class SubscriptionRepository
                 $data['traffic_limit_bytes'] ?? null,
                 $status,
                 $data['internal_comment'] ?? null,
+                $data['plan_id'] ?? null,
+                $data['device_limit'] ?? null,
+                $data['ip_limit'] ?? null,
                 $safeError !== null ? mb_substr(trim($safeError), 0, 1000) : null,
                 date('Y-m-d H:i:s'),
                 $id,

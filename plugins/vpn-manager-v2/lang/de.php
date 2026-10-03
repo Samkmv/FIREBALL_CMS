@@ -278,7 +278,7 @@ return [
     'vpn_manager_v2_subscription_show_subtitle' => 'Status des Abonnements und aller Verbindungen.',
     'vpn_manager_v2_connection_show_title' => 'VPN-V2-Verbindung #%d',
     'vpn_manager_v2_connection_show_subtitle' => 'Lokale Parameter und bestätigter 3x-ui-Clientstatus.',
-    'vpn_manager_v2_subscription_local_first_note' => 'Abonnement und Nodes werden zuerst lokal gespeichert. 3x-ui-HTTP-Anfragen beginnen erst nach dem Commit.',
+    'vpn_manager_v2_subscription_local_first_note' => 'Wählen Sie Kunde, Tarif und Laufzeit. Nach dem Speichern werden Verbindungen auf den Servern des gewählten Tarifs erstellt.',
     'vpn_manager_v2_subscription_expiry_note' => 'Datum manuell festlegen oder leer lassen, um die Tarifdauer zu verwenden.',
     'vpn_manager_v2_warning_subscription_prerequisites' => 'Ein CMS-Benutzer und ein aktiver Tarif mit verfügbaren Nodes sind erforderlich.',
     'vpn_manager_v2_create_and_provision' => 'Erstellen und bereitstellen',
@@ -293,7 +293,7 @@ return [
     'vpn_manager_v2_plan_duration_label' => 'Tariflaufzeit',
     'vpn_manager_v2_plan_duration_help' => 'Wird aus dem gewählten Tarif übernommen und normalerweise nicht manuell eingegeben.',
     'vpn_manager_v2_calculated_expires_at' => 'Ablaufdatum',
-    'vpn_manager_v2_calculated_expires_help' => 'Wird automatisch aus Startzeit plus Tariflaufzeit berechnet.',
+    'vpn_manager_v2_calculated_expires_help' => 'Die Tariflaufzeit wird ab dem Startdatum berechnet. Sie können auch ein Ablaufdatum manuell festlegen oder ein unbefristetes Abonnement erstellen.',
     'vpn_manager_v2_manual_expiry_override' => 'Ablaufdatum manuell festlegen',
     'vpn_manager_v2_lifetime_short' => 'Unbefristet',
     'vpn_manager_v2_field_plan' => 'Tarif',
@@ -408,7 +408,7 @@ return [
     'vpn_manager_v2_field_status' => 'Status',
     'vpn_manager_v2_field_internal_comment' => 'Interner Kommentar',
     'vpn_manager_v2_internal_comment_help' => 'Der Kommentar wird nur im CMS gespeichert und nicht an 3x-ui gesendet.',
-    'vpn_manager_v2_subscription_edit_sync_note' => 'Änderungen an Ablauf, Limit oder Status aktualisieren jeden 3x-ui-Client und werden erneut gelesen.',
+    'vpn_manager_v2_subscription_edit_sync_note' => 'Beim Speichern von Tarif, Laufzeit, Limits oder Status werden die Verbindungen in 3x-ui aktualisiert und das Ergebnis überprüft.',
     'vpn_manager_v2_subscription_renewal_note' => 'Wählen Sie ein zukünftiges Datum oder Unbefristet: Das abgelaufene Abonnement wird aktiv und seine 3x-ui-Verbindungen werden wieder eingeschaltet.',
     'vpn_manager_v2_connection_edit_identity_note' => 'UUID, technische E-Mail und Abonnement-Token werden beim Bearbeiten nicht geändert.',
     'vpn_manager_v2_save_and_sync' => 'Speichern und synchronisieren',
@@ -1059,4 +1059,16 @@ return [
     'vpn_manager_v2_error_clear_operations' => 'Die Vorgangstabelle konnte nicht geleert werden.',
     'vpn_manager_v2_error_clear_operations_confirmation' => 'Das Leeren der Vorgangstabelle bestätigen.',
 
+    // Subscription plan and term selection
+    'vpn_manager_v2_subscription_period' => 'Abonnementlaufzeit',
+    'vpn_manager_v2_period_preserve' => 'Aktuelle Laufzeit behalten',
+    'vpn_manager_v2_period_plan' => 'Nach gewähltem Tarif',
+    'vpn_manager_v2_period_edit_help' => 'Die Tariflaufzeit beginnt heute oder bei zukünftigen Abonnements am Startdatum. Sie können die aktuelle Laufzeit behalten oder ein eigenes Datum eingeben.',
+    'vpn_manager_v2_current_plan_unavailable' => 'aktueller Tarif für neue Abonnements nicht verfügbar',
+    'vpn_manager_v2_plan_devices_summary' => 'Geräte: %d',
+    'vpn_manager_v2_subscription_plan_change_help' => 'Ein Tarifwechsel übernimmt die Geräte-, IP- und Datenlimits. Der Abonnementlink bleibt unverändert.',
+
+    'vpn_manager_v2_profile_status_deleted' => 'Gelöscht',
+    'vpn_manager_v2_profile_status_missing_remote' => 'Verbindung nicht verfügbar',
+    'vpn_manager_v2_profile_status_pending_remote_delete' => 'Löschung ausstehend',
 ];

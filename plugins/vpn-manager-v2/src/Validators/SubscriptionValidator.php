@@ -33,9 +33,17 @@ final class SubscriptionValidator
             'vpn_manager_v2_error_subscription_starts_at'
         );
 
-        $lifetime = !empty($input['lifetime']);
+        $mode = (string)($input['expiry_mode'] ?? '');
+        if (!in_array($mode, ['', 'plan', 'manual', 'lifetime'], true)) {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_expires_at'));
+        }
+        $lifetime = $mode === 'lifetime' || ($mode === '' && !empty($input['lifetime']));
         $expiresAt = null;
         $rawExpiresAt = trim((string)($input['expires_at'] ?? ''));
+        if ($mode === 'plan') { $rawExpiresAt = ''; }
+        if ($mode === 'manual' && $rawExpiresAt === '') {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_expires_at'));
+        }
 
         if (!$lifetime && $rawExpiresAt !== '') {
             $expiresAt = $this->dateTime(

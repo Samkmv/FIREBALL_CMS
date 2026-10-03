@@ -33,7 +33,7 @@ final class PluginUpdateService extends UpdateCenter
         $this->workspaceRoot = rtrim($workspaceRoot ?? STORAGE . '/plugin-updates', '/');
     }
 
-    public function decoratePlugins(array $plugins): array
+    public function decoratePlugins(array $plugins, int $maxAutomaticChecks = PHP_INT_MAX): array
     {
         foreach ($plugins as &$plugin) {
             $plugin['update'] = $this->emptyDisplayState();
@@ -49,11 +49,17 @@ final class PluginUpdateService extends UpdateCenter
                     continue;
                 }
                 $state = $this->storedState($slug);
-                if ($this->shouldRefreshState($state)) {
-                    try {
-                        $state = $this->check($slug);
-                    } catch (Throwable) {
-                        $state = $this->storedState($slug);
+                if ($maxAutomaticChecks > 0 && $this->shouldRefreshState($state)) {
+                    $lock = $this->acquireAutomaticCheckLock('plugin-' . $slug);
+                    if ($lock !== null) {
+                        $maxAutomaticChecks--;
+                        try {
+                            $state = $this->check($slug);
+                        } catch (Throwable) {
+                            $state = $this->storedState($slug);
+                        } finally {
+                            $this->releaseAutomaticCheckLock($lock);
+                        }
                     }
                 }
                 $remoteVersion = trim((string)($state['remote_version'] ?? ''));
@@ -83,6 +89,17 @@ final class PluginUpdateService extends UpdateCenter
         unset($plugin);
 
         return $plugins;
+    }
+
+    /** Automatic checks share the existing six-hour cache and never install packages. */
+    public function checkAllIfStale(): array
+    {
+        if (!function_exists('get_user') || !in_array(get_user()['role'] ?? '', ['creator', 'admin'], true)) {
+            return ['configured' => 0, 'checked' => 0, 'available' => 0, 'source_older' => 0];
+        }
+        // Spread a large catalogue over notification polls rather than blocking one feed.
+        $this->decoratePlugins($this->pluginManager->all(), 3);
+        return $this->getStoredUpdateSummary();
     }
 
     /**
@@ -171,6 +188,9 @@ final class PluginUpdateService extends UpdateCenter
                 'local_version' => $localVersion,
                 'remote_version' => $remoteVersion,
                 'remote_commit' => $remote['commit'],
+                'repository' => $config['repository'],
+                'branch' => $config['branch'],
+                'path' => $config['path'],
                 'update_available' => $comparison < 0,
                 'source_older' => $comparison > 0,
                 'checked_at' => date('Y-m-d H:i:s'),
@@ -505,7 +525,8 @@ final class PluginUpdateService extends UpdateCenter
         }
         $provider = trim((string)($raw['provider'] ?? 'github_directory'));
         $repository = $this->normalizeRepository((string)($raw['repository'] ?? ''));
-        $branch = $this->normalizeBranch((string)($raw['branch'] ?? 'main'));
+        // Plugin updates are independent of the CMS release/beta channel.
+        $branch = 'main';
         $path = trim(str_replace('\\', '/', (string)($raw['path'] ?? '')), '/');
         $expectedPath = 'plugins/' . (string)$metadata['slug'];
         if ($provider !== 'github_directory' || $repository === '' || $branch === '' || $path !== $expectedPath) {
@@ -774,7 +795,10 @@ final class PluginUpdateService extends UpdateCenter
     {
         $state = $this->pluginManager->setting($slug, self::STATE_KEY, []);
 
-        return is_array($state) ? $state : [];
+        if (!is_array($state)) return [];
+        // Do not offer a package previously checked against a different branch.
+        if (isset($state['branch']) && $state['branch'] !== 'main') return [];
+        return $state;
     }
 
     private function persistState(string $slug, array $state): void

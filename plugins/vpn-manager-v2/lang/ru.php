@@ -278,7 +278,7 @@ return [
     'vpn_manager_v2_subscription_show_subtitle' => 'Состояние подписки и всех её подключений.',
     'vpn_manager_v2_connection_show_title' => 'VPN-подключение #%d',
     'vpn_manager_v2_connection_show_subtitle' => 'Локальные параметры и подтверждённое состояние клиента 3x-ui.',
-    'vpn_manager_v2_subscription_local_first_note' => 'Сначала подписка и все nodes сохраняются в локальной базе. HTTP-запросы к 3x-ui начинаются только после commit.',
+    'vpn_manager_v2_subscription_local_first_note' => 'Выберите клиента, тариф и срок подписки. После сохранения подключения будут созданы на серверах выбранного тарифа.',
     'vpn_manager_v2_subscription_expiry_note' => 'Укажите дату вручную или оставьте поле пустым, чтобы использовать длительность выбранного тарифа.',
     'vpn_manager_v2_warning_subscription_prerequisites' => 'Для создания подписки нужен пользователь CMS и активный тариф с доступными nodes.',
     'vpn_manager_v2_create_and_provision' => 'Создать и подключить',
@@ -293,7 +293,7 @@ return [
     'vpn_manager_v2_plan_duration_label' => 'Срок действия по тарифу',
     'vpn_manager_v2_plan_duration_help' => 'Берётся из выбранного тарифа и не вводится вручную.',
     'vpn_manager_v2_calculated_expires_at' => 'Дата окончания',
-    'vpn_manager_v2_calculated_expires_help' => 'Рассчитывается автоматически: начало подписки + срок тарифа.',
+    'vpn_manager_v2_calculated_expires_help' => 'Срок по тарифу считается от даты начала. Также можно указать дату окончания вручную или создать бессрочную подписку.',
     'vpn_manager_v2_manual_expiry_override' => 'Указать дату окончания вручную',
     'vpn_manager_v2_lifetime_short' => 'Бессрочно',
     'vpn_manager_v2_field_plan' => 'Тариф',
@@ -408,7 +408,7 @@ return [
     'vpn_manager_v2_field_status' => 'Статус',
     'vpn_manager_v2_field_internal_comment' => 'Внутренний комментарий',
     'vpn_manager_v2_internal_comment_help' => 'Комментарий хранится только в CMS и не отправляется в 3x-ui.',
-    'vpn_manager_v2_subscription_edit_sync_note' => 'Изменение срока, лимита или статуса обновит каждого клиента в 3x-ui и будет подтверждено повторным чтением.',
+    'vpn_manager_v2_subscription_edit_sync_note' => 'Сохранение тарифа, срока, лимитов или статуса обновит подключения в 3x-ui. Результат синхронизации будет проверен.',
     'vpn_manager_v2_subscription_renewal_note' => 'Укажите будущую дату или выберите «Бессрочно»: истёкшая подписка станет активной, а подключения будут повторно включены в 3x-ui.',
     'vpn_manager_v2_connection_edit_identity_note' => 'UUID, технический email и subscription token при редактировании не изменяются.',
     'vpn_manager_v2_save_and_sync' => 'Сохранить и синхронизировать',
@@ -1059,4 +1059,16 @@ return [
     'vpn_manager_v2_error_clear_operations' => 'Не удалось очистить таблицу операций.',
     'vpn_manager_v2_error_clear_operations_confirmation' => 'Подтвердите очистку таблицы операций.',
 
+    // Subscription plan and term selection
+    'vpn_manager_v2_subscription_period' => 'Срок подписки',
+    'vpn_manager_v2_period_preserve' => 'Оставить текущий срок',
+    'vpn_manager_v2_period_plan' => 'По выбранному тарифу',
+    'vpn_manager_v2_period_edit_help' => 'Срок по тарифу отсчитывается с сегодняшнего дня, а для будущей подписки — с даты начала. Можно оставить текущий срок или указать свою дату.',
+    'vpn_manager_v2_current_plan_unavailable' => 'текущий тариф недоступен для новых подписок',
+    'vpn_manager_v2_plan_devices_summary' => 'Устройств: %d',
+    'vpn_manager_v2_subscription_plan_change_help' => 'При смене тарифа применяются его лимиты устройств, IP и трафика. Ссылка подписки остаётся прежней.',
+
+    'vpn_manager_v2_profile_status_deleted' => 'Удалена',
+    'vpn_manager_v2_profile_status_missing_remote' => 'Подключение недоступно',
+    'vpn_manager_v2_profile_status_pending_remote_delete' => 'Ожидает удаления',
 ];

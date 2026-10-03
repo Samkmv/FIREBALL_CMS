@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\NotificationService;
+use App\Services\PluginUpdateService;
 use App\Services\UpdateCenter;
 
 /**
@@ -38,6 +39,13 @@ class NotificationCenter
         $notificationUnreadCount = $this->notifications->unreadCountForUser($userId);
         $updateItem = $isAdmin ? $this->getUpdateNotificationItem($userId, $checkUpdates) : null;
         $updateUnreadCount = $updateItem !== null ? 1 : 0;
+        if ($isAdmin && $checkUpdates) {
+            try {
+                (new PluginUpdateService())->checkAllIfStale();
+            } catch (\Throwable $exception) {
+                log_error_details('Automatic plugin update check failed', [], $exception);
+            }
+        }
 
         $chatItems = $this->chatMessages->getUnreadNotificationItemsForUser($userId, $limit);
         $contactItems = $isAdmin ? $this->contactRequests->getUnreadNotificationItems($limit) : [];

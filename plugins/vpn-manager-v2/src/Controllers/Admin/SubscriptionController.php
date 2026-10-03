@@ -85,15 +85,30 @@ final class SubscriptionController
     public function edit(): string
     {
         Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
-        $subscription = (new SubscriptionRepository())->find((int)get_route_param('id'));
+        $repository = new SubscriptionRepository();
+        $subscription = $repository->find((int)get_route_param('id'));
         if (!$subscription) {
             abort('', 404);
+        }
+        $plans = $repository->activePlansForForm();
+        if (!in_array((int)$subscription['plan_id'], array_column($plans, 'id'))) {
+            $plans[] = [
+                'id' => (int)$subscription['plan_id'],
+                'name' => (string)$subscription['plan_name'],
+                'duration_days' => 0,
+                'traffic_limit_bytes' => $subscription['traffic_limit_bytes'] ?? null,
+                'device_limit' => (int)$subscription['device_limit'],
+                'ip_limit' => (int)($subscription['ip_limit'] ?? 0),
+                'node_count' => 0,
+                'unavailable' => true,
+            ];
         }
 
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscription-edit', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_edit_title'), (int)$subscription['id']),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_edit_subtitle'),
             'subscription' => $subscription,
+            'plans' => $plans,
             'trafficInput' => TrafficFormatter::inputParts(
                 isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null
             ),

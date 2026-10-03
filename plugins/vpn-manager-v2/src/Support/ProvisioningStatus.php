@@ -21,7 +21,7 @@ final class ProvisioningStatus
         return $status;
     }
 
-    public static function badge(string $status): string
+    public static function badge(string $status, bool $public = false): string
     {
         $status = strtolower(trim($status));
         $classes = [
@@ -47,13 +47,16 @@ final class ProvisioningStatus
         $class = $classes[$status] ?? 'text-bg-light border text-body-secondary';
 
         return '<span class="badge rounded-pill ' . $class . '">'
-            . htmlSC(self::label($status))
+            . htmlSC(self::label($status, $public))
             . '</span>';
     }
 
-    public static function label(string $status): string
+    public static function label(string $status, bool $public = false): string
     {
         $status = strtolower(trim($status));
+        if ($public && in_array($status, ['deleted', 'missing_remote', 'pending_remote_delete'], true)) {
+            return \FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_status_' . $status);
+        }
         $known = [
             'active', 'provisioning', 'creating', 'provisioning_failed', 'create_failed',
             'sync_error', 'partial_sync', 'disabled', 'inactive', 'suspended', 'expired',

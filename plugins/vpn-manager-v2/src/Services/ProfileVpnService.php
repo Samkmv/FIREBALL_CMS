@@ -6,6 +6,7 @@ use Fireball\VpnManagerV2\Repositories\ProfileVpnRepository;
 use Fireball\VpnManagerV2\Repositories\VpnAccessRequestRepository;
 use Fireball\VpnManagerV2\Support\ProfileVpnFormatter;
 use Fireball\VpnManagerV2\Support\ProfileVpnInstructions;
+use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
 
 final class ProfileVpnService
@@ -46,7 +47,7 @@ final class ProfileVpnService
                 'plan_name' => (string)$subscription['plan_name'],
                 'description' => (string)($subscription['plan_description'] ?? ''),
                 'status' => $status,
-                'status_label' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_provisioning_status_' . $status),
+                'status_label' => ProvisioningStatus::label($status, true),
                 'ends_at' => $subscription['expires_at'] ?? null,
                 'href' => base_href('/profile/vpn-v2/' . (int)$subscription['id']),
             ];

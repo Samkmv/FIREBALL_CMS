@@ -278,7 +278,7 @@ return [
     'vpn_manager_v2_subscription_show_subtitle' => 'Subscription state and all of its connections.',
     'vpn_manager_v2_connection_show_title' => 'VPN V2 connection #%d',
     'vpn_manager_v2_connection_show_subtitle' => 'Local parameters and confirmed 3x-ui client state.',
-    'vpn_manager_v2_subscription_local_first_note' => 'The subscription and all nodes are stored locally first. 3x-ui HTTP requests start only after commit.',
+    'vpn_manager_v2_subscription_local_first_note' => 'Choose the customer, plan and subscription term. After saving, connections will be created on the selected plan’s servers.',
     'vpn_manager_v2_subscription_expiry_note' => 'Set the date manually or leave it empty to use the selected plan duration.',
     'vpn_manager_v2_warning_subscription_prerequisites' => 'A CMS user and an active plan with available nodes are required.',
     'vpn_manager_v2_create_and_provision' => 'Create and provision',
@@ -293,7 +293,7 @@ return [
     'vpn_manager_v2_plan_duration_label' => 'Plan duration',
     'vpn_manager_v2_plan_duration_help' => 'Taken from the selected plan and normally not entered manually.',
     'vpn_manager_v2_calculated_expires_at' => 'Expiration date',
-    'vpn_manager_v2_calculated_expires_help' => 'Calculated automatically from the subscription start plus the plan duration.',
+    'vpn_manager_v2_calculated_expires_help' => 'The plan term is calculated from the start date. You can also enter an expiration date manually or create a lifetime subscription.',
     'vpn_manager_v2_manual_expiry_override' => 'Set expiration date manually',
     'vpn_manager_v2_lifetime_short' => 'Lifetime',
     'vpn_manager_v2_field_plan' => 'Plan',
@@ -408,7 +408,7 @@ return [
     'vpn_manager_v2_field_status' => 'Status',
     'vpn_manager_v2_field_internal_comment' => 'Internal comment',
     'vpn_manager_v2_internal_comment_help' => 'The comment is stored only in the CMS and is not sent to 3x-ui.',
-    'vpn_manager_v2_subscription_edit_sync_note' => 'Changing expiration, limit, or status updates every 3x-ui client and verifies it with a second read.',
+    'vpn_manager_v2_subscription_edit_sync_note' => 'Saving the plan, term, limits or status updates the connections in 3x-ui. The synchronization result will be verified.',
     'vpn_manager_v2_subscription_renewal_note' => 'Choose a future date or Lifetime: the expired subscription will become active and its 3x-ui connections will be enabled again.',
     'vpn_manager_v2_connection_edit_identity_note' => 'UUID, technical email, and subscription token never change during editing.',
     'vpn_manager_v2_save_and_sync' => 'Save and synchronize',
@@ -1059,4 +1059,16 @@ return [
     'vpn_manager_v2_error_clear_operations' => 'Could not clear the operations table.',
     'vpn_manager_v2_error_clear_operations_confirmation' => 'Confirm clearing the operations table.',
 
+    // Subscription plan and term selection
+    'vpn_manager_v2_subscription_period' => 'Subscription term',
+    'vpn_manager_v2_period_preserve' => 'Keep the current term',
+    'vpn_manager_v2_period_plan' => 'Use the selected plan',
+    'vpn_manager_v2_period_edit_help' => 'The plan term starts today, or on the start date for future subscriptions. You can keep the current term or enter a custom date.',
+    'vpn_manager_v2_current_plan_unavailable' => 'current plan unavailable for new subscriptions',
+    'vpn_manager_v2_plan_devices_summary' => 'Devices: %d',
+    'vpn_manager_v2_subscription_plan_change_help' => 'Changing the plan applies its device, IP and traffic limits. The subscription link stays the same.',
+
+    'vpn_manager_v2_profile_status_deleted' => 'Deleted',
+    'vpn_manager_v2_profile_status_missing_remote' => 'Connection unavailable',
+    'vpn_manager_v2_profile_status_pending_remote_delete' => 'Pending deletion',
 ];

@@ -32,6 +32,7 @@ class UpdateCenter
     public function getDashboardData(): array
     {
         $this->reloadEngineRelease();
+        $this->checkForUpdatesIfStale();
 
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
@@ -123,7 +124,7 @@ class UpdateCenter
                 throw new RuntimeException(return_translation('admin_update_repository_required'));
             }
 
-            if ($channel === 'stable') {
+            if ($channel !== 'dev') {
                 return $this->checkStableRelease(
                     $basePayload,
                     $repository,
@@ -222,11 +223,11 @@ class UpdateCenter
     }
 
     /**
-     * Проверяет только опубликованные GitHub Releases для Stable-канала.
+     * Проверяет опубликованные релизы: Stable либо Stable + prerelease для создателя.
      */
     protected function checkStableRelease(array $basePayload, string $repository, string $token): array
     {
-        $release = $this->fetchLatestStableRelease($repository, $token);
+        $release = $this->fetchUpdateRelease($repository, $token);
 
         if ($release === null) {
             $payload = array_merge($basePayload, [
@@ -253,9 +254,9 @@ class UpdateCenter
 
         $payload = array_merge($basePayload, [
             'status' => 'ok',
-            'message' => $updateAvailable
-                ? return_translation('admin_update_stable_available')
-                : return_translation('admin_update_stable_none'),
+            'message' => return_translation(($basePayload['channel'] ?? '') === 'beta'
+                ? ($updateAvailable ? 'admin_update_release_available' : 'admin_update_release_none')
+                : ($updateAvailable ? 'admin_update_stable_available' : 'admin_update_stable_none')),
             'remote_version' => $remoteVersion,
             'branch_status' => 'not_applicable',
             'version_update_available' => $updateAvailable,
@@ -282,6 +283,9 @@ class UpdateCenter
      */
     public function checkForUpdatesIfStale(int $intervalSeconds = self::AUTO_CHECK_INTERVAL_SECONDS): ?array
     {
+        if (function_exists('get_user') && !in_array(get_user()['role'] ?? '', ['creator', 'admin'], true)) {
+            return null;
+        }
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
@@ -294,14 +298,21 @@ class UpdateCenter
         }
 
         $lastCheckedTimestamp = $lastCheckedAt !== '' ? strtotime($lastCheckedAt) : false;
-        if (is_array($lastCheck) && $lastCheckedTimestamp !== false && (time() - $lastCheckedTimestamp) < $intervalSeconds) {
+        if (is_array($lastCheck) && $lastCheckedTimestamp !== false && time() >= $lastCheckedTimestamp
+            && (time() - $lastCheckedTimestamp) < $intervalSeconds) {
             return $lastCheck;
         }
 
+        $lock = $this->acquireAutomaticCheckLock('core-' . $this->resolveUpdateChannel($settings));
+        if ($lock === null) {
+            return $lastCheck;
+        }
         try {
             return $this->checkForUpdates();
         } catch (\Throwable) {
             return $this->getLastCheckPayload();
+        } finally {
+            $this->releaseAutomaticCheckLock($lock);
         }
     }
 
@@ -347,7 +358,7 @@ class UpdateCenter
             throw new RuntimeException($blocker);
         }
 
-        if ($channel === 'stable') {
+        if ($channel !== 'dev') {
             if (!empty($localGitState['is_git_repo'])) {
                 return $this->runStableReleaseGitUpdate(
                     $repository,
@@ -452,7 +463,7 @@ class UpdateCenter
             $blockers[] = return_translation('admin_update_repository_required');
         }
 
-        if ($channel === 'stable') {
+        if ($channel !== 'dev') {
             if ($isGitRepo && !($localGitState['is_update_clean'] ?? false)) {
                 $blockers[] = return_translation('admin_update_dirty_worktree');
             }
@@ -616,7 +627,7 @@ class UpdateCenter
      */
     protected function runStableReleaseGitUpdate(string $repository, string $branch, string $token = ''): array
     {
-        $release = $this->fetchLatestStableRelease($repository, $token);
+        $release = $this->fetchUpdateRelease($repository, $token);
         if ($release === null) {
             throw new RuntimeException(return_translation('admin_update_no_releases'));
         }
@@ -742,7 +753,7 @@ class UpdateCenter
      */
     protected function runStableReleaseUpdate(string $repository, string $token = ''): array
     {
-        $release = $this->fetchLatestStableRelease($repository, $token);
+        $release = $this->fetchUpdateRelease($repository, $token);
         if ($release === null) {
             throw new RuntimeException(return_translation('admin_update_no_releases'));
         }
@@ -954,7 +965,8 @@ class UpdateCenter
             $message = is_array($payload) ? (string)($payload['message'] ?? '') : '';
             throw new RuntimeException(trim(return_translation('admin_update_release_fetch_failed') . ' ' . $message));
         }
-        if (!empty($payload['draft']) || !empty($payload['prerelease'])) {
+        if (!empty($payload['draft']) || !empty($payload['prerelease'])
+            || $this->isPrereleaseVersion((string)($payload['tag_name'] ?? ''))) {
             return null;
         }
 
@@ -968,6 +980,79 @@ class UpdateCenter
             'zipball_url' => '',
             'assets' => $this->normalizeReleaseAssets($payload['assets'] ?? []),
         ];
+    }
+
+    /** Published beta releases never fall back to an arbitrary branch or draft. */
+    protected function fetchUpdateRelease(string $repository, string $token = ''): ?array
+    {
+        $best = $this->fetchLatestStableRelease($repository, $token);
+        if ($this->resolveUpdateChannel($this->siteSettings->all()) !== 'beta') {
+            return $best;
+        }
+
+        // /latest excludes prereleases. Include the published releases list as well.
+        for ($page = 1; $page <= 10; $page++) {
+            $response = $this->httpGet(
+                $this->buildGithubApiUrl($repository, '/releases?per_page=100&page=' . $page),
+                $this->buildGithubHeaders($token)
+            );
+            $releases = json_decode($response['body'], true);
+            if ($response['status_code'] < 200 || $response['status_code'] >= 300
+                || !is_array($releases) || !array_is_list($releases)) {
+                throw new RuntimeException(return_translation('admin_update_release_fetch_failed'));
+            }
+            foreach ($releases as $release) {
+                if (!is_array($release) || !empty($release['draft'])
+                    || trim((string)($release['published_at'] ?? '')) === ''
+                    || trim((string)($release['tag_name'] ?? '')) === '') {
+                    continue;
+                }
+                $version = $this->extractReleaseVersion($release);
+                if ($this->normalizeComparableVersion($version) === '') continue;
+                $comparison = $best !== null ? $this->compareVersions($this->extractReleaseVersion($best), $version) : -1;
+                if ($comparison !== null && $comparison >= 0) continue;
+                $best = [
+                    'name' => trim((string)($release['name'] ?? '')),
+                    'tag_name' => trim((string)$release['tag_name']),
+                    'html_url' => trim((string)($release['html_url'] ?? '')),
+                    'published_at' => trim((string)$release['published_at']),
+                    'prerelease' => !empty($release['prerelease']) || $this->isPrereleaseVersion($version),
+                    'body' => trim((string)($release['body'] ?? '')),
+                    'excerpt' => $this->buildReleaseExcerpt((string)($release['body'] ?? '')),
+                    'zipball_url' => '',
+                    'assets' => $this->normalizeReleaseAssets($release['assets'] ?? []),
+                ];
+            }
+            if (count($releases) < 100) break;
+        }
+        return $best;
+    }
+
+    protected function isPrereleaseVersion(string $version): bool
+    {
+        return preg_match('~^\d+(?:\.\d+)+-~', $this->normalizeComparableVersion($version)) === 1;
+    }
+
+    /** Nonblocking locks prevent concurrent notification polls from duplicating checks. */
+    protected function acquireAutomaticCheckLock(string $scope): mixed
+    {
+        $directory = STORAGE . '/update-checks';
+        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) return null;
+        $handle = @fopen($directory . '/' . hash('sha256', $scope) . '.lock', 'c');
+        if ($handle === false) return null;
+        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+            return null;
+        }
+        return $handle;
+    }
+
+    protected function releaseAutomaticCheckLock(mixed $handle): void
+    {
+        if (is_resource($handle)) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 
     /**
@@ -2663,10 +2748,12 @@ class UpdateCenter
      */
     protected function resolveUpdateChannel(array $settings): string
     {
-        // An administrator can only install published stable releases, even when
-        // the creator has configured Dev. Do not change the site's saved channel.
-        if (function_exists('get_user') && (get_user()['role'] ?? '') === 'admin') {
-            return 'stable';
+        // Role policy is enforced on the server, including checks and installation.
+        // Keep the site's legacy Dev setting for unauthenticated CLI workflows only.
+        if (function_exists('get_user')) {
+            $role = (string)(get_user()['role'] ?? '');
+            if ($role === 'creator') return 'beta';
+            if ($role !== '') return 'stable';
         }
 
         $channel = trim(mb_strtolower((string)($settings['update_channel'] ?? '')));
@@ -2675,7 +2762,7 @@ class UpdateCenter
             $channel = trim(mb_strtolower((string)($configuredChannel ?: 'stable')));
         }
 
-        return $channel === 'dev' ? 'dev' : 'stable';
+        return in_array($channel, ['dev', 'beta'], true) ? $channel : 'stable';
     }
 
     /**
@@ -2758,17 +2845,17 @@ class UpdateCenter
     protected function extractReleaseVersion(array $release): string
     {
         $candidates = [
-            trim((string)($release['name'] ?? '')),
             trim((string)($release['tag_name'] ?? '')),
+            trim((string)($release['name'] ?? '')),
         ];
 
         foreach ($candidates as $candidate) {
-            if ($candidate !== '') {
+            if ($this->normalizeComparableVersion($candidate) !== '') {
                 return $candidate;
             }
         }
 
-        return '0.0.0';
+        return $candidates[0] !== '' ? $candidates[0] : ($candidates[1] !== '' ? $candidates[1] : '0.0.0');
     }
 
     /**
@@ -2788,7 +2875,7 @@ class UpdateCenter
     protected function persistLastCheck(array $payload): void
     {
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $channel = ($payload['channel'] ?? '') === 'dev' ? 'dev' : 'stable';
+        $channel = in_array($payload['channel'] ?? '', ['dev', 'beta'], true) ? $payload['channel'] : 'stable';
         $this->siteSettings->setMany([
             'updater_last_check_payload' => $encoded,
             'updater_last_check_payload_' . $channel => $encoded,
@@ -2797,7 +2884,7 @@ class UpdateCenter
     }
 
     /**
-     * Не смешивает результаты проверок Stable и Dev между ролями и настройками.
+     * Не смешивает результаты проверок Stable, Beta и Dev между ролями.
      */
     protected function lastCheckForChannel(array $settings): ?array
     {
@@ -2808,6 +2895,8 @@ class UpdateCenter
             $payload = $this->decodeLastCheck((string)($settings[$key] ?? ''));
             if (($payload['channel'] ?? '') !== $channel) continue;
             if (!empty($payload['local_version']) && $payload['local_version'] !== ($this->engineRelease['version'] ?? '')) continue;
+            $repository = $this->normalizeRepository((string)($settings['updater_github_repository'] ?? ''));
+            if ($repository !== '' && ($payload['repository'] ?? '') !== $repository) continue;
             return $payload;
         }
 

@@ -20,6 +20,7 @@ namespace {
     class FireballPluginVpnManagerV2 { public static function t(string $key): string { return $key; } }
     function base_href(string $path): string { return $path; }
     require __DIR__ . '/../src/Support/ProfileVpnFormatter.php';
+    require __DIR__ . '/../src/Support/ProvisioningStatus.php';
     require __DIR__ . '/../src/Support/TrafficFormatter.php';
     require __DIR__ . '/../src/Services/ProfileVpnService.php';
     $repo = new \Fireball\VpnManagerV2\Repositories\ProfileVpnRepository();
