@@ -96,6 +96,7 @@ $frontendStreamConfig = [
     'httpTimeoutMs' => (int)$streamConfig['http_timeout_seconds'] * 1000,
 ];
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
+$currentUserHasActiveSubscription = (new \App\Services\PublicLayoutContext())->hasActiveSubscription((int)($currentUser['id'] ?? 0));
 $logoutAction = base_href('/logout');
 $pwaHeadData = pwa_head_data();
 $footerDescription = $siteDescription !== ''

@@ -48,7 +48,7 @@
                 <img
                     src="<?= $currentUserAvatar ?>"
                     alt="<?= htmlSC($currentUser['name'] ?? '') ?>"
-                    class="rounded-circle object-fit-cover ms-n1"
+                    class="rounded-circle object-fit-cover ms-n1<?= !empty($currentUserHasActiveSubscription) ? ' nav-account-avatar--subscribed' : '' ?>"
                     style="width: 28px; height: 28px;"
                 >
                 <?= print_translation('tpl_auth_profile') ?>

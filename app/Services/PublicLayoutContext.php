@@ -24,6 +24,21 @@ final class PublicLayoutContext
         return $data;
     }
 
+    /** Resolve through the enabled plugin; never put user status in navigation cache. */
+    public function hasActiveSubscription(int $userId): bool
+    {
+        if ($userId <= 0) return false;
+
+        try {
+            $access = apply_filters_safe('subscriptions_access_service', null);
+            return is_object($access) && is_callable([$access, 'hasActiveSubscription'])
+                && (bool)$access->hasActiveSubscription($userId);
+        } catch (\Throwable $error) {
+            error_log('[PublicLayoutContext] Subscription indicator unavailable: ' . $error->getMessage());
+            return false;
+        }
+    }
+
     public static function invalidate(): void
     {
         foreach (array_keys(LANGS) as $locale) {

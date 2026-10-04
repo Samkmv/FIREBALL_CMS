@@ -93,6 +93,7 @@ $frontendStreamConfig = [
     'httpTimeoutMs' => (int)$streamConfig['http_timeout_seconds'] * 1000,
 ];
 $currentUserAvatar = get_user_avatar($currentUser['avatar'] ?? null, 'sm');
+$currentUserHasActiveSubscription = !$isAdminArea && (new \App\Services\PublicLayoutContext())->hasActiveSubscription((int)($currentUser['id'] ?? 0));
 $logoutAction = base_href('/logout');
 $pwaHeadData = pwa_head_data();
 $footerDescription = $siteDescription !== ''
@@ -355,7 +356,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                 <img
                     src="<?= $currentUserAvatar ?>"
                     alt="<?= htmlSC($currentUser['name'] ?? '') ?>"
-                    class="rounded-circle object-fit-cover ms-n1"
+                    class="rounded-circle object-fit-cover ms-n1<?= !empty($currentUserHasActiveSubscription) ? ' nav-account-avatar--subscribed' : '' ?>"
                     style="width: 28px; height: 28px;"
                 >
                 <?= print_translation('tpl_auth_profile') ?>
@@ -587,7 +588,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
             <div class="dropdown d-none d-md-block">
                 <button type="button" class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle animate-shake position-relative" data-bs-toggle="dropdown" aria-expanded="false">
                     <?php if (check_auth()): ?>
-                        <span class="d-block w-100 h-100 rounded-circle overflow-hidden">
+                        <span class="d-block w-100 h-100 rounded-circle overflow-hidden<?= !empty($currentUserHasActiveSubscription) ? ' nav-account-avatar--subscribed' : '' ?>">
                             <img
                                 src="<?= $currentUserAvatar ?>"
                                 alt="<?= htmlSC($currentUser['name'] ?? '') ?>"

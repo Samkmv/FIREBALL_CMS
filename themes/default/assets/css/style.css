@@ -199,6 +199,12 @@ body:not(.fb-admin-body) #categoriesMenu .dropdown-menu {
     overscroll-behavior: contain;
 }
 
+/* A subscription ring does not change the avatar or navigation dimensions. */
+.nav-account-avatar--subscribed {
+    outline: 1.5px solid var(--cz-success, #33b36b);
+    outline-offset: 2px;
+}
+
 .site-brand {
     display: inline-flex;
     min-width: 0;

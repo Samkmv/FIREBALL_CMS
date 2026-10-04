@@ -208,7 +208,7 @@
             <div class="dropdown d-none d-md-block">
                 <button type="button" class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle animate-shake position-relative" data-bs-toggle="dropdown" aria-expanded="false">
                     <?php if (check_auth()): ?>
-                        <span class="d-block w-100 h-100 rounded-circle overflow-hidden">
+                        <span class="d-block w-100 h-100 rounded-circle overflow-hidden<?= !empty($currentUserHasActiveSubscription) ? ' nav-account-avatar--subscribed' : '' ?>">
                             <img
                                 src="<?= $currentUserAvatar ?>"
                                 alt="<?= htmlSC($currentUser['name'] ?? '') ?>"
