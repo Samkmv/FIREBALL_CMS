@@ -34,6 +34,12 @@ namespace {
                 'remote_version' => $eligible ? '2.0.0' : '1.0.0', 'source_older' => $slug === 'older'],
         ];
     }
+    if ($scenario === 'installfailed') {
+        $plugins[0]['update'] = array_merge($plugins[0]['update'], [
+            'status' => 'error', 'error_stage' => 'install', 'update_available' => true,
+            'message' => return_translation('admin_update_backup_permissions_failed') . ' <fixture>',
+        ]);
+    }
     echo '<!doctype html><html data-bs-theme="dark"><body>';
     require __DIR__ . '/../app/Views/themes/default/admin/plugins.php';
     echo '</body></html>';

@@ -77,8 +77,9 @@ final class UpdateRecoveryService
         rewind($stream);
         $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
         try {
-            // Pre-update snapshots reject these objects, so any present now was
-            // introduced by the failed migration and must be removed as well.
+            // Drop current objects before loading snapshot rows. Saved triggers
+            // are recreated at the end; objects introduced by a failed migration
+            // must also disappear during recovery.
             foreach ([
                 ['VIEW', "SELECT TABLE_NAME FROM information_schema.VIEWS WHERE TABLE_SCHEMA=DATABASE()"],
                 ['TRIGGER', "SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE()"],
@@ -96,15 +97,30 @@ final class UpdateRecoveryService
                 if (!in_array($table[0], $expected, true)) $pdo->exec('DROP TABLE `' . str_replace('`', '``', $table[0]) . '`');
             }
             $buffer = '';
+            $delimiter = ';';
             $runner = new SqlFileRunner();
             while (($line = fgets($stream)) !== false) {
+                if (preg_match('/^DELIMITER\s+(\S+)\s*$/iD', rtrim($line, "\r\n"), $match)) {
+                    if (trim($buffer) !== '') throw new RuntimeException('Incomplete recovery SQL before delimiter change.');
+                    $delimiter = $match[1];
+                    continue;
+                }
                 $buffer .= $line;
-                if (str_ends_with(rtrim($line), ';')) {
-                    $runner->executePdo($pdo, $buffer);
+                if (str_ends_with(rtrim($line), $delimiter)) {
+                    if ($delimiter === ';') {
+                        $runner->executePdo($pdo, $buffer);
+                    } else {
+                        // Compound trigger bodies are one server statement. Do not
+                        // split their internal semicolons or reinterpret SQL_MODE.
+                        $pdo->exec(substr(rtrim($buffer), 0, -strlen($delimiter)));
+                    }
                     $buffer = '';
                 }
             }
-            if (trim($buffer) !== '') $runner->executePdo($pdo, $buffer);
+            if (trim($buffer) !== '') {
+                if ($delimiter !== ';') throw new RuntimeException('Incomplete compound recovery SQL.');
+                $runner->executePdo($pdo, $buffer);
+            }
         } finally {
             fclose($stream);
             $pdo->exec('SET FOREIGN_KEY_CHECKS=1');

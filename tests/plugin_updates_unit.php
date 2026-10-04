@@ -89,5 +89,11 @@ namespace {
     }
     $routes = file_get_contents(__DIR__ . '/../config/routes.php');
     assertPlugin(str_contains($routes, "post('/admin/plugins/update-all', [PluginController::class, 'updateAll'])->middleware(['auth', 'admin'])"), 'Bulk endpoint uses authenticated admin POST routing (router CSRF enabled by default)');
+    $manager->states['current'] = ['status' => 'error', 'error_stage' => 'install', 'remote_version' => '2.0.0', 'checked_at' => date('Y-m-d H:i:s')];
+    $decorated = $service->decoratePlugins([$manager->plugins['current']], 0);
+    assertPlugin($decorated[0]['update']['update_available'] === true, 'Installation failure keeps the checked update available for retry');
+    $manager->states['current']['error_stage'] = 'check';
+    $decorated = $service->decoratePlugins([$manager->plugins['current']], 0);
+    assertPlugin($decorated[0]['update']['update_available'] === false, 'Checking failure still disables an unverified update');
     echo "Plugin update-all tests passed: $checks checks. No live plugin updates performed." . PHP_EOL;
 }

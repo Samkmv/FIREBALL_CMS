@@ -21,10 +21,10 @@ $diagnosticsAvailable = !empty($overview['available']);
 $isReady = !empty($migrationStatus['is_ready']) && !empty($overview['is_ready']);
 $metric = static fn(mixed $value): string => $value === null ? '—' : (string)(int)$value;
 $summaryCards = [
-    'servers' => ['vpn_manager_v2_overview_servers', 'ci-server', '/admin/plugins/vpn-manager-v2/servers'],
-    'subscriptions' => ['vpn_manager_v2_overview_subscriptions', 'ci-link', '/admin/plugins/vpn-manager-v2/subscriptions'],
-    'connections' => ['vpn_manager_v2_overview_connections', 'ci-share-2', '/admin/plugins/vpn-manager-v2/connections'],
-    'plans' => ['vpn_manager_v2_overview_plans', 'ci-package', '/admin/plugins/vpn-manager-v2/plans'],
+    'servers' => ['vpn_manager_v2_overview_servers', 'ci-server', '/admin/plugins/vpn-manager-v2/servers', 'blue'],
+    'subscriptions' => ['vpn_manager_v2_overview_subscriptions', 'ci-link', '/admin/plugins/vpn-manager-v2/subscriptions', 'purple'],
+    'connections' => ['vpn_manager_v2_overview_connections', 'ci-share-2', '/admin/plugins/vpn-manager-v2/connections', 'green'],
+    'plans' => ['vpn_manager_v2_overview_plans', 'ci-package', '/admin/plugins/vpn-manager-v2/plans', 'primary'],
 ];
 ?>
 
@@ -66,18 +66,18 @@ $summaryCards = [
         <span class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_primary_help')) ?></span>
     </div>
     <div class="row g-3">
-        <?php foreach ($summaryCards as $key => [$labelKey, $icon, $href]): ?>
+        <?php foreach ($summaryCards as $key => [$labelKey, $icon, $href, $tone]): ?>
             <?php
             $item = is_array($overviewData[$key] ?? null) ? $overviewData[$key] : [];
             $errors = $item['errors'] ?? null;
             $hasErrors = $errors !== null && (int)$errors > 0;
             ?>
             <div class="col-12 col-sm-6 col-xl-3">
-                <a class="border rounded-5 p-3 p-md-4 h-100 d-block text-reset text-decoration-none"
+                <a class="fb-card fb-stat-card fb-vpn-stat-card is-<?= htmlSC($tone) ?><?= $hasErrors ? ' has-errors' : '' ?> rounded-5 p-3 p-md-4 h-100"
                    href="<?= htmlSC(base_href($href)) ?>">
                     <div class="d-flex align-items-center justify-content-between gap-2">
                         <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t($labelKey)) ?></div>
-                        <span class="rounded-circle <?= $hasErrors ? 'text-bg-warning' : 'bg-body-tertiary' ?> d-inline-flex align-items-center justify-content-center" style="width:2.25rem;height:2.25rem">
+                        <span class="fb-stat-icon rounded-circle">
                             <i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i>
                         </span>
                     </div>

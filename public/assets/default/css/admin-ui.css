@@ -1542,6 +1542,24 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     --fb-stat-soft: var(--fb-color-primary-soft);
 }
 
+.fb-vpn-stat-card {
+    display: block;
+    border-color: color-mix(in srgb, var(--fb-stat-color) 30%, var(--fb-color-border));
+    background: linear-gradient(135deg, var(--fb-stat-soft), transparent 85%), var(--fb-color-surface);
+}
+
+.fb-vpn-stat-card .fb-stat-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    font-size: 1.125rem;
+}
+
+.fb-vpn-stat-card.has-errors .fb-stat-icon {
+    background: var(--fb-color-warning-soft);
+    color: var(--fb-color-warning);
+}
+
 .fb-dashboard-section-heading {
     display: flex;
     align-items: end;

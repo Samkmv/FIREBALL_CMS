@@ -49,6 +49,27 @@ const metrics = {
             return route.fulfill({contentType: 'text/html', body});
         });
         await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2');
+        for (const theme of ['light', 'dark']) {
+            await page.evaluate(theme => document.documentElement.dataset.bsTheme = theme, theme);
+            for (const width of [1440, 390]) {
+                await page.setViewportSize({width, height: 1100});
+                const stats = page.locator('.fb-vpn-stat-card');
+                assert.equal(await stats.count(), 4);
+                const colors = await stats.evaluateAll(cards => cards.map(card => ({
+                    border: getComputedStyle(card).borderColor,
+                    background: getComputedStyle(card).backgroundImage,
+                    icon: getComputedStyle(card.querySelector('.fb-stat-icon')).color,
+                    href: card.getAttribute('href'),
+                })));
+                assert.equal(new Set(colors.map(card => card.border)).size, 4, 'Four native color accents');
+                assert(colors.every(card => card.background.includes('linear-gradient')), 'Cards have tinted backgrounds');
+                assert(colors.every(card => card.href.startsWith('/admin/plugins/vpn-manager-v2/')), 'Cards retain section links');
+                assert.equal(await stats.filter({has: page.locator('.text-warning')}).count(), 1, 'Actual error count keeps warning treatment');
+                assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No mobile overflow');
+                await page.locator('section[aria-labelledby="vpnV2MainStateTitle"]').screenshot({path: '/private/tmp/vpn-overview-' + theme + '-' + width + '.png'});
+            }
+        }
+        await page.setViewportSize({width: 1440, height: 1000});
         const cards = page.locator('[data-vpn-v2-server-metric-card]');
         const badge = index => cards.nth(index).locator('[data-vpn-v2-server-status]');
         assert.equal(await badge(0).innerText(), 'Не проверен', 'No stale online badge before request');

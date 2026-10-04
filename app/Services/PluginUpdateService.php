@@ -65,7 +65,8 @@ final class PluginUpdateService extends UpdateCenter
                 $remoteVersion = trim((string)($state['remote_version'] ?? ''));
                 $localVersion = (string)($metadata['version'] ?? '0.0.0');
                 $comparison = $remoteVersion !== '' ? $this->compareVersions($localVersion, $remoteVersion) : null;
-                $stateIsValid = ($state['status'] ?? '') !== 'error' && $comparison !== null;
+                $checkSucceeded = ($state['status'] ?? '') !== 'error' || ($state['error_stage'] ?? '') === 'install';
+                $stateIsValid = $checkSucceeded && $comparison !== null;
                 $localizedReleaseNotes = $this->normalizeReleaseNotes(
                     !empty($state['release_notes_i18n'])
                         ? $state['release_notes_i18n']
@@ -139,10 +140,11 @@ final class PluginUpdateService extends UpdateCenter
                     ? $this->compareVersions($localVersion, $remoteVersion)
                     : null;
 
-                if (($state['status'] ?? '') !== 'error' && $comparison !== null && $comparison < 0) {
+                $checkSucceeded = ($state['status'] ?? '') !== 'error' || ($state['error_stage'] ?? '') === 'install';
+                if ($checkSucceeded && $comparison !== null && $comparison < 0) {
                     $summary['available']++;
                 }
-                if (($state['status'] ?? '') !== 'error' && $comparison !== null && $comparison > 0) {
+                if ($checkSucceeded && $comparison !== null && $comparison > 0) {
                     $summary['source_older']++;
                 }
             } catch (Throwable) {
@@ -184,6 +186,7 @@ final class PluginUpdateService extends UpdateCenter
                     : 'admin_plugin_updates_current');
             $state = [
                 'status' => $comparison > 0 ? 'source_older' : 'ok',
+                'error_stage' => '',
                 'message' => return_translation($messageKey),
                 'local_version' => $localVersion,
                 'remote_version' => $remoteVersion,
@@ -206,6 +209,7 @@ final class PluginUpdateService extends UpdateCenter
             $state = array_merge($this->storedState($slug), [
                 'status' => 'error',
                 'message' => $this->safeError($exception, 'admin_plugin_updates_check_failed'),
+                'error_stage' => 'check',
                 'checked_at' => date('Y-m-d H:i:s'),
                 'update_available' => false,
                 'source_older' => false,
@@ -415,6 +419,7 @@ final class PluginUpdateService extends UpdateCenter
 
             $state = [
                 'status' => 'updated',
+                'error_stage' => '',
                 'message' => return_translation('admin_plugin_updates_success'),
                 'local_version' => $remoteVersion,
                 'remote_version' => $remoteVersion,
@@ -478,6 +483,7 @@ final class PluginUpdateService extends UpdateCenter
             $this->persistStateSafely($slug, array_merge($this->storedState($slug), [
                 'status' => 'error',
                 'message' => $message,
+                'error_stage' => 'install',
                 'update_available' => true,
                 'checked_at' => date('Y-m-d H:i:s'),
             ]));
@@ -989,6 +995,7 @@ final class PluginUpdateService extends UpdateCenter
         return [
             'configured' => false,
             'status' => 'never',
+            'error_stage' => '',
             'message' => '',
             'local_version' => '',
             'remote_version' => '',

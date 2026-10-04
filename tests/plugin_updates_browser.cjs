@@ -13,12 +13,18 @@ const fixture = (locale, scenario) => execFileSync(process.env.FIREBALL_PHP || '
     page.on('pageerror', error => pageErrors.push(error.message));
     try {
         for (const locale of ['ru', 'en', 'de', 'zh-cn']) {
-            for (const scenario of ['available', 'none', 'nonadmin']) {
+            for (const scenario of ['available', 'none', 'nonadmin', 'installfailed']) {
                 for (const width of [390, 1440]) {
                     await page.setViewportSize({width, height: 844});
                     await page.setContent(fixture(locale, scenario));
                     await page.addStyleTag({path: path.join(root, 'public/assets/default/css/theme.min.css')});
-                    assert.equal(await page.locator('[data-plugin-update-all]').count(), scenario === 'available' ? 1 : 0);
+                    assert.equal(await page.locator('[data-plugin-update-all]').count(), ['available', 'installfailed'].includes(scenario) ? 1 : 0);
+                    if (scenario === 'installfailed') {
+                        const state = page.locator('#plugin-one .fb-plugin-update-state');
+                        assert(await state.locator('small').isVisible(), 'Backup reason visible in card');
+                        assert((await state.innerText()).includes('<fixture>'), 'Escaped reason stays text');
+                        assert.equal(await state.locator('fixture').count(), 0);
+                    }
                     assert.equal(await page.locator('[data-plugin-update-all-refresh]').count(), 0);
                     if (scenario === 'available') {
                         const form = page.locator('[data-plugin-update-all]');
@@ -115,7 +121,7 @@ const fixture = (locale, scenario) => execFileSync(process.env.FIREBALL_PHP || '
             await runtimePage.close();
         }
         assert.deepEqual(pageErrors, []);
-        console.log('Plugin update-all browser tests passed: 24 locale/layout cases and 6 sequential-queue and automatic-refresh scenarios.');
+        console.log('Plugin update-all browser tests passed: 32 locale/layout cases and 6 sequential-queue and automatic-refresh scenarios.');
     } finally {
         await browser.close();
     }

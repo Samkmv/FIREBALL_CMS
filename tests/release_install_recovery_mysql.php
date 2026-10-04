@@ -71,6 +71,8 @@ class FailingReleaseUpdater extends App\Services\UpdateCenter {
     protected function performUpdate(): array {
         $this->createPreUpdateBackups();
         $this->installationMutated = true;
+        db()->query('DROP TRIGGER vpn_v2_subscription_items_validate_insert');
+        db()->query('CREATE TRIGGER introduced_trigger BEFORE UPDATE ON release_backup_fixture FOR EACH ROW SET NEW.amount=777');
         file_put_contents(ROOT . '/app/before.php', '<?php /* mixed version */');
         file_put_contents(ROOT . '/app/introduced.php', '<?php /* introduced */');
         db()->query('CREATE VIEW introduced_view AS SELECT id FROM release_backup_fixture');
@@ -108,6 +110,15 @@ try {
     $originalLabel = "Emoji 😀; quote ' and new\nline";
     $originalBinary = "\x00\xff\x01binary";
     db()->query('INSERT INTO release_backup_fixture VALUES (?,?,?,?)', [42, $originalLabel, '12.34', $originalBinary]);
+    db()->query('CREATE TABLE release_trigger_audit (message TEXT) ENGINE=InnoDB');
+    $previousMode = (string)db()->query('SELECT @@SESSION.sql_mode AS mode')->getOne()['mode'];
+    db()->query("SET SESSION sql_mode='NO_BACKSLASH_ESCAPES'");
+    db()->query("CREATE TRIGGER release_saved_trigger AFTER INSERT ON release_backup_fixture FOR EACH ROW BEGIN INSERT INTO release_trigger_audit VALUES ('semi; -- literal /* kept */ path\\'); SET @release_trigger_seen=1; END");
+    $originalTrigger = db()->query('SHOW CREATE TRIGGER release_saved_trigger')->getOne();
+    db()->query('SET SESSION sql_mode=?', [$previousMode]);
+    db()->query('CREATE TABLE vpn_v2_subscription_items (id INT PRIMARY KEY, relation_key VARCHAR(20), item_type VARCHAR(20), child_subscription_id INT NULL, connection_id INT NULL, ownership_type VARCHAR(20)) ENGINE=InnoDB');
+    (new App\Services\SqlFileRunner())->executeDatabase(file_get_contents($repository . '/plugins/vpn-manager-v2/migrations/011_enforce_subscription_item_targets.sql'));
+    db()->query("INSERT INTO vpn_v2_subscription_items (id, relation_key, item_type, child_subscription_id, ownership_type) VALUES (1,'fixture','subscription',42,'exclusive')");
     try { (new FailingReleaseUpdater())->runUpdate(); throw new RuntimeException('Injected failure did not fail.'); }
     catch (RuntimeException $error) { mysqlCheck($error->getMessage() === 'Injected migration failure', 'Actual update reached the injected failure'); }
     mysqlCheck(is_file(STORAGE . '/update.maintenance'), 'Failed update retains maintenance');
@@ -132,6 +143,15 @@ try {
     mysqlCheck($pdo->query("SHOW TABLES LIKE 'introduced_by_failed_update'")->fetchColumn() === false, 'Post-snapshot DDL removed during recovery');
     mysqlCheck((fileperms(CONFIG . '/config.local.php') & 0777) === 0600, 'Restored config remains private');
     mysqlCheck($pdo->query("SHOW FULL TABLES WHERE Table_type='VIEW'")->fetchColumn() === false, 'Introduced view removed during recovery');
+    mysqlCheck((int)$pdo->query('SELECT COUNT(*) FROM release_trigger_audit')->fetchColumn() === 0, 'Trigger actions do not fire while loading snapshot rows');
+    $restoredTriggers = $pdo->query('SHOW TRIGGERS')->fetchAll(PDO::FETCH_ASSOC);
+    mysqlCheck(count($restoredTriggers) === 3 && !in_array('introduced_trigger', array_column($restoredTriggers, 'Trigger'), true), 'Three saved triggers restored and introduced trigger removed');
+    $pdo->exec("INSERT INTO release_backup_fixture VALUES (43,'after recovery',1.00,NULL)");
+    mysqlCheck($pdo->query('SELECT message FROM release_trigger_audit')->fetchColumn() === 'semi; -- literal /* kept */ path\\', 'Compound trigger restored with semicolons, comment-like string and SQL_MODE-specific escaping intact');
+    $restoredTrigger = $pdo->query('SHOW CREATE TRIGGER release_saved_trigger')->fetch(PDO::FETCH_ASSOC);
+    mysqlCheck(array_intersect_key($restoredTrigger, array_flip(['SQL Original Statement', 'sql_mode', 'character_set_client', 'collation_connection'])) === array_intersect_key($originalTrigger, array_flip(['SQL Original Statement', 'sql_mode', 'character_set_client', 'collation_connection'])), 'Trigger SQL, DEFINER, mode and encoding preserved');
+    try { $pdo->exec("INSERT INTO vpn_v2_subscription_items (id,relation_key,item_type,ownership_type) VALUES (2,'invalid','subscription','exclusive')"); throw new RuntimeException('Recovered VPN trigger accepted invalid target'); }
+    catch (PDOException) { mysqlCheck(true, 'Real VPN validation trigger rejects an invalid subscription target after recovery'); }
     mysqlCheck((new App\Services\Maintenance\DatabaseBackupService(new HiddenMetadataFixturePdo($pdo)))->createBackup() === '', 'Limited metadata visibility blocks an unverifiable full backup');
     // Engine refuses to promise a snapshot for unsupported engines.
     $pdo->exec('CREATE TABLE unsupported_backup_engine (id INT PRIMARY KEY) ENGINE=MyISAM');

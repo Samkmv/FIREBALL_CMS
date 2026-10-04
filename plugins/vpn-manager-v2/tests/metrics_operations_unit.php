@@ -80,11 +80,20 @@ namespace {
         $controller->operations();
         $data = $GLOBALS['capturedViewData'];
         extract($data);
+        if (in_array('--overview', $argv, true)) {
+            $migrationStatus = ['is_ready' => true];
+            $overview = ['available' => true, 'is_ready' => true, 'data' => [
+                'servers' => ['active' => 3, 'total' => 3, 'errors' => 0],
+                'subscriptions' => ['active' => 13, 'total' => 31, 'errors' => 0],
+                'connections' => ['active' => 31, 'total' => 86, 'errors' => 2],
+                'plans' => ['active' => 4, 'total' => 4],
+            ]];
+        }
         $servers = array_map(static fn($id) => ['id' => $id, 'name' => 'Server ' . $id, 'status' => 'online', 'is_enabled' => $id !== 3], [1, 2, 3]);
         ob_start();
         require dirname(__DIR__) . '/views/admin/' . (in_array('--overview', $argv, true) ? 'overview' : 'operations') . '.php';
         $content = ob_get_clean();
-        echo '<!doctype html><html lang="ru" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/assets/default/css/theme.min.css"><link rel="stylesheet" href="/assets/default/css/style.css"><link rel="stylesheet" href="/assets/default/css/admin-ui.css"></head><body class="fb-admin-body"><main class="container py-4">' . $content . '</main></body></html>';
+        echo '<!doctype html><html lang="ru" data-bs-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/assets/default/icons/cartzilla-icons.min.css"><link rel="stylesheet" href="/assets/default/css/theme.min.css"><link rel="stylesheet" href="/assets/default/css/style.css"><link rel="stylesheet" href="/assets/default/css/admin-ui.css"></head><body class="fb-admin-body"><main class="container py-4">' . $content . '</main></body></html>';
         exit;
     }
     foreach ([0, 1, 20, 21, 41, 105, 501] as $total) {

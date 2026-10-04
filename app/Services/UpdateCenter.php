@@ -2092,9 +2092,10 @@ class UpdateCenter
     {
         try {
             $this->prunePreUpdateBackups(max(0, self::PRE_UPDATE_BACKUP_RETENTION - 1));
-            $databaseBackup = (new DatabaseMaintenanceService())->createBackup();
+            $maintenance = new DatabaseMaintenanceService();
+            $databaseBackup = $maintenance->createBackup();
             if ($databaseBackup === '') {
-                throw new RuntimeException('Database backup failed. Update aborted.');
+                throw new RuntimeException($maintenance->backupFailure());
             }
             $fileBackup = $this->createFileBackup();
             if ($fileBackup === '') {

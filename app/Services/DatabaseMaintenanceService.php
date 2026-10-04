@@ -147,6 +147,11 @@ final class DatabaseMaintenanceService
         return $this->backupService->createBackup();
     }
 
+    public function backupFailure(): string
+    {
+        return $this->backupService->lastFailure();
+    }
+
     private function clearCache(): array
     {
         return $this->cacheCleanup->clearCache();

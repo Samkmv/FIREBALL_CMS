@@ -124,11 +124,13 @@ $pageActions .= '</div>';
                     ? array_values(array_filter($update['release_notes'], 'is_string'))
                     : [];
                 $backupFile = trim((string)($update['backup_file'] ?? ''));
-                $updateMessageKey = $updateAvailable
+                $updateMessageKey = $updateStatus === 'error'
+                    ? (($update['error_stage'] ?? '') === 'install'
+                        ? 'admin_plugin_updates_install_failed'
+                        : 'admin_plugin_updates_check_failed')
+                    : ($updateAvailable
                     ? 'admin_plugin_updates_available'
-                    : ($updateStatus === 'error'
-                        ? 'admin_plugin_updates_check_failed'
-                        : ($sourceOlder
+                    : ($sourceOlder
                             ? 'admin_plugin_updates_source_older'
                             : ($updateStatus === 'never'
                                 ? 'admin_plugin_updates_not_checked'
@@ -185,7 +187,12 @@ $pageActions .= '</div>';
                                 <?php if ($updateConfigured): ?>
                                     <div class="fb-plugin-update-state is-<?= htmlSC($updateAlert) ?>" role="status">
                                         <i class="<?= htmlSC($updateIcon) ?>" aria-hidden="true"></i>
-                                        <span><?= htmlSC($updateMessage) ?></span>
+                                        <span>
+                                            <?= htmlSC($updateMessage) ?>
+                                            <?php if ($updateStatus === 'error' && $storedUpdateMessage !== '' && $storedUpdateMessage !== $updateMessage): ?>
+                                                <small class="d-block mt-1 fw-normal"><?= htmlSC($storedUpdateMessage) ?></small>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 <?php else: ?>
                                     <div class="fb-plugin-update-state is-secondary" role="status">

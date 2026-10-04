@@ -66,7 +66,8 @@
     "tests/update_channels_unit.php",
     "tests/release_security_unit.php",
     "tests/release_payment_search_unit.php",
-    "tests/release_recurring_retry_unit.php"
+    "tests/release_recurring_retry_unit.php",
+    "tests/database_backup_unit.php"
   ],
   "javascript": [
     "tests/app_viewport_unit.cjs",
