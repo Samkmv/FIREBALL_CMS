@@ -3,6 +3,7 @@ $siteTitle = trim((string)site_setting('site_title', SITE_NAME));
 $siteTitle = $siteTitle !== '' ? $siteTitle : SITE_NAME;
 $pageTitle = return_translation('update_maintenance_title');
 $retryAfter = max(5, (int)($retry_after ?? 12));
+$refreshIcon = '<svg class="update-refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 15.36-6.36L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.36 6.36L3 16M8 16H3v5"/></svg>';
 ?>
 <!doctype html>
 <html lang="<?= htmlSC(current_locale()) ?>" data-bs-theme="dark" data-update-maintenance-page="1">
@@ -48,13 +49,14 @@ $retryAfter = max(5, (int)($retry_after ?? 12));
         .update-page { display: grid; min-height: 100svh; place-items: center; padding: calc(32px + env(safe-area-inset-top, 0px)) 20px calc(32px + env(safe-area-inset-bottom, 0px)); }
         .update-shell { width: min(100%, 520px); min-width: 0; }
         .update-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 28px; color: var(--update-text); text-decoration: none; font-weight: 700; font-size: .9rem; }
-        .update-brand__mark { display: inline-grid; flex: 0 0 auto; width: 32px; height: 32px; place-items: center; border: 1px solid var(--update-border); border-radius: 10px; color: var(--update-accent); }
         .update-brand > span:last-child { overflow-wrap: anywhere; }
         .update-card { padding: clamp(28px, 6vw, 44px); border: 1px solid var(--update-border); border-radius: 24px; background: var(--update-surface); text-align: center; box-shadow: 0 16px 48px rgba(0, 0, 0, .06); }
         .update-loader { position: relative; display: grid; width: 76px; height: 76px; place-items: center; margin: 0 auto 26px; color: var(--update-accent); font-size: 26px; }
         /* Only the outer ring rotates. Its center and geometry remain fixed. */
         .update-loader::before { content: ""; position: absolute; inset: 0; border: 3px solid var(--update-border); border-top-color: var(--update-accent); border-radius: 50%; animation: update-spin 1.8s linear infinite; }
-        .update-loader > i { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--update-soft); }
+        .update-loader__symbol { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--update-soft); }
+        .update-refresh-icon { display: block; width: 20px; height: 20px; flex: 0 0 auto; }
+        .update-loader__symbol .update-refresh-icon { width: 26px; height: 26px; }
         .update-status { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; color: var(--update-muted); font-size: .78rem; font-weight: 600; line-height: 1.5; }
         .update-status__dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--update-accent); }
         .update-title { margin: 0; font-size: clamp(1.8rem, 6vw, 2.35rem); font-weight: 700; letter-spacing: -.045em; line-height: 1.15; overflow-wrap: anywhere; }
@@ -75,11 +77,10 @@ $retryAfter = max(5, (int)($retry_after ?? 12));
     <main class="update-page">
         <div class="update-shell">
             <a class="update-brand" href="<?= htmlSC(base_href('/')) ?>" aria-label="<?= htmlSC($siteTitle) ?>">
-                <span class="update-brand__mark" aria-hidden="true"><i class="ci-layers"></i></span>
                 <span><?= htmlSC($siteTitle) ?></span>
             </a>
             <section class="update-card" aria-labelledby="update-title">
-                <div class="update-loader" aria-hidden="true"><i class="ci-refresh-cw"></i></div>
+                <div class="update-loader" aria-hidden="true"><span class="update-loader__symbol"><?= $refreshIcon ?></span></div>
                 <div class="update-status" role="status">
                     <span class="update-status__dot" aria-hidden="true"></span>
                     <span><?= print_translation('update_maintenance_status') ?></span>
@@ -88,7 +89,7 @@ $retryAfter = max(5, (int)($retry_after ?? 12));
                 <p class="update-message"><?= print_translation('update_maintenance_message') ?></p>
                 <p class="update-hint"><i class="ci-info" aria-hidden="true"></i><span><?= print_translation('update_maintenance_hint') ?></span></p>
                 <a class="update-refresh" href="" data-update-refresh>
-                    <i class="ci-refresh-cw" aria-hidden="true"></i><span><?= print_translation('update_maintenance_refresh') ?></span>
+                    <?= $refreshIcon ?><span><?= print_translation('update_maintenance_refresh') ?></span>
                 </a>
             </section>
             <p class="update-note"><?= htmlSC($siteTitle) ?></p>

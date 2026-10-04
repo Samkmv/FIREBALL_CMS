@@ -1433,7 +1433,15 @@ $(function(){
         if (needsMeasurement) {
             mobileSearchBar.classList.add('fb-mobile-search-measuring');
         }
-        const searchHeight = Math.max(0, Math.ceil(mobileSearchBar.scrollHeight));
+        // scrollHeight includes the absolutely positioned suggestions. On an
+        // iOS keyboard/viewport resize this would stretch the full-width header
+        // glass behind the list, then leave it there after the list is dismissed.
+        // The content box measures only the input row and its normal padding,
+        // even while Bootstrap is animating the parent collapse's height.
+        const searchContent = mobileSearchBar.querySelector(':scope > .container');
+        const searchHeight = searchContent
+            ? Math.max(0, Math.ceil(searchContent.getBoundingClientRect().height))
+            : 0;
         if (needsMeasurement) {
             mobileSearchBar.classList.remove('fb-mobile-search-measuring');
         }
