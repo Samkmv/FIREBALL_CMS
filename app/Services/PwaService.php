@@ -587,12 +587,19 @@ self.addEventListener("sync", () => {});
         $keys = is_array($subscription['keys'] ?? null) ? $subscription['keys'] : [];
         if (
             $endpoint === ''
-            || !filter_var($endpoint, FILTER_VALIDATE_URL)
+            || !PushEndpointPolicy::accepts($endpoint)
             || empty($keys['p256dh'])
             || empty($keys['auth'])
             || strlen((string)$keys['p256dh']) > 512
             || strlen((string)$keys['auth']) > 255
         ) {
+            return false;
+        }
+
+        $publicKey = $this->base64UrlDecode((string)$keys['p256dh']);
+        if (strlen($publicKey) !== 65 || $publicKey[0] !== "\x04"
+            || strlen($this->base64UrlDecode((string)$keys['auth'])) !== 16
+            || openssl_pkey_get_public($this->publicKeyPem($publicKey)) === false) {
             return false;
         }
 
@@ -602,6 +609,11 @@ self.addEventListener("sync", () => {});
         $endpointHash = hash('sha256', $endpoint);
 
         $this->ensureTables();
+        $subscriptionCount = (int)db()->query(
+            'SELECT COUNT(*) FROM pwa_subscriptions WHERE user_id = ? AND is_active = 1 AND endpoint_hash <> ?',
+            [$userId, $endpointHash]
+        )->getColumn();
+        if ($subscriptionCount >= 20) return false;
         $previousUserId = (int)db()->query(
             'SELECT user_id FROM pwa_subscriptions WHERE endpoint_hash = ? LIMIT 1',
             [$endpointHash]
@@ -873,7 +885,7 @@ self.addEventListener("sync", () => {});
 
     protected function canSendPush(): bool
     {
-        return $this->isPushEnabled()
+        return function_exists('curl_init') && $this->isPushEnabled()
             && $this->settings->get('pwa_vapid_public_key', '') !== ''
             && $this->settings->get('pwa_vapid_private_key', '') !== '';
     }
@@ -958,55 +970,44 @@ self.addEventListener("sync", () => {});
         ];
         $timeout = $this->pushTimeout();
 
-        $code = 0;
-        if (function_exists('curl_init')) {
-            $ch = curl_init($endpoint);
+        if (!function_exists('curl_init')) {
+            throw new \RuntimeException('cURL is required for safe push delivery.');
+        }
+        $resolve = PushEndpointPolicy::resolve($endpoint);
+        $responseBody = '';
+        $ch = curl_init($endpoint);
+        try {
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => $encrypted,
-                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_RETURNTRANSFER => false,
                 CURLOPT_HTTPHEADER => $headers,
                 CURLOPT_TIMEOUT => $timeout,
                 CURLOPT_CONNECTTIMEOUT => min(3, $timeout),
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+                CURLOPT_RESOLVE => $resolve,
+                CURLOPT_PROXY => '',
+                CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$responseBody): int {
+                    if (strlen($responseBody) + strlen($chunk) > 65536) return 0;
+                    $responseBody .= $chunk;
+                    return strlen($chunk);
+                },
             ]);
-            $responseBody = curl_exec($ch);
+            $success = curl_exec($ch);
             $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
+        } finally {
             curl_close($ch);
-            if ($code === 404 || $code === 410) {
-                $this->deactivateInvalidEndpoint($endpoint);
-                return 'invalid';
-            }
-            if ($code < 200 || $code >= 300) {
-                $message = $this->pushEndpointErrorMessage($endpoint, $code, is_string($responseBody) ? $responseBody : '', $error);
-                throw new \RuntimeException($message);
-            }
-            $this->touchSubscription((int)($subscription['id'] ?? 0));
-            return 'sent';
         }
-
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => implode("\r\n", $headers),
-                'content' => $encrypted,
-                'timeout' => $timeout,
-                'ignore_errors' => true,
-            ],
-        ]);
-        $result = @file_get_contents($endpoint, false, $context);
-        $statusLine = $http_response_header[0] ?? '';
-        $code = preg_match('/\s(\d{3})\s/', (string)$statusLine, $matches) ? (int)$matches[1] : 0;
-        if (preg_match('/\s(404|410)\s/', (string)$statusLine)) {
+        if ($code === 404 || $code === 410) {
             $this->deactivateInvalidEndpoint($endpoint);
             return 'invalid';
         }
-        if ($result === false || $code < 200 || $code >= 300) {
-            throw new \RuntimeException($this->pushEndpointErrorMessage($endpoint, $code, is_string($result) ? $result : '', ''));
+        if ($success === false || $code < 200 || $code >= 300) {
+            throw new \RuntimeException($this->pushEndpointErrorMessage($endpoint, $code, $responseBody, $error));
         }
-
         $this->touchSubscription((int)($subscription['id'] ?? 0));
-
         return 'sent';
     }
 

@@ -66,6 +66,7 @@ $app->router->post('/two-factor-challenge', [AuthController::class, 'twoFactorCh
 $app->router->get('/two-factor-recovery', [AuthController::class, 'twoFactorRecovery'])->middleware(['guest']);
 $app->router->post('/two-factor-recovery', [AuthController::class, 'twoFactorRecovery'])->middleware(['guest']);
 $app->router->get('/two-factor-recovery/reset', [AuthController::class, 'resetTwoFactorRecovery'])->middleware(['guest']);
+$app->router->post('/two-factor-recovery/reset', [AuthController::class, 'resetTwoFactorRecovery'])->middleware(['guest']);
 $app->router->post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['guest']);
 $app->router->get('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['guest']);
 $app->router->post('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['guest']);

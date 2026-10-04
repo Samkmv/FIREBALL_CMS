@@ -161,12 +161,22 @@ if (
                 $temporaryPath = $localConfigPath . '.tmp-' . bin2hex(random_bytes(4));
                 $content = "<?php\n\nreturn " . var_export($latestLocalConfig, true) . ";\n";
 
-                if (@file_put_contents($temporaryPath, $content, LOCK_EX) === false || !@rename($temporaryPath, $localConfigPath)) {
+                $temporaryHandle = @fopen($temporaryPath, 'x+b');
+                if (!is_resource($temporaryHandle)) throw new \RuntimeException('Unable to create private key configuration.');
+                try {
+                    if (!chmod($temporaryPath, 0600) || fwrite($temporaryHandle, $content) !== strlen($content) || !fflush($temporaryHandle)) {
+                        throw new \RuntimeException('Unable to persist CHAT_ENCRYPTION_KEY.');
+                    }
+                } catch (\Throwable $writeException) {
+                    fclose($temporaryHandle);
                     @unlink($temporaryPath);
-                    throw new \RuntimeException('Unable to persist CHAT_ENCRYPTION_KEY.');
+                    throw $writeException;
                 }
-
-                @chmod($localConfigPath, 0600);
+                fclose($temporaryHandle);
+                if (!@rename($temporaryPath, $localConfigPath)) {
+                    @unlink($temporaryPath);
+                    throw new \RuntimeException('Unable to publish private key configuration.');
+                }
                 $localConfig = $latestLocalConfig;
             } elseif (is_array($latestLocalConfig)) {
                 $localConfig = $latestLocalConfig;

@@ -31,5 +31,22 @@
     "repository": "Samkmv/FIREBALL_CMS",
     "branch": "main",
     "path": "plugins/calendar"
-  }
+  },
+  "release_notes_i18n": {
+    "ru": [
+      "Личные и общие события с повторениями, напоминаниями на сайте и через PWA Push."
+    ],
+    "en": [
+      "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery."
+    ],
+    "de": [
+      "Persönliche und gemeinsame Termine mit Wiederholungen, Website-Erinnerungen und PWA-Push."
+    ],
+    "zh-cn": [
+      "支持重复、站内提醒和 PWA Push 的个人与共享日程。"
+    ]
+  },
+  "release_notes": [
+    "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery."
+  ]
 }

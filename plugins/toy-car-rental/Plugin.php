@@ -342,6 +342,11 @@ final class FireballPluginToyCarRental implements PluginInterface
 
         db()->beginTransaction();
         try {
+            $lockedCar = db()->query('SELECT * FROM toy_rental_cars WHERE id = ? FOR UPDATE', [$carId])->getOne();
+            $activeRide = db()->query("SELECT id FROM toy_rental_rides WHERE car_id = ? AND status IN ('active', 'overdue') LIMIT 1 FOR UPDATE", [$carId])->getOne();
+            if (!$lockedCar || $lockedCar['status'] !== 'available' || $activeRide) {
+                throw new RuntimeException(self::t('toy_rental_error_car_unavailable'));
+            }
             db()->query(
                 "INSERT INTO toy_rental_rides
                     (car_id, billing_type, price_per_minute, estimated_minutes, customer_name, customer_phone, started_at, planned_end_at, payment_amount, final_amount, payment_method, payment_status, status, notes, created_at, updated_at)
@@ -388,22 +393,28 @@ final class FireballPluginToyCarRental implements PluginInterface
             throw new RuntimeException(self::t('toy_rental_error_ride_not_found'));
         }
 
-        $endedAt = time();
-        $startedAt = strtotime((string)$ride['started_at']) ?: $endedAt;
-        $duration = max(1, (int)ceil(($endedAt - $startedAt) / 60));
-        $billingType = self::billingType((string)($ride['billing_type'] ?? 'fixed'));
-        $pricePerMinute = self::money($ride['price_per_minute'] ?? 0);
-        $calculatedAmount = $billingType === 'metered'
-            ? self::money($duration * $pricePerMinute)
-            : self::money($ride['payment_amount']);
-        $amount = array_key_exists('final_amount', $data)
-            ? self::money($data['final_amount'])
-            : (array_key_exists('payment_amount', $data) ? self::money($data['payment_amount']) : $calculatedAmount);
-        $method = self::paymentMethod((string)($data['payment_method'] ?? $ride['payment_method']));
-        $paymentStatus = self::paymentStatus((string)($data['payment_status'] ?? $ride['payment_status']));
-
         db()->beginTransaction();
         try {
+            db()->query('SELECT id FROM toy_rental_cars WHERE id = ? FOR UPDATE', [(int)$ride['car_id']])->getOne();
+            $ride = db()->query("SELECT * FROM toy_rental_rides WHERE id = ? AND status IN ('active', 'overdue') LIMIT 1 FOR UPDATE", [$rideId])->getOne();
+            if (!$ride) {
+                db()->commit();
+                return;
+            }
+            $endedAt = time();
+            $startedAt = strtotime((string)$ride['started_at']) ?: $endedAt;
+            $duration = max(1, (int)ceil(($endedAt - $startedAt) / 60));
+            $billingType = self::billingType((string)($ride['billing_type'] ?? 'fixed'));
+            $pricePerMinute = self::money($ride['price_per_minute'] ?? 0);
+            $calculatedAmount = $billingType === 'metered'
+                ? self::money($duration * $pricePerMinute)
+                : self::money($ride['payment_amount']);
+            $amount = array_key_exists('final_amount', $data)
+                ? self::money($data['final_amount'])
+                : (array_key_exists('payment_amount', $data) ? self::money($data['payment_amount']) : $calculatedAmount);
+            $method = self::paymentMethod((string)($data['payment_method'] ?? $ride['payment_method']));
+            $paymentStatus = self::paymentStatus((string)($data['payment_status'] ?? $ride['payment_status']));
+
             db()->query(
                 "UPDATE toy_rental_rides
                  SET ended_at = ?, duration_minutes = ?, payment_amount = ?, final_amount = ?, payment_method = ?, payment_status = ?, status = 'completed', updated_at = ?
@@ -431,6 +442,8 @@ final class FireballPluginToyCarRental implements PluginInterface
             [$rideId]
         )->getOne();
         if (!$ride) {
+            $paid = db()->query("SELECT id FROM toy_rental_rides WHERE id = ? AND status = 'completed' AND payment_status = 'paid' LIMIT 1", [$rideId])->getOne();
+            if ($paid) return;
             throw new RuntimeException(self::t('toy_rental_error_ride_payment_not_found'));
         }
 
@@ -445,7 +458,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         db()->query(
             "UPDATE toy_rental_rides
              SET payment_amount = ?, payment_method = ?, payment_status = 'paid', updated_at = ?
-             WHERE id = ?",
+             WHERE id = ? AND status = 'completed' AND payment_status = 'unpaid'",
             [$amount, $method, date('Y-m-d H:i:s'), $rideId]
         );
     }

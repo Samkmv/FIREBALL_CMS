@@ -111,6 +111,7 @@ final class FireballPluginSubscriptions implements PluginInterface
         add_action('admin_post_saved', [self::class, 'savePostSettings']);
         add_action('admin_post_deleting', static fn(int $postId) => (new ContentRuleRepository())->delete('post', $postId));
         add_action('admin_user_deleting', [self::class, 'deleteUserData']);
+        add_filter('search_document_access', [self::class, 'filterSearchDocumentAccess'], 20);
         add_filter('public_post_before_render', [self::class, 'filterPublicPost'], 20);
         add_filter('public_posts_before_render', [self::class, 'filterPublicPosts'], 20);
         add_filter('public_page_before_render', [self::class, 'filterPublicPage'], 20);
@@ -477,6 +478,15 @@ final class FireballPluginSubscriptions implements PluginInterface
         db()->query('DELETE FROM subscription_orders WHERE user_id = ?', [$userId]);
         db()->query('DELETE FROM subscriptions WHERE user_id = ?', [$userId]);
         db()->query('DELETE FROM subscription_profiles WHERE user_id = ?', [$userId]);
+    }
+
+    public static function filterSearchDocumentAccess(bool $allowed, \App\Search\SearchDocument $document, array $context = []): bool
+    {
+        if (!$allowed || $document->type !== 'post') return $allowed;
+        $userId = (int)($context['user']['id'] ?? 0);
+        $decision = self::accessService()->contentDecision($userId, 'post', (int)$document->entityId);
+        // Do not rank or expose indexed text/keywords for a viewer without access.
+        return !empty($decision['allowed']);
     }
 
     public static function filterPublicPost(array $post, array $user = []): array

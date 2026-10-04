@@ -6,41 +6,48 @@
   },
   "slug": "camera-manager",
   "version": "1.3.6",
-
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
   "release_notes": [
-    "Localized the plugin name and remaining administrator labels into Russian without changing its identifier or server protocol.",
-    "Added an administrator interface for sites, recorders, and camera channels.",
-    "Added encrypted RTSP credential storage and public HLS URL generation.",
-    "Added atomic streams.pl publishing with locking, backups, Perl syntax validation, and optional service restart.",
-    "Added strict host-key-checked SSH transport and a forced-command agent for a separate RTSP server.",
-    "Added HTTPS pull synchronization for FTP-only shared hosting, with agent status reporting and automatic rollback.",
-    "Added an inline HTTPS token save button, visible token status, and settings error logging.",
-    "Added a dedicated HTTPS token save route with immediate database read-back verification.",
-    "Added compatibility for legacy SprintHost plugin_settings tables with duplicate setting rows.",
-    "Added FirePlayer LIVE preview with automatic HLS detection, recovery, and background stream cleanup.",
-    "Added a backward-compatible 10-step site connection wizard with WireGuard, route, firewall, and idempotent iptables generators.",
-    "Added RTSP profiles for Dahua, Hikvision/HiWatch, generic and custom recorders.",
-    "Added a signed whitelist-only diagnostic queue executed by the RTSP pull agent without arbitrary commands.",
-    "Completed the MAXIPAPA WireGuard wizard with /24 router values, manual backup/wg set/wg syncconf commands, and external port checks."
+    "Manage sites, recorders and cameras with encrypted RTSP credentials and public HLS URLs.",
+    "Atomic stream publishing with syntax validation, backups and rollback.",
+    "Host-key-checked SSH and HTTPS pull synchronization with a restricted agent.",
+    "HTTPS token saving with database read-back and legacy settings compatibility.",
+    "FirePlayer LIVE preview, RTSP profiles and background stream cleanup.",
+    "WireGuard, route and firewall wizard with a signed allowlisted diagnostic queue."
   ],
   "release_notes_i18n": {
     "ru": [
-      "Название плагина и оставшиеся подписи в админ-панели переведены на русский: «Управление камерами». Идентификатор и серверный протокол не изменены.",
-      "Добавлена панель объектов, регистраторов и каналов камер.",
-      "Пароли RTSP хранятся в зашифрованном виде, публичные HLS-ссылки создаются автоматически.",
-      "Публикация streams.pl выполняется атомарно: блокировка, резервная копия, perl -c и необязательный перезапуск службы.",
-      "Добавлено SSH-подключение к отдельному RTSP-серверу с обязательной проверкой host key и ограниченным агентом.",
-      "Добавлена HTTPS pull-синхронизация для FTP-хостинга, отчёты агента и автоматический откат при ошибке службы.",
-      "Добавлены заметная кнопка сохранения HTTPS-токена, индикатор его состояния и журналирование ошибок формы.",
-      "Добавлен отдельный маршрут сохранения HTTPS-токена с немедленной проверкой чтением из базы данных.",
-      "Добавлена совместимость со старыми таблицами plugin_settings на SprintHost, содержащими дубли настроек.",
-      "Добавлен LIVE-предпросмотр через FirePlayer с автоопределением HLS, восстановлением потока и остановкой фоновой загрузки.",
-      "Добавлен обратно совместимый 10-шаговый мастер подключения объекта с генераторами WireGuard, маршрута, firewall и идемпотентных iptables.",
-      "Добавлены RTSP-профили Dahua, Hikvision/HiWatch, generic и custom.",
-      "Добавлена подписанная очередь диагностик с жёстким whitelist операций, выполняемая HTTPS pull-агентом без произвольных команд.",
-      "Мастер WireGuard MAXIPAPA дополнен параметрами роутера /24, ручными командами backup/wg set/wg syncconf и проверками внешних портов."
+      "Управление объектами, регистраторами и камерами; шифрование RTSP-паролей и публичные HLS-ссылки.",
+      "Атомарная публикация потоков с проверкой синтаксиса, резервными копиями и откатом.",
+      "SSH с проверкой host key и HTTPS pull-синхронизация с ограниченным агентом.",
+      "Сохранение HTTPS-токена с проверкой чтением из БД и совместимость со старыми настройками.",
+      "LIVE-предпросмотр FirePlayer, RTSP-профили и очистка фоновых потоков.",
+      "Мастер подключения WireGuard, маршрутов и firewall; подписанная очередь разрешённых диагностик."
+    ],
+    "en": [
+      "Manage sites, recorders and cameras with encrypted RTSP credentials and public HLS URLs.",
+      "Atomic stream publishing with syntax validation, backups and rollback.",
+      "Host-key-checked SSH and HTTPS pull synchronization with a restricted agent.",
+      "HTTPS token saving with database read-back and legacy settings compatibility.",
+      "FirePlayer LIVE preview, RTSP profiles and background stream cleanup.",
+      "WireGuard, route and firewall wizard with a signed allowlisted diagnostic queue."
+    ],
+    "de": [
+      "Objekte, Rekorder und Kameras mit verschlüsselten RTSP-Zugangsdaten und öffentlichen HLS-URLs verwalten.",
+      "Atomare Stream-Veröffentlichung mit Syntaxprüfung, Sicherungen und Wiederherstellung.",
+      "SSH mit Host-Key-Prüfung und HTTPS-Pull-Synchronisierung über einen eingeschränkten Agenten.",
+      "HTTPS-Token speichern, aus der Datenbank prüfen und alte Einstellungen unterstützen.",
+      "FirePlayer-LIVE-Vorschau, RTSP-Profile und Bereinigung von Hintergrundstreams.",
+      "Assistent für WireGuard, Routen und Firewall mit signierter Diagnosewarteschlange und erlaubten Operationen."
+    ],
+    "zh-cn": [
+      "管理站点、录像机和摄像机，支持加密 RTSP 凭据与公开 HLS 链接。",
+      "原子发布流配置，提供语法检查、备份和回滚。",
+      "通过主机密钥验证的 SSH 或受限代理进行 HTTPS 拉取同步。",
+      "保存 HTTPS 令牌后从数据库验证，并兼容旧版设置。",
+      "支持 FirePlayer 实时预览、RTSP 配置及后台流清理。",
+      "提供 WireGuard、路由和防火墙向导，以及仅允许指定操作的签名诊断队列。"
     ]
   },
   "update": {

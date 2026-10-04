@@ -1,6 +1,6 @@
 {
-  "version": "1.8.2-beta.35",
-  "minVersion": "1.0.0",
+  "version": "1.8.2",
+  "minVersion": "1.8.0",
   "type": "patch",
   "migrations": true,
   "protected": [
@@ -15,6 +15,11 @@
     "core",
     "public",
     "config",
+    "bin",
+    "plugins",
+    "themes",
+    ".htaccess",
+    ".gitattributes",
     ".gitignore",
     "composer.json",
     "composer.lock",
@@ -22,6 +27,9 @@
     "update.json",
     "database",
     "helpers",
-    "themes/default"
+    "release-plugins.json"
+  ],
+  "remove": [
+    "vendor/geoip2/geoip2/CLAUDE.md"
   ]
 }

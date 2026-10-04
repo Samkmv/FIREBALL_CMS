@@ -15,7 +15,12 @@ final class InstallService
             ['label' => 'PDO MySQL', 'ok' => extension_loaded('pdo_mysql')],
             ['label' => 'OpenSSL', 'ok' => extension_loaded('openssl')],
             ['label' => 'JSON', 'ok' => extension_loaded('json')],
-            ['label' => 'vendor/autoload.php (optional)', 'ok' => true],
+            ['label' => 'DOM', 'ok' => class_exists(\DOMDocument::class)],
+            ['label' => 'Fileinfo', 'ok' => extension_loaded('fileinfo')],
+            ['label' => 'cURL', 'ok' => extension_loaded('curl')],
+            ['label' => 'ZIP', 'ok' => extension_loaded('zip')],
+            ['label' => 'Multibyte strings', 'ok' => function_exists('mb_strlen')],
+            ['label' => 'vendor/autoload.php', 'ok' => is_file(ROOT . '/vendor/autoload.php')],
             ['label' => 'config writable', 'ok' => is_writable(CONFIG)],
             ['label' => 'storage writable', 'ok' => $this->ensureWritableDirectory(STORAGE)],
             ['label' => 'uploads writable', 'ok' => $this->ensureWritableDirectory(UPLOADS)],
@@ -46,9 +51,10 @@ final class InstallService
                 'warning' => $tables !== [],
             ];
         } catch (Throwable $exception) {
+            log_error_details('Installation database test failed', [], $exception);
             return [
                 'ok' => false,
-                'message' => $exception->getMessage(),
+                'message' => 'Database connection failed. Check the settings and the private server log.',
                 'tables' => [],
                 'warning' => false,
             ];
@@ -56,6 +62,24 @@ final class InstallService
     }
 
     public function install(array $payload): array
+    {
+        if (!$this->requirementsPass()) {
+            return ['ok' => false, 'message' => 'Server requirements are not satisfied.'];
+        }
+        $lock = @fopen(STORAGE . '/install.lock', 'c+');
+        if (!is_resource($lock) || !flock($lock, LOCK_EX | LOCK_NB)) {
+            if (is_resource($lock)) fclose($lock);
+            return ['ok' => false, 'message' => 'Another installation is already running.'];
+        }
+        try {
+            return $this->performInstall($payload);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    private function performInstall(array $payload): array
     {
         if (is_file(INSTALLED_LOCK)) {
             return ['ok' => false, 'message' => 'FIREBALL CMS is already installed.'];
@@ -77,7 +101,8 @@ final class InstallService
             $pdo = $this->pdo($db);
             $tables = $this->existingTables($pdo);
         } catch (Throwable $exception) {
-            return ['ok' => false, 'message' => $exception->getMessage()];
+            log_error_details('Installation failed', [], $exception);
+            return ['ok' => false, 'message' => 'Installation failed. Check the private server log.'];
         }
         if ($tables !== [] && empty($payload['allow_existing'])) {
             return [
@@ -138,7 +163,8 @@ final class InstallService
             }
             $this->removeTablesCreatedByAttempt($pdo, $tables);
 
-            return ['ok' => false, 'message' => $exception->getMessage()];
+            log_error_details('Installation failed', [], $exception);
+            return ['ok' => false, 'message' => 'Installation failed. Check the private server log.'];
         }
 
         return [
@@ -333,8 +359,16 @@ final class InstallService
         ];
 
         $php = "<?php\n\nreturn " . $this->exportConfig($config) . ";\n";
-        if (file_put_contents($path, $php, LOCK_EX) === false) {
-            throw new \RuntimeException('Unable to write temporary config.local.php.');
+        $handle = @fopen($path, 'x+b');
+        if (!is_resource($handle)) {
+            throw new \RuntimeException('Unable to create temporary config.local.php.');
+        }
+        try {
+            if (!chmod($path, 0600) || fwrite($handle, $php) !== strlen($php) || !fflush($handle)) {
+                throw new \RuntimeException('Unable to write private config.local.php.');
+            }
+        } finally {
+            fclose($handle);
         }
     }
 
@@ -390,6 +424,21 @@ final class InstallService
         }
         if ((string)($admin['password'] ?? '') === '' || (string)($admin['password'] ?? '') !== (string)($admin['password_confirmation'] ?? '')) {
             return 'Admin password confirmation does not match.';
+        }
+
+        if (mb_strlen((string)$admin['password']) < 12 || strlen((string)$admin['password']) > 72) {
+            return 'Creator password must contain at least 12 characters and at most 72 bytes.';
+        }
+        $url = trim((string)($site['url'] ?? $this->defaultSiteUrl()));
+        $parts = parse_url($url);
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !is_array($parts)
+            || !in_array(strtolower((string)($parts['scheme'] ?? '')), ['http', 'https'], true)
+            || empty($parts['host']) || isset($parts['user'], $parts['pass'])
+            || isset($parts['user']) || isset($parts['query']) || isset($parts['fragment'])) {
+            return 'Site URL must be a valid HTTP or HTTPS URL without credentials, query or fragment.';
+        }
+        if (!in_array((string)($site['timezone'] ?? 'Europe/Moscow'), \DateTimeZone::listIdentifiers(), true)) {
+            return 'Invalid timezone.';
         }
 
         return '';

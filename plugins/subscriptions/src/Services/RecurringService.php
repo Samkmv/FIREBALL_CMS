@@ -140,8 +140,7 @@ final class RecurringService
                 ? (new \DateTimeImmutable((string)$subscription['ends_at']))->add(new \DateInterval('P' . $graceDays . 'D'))->format('Y-m-d H:i:s')
                 : null;
             $pendingStatus = $graceEnd !== null && strtotime($graceEnd) > time() ? 'grace_period' : 'past_due';
-            db()->query('UPDATE subscription_payments SET provider_transaction = ?, updated_at = ? WHERE id = ?', [$response, date('Y-m-d H:i:s'), $paymentId]);
-            db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL', [$pendingStatus, $graceEnd, date('Y-m-d H:i:s'), $subscriptionId]);
+            if (!$this->persistAttemptResult($subscription, $plan, $paymentId, $orderId, $response)) return true;
             (new SubscriptionService())->event('payment.recurring_initiated', $subscriptionId, $paymentId, (int)$subscription['user_id'], null, 'pending', ['invoice_id' => $invoiceId]);
             return true;
         } catch (\Throwable $exception) {
@@ -218,6 +217,10 @@ final class RecurringService
                 [(int)$payment['parent_payment_id']]
             )->getOne();
 
+            if ($order && in_array((string)$order['status'], ['paid', 'cancelled'], true)) {
+                db()->commit();
+                return false;
+            }
             if (!$order || !$plan || !$parent) {
                 throw new \RuntimeException('Recurring retry is missing its order, plan, or paid parent payment.');
             }
@@ -265,18 +268,7 @@ final class RecurringService
                 : 'past_due';
             $now = date('Y-m-d H:i:s');
 
-            db()->query(
-                "UPDATE subscription_payments
-                 SET status = 'pending', provider_transaction = ?, error_message = NULL, failed_at = NULL, updated_at = ?
-                 WHERE id = ? AND status <> 'paid'",
-                [$response, $now, $paymentId]
-            );
-            db()->query(
-                "UPDATE subscriptions
-                 SET status = ?, grace_ends_at = ?, updated_at = ?
-                 WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL",
-                [$pendingStatus, $graceEnd, $now, (int)$subscription['id']]
-            );
+            if (!$this->persistAttemptResult($subscription, $plan, $paymentId, (int)$order['id'], $response)) return true;
             (new SubscriptionService())->event(
                 'payment.recurring_retried',
                 (int)$subscription['id'],
@@ -335,9 +327,7 @@ final class RecurringService
     private function markEligibilityBlocked(array $subscription, int $paymentId, int $orderId, \Throwable $exception): void
     {
         $now = date('Y-m-d H:i:s');
-        db()->query("UPDATE subscription_payments SET status = 'failed', error_message = ?, failed_at = ?, updated_at = ? WHERE id = ?", [mb_substr($exception->getMessage(), 0, 2000), $now, $now, $paymentId]);
-        db()->query("UPDATE subscription_orders SET status = 'failed', updated_at = ? WHERE id = ?", [$now, $orderId]);
-        db()->query('UPDATE subscriptions SET auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ?', [$now, (int)$subscription['id']]);
+        if (!$this->persistAttemptResult($subscription, [], $paymentId, $orderId, null, $exception, true)) return;
         (new SubscriptionService())->event(
             'subscription.auto_renew_blocked_by_address',
             (int)$subscription['id'],
@@ -375,9 +365,7 @@ final class RecurringService
             ? (new \DateTimeImmutable((string)$subscription['ends_at']))->add(new \DateInterval('P' . $graceDays . 'D'))->format('Y-m-d H:i:s')
             : null;
         $status = $graceEnd !== null && strtotime($graceEnd) > time() ? 'grace_period' : 'past_due';
-        db()->query("UPDATE subscription_payments SET status = 'failed', error_message = ?, failed_at = ?, updated_at = ? WHERE id = ?", [mb_substr($exception->getMessage(), 0, 2000), $now, $now, $paymentId]);
-        db()->query("UPDATE subscription_orders SET status = 'failed', updated_at = ? WHERE id = ?", [$now, $orderId]);
-        db()->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL', [$status, $graceEnd, $now, (int)$subscription['id']]);
+        if (!$this->persistAttemptResult($subscription, $plan, $paymentId, $orderId, null, $exception)) return;
         (new SubscriptionService())->event('payment.recurring_failed', (int)$subscription['id'], $paymentId, (int)$subscription['user_id'], (string)$subscription['status'], $status, ['error_class' => get_class($exception)]);
         try {
             notification_create([
@@ -396,6 +384,48 @@ final class RecurringService
             ]);
         } catch (\Throwable $notificationException) {
             log_error_details('Recurring failure notification failed', ['subscription_id' => (int)$subscription['id']], $notificationException);
+        }
+    }
+
+    /** Lock in callback order; an older worker must never undo a paid result. */
+    private function persistAttemptResult(array $subscription, array $plan, int $paymentId, int $orderId, ?string $response, ?\Throwable $error = null, bool $blocked = false): bool
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $payment = $database->query('SELECT * FROM subscription_payments WHERE id = ? LIMIT 1 FOR UPDATE', [$paymentId])->getOne();
+            $order = $database->query('SELECT * FROM subscription_orders WHERE id = ? LIMIT 1 FOR UPDATE', [$orderId])->getOne();
+            if (!$payment || !$order || $payment['status'] === 'paid' || $order['status'] === 'paid'
+                || $payment['status'] === 'cancelled' || $order['status'] === 'cancelled') {
+                $database->commit();
+                return false;
+            }
+            $current = $database->query('SELECT * FROM subscriptions WHERE id = ? LIMIT 1 FOR UPDATE', [(int)$subscription['id']])->getOne();
+            $now = date('Y-m-d H:i:s');
+            if ($error === null) {
+                $database->query("UPDATE subscription_payments SET status = 'pending', provider_transaction = ?, error_message = NULL, failed_at = NULL, updated_at = ? WHERE id = ? AND status <> 'paid'", [$response, $now, $paymentId]);
+            } else {
+                $database->query("UPDATE subscription_payments SET status = 'failed', error_message = ?, failed_at = ?, updated_at = ? WHERE id = ? AND status <> 'paid'", [mb_substr($error->getMessage(), 0, 2000), $now, $now, $paymentId]);
+                $database->query("UPDATE subscription_orders SET status = 'failed', updated_at = ? WHERE id = ? AND status <> 'paid'", [$now, $orderId]);
+            }
+            // Another invoice may already have extended this subscription.
+            if ($current && empty($current['archived_at']) && !empty($current['auto_renew'])
+                && (string)($current['ends_at'] ?? '') === (string)($subscription['ends_at'] ?? '')) {
+                if ($blocked) {
+                    $database->query('UPDATE subscriptions SET auto_renew = 0, next_billing_at = NULL, updated_at = ? WHERE id = ?', [$now, (int)$subscription['id']]);
+                } else {
+                    $days = max(0, (int)($plan['grace_period_days'] ?? 0));
+                    $graceEnd = $days > 0 && !empty($current['ends_at'])
+                        ? (new \DateTimeImmutable((string)$current['ends_at']))->add(new \DateInterval('P' . $days . 'D'))->format('Y-m-d H:i:s') : null;
+                    $status = $graceEnd !== null && strtotime($graceEnd) > time() ? 'grace_period' : 'past_due';
+                    $database->query('UPDATE subscriptions SET status = ?, grace_ends_at = ?, updated_at = ? WHERE id = ? AND auto_renew = 1 AND archived_at IS NULL', [$status, $graceEnd, $now, (int)$subscription['id']]);
+                }
+            }
+            $database->commit();
+            return true;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) $database->rollBack();
+            throw $exception;
         }
     }
 

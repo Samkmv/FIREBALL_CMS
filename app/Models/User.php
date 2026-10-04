@@ -594,32 +594,33 @@ class User
     public function consumeRecoveryCode(int $id, string $code): bool
     {
         $this->ensureUsersTableExists();
-        $user = $this->findById($id);
-        if (!$user || !$this->hasTwoFactorEnabled($user)) {
-            return false;
-        }
-
-        $twoFactor = new TwoFactorService();
-        $candidate = $twoFactor->hashRecoveryCode($code);
-        $hashes = json_decode((string)($user['two_factor_recovery_codes'] ?? ''), true);
-        if (!is_array($hashes)) {
-            return false;
-        }
-
-        foreach ($hashes as $index => $hash) {
-            if (is_string($hash) && hash_equals($hash, $candidate)) {
-                unset($hashes[$index]);
-                db()->query(
-                    "UPDATE {$this->usersTable}
-                     SET two_factor_recovery_codes = ?
-                     WHERE id = ?",
-                    [json_encode(array_values($hashes), JSON_UNESCAPED_SLASHES), $id]
-                );
-                return true;
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $user = $database->query("SELECT * FROM {$this->usersTable} WHERE id = ? FOR UPDATE", [$id])->getOne();
+            if (!$user || !$this->hasTwoFactorEnabled($user)) {
+                $database->rollBack();
+                return false;
             }
+            $candidate = (new TwoFactorService())->hashRecoveryCode($code);
+            $hashes = json_decode((string)($user['two_factor_recovery_codes'] ?? ''), true);
+            foreach (is_array($hashes) ? $hashes : [] as $index => $hash) {
+                if (is_string($hash) && hash_equals($hash, $candidate)) {
+                    unset($hashes[$index]);
+                    $database->query(
+                        "UPDATE {$this->usersTable} SET two_factor_recovery_codes = ? WHERE id = ?",
+                        [json_encode(array_values($hashes), JSON_THROW_ON_ERROR), $id]
+                    );
+                    $database->commit();
+                    return true;
+                }
+            }
+            $database->rollBack();
+            return false;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) $database->rollBack();
+            throw $exception;
         }
-
-        return false;
     }
 
     public function createTwoFactorRecoveryToken(int $userId): ?string

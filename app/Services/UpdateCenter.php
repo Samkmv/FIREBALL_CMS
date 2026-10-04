@@ -19,6 +19,7 @@ class UpdateCenter
 
     protected SiteSetting $siteSettings;
     protected array $engineRelease;
+    protected bool $installationMutated = false;
 
     public function __construct(?SiteSetting $siteSettings = null)
     {
@@ -324,9 +325,10 @@ class UpdateCenter
         $fromVersion = (string)($this->engineRelease['version'] ?? '0.0.0');
         $user = function_exists('get_user') ? (get_user() ?: []) : [];
         $lock = $this->acquireUpdateLock();
-        $this->enableMaintenanceMode($user);
-
+        $completed = false;
+        $this->installationMutated = false;
         try {
+            $this->enableMaintenanceMode($user);
             $result = $this->performUpdate();
             $this->reloadEngineRelease();
             $this->writeUpdateLog(
@@ -336,13 +338,15 @@ class UpdateCenter
                 (string)($result['status'] ?? 'success')
             );
 
+            $completed = true;
             return $result;
         } catch (\Throwable $exception) {
             $this->writeUpdateLog($user, $fromVersion, null, 'error', $exception->getMessage());
             throw $exception;
         } finally {
-            $this->disableMaintenanceMode();
-            $this->releaseUpdateLock($lock);
+            try {
+                if ($completed || !$this->installationMutated) $this->disableMaintenanceMode();
+            } finally { $this->releaseUpdateLock($lock); }
         }
     }
 
@@ -409,6 +413,7 @@ class UpdateCenter
             $this->createPreUpdateBackups();
             $this->siteSettings->setMany(['updater_rollback_commit' => $previousCommit]);
             try {
+            $this->installationMutated = true;
             $pullResult = $this->runCommand(
                 'git pull --ff-only origin ' . escapeshellarg($branch),
                 ROOT
@@ -420,6 +425,7 @@ class UpdateCenter
 
             $currentCommit = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
             if ($previousCommit !== '' && $currentCommit !== '' && $previousCommit !== $currentCommit) {
+                $this->restorePreservedGitPaths($previousCommit, $currentCommit, $manifest);
                 $this->runComposerIfNeeded($previousCommit, $currentCommit);
             }
 
@@ -431,14 +437,7 @@ class UpdateCenter
             ]);
             $this->refreshLastCheckAfterUpdate();
         } catch (\Throwable $exception) {
-            if ($previousCommit !== '') {
-                $rollback = $this->runCommand('git reset --hard ' . escapeshellarg($previousCommit), ROOT);
-                log_error_details('Git update rollback executed', [
-                    'Commit' => $previousCommit,
-                    'Exit Code' => $rollback['exit_code'] ?? -1,
-                    'Output' => $rollback['stderr'] ?? $rollback['stdout'] ?? '',
-                ], $exception);
-            }
+            log_error_details('Git update requires snapshot recovery', ['Commit' => $previousCommit], $exception);
             throw $exception;
         }
 
@@ -600,6 +599,7 @@ class UpdateCenter
             $this->assertPackageComposerReady($packageRoot, $composerFingerprintBefore);
             $this->createPreUpdateBackups();
             $this->ensureLocalConfigExists();
+            $this->installationMutated = true;
             $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
 
             $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
@@ -715,6 +715,7 @@ class UpdateCenter
         $this->siteSettings->setMany(['updater_rollback_commit' => $previousCommit]);
 
         try {
+            $this->installationMutated = true;
             $mergeResult = $this->runCommand(
                 'git merge --ff-only ' . escapeshellarg($releaseCommit),
                 ROOT
@@ -723,6 +724,7 @@ class UpdateCenter
                 throw new RuntimeException($this->formatCommandError($mergeResult, return_translation('admin_update_pull_failed')));
             }
 
+            $this->restorePreservedGitPaths($previousCommit, $releaseCommit, $manifest);
             $this->runComposerIfNeeded($previousCommit, $releaseCommit);
             $this->runPendingMigrations();
             $this->clearRuntimeCache();
@@ -732,12 +734,7 @@ class UpdateCenter
             ]);
             $this->refreshLastCheckAfterUpdate();
         } catch (\Throwable $exception) {
-            $rollback = $this->runCommand('git reset --hard ' . escapeshellarg($previousCommit), ROOT);
-            log_error_details('Stable release update rollback executed', [
-                'Commit' => $previousCommit,
-                'Exit Code' => $rollback['exit_code'] ?? -1,
-                'Output' => $rollback['stderr'] ?? $rollback['stdout'] ?? '',
-            ], $exception);
+            log_error_details('Stable update requires snapshot recovery', ['Commit' => $previousCommit], $exception);
             throw $exception;
         }
 
@@ -801,6 +798,7 @@ class UpdateCenter
             $this->assertPackageComposerReady($packageRoot, $composerFingerprintBefore);
             $this->createPreUpdateBackups();
             $this->ensureLocalConfigExists();
+            $this->installationMutated = true;
             $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
 
             $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
@@ -827,39 +825,7 @@ class UpdateCenter
      */
     public function runRollback(): array
     {
-        $settings = $this->siteSettings->all();
-        $targetCommit = trim((string)($settings['updater_rollback_commit'] ?? ''));
-        $localGitState = $this->getLocalGitState();
-
-        if (empty($localGitState['is_git_repo']) || empty($localGitState['git_available'])) {
-            throw new RuntimeException(return_translation('admin_update_rollback_git_required'));
-        }
-        if (preg_match('/^[a-f0-9]{7,40}$/i', $targetCommit) !== 1) {
-            throw new RuntimeException(return_translation('admin_update_rollback_unavailable'));
-        }
-
-        $currentCommit = trim((string)($localGitState['commit_hash'] ?? ''));
-        $result = $this->runCommand('git reset --hard ' . escapeshellarg($targetCommit), ROOT);
-        if ($result['exit_code'] !== 0) {
-            throw new RuntimeException($this->formatCommandError($result, return_translation('admin_update_rollback_failed')));
-        }
-
-        if ($currentCommit !== '' && $currentCommit !== $targetCommit) {
-            $this->runComposerIfNeeded($currentCommit, $targetCommit);
-        }
-        $this->clearRuntimeCache();
-        $this->siteSettings->setMany([
-            'updater_rollback_commit' => '',
-            'updater_last_check_payload' => '',
-            'updater_last_check_payload_stable' => '',
-            'updater_last_check_payload_dev' => '',
-            'updater_last_checked_at' => '',
-        ]);
-
-        return [
-            'status' => 'warning',
-            'message' => return_translation('admin_update_rollback_success'),
-        ];
+        throw new RuntimeException('Restore a failed update offline with php bin/recover-update.php --confirm. Code-only rollback after database migrations is unsafe.');
     }
 
     /**
@@ -1578,119 +1544,93 @@ class UpdateCenter
     /**
      * Выполняет GET-запрос и возвращает тело и HTTP-код.
      */
+    protected function assertGithubTransferUrl(string $url): void
+    {
+        $parts = parse_url($url);
+        $host = strtolower((string)($parts['host'] ?? ''));
+        if (!is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || isset($parts['user']) || isset($parts['pass'])
+            || (int)($parts['port'] ?? 443) !== 443
+            || !in_array($host, ['api.github.com', 'github.com', 'codeload.github.com', 'release-assets.githubusercontent.com', 'objects.githubusercontent.com', 'raw.githubusercontent.com'], true)) {
+            throw new RuntimeException('Untrusted GitHub transfer URL.');
+        }
+    }
+
+    /** Bounded HTTPS transfer; check every redirect before sending another request. */
+    protected function githubTransfer(string $url, array $headers, $output, int $limit, int $timeout): array
+    {
+        if (!function_exists('curl_init')) throw new RuntimeException('cURL is required for safe GitHub updates.');
+        $originalHost = parse_url($url, PHP_URL_HOST);
+        for ($redirect = 0; $redirect <= 3; $redirect++) {
+            $this->assertGithubTransferUrl($url);
+            $requestHeaders = $headers;
+            if (parse_url($url, PHP_URL_HOST) !== $originalHost) {
+                $requestHeaders = array_values(array_filter($headers, static fn(string $header): bool => !preg_match('/^(?:authorization|cookie):/i', $header)));
+            }
+            if (is_resource($output)) { rewind($output); if (!ftruncate($output, 0)) throw new RuntimeException('Unable to reset download file.'); }
+            $body = '';
+            $bytes = 0;
+            $location = '';
+            $ch = curl_init($url);
+            try {
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => false,
+                    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+                    CURLOPT_HTTPHEADER => $requestHeaders,
+                    CURLOPT_TIMEOUT => $timeout,
+                    CURLOPT_CONNECTTIMEOUT => min(10, $timeout),
+                    CURLOPT_MAXFILESIZE_LARGE => $limit,
+                    CURLOPT_HEADERFUNCTION => static function ($handle, string $line) use (&$location): int {
+                        if (str_starts_with(strtolower($line), 'location:')) $location = trim(substr($line, 9));
+                        return strlen($line);
+                    },
+                    CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$body, &$bytes, $output, $limit): int {
+                        $length = strlen($chunk);
+                        if ($bytes + $length > $limit) return 0;
+                        $bytes += $length;
+                        if (is_resource($output)) return fwrite($output, $chunk) ?: 0;
+                        $body .= $chunk;
+                        return $length;
+                    },
+                ]);
+                $raw = curl_exec($ch);
+                $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $error = curl_error($ch);
+            } finally { curl_close($ch); }
+            if ($raw === false) throw new RuntimeException('GitHub transfer failed or exceeded its size limit: ' . $error);
+            if (is_string($raw) && $body === '' && !is_resource($output)) $body = $raw;
+            if (strlen($body) > $limit) throw new RuntimeException('GitHub response exceeded its size limit.');
+            if (in_array($status, [301, 302, 303, 307, 308], true)) {
+                if ($location === '' || $redirect === 3) throw new RuntimeException('Invalid GitHub redirect.');
+                $url = str_starts_with($location, '/') && !str_starts_with($location, '//')
+                    ? 'https://' . parse_url($url, PHP_URL_HOST) . $location : $location;
+                continue;
+            }
+            return ['body' => $body, 'status_code' => $status];
+        }
+        throw new RuntimeException('Too many GitHub redirects.');
+    }
+
     protected function httpGet(string $url, array $headers = []): array
     {
-        if (function_exists('curl_init')) {
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_TIMEOUT => 20,
-            ]);
-
-            $body = curl_exec($ch);
-            $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
-
-            if ($body === false) {
-                throw new RuntimeException(return_translation('admin_update_http_failed') . ' ' . $error);
-            }
-
-            return [
-                'body' => (string)$body,
-                'status_code' => $statusCode,
-            ];
-        }
-
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'header' => implode("\r\n", $headers),
-                'timeout' => 20,
-                'ignore_errors' => true,
-            ],
-        ]);
-        $body = @file_get_contents($url, false, $context);
-        $statusCode = $this->extractHttpStatusCode($http_response_header ?? []);
-
-        if ($body === false) {
-            throw new RuntimeException(return_translation('admin_update_http_failed'));
-        }
-
-        return [
-            'body' => (string)$body,
-            'status_code' => $statusCode,
-        ];
+        return $this->githubTransfer($url, $headers, null, 2097152, 20);
     }
 
-    /**
-     * Скачивает бинарный файл по URL в локальный путь.
-     */
     protected function downloadFile(string $url, string $destination, array $headers = []): void
     {
-        if ($url === '') {
-            throw new RuntimeException(return_translation('admin_update_release_asset_missing'));
-        }
-
-        if (function_exists('curl_init')) {
-            $handle = fopen($destination, 'wb');
-            if ($handle === false) {
-                throw new RuntimeException(return_translation('admin_update_workspace_failed'));
-            }
-
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_FILE => $handle,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_TIMEOUT => 120,
-                CURLOPT_FAILONERROR => false,
-            ]);
-
-            $success = curl_exec($ch);
-            $statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
+        $handle = @fopen($destination, 'wb');
+        if (!is_resource($handle)) throw new RuntimeException('Unable to create download file.');
+        $successful = false;
+        try {
+            $result = $this->githubTransfer($url, $headers, $handle, 157286400, 120);
+            if ($result['status_code'] < 200 || $result['status_code'] >= 300 || !fflush($handle)) throw new RuntimeException('GitHub download failed: HTTP ' . $result['status_code']);
+            $successful = true;
+        } finally {
             fclose($handle);
-
-            if ($success === false || $statusCode < 200 || $statusCode >= 300) {
-                @unlink($destination);
-                $details = $error !== '' ? $error : 'HTTP ' . $statusCode;
-                throw new RuntimeException(return_translation('admin_update_download_failed') . ' ' . $details);
-            }
-
-            return;
-        }
-
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'header' => implode("\r\n", $headers),
-                'timeout' => 120,
-                'ignore_errors' => true,
-            ],
-        ]);
-
-        $contents = @file_get_contents($url, false, $context);
-        $statusCode = $this->extractHttpStatusCode($http_response_header ?? []);
-
-        if ($contents === false) {
-            throw new RuntimeException(return_translation('admin_update_download_failed'));
-        }
-        if ($statusCode < 200 || $statusCode >= 300) {
-            throw new RuntimeException(return_translation('admin_update_download_failed') . ' HTTP ' . $statusCode);
-        }
-
-        if (@file_put_contents($destination, $contents) === false) {
-            throw new RuntimeException(return_translation('admin_update_workspace_failed'));
+            if (!$successful) @unlink($destination);
         }
     }
 
-    /**
-     * Распаковывает ZIP-архив релиза и возвращает корневую папку пакета.
-     */
     protected function extractArchive(string $archivePath, string $extractPath): string
     {
         $zip = new \ZipArchive();
@@ -1698,14 +1638,10 @@ class UpdateCenter
             throw new RuntimeException(return_translation('admin_update_extract_failed'));
         }
 
-        $this->validateArchiveEntries($zip);
-
-        if (!$zip->extractTo($extractPath)) {
-            $zip->close();
-            throw new RuntimeException(return_translation('admin_update_extract_failed'));
-        }
-
-        $zip->close();
+        try {
+            $this->validateArchiveEntries($zip);
+            if (!$zip->extractTo($extractPath)) throw new RuntimeException(return_translation('admin_update_extract_failed'));
+        } finally { $zip->close(); }
 
         return $this->resolvePackageRoot($extractPath);
     }
@@ -1715,23 +1651,29 @@ class UpdateCenter
      */
     protected function validateArchiveEntries(\ZipArchive $zip): void
     {
+        if ($zip->numFiles > 20000) throw new RuntimeException('Too many archive entries.');
+        $total = 0;
+        $names = [];
         for ($index = 0; $index < $zip->numFiles; $index++) {
+            $stat = $zip->statIndex($index);
             $name = (string)$zip->getNameIndex($index);
-            $normalized = trim(str_replace('\\', '/', $name));
-            if ($normalized === '') {
-                continue;
+            $normalized = str_replace('\\', '/', $name);
+            $total += (int)($stat['size'] ?? 0);
+            $attributes = 0;
+            $system = 0;
+            $zip->getExternalAttributesIndex($index, $system, $attributes);
+            $type = ($attributes >> 16) & 0170000;
+            if ($normalized === '' || preg_match('/[\x00-\x1f\x7f]/', $name) || str_contains($name, '\\') || str_starts_with($normalized, '/')
+                || preg_match('~^[A-Za-z]:~', $normalized) || array_intersect(explode('/', $normalized), ['..', '.'])
+                || isset($names[$normalized]) || ($type !== 0 && !in_array($type, [0100000, 0040000], true))
+                || $total > 536870912 || (int)($stat['size'] ?? 0) > 157286400
+                || (int)($stat['size'] ?? 0) > max(1048576, (int)($stat['comp_size'] ?? 0) * 200)) {
+                throw new RuntimeException('Unsafe or oversized update archive.');
             }
-
-            if (str_starts_with($normalized, '/')
-                || preg_match('~^[A-Za-z]:/~', $normalized) === 1
-                || str_contains($normalized, '../')
-                || str_contains($normalized, '/..')
-                || $normalized === '..'
-            ) {
-                $zip->close();
-                throw new RuntimeException(return_translation('admin_update_extract_failed'));
-            }
+            $names[$normalized] = true;
         }
+        $free = @disk_free_space(ROOT . '/tmp');
+        if ($free !== false && $free < $total + 104857600) throw new RuntimeException('Insufficient free space for update extraction.');
     }
 
     /**
@@ -1863,6 +1805,7 @@ class UpdateCenter
             }
 
             $targetPath = $targetRoot . '/' . $relativePath;
+            $this->assertUpdateDestination($targetRoot, $relativePath);
 
             if ($item->isDir()) {
                 $this->ensureDirectory($targetPath);
@@ -1870,8 +1813,43 @@ class UpdateCenter
             }
 
             $this->ensureDirectory(dirname($targetPath));
-            if (!@copy($sourcePath, $targetPath)) {
-                throw new RuntimeException(return_translation('admin_update_copy_failed') . ' ' . $relativePath);
+            $parent = realpath(dirname($targetPath));
+            $root = realpath($targetRoot);
+            if ($parent === false || $root === false || ($parent !== $root && !str_starts_with($parent, $root . DIRECTORY_SEPARATOR)) || is_link($targetPath)) {
+                throw new RuntimeException('Unsafe update destination: ' . $relativePath);
+            }
+            $temporary = tempnam($parent, '.fbl-update-');
+            try {
+                if ($temporary === false || !copy($sourcePath, $temporary) || !chmod($temporary, fileperms($sourcePath) & 0777) || !rename($temporary, $targetPath)) {
+                    throw new RuntimeException(return_translation('admin_update_copy_failed') . ' ' . $relativePath);
+                }
+            } finally { if (is_string($temporary) && is_file($temporary)) @unlink($temporary); }
+        }
+        foreach ((array)($manifest['remove'] ?? []) as $relativePath) {
+            $this->assertUpdateDestination($targetRoot, $relativePath);
+            $target = $targetRoot . '/' . $relativePath;
+            if (is_dir($target)) throw new RuntimeException('Update removal must name an individual file.');
+            if (is_file($target) && !unlink($target)) throw new RuntimeException('Unable to remove obsolete file: ' . $relativePath);
+        }
+    }
+
+    protected function assertUpdateDestination(string $targetRoot, string $relativePath): void
+    {
+        $root = realpath($targetRoot);
+        if ($root === false || $relativePath === '' || str_starts_with($relativePath, '/')
+            || preg_match('/[\x00-\x1f\x7f\\\\]/', $relativePath) || str_contains($relativePath, ':')
+            || array_intersect(explode('/', $relativePath), ['..', '.', ''])) {
+            throw new RuntimeException('Unsafe update destination.');
+        }
+        $current = $root;
+        foreach (explode('/', $relativePath) as $segment) {
+            $current .= DIRECTORY_SEPARATOR . $segment;
+            if (is_link($current)) throw new RuntimeException('Symbolic link in update destination: ' . $relativePath);
+            if (file_exists($current)) {
+                $resolved = realpath($current);
+                if ($resolved === false || !str_starts_with($resolved, $root . DIRECTORY_SEPARATOR)) {
+                    throw new RuntimeException('Unsafe update destination: ' . $relativePath);
+                }
             }
         }
     }
@@ -1903,6 +1881,14 @@ class UpdateCenter
         }
 
         return in_array($relativePath, ['config/config.local.php'], true);
+    }
+
+    protected function isDevelopmentPath(string $path): bool
+    {
+        foreach (['docs', 'tests', 'tools', 'dist', '.github', 'README.md', 'LICENSE'] as $prefix) {
+            if ($path === $prefix || str_starts_with($path, $prefix . '/')) return true;
+        }
+        return false;
     }
 
     protected function shouldUpdatePath(string $relativePath, array $manifest): bool
@@ -1947,10 +1933,15 @@ class UpdateCenter
         ) {
             throw new RuntimeException('Update manifest must define protected and update paths.');
         }
-        foreach (array_merge($manifest['protected'], $manifest['update']) as $path) {
-            if (!is_string($path) || trim($path, " \t\n\r\0\x0B/\\") === '' || str_contains($path, '..')) {
+        if (isset($manifest['remove']) && !is_array($manifest['remove'])) throw new RuntimeException('Invalid removal list.');
+        foreach (array_merge($manifest['protected'], $manifest['update'], $manifest['remove'] ?? []) as $path) {
+            if (!is_string($path) || !preg_match('~^[a-zA-Z0-9_.-]+(?:/[a-zA-Z0-9_.-]+)*$~D', $path) || array_intersect(explode('/', $path), ['..', '.'])) {
                 throw new RuntimeException('Update manifest contains an unsafe path.');
             }
+        }
+        foreach ((array)($manifest['remove'] ?? []) as $path) {
+            if ($this->shouldPreservePath($path, $manifest) || !$this->shouldUpdatePath($path, $manifest)) throw new RuntimeException('Unsafe removal path.');
+            if ($packageRoot !== null && file_exists($packageRoot . '/' . $path)) throw new RuntimeException('Removed file is also present in update package.');
         }
         if (!in_array((string)($manifest['type'] ?? ''), ['patch', 'minor', 'major'], true)) {
             throw new RuntimeException('Update manifest contains an invalid update type.');
@@ -2061,9 +2052,9 @@ class UpdateCenter
                 continue;
             }
             if ($this->shouldPreservePath($path, $manifest)) {
-                throw new RuntimeException('Update attempts to modify a protected path: ' . $path);
+                continue;
             }
-            if (!$this->shouldUpdatePath($path, $manifest)) {
+            if (!$this->shouldUpdatePath($path, $manifest) && !$this->isDevelopmentPath($path)) {
                 throw new RuntimeException('Update contains a path not allowed by update.json: ' . $path);
             }
         }
@@ -2089,9 +2080,9 @@ class UpdateCenter
                 continue;
             }
             if ($this->shouldPreservePath($path, $manifest)) {
-                throw new RuntimeException('Stable release attempts to modify a protected path: ' . $path);
+                continue;
             }
-            if (!$this->shouldUpdatePath($path, $manifest)) {
+            if (!$this->shouldUpdatePath($path, $manifest) && !$this->isDevelopmentPath($path)) {
                 throw new RuntimeException('Stable release contains a path not allowed by update.json: ' . $path);
             }
         }
@@ -2109,11 +2100,56 @@ class UpdateCenter
             if ($fileBackup === '') {
                 throw new RuntimeException('File backup failed. Update aborted.');
             }
+            $descriptor = ['git_commit' => trim((string)($this->getLocalGitState()['commit_hash'] ?? '')), 'database' => $databaseBackup, 'files' => $fileBackup, 'database_sha256' => hash_file('sha256', $databaseBackup), 'files_sha256' => hash_file('sha256', $fileBackup), 'created_at' => date('c')];
+            $descriptorPath = STORAGE . '/update-recovery.json';
+            $temporary = $descriptorPath . '.tmp';
+            $handle = fopen($temporary, 'wb');
+            if ($handle === false) throw new RuntimeException('Unable to create recovery descriptor.');
+            try {
+                if (!chmod($temporary, 0600)) throw new RuntimeException('Unable to protect recovery descriptor.');
+                $json = json_encode($descriptor, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+                if (fwrite($handle, $json) !== strlen($json) || !fflush($handle)) throw new RuntimeException('Unable to save recovery descriptor.');
+            } finally { fclose($handle); }
+            if (!rename($temporary, $descriptorPath)) throw new RuntimeException('Unable to publish recovery descriptor.');
             $this->prunePreUpdateBackups(self::PRE_UPDATE_BACKUP_RETENTION);
         } catch (\Throwable $exception) {
             log_error_details('Pre-update backup failed', [], $exception);
             throw $exception;
         }
+    }
+
+    protected function restorePreservedGitPaths(string $from, string $to, array $manifest): void
+    {
+        $diff = $this->runCommand('git diff --name-only ' . escapeshellarg($from) . ' ' . escapeshellarg($to), ROOT);
+        if ($diff['exit_code'] !== 0) throw new RuntimeException('Unable to enumerate preserved update paths.');
+        $descriptor = json_decode((string)file_get_contents(STORAGE . '/update-recovery.json'), true, 512, JSON_THROW_ON_ERROR);
+        $zip = new \ZipArchive();
+        if ($zip->open($descriptor['files']) !== true) throw new RuntimeException('Unable to open preserved files snapshot.');
+        try {
+            foreach (preg_split('/\R/', trim((string)$diff['stdout'])) ?: [] as $path) {
+                if ($path === '' || !$this->shouldPreservePath($path, $manifest)) continue;
+                if (str_contains($path, '..') || str_starts_with($path, '/')) throw new RuntimeException('Unsafe preserved path.');
+                $target = ROOT . '/' . $path;
+                if ($zip->locateName($path) !== false) {
+                    $stream = $zip->getStream($path);
+                    $this->ensureDirectory(dirname($target));
+                    $parent = realpath(dirname($target));
+                    if ($parent === false || !str_starts_with($parent . '/', realpath(ROOT) . '/') || is_link($target)) throw new RuntimeException('Unsafe preserved destination.');
+                    $temporary = tempnam($parent, '.fbl-preserve-');
+                    $out = fopen($temporary, 'wb');
+                    try {
+                        if (!is_resource($stream) || !is_resource($out) || stream_copy_to_stream($stream, $out) === false || !fflush($out)) throw new RuntimeException('Unable to restore preserved file.');
+                    } finally {
+                        if (is_resource($stream)) fclose($stream);
+                        if (is_resource($out)) fclose($out);
+                    }
+                    chmod($temporary, $path === 'config/config.local.php' ? 0600 : 0644);
+                    if (!rename($temporary, $target)) throw new RuntimeException('Unable to publish preserved file.');
+                } elseif (is_file($target) || is_link($target)) {
+                    if (!unlink($target)) throw new RuntimeException('Unable to preserve absent local path.');
+                }
+            }
+        } finally { $zip->close(); }
     }
 
     protected function createFileBackup(): string
@@ -2124,7 +2160,11 @@ class UpdateCenter
 
         $backupDir = STORAGE . '/backups';
         $this->ensureDirectory($backupDir);
-        $path = $backupDir . '/files-backup-' . date('Y-m-d-H-i') . '.zip';
+        $path = $backupDir . '/files-backup-' . date('Y-m-d-H-i-s') . '-' . bin2hex(random_bytes(6)) . '.zip';
+        $private = fopen($path, 'x+b');
+        if ($private === false) throw new RuntimeException('Unable to reserve backup file.');
+        fclose($private);
+        if (!chmod($path, 0600)) throw new RuntimeException('Unable to protect backup file.');
         $zip = new \ZipArchive();
         if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new RuntimeException('Unable to create the file backup archive.');
@@ -2132,12 +2172,12 @@ class UpdateCenter
 
         $closeAttempted = false;
         try {
-            foreach (['config/config.local.php', 'storage', 'public/uploads', 'uploads', 'themes/custom'] as $relative) {
+            foreach (['app', 'core', 'helpers', 'vendor', 'config', 'database', 'plugins', 'themes', 'public', 'bin', 'storage', 'uploads', 'tmp/error.log', 'tmp/.htaccess', '.htaccess', '.gitattributes', '.gitignore', 'composer.json', 'composer.lock', 'update.json', 'release-plugins.json'] as $relative) {
                 $absolute = ROOT . '/' . $relative;
                 if (!file_exists($absolute)) {
                     continue;
                 }
-                $this->addPathToZip($zip, $absolute, $relative, ['storage/backups']);
+                $this->addPathToZip($zip, $absolute, $relative, ['storage/backups', 'storage/update.lock', 'storage/update.maintenance', 'storage/update-recovery.json', 'storage/plugin-updates', 'storage/update-checks']);
             }
 
             $closeAttempted = true;
@@ -2156,6 +2196,7 @@ class UpdateCenter
             throw $exception;
         }
 
+        if (!chmod($path, 0600)) throw new RuntimeException('Unable to protect file backup.');
         return $path;
     }
 
@@ -2167,6 +2208,8 @@ class UpdateCenter
         }
 
         $keep = max(0, $keep);
+        $recovery = json_decode((string)@file_get_contents(STORAGE . '/update-recovery.json'), true) ?: [];
+        $pinned = array_filter([$recovery['database'] ?? '', $recovery['files'] ?? '']);
         foreach (self::PRE_UPDATE_BACKUP_PATTERNS as $pattern) {
             $files = glob($backupDir . '/' . $pattern) ?: [];
             if (count($files) <= $keep) {
@@ -2179,7 +2222,7 @@ class UpdateCenter
             );
 
             foreach (array_slice($files, $keep) as $file) {
-                if (is_file($file)) {
+                if (is_file($file) && !in_array($file, $pinned, true)) {
                     @unlink($file);
                 }
             }
@@ -2188,6 +2231,7 @@ class UpdateCenter
 
     protected function addPathToZip(\ZipArchive $zip, string $absolute, string $relative, array $excluded = []): void
     {
+        if (is_link($absolute)) throw new RuntimeException('Automatic recovery cannot back up symbolic links: ' . $relative);
         if (is_file($absolute)) {
             if (!$zip->addFile($absolute, $relative)) {
                 throw new RuntimeException('Unable to add file to backup: ' . $relative);
@@ -2209,6 +2253,7 @@ class UpdateCenter
                     continue 2;
                 }
             }
+            if ($item->isLink()) throw new RuntimeException('Automatic recovery cannot back up symbolic links: ' . $local);
             if ($item->isDir()) {
                 if (!$zip->addEmptyDir($local)) {
                     throw new RuntimeException('Unable to add directory to backup: ' . $local);
@@ -2282,10 +2327,16 @@ class UpdateCenter
         cache()->clear();
         SiteSetting::clearPublicCache();
         \FBL\AssetManifest::rebuild();
+        if (function_exists('opcache_reset')) @opcache_reset();
     }
 
     protected function acquireUpdateLock()
     {
+        if (is_resource($GLOBALS['fireball_runtime_lock'] ?? null)) {
+            flock($GLOBALS['fireball_runtime_lock'], LOCK_UN);
+            fclose($GLOBALS['fireball_runtime_lock']);
+            $GLOBALS['fireball_runtime_lock'] = null;
+        }
         $path = STORAGE . '/update.lock';
         $handle = @fopen($path, 'c+');
         if (!is_resource($handle) || !flock($handle, LOCK_EX | LOCK_NB)) {
@@ -2295,12 +2346,16 @@ class UpdateCenter
             throw new RuntimeException('Another CMS update is already running.');
         }
 
-        ftruncate($handle, 0);
-        fwrite($handle, json_encode([
-            'started_at' => date('c'),
-            'pid' => getmypid(),
-        ], JSON_UNESCAPED_SLASHES));
-        fflush($handle);
+        if (is_file(STORAGE . '/update.maintenance')) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+            throw new RuntimeException('A previous update requires recovery before another update can start.');
+        }
+        $payload = json_encode(['started_at' => date('c'), 'pid' => getmypid()], JSON_THROW_ON_ERROR);
+        if (!ftruncate($handle, 0) || fwrite($handle, $payload) !== strlen($payload) || !fflush($handle)) {
+            $this->releaseUpdateLock($handle);
+            throw new RuntimeException('Unable to persist update lock.');
+        }
 
         return $handle;
     }
@@ -2311,20 +2366,21 @@ class UpdateCenter
             flock($handle, LOCK_UN);
             fclose($handle);
         }
-        @unlink(STORAGE . '/update.lock');
     }
 
     protected function enableMaintenanceMode(array $user): void
     {
-        @file_put_contents(STORAGE . '/update.maintenance', json_encode([
+        $written = file_put_contents(STORAGE . '/update.maintenance', json_encode([
             'started_at' => date('c'),
             'user_id' => (int)($user['id'] ?? 0),
         ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+        if ($written === false) throw new RuntimeException('Unable to enable update maintenance.');
     }
 
     protected function disableMaintenanceMode(): void
     {
-        @unlink(STORAGE . '/update.maintenance');
+        $path = STORAGE . '/update.maintenance';
+        if (is_file($path) && !unlink($path)) throw new RuntimeException('Unable to leave update maintenance.');
     }
 
     /**
@@ -2963,6 +3019,7 @@ class UpdateCenter
     protected function shouldIgnoreDirtyFile(string $path): bool
     {
         $normalizedPath = ltrim(str_replace('\\', '/', trim($path)), '/');
+        if ($this->shouldPreservePath($normalizedPath)) return true;
 
         $ignoredExact = [
             '.DS_Store',

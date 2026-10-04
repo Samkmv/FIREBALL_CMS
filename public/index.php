@@ -1,5 +1,7 @@
 <?php
 
+require __DIR__ . '/runtime-gate.php';
+
 $start_framework = microtime(true);
 
 /* I recommend using the phpstorm editor. */

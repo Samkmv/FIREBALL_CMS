@@ -21,6 +21,11 @@ final class StreamController extends BaseController
             return;
         }
 
+        if (!\FBL\RateLimiter::attempt('stream-wake-ip:' . client_ip(), 20, 60)
+            || !\FBL\RateLimiter::attempt('stream-wake-global', 120, 60)) {
+            response()->json(['success' => false, 'ready' => false, 'retryable' => true, 'code' => 'RATE_LIMITED', 'message' => 'Please try again later.'], 429);
+            return;
+        }
         $config = stream_config();
         $rawHlsUrl = request()->post('hls_url', '');
         $hlsUrl = $this->normalizeClientHlsUrl(is_scalar($rawHlsUrl) ? trim((string)$rawHlsUrl) : '');
@@ -49,6 +54,16 @@ final class StreamController extends BaseController
     {
         // Bounded lock slots, kept under the cache's persistent .locks directory.
         // Never unlink a lock inode: other workers may already hold its descriptor.
+        $slot = null;
+        $slotDirectory = rtrim(CACHE, '/\\') . '/.locks';
+        if (!is_dir($slotDirectory)) @mkdir($slotDirectory, 0755, true);
+        for ($index = 0; $index < 8; $index++) {
+            $candidate = @fopen($slotDirectory . '/stream-capacity-' . $index, 'c+');
+            if (is_resource($candidate) && flock($candidate, LOCK_EX | LOCK_NB)) { $slot = $candidate; break; }
+            if (is_resource($candidate)) fclose($candidate);
+        }
+        if ($slot === null) return ['ready' => false, 'state' => 'starting', 'retryable' => true, 'code' => 'BUSY', 'message' => 'Camera readiness is busy'];
+        try {
         $key = hash('sha256', $streamId . '|' . $url);
         $directory = rtrim(CACHE, '/\\') . '/.locks';
         if (!is_dir($directory)) { @mkdir($directory, 0755, true); }
@@ -66,6 +81,7 @@ final class StreamController extends BaseController
             $cached = json_decode((string)stream_get_contents($lock, 4096), true);
             if (is_array($cached) && ($cached['key'] ?? '') === $key
                 && ($cached['expires'] ?? 0) > microtime(true)) {
+                if (isset($cached['result']) && empty($cached['result']['ready'])) return $cached['result'];
                 return ['ready' => true, 'state' => 'ready', 'retryable' => false,
                     'code' => 'READY_CACHED', 'message' => 'HLS is ready'];
             }
@@ -74,16 +90,19 @@ final class StreamController extends BaseController
                 (int)($config['ready_segment_probe_count'] ?? 3));
             rewind($lock);
             ftruncate($lock, 0);
-            if ($ready['ready']) {
-                fwrite($lock, json_encode(['key' => $key,
-                    'expires' => microtime(true) + (int)($config['ready_cache_seconds'] ?? 5)]));
-                fflush($lock);
-            }
-            return $ready + ['state' => $ready['ready'] ? 'ready' : 'failed',
+            $result = $ready + ['state' => $ready['ready'] ? 'ready' : 'failed',
                 'retryable' => !$ready['ready'], 'code' => $ready['ready'] ? 'READY' : 'SEGMENTS_NOT_READY'];
+            fwrite($lock, json_encode(['key' => $key,
+                'expires' => microtime(true) + ($ready['ready'] ? (int)($config['ready_cache_seconds'] ?? 5) : 2), 'result' => $result]));
+            fflush($lock);
+            return $result;
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
+        }
+        } finally {
+            flock($slot, LOCK_UN);
+            fclose($slot);
         }
     }
 

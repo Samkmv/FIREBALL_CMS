@@ -1534,6 +1534,8 @@ return [
     'auth_session_invalidated' => 'Сессия завершена из-за изменения настроек безопасности.',
     'auth_mail_not_configured' => 'Почта на сайте не настроена. Обратитесь к администратору.',
     'auth_two_factor_recovery_link' => 'Нет доступа к приложению 2FA?',
+    'auth_two_factor_recovery_confirm_description' => 'Подтвердите отключение двухфакторной авторизации. После входа настройте её заново.',
+    'auth_two_factor_recovery_confirm_submit' => 'Подтвердить отключение 2FA',
     'auth_two_factor_recovery_title' => 'Восстановление 2FA',
     'auth_two_factor_recovery_heading' => 'Восстановление доступа',
     'auth_two_factor_recovery_subtitle' => 'Мы отправим ссылку для отключения 2FA на email аккаунта.',

@@ -132,7 +132,7 @@ $t = static fn(string $key): string => (string)($translations[$key] ?? $key);
                             'label' => $t('password'),
                             'autocomplete' => 'new-password',
                             'required' => true,
-                            'minlength' => 8,
+                            'minlength' => 12,
                         ]) ?>
                     </div>
                     <div class="col-md-6">
@@ -142,7 +142,7 @@ $t = static fn(string $key): string => (string)($translations[$key] ?? $key);
                             'label' => $t('password_confirm'),
                             'autocomplete' => 'new-password',
                             'required' => true,
-                            'minlength' => 8,
+                            'minlength' => 12,
                         ]) ?>
                     </div>
                 </div>

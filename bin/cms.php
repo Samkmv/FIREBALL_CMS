@@ -5,12 +5,18 @@ if (PHP_SAPI !== 'cli') {
     http_response_code(404);
     exit;
 }
+$command = $argv[1] ?? 'help';
+$cmsStorage = dirname(__DIR__) . '/storage';
+if (is_file($cmsStorage . '/update.maintenance')) { fwrite(STDERR, "Update maintenance is active. Use offline recovery.\n"); exit(1); }
+$GLOBALS['fireball_runtime_lock'] = @fopen($cmsStorage . '/update.lock', 'c+');
+if (!is_resource($GLOBALS['fireball_runtime_lock']) || !flock($GLOBALS['fireball_runtime_lock'], LOCK_SH | LOCK_NB)
+    || is_file($cmsStorage . '/update.maintenance')) { fwrite(STDERR, "Update in progress.\n"); exit(1); }
+define('FIREBALL_CLI', true);
 require dirname(__DIR__) . '/config/config.php';
 require ROOT . '/vendor/autoload.php';
 require HELPERS . '/helpers.php';
 \FBL\PerformanceProfiler::start();
 $app = new \FBL\Application(false);
-$command = $argv[1] ?? 'help';
 try {
     if ($command === 'diagnose') {
         $status = $app->inspectInstallation(true);

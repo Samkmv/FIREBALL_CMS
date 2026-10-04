@@ -15,6 +15,12 @@
     "phpmailer/phpmailer": "^6.9",
     "twbs/bootstrap-icons": "^1.11",
     "geoip2/geoip2": "^3.2",
-    "bacon/bacon-qr-code": "^3.0"
+    "bacon/bacon-qr-code": "^3.0",
+    "ext-pdo_mysql": "*",
+    "ext-dom": "*",
+    "ext-fileinfo": "*",
+    "ext-openssl": "*",
+    "ext-curl": "*",
+    "ext-zip": "*"
   }
 }

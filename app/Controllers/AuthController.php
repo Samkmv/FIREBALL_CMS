@@ -228,13 +228,23 @@ class AuthController extends BaseController
 
     public function resetTwoFactorRecovery()
     {
-        $token = trim((string)request()->get('token', ''));
+        header('Referrer-Policy: no-referrer');
+        header('Cache-Control: no-store');
+        $token = trim((string)(request()->isGet() ? request()->get('token', '') : request()->post('token', '')));
         $recovery = $token !== '' ? $this->users->findActiveTwoFactorRecoveryByToken($token) : false;
         if (!$recovery) {
             session()->setFlash('error', return_translation('auth_two_factor_recovery_invalid_token'));
             response()->redirect(base_href('/login'));
         }
 
+        if (request()->isGet()) {
+            return Theme::render('auth/two_factor_recovery_confirm', [
+                'title' => return_translation('auth_two_factor_recovery_title'),
+                'token' => $token,
+                'seo_robots' => 'noindex,nofollow',
+            ]);
+        }
+        $this->assertValidCsrfToken('/two-factor-recovery/reset?token=' . urlencode($token));
         $resetUser = $this->users->resetTwoFactorByRecoveryToken($token);
         if (!$resetUser) {
             session()->setFlash('error', return_translation('auth_two_factor_recovery_invalid_token'));

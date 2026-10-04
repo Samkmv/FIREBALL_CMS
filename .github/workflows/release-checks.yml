@@ -1,0 +1,54 @@
+name: Release checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.4']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pfixture"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, pdo_sqlite, dom, fileinfo, openssl, curl, zip, mbstring, pcntl
+          tools: composer:v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: composer install --no-interaction --prefer-dist
+      - run: php tools/build-release.php
+      - name: Syntax, PHP, JavaScript, dependencies and isolated MySQL
+        run: php bin/check-release.php --mysql --composer
+        env:
+          FIREBALL_TEST_MYSQL_HOST: 127.0.0.1
+          FIREBALL_TEST_MYSQL_USER: root
+          FIREBALL_TEST_MYSQL_PASSWORD: fixture
+      - name: Install pinned test browsers
+        if: matrix.php == '8.2'
+        run: |
+          npm install --prefix "$RUNNER_TEMP/fireball-browser" playwright@1.48.2
+          "$RUNNER_TEMP/fireball-browser/node_modules/.bin/playwright" install --with-deps chromium firefox
+      - name: Browser scenarios
+        if: matrix.php == '8.2'
+        run: |
+          export FIREBALL_PLAYWRIGHT_MODULE="$RUNNER_TEMP/fireball-browser/node_modules/playwright"
+          export NODE_PATH="$RUNNER_TEMP/fireball-browser/node_modules"
+          php bin/check-release.php --browser

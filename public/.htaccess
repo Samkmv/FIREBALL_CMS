@@ -1,0 +1,13 @@
+Options -Indexes
+<IfModule mod_negotiation.c>
+    Options -MultiViews
+</IfModule>
+RewriteEngine On
+RewriteRule (^|/)\. - [F,L]
+RewriteRule ^(?!index\.php$|theme-asset\.php$).*\.(?:php[0-9]?|phtml|phar)$ - [F,L,NC]
+RewriteRule ^(?:uploads|assets)/.*\.(?:php[0-9]?|phtml|phar)$ - [F,L,NC]
+RewriteRule ^themes/(.+)$ theme-asset.php?path=themes/$1 [QSA,L]
+RewriteRule ^(?:manifest\.webmanifest|service-worker\.js|sw\.js)$ index.php [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]

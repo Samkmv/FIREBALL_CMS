@@ -49,6 +49,15 @@ namespace {
         flock($lock, LOCK_UN); fclose($lock);
         $result = $call('coordinateReadiness', '33-01', $url, $config);
         check($result['ready'] && $result['code'] === 'READY_CACHED', 'warm readiness served without upstream requests');
+        $capacity = [];
+        try {
+            for ($i=0; $i<8; $i++) { $handle=fopen(CACHE . '/.locks/stream-capacity-' . $i, 'c+'); flock($handle, LOCK_EX); $capacity[]=$handle; }
+            $busy = $call('coordinateReadiness', 'capacity', $url, $config);
+            check(!$busy['ready'] && $busy['code'] === 'BUSY', 'all eight occupied slots reject work without upstream requests');
+        } finally { foreach ($capacity as $handle) { flock($handle, LOCK_UN); fclose($handle); } }
+        file_put_contents($lockPath, json_encode(['key' => $key, 'expires' => microtime(true)+5, 'result' => ['ready' => false, 'code' => 'SEGMENTS_NOT_READY']]));
+        $negative = $call('coordinateReadiness', '33-01', $url, $config);
+        check(!$negative['ready'] && $negative['code'] === 'SEGMENTS_NOT_READY', 'negative readiness result is cached without upstream requests');
         if (function_exists('pcntl_fork')) {
             // A real, isolated local HTTP fixture: newest segment absent, previous ready.
             $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);

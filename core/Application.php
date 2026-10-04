@@ -98,23 +98,9 @@ class Application
             return false;
         }
 
-        $lockPath = STORAGE . '/update.lock';
-        $handle = @fopen($lockPath, 'c+');
-        if (!is_resource($handle)) {
-            return true;
-        }
-
-        if (!flock($handle, LOCK_EX | LOCK_NB)) {
-            fclose($handle);
-            return true;
-        }
-
-        flock($handle, LOCK_UN);
-        fclose($handle);
-        @unlink($maintenancePath);
-        @unlink($lockPath);
-
-        return false;
+        // A crashed updater may have committed DDL or only some files. Never
+        // remove maintenance merely because its process no longer holds a lock.
+        return true;
     }
 
     /**

@@ -8,6 +8,7 @@ abstract class AbstractSearchProvider implements SearchProviderInterface
 {
     public function canAccess(SearchDocument $document, array $context = []): bool
     {
-        return $document->status === 'published';
+        return $document->status === 'published'
+            && (!function_exists('apply_filters') || (bool)apply_filters('search_document_access', true, $document, $context));
     }
 }

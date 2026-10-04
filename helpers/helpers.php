@@ -330,6 +330,9 @@ function render_partial(string $name, array $data = []): string
 
 function abort($error = '', $code = 404)
 {
+    if (PHP_SAPI === 'cli' && defined('FIREBALL_CLI') && FIREBALL_CLI) {
+        throw new \RuntimeException((string)$error ?: 'Request failed', (int)$code);
+    }
     if (!is_array(app()->get('lang'))) {
         $routeLocale = null;
         if (MULTILANGS) {
@@ -399,38 +402,17 @@ function base_href($path = ''): string
 function app_base_url(): string
 {
     $configuredUrl = rtrim((string)PATH, '/');
-    $requestOrigin = detect_request_origin();
-
-    if ($configuredUrl === '') {
-        return $requestOrigin;
+    if ($configuredUrl !== '') {
+        return $configuredUrl;
     }
-
-    $configuredHost = strtolower((string)(parse_url($configuredUrl, PHP_URL_HOST) ?? ''));
-    $requestHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
-    $requestHost = explode(':', $requestHost)[0] ?? '';
-    $configuredPath = trim((string)(parse_url($configuredUrl, PHP_URL_PATH) ?? ''), '/');
-
-    if ($requestOrigin !== '' && is_local_host($configuredHost) && $requestHost !== '' && !is_local_host($requestHost)) {
-        return rtrim($requestOrigin . ($configuredPath !== '' ? '/' . $configuredPath : ''), '/');
-    }
-
-    if ($requestOrigin !== '' && $configuredHost !== '' && $requestHost !== '' && $configuredHost !== $requestHost) {
-        return rtrim($requestOrigin . ($configuredPath !== '' ? '/' . $configuredPath : ''), '/');
-    }
-
-    $configuredScheme = strtolower((string)(parse_url($configuredUrl, PHP_URL_SCHEME) ?? ''));
-    $requestScheme = strtolower((string)(parse_url($requestOrigin, PHP_URL_SCHEME) ?? ''));
-    if ($requestOrigin !== '' && $configuredScheme !== '' && $requestScheme !== '' && $configuredScheme !== $requestScheme) {
-        return rtrim($requestOrigin . ($configuredPath !== '' ? '/' . $configuredPath : ''), '/');
-    }
-
-    return $configuredUrl;
+    // Installation may suggest an origin; installed sites must configure PATH.
+    return detect_request_origin();
 }
 
 function detect_request_origin(): string
 {
     $host = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
-    if ($host === '') {
+    if ($host === '' || !preg_match('/^(?:[a-zA-Z0-9.-]+|\[[a-fA-F0-9:]+\])(?::[0-9]{1,5})?$/D', $host)) {
         return '';
     }
 
@@ -452,20 +434,11 @@ function request_is_secure(): bool
         return true;
     }
 
-    $forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0] ?? ''));
-    if ($forwardedProto === 'https') {
-        return true;
-    }
-
-    if (strtolower((string)($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')) === 'on') {
-        return true;
-    }
-
     if (!is_trusted_proxy()) {
         return false;
     }
-
-    return $forwardedProto === 'https';
+    $forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0] ?? ''));
+    return $forwardedProto === 'https' || strtolower((string)($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')) === 'on';
 }
 
 function client_ip(): string
@@ -1179,7 +1152,7 @@ function sanitize_content_html(string $html): string
     }
 
     if (!class_exists(\DOMDocument::class)) {
-        return strip_tags($html, '<p><br><div><span><strong><b><em><i><u><s><blockquote><pre><code><ul><ol><li><h1><h2><h3><h4><h5><h6><a><img><figure><figcaption><table><thead><tbody><tfoot><tr><th><td><hr><audio><video><source>');
+        return htmlspecialchars(strip_tags($html), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     $document = new \DOMDocument('1.0', 'UTF-8');

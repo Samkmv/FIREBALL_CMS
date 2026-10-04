@@ -142,6 +142,11 @@ final class SubscriptionBusinessDb
                     'user_id' => (int)$params[0],
                     'plan_id' => (int)$params[1],
                     'status' => (string)$params[2],
+                    'starts_at' => (string)$params[3],
+                    'ends_at' => (string)$params[4],
+                    'next_billing_at' => $params[6],
+                    'parent_payment_id' => $params[7],
+                    'archived_at' => null,
                     'auto_renew' => (int)$params[5],
                 ];
 

@@ -39,7 +39,7 @@ class Database
                 'Username' => DB_SETTINGS['username'] ?? '',
                 'DSN' => $dsn,
             ], $e);
-            abort('Database connection error!', 500);
+            throw new \RuntimeException('Database connection error!', 500, $e);
         }
 
         PerformanceProfiler::count('pdo_connections');

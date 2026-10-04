@@ -32,6 +32,7 @@ class SearchController extends BaseController
      */
     public function index()
     {
+        header('Cache-Control: private, no-store');
         $query = $this->query();
         $perPage = max(1, (int)PAGINATION_SETTINGS['perPage']);
         $page = max(1, (int)request()->get('page', 1));

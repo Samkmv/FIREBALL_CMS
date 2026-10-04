@@ -5,9 +5,10 @@ declare(strict_types=1);
 require dirname(__DIR__, 3) . '/config/config.php';
 require ROOT . '/vendor/autoload.php';
 require ROOT . '/helpers/helpers.php';
+ini_set('session.save_path', sys_get_temp_dir());
 require dirname(__DIR__) . '/Plugin.php';
 
-$app = new FBL\Application();
+$app = new FBL\Application(false);
 FBL\Language::registerPluginLanguage('vpn-manager-v2', dirname(__DIR__) . '/lang');
 
 use Fireball\VpnManagerV2\Clients\ThreeXuiCapabilities;

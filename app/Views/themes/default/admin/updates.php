@@ -40,9 +40,8 @@ if ($remoteReleaseDescription === '') {
 }
 $statusVariant = 'secondary';
 $statusLabel = return_translation('admin_update_status_unknown');
-$canRollback = $isCreator && $isGitRepo
-    && !empty($updateLocal['git_available'])
-    && trim((string)($updateConfig['rollback_commit'] ?? '')) !== '';
+// Code-only rollback cannot safely reverse database migrations. Use offline recovery.
+$canRollback = false;
 $gitStatusLabel = !$isGitRepo
     ? return_translation('admin_update_git_not_applicable')
     : (!empty($updateLocal['is_update_clean'])

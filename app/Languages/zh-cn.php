@@ -1528,6 +1528,8 @@ return [
     'auth_session_invalidated' => 'The session ended because security settings changed.',
     'auth_mail_not_configured' => 'Site mail is not configured. Contact the administrator.',
     'auth_two_factor_recovery_link' => 'No access to the 2FA app?',
+    'auth_two_factor_recovery_confirm_description' => '请确认关闭双重身份验证。登录后请重新设置。',
+    'auth_two_factor_recovery_confirm_submit' => '确认关闭双重验证',
     'auth_two_factor_recovery_title' => '2FA recovery',
     'auth_two_factor_recovery_heading' => 'Access recovery',
     'auth_two_factor_recovery_subtitle' => 'We will send a link to disable 2FA to the account email.',

@@ -3,3 +3,15 @@
 
 # Generated upstream bundles contain significant whitespace in template literals.
 public/assets/default/vendor/monaco-0.55.1/* -whitespace linguist-vendored
+
+# Never distribute local runtime data, editor backups or development fixtures.
+tmp export-ignore
+storage/schema-manifest.json export-ignore
+**/*.bak-* export-ignore
+tests export-ignore
+docs export-ignore
+tools export-ignore
+dist export-ignore
+.github export-ignore
+**/*.bak export-ignore
+bin/check-release.php export-ignore

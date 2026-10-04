@@ -147,7 +147,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.4.10', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.5.1', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
@@ -417,8 +417,14 @@ parse_str((string)parse_url($gateway->checkoutUrl($recurringOrder, ['name' => 'T
 assertSameValue('true', $recurringQuery['Recurring'] ?? '', 'A recurring plan with explicit consent must register recurring billing without a second global switch');
 assertSameValue('BankCard', $recurringQuery['IncCurrLabel'] ?? '', 'A recurring parent checkout must use a bank card');
 $recurringOrder['consent_snapshot'] = json_encode(['recurring' => true, 'auto_renew' => false]);
-parse_str((string)parse_url($gateway->checkoutUrl($recurringOrder, ['name' => 'Test plan', 'is_recurring' => 1], ['email' => 'buyer@example.test']), PHP_URL_QUERY), $manualQuery);
-assertTrueValue(!isset($manualQuery['Recurring']), 'Manual checkout must not register recurring billing');
+try {
+    $gateway->checkoutUrl($recurringOrder, ['name' => 'Test plan', 'is_recurring' => 1], ['email' => 'buyer@example.test']);
+    throw new RuntimeException('An auto-renewing tariff must require explicit consent.');
+} catch (RuntimeException $exception) {
+    assertSameValue('subscriptions_error_recurring_consent', $exception->getMessage(), 'An auto-renewing tariff cannot silently become a one-time payment');
+}
+parse_str((string)parse_url($gateway->checkoutUrl($recurringOrder, ['name' => 'Test plan', 'is_recurring' => 0], ['email' => 'buyer@example.test']), PHP_URL_QUERY), $manualQuery);
+assertTrueValue(!isset($manualQuery['Recurring']), 'A non-recurring tariff must not register recurring billing');
 
 $callback = [
     'OutSum' => '100.50',
@@ -617,7 +623,7 @@ assertTrueValue(
 );
 assertTrueValue(
     str_contains($adminControllerSource, 'beginTransaction()')
-    && str_contains($adminControllerSource, 'Robokassa settings save failed')
+    && str_contains($adminControllerSource, 'Subscription settings save failed')
     && str_contains($settingsTemplate, 'subscriptions_settings_credentials_ready')
     && str_contains($settingsTemplate, 'subscriptions_payment_mode_live')
     && str_contains($settingsTemplate, 'IsTest='),
@@ -749,8 +755,8 @@ assertTrueValue(
 
 $accountTemplate = (string)file_get_contents(__DIR__ . '/../views/public/account.php');
 assertTrueValue(
-    str_contains($accountTemplate, "renderPartial('admin/partials/table'")
-    && str_contains($accountTemplate, "renderPartial('admin/partials/table_footer'")
+    str_contains($accountTemplate, "render_partial('plugins/subscriptions/table'")
+    && str_contains($accountTemplate, "render_partial('plugins/subscriptions/table_footer'")
     && str_contains($accountTemplate, "'mobile_cards' => \$paymentCards")
     && !str_contains($accountTemplate, '<table'),
     'Public payment history must use the template mobile-card table component'

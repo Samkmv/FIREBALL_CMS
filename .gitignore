@@ -33,3 +33,15 @@ storage/chat-media/*
 storage/asset-manifest.json
 storage/asset-manifest.lock
 storage/.assets-*
+
+# Local schema inspection, update locks and editor backups.
+storage/schema-manifest.json
+storage/update.lock
+storage/install.lock
+storage/update.maintenance
+storage/update-recovery.json*
+*.bak-*
+*.bak
+
+# Locally built engine release artifacts.
+dist/fireball-cms-*.zip*

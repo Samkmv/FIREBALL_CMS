@@ -331,6 +331,7 @@ final class PluginUpdateService extends UpdateCenter
         $oldMoved = false;
         $swapped = false;
         $committed = false;
+        $migrationStarted = false;
         $backupFile = '';
         $fromVersion = (string)($localMetadata['version'] ?? $plugin['version'] ?? '0.0.0');
 
@@ -384,6 +385,7 @@ final class PluginUpdateService extends UpdateCenter
             $this->assertRequirements($packageMetadata);
             $this->assertNoLinks($packagePath);
 
+            $this->createPreUpdateBackups();
             $backupFile = $this->createPluginBackup($targetPath, $slug, $fromVersion);
             $identifier = bin2hex(random_bytes(8));
             $stagePath = $this->pluginsPath . '/.' . $slug . '.update-' . $identifier;
@@ -404,6 +406,7 @@ final class PluginUpdateService extends UpdateCenter
             }
             $swapped = true;
 
+            $migrationStarted = true;
             $installedMetadata = $this->pluginManager->completeUpdate($slug);
             if ((string)($installedMetadata['version'] ?? '') !== $remoteVersion) {
                 throw new RuntimeException(return_translation('admin_plugin_updates_package_mismatch'));
@@ -491,11 +494,12 @@ final class PluginUpdateService extends UpdateCenter
             if ($workspace !== '' && is_dir($workspace)) {
                 $this->deleteDirectory($workspace);
             }
-            if ($maintenanceOwned) {
-                $this->disableMaintenanceMode();
-            }
-            if ($lock !== null) {
-                $this->releaseUpdateLock($lock);
+            try {
+                if ($maintenanceOwned && ($committed || (!$migrationStarted && !$swapped && !$oldMoved))) {
+                    $this->disableMaintenanceMode();
+                }
+            } finally {
+                if ($lock !== null) $this->releaseUpdateLock($lock);
             }
             if ($backupFile !== '') {
                 $this->pruneBackups($slug);
