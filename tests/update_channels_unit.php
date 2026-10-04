@@ -59,6 +59,7 @@ namespace {
     $fixtureLocalVersion = '1.0.0';
     $fixtureRequests = [];
     $fixtureFailure = false;
+    $fixtureRateLimit = null;
     $fixtureMainVersion = '1.3.0-beta.1';
     $fixturePost = null;
     $fixtureSession = [];
@@ -66,7 +67,8 @@ namespace {
     $fixtureLatest = ['tag_name' => 'v1.1.0', 'name' => 'Stable release', 'published_at' => '2026-10-01T12:00:00Z', 'draft' => false, 'prerelease' => false];
     $fixtureReleases = [
         ['tag_name' => 'v9.0.0', 'name' => 'Private draft', 'published_at' => '2026-10-03T12:00:00Z', 'draft' => true],
-        ['tag_name' => 'v1.2.0-beta.2', 'name' => 'New beta', 'published_at' => '2026-10-02T12:00:00Z', 'prerelease' => true],
+        ['tag_name' => 'v1.2.0-beta.2', 'name' => 'New beta', 'published_at' => '2026-10-02T12:00:00Z', 'prerelease' => true,
+            'assets' => [['name' => 'fireball.zip', 'browser_download_url' => 'https://github.com/fixture/repo/releases/download/v1.2.0-beta.2/fireball.zip']]],
         $fixtureLatest,
         ['tag_name' => 'v1.1.0-beta.9', 'name' => 'Old beta', 'published_at' => '2026-10-03T13:00:00Z', 'prerelease' => true],
     ];
@@ -107,6 +109,9 @@ namespace {
     function view(): object { return new class { public function renderPartial(string $name, array $data = []): string { return $name === 'admin/shell_open' ? '<main>' : ($name === 'admin/shell_close' ? '</main>' : ''); } }; }
     function fixtureHttp(string $url): array {
         $GLOBALS['fixtureRequests'][] = $url;
+        if ($GLOBALS['fixtureRateLimit'] !== null && str_contains($url, $GLOBALS['fixtureRateLimit'])) {
+            return ['status_code' => 403, 'body' => '{"message":"API rate limit exceeded for shared hosting IP."}'];
+        }
         if ($GLOBALS['fixtureFailure']) return ['status_code' => 503, 'body' => '{"message":"Unavailable"}'];
         if (str_ends_with($url, '/releases/latest')) return ['status_code' => $GLOBALS['fixtureLatest'] === null ? 404 : 200, 'body' => json_encode($GLOBALS['fixtureLatest'])];
         if (str_contains($url, '/releases?')) {
@@ -154,16 +159,28 @@ namespace {
         protected function loadRemoteGitManifest(string $branch): array { return []; }
         protected function validateUpdateManifest(array $manifest, ?string $packageRoot = null): void {}
         protected function refreshLastCheckAfterUpdate(): void { $this->checkForUpdates(); }
-        protected function runStableReleaseGitUpdate(string $repo, string $branch, string $token = ''): array { return ['release' => $this->fetchUpdateRelease($repo, $token)]; }
-        protected function runStableReleaseUpdate(string $repo, string $token = ''): array { return ['release' => $this->fetchUpdateRelease($repo, $token)]; }
+        protected function runStableReleaseGitUpdate(string $repo, string $branch, string $token = ''): array { return ['release' => $this->resolveReleaseForInstallation($repo, $token)]; }
+        protected function runStableReleaseUpdate(string $repo, string $token = ''): array { return ['release' => $this->resolveReleaseForInstallation($repo, $token)]; }
         public function installDecision(): array { return $this->performUpdate(); } // dispatch only, installation replaced above
         public function holdLock(): mixed { return $this->acquireAutomaticCheckLock('core-' . $this->resolveUpdateChannel($this->siteSettings->all())); }
         public function unlock(mixed $handle): void { $this->releaseAutomaticCheckLock($handle); }
+    }
+    class FixtureDownloadReached extends RuntimeException {}
+    class CachedReleaseDownloadFixture extends CoreUpdateFixture {
+        public string $downloadUrl = '';
+        protected function downloadFile(string $url, string $destination, array $headers = []): void {
+            $this->downloadUrl = $url;
+            $this->assertGithubTransferUrl($url);
+            throw new FixtureDownloadReached('Reached the verified release asset; no live download');
+        }
     }
     $fixtureTranslations = require ROOT . '/app/Languages/ru.php';
     $core = new CoreUpdateFixture();
     $checks = 0;
     function expect(bool $value, string $message): void { $GLOBALS['checks']++; if (!$value) throw new RuntimeException($message); }
+    $rateLimitDetection = new ReflectionMethod(\App\Services\UpdateCenter::class, 'isGithubRateLimitResponse');
+    expect($rateLimitDetection->invoke($core, 429, null), 'HTTP 429 is recognized even without a JSON rate-limit message');
+    expect(!$rateLimitDetection->invoke($core, 401, ['message' => 'Bad credentials']), 'Authentication failure is not mistaken for a rate limit');
     $creator = $core->checkForUpdatesIfStale();
     expect($creator['channel'] === 'beta' && $creator['remote_version'] === 'v1.2.0-beta.2', 'Creator checks both releases and beta, excludes draft and old beta');
     $count = count($fixtureRequests);
@@ -178,6 +195,63 @@ namespace {
     $fixtureRole = 'creator';
     $fixtureSettings['update_channel'] = 'beta';
     expect($core->getLastCheckPayload()['remote_version'] === $creator['remote_version'], 'Switching back retrieves independent creator cache');
+    // The update button installs the verified candidate without a second release API lookup.
+    $cachedSettings = $fixtureSettings;
+    $fixtureRateLimit = '/releases'; $fixtureRequests = [];
+    foreach ([false, true] as $git) {
+        $core->git = $git;
+        expect($core->installDecision()['release']['tag_name'] === 'v1.2.0-beta.2', 'Creator can install a fresh verified beta when GitHub release API is limited');
+        $fixtureRole = 'admin';
+        expect($core->installDecision()['release']['tag_name'] === 'v1.1.0', 'Admin installs only its independently verified stable candidate during API limit');
+        $fixtureRole = 'creator';
+    }
+    expect($fixtureRequests === [], 'Fresh Git and ZIP install selection makes no release API requests');
+    $probe = new CachedReleaseDownloadFixture();
+    try {
+        (new ReflectionMethod(\App\Services\UpdateCenter::class, 'runStableReleaseUpdate'))->invoke($probe, 'fixture/repo');
+        throw new RuntimeException('Expected isolated download boundary');
+    } catch (FixtureDownloadReached) {}
+    expect($probe->downloadUrl === 'https://github.com/fixture/repo/releases/download/v1.2.0-beta.2/fireball.zip' && $fixtureRequests === [], 'Real ZIP installation reaches verified public asset without repeating release API lookup');
+    foreach (['prerelease_flag', 'beta_tag'] as $betaCache) {
+        $fixtureSettings = $cachedSettings; $fixtureRole = 'admin';
+        $payload = json_decode($fixtureSettings['updater_last_check_payload_stable'], true);
+        if ($betaCache === 'prerelease_flag') $payload['release']['prerelease'] = true;
+        else $payload['release']['tag_name'] = 'v1.1.0-beta.1';
+        $fixtureSettings['updater_last_check_payload_stable'] = json_encode($payload);
+        $fixtureSettings['updater_last_check_payload'] = json_encode($payload);
+        try { $core->installDecision(); throw new RuntimeException('Admin must reject cached beta'); }
+        catch (RuntimeException $error) { expect($error->getMessage() === return_translation('admin_update_github_rate_limit'), 'Admin rejects cached ' . $betaCache . ' and rechecks stable'); }
+    }
+    $fixtureRole = 'creator';
+    foreach (['expired', 'future', 'failed', 'other_repo', 'other_version', 'draft', 'unpublished', 'other_channel', 'invalid_version'] as $invalidCache) {
+        $fixtureSettings = $cachedSettings;
+        foreach (['updater_last_check_payload', 'updater_last_check_payload_beta'] as $key) {
+            $payload = json_decode($fixtureSettings[$key], true);
+            switch ($invalidCache) {
+                case 'expired': $payload['checked_at'] = date('Y-m-d H:i:s', time() - 21601); break;
+                case 'future': $payload['checked_at'] = date('Y-m-d H:i:s', time() + 60); break;
+                case 'failed': $payload['status'] = 'error'; break;
+                case 'other_repo': $payload['repository'] = 'other/repo'; break;
+                case 'other_version': $payload['local_version'] = '0.9.0'; break;
+                case 'draft': $payload['release']['draft'] = true; break;
+                case 'unpublished': $payload['release']['published_at'] = ''; break;
+                case 'other_channel': $payload['channel'] = 'dev'; break;
+                case 'invalid_version': $payload['release']['tag_name'] = 'latest'; break;
+            }
+            $fixtureSettings[$key] = json_encode($payload);
+        }
+        try { $core->installDecision(); throw new RuntimeException('Unsafe cache must not be used: ' . $invalidCache); }
+        catch (RuntimeException $error) { expect($error->getMessage() === return_translation('admin_update_github_rate_limit'), $invalidCache . ' cache forces a fresh check and a clear rate-limit error'); }
+    }
+    $fixtureSettings = $cachedSettings;
+    try { $core->checkForUpdates(); throw new RuntimeException('Expected manual check failure'); }
+    catch (RuntimeException $error) { expect($error->getMessage() === return_translation('admin_update_github_rate_limit'), 'Manual check reports translated API limit instead of raw shared IP message'); }
+    expect($core->getLastCheckPayload()['status'] === 'error', 'A failed fresh check is not presented as a successful check');
+    $fixtureSettings = $cachedSettings; $fixtureRateLimit = '/releases?';
+    try { $core->checkForUpdates(); throw new RuntimeException('Expected beta list failure'); }
+    catch (RuntimeException $error) { expect($error->getMessage() === return_translation('admin_update_github_rate_limit'), 'Beta release pagination handles API limit clearly'); }
+    $fixtureSettings = $cachedSettings; $fixtureRateLimit = null; $fixtureRequests = [];
+    $core->git = false;
     $fixtureLocalVersion = '1.2.0-beta.2'; $core = new CoreUpdateFixture();
     expect(empty($core->checkForUpdatesIfStale()['update_available']), 'Installing the beta invalidates cache without offering downgrade');
     $fixtureReleases[] = ['tag_name' => 'v1.2.0', 'name' => 'Final version', 'published_at' => '2026-10-03T14:00:00Z'];
@@ -322,6 +396,7 @@ namespace {
             expect($update_center['config']['channel'] === ($role === 'creator' ? $channel : 'stable'), 'Dashboard checks selected creator source or stable for admin');
             ob_start(); require ROOT . '/app/Views/themes/default/admin/updates.php'; $html = ob_get_clean();
             expect(!str_contains($html, 'admin_update_channel_beta') && !str_contains($html, 'admin_update_role_policy'), "$locale/$role uses translated role labels");
+            expect(return_translation('admin_update_github_rate_limit') !== 'admin_update_github_rate_limit', "$locale has a translated GitHub rate-limit explanation");
             expect(str_contains($html, 'name="update_channel"') === ($role === 'creator'), 'Only creator can choose update channel');
             if ($role === 'creator') expect(str_contains($html, 'value="' . $channel . '" selected') && str_contains($html, 'value="dev"') && str_contains($html, 'value="beta"') && !str_contains($html, '<option value="stable"'), 'Creator has exactly release/beta and main options with saved selection');
         }

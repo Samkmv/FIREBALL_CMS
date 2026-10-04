@@ -631,7 +631,7 @@ class UpdateCenter
      */
     protected function runStableReleaseGitUpdate(string $repository, string $branch, string $token = ''): array
     {
-        $release = $this->fetchUpdateRelease($repository, $token);
+        $release = $this->resolveReleaseForInstallation($repository, $token);
         if ($release === null) {
             throw new RuntimeException(return_translation('admin_update_no_releases'));
         }
@@ -754,7 +754,7 @@ class UpdateCenter
      */
     protected function runStableReleaseUpdate(string $repository, string $token = ''): array
     {
-        $release = $this->fetchUpdateRelease($repository, $token);
+        $release = $this->resolveReleaseForInstallation($repository, $token);
         if ($release === null) {
             throw new RuntimeException(return_translation('admin_update_no_releases'));
         }
@@ -927,6 +927,9 @@ class UpdateCenter
             $this->buildGithubHeaders($token)
         );
         $payload = json_decode($response['body'], true);
+        if ($this->isGithubRateLimitResponse($response['status_code'], $payload)) {
+            throw new RuntimeException(return_translation('admin_update_github_rate_limit'));
+        }
 
         if ($response['status_code'] === 404) {
             return null;
@@ -967,6 +970,9 @@ class UpdateCenter
                 $this->buildGithubHeaders($token)
             );
             $releases = json_decode($response['body'], true);
+            if ($this->isGithubRateLimitResponse($response['status_code'], $releases)) {
+                throw new RuntimeException(return_translation('admin_update_github_rate_limit'));
+            }
             if ($response['status_code'] < 200 || $response['status_code'] >= 300
                 || !is_array($releases) || !array_is_list($releases)) {
                 throw new RuntimeException(return_translation('admin_update_release_fetch_failed'));
@@ -996,6 +1002,30 @@ class UpdateCenter
             if (count($releases) < 100) break;
         }
         return $best;
+    }
+
+    /** Install the published candidate already shown to the user, while its check is fresh. */
+    protected function resolveReleaseForInstallation(string $repository, string $token = ''): ?array
+    {
+        $settings = $this->siteSettings->all();
+        $channel = $this->resolveUpdateChannel($settings);
+        $cached = $this->lastCheckForChannel($settings);
+        $checkedAt = strtotime((string)($cached['checked_at'] ?? ''));
+        $release = $cached['release'] ?? null;
+        if ($channel !== 'dev' && ($cached['status'] ?? '') === 'ok'
+            && ($cached['repository'] ?? '') === $repository
+            && ($cached['local_version'] ?? '') === ($this->engineRelease['version'] ?? '')
+            && $checkedAt !== false && $checkedAt <= time()
+            && time() - $checkedAt < self::AUTO_CHECK_INTERVAL_SECONDS
+            && is_array($release) && empty($release['draft'])
+            && trim((string)($release['published_at'] ?? '')) !== ''
+            && trim((string)($release['tag_name'] ?? '')) !== ''
+            && $this->isSemanticVersion($this->normalizeComparableVersion($this->extractReleaseVersion($release)))
+            && ($channel === 'beta' || (empty($release['prerelease']) && !$this->isPrereleaseVersion($this->extractReleaseVersion($release))))) {
+            return $release;
+        }
+
+        return $this->fetchUpdateRelease($repository, $token);
     }
 
     protected function isPrereleaseVersion(string $version): bool
@@ -1371,7 +1401,7 @@ class UpdateCenter
 
         $message = is_array($payload) ? mb_strtolower((string)($payload['message'] ?? '')) : '';
 
-        return str_contains($message, 'rate limit');
+        return $statusCode === 429 || str_contains($message, 'rate limit');
     }
 
     /**
