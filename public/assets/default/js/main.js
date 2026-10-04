@@ -1327,16 +1327,16 @@ $(function(){
         const renderItems = (items, emptyText) => {
             if (!items.length) {
                 results.html(
-                    `<div class="search-suggest-menu bg-body border rounded-4 shadow-sm p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
+                    `<div class="search-suggest-menu p-3 text-body-secondary fs-sm">${escapeHtml(emptyText)}</div>`
                 ).removeClass('d-none');
                 return;
             }
 
-            let html = '<div class="search-suggest-menu bg-body border rounded-4 shadow-sm">';
+            let html = '<div class="search-suggest-menu">';
 
             items.forEach((item) => {
                 html += `
-                    <a class="search-suggest-menu__item d-block w-100 text-decoration-none text-reset px-3 py-2 border-bottom" href="${escapeHtml(item.url)}">
+                    <a class="search-suggest-menu__item d-block w-100 text-decoration-none text-reset px-3 py-2" href="${escapeHtml(item.url)}">
                         <div class="search-suggest-menu__meta d-flex align-items-start justify-content-between flex-wrap gap-1 gap-sm-3 mb-1">
                             <div class="fs-xs text-body-tertiary text-uppercase">${escapeHtml(item.type_label)}</div>
                             <div class="fs-xs text-body-tertiary text-sm-end">${escapeHtml(item.meta)}</div>

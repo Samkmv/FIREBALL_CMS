@@ -182,6 +182,23 @@ body:not(.fb-admin-body) #categoriesMenu .dropdown-menu {
     }
 }
 
+/* Reference navbar proportions, without squeezing controls or long site names. */
+.public-navbar-search {
+    flex: 1 1 0%;
+    min-width: 0;
+}
+
+.public-navbar-actions,
+.public-navbar-categories {
+    flex-shrink: 0;
+}
+
+.public-navbar-category-list {
+    max-height: min(600px, calc(100dvh - 10rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
 .site-brand {
     display: inline-flex;
     min-width: 0;
@@ -210,6 +227,7 @@ body:not(.fb-admin-body) #categoriesMenu .dropdown-menu {
 
 @media (max-width: 575.98px) {
     .site-brand {
+        flex-shrink: 1;
         max-width: min(11.5rem, 48vw);
     }
 
@@ -218,13 +236,11 @@ body:not(.fb-admin-body) #categoriesMenu .dropdown-menu {
         height: 2.25rem;
         flex-basis: 2.25rem;
     }
-
-    .site-brand__title {
-        max-width: min(9rem, 32vw);
-    }
 }
 
 html {
+    /* Match the root canvas to the theme, including Safari's viewport edges. */
+    background-color: var(--cz-body-bg, #fff);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
 }
@@ -371,6 +387,9 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
 }
 
 .search-suggest-menu {
+    background: var(--cz-body-bg);
+    border: 1px solid var(--cz-border-color);
+    border-radius: 1.5rem;
     max-height: min(24rem, calc(100dvh - 8rem));
     overflow-x: hidden;
     overflow-y: auto !important;
@@ -378,8 +397,13 @@ form[data-post-form] .choices:has(select[data-select-clear="false"]) .choices__b
     -webkit-overflow-scrolling: touch;
 }
 
-.search-suggest-menu__item:last-child {
-    border-bottom: 0 !important;
+.search-suggest-menu__item {
+    border-radius: 0;
+    transition: background-color .15s ease;
+}
+
+.search-suggest-menu__item + .search-suggest-menu__item {
+    border-top: 1px solid var(--cz-border-color);
 }
 
 .search-suggest-menu__item,
@@ -6326,10 +6350,8 @@ body:not(.fb-admin-body) .fb-search-panel {
     backdrop-filter: saturate(180%) blur(24px);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 16px 44px rgba(15, 23, 42, .08);
 }
-body:not(.fb-admin-body) .search-suggest-menu { padding: .4rem; }
-body:not(.fb-admin-body) .search-suggest-menu__item {
-    border-radius: 1.1rem;
-    transition: background-color .15s ease;
+body:not(.fb-admin-body) .search-suggest-menu {
+    background: rgba(255, 255, 255, .78);
 }
 body:not(.fb-admin-body) .search-suggest-menu__item:hover,
 body:not(.fb-admin-body) .search-suggest-menu__item:focus-visible,
@@ -6356,6 +6378,9 @@ body:not(.fb-admin-body) .fb-search-open:focus-visible {
     background: rgba(24, 29, 37, .86);
     border-color: rgba(255, 255, 255, .12);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 16px 44px rgba(0, 0, 0, .22);
+}
+[data-bs-theme="dark"] body:not(.fb-admin-body) .search-suggest-menu {
+    background: rgba(24, 29, 37, .78);
 }
 [data-bs-theme="dark"] .fb-search-type,
 [data-bs-theme="dark"] .fb-search-open,

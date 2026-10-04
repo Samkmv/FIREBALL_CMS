@@ -410,7 +410,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
 </div>
 
-<header class="navbar navbar-expand navbar-sticky sticky-top d-block bg-body z-fixed py-1 py-lg-0 py-xl-1 px-0" data-sticky-element="">
+<header class="navbar public-navbar navbar-expand navbar-sticky sticky-top d-block bg-body z-fixed py-1 py-lg-0 py-xl-1 px-0" data-sticky-element="">
     <div class="container justify-content-start py-2 py-lg-3">
 
         <!-- Offcanvas menu toggler (Hamburger) -->
@@ -424,7 +424,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
         </a>
 
         <!-- Categories dropdown visible on screens > 991px wide (lg breakpoint) -->
-        <div class="dropdown d-none d-lg-block w-100 me-4" style="max-width: 240px">
+        <div class="dropdown public-navbar-categories d-none d-lg-block w-100 me-4" style="max-width: 200px">
             <button type="button" class="btn btn-lg btn-secondary w-100 border-0 rounded-pill" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <i class="ci-grid fs-lg me-2 ms-n1"></i>
                 <?= print_translation('tpl_menu_btn_catalog') ?>
@@ -432,7 +432,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
             </button>
 
             <div class="dropdown-menu rounded-4 p-4" style="--cz-dropdown-spacer: .75rem; min-width: 280px;">
-                <div class="d-flex flex-column gap-2" style="max-height: 600px; overflow: auto;">
+                <div class="d-flex flex-column gap-2 public-navbar-category-list">
                     <a class="nav-link animate-underline d-flex justify-content-between gap-3 p-0 <?= $currentPostCategorySlug === '' ? 'fw-semibold' : '' ?>" href="<?= $postCategoryUrl() ?>">
                         <span class="animate-target"><?= print_translation('tpl_menu_all_posts') ?></span>
                     </a>
@@ -448,25 +448,25 @@ $postCategoryUrl = static function (?string $slug = null): string {
         </div>
 
         <!-- Search bar visible on screens > 768px wide (md breakpoint) -->
-        <form action="<?= base_href('/search') ?>" method="get" class="position-relative w-100 d-none d-md-block me-3 me-xl-4" data-search-suggest data-suggest-url="<?= base_href('/search/suggest') ?>">
+        <form action="<?= base_href('/search') ?>" method="get" class="public-navbar-search position-relative w-100 d-none d-md-block me-3 me-xl-4" data-search-suggest data-suggest-url="<?= base_href('/search/suggest') ?>">
             <input
                 type="search"
                 name="q"
                 value="<?= htmlSC((string)request()->get('q', '')) ?>"
                 class="form-control form-control-lg rounded-pill"
                 placeholder="<?= print_translation('tpl_menu_search') ?>"
-                aria-label="Search"
+                aria-label="<?= htmlSC(return_translation('tpl_menu_search')) ?>"
                 autocomplete="off"
                 data-search-suggest-input
             >
-            <button type="submit" class="btn btn-icon btn-ghost fs-lg btn-secondary text-bo border-0 position-absolute top-0 end-0 rounded-circle mt-1 me-1" aria-label="Search button">
+            <button type="submit" class="btn btn-icon btn-ghost fs-lg btn-secondary text-bo border-0 position-absolute top-0 end-0 rounded-circle mt-1 me-1" aria-label="<?= htmlSC(return_translation('tpl_menu_search')) ?>">
                 <i class="ci-search"></i>
             </button>
             <div class="position-absolute top-100 start-0 end-0 mt-2 d-none z-3" data-search-suggest-results></div>
         </form>
 
         <!-- Button group -->
-        <div class="d-flex align-items-center gap-md-1 gap-lg-2 ms-auto">
+        <div class="public-navbar-actions d-flex align-items-center gap-md-1 gap-lg-2 ms-auto">
 
             <!-- Theme switcher (light/dark/auto) -->
             <div class="dropdown">
@@ -506,6 +506,11 @@ $postCategoryUrl = static function (?string $slug = null): string {
                 </ul>
             </div>
 
+            <!-- Search toggle button visible on screens < 768px wide (md breakpoint) -->
+            <button type="button" class="btn btn-icon fs-xl btn-outline-secondary border-0 rounded-circle animate-shake d-md-none" data-bs-toggle="collapse" data-bs-target="#searchBar" aria-controls="searchBar" aria-label="Toggle search bar">
+                <i class="ci-search animate-target"></i>
+            </button>
+
             <!-- Language switcher -->
             <?php if (MULTILANGS): ?>
 
@@ -531,11 +536,6 @@ $postCategoryUrl = static function (?string $slug = null): string {
                 </div>
 
             <?php endif; ?>
-
-            <!-- Search toggle button visible on screens < 768px wide (md breakpoint) -->
-            <button type="button" class="btn btn-icon fs-xl btn-outline-secondary border-0 rounded-circle animate-scale d-md-none" data-bs-toggle="collapse" data-bs-target="#searchBar" aria-controls="searchBar" aria-label="Toggle search bar">
-                <i class="ci-search animate-target"></i>
-            </button>
 
             <?php if (check_auth()): ?>
                 <div
@@ -585,7 +585,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
             <!-- Account button visible on screens > 768px wide (md breakpoint) -->
             <div class="dropdown d-none d-md-block">
-                <button type="button" class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle animate-scale position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+                <button type="button" class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle animate-shake position-relative" data-bs-toggle="dropdown" aria-expanded="false">
                     <?php if (check_auth()): ?>
                         <span class="d-block w-100 h-100 rounded-circle overflow-hidden">
                             <img
@@ -682,6 +682,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
                     value="<?= htmlSC((string)request()->get('q', '')) ?>"
                     class="form-control form-icon-start rounded-pill"
                     placeholder="<?= print_translation('tpl_menu_search') ?>"
+                    aria-label="<?= htmlSC(return_translation('tpl_menu_search')) ?>"
                     autocomplete="off"
                     data-search-suggest-input
                 >
