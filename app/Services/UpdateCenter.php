@@ -2405,9 +2405,11 @@ class UpdateCenter
 
     protected function enableMaintenanceMode(array $user): void
     {
+        $siteTitle = trim((string)($this->siteSettings->all()['site_title'] ?? (defined('SITE_NAME') ? SITE_NAME : 'FIREBALL CMS')));
         $written = file_put_contents(STORAGE . '/update.maintenance', json_encode([
             'started_at' => date('c'),
             'user_id' => (int)($user['id'] ?? 0),
+            'site_title' => mb_substr($siteTitle, 0, 255),
         ], JSON_UNESCAPED_SLASHES), LOCK_EX);
         if ($written === false) throw new RuntimeException('Unable to enable update maintenance.');
     }
