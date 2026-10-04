@@ -73,17 +73,17 @@ $summaryCards = [
             $hasErrors = $errors !== null && (int)$errors > 0;
             ?>
             <div class="col-12 col-sm-6 col-xl-3">
-                <a class="fb-card fb-stat-card fb-vpn-stat-card is-<?= htmlSC($tone) ?><?= $hasErrors ? ' has-errors' : '' ?> rounded-5 p-3 p-md-4 h-100"
+                <a class="fb-card fb-stat-card fb-vpn-stat-card is-<?= htmlSC($tone) ?><?= $hasErrors ? ' has-errors' : '' ?> rounded-5 p-3 p-md-4 h-100 d-flex flex-column align-items-stretch gap-0 text-reset text-decoration-none"
                    href="<?= htmlSC(base_href($href)) ?>">
-                    <div class="d-flex align-items-center justify-content-between gap-2">
-                        <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t($labelKey)) ?></div>
-                        <span class="fb-stat-icon rounded-circle">
+                    <div class="d-flex align-items-center justify-content-between gap-2 w-100">
+                        <div class="small text-body-secondary text-break min-w-0"><?= htmlSC(FireballPluginVpnManagerV2::t($labelKey)) ?></div>
+                        <span class="fb-stat-icon rounded-circle flex-shrink-0">
                             <i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i>
                         </span>
                     </div>
-                    <div class="d-flex align-items-end gap-2 mt-2">
+                    <div class="d-flex flex-wrap align-items-end gap-2 mt-2 w-100">
                         <span class="display-6 fw-semibold lh-1"><?= htmlSC($metric($item['active'] ?? null)) ?></span>
-                        <span class="text-body-secondary mb-1">/ <?= htmlSC($metric($item['total'] ?? null)) ?></span>
+                        <span class="text-body-secondary text-nowrap mb-1">/ <?= htmlSC($metric($item['total'] ?? null)) ?></span>
                     </div>
                     <div class="small mt-2 <?= $hasErrors ? 'text-warning' : 'text-body-secondary' ?>">
                         <?php if ($errors !== null): ?>

@@ -147,8 +147,14 @@ class UpdateCenter
                 $branchState = $this->getBranchStateFromGit($branch);
                 $gitUpdateAvailable = in_array((string)($branchState['status'] ?? 'unknown'), ['behind', 'no_local_commit'], true);
 
-                $release = $this->tryFetchLatestRelease($repository, (string)($settings['updater_github_token'] ?? ''), $branch);
-                $remoteVersion = $this->resolveRemoteVersion($release, $branch, (string)($branchState['remote_commit_hash'] ?? ''));
+                $versionResult = $this->runCommand('git show ' . escapeshellarg('origin/' . $branch . ':config/version.php'), ROOT);
+                if ($versionResult['exit_code'] !== 0) {
+                    throw new RuntimeException(return_translation('admin_update_release_fetch_failed'));
+                }
+                $remoteVersionFile = $this->parseVersionPhpPayload((string)$versionResult['stdout']);
+                $release = $this->buildBranchRelease($repository, $branch, $remoteVersionFile,
+                    (string)($branchState['remote_commit_hash'] ?? ''), (string)($settings['updater_github_token'] ?? ''));
+                $remoteVersion = trim((string)($remoteVersionFile['version'] ?? ''));
 
                 if ($remoteVersion !== '') {
                     $comparison = $this->compareVersions(
@@ -171,10 +177,6 @@ class UpdateCenter
                     $storedCommit,
                     (string)($settings['updater_github_token'] ?? '')
                 );
-                if ($storedCommit === '') {
-                    $branchState['status'] = 'not_applicable';
-                }
-
                 $release = $this->buildBranchRelease(
                     $repository,
                     $branch,
@@ -194,7 +196,9 @@ class UpdateCenter
                     )
                     : $comparison < 0;
 
-                $branchUpdateAvailable = $storedCommit !== ''
+                // Entering main is an explicit creator choice. The first ZIP install
+                // can establish its commit even if main has the same/lower version.
+                $branchUpdateAvailable = (string)($branchState['remote_commit_hash'] ?? '') !== ''
                     && in_array((string)($branchState['status'] ?? 'unknown'), ['behind', 'no_local_commit'], true);
                 $updateAvailable = $versionUpdateAvailable || $branchUpdateAvailable;
             }
@@ -2792,6 +2796,8 @@ class UpdateCenter
      */
     protected function resolveBranch(array $settings, string $localBranch = ''): string
     {
+        if ($this->resolveUpdateChannel($settings) === 'dev') return 'main';
+
         $branch = $this->normalizeBranch((string)($settings['updater_github_branch'] ?? ''));
         if ($branch === '') {
             $branch = $this->normalizeBranch($localBranch);
@@ -2806,10 +2812,11 @@ class UpdateCenter
     protected function resolveUpdateChannel(array $settings): string
     {
         // Role policy is enforced on the server, including checks and installation.
-        // Keep the site's legacy Dev setting for unauthenticated CLI workflows only.
         if (function_exists('get_user')) {
             $role = (string)(get_user()['role'] ?? '');
-            if ($role === 'creator') return 'beta';
+            if ($role === 'creator') {
+                return trim(mb_strtolower((string)($settings['update_channel'] ?? ''))) === 'dev' ? 'dev' : 'beta';
+            }
             if ($role !== '') return 'stable';
         }
 
@@ -2951,6 +2958,7 @@ class UpdateCenter
         foreach (['updater_last_check_payload', 'updater_last_check_payload_' . $channel] as $key) {
             $payload = $this->decodeLastCheck((string)($settings[$key] ?? ''));
             if (($payload['channel'] ?? '') !== $channel) continue;
+            if ($channel === 'dev' && ($payload['branch'] ?? '') !== 'main') continue;
             if (!empty($payload['local_version']) && $payload['local_version'] !== ($this->engineRelease['version'] ?? '')) continue;
             $repository = $this->normalizeRepository((string)($settings['updater_github_repository'] ?? ''));
             if ($repository !== '' && ($payload['repository'] ?? '') !== $repository) continue;

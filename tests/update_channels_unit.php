@@ -6,6 +6,7 @@ declare(strict_types=1);
 namespace App\Models {
     class SiteSetting {
         public function all(): array { return $GLOBALS['fixtureSettings']; }
+        public function get(string $key, mixed $default = null): mixed { return $GLOBALS['fixtureSettings'][$key] ?? $default; }
         public function setMany(array $values): void { $GLOBALS['fixtureSettings'] = array_merge($GLOBALS['fixtureSettings'], $values); }
     }
     class ChatMessage {
@@ -15,6 +16,12 @@ namespace App\Models {
     class ContactRequest {
         public function countUnread(): int { return 0; }
         public function getUnreadNotificationItems(int $limit): array { return []; }
+    }
+}
+namespace FBL {
+    class Auth {
+        public static function isAdmin(): bool { return in_array(\get_user()['role'], ['creator', 'admin'], true); }
+        public static function hasRole(string $role): bool { return \get_user()['role'] === $role; }
     }
 }
 namespace FBL\Plugins {
@@ -47,11 +54,15 @@ namespace {
     define('ROOT', dirname(__DIR__));
     define('STORAGE', sys_get_temp_dir() . '/fireball-update-tests-' . bin2hex(random_bytes(6)));
     define('PLUGINS', '/unused/plugins');
-    $fixtureSettings = ['updater_github_repository' => 'fixture/repo', 'update_channel' => 'dev'];
+    $fixtureSettings = ['updater_github_repository' => 'fixture/repo', 'update_channel' => 'beta'];
     $fixtureRole = 'creator';
     $fixtureLocalVersion = '1.0.0';
     $fixtureRequests = [];
     $fixtureFailure = false;
+    $fixtureMainVersion = '1.3.0-beta.1';
+    $fixturePost = null;
+    $fixtureSession = [];
+    function fixtureVersionPhp(): string { return "<?php return ['version' => '" . $GLOBALS['fixtureMainVersion'] . "', 'summary' => 'Main changes', 'changes' => ['Branch fix']];"; }
     $fixtureLatest = ['tag_name' => 'v1.1.0', 'name' => 'Stable release', 'published_at' => '2026-10-01T12:00:00Z', 'draft' => false, 'prerelease' => false];
     $fixtureReleases = [
         ['tag_name' => 'v9.0.0', 'name' => 'Private draft', 'published_at' => '2026-10-03T12:00:00Z', 'draft' => true],
@@ -78,8 +89,21 @@ namespace {
     function get_validation_class(string $key): string { return ''; }
     function get_errors(string $key): string { return ''; }
     function check_admin(): bool { return in_array(get_user()['role'], ['creator', 'admin'], true); }
-    function session(): object { return new class { public function get(string $key): mixed { return null; } }; }
-    function request(): object { return new class { public function get(string $key, mixed $default = null): mixed { return $default; } }; }
+    class FixtureRedirect extends RuntimeException {}
+    class FixtureDenied extends RuntimeException {}
+    function abort(string $message, int $status): never { throw new FixtureDenied($message, $status); }
+    function response(): object { return new class { public function redirect(string $url): never { throw new FixtureRedirect($url); } }; }
+    function session(): object { return new class {
+        public function get(string $key): mixed { return $GLOBALS['fixtureSession'][$key] ?? null; }
+        public function set(string $key, mixed $value): void { $GLOBALS['fixtureSession'][$key] = $value; }
+        public function remove(string $key): void { unset($GLOBALS['fixtureSession'][$key]); }
+        public function setFlash(string $key, mixed $value): void { $this->set($key, $value); }
+    }; }
+    function request(): object { return new class {
+        public function get(string $key, mixed $default = null): mixed { return $default; }
+        public function isPost(): bool { return $GLOBALS['fixturePost'] !== null; }
+        public function getData(): array { return $GLOBALS['fixturePost']; }
+    }; }
     function view(): object { return new class { public function renderPartial(string $name, array $data = []): string { return $name === 'admin/shell_open' ? '<main>' : ($name === 'admin/shell_close' ? '</main>' : ''); } }; }
     function fixtureHttp(string $url): array {
         $GLOBALS['fixtureRequests'][] = $url;
@@ -90,6 +114,9 @@ namespace {
             return ['status_code' => 200, 'body' => json_encode(array_slice($GLOBALS['fixtureReleases'], ((int)$query['page'] - 1) * 100, 100))];
         }
         if (str_ends_with($url, '/commits/main')) return ['status_code' => 200, 'body' => json_encode(['sha' => str_repeat('a', 40)])];
+        if (str_ends_with($url, '/main/config/version.php')) return ['status_code' => 200, 'body' => fixtureVersionPhp()];
+        if (str_ends_with($url, '/contents/config/version.php?ref=main')) return ['status_code' => 200, 'body' => json_encode(['encoding' => 'base64', 'content' => base64_encode(fixtureVersionPhp())])];
+        if (str_contains($url, '.git/info/refs?')) return ['status_code' => 200, 'body' => str_repeat('a', 40) . " refs/heads/main\n"];
         if (preg_match('~/contents/plugins/([^/]+)/plugin.json\?ref=~', $url, $match)) {
             if ($match[1] === 'failed') return ['status_code' => 500, 'body' => '{"message":"Fixture failure"}'];
             return ['status_code' => 200, 'body' => json_encode(['content' => base64_encode(json_encode(['slug' => $match[1], 'version' => '1.1.0']))])];
@@ -99,12 +126,34 @@ namespace {
     require ROOT . '/app/Services/UpdateCenter.php';
     require ROOT . '/app/Services/PluginUpdateService.php';
     require ROOT . '/app/Models/NotificationCenter.php';
+    require ROOT . '/core/Controller.php';
+    require ROOT . '/app/Controllers/BaseController.php';
+    require ROOT . '/app/Controllers/AdminController.php';
+    class UpdateSettingsFixture extends \App\Controllers\AdminController {
+        public function __construct() { $this->siteSettings = new \App\Models\SiteSetting(); }
+    }
     class CoreUpdateFixture extends \App\Services\UpdateCenter {
         public bool $git = false;
+        public string $branchStatus = 'behind';
+        public array $fetchedBranches = [];
+        public array $commands = [];
         protected function reloadEngineRelease(): void { $this->engineRelease = ['version' => $GLOBALS['fixtureLocalVersion'], 'released_at' => '2026-09-01']; }
         protected function getLocalGitState(): array { return ['is_git_repo' => $this->git, 'origin_url' => 'fixture/repo', 'branch' => 'main', 'commit_hash' => '', 'short_commit' => '', 'git_tag' => '', 'git_describe' => '', 'git_available' => true, 'is_clean' => true, 'is_update_clean' => true, 'dirty_files' => [], 'blocking_dirty_files' => [], 'ignored_dirty_files' => []]; }
         protected function buildUpdateBlockers(string $repo, array $git, ?string $channel = null): array { return []; }
-        protected function fetchRemoteBranch(string $branch): void { throw new RuntimeException('A published release check must not fetch a branch'); }
+        protected function fetchRemoteBranch(string $branch): void {
+            if ($this->resolveUpdateChannel($this->siteSettings->all()) !== 'dev') throw new RuntimeException('A published release check must not fetch a branch');
+            $this->fetchedBranches[] = $branch;
+        }
+        protected function getBranchStateFromGit(string $branch): array { return ['status' => $this->branchStatus, 'remote_commit_hash' => str_repeat('a', 40)]; }
+        protected function runCommand(string $command, string $cwd): array {
+            $this->commands[] = $command;
+            if (str_starts_with($command, 'git show ') && str_contains($command, 'origin/main:config/version.php')) return ['exit_code' => 0, 'stdout' => fixtureVersionPhp(), 'stderr' => ''];
+            throw new RuntimeException('Unexpected command: ' . $command);
+        }
+        protected function runArchiveUpdate(string $repo, string $branch, string $token = ''): array { return ['source' => 'main', 'branch' => $branch]; }
+        protected function loadRemoteGitManifest(string $branch): array { return []; }
+        protected function validateUpdateManifest(array $manifest, ?string $packageRoot = null): void {}
+        protected function refreshLastCheckAfterUpdate(): void { $this->checkForUpdates(); }
         protected function runStableReleaseGitUpdate(string $repo, string $branch, string $token = ''): array { return ['release' => $this->fetchUpdateRelease($repo, $token)]; }
         protected function runStableReleaseUpdate(string $repo, string $token = ''): array { return ['release' => $this->fetchUpdateRelease($repo, $token)]; }
         public function installDecision(): array { return $this->performUpdate(); } // dispatch only, installation replaced above
@@ -121,11 +170,13 @@ namespace {
     $core->checkForUpdatesIfStale();
     expect(count($fixtureRequests) === $count, 'Fresh automatic CMS check uses cache');
     $fixtureRole = 'admin';
+    $fixtureSettings['update_channel'] = 'dev';
     expect($core->getLastCheckPayload() === null, 'Administrator never reads creator beta cache');
     $admin = $core->checkForUpdatesIfStale();
     expect($admin['channel'] === 'stable' && $admin['remote_version'] === 'v1.1.0', 'Administrator checks stable despite saved Dev setting');
     expect(count($fixtureRequests) === $count + 1, 'Admin only requests /releases/latest');
     $fixtureRole = 'creator';
+    $fixtureSettings['update_channel'] = 'beta';
     expect($core->getLastCheckPayload()['remote_version'] === $creator['remote_version'], 'Switching back retrieves independent creator cache');
     $fixtureLocalVersion = '1.2.0-beta.2'; $core = new CoreUpdateFixture();
     expect(empty($core->checkForUpdatesIfStale()['update_available']), 'Installing the beta invalidates cache without offering downgrade');
@@ -160,6 +211,65 @@ namespace {
     expect(empty($core->checkForUpdates()['update_available']), 'A beta-tagged release is rejected even if GitHub prerelease flag is incorrect');
     $fixtureLatest = null;
     $fixtureRole = 'creator';
+    // Real settings POST: persisted choice, token retention and creator-only access.
+    $savedSettings = $fixtureSettings;
+    $controller = new UpdateSettingsFixture();
+    foreach (['dev', 'beta'] as $channel) {
+        $fixtureSettings['updater_github_token'] = 'fixture-token';
+        $fixturePost = ['updater_github_repository' => 'fixture/repo', 'update_channel' => $channel, 'updater_github_branch' => 'experimental', 'updater_github_token' => ''];
+        try { $controller->updates(); throw new RuntimeException('Expected settings redirect'); } catch (FixtureRedirect) {}
+        expect($fixtureSettings['update_channel'] === $channel && !isset($fixtureSession['form_errors']), 'Creator saves selected channel');
+        expect($fixtureSettings['updater_github_token'] === 'fixture-token', 'Empty token field preserves saved token');
+        if ($channel === 'dev') expect($fixtureSettings['updater_github_branch'] === 'main', 'Developer channel pins main even for a forged branch');
+    }
+    $beforeInvalid = $fixtureSettings;
+    foreach (['invalid', 'stable'] as $invalidChannel) {
+        $fixturePost['update_channel'] = $invalidChannel;
+        try { $controller->updates(); } catch (FixtureRedirect) {}
+        expect($fixtureSettings === $beforeInvalid && isset($fixtureSession['form_errors']['update_channel']), 'Unavailable creator channel is rejected without saving');
+    }
+    $fixtureRole = 'admin'; $fixturePost['update_channel'] = 'dev';
+    try { $controller->updates(); throw new RuntimeException('Expected forbidden settings'); } catch (FixtureDenied $error) { expect($error->getCode() === 403, 'Admin cannot submit developer settings'); }
+    expect($fixtureSettings === $beforeInvalid, 'Admin POST cannot alter creator source');
+    $fixtureRole = 'creator';
+    $fixtureSettings['update_channel'] = 'stable'; unset($fixturePost['update_channel']);
+    try { $controller->updates(); } catch (FixtureRedirect) {}
+    expect($fixtureSettings['update_channel'] === 'beta', 'Legacy source form without a channel migrates stable to creator release/beta default');
+    $fixturePost = null; $fixtureSession = [];
+    $fixtureSettings = $savedSettings;
+    // Developer source checks commits independently of release semver, on Git and ZIP.
+    $fixtureLocalVersion = '1.8.2'; $fixtureMainVersion = '1.8.2-beta.1';
+    $core = new CoreUpdateFixture();
+    $core->checkForUpdates(); // warm release cache for the same installed version
+    $fixtureSettings['update_channel'] = 'dev'; $fixtureSettings['updater_github_branch'] = 'experimental';
+    $dev = $core->checkForUpdates();
+    expect($dev['channel'] === 'dev' && $dev['branch'] === 'main' && $dev['remote_version'] === $fixtureMainVersion, 'ZIP developer metadata comes from main, not published release');
+    expect($dev['update_available'] && !$dev['version_update_available'], 'First ZIP switch to main is offered even with lower beta version');
+    expect($core->installDecision() === ['source' => 'main', 'branch' => 'main'], 'ZIP installation dispatches main');
+    $fixtureSettings['updater_last_installed_commit'] = str_repeat('a', 40);
+    expect(!$core->checkForUpdates()['update_available'], 'Matching installed main commit is not offered again');
+    $fixtureSettings['updater_github_token'] = 'fixture-token';
+    expect(!$core->checkForUpdates()['update_available'], 'Authenticated API path reads main metadata and matches installed commit');
+    unset($fixtureSettings['updater_github_token']);
+    $fixtureSettings['updater_last_installed_commit'] = str_repeat('b', 40);
+    expect($core->checkForUpdates()['update_available'], 'New main commit is offered without a version increase');
+    $core->git = true; $fixtureRequests = [];
+    $devGit = $core->checkForUpdates();
+    expect($devGit['update_available'] && $devGit['remote_version'] === $fixtureMainVersion && $core->fetchedBranches === ['main'], 'Git checks main and reads its version safely');
+    expect($fixtureRequests === [], 'Git developer check does not consult unrelated published release');
+    $core->branchStatus = 'identical';
+    expect($core->installDecision()['status'] === 'success' && $core->fetchedBranches === ['main', 'main', 'main'], 'Git main installation dispatch completes safely when commit already matches');
+    $cachedDev = $fixtureSettings['updater_last_check_payload_dev'];
+    foreach (['updater_last_check_payload', 'updater_last_check_payload_dev'] as $key) {
+        $cached = json_decode($fixtureSettings[$key], true); $cached['branch'] = 'experimental'; $fixtureSettings[$key] = json_encode($cached);
+    }
+    expect($core->getLastCheckPayload() === null, 'Legacy developer cache for a different branch is rejected');
+    $fixtureSettings['updater_last_check_payload_dev'] = $cachedDev;
+    $fixtureSettings['update_channel'] = 'beta';
+    expect($core->getLastCheckPayload()['channel'] === 'beta', 'Switching to release channel retrieves its independent cache');
+    $fixtureSettings['update_channel'] = 'dev'; $fixtureRole = 'admin';
+    expect($core->checkForUpdates()['channel'] === 'stable', 'Admin still checks stable when creator selects main');
+    $fixtureRole = 'creator'; $fixtureSettings = $savedSettings; $core = new CoreUpdateFixture();
     $fixtureSettings['updater_github_repository'] = 'fixture/another';
     expect($core->getLastCheckPayload() === null, 'Changing repository invalidates cache');
     $held = $core->holdLock(); $fixtureRequests = [];
@@ -204,17 +314,21 @@ namespace {
     $fixtureLocalVersion = '1.0.0';
     foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
         $fixtureTranslations = require ROOT . '/app/Languages/' . $locale . '.php';
-        foreach (['creator', 'admin'] as $role) {
+        foreach (['creator/beta', 'creator/dev', 'admin/dev'] as $scenario) {
+            [$role, $channel] = explode('/', $scenario);
+            $fixtureSettings['update_channel'] = $channel;
             $fixtureRole = $role; $core = new CoreUpdateFixture();
             $update_center = $core->getDashboardData(); $settings = $fixtureSettings;
-            expect($update_center['config']['channel'] === ($role === 'creator' ? 'beta' : 'stable'), 'Dashboard automatically checks role-specific channel');
+            expect($update_center['config']['channel'] === ($role === 'creator' ? $channel : 'stable'), 'Dashboard checks selected creator source or stable for admin');
             ob_start(); require ROOT . '/app/Views/themes/default/admin/updates.php'; $html = ob_get_clean();
             expect(!str_contains($html, 'admin_update_channel_beta') && !str_contains($html, 'admin_update_role_policy'), "$locale/$role uses translated role labels");
-            expect(!str_contains($html, '<select') && !str_contains($html, 'name="update_channel"'), 'Role channel cannot be overridden by dropdown');
+            expect(str_contains($html, 'name="update_channel"') === ($role === 'creator'), 'Only creator can choose update channel');
+            if ($role === 'creator') expect(str_contains($html, 'value="' . $channel . '" selected') && str_contains($html, 'value="dev"') && str_contains($html, 'value="beta"') && !str_contains($html, '<option value="stable"'), 'Creator has exactly release/beta and main options with saved selection');
         }
     }
     if (in_array('--render', $argv, true)) {
         $fixtureRole = in_array('--admin', $argv, true) ? 'admin' : 'creator';
+        $fixtureSettings['update_channel'] = in_array('--dev', $argv, true) ? 'dev' : 'beta';
         $fixtureTranslations = require ROOT . '/app/Languages/ru.php';
         $core = new CoreUpdateFixture();
         $update_center = $core->getDashboardData(); $settings = $fixtureSettings;

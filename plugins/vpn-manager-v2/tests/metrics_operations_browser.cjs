@@ -51,7 +51,7 @@ const metrics = {
         await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2');
         for (const theme of ['light', 'dark']) {
             await page.evaluate(theme => document.documentElement.dataset.bsTheme = theme, theme);
-            for (const width of [1440, 390]) {
+            for (const width of [1440, 1200, 992, 390, 320]) {
                 await page.setViewportSize({width, height: 1100});
                 const stats = page.locator('.fb-vpn-stat-card');
                 assert.equal(await stats.count(), 4);
@@ -64,11 +64,23 @@ const metrics = {
                 assert.equal(new Set(colors.map(card => card.border)).size, 4, 'Four native color accents');
                 assert(colors.every(card => card.background.includes('linear-gradient')), 'Cards have tinted backgrounds');
                 assert(colors.every(card => card.href.startsWith('/admin/plugins/vpn-manager-v2/')), 'Cards retain section links');
+                const layout = await stats.evaluateAll(cards => cards.map(card => {
+                    const rows = [...card.children].map(child => child.getBoundingClientRect());
+                    const bounds = card.getBoundingClientRect();
+                    return getComputedStyle(card).flexDirection === 'column'
+                        && rows.every(row => row.x >= bounds.x && row.right <= bounds.right + 1)
+                        && rows[1].y >= rows[0].bottom && rows[2].y >= rows[1].bottom;
+                }));
+                assert(layout.every(Boolean), 'Title, value and error count occupy separate rows within the card');
                 assert.equal(await stats.filter({has: page.locator('.text-warning')}).count(), 1, 'Actual error count keeps warning treatment');
                 assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No mobile overflow');
                 await page.locator('section[aria-labelledby="vpnV2MainStateTitle"]').screenshot({path: '/private/tmp/vpn-overview-' + theme + '-' + width + '.png'});
             }
         }
+        // Reproduce cached pre-fix admin CSS: its generic stat cards use a row.
+        const staleCss = await page.addStyleTag({content: '.fb-stat-card { display:flex; flex-direction:row; align-items:center; gap:16px; }'});
+        assert(await page.locator('.fb-vpn-stat-card').evaluateAll(cards => cards.every(card => getComputedStyle(card).flexDirection === 'column')), 'Layout remains vertical with cached generic stat CSS');
+        await staleCss.evaluate(element => element.remove());
         await page.setViewportSize({width: 1440, height: 1000});
         const cards = page.locator('[data-vpn-v2-server-metric-card]');
         const badge = index => cards.nth(index).locator('[data-vpn-v2-server-status]');
