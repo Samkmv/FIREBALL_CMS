@@ -384,6 +384,7 @@ echo view()->renderPartial('admin/shell_open', [
         </div>
     </article>
 
+    <div class="fb-dashboard-analytics-charts-row">
     <article class="fb-card fb-dashboard-widget fb-dashboard-chart-card">
         <header class="fb-card-header">
             <div>
@@ -420,7 +421,10 @@ echo view()->renderPartial('admin/shell_open', [
         </div>
     </article>
 
-    <article class="fb-card fb-dashboard-widget">
+    </div>
+
+    <div class="fb-dashboard-analytics-tables-row">
+    <article class="fb-card fb-dashboard-widget fb-dashboard-popular-pages">
         <header class="fb-card-header">
             <h2 class="fb-card-title"><?= print_translation('admin_analytics_pages_title') ?></h2>
             <a class="btn btn-sm btn-link" href="<?= base_href('/admin/analytics') ?>"><?= print_translation('admin_dashboard_view_all') ?></a>
@@ -443,7 +447,7 @@ echo view()->renderPartial('admin/shell_open', [
         </div>
     </article>
 
-    <article class="fb-card fb-dashboard-widget fb-dashboard-span-2 fb-dashboard-latest-visits">
+    <article class="fb-card fb-dashboard-widget fb-dashboard-latest-visits">
         <header class="fb-card-header">
             <h2 class="fb-card-title"><?= print_translation('admin_analytics_latest_title') ?></h2>
             <a class="btn btn-sm btn-link" href="<?= base_href('/admin/analytics') ?>"><?= print_translation('admin_dashboard_view_all') ?></a>
@@ -452,6 +456,13 @@ echo view()->renderPartial('admin/shell_open', [
             <?php if ($analyticsLatest !== []): ?>
                 <div class="table-responsive fb-dashboard-analytics-table">
                     <table class="table table-sm align-middle mb-0">
+                        <colgroup>
+                            <col class="fb-visits-time">
+                            <col class="fb-visits-country">
+                            <col class="fb-visits-device">
+                            <col class="fb-visits-browser">
+                            <col class="fb-visits-page">
+                        </colgroup>
                         <thead><tr><th><?= print_translation('admin_analytics_col_time') ?></th><th><?= print_translation('admin_analytics_col_country') ?></th><th><?= print_translation('admin_analytics_col_device') ?></th><th><?= print_translation('admin_analytics_col_browser') ?></th><th><?= print_translation('admin_analytics_col_page') ?></th></tr></thead>
                         <tbody>
                             <?php foreach (array_slice($analyticsLatest, 0, 15) as $visit): ?>
@@ -472,6 +483,8 @@ echo view()->renderPartial('admin/shell_open', [
             <?php endif; ?>
         </div>
     </article>
+
+    </div>
 
     <article class="fb-card fb-dashboard-widget fb-dashboard-quick-actions-card">
         <header class="fb-card-header">

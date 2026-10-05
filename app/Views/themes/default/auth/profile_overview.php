@@ -40,9 +40,9 @@
         <section class="profile-account-card">
             <span class="profile-status-icon"><i class="ci-bell" aria-hidden="true"></i></span>
             <div class="profile-status-body">
-                <div class="profile-card-title"><h3><?= print_translation('auth_settings_notifications') ?></h3><span class="badge rounded-pill <?= $pushEnabled ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= print_translation($pushStatusKey) ?></span></div>
+                <div class="profile-card-title"><h3><?= print_translation('auth_settings_notifications') ?></h3><span class="badge rounded-pill text-bg-secondary" data-pwa-push-status role="status" aria-live="polite"><?= print_translation($pushStatusKey) ?></span></div>
                 <h4><?= print_translation('auth_profile_push_heading') ?></h4>
-                <p><?= print_translation('auth_profile_push_subtitle') ?></p>
+                <p data-pwa-push-status-hint><?= print_translation($pushReady ? 'auth_profile_push_hint_checking' : 'auth_profile_push_hint_unavailable') ?></p>
                 <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= base_href('/profile/settings?section=notifications') ?>"><?= print_translation('auth_profile_manage_notifications') ?><i class="ci-chevron-right ms-2" aria-hidden="true"></i></a>
             </div>
         </section>

@@ -151,6 +151,7 @@
         }
 
         target.innerHTML = '';
+        target.classList.toggle('admin-analytics-chart--circular', config.type !== 'line');
 
         if (window.ApexCharts) {
             charts[key] = renderApex(target, config);
@@ -168,15 +169,50 @@
         target.appendChild(message);
     }
 
+    function chartPlot(target, isLine) {
+        if (isLine) return target;
+        const plot = document.createElement('div');
+        plot.className = 'admin-analytics-plot';
+        target.appendChild(plot);
+        return plot;
+    }
+
+    function renderLegend(target, config, colors, toggle) {
+        const legend = document.createElement('ul');
+        legend.className = 'admin-analytics-legend';
+        config.labels.forEach((label, index) => {
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.setAttribute('aria-pressed', 'true');
+            const swatch = document.createElement('span');
+            swatch.className = 'admin-analytics-legend-swatch';
+            swatch.style.backgroundColor = colors[index % colors.length];
+            swatch.setAttribute('aria-hidden', 'true');
+            const text = document.createElement('span');
+            text.className = 'admin-analytics-legend-label';
+            text.textContent = label;
+            button.append(swatch, text);
+            button.addEventListener('click', () => {
+                button.setAttribute('aria-pressed', toggle(index) ? 'true' : 'false');
+            });
+            item.appendChild(button);
+            legend.appendChild(item);
+        });
+        target.appendChild(legend);
+    }
+
     function renderApex(target, config) {
         const theme = palette();
         const isLine = config.type === 'line';
         const isPie = config.type === 'pie';
+        const plot = chartPlot(target, isLine);
         const options = isLine
             ? {
                 chart: {
                     type: 'area',
-                    height: 320,
+                    height: plot.clientHeight || 290,
+                    parentHeightOffset: 0,
                     toolbar: { show: false },
                     foreColor: theme.text
                 },
@@ -201,14 +237,15 @@
             : {
                 chart: {
                     type: isPie ? 'pie' : 'donut',
-                    height: 320,
+                    height: plot.clientHeight || 220,
+                    parentHeightOffset: 0,
                     foreColor: theme.text
                 },
                 series: config.values,
                 labels: config.labels,
                 colors: theme.series,
                 legend: {
-                    position: 'bottom',
+                    show: false,
                     labels: { colors: theme.text }
                 },
                 dataLabels: {
@@ -220,17 +257,37 @@
                 tooltip: { theme: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light' }
             };
 
-        const chart = new window.ApexCharts(target, options);
+        const chart = new window.ApexCharts(plot, options);
         chart.render();
+        if (!isLine) {
+            // The bundled Apex compatibility adapter delegates to Chart.js and ignores legend.show.
+            const nativeChart = chart.chart;
+            if (nativeChart?.options?.plugins?.legend) {
+                nativeChart.options.plugins.legend.display = false;
+                nativeChart.update('none');
+            }
+            const hidden = new Set();
+            renderLegend(target, config, theme.series, (index) => {
+                if (nativeChart?.toggleDataVisibility) {
+                    nativeChart.toggleDataVisibility(index);
+                    nativeChart.update();
+                    return nativeChart.getDataVisibility(index);
+                }
+                chart.toggleSeries(config.labels[index]);
+                if (hidden.has(index)) hidden.delete(index); else hidden.add(index);
+                return !hidden.has(index);
+            });
+        }
         return chart;
     }
 
     function renderChartJs(target, config) {
         const theme = palette();
-        const canvas = document.createElement('canvas');
-        target.appendChild(canvas);
         const isLine = config.type === 'line';
         const isPie = config.type === 'pie';
+        const plot = chartPlot(target, isLine);
+        const canvas = document.createElement('canvas');
+        plot.appendChild(canvas);
 
         const chart = new window.Chart(canvas, {
             type: isLine ? 'line' : (isPie ? 'pie' : 'doughnut'),
@@ -252,7 +309,8 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: isLine ? 'top' : 'bottom',
+                        display: isLine,
+                        position: 'top',
                         labels: { color: theme.text }
                     },
                     tooltip: {
@@ -279,6 +337,13 @@
             }
         });
 
+        if (!isLine) {
+            renderLegend(target, config, theme.series, (index) => {
+                chart.toggleDataVisibility(index);
+                chart.update();
+                return chart.getDataVisibility(index);
+            });
+        }
         return { destroy: () => chart.destroy() };
     }
 

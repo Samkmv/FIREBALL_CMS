@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SiteSetting;
+use FBL\Pagination;
 
 class PwaService
 {
@@ -688,11 +689,89 @@ self.addEventListener("sync", () => {});
         return db()->query('SELECT * FROM pwa_subscriptions ORDER BY is_active DESC, last_seen_at DESC LIMIT ' . max(1, min(500, $limit)))->get() ?: [];
     }
 
+    public function paginatedDevices(int $perPage = 20): array
+    {
+        $this->ensureTables();
+        $perPage = max(1, min(100, $perPage));
+        $total = (int)db()->query('SELECT COUNT(*) FROM pwa_subscriptions')->getColumn();
+        $pagination = new Pagination($total, $perPage, PAGINATION_SETTINGS['midSize'], PAGINATION_SETTINGS['maxPages'], PAGINATION_SETTINGS['tpl'], 'devices_page');
+        $offset = $pagination->getOffset();
+
+        return [
+            // Do not expose endpoints, browser keys or subscription JSON in the table.
+            'items' => db()->query("SELECT id, user_id, is_active, platform, browser, user_agent, last_seen_at, revoked_at
+                FROM pwa_subscriptions ORDER BY is_active DESC, last_seen_at DESC, id DESC LIMIT {$offset}, {$perPage}")->get() ?: [],
+            'total' => $total,
+            'pagination' => $pagination,
+        ];
+    }
+
+    /** Removes stored bindings, not browser permission or in-site notification history. */
+    public function detachDevices(?int $deviceId): int
+    {
+        if ($deviceId !== null && $deviceId <= 0) {
+            throw new \InvalidArgumentException('Invalid Push device ID.');
+        }
+        $this->ensureTables();
+        $where = $deviceId === null ? '' : ' WHERE id = ?';
+        $params = $deviceId === null ? [] : [$deviceId];
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $devices = $database->query('SELECT user_id FROM pwa_subscriptions' . $where . ' FOR UPDATE', $params)->get() ?: [];
+            $database->query('DELETE FROM pwa_subscriptions' . $where, $params);
+            $removed = $database->rowCount();
+            foreach (array_unique(array_column($devices, 'user_id')) as $userId) {
+                $this->syncUserPushEnabledFromSubscriptions((int)$userId);
+            }
+            $database->commit();
+            return $removed;
+        } catch (\Throwable $exception) {
+            $database->rollBack();
+            throw $exception;
+        }
+    }
+
     public function recentNotifications(int $limit = 30): array
     {
         $this->ensureTables();
 
-        return db()->query('SELECT * FROM pwa_notifications ORDER BY id DESC LIMIT ' . max(1, min(100, $limit)))->get() ?: [];
+        return $this->notificationLogRows(0, max(1, min(100, $limit)));
+    }
+
+    public function paginatedNotifications(int $perPage = 20): array
+    {
+        $this->ensureTables();
+        $perPage = max(1, min(100, $perPage));
+        $total = (int)db()->query('SELECT COUNT(*) FROM pwa_notifications')->getColumn();
+        $pagination = new Pagination($total, $perPage, PAGINATION_SETTINGS['midSize'], PAGINATION_SETTINGS['maxPages'], PAGINATION_SETTINGS['tpl'], 'notifications_page');
+        return [
+            'items' => $this->notificationLogRows($pagination->getOffset(), $perPage),
+            'total' => $total,
+            'pagination' => $pagination,
+        ];
+    }
+
+    public function clearNotificationLog(): int
+    {
+        $this->ensureTables();
+        // Only technical Push history. Do not delete user notifications, messages or bindings.
+        db()->query('DELETE FROM pwa_notifications');
+        return db()->rowCount();
+    }
+
+    protected function notificationLogRows(int $offset, int $limit): array
+    {
+        $private = NotificationPrivacy::chatSqlPredicate();
+        // CASE also protects pre-fix records before the cleanup migration runs.
+        // Raw payload, recipient IDs, URLs and preview metadata are never selected here.
+        return db()->query("SELECT id, type, source, {$private} AS private_chat,
+            CASE WHEN {$private} THEN ? ELSE title END AS title,
+            CASE WHEN {$private} THEN NULL ELSE body END AS body,
+            status, sent_count, failed_count, created_at, sent_at
+            FROM pwa_notifications ORDER BY id DESC LIMIT {$offset}, {$limit}",
+            [NotificationPrivacy::PRIVATE_TITLE]
+        )->get() ?: [];
     }
 
     public function generateVapidKeys(): array
@@ -819,7 +898,7 @@ self.addEventListener("sync", () => {});
         ];
     }
 
-    public function pushStatusForUser(int $userId): array
+    public function pushStatusForUser(int $userId, ?string $endpointHash = null): array
     {
         $this->ensureTables();
         $subscriptions = $userId > 0
@@ -829,12 +908,23 @@ self.addEventListener("sync", () => {});
             )->getColumn()
             : 0;
 
+        $deviceActive = null;
+        if ($endpointHash !== null) {
+            $deviceActive = $userId > 0 && preg_match('/^[a-f0-9]{64}$/D', $endpointHash)
+                && (int)db()->query(
+                    'SELECT COUNT(*) FROM pwa_subscriptions WHERE user_id = ? AND endpoint_hash = ? AND is_active = 1 AND revoked_at IS NULL',
+                    [$userId, $endpointHash]
+                )->getColumn() > 0;
+        }
+
         return [
+            'pwa_enabled' => $this->isEnabled(),
             'global_enabled' => $this->isPushEnabled(),
             'vapid_ready' => $this->settings->get('pwa_vapid_public_key', '') !== '' && $this->settings->get('pwa_vapid_private_key', '') !== '',
             'secure_context' => $this->isSecureContext(),
             'user_enabled' => $userId > 0 && $this->isUserPushEnabled($userId),
             'active_subscriptions' => $subscriptions,
+            'current_device_active' => $deviceActive,
         ];
     }
 
@@ -893,7 +983,9 @@ self.addEventListener("sync", () => {});
     protected function recordPushNotification(array $payload, array $options, string $status, int $sent, int $failed): void
     {
         $now = date('Y-m-d H:i:s');
-        $encodedPayload = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        $privateChat = NotificationPrivacy::isChat($options) || NotificationPrivacy::isChat($payload)
+            || NotificationPrivacy::isChat(is_array($payload['data'] ?? null) ? $payload['data'] : []);
+        $encodedPayload = $privateChat ? '{}' : json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
         db()->query(
             'INSERT INTO pwa_notifications
                 (notification_id, user_id, title, body, type, source, payload, status, sent_count, failed_count, created_at, sent_at)
@@ -901,10 +993,10 @@ self.addEventListener("sync", () => {});
             [
                 !empty($options['notification_id']) ? (int)$options['notification_id'] : null,
                 isset($options['user_id']) ? (int)$options['user_id'] : null,
-                (string)$payload['title'],
-                (string)($payload['body'] ?? ''),
-                (string)($options['type'] ?? $payload['type'] ?? ''),
-                (string)($options['source'] ?? $payload['source'] ?? ''),
+                $privateChat ? NotificationPrivacy::PRIVATE_TITLE : (string)$payload['title'],
+                $privateChat ? '' : (string)($payload['body'] ?? ''),
+                $privateChat ? 'chat' : (string)($options['type'] ?? $payload['type'] ?? ''),
+                $privateChat ? 'chat' : (string)($options['source'] ?? $payload['source'] ?? ''),
                 $encodedPayload !== false ? $encodedPayload : '{}',
                 $status,
                 $sent,

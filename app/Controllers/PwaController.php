@@ -111,6 +111,11 @@ class PwaController extends BaseController
 
         $currentUser = get_user();
         $userId = (int)$currentUser['id'];
+        $endpointHash = request()->get('endpoint_hash');
+        if ($endpointHash !== null && (!is_string($endpointHash) || !preg_match('/^[a-f0-9]{64}$/D', $endpointHash))) {
+            response()->json(['status' => false], 422);
+            return;
+        }
         $badgeCount = null;
         try {
             $badgeCount = (new NotificationCenter())->badgeCountForUser($userId, check_admin());
@@ -123,7 +128,7 @@ class PwaController extends BaseController
             'status' => true,
             'user_id' => $userId,
             'badge_count' => $badgeCount,
-            'push' => $this->pwa->pushStatusForUser($userId),
+            'push' => $this->pwa->pushStatusForUser($userId, $endpointHash),
         ]);
     }
 

@@ -1345,16 +1345,59 @@ class AdminController extends BaseController
             response()->redirect(base_href('/admin/settings/pwa'));
         }
 
+        $devices = $pwa->paginatedDevices(20);
+        $notifications = $pwa->paginatedNotifications(20);
         return view('admin/pwa_settings', [
             'title' => return_translation('admin_pwa_title'),
             'settings' => $this->siteSettings->all(),
             'status' => $pwa->status(),
-            'devices' => $pwa->devices(),
-            'notifications' => $pwa->recentNotifications(),
+            'devices' => $devices['items'],
+            'devices_total' => $devices['total'],
+            'devices_pagination' => $devices['pagination'],
+            'notifications' => $notifications['items'],
+            'notifications_total' => $notifications['total'],
+            'notifications_pagination' => $notifications['pagination'],
             'footer_scripts' => [
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
             ],
         ]);
+    }
+
+    public function detachPwaDevices()
+    {
+        // An omitted/invalid ID must never fall back to deleting every binding.
+        $scope = request()->post('scope', '');
+        $deviceId = $scope === 'one' ? filter_var(request()->post('id', ''), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) : null;
+        if (!in_array($scope, ['one', 'all'], true) || ($scope === 'one' && $deviceId === false)) {
+            abort('', 422);
+        }
+
+        try {
+            $removed = (new PwaService($this->siteSettings))->detachDevices($deviceId);
+            session()->setFlash('success', str_replace(':count', (string)$removed, return_translation('admin_pwa_devices_detached')));
+        } catch (\Throwable $exception) {
+            log_error_details('PWA device detach failed', ['scope' => $scope, 'device_id' => $deviceId], $exception);
+            session()->setFlash('error', return_translation('admin_pwa_devices_detach_error'));
+        }
+        // Start at page one because detaching can remove the last row/page.
+        response()->redirect(base_href('/admin/settings/pwa') . '#pwa-devices');
+    }
+
+    public function clearPwaNotificationLog()
+    {
+        if (request()->post('scope', '') !== 'all') {
+            abort('', 422);
+        }
+        try {
+            $removed = (new PwaService($this->siteSettings))->clearNotificationLog();
+            session()->setFlash('success', str_replace(':count', (string)$removed, return_translation('admin_pwa_notifications_cleared')));
+        } catch (\Throwable $exception) {
+            log_error_details('PWA notification log cleanup failed', [], $exception);
+            session()->setFlash('error', return_translation('admin_pwa_notifications_clear_error'));
+        }
+        $devicePage = filter_var(request()->post('devices_page', 1), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        // The log is empty now; reset only its page while retaining the unchanged device table.
+        response()->redirect(base_href('/admin/settings/pwa') . ($devicePage > 1 ? '?devices_page=' . $devicePage : '') . '#pwa-notifications');
     }
 
     public function generatePwaVapid()

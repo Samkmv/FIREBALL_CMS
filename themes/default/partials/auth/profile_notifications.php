@@ -8,30 +8,27 @@
             <p class="text-body-secondary mb-0"><?= print_translation('auth_profile_push_subtitle') ?></p>
         </div>
         <span
-            class="badge rounded-pill <?= $pushEnabled ? 'text-bg-success' : 'text-bg-secondary' ?>"
+            class="badge rounded-pill text-bg-secondary"
             data-pwa-push-status
-            data-status-enabled="<?= htmlSC(return_translation('auth_profile_push_status_enabled')) ?>"
-            data-status-disabled="<?= htmlSC(return_translation('auth_profile_push_status_disabled')) ?>"
-            data-status-unsupported="<?= htmlSC(return_translation('auth_profile_push_status_unsupported')) ?>"
-            data-status-permission="<?= htmlSC(return_translation('auth_profile_push_status_permission')) ?>"
-            data-status-unavailable="<?= htmlSC(return_translation('auth_profile_push_status_unavailable')) ?>"
+            role="status" aria-live="polite"
         >
             <?= htmlSC(return_translation($pushStatusKey)) ?>
         </span>
     </div>
 
     <p class="text-body-secondary mb-3" data-pwa-push-status-hint>
-        <?= print_translation($pushReady ? 'auth_profile_push_hint' : 'auth_profile_push_unavailable_hint') ?>
+        <?= print_translation($pushReady ? 'auth_profile_push_hint_checking' : 'auth_profile_push_hint_unavailable') ?>
     </p>
 
     <div class="d-flex flex-wrap gap-2">
-        <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="button" data-pwa-enable-push>
+        <button class="btn btn-dark rounded-pill d-none align-items-center gap-2" type="button" data-pwa-enable-push disabled>
             <i class="ci-bell"></i>
             <span><?= print_translation('auth_profile_push_enable') ?></span>
         </button>
-        <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button" data-pwa-disable-push>
+        <button class="btn btn-outline-secondary rounded-pill d-none align-items-center gap-2" type="button" data-pwa-disable-push disabled>
             <i class="ci-bell-off"></i>
             <span><?= print_translation('auth_profile_push_disable') ?></span>
         </button>
     </div>
+    <p class="text-danger mb-0 mt-3 d-none" data-pwa-push-feedback role="status" aria-live="polite"></p>
 </div>

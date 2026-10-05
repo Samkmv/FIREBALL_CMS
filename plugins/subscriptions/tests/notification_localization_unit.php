@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 // Isolated language/feed/maintenance checks: no working DB, provider or push calls.
+// Core notification presentation now uses a shared privacy policy; use the normal CMS autoloader.
+require_once __DIR__ . '/../../../vendor/autoload.php';
 define('LANGS', array_combine(['ru', 'en', 'de', 'zh-cn'], array_map(
     static fn(string $code): array => ['code' => $code], ['ru', 'en', 'de', 'zh-cn']
 )));

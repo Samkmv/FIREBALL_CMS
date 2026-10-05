@@ -148,7 +148,7 @@ $imageField = static function (string $name, string $label, string $hint) use ($
     </form>
 
     <div class="row g-4">
-        <div class="col-lg-5">
+        <div class="col-12">
             <div class="border rounded-5 p-3 p-md-4 h-100">
                 <h2 class="h5 mb-3"><?= print_translation('admin_pwa_vapid_title') ?></h2>
                 <label class="form-label"><?= print_translation('admin_pwa_vapid_public_key') ?></label>
@@ -175,52 +175,16 @@ $imageField = static function (string $name, string $label, string $hint) use ($
                 </div>
             </div>
         </div>
-        <div class="col-lg-7">
-            <div class="border rounded-5 p-3 p-md-4 h-100">
-                <h2 class="h5 mb-3"><?= print_translation('admin_pwa_devices_title') ?></h2>
-                <?php if (empty($devices)): ?>
-                    <div class="text-body-secondary text-center py-4"><?= print_translation('admin_table_empty') ?></div>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead><tr><th><?= print_translation('admin_pwa_device') ?></th><th><?= print_translation('admin_pwa_platform') ?></th><th class="text-nowrap"><?= print_translation('admin_pwa_last_seen') ?></th></tr></thead>
-                            <tbody>
-                            <?php foreach ($devices as $device): ?>
-                                <tr>
-                                    <td><div class="text-break small"><?= htmlSC((string)($device['user_agent'] ?? '')) ?></div></td>
-                                    <td><?= htmlSC((string)($device['platform'] ?? '')) ?> / <?= htmlSC((string)($device['browser'] ?? '')) ?></td>
-                                    <td class="text-nowrap"><?= htmlSC((string)($device['last_seen_at'] ?? '')) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </div>
+        <div class="col-12">
+            <?= view()->renderPartial('admin/partials/pwa_devices', [
+                'devices' => $devices, 'devices_total' => $devices_total, 'devices_pagination' => $devices_pagination,
+            ]) ?>
         </div>
         <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4">
-                <h2 class="h5 mb-3"><?= print_translation('admin_pwa_notifications_title') ?></h2>
-                <?php if (empty($notifications)): ?>
-                    <div class="text-body-secondary text-center py-4"><?= print_translation('admin_table_empty') ?></div>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead><tr><th><?= print_translation('admin_pwa_notification') ?></th><th><?= print_translation('admin_pwa_status') ?></th><th class="text-nowrap"><?= print_translation('admin_pwa_sent') ?></th><th class="text-nowrap"><?= print_translation('admin_pwa_date') ?></th></tr></thead>
-                            <tbody>
-                            <?php foreach ($notifications as $notification): ?>
-                                <tr>
-                                    <td><div class="fw-medium"><?= htmlSC((string)$notification['title']) ?></div><div class="small text-body-secondary"><?= htmlSC((string)($notification['body'] ?? '')) ?></div></td>
-                                    <td><?= htmlSC((string)$notification['status']) ?></td>
-                                    <td class="text-nowrap"><?= (int)$notification['sent_count'] ?> / <?= (int)$notification['failed_count'] ?></td>
-                                    <td class="text-nowrap"><?= htmlSC((string)$notification['created_at']) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </div>
+            <?= view()->renderPartial('admin/partials/pwa_notifications', [
+                'notifications' => $notifications, 'notifications_total' => $notifications_total,
+                'notifications_pagination' => $notifications_pagination,
+            ]) ?>
         </div>
     </div>
 

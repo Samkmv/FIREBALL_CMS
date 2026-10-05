@@ -78,6 +78,8 @@ class NotificationService
         $this->ensureTables();
         $notification = $this->normalizeNotification($payload);
         $now = date('Y-m-d H:i:s');
+        // Keep the recipient's live event/Push intact, not a second plaintext transcript in storage.
+        $privateChat = NotificationPrivacy::isChat($notification);
 
         db()->query(
             'INSERT INTO notifications
@@ -85,14 +87,14 @@ class NotificationService
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $notification['user_id'],
-                $notification['title'],
-                $notification['message'],
+                $privateChat ? NotificationPrivacy::PRIVATE_TITLE : $notification['title'],
+                $privateChat ? '' : $notification['message'],
                 $notification['type'],
                 $notification['action_url'],
                 $notification['icon'],
                 $notification['source'],
                 $notification['priority'],
-                $notification['metadata'],
+                $privateChat ? '{}' : $notification['metadata'],
                 $notification['is_read'],
                 $notification['read_at'],
                 $now,
@@ -371,12 +373,13 @@ class NotificationService
 
     protected function feedItem(array $row): array
     {
+        $privateChat = NotificationPrivacy::isChat($row);
         $item = [
             'type' => (string)($row['type'] ?? 'system'),
             'notification_id' => (int)$row['id'],
             'source_label' => $this->sourceLabel((string)($row['source'] ?? 'system')),
-            'title' => (string)$row['title'],
-            'text' => (string)($row['message'] ?? ''),
+            'title' => $privateChat ? return_translation('notification_chat_fallback_title') : (string)$row['title'],
+            'text' => $privateChat ? return_translation('notification_chat_private_hint') : (string)($row['message'] ?? ''),
             'url' => (string)($row['action_url'] ?? base_href('/')),
             'icon' => (string)($row['icon'] ?? ''),
             'source' => (string)($row['source'] ?? 'system'),

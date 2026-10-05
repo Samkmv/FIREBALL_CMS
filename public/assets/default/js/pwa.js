@@ -6,11 +6,16 @@
 
   const csrf = document.querySelector('meta[name="needCSRFToken"]')?.getAttribute('content') || '';
   const currentUserId = Number.parseInt(body.dataset.pwaAuthUserId || '0', 10) || 0;
-  let syncedSubscriptionEndpoint = '';
+  let knownSubscription = null;
+  let pushState = 'checking';
+  let pushBusy = false;
+  let statusGeneration = 0;
+  let registrationPromise = null;
   const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const isSecure = window.location.protocol === 'https:' || isLocalhost;
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isSafari = /^((?!chrome|android|crios|fxios|edg|yabrowser).)*safari/i.test(navigator.userAgent);
   const iosHintStorageKey = 'fireball.pwa.iosInstallHintDismissed';
 
@@ -90,7 +95,7 @@
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'btn-close';
-    close.setAttribute('aria-label', 'Close');
+    close.setAttribute('aria-label', body.dataset.toastCloseLabel || 'Close');
     close.setAttribute('data-pwa-ios-install-dismiss', '');
 
     content.append(icon, text);
@@ -102,89 +107,119 @@
     document.querySelectorAll('[data-pwa-ios-install-hint]').forEach((element) => element.classList.add('d-none'));
   };
 
+  const pushLabels = (() => {
+    try { return JSON.parse(document.querySelector('[data-pwa-push-labels]')?.dataset.pwaPushLabels || '{}'); }
+    catch (_) { return {}; }
+  })();
+
   const syncPushControls = () => {
-    const hidePush = currentUserId <= 0 || (isIos && !isStandalone());
     document.querySelectorAll('[data-pwa-enable-push], [data-pwa-disable-push]').forEach((button) => {
-      button.classList.toggle('d-none', hidePush);
-      button.toggleAttribute('aria-hidden', hidePush);
-      if (hidePush) button.setAttribute('tabindex', '-1');
+      const enable = button.hasAttribute('data-pwa-enable-push');
+      const visible = currentUserId > 0 && (enable
+        ? ['disabled', 'error'].includes(pushState)
+        : pushState === 'enabled');
+      button.classList.toggle('d-none', !visible);
+      // d-inline-flex is !important too; never leave it competing with d-none.
+      button.classList.toggle('d-inline-flex', visible);
+      button.disabled = !visible || pushBusy;
+      button.toggleAttribute('aria-hidden', !visible);
+      if (!visible) button.setAttribute('tabindex', '-1');
       else button.removeAttribute('tabindex');
     });
   };
 
   const setPushStatusText = (key) => {
+    pushState = key;
     document.querySelectorAll('[data-pwa-push-status]').forEach((element) => {
-      const value = element.dataset[`status${key.charAt(0).toUpperCase()}${key.slice(1)}`] || '';
+      const value = pushLabels[key] || element.dataset[`status${key.charAt(0).toUpperCase()}${key.slice(1)}`] || '';
       if (value) element.textContent = value;
       element.classList.toggle('text-bg-success', key === 'enabled');
       element.classList.toggle('text-bg-secondary', key !== 'enabled');
     });
+    document.querySelectorAll('[data-pwa-push-status-hint]').forEach((element) => {
+      if (pushLabels[key + 'Hint']) element.textContent = pushLabels[key + 'Hint'];
+    });
+    syncPushControls();
   };
 
   const browserPushStatus = () => {
     if (currentUserId <= 0) return 'disabled';
-    if (body.dataset.pwaPushEnabled !== '1' || !body.dataset.pwaVapidPublicKey) return 'unavailable';
+    const supported = 'serviceWorker' in navigator && 'Notification' in window && 'PushManager' in window;
+    if (!supported) return isIos && !isStandalone() ? 'install' : 'unsupported';
+    if (body.dataset.pwaEnabled !== '1' || body.dataset.pwaPushEnabled !== '1' || !body.dataset.pwaVapidPublicKey) return 'unavailable';
     if (!isSecure) return 'unavailable';
-    if (isIos && !isStandalone()) return 'unavailable';
-    if (!('Notification' in window) || !('PushManager' in window)) return 'unsupported';
     if (Notification.permission === 'denied') return 'permission';
     return '';
   };
 
-  const syncExistingSubscription = async (subscription) => {
-    if (!subscription || currentUserId <= 0 || !body.dataset.pwaSubscribeUrl) return false;
-    if (syncedSubscriptionEndpoint === subscription.endpoint) return true;
-
-    const response = await postJson(body.dataset.pwaSubscribeUrl, subscription.toJSON());
-    if (!response.ok) return false;
-    syncedSubscriptionEndpoint = subscription.endpoint;
-    return true;
+  const readDeviceStatus = async (subscription) => {
+    // Verify ownership/activation without re-enabling a revoked subscription on page load.
+    const url = new URL(body.dataset.pwaStatusUrl, window.location.href);
+    if (subscription) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(subscription.endpoint));
+      const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+      url.searchParams.set('endpoint_hash', hash);
+    }
+    const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+    const result = await response.json();
+    if (!response.ok || result.status !== true || Number(result.user_id) !== currentUserId) throw new Error('Push status unavailable');
+    const push = result.push || {};
+    if (!push.pwa_enabled || !push.global_enabled || !push.vapid_ready || !push.secure_context) return 'unavailable';
+    return push.current_device_active === true && push.user_enabled === true ? 'enabled' : 'disabled';
   };
 
   const syncPushStatus = async () => {
+    if (pushBusy) return pushState;
+    const generation = ++statusGeneration;
     const browserStatus = browserPushStatus();
     if (browserStatus) {
       setPushStatusText(browserStatus);
-      return;
+      return browserStatus;
     }
-
-    const registration = window.FireballPwa.registration || await registerServiceWorker();
-    const subscription = registration?.pushManager ? await registration.pushManager.getSubscription() : null;
-    if (subscription) {
-      if (!subscriptionUsesCurrentVapidKey(subscription)) {
-        setPushStatusText('disabled');
-        return;
-      }
-
-      try {
-        setPushStatusText(await syncExistingSubscription(subscription) ? 'enabled' : 'disabled');
-      } catch (error) {
-        setPushStatusText('disabled');
-      }
-      return;
+    try {
+      const registration = window.FireballPwa.registration || await registerServiceWorker();
+      if (!registration?.pushManager) throw new Error('Push registration unavailable');
+      const subscription = await registration.pushManager.getSubscription();
+      const serverStatus = await readDeviceStatus(subscription);
+      const status = serverStatus === 'enabled'
+        && (Notification.permission !== 'granted' || !subscription || !subscriptionUsesCurrentVapidKey(subscription))
+        ? 'disabled' : serverStatus;
+      if (generation !== statusGeneration || pushBusy) return pushState;
+      knownSubscription = subscription;
+      setPushStatusText(Notification.permission === 'denied' ? 'permission' : status);
+    } catch (_) {
+      if (generation === statusGeneration && !pushBusy) setPushStatusText('error');
     }
-
-    setPushStatusText('disabled');
+    return pushState;
   };
 
-  const registerServiceWorker = async () => {
+  const registerServiceWorker = () => {
+    if (registrationPromise) return registrationPromise;
     if (body.dataset.pwaEnabled !== '1' || !isSecure || !('serviceWorker' in navigator)) {
       showIosHint();
-      return null;
+      return Promise.resolve(null);
     }
-
-    try {
-      const registration = await navigator.serviceWorker.register(body.dataset.pwaServiceWorkerUrl || '/service-worker.js', {
-        scope: '/',
-        updateViaCache: 'none'
-      });
-      window.FireballPwa.registration = registration;
-      if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      return registration;
-    } catch (error) {
-      console.warn('PWA service worker registration failed', error);
-      return null;
-    }
+    registrationPromise = (async () => {
+      let timeout;
+      try {
+        const registration = await navigator.serviceWorker.register(body.dataset.pwaServiceWorkerUrl || '/service-worker.js', {
+          scope: '/', updateViaCache: 'none'
+        });
+        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        // Prepare an active worker before showing Enable, not after the user taps it.
+        const ready = registration.active ? registration : await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Service worker activation timed out')), 10000); })
+        ]);
+        window.FireballPwa.registration = ready;
+        return ready;
+      } catch (error) {
+        registrationPromise = null;
+        console.warn('PWA service worker registration failed', error);
+        return null;
+      } finally { clearTimeout(timeout); }
+    })();
+    return registrationPromise;
   };
 
   let badgeQueue = Promise.resolve();
@@ -223,43 +258,38 @@
 
   const subscribePush = async () => {
     if (currentUserId <= 0) return { status: false, reason: 'auth' };
-    if (body.dataset.pwaPushEnabled !== '1') return { status: false, reason: 'disabled' };
-    if (!isSecure) return { status: false, reason: 'https' };
-    if (isIos && !isStandalone()) {
-      showIosHint();
-      return { status: false, reason: 'ios_not_standalone' };
+    const browserStatus = browserPushStatus();
+    if (browserStatus) return { status: false, reason: browserStatus };
+    if (navigator.userActivation && !navigator.userActivation.isActive) return { status: false, reason: 'gesture' };
+    const registration = window.FireballPwa.registration;
+    if (!registration?.pushManager) {
+      await registerServiceWorker();
+      return { status: false, reason: 'retry' };
     }
-    if (!('Notification' in window) || !('PushManager' in window)) return { status: false, reason: 'unsupported' };
-    if (!body.dataset.pwaVapidPublicKey) return { status: false, reason: 'vapid' };
-
-    const registration = window.FireballPwa.registration || await registerServiceWorker();
-    if (!registration) return { status: false, reason: 'service_worker' };
-
-    let permission = Notification.permission;
-    if (permission === 'default') permission = await Notification.requestPermission();
-    if (permission !== 'granted') return { status: false, reason: 'permission' };
-
-    let existing = await registration.pushManager.getSubscription();
+    let existing = knownSubscription;
     if (existing && !subscriptionUsesCurrentVapidKey(existing)) {
       const endpoint = existing.endpoint || '';
-      await existing.unsubscribe().catch(() => {});
-      if (endpoint && body.dataset.pwaUnsubscribeUrl) {
-        await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint }).catch(() => {});
+      const response = await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint });
+      if (!response.ok || (await response.json()).status !== true || !await existing.unsubscribe()) {
+        return { status: false, reason: 'server' };
       }
-      existing = null;
+      knownSubscription = null;
+      // Key rotation requires async cleanup. Ask for a fresh gesture instead of losing Safari activation.
+      return { status: false, reason: 'retry' };
     }
-
-    const subscription = existing || await registration.pushManager.subscribe({
+    // subscribe() requests permission itself, directly inside the click's activation.
+    // No service-worker registration/getSubscription/network await may precede this call.
+    const subscription = (existing && Notification.permission === 'granted') ? existing : await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(body.dataset.pwaVapidPublicKey)
     });
 
     const response = await postJson(body.dataset.pwaSubscribeUrl, subscription.toJSON());
-    if (!response.ok) {
+    const result = await response.json();
+    if (!response.ok || result.status !== true) {
       return { status: false, reason: response.status === 401 ? 'auth' : 'server' };
     }
-    syncedSubscriptionEndpoint = subscription.endpoint;
-    await syncPushStatus();
+    knownSubscription = subscription;
     return { status: true, subscription };
   };
 
@@ -267,21 +297,19 @@
     if (currentUserId <= 0) return { status: false, reason: 'auth' };
     const registration = window.FireballPwa.registration || await registerServiceWorker();
     if (!registration || !registration.pushManager) {
-      await syncPushStatus();
       return { status: true };
     }
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
-      await syncPushStatus();
       return { status: true };
     }
     const response = await postJson(body.dataset.pwaUnsubscribeUrl, { endpoint: subscription.endpoint });
-    if (!response.ok) {
+    const result = await response.json();
+    if (!response.ok || result.status !== true) {
       return { status: false, reason: response.status === 401 ? 'auth' : 'server' };
     }
-    await subscription.unsubscribe();
-    syncedSubscriptionEndpoint = '';
-    await syncPushStatus();
+    if (!await subscription.unsubscribe()) return { status: false, reason: 'server' };
+    knownSubscription = null;
     return { status: true };
   };
 
@@ -338,31 +366,44 @@
 
   const bindPushButtons = () => {
     document.addEventListener('click', (event) => {
-      const enable = event.target.closest('[data-pwa-enable-push]');
-      if (enable) {
-        event.preventDefault();
-        subscribePush().then((result) => {
-          document.dispatchEvent(new CustomEvent('fireball:pwa-subscribe-result', { detail: result }));
-          syncPushStatus();
-        });
-        return;
-      }
-      const disable = event.target.closest('[data-pwa-disable-push]');
-      if (disable) {
-        event.preventDefault();
-        unsubscribePush().then((result) => {
-          document.dispatchEvent(new CustomEvent('fireball:pwa-unsubscribe-result', { detail: result }));
-          syncPushStatus();
-        });
+      const button = event.target.closest('[data-pwa-enable-push], [data-pwa-disable-push]');
+      if (!button) return;
+      event.preventDefault();
+      if (!button.disabled && !button.classList.contains('d-none')) {
+        runPushAction(button.hasAttribute('data-pwa-enable-push') ? 'subscribe' : 'unsubscribe');
       }
     });
+  };
+
+  const runPushAction = async (action) => {
+    if (pushBusy) return { status: false, reason: 'busy' };
+    pushBusy = true;
+    ++statusGeneration;
+    syncPushControls();
+    document.querySelectorAll('[data-pwa-push-feedback]').forEach((element) => element.classList.add('d-none'));
+    let result;
+    try {
+      result = await (action === 'subscribe' ? subscribePush() : unsubscribePush());
+    } catch (_) {
+      result = { status: false, reason: window.Notification?.permission === 'denied' ? 'permission' : 'server' };
+    } finally { pushBusy = false; }
+    await syncPushStatus();
+    if (!result.status && pushState !== 'permission') {
+      document.querySelectorAll('[data-pwa-push-feedback]').forEach((element) => {
+        element.textContent = pushLabels[result.reason === 'retry' ? 'retry' : 'actionError'] || '';
+        element.classList.remove('d-none');
+      });
+    }
+    document.dispatchEvent(new CustomEvent('fireball:pwa-' + action + '-result', { detail: result }));
+    return result;
   };
 
   window.FireballPwa = {
     registration: null,
     register: registerServiceWorker,
-    subscribe: subscribePush,
-    unsubscribe: unsubscribePush,
+    subscribe: () => runPushAction('subscribe'),
+    unsubscribe: () => runPushAction('unsubscribe'),
+    refreshPushStatus: syncPushStatus,
     setBadge
   };
 
@@ -370,7 +411,7 @@
   syncPushControls();
   window.matchMedia('(display-mode: standalone)').addEventListener?.('change', () => {
     applyModeClasses();
-    syncPushControls();
+    syncPushStatus();
     if (isStandalone()) hideIosHint();
     else showIosHint();
   });
@@ -380,6 +421,10 @@
   registerServiceWorker().then(() => {
     if (badgeValue !== null) syncWorkerBadge(badgeValue);
     return syncPushStatus();
+  });
+  window.addEventListener('pageshow', () => syncPushStatus());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncPushStatus();
   });
   if (currentUserId <= 0) setBadge(0);
   navigator.serviceWorker?.addEventListener('message', (event) => {

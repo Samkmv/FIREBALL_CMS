@@ -216,6 +216,8 @@ $app->router->get('/admin/settings/pwa', [AdminController::class, 'pwaSettings']
 $app->router->post('/admin/settings/pwa', [AdminController::class, 'pwaSettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/pwa/vapid', [AdminController::class, 'generatePwaVapid'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/pwa/test-push', [AdminController::class, 'testPwaPush'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/pwa/devices/detach', [AdminController::class, 'detachPwaDevices'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/pwa/notifications/clear', [AdminController::class, 'clearPwaNotificationLog'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/contact-subjects', [AdminController::class, 'contactSubjects'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/contact-subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/contact-subjects/create', [AdminController::class, 'contactSubjectForm'])->middleware(['auth', 'admin']);
