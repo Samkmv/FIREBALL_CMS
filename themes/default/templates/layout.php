@@ -247,6 +247,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Customs styles -->
     <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= theme_asset_versioned('css/style.css') ?>">
+    <link rel="stylesheet" href="<?= asset_versioned_url(base_url('/assets/default/css/back-to-top.css'), WWW . '/assets/default/css/back-to-top.css') ?>">
     <?php if (str_contains((string)$this->content, 'data-home-page')): ?>
         <link rel="stylesheet" href="<?= theme_asset_versioned('css/home.css') ?>">
     <?php endif; ?>
@@ -338,16 +339,15 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php endif; ?>
 
 <!-- Back to top button -->
-<div class="floating-buttons position-fixed top-50 end-0 z-sticky me-3 me-xl-4 pb-4">
-    <a class="btn-scroll-top btn btn-sm bg-body border-0 rounded-pill shadow animate-slide-end" href="#top">
-        Top
-        <i class="ci-arrow-right fs-base ms-1 me-n1 animate-target"></i>
-        <span class="position-absolute top-0 start-0 w-100 h-100 border rounded-pill z-0"></span>
-        <svg class="position-absolute top-0 start-0 w-100 h-100 z-1" viewbox="0 0 62 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x=".75" y=".75" width="60.5" height="30.5" rx="15.25" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10"></rect>
-        </svg>
-    </a>
-</div>
+<button type="button" class="public-back-to-top" data-back-to-top hidden tabindex="-1" aria-hidden="true"
+        aria-label="<?= htmlSC(return_translation('tpl_back_to_top_label')) ?>" title="<?= htmlSC(return_translation('tpl_back_to_top_label')) ?>">
+    <svg class="public-back-to-top__icon" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false">
+        <circle class="public-back-to-top__track" cx="22" cy="22" r="18" />
+        <circle class="public-back-to-top__progress" cx="22" cy="22" r="18" pathLength="100" stroke-linecap="round" />
+        <path class="public-back-to-top__arrow" d="M22 29V15m-6 6 6-6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <span class="public-back-to-top__label"><?= htmlSC(return_translation('tpl_back_to_top')) ?></span>
+</button>
 
 <script>
     const baseUrl = '<?= base_url(); ?>';
@@ -511,6 +511,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php endif; ?>
 <script src="<?= asset_versioned_url(base_url('/assets/default/js/pwa.js'), WWW . '/assets/default/js/pwa.js') ?>"></script>
 <script src="<?= theme_asset_versioned('js/main.js') ?>"></script>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/back-to-top.js'), WWW . '/assets/default/js/back-to-top.js') ?>"></script>
 
 
 </body></html>

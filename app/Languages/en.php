@@ -13,6 +13,8 @@ return [
     'theme_diagnostics_unresolved' => 'Missing after fallback',
 
     'tpl_auth_settings' => 'Account settings',
+    'tpl_back_to_top' => 'Back to top',
+    'tpl_back_to_top_label' => 'Back to the top of the page',
     // Menu
     'tpl_menu_logo' => 'Fireball',
     'tpl_menu_nav' => 'Navigation',

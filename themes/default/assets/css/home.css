@@ -120,6 +120,21 @@
 .home-page--apple .home-hero .home-button:active { transform: scale(.98); }
 .home-page--apple .home-hero .home-button--primary { background: #fff; color: #1d1d1f; box-shadow: none; }
 .home-page--apple .home-hero .home-button--primary:hover { background: #f0f0f2; color: #1d1d1f; box-shadow: none; }
+.home-page--apple .home-hero .home-button--glass {
+    padding: 14px 24px;
+    border: 1px solid #d1ffe642;
+    color: #a6f3ce;
+    background: linear-gradient(135deg, #ffffff1f, #ffffff06), #102a2359;
+    box-shadow: inset 0 1px 0 #ffffff20, 0 4px 18px #00000014;
+    -webkit-backdrop-filter: saturate(170%) blur(18px);
+    backdrop-filter: saturate(170%) blur(18px);
+    transition: transform .3s cubic-bezier(.2, .65, .3, 1), box-shadow .3s ease, background-color .3s ease, border-color .3s ease;
+}
+.home-page--apple .home-hero .home-button--glass:focus-visible {
+    color: #c5ffe3;
+    border-color: #b6ffdb8c;
+    background-color: #23594380;
+}
 .home-page--apple .home-hero .home-text-link { color: #8fefbf; }
 .home-page--apple .home-hero__footer { position: absolute; inset: auto 0 28px; display: flex; align-items: center; gap: 32px; width: 100%; }
 .home-page--apple .home-hero__scroll { display: inline-flex; align-items: center; gap: 16px; flex-shrink: 0; font-size: 12px; color: #ffffffe0; }
@@ -199,6 +214,8 @@
 .home-page--apple .home-benefits { background: var(--home-bg); }
 .home-page--apple .home-section-head--center { display: block; text-align: center; margin: 0 0 66px; }
 .home-page--apple .home-section-head--center > div { margin-inline: auto; }
+.home-page--apple .home-benefits .home-section-head h2 { max-width: 720px; margin-inline: auto; font-size: clamp(34px, 4.25vw, 54px); font-weight: 600; line-height: 1.12; letter-spacing: -.035em; }
+.home-page--apple .home-benefits-title__line { display: block; text-wrap: balance; }
 .home-page--apple .home-benefit-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 34px; }
 .home-page--apple .home-benefit-card { transition: none; padding: 0; min-height: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; contain: none; }
 .home-page--apple .home-benefit-card:hover { transform: none; background: transparent; }
@@ -294,6 +311,7 @@
     .home-page--apple .home-hero__lead { font-size: 18px; line-height: 1.55; margin-top: 23px; }
     .home-page--apple .home-hero__actions { gap: 21px; margin-top: 29px; }
     .home-page--apple .home-button { font-size: 14px; min-height: 48px; padding: 14px 21px; gap: 9px; }
+    .home-page--apple .home-hero .home-button--glass { padding: 13px 20px; }
     .home-page--apple .home-text-link { font-size: 14px; }
     .home-page--apple .home-hero__footer { bottom: 24px; }
     .home-page--apple .home-hero__overlay { background: linear-gradient(90deg, #060b16bf, #060b1680), linear-gradient(0deg, #060b1670, transparent 45%); }
@@ -345,6 +363,8 @@
     .home-page--apple .home-button:active, .home-page--apple .home-city-link:active { transform: scale(.98); }
     .home-page--apple .home-hero .home-button:is(:hover, :focus-visible) { transform: translateY(-3px); box-shadow: 0 10px 30px #00000028; }
     .home-page--apple .home-hero .home-button:is(:hover, :focus-visible) i { transform: translate(2px, -2px); }
+    .home-page--apple .home-hero .home-button--glass:hover { color: #c5ffe3; border-color: #b6ffdb8c; background-color: #23594380; box-shadow: inset 0 1px 0 #ffffff30, 0 10px 30px #00000028; }
+    .home-page--apple .home-hero .home-button--glass:is(:hover, :focus-visible) i { transform: translateX(3px); }
     .home-page--apple .home-hero .home-button:active { transform: translateY(0) scale(.98); }
 }
 @media (prefers-reduced-motion: reduce) {

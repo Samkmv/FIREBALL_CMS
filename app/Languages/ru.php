@@ -13,6 +13,8 @@ return [
     'theme_diagnostics_unresolved' => 'Отсутствует после fallback',
 
     'tpl_auth_settings' => 'Настройки аккаунта',
+    'tpl_back_to_top' => 'Наверх',
+    'tpl_back_to_top_label' => 'Вернуться наверх страницы',
     // Menu
     'tpl_menu_logo' => 'Fireball',
     'tpl_menu_nav' => 'Навигация',

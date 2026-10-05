@@ -13,6 +13,8 @@ return [
     'theme_diagnostics_unresolved' => '回退后仍缺失',
 
     'tpl_auth_settings' => '账户设置',
+    'tpl_back_to_top' => '返回顶部',
+    'tpl_back_to_top_label' => '返回页面顶部',
     // Menu
     'tpl_menu_logo' => 'Fireball',
     'tpl_menu_nav' => '导航',

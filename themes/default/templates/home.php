@@ -39,6 +39,7 @@ $benefits = [
 ];
 $homeWatchUrl = !$canViewPaidVideos ? base_href('/subscriptions/plans') : (!empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts'));
 $homeWatchLabel = !$canViewPaidVideos ? return_translation('subscriptions_view_plans') : return_translation('home_index_hero_watch_cameras');
+$benefitsTitleLines = preg_split('/(?<=[.!?。！？])\s+/u', return_translation('home_index_benefits_title'), 2);
 ?>
 <main class="home-page home-page--apple content-wrapper" data-home-page>
     <div class="home-scroll-progress" aria-hidden="true"><span data-home-progress></span></div>
@@ -59,7 +60,7 @@ $homeWatchLabel = !$canViewPaidVideos ? return_translation('subscriptions_view_p
                 <p class="home-hero__lead home-appear"><?= htmlSC(return_translation('home_index_hero_lead')) ?></p>
                 <div class="home-hero__actions">
                     <span class="home-hero__action home-appear"><a class="home-button home-button--primary" href="<?= htmlSC($homeWatchUrl) ?>"><?= htmlSC($homeWatchLabel) ?><i class="ci-arrow-up-right" aria-hidden="true"></i></a></span>
-                    <span class="home-hero__action home-appear"><a class="home-text-link" href="<?= base_href('/contacts') ?>"><span class="home-text-link__label"><?= htmlSC(return_translation('home_index_connect_object')) ?></span><i class="ci-chevron-right" aria-hidden="true"></i></a></span>
+                    <span class="home-hero__action home-appear"><a class="home-button home-button--glass" href="<?= base_href('/contacts') ?>"><span><?= htmlSC(return_translation('home_index_connect_object')) ?></span><i class="ci-chevron-right" aria-hidden="true"></i></a></span>
                 </div>
             </div>
         </div>
@@ -127,7 +128,16 @@ $homeWatchLabel = !$canViewPaidVideos ? return_translation('subscriptions_view_p
 
     <section class="home-section home-benefits" aria-labelledby="home-benefits-title">
         <div class="container">
-            <div class="home-section-head home-section-head--center home-appear"><div><span class="home-section-kicker home-gradient-text"><?= htmlSC(return_translation('home_index_benefits_kicker')) ?></span><h2 id="home-benefits-title"><?= htmlSC(return_translation('home_index_benefits_title')) ?><span class="home-gradient-text">.</span></h2></div></div>
+            <div class="home-section-head home-section-head--center home-appear">
+                <div>
+                    <span class="home-section-kicker home-gradient-text"><?= htmlSC(return_translation('home_index_benefits_kicker')) ?></span>
+                    <h2 id="home-benefits-title">
+                        <?php foreach ($benefitsTitleLines as $index => $line): ?>
+                            <span class="home-benefits-title__line"><?= htmlSC($line) ?><?php if ($index === count($benefitsTitleLines) - 1): ?><span class="home-gradient-text">.</span><?php endif; ?></span>
+                        <?php endforeach; ?>
+                    </h2>
+                </div>
+            </div>
             <div class="home-benefit-grid">
                 <?php foreach ($benefits as $benefit): ?>
                     <article class="home-benefit-card home-appear"><div class="home-benefit-card__icon"><i class="<?= htmlSC($benefit['icon']) ?>" aria-hidden="true"></i></div><h3><?= htmlSC($benefit['title']) ?></h3><p><?= htmlSC($benefit['text']) ?></p></article>
@@ -162,7 +172,7 @@ $homeWatchLabel = !$canViewPaidVideos ? return_translation('subscriptions_view_p
     </section>
 
     <section class="home-section home-cta-wrap" aria-labelledby="home-cta-title">
-        <div class="container"><div class="home-cta home-appear"><span class="home-section-kicker"><?= htmlSC(return_translation('home_index_cta_kicker')) ?></span><h2 id="home-cta-title"><?= htmlSC(return_translation('home_index_cta_title')) ?><span class="home-gradient-text">.</span></h2><p><?= htmlSC(return_translation('home_index_cta_text')) ?></p><a class="home-button home-button--primary" href="<?= base_href('/contacts') ?>"><?= htmlSC(return_translation('home_index_connect_object')) ?><i class="ci-arrow-up-right" aria-hidden="true"></i></a></div></div>
+        <div class="container"><div class="home-cta home-appear"><span class="home-section-kicker home-gradient-text"><?= htmlSC(return_translation('home_index_cta_kicker')) ?></span><h2 id="home-cta-title"><?= htmlSC(return_translation('home_index_cta_title')) ?><span class="home-gradient-text">.</span></h2><p><?= htmlSC(return_translation('home_index_cta_text')) ?></p><a class="home-button home-button--primary" href="<?= base_href('/contacts') ?>"><?= htmlSC(return_translation('home_index_connect_object')) ?><i class="ci-arrow-up-right" aria-hidden="true"></i></a></div></div>
     </section>
 </main>
 

@@ -13,6 +13,8 @@ return [
     'theme_diagnostics_unresolved' => 'Fehlt auch nach Fallback',
 
     'tpl_auth_settings' => 'Kontoeinstellungen',
+    'tpl_back_to_top' => 'Nach oben',
+    'tpl_back_to_top_label' => 'Zum Seitenanfang zurückkehren',
     // Menu
     'tpl_menu_logo' => 'Fireball',
     'tpl_menu_nav' => 'Navigation',
