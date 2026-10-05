@@ -247,6 +247,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Customs styles -->
     <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= theme_asset_versioned('css/style.css') ?>">
+    <?php if (str_contains((string)$this->content, 'data-home-page')): ?>
+        <link rel="stylesheet" href="<?= theme_asset_versioned('css/home.css') ?>">
+    <?php endif; ?>
     <?php if (!$canViewVideoStatus): ?>
         <style id="fb-video-status-privacy">
             .fb-plyr-hls-message--info,
@@ -274,6 +277,7 @@ $postCategoryUrl = static function (?string $slug = null): string {
 
 <!-- Body -->
 <body
+    class="<?= str_contains((string)$this->content, 'data-home-page') ? 'home-shell' : '' ?>"
     data-toast-success-title="<?= htmlSC(return_translation('toast_success_title')) ?>"
     data-toast-error-title="<?= htmlSC(return_translation('toast_error_title')) ?>"
     data-toast-info-title="<?= htmlSC(return_translation('toast_info_title')) ?>"

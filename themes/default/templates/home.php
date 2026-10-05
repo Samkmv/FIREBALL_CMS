@@ -1,34 +1,18 @@
 <?php
-
-/**
- * Home Template
- *
- * Available variables:
- *
- * $page
- * $posts
- * $settings
- * $user
- * $locale
- */
-
+/** Apple-inspired homepage. Content and access rules come from the CMS. */
 $postUrl = static fn(array $post): string => base_href('/posts/' . $post['slug']);
 $canViewPaidVideos = (bool)apply_filters('public_video_access_allowed', true, get_user() ?: []);
-//$heroStream = 'https://5e0add8153fcd.streamlock.net:1936/vedetta/via-della-scala.stream/chunklist_w1359048502.m3u8?utm_source=chatgpt.com';
 $heroStream = 'https://cdn.livespotting.com/vpu/ehlpzb4g/nkw9elfh_hub.m3u8';
 $heroHlsScript = theme_asset_versioned('vendor/hls.js/hls.min.js');
 $homeCityCategories = array_values(array_filter(
     (new \App\Models\Post())->getNavigationCategories(),
     static fn(array $category): bool => (int)($category['total'] ?? 0) > 0
 ));
-
+$homePublishedCount = array_sum(array_column($homeCityCategories, 'total'));
 $popularCameras = [];
 foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
     $cameraTitle = trim((string)($post['title'] ?? ''));
-    if ($cameraTitle === '') {
-        continue;
-    }
-
+    if ($cameraTitle === '') continue;
     $popularCameras[] = [
         'title' => $cameraTitle,
         'city' => trim((string)($post['category_label'] ?? $post['category'] ?? return_translation('home_index_category_fallback'))),
@@ -36,29 +20,16 @@ foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
         'date' => date('d.m.Y', strtotime((string)($post['published_at'] ?? 'now'))),
         'image' => (string)($post['image_thumb'] ?? get_image($post['image'] ?? '')),
         'image_srcset' => (string)($post['image_srcset'] ?? ''),
-        'image_width' => (int)($post['image_width'] ?: 416),
-        'image_height' => (int)($post['image_height'] ?: 305),
+        'image_width' => (int)(($post['image_width'] ?? 0) ?: 416),
+        'image_height' => (int)(($post['image_height'] ?? 0) ?: 305),
         'url' => $postUrl($post),
         'locked' => isset($post['subscription_access']) && empty($post['subscription_access']['allowed']),
     ];
 }
-
 $objectCards = [
-    [
-        'title' => return_translation('home_index_object_apartments_title'),
-        'text' => return_translation('home_index_object_apartments_text'),
-        'image' => theme_asset('images/home/home.png'),
-    ],
-    [
-        'title' => return_translation('home_index_object_business_title'),
-        'text' => return_translation('home_index_object_business_text'),
-        'image' => theme_asset('images/home/business.png'),
-    ],
-    [
-        'title' => return_translation('home_index_object_public_title'),
-        'text' => return_translation('home_index_object_public_text'),
-        'image' => theme_asset('images/home/social.png'),
-    ],
+    ['title' => return_translation('home_index_object_apartments_title'), 'text' => return_translation('home_index_object_apartments_text'), 'image' => theme_asset('images/home/home.webp'), 'icon' => 'ci-home'],
+    ['title' => return_translation('home_index_object_business_title'), 'text' => return_translation('home_index_object_business_text'), 'image' => theme_asset('images/home/business.webp'), 'icon' => 'ci-briefcase'],
+    ['title' => return_translation('home_index_object_public_title'), 'text' => return_translation('home_index_object_public_text'), 'image' => theme_asset('images/home/social.webp'), 'icon' => 'ci-globe'],
 ];
 $benefits = [
     ['icon' => 'ci-monitor', 'title' => return_translation('home_index_benefit_simple_title'), 'text' => return_translation('home_index_benefit_simple_text')],
@@ -66,233 +37,132 @@ $benefits = [
     ['icon' => 'ci-lock', 'title' => return_translation('home_index_benefit_secure_title'), 'text' => return_translation('home_index_benefit_secure_text')],
     ['icon' => 'ci-eye', 'title' => return_translation('home_index_benefit_transparent_title'), 'text' => return_translation('home_index_benefit_transparent_text')],
 ];
-$featuredCount = count($popularCameras);
-
+$homeWatchUrl = !$canViewPaidVideos ? base_href('/subscriptions/plans') : (!empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts'));
+$homeWatchLabel = !$canViewPaidVideos ? return_translation('subscriptions_view_plans') : return_translation('home_index_hero_watch_cameras');
 ?>
-<main class="home-page content-wrapper">
-    <section class="home-hero">
+<main class="home-page home-page--apple content-wrapper" data-home-page>
+    <div class="home-scroll-progress" aria-hidden="true"><span data-home-progress></span></div>
+    <section class="home-hero" aria-labelledby="home-hero-title">
         <div class="home-hero__media" aria-hidden="true">
             <?php if ($canViewPaidVideos): ?>
-            <video
-                class="home-hero__video"
-                data-player-native
-                data-home-hero-video
-                data-home-hero-src="<?= htmlSC($heroStream) ?>"
-                muted
-                autoplay
-                playsinline
-                preload="auto"
-            ></video>
+                <video class="home-hero__video" data-player-native data-home-hero-video data-home-hero-src="<?= htmlSC($heroStream) ?>" muted autoplay playsinline preload="none" tabindex="-1"></video>
             <?php endif; ?>
         </div>
         <div class="home-hero__overlay" aria-hidden="true"></div>
         <div class="container home-hero__inner">
-            <div class="home-hero__content home-reveal">
-                <span class="home-eyebrow"><span class="home-live-dot"></span> <?= print_translation('home_index_eyebrow') ?></span>
-                <?php if (!$canViewPaidVideos): ?><span class="badge text-bg-dark rounded-pill mb-3"><i class="ci-lock me-1"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span><?php endif; ?>
-                <h1 class="home-hero__title"><?= print_translation('home_index_hero_title') ?></h1>
-                <p class="home-hero__lead"><?= print_translation('home_index_hero_lead') ?></p>
-                <p class="home-hero__text"><?= print_translation('home_index_hero_text') ?></p>
+            <div class="home-hero__content">
+                <span class="home-eyebrow home-appear"><span class="home-live-dot" aria-hidden="true"></span><?= htmlSC(return_translation('home_index_eyebrow')) ?></span>
+                <h1 class="home-hero__title" id="home-hero-title">
+                    <span class="home-hero__line home-appear"><?= htmlSC(return_translation('home_index_hero_title')) ?></span>
+                    <span class="home-hero__line home-appear"><span class="home-gradient-text"><?= htmlSC(return_translation('home_index_hero_title_accent')) ?></span></span>
+                </h1>
+                <p class="home-hero__lead home-appear"><?= htmlSC(return_translation('home_index_hero_lead')) ?></p>
                 <div class="home-hero__actions">
-                    <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= !$canViewPaidVideos ? base_href('/subscriptions/plans') : (!empty($popularCameras) ? '#home-popular-cameras' : base_href('/posts')) ?>"><?= !$canViewPaidVideos ? htmlSC(return_translation('subscriptions_view_plans')) : print_translation('home_index_hero_watch_cameras') ?></a>
-                    <a class="btn btn-outline-secondary rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>
+                    <span class="home-hero__action home-appear"><a class="home-button home-button--primary" href="<?= htmlSC($homeWatchUrl) ?>"><?= htmlSC($homeWatchLabel) ?><i class="ci-arrow-up-right" aria-hidden="true"></i></a></span>
+                    <span class="home-hero__action home-appear"><a class="home-text-link" href="<?= base_href('/contacts') ?>"><span class="home-text-link__label"><?= htmlSC(return_translation('home_index_connect_object')) ?></span><i class="ci-chevron-right" aria-hidden="true"></i></a></span>
                 </div>
             </div>
         </div>
+        <div class="container home-hero__footer home-appear" data-home-appear-delay="1000">
+            <a class="home-hero__scroll" href="#home-objects"><span><?= htmlSC(return_translation('home_index_scroll_hint')) ?></span><i class="ci-arrow-down" aria-hidden="true"></i></a>
+            <p class="home-hero__note"><?= htmlSC(return_translation('home_index_hero_text')) ?></p>
+            <?php if ($canViewPaidVideos): ?>
+                <button class="home-motion-toggle" type="button" data-home-motion-toggle data-pause-label="<?= htmlSC(return_translation('home_index_pause_video')) ?>" data-play-label="<?= htmlSC(return_translation('home_index_play_video')) ?>" aria-label="<?= htmlSC(return_translation('home_index_pause_video')) ?>" aria-pressed="false"><i class="ci-pause" aria-hidden="true"></i></button>
+            <?php else: ?>
+                <span class="home-glass-label"><i class="ci-lock" aria-hidden="true"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span>
+            <?php endif; ?>
+        </div>
     </section>
 
-    <section class="home-section home-stats" aria-label="<?= htmlSC(return_translation('home_index_stats_aria')) ?>">
+    <section class="home-stats" id="home-discover" aria-label="<?= htmlSC(return_translation('home_index_stats_aria')) ?>">
         <div class="container">
-            <div class="home-stats__grid home-reveal" data-home-stats>
-                <div class="home-stat">
-                    <strong><span data-home-counter="365">365</span>+</strong>
-                    <span><?= print_translation('home_index_stats_cameras') ?></span>
-                </div>
-                <div class="home-stat">
-                    <strong>24/7</strong>
-                    <span><?= print_translation('home_index_stats_access') ?></span>
-                </div>
-                <div class="home-stat">
-                    <strong><span data-home-counter="7">7</span></strong>
-                    <span><?= print_translation('home_index_stats_archive_days') ?></span>
-                </div>
+            <div class="home-stats__grid home-appear" data-home-stats>
+                <div class="home-stat"><strong><span data-home-counter="<?= (int)$homePublishedCount ?>"><?= (int)$homePublishedCount ?></span></strong><span><?= htmlSC(return_translation('home_index_stats_cameras')) ?></span></div>
+                <div class="home-stat"><strong class="home-gradient-text">24/7</strong><span><?= htmlSC(return_translation('home_index_stats_access')) ?></span></div>
+                <div class="home-stat"><strong><span data-home-counter="<?= count($homeCityCategories) ?>"><?= count($homeCityCategories) ?></span></strong><span><?= htmlSC(return_translation('home_index_stats_archive_days')) ?></span></div>
             </div>
         </div>
     </section>
 
     <?php if (!empty($popularCameras)): ?>
-        <section class="container-start pt-5" id="home-popular-cameras">
-            <div class="row align-items-center g-0 pt-2 pt-sm-3 pt-md-4 pt-lg-5">
-                <div class="col-md-4 col-lg-3 pb-1 pb-md-0 pe-3 ps-md-0 mb-4 mb-md-0">
-                    <div class="d-flex flex-md-column align-items-end align-items-md-start home-featured-toolbar home-reveal">
-                        <div class="home-featured-head mb-md-5 me-3 me-md-0">
-                            <span class="home-section-kicker"><?= print_translation('home_index_featured_kicker') ?></span>
-                            <h2><?= print_translation('home_index_featured_posts') ?></h2>
-                            <p><?= print_translation('home_index_featured_posts_subtitle') ?></p>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="button" id="prev-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-start me-1 home-featured-nav-btn" aria-label="<?= htmlSC(return_translation('home_index_slider_prev')) ?>">
-                                <i class="ci-chevron-left fs-xl animate-target"></i>
-                            </button>
-                            <button type="button" id="next-home-featured" class="btn btn-icon btn-outline-secondary rounded-circle animate-slide-end home-featured-nav-btn" aria-label="<?= htmlSC(return_translation('home_index_slider_next')) ?>">
-                                <i class="ci-chevron-right fs-xl animate-target"></i>
-                            </button>
-                        </div>
+        <section class="home-section home-featured" id="home-popular-cameras" aria-labelledby="home-featured-title">
+            <div class="container">
+                <div class="home-featured-layout">
+                    <div class="home-section-head home-featured-head home-appear">
+                        <div><span class="home-section-kicker home-gradient-text"><?= htmlSC(return_translation('home_index_featured_kicker')) ?></span><h2 id="home-featured-title"><?= htmlSC(return_translation('home_index_featured_posts')) ?><span class="home-heading-dot">.</span></h2><p><?= htmlSC(return_translation('home_index_featured_posts_subtitle')) ?></p></div>
+                        <a class="home-text-link" href="<?= base_href('/posts') ?>"><span class="home-text-link__label"><?= htmlSC(return_translation('home_index_featured_all')) ?></span><i class="ci-chevron-right" aria-hidden="true"></i></a>
+                        <div class="home-slider-controls"><div class="home-slider-actions"><button class="home-slider-btn" type="button" data-home-slider-prev aria-label="<?= htmlSC(return_translation('home_index_slider_prev')) ?>"><i class="ci-chevron-left" aria-hidden="true"></i></button><button class="home-slider-btn" type="button" data-home-slider-next aria-label="<?= htmlSC(return_translation('home_index_slider_next')) ?>"><i class="ci-chevron-right" aria-hidden="true"></i></button></div><span class="home-slider-track" aria-hidden="true"><span data-home-slider-progress></span></span></div>
                     </div>
-                </div>
-
-                <div class="col-md-8 col-lg-9">
-                    <div class="ps-md-4 ps-lg-5 home-reveal">
-                        <div class="swiper" data-swiper="{
-                            &quot;slidesPerView&quot;: &quot;auto&quot;,
-                            &quot;spaceBetween&quot;: 24,
-                            &quot;slidesOffsetAfter&quot;: 16,
-                            &quot;loop&quot;: false,
-                            &quot;rewind&quot;: false,
-                            &quot;watchOverflow&quot;: true,
-                            &quot;breakpoints&quot;: {
-                                &quot;768&quot;: {
-                                    &quot;slidesOffsetAfter&quot;: 24
-                                },
-                                &quot;992&quot;: {
-                                    &quot;slidesOffsetAfter&quot;: 48
-                                }
-                            },
-                            &quot;navigation&quot;: {
-                                &quot;prevEl&quot;: &quot;#prev-home-featured&quot;,
-                                &quot;nextEl&quot;: &quot;#next-home-featured&quot;
-                            }<?= $featuredCount > 1 ? ',' : '' ?>
-                            <?php if ($featuredCount > 1): ?>
-                            &quot;pagination&quot;: {
-                                &quot;el&quot;: &quot;#home-featured-progress&quot;,
-                                &quot;type&quot;: &quot;progressbar&quot;
-                            }
-                            <?php endif; ?>
-                        }">
-                            <div class="swiper-wrapper">
-                                <?php foreach ($popularCameras as $camera): ?>
-                                    <div class="swiper-slide w-auto h-auto">
-                                        <article class="col" style="width: 306px; max-width: 72vw;">
-                                            <a class="ratio d-flex hover-effect-scale rounded overflow-hidden" href="<?= htmlSC($camera['url']) ?>" style="--cz-aspect-ratio: calc(305 / 416 * 100%)">
-                                                <img src="<?= htmlSC($camera['image']) ?>" srcset="<?= htmlSC($camera['image_srcset']) ?>" sizes="(max-width: 767px) 72vw, 306px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)$camera['image_width'] ?>" height="<?= (int)$camera['image_height'] ?>" alt="<?= htmlSC($camera['title']) ?>" loading="lazy" decoding="async">
-                                                <?php if (!empty($camera['locked'])): ?>
-                                                    <span class="home-online-badge"><i class="ci-lock" aria-hidden="true"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?></span>
-                                                <?php else: ?>
-                                                    <span class="home-online-badge"><span class="home-online-dot" aria-hidden="true"></span><?= print_translation('home_index_camera_online') ?></span>
-                                                <?php endif; ?>
-                                            </a>
-                                            <div class="pt-4">
-                                                <div class="nav align-items-center gap-2 pb-2 mt-n1 mb-1">
-                                                    <a class="nav-link text-body fs-xs text-uppercase p-0" href="<?= htmlSC($camera['category_url']) ?>">
-                                                        <?= htmlSC($camera['city']) ?>
-                                                    </a>
-                                                    <hr class="vr my-1 mx-1">
-                                                    <span class="text-body-tertiary fs-xs"><?= htmlSC($camera['date']) ?></span>
-                                                </div>
-                                                <h3 class="h5 mb-0">
-                                                    <a class="hover-effect-underline" href="<?= htmlSC($camera['url']) ?>"><?= htmlSC($camera['title']) ?></a>
-                                                </h3>
-                                                <a class="btn btn-outline-secondary rounded-pill btn-sm mt-3" href="<?= htmlSC($camera['url']) ?>">
-                                                    <?= print_translation('home_index_featured_posts_watch') ?>
-                                                </a>
-                                            </div>
-                                        </article>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        <?php if ($featuredCount > 1): ?>
-                            <div id="home-featured-progress" class="swiper-pagination home-featured-progress" aria-label="<?= htmlSC(return_translation('home_index_slider_progress')) ?>"></div>
-                        <?php endif; ?>
+                    <div class="home-camera-slider home-appear" data-home-slider tabindex="0" role="region" aria-label="<?= htmlSC(return_translation('home_index_slider_progress')) ?>">
+                        <?php foreach ($popularCameras as $camera): ?>
+                            <article class="home-camera-card">
+                                <a class="home-camera-card__media" href="<?= htmlSC($camera['url']) ?>" aria-label="<?= htmlSC($camera['title']) ?>">
+                                    <img src="<?= htmlSC($camera['image']) ?>" srcset="<?= htmlSC($camera['image_srcset']) ?>" sizes="(max-width: 575px) 78vw, 286px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" referrerpolicy="no-referrer" width="<?= $camera['image_width'] ?>" height="<?= $camera['image_height'] ?>" alt="" loading="lazy" decoding="async">
+                                    <span class="home-online-badge"><?php if ($camera['locked']): ?><i class="ci-lock" aria-hidden="true"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?><?php else: ?><span class="home-online-dot" aria-hidden="true"></span><?= htmlSC(return_translation('home_index_camera_online')) ?><?php endif; ?></span>
+                                    <span class="home-camera-card__open" aria-hidden="true"><i class="ci-arrow-up-right"></i></span>
+                                </a>
+                                <div class="home-camera-card__body"><div class="home-camera-card__meta"><a href="<?= htmlSC($camera['category_url']) ?>"><?= htmlSC($camera['city']) ?></a><span><?= htmlSC($camera['date']) ?></span></div><h3><a href="<?= htmlSC($camera['url']) ?>"><?= htmlSC($camera['title']) ?></a></h3><a class="home-text-link" href="<?= htmlSC($camera['url']) ?>"><span class="home-text-link__label"><?= htmlSC(return_translation('home_index_featured_posts_watch')) ?></span><i class="ci-chevron-right" aria-hidden="true"></i></a></div>
+                            </article>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
         </section>
     <?php endif; ?>
 
-    <section class="home-section home-objects">
+    <section class="home-section home-objects" id="home-objects" aria-labelledby="home-objects-title">
         <div class="container">
-            <div class="home-section-head home-reveal">
-                <div>
-                    <span class="home-section-kicker"><?= print_translation('home_index_use_cases_kicker') ?></span>
-                    <h2><?= print_translation('home_index_use_cases_title') ?></h2>
-                    <p><?= print_translation('home_index_use_cases_subtitle') ?></p>
-                </div>
-            </div>
-
+            <div class="home-section-head home-appear"><div><span class="home-section-kicker home-gradient-text"><?= htmlSC(return_translation('home_index_use_cases_kicker')) ?></span><h2 id="home-objects-title"><?= htmlSC(return_translation('home_index_use_cases_title')) ?><span class="home-heading-dot">.</span></h2><p><?= htmlSC(return_translation('home_index_use_cases_subtitle')) ?></p></div></div>
             <div class="home-object-grid">
                 <?php foreach ($objectCards as $index => $card): ?>
-                    <article class="home-object-card home-reveal <?= $index === 0 ? 'home-object-card--large' : '' ?>">
-                        <img src="<?= htmlSC($card['image']) ?>" alt="<?= htmlSC($card['title']) ?>" loading="lazy" decoding="async">
-                        <div class="home-object-card__content">
-                            <span>0<?= $index + 1 ?></span>
-                            <h3><?= htmlSC($card['title']) ?></h3>
-                            <p><?= htmlSC($card['text']) ?></p>
-                        </div>
+                    <article class="home-object-card home-appear <?= $index === 0 ? 'home-object-card--large' : '' ?>">
+                        <img src="<?= htmlSC($card['image']) ?>" alt="" width="1536" height="1024" loading="lazy" decoding="async">
+                        <div class="home-object-card__content"><span class="home-object-card__number">0<?= $index + 1 ?></span><h3><?= htmlSC($card['title']) ?></h3><p><?= htmlSC($card['text']) ?></p></div>
+                        <a class="home-object-card__link" href="<?= base_href('/contacts') ?>" aria-label="<?= htmlSC($card['title'] . ': ' . return_translation('home_index_connect_object')) ?>"><i class="ci-arrow-up-right" aria-hidden="true"></i></a>
                     </article>
                 <?php endforeach; ?>
             </div>
         </div>
     </section>
 
-    <section class="home-section home-benefits">
+    <section class="home-section home-benefits" aria-labelledby="home-benefits-title">
         <div class="container">
-            <div class="home-section-head home-reveal">
-                <div>
-                    <span class="home-section-kicker"><?= print_translation('home_index_benefits_kicker') ?></span>
-                    <h2><?= print_translation('home_index_benefits_title') ?></h2>
-                </div>
-            </div>
+            <div class="home-section-head home-section-head--center home-appear"><div><span class="home-section-kicker home-gradient-text"><?= htmlSC(return_translation('home_index_benefits_kicker')) ?></span><h2 id="home-benefits-title"><?= htmlSC(return_translation('home_index_benefits_title')) ?><span class="home-gradient-text">.</span></h2></div></div>
             <div class="home-benefit-grid">
                 <?php foreach ($benefits as $benefit): ?>
-                    <article class="home-benefit-card home-reveal">
-                        <div class="home-benefit-card__icon"><i class="<?= htmlSC($benefit['icon']) ?>"></i></div>
-                        <h3><?= htmlSC($benefit['title']) ?></h3>
-                        <p><?= htmlSC($benefit['text']) ?></p>
-                    </article>
+                    <article class="home-benefit-card home-appear"><div class="home-benefit-card__icon"><i class="<?= htmlSC($benefit['icon']) ?>" aria-hidden="true"></i></div><h3><?= htmlSC($benefit['title']) ?></h3><p><?= htmlSC($benefit['text']) ?></p></article>
                 <?php endforeach; ?>
             </div>
         </div>
     </section>
 
-    <section class="home-section home-geo">
+    <section class="home-section home-geo" aria-labelledby="home-geo-title">
         <div class="container">
-            <div class="home-geo-card home-reveal">
+            <div class="home-geo-card home-appear">
                 <div class="home-geo-card__content">
-                    <span class="home-section-kicker"><?= print_translation('home_index_coverage_kicker') ?></span>
-                    <h2><?= print_translation('home_index_cities_title') ?></h2>
-                    <p><?= print_translation('home_index_cities_subtitle') ?></p>
-                    <div class="home-city-list" aria-label="<?= htmlSC(return_translation('home_index_cities_title')) ?>">
-                        <?php if (!empty($homeCityCategories)): ?>
-                            <?php foreach ($homeCityCategories as $city): ?>
-                                <a class="btn btn-outline-secondary rounded-pill home-city-link" href="<?= base_href('/posts') . '?category=' . rawurlencode((string)$city['slug']) ?>">
-                                    <span><?= htmlSC((string)($city['label'] ?? $city['name'] ?? $city['slug'])) ?></span>
-                                    <small><?= (int)($city['total'] ?? 0) ?></small>
-                                </a>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        <a class="btn btn-dark rounded-pill home-city-link home-city-link--all" href="<?= base_href('/posts') ?>">
-                            <span><?= print_translation('home_index_cities_all') ?></span>
-                            <i class="ci-arrow-right"></i>
+                    <span class="home-section-kicker home-gradient-text"><?= htmlSC(return_translation('home_index_coverage_kicker')) ?></span>
+                    <h2 id="home-geo-title"><?= htmlSC(return_translation('home_index_cities_title')) ?><span class="home-gradient-text">.</span></h2>
+                    <p><?= htmlSC(return_translation('home_index_cities_subtitle')) ?></p>
+                    <nav class="home-city-list" aria-label="<?= htmlSC(return_translation('home_index_cities_title')) ?>">
+                        <?php foreach ($homeCityCategories as $city): ?>
+                            <a class="home-city-link" href="<?= base_href('/posts') . '?category=' . rawurlencode((string)$city['slug']) ?>">
+                                <i class="ci-grid home-city-link__icon" aria-hidden="true"></i>
+                                <span class="home-city-link__label"><?= htmlSC((string)($city['label'] ?? $city['name'] ?? $city['slug'])) ?></span>
+                                <small><span class="visually-hidden"><?= htmlSC(return_translation('home_index_category_items')) ?>: </span><?= (int)$city['total'] ?></small>
+                            </a>
+                        <?php endforeach; ?>
+                        <a class="home-city-link home-city-link--all" href="<?= base_href('/posts') ?>">
+                            <span class="home-city-link__label"><?= htmlSC(return_translation('home_index_cities_all')) ?></span>
+                            <i class="ci-arrow-up-right" aria-hidden="true"></i>
                         </a>
-                    </div>
+                    </nav>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="home-section home-cta-wrap">
-        <div class="container">
-            <div class="home-cta home-reveal">
-                <div class="home-cta__glow home-cta__glow--one" aria-hidden="true"></div>
-                <div class="home-cta__glow home-cta__glow--two" aria-hidden="true"></div>
-                <span class="home-section-kicker"><?= print_translation('home_index_cta_kicker') ?></span>
-                <h2><?= print_translation('home_index_cta_title') ?></h2>
-                <p><?= print_translation('home_index_cta_text') ?></p>
-                <a class="btn btn-light rounded-pill px-4 py-3 fw-semibold" href="<?= base_href('/contacts') ?>"><?= print_translation('home_index_connect_object') ?></a>
-            </div>
-        </div>
+    <section class="home-section home-cta-wrap" aria-labelledby="home-cta-title">
+        <div class="container"><div class="home-cta home-appear"><span class="home-section-kicker"><?= htmlSC(return_translation('home_index_cta_kicker')) ?></span><h2 id="home-cta-title"><?= htmlSC(return_translation('home_index_cta_title')) ?><span class="home-gradient-text">.</span></h2><p><?= htmlSC(return_translation('home_index_cta_text')) ?></p><a class="home-button home-button--primary" href="<?= base_href('/contacts') ?>"><?= htmlSC(return_translation('home_index_connect_object')) ?><i class="ci-arrow-up-right" aria-hidden="true"></i></a></div></div>
     </section>
 </main>
 
@@ -306,7 +176,15 @@ $featuredCount = count($popularCameras);
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
     const saveData = Boolean(navigator.connection && navigator.connection.saveData);
+    let heroMotionPaused = reduceMotion || saveData;
+    let heroInView = true;
     const hero = root.querySelector('.home-hero');
+    const syncHeaderHeight = () => {
+        const height = document.querySelector('.public-navbar')?.getBoundingClientRect().height || 0;
+        root.style.setProperty('--home-header-height', `${height}px`);
+    };
+    syncHeaderHeight();
+    window.addEventListener('resize', syncHeaderHeight, { passive: true });
     const heroVideo = root.querySelector('[data-home-hero-video]');
     const heroStream = heroVideo ? (heroVideo.dataset.homeHeroSrc || '') : '';
     const heroHlsScript = <?= json_encode($heroHlsScript, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -440,7 +318,7 @@ $featuredCount = count($popularCameras);
         document.addEventListener('keydown', retryOnGesture);
     };
     const playHeroVideo = () => {
-        if (!heroVideo || heroPlayPromise || (!heroVideo.paused && !heroVideo.ended)) {
+        if (!heroVideo || heroMotionPaused || !heroInView || document.hidden || heroPlayPromise || (!heroVideo.paused && !heroVideo.ended)) {
             return;
         }
         if (!heroPlaybackStarted && heroPlayAttempts >= maxHeroPlayAttempts) {
@@ -494,7 +372,7 @@ $featuredCount = count($popularCameras);
         }
     };
     const scheduleHeroRecovery = (recreateHls = false) => {
-        if (!heroVideo || document.hidden || reduceMotion || heroRecoveryTimer) {
+        if (!heroVideo || heroMotionPaused || !heroInView || document.hidden || reduceMotion || heroRecoveryTimer) {
             return;
         }
 
@@ -550,7 +428,7 @@ $featuredCount = count($popularCameras);
         }, heroRecoveryDelay);
     };
     const initializeHeroVideo = () => {
-        if (!heroVideo || !heroStream || heroInitialized || reduceMotion || saveData) {
+        if (!heroVideo || !heroStream || heroInitialized || heroMotionPaused || !heroInView || reduceMotion) {
             if (heroVideo && heroStream) {
                 updateHeroDebug({
                     hlsState: reduceMotion ? 'reduced_motion_skip' : (saveData ? 'save_data_skip' : 'not_initialized'),
@@ -572,6 +450,10 @@ $featuredCount = count($popularCameras);
 
         loadHeroHls()
             .then((Hls) => {
+                if (heroMotionPaused || !heroInView || document.hidden) {
+                    heroInitialized = false;
+                    return;
+                }
                 if (!Hls.isSupported()) {
                     heroInitialized = false;
                     setHeroStatus(homeVideoText('unavailable'), 'error');
@@ -702,6 +584,10 @@ $featuredCount = count($popularCameras);
     scheduleHeroInit();
     if (heroVideo && !reduceMotion) {
         heroVideo.addEventListener('playing', () => {
+            if (heroMotionPaused || !heroInView || document.hidden) {
+                heroVideo.pause();
+                return;
+            }
             if (heroRecoveryTimer) {
                 clearTimeout(heroRecoveryTimer);
                 heroRecoveryTimer = null;
@@ -716,6 +602,7 @@ $featuredCount = count($popularCameras);
         });
         ['stalled', 'waiting', 'ended', 'error'].forEach((eventName) => {
             heroVideo.addEventListener(eventName, () => {
+                if (heroMotionPaused || !heroInView || document.hidden) return;
                 setHeroStatus(eventName === 'error' ? homeVideoText('unavailable') : homeVideoText('reconnecting'), eventName === 'error' ? 'error' : 'warning');
                 updateHeroDebug({
                     hlsState: eventName,
@@ -739,7 +626,7 @@ $featuredCount = count($popularCameras);
         });
 
         heroHealthTimer = window.setInterval(() => {
-            if (document.hidden || !heroInitialized) {
+            if (heroMotionPaused || !heroInView || document.hidden || !heroInitialized) {
                 return;
             }
 
@@ -764,6 +651,7 @@ $featuredCount = count($popularCameras);
         }, heroHealthInterval);
 
         window.addEventListener('online', () => {
+            if (heroMotionPaused || !heroInView || document.hidden) return;
             heroPlayAttempts = 0;
             updateHeroDebug({ hlsState: 'network_online', errorType: '' });
 
@@ -784,7 +672,7 @@ $featuredCount = count($popularCameras);
         });
 
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
+            if (!document.hidden && !heroMotionPaused && heroInView) {
                 if (heroHls) {
                     try {
                         heroHls.startLoad(-1);
@@ -797,6 +685,7 @@ $featuredCount = count($popularCameras);
             }
         });
         window.addEventListener('pageshow', (event) => {
+            if (heroMotionPaused || !heroInView || document.hidden) return;
             if (heroHls) {
                 try {
                     heroHls.startLoad(-1);
@@ -821,113 +710,161 @@ $featuredCount = count($popularCameras);
         }, { once: true });
     }
 
-    const revealItems = root.querySelectorAll('.home-reveal');
-    const showRevealItem = (item) => {
-        window.requestAnimationFrame(() => {
-            item.classList.add('home-reveal--visible');
-        });
-    };
-
+    // A single observer owns the homepage reveals. Content stays readable without JS.
+    const revealItems = Array.from(root.querySelectorAll('.home-appear'));
+    const showRevealItem = (item) => item.classList.add('home-appear--visible');
     if (reduceMotion || !('IntersectionObserver' in window)) {
-        revealItems.forEach((item) => {
-            item.style.setProperty('--home-reveal-delay', '0ms');
-            item.classList.add('home-reveal--visible');
-        });
+        revealItems.forEach(showRevealItem);
     } else {
         const revealObserver = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    showRevealItem(entry.target);
-                    revealObserver.unobserve(entry.target);
-                }
+                if (!entry.isIntersecting) return;
+                showRevealItem(entry.target);
+                revealObserver.unobserve(entry.target);
             });
-        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
-        revealItems.forEach((item, index) => {
-            item.style.setProperty('--home-reveal-delay', `${Math.min((index % 4) * 55, 165)}ms`);
-            revealObserver.observe(item);
+        }, { rootMargin: '0px 0px -40px 0px', threshold: 0.06 });
+        revealItems.forEach((item) => {
+            const group = item.closest('.home-benefit-grid, .home-object-grid, .home-hero__content');
+            const isHeroItem = Boolean(item.closest('.home-hero__content'));
+            const groupIndex = group ? Array.from(group.querySelectorAll('.home-appear')).indexOf(item) : 0;
+            const delay = item.hasAttribute('data-home-appear-delay') ? Number(item.dataset.homeAppearDelay) : Math.min(groupIndex * (isHeroItem ? 170 : 85), isHeroItem ? 850 : 255);
+            item.style.setProperty('--home-appear-delay', `${delay}ms`);
+        });
+        root.classList.add('home-appear-ready');
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+            revealItems.forEach((item) => {
+                const rect = item.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) showRevealItem(item);
+                else revealObserver.observe(item);
+            });
+        }));
+        root.addEventListener('focusin', (event) => {
+            const item = event.target.closest('.home-appear');
+            if (item) {
+                item.style.setProperty('--home-appear-delay', '0ms');
+                showRevealItem(item);
+                revealObserver.unobserve(item);
+            }
         });
     }
 
     const counters = root.querySelectorAll('[data-home-counter]');
-    const runCounters = () => {
-        counters.forEach((counter) => {
-            const target = parseInt(counter.getAttribute('data-home-counter') || '0', 10);
-            if (!target || counter.dataset.homeCounterDone === '1') {
-                return;
-            }
-            counter.dataset.homeCounterDone = '1';
-            if (reduceMotion) {
-                counter.textContent = String(target);
-                return;
-            }
-            const duration = 1100;
-            const start = performance.now();
-            const tick = (time) => {
-                const progress = Math.min((time - start) / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                counter.textContent = String(Math.round(target * eased));
-                if (progress < 1) {
-                    requestAnimationFrame(tick);
-                }
-            };
-            requestAnimationFrame(tick);
-        });
-    };
-
+    const runCounters = () => counters.forEach((counter) => {
+        const target = Number(counter.dataset.homeCounter);
+        if (!Number.isFinite(target) || target <= 0 || counter.dataset.homeCounterDone) return;
+        counter.dataset.homeCounterDone = '1';
+        if (reduceMotion) return;
+        const start = performance.now();
+        const tick = (now) => {
+            const progress = Math.min((now - start) / 1000, 1);
+            counter.textContent = String(Math.round(target * (1 - Math.pow(1 - progress, 3))));
+            if (progress < 1) window.requestAnimationFrame(tick);
+        };
+        window.requestAnimationFrame(tick);
+    });
     const stats = root.querySelector('[data-home-stats]');
     if (stats && 'IntersectionObserver' in window) {
         const statsObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    runCounters();
-                    statsObserver.disconnect();
-                }
-            });
-        }, { threshold: 0.35 });
+            if (entries.some((entry) => entry.isIntersecting)) {
+                runCounters();
+                statsObserver.disconnect();
+            }
+        }, { threshold: 0.3 });
         statsObserver.observe(stats);
-    } else {
-        runCounters();
+    } else runCounters();
+
+    const motionToggle = root.querySelector('[data-home-motion-toggle]');
+    const syncHeroAmbientMotion = () => {
+        hero?.classList.toggle('home-hero--ambient-paused', heroMotionPaused || !heroInView || document.hidden);
+    };
+    const syncMotionButton = () => {
+        syncHeroAmbientMotion();
+        if (!motionToggle) return;
+        motionToggle.setAttribute('aria-pressed', String(heroMotionPaused));
+        motionToggle.setAttribute('aria-label', heroMotionPaused ? motionToggle.dataset.playLabel : motionToggle.dataset.pauseLabel);
+        motionToggle.querySelector('i').className = heroMotionPaused ? 'ci-play' : 'ci-pause';
+    };
+    const suspendHero = () => {
+        if (!heroVideo) return;
+        if (heroRecoveryTimer) {
+            clearTimeout(heroRecoveryTimer);
+            heroRecoveryTimer = null;
+        }
+        heroVideo.autoplay = false;
+        heroVideo.pause();
+        if (heroHls) heroHls.stopLoad();
+    };
+    const resumeHero = () => {
+        if (!heroVideo || heroMotionPaused || !heroInView || document.hidden) return;
+        heroPlayAttempts = 0;
+        if (!heroInitialized) initializeHeroVideo();
+        else {
+            if (heroHls) heroHls.startLoad(-1);
+            playHeroVideo();
+        }
+    };
+    syncMotionButton();
+    motionToggle?.addEventListener('click', () => {
+        heroMotionPaused = !heroMotionPaused;
+        syncMotionButton();
+        if (heroMotionPaused) suspendHero();
+        else resumeHero();
+    });
+    if (hero && 'IntersectionObserver' in window) {
+        const mediaObserver = new IntersectionObserver((entries) => {
+            heroInView = entries.some((entry) => entry.isIntersecting);
+            syncHeroAmbientMotion();
+            if (heroInView) resumeHero();
+            else suspendHero();
+        }, { rootMargin: '100px 0px', threshold: 0 });
+        mediaObserver.observe(hero);
     }
+    document.addEventListener('visibilitychange', () => {
+        syncHeroAmbientMotion();
+        if (document.hidden) suspendHero();
+        else resumeHero();
+    });
+
+    // Track reading progress without moving the background video.
+    const pageProgress = root.querySelector('[data-home-progress]');
+    let scrollFrame = 0;
+    const updateScroll = () => {
+        scrollFrame = 0;
+        const pageHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (pageProgress) pageProgress.style.transform = `scaleX(${pageHeight > 0 ? Math.min(1, Math.max(0, window.scrollY / pageHeight)) : 0})`;
+    };
+    const scheduleScroll = () => {
+        if (!scrollFrame) scrollFrame = window.requestAnimationFrame(updateScroll);
+    };
+    window.addEventListener('scroll', scheduleScroll, { passive: true });
+    window.addEventListener('resize', scheduleScroll, { passive: true });
+    updateScroll();
 
     const slider = root.querySelector('[data-home-slider]');
-    if (!slider) {
-        return;
-    }
-
+    if (!slider) return;
+    const previous = root.querySelector('[data-home-slider-prev]');
+    const next = root.querySelector('[data-home-slider-next]');
+    const sliderProgress = root.querySelector('[data-home-slider-progress]');
+    const updateSlider = () => {
+        const limit = slider.scrollWidth - slider.clientWidth;
+        if (previous) previous.disabled = slider.scrollLeft <= 2;
+        if (next) next.disabled = limit <= 2 || slider.scrollLeft >= limit - 2;
+        if (sliderProgress) sliderProgress.style.transform = `scaleX(${limit <= 0 ? 1 : Math.min(1, (slider.scrollLeft + slider.clientWidth) / slider.scrollWidth)})`;
+    };
     const scrollSlider = (direction) => {
         const card = slider.querySelector('.home-camera-card');
-        const distance = card ? card.getBoundingClientRect().width + 24 : slider.clientWidth * 0.85;
-        slider.scrollBy({ left: direction * distance, behavior: reduceMotion ? 'auto' : 'smooth' });
+        const gap = parseFloat(window.getComputedStyle(slider).gap) || 0;
+        slider.scrollBy({ left: direction * ((card?.getBoundingClientRect().width || slider.clientWidth) + gap), behavior: reduceMotion ? 'auto' : 'smooth' });
     };
-
-    root.querySelector('[data-home-slider-prev]')?.addEventListener('click', () => scrollSlider(-1));
-    root.querySelector('[data-home-slider-next]')?.addEventListener('click', () => scrollSlider(1));
-
-    let isDragging = false;
-    let startX = 0;
-    let startScroll = 0;
-    slider.addEventListener('pointerdown', (event) => {
-        if (event.pointerType && event.pointerType !== 'mouse') {
-            return;
-        }
-        isDragging = true;
-        startX = event.clientX;
-        startScroll = slider.scrollLeft;
-        slider.classList.add('home-slider--dragging');
-        slider.setPointerCapture(event.pointerId);
-    });
-    slider.addEventListener('pointermove', (event) => {
-        if (!isDragging) {
-            return;
-        }
+    previous?.addEventListener('click', () => scrollSlider(-1));
+    next?.addEventListener('click', () => scrollSlider(1));
+    slider.addEventListener('keydown', (event) => {
+        if (event.target !== slider || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
         event.preventDefault();
-        slider.scrollLeft = startScroll - (event.clientX - startX);
+        scrollSlider(event.key === 'ArrowRight' ? 1 : -1);
     });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((eventName) => {
-        slider.addEventListener(eventName, () => {
-            isDragging = false;
-            slider.classList.remove('home-slider--dragging');
-        });
-    });
+    slider.addEventListener('scroll', updateSlider, { passive: true });
+    window.addEventListener('resize', updateSlider, { passive: true });
+    updateSlider();
 })();
 </script>
