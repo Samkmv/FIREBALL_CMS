@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "The subscription list now supports status filters and clickable expired/inactive counters. Filters use the actual expiration date and are retained when returning from subscription details or editing.",
     "VPN overview cards now use native admin colors: blue servers, purple subscriptions, green connections and orange plans. Metrics and warnings remain readable in light and dark themes.",
     "Subscription forms now offer plan selection and an explicit term: by plan, a manual expiration date, or lifetime. Editing can change the plan and synchronize its device, IP and traffic limits while preserving the subscription link.",
     "Added guided server recovery using the existing subscription synchronizer: remap replacement panel connections, restore missing manual and archived clients, show per-subscription results and retry failures.",
@@ -27,11 +28,11 @@
     "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
     "Added a native 3x-ui HWID gateway for FIREBALL subscriptions: device headers are validated by the 3x-ui subscription server before FIREBALL returns configs.",
     "Improved tariff reconciliation UI: explicit discrepancy counters, no-op detection, manual sync guard, and clearer HWID/IP limit labels.",
-    "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
-    "Added a Lifetime option when editing subscriptions; administrator lists and details show expiration immediately from the actual date without waiting for cron."
+    "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics."
   ],
   "release_notes_i18n": {
     "ru": [
+      "В списке подписок добавлены поиск по статусам и карточки со счётчиками просроченных и неактивных подписок. Фильтры учитывают фактическую дату окончания и сохраняются при возврате из просмотра и редактирования.",
       "Карточки состояния VPN получили цветовые акценты в стиле админки: серверы — синие, подписки — фиолетовые, подключения — зелёные, тарифы — оранжевые. Светлая и тёмная темы сохраняют читаемость показателей и предупреждений.",
       "В формах подписки доступны выбор тарифа и срока: по тарифу, ручная дата окончания или бессрочно. При редактировании можно сменить тариф и синхронизировать лимиты устройств, IP и трафика, сохранив ссылку подписки.",
       "Добавлено пошаговое восстановление сервера через существующий механизм синхронизации: замена подключений панели, восстановление ручных и архивных клиентов, результаты по подпискам и повтор ошибок.",
@@ -40,10 +41,10 @@
       "Несколько VPN-серверов могут иметь один код страны; повторяющиеся внутренние коды автоматически получают номер (nl, nl-2, nl-3).",
       "Добавлен нативный HWID-шлюз 3x-ui для подписок FIREBALL: заголовки устройства проверяются сервером подписок 3x-ui до выдачи конфигураций FIREBALL.",
       "Улучшено согласование тарифов: явные счётчики расхождений, состояние «всё соответствует», защита от лишней ручной синхронизации и понятные лимиты устройств/IP.",
-      "Завершена синхронизация тарифов с 3x-ui: лимит HWID-устройств, отдельный лимит IP, управление устройствами в админке и подробная диагностика расхождений.",
-      "При редактировании подписки добавлен переключатель «Бессрочно»; таблица и карточка администратора показывают истечение по фактической дате без ожидания cron."
+      "Завершена синхронизация тарифов с 3x-ui: лимит HWID-устройств, отдельный лимит IP, управление устройствами в админке и подробная диагностика расхождений."
     ],
     "en": [
+      "The subscription list now supports status filters and clickable expired/inactive counters. Filters use the actual expiration date and are retained when returning from subscription details or editing.",
       "VPN overview cards now use native admin colors: blue servers, purple subscriptions, green connections and orange plans. Metrics and warnings remain readable in light and dark themes.",
       "Subscription forms now offer plan selection and an explicit term: by plan, a manual expiration date, or lifetime. Editing can change the plan and synchronize its device, IP and traffic limits while preserving the subscription link.",
       "Added guided server recovery using the existing subscription synchronizer: remap replacement panel connections, restore missing manual and archived clients, show per-subscription results and retry failures.",
@@ -52,10 +53,10 @@
       "Multiple VPN servers can share one country code; repeated internal server codes are automatically numbered (nl, nl-2, nl-3).",
       "Added a native 3x-ui HWID gateway for FIREBALL subscriptions: device headers are validated by the 3x-ui subscription server before FIREBALL returns configs.",
       "Improved tariff reconciliation UI: explicit discrepancy counters, no-op detection, manual sync guard, and clearer HWID/IP limit labels.",
-      "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics.",
-      "Added a Lifetime option when editing subscriptions; administrator lists and details show expiration immediately from the actual date without waiting for cron."
+      "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics."
     ],
     "de": [
+      "Die Abonnementliste bietet Statusfilter und anklickbare Zähler für abgelaufene und inaktive Abonnements. Filter berücksichtigen das tatsächliche Ablaufdatum und bleiben beim Zurückkehren aus Details oder Bearbeitung erhalten.",
       "Die VPN-Übersicht verwendet jetzt die Farben des Adminbereichs: blaue Server, violette Abonnements, grüne Verbindungen und orange Tarife. Kennzahlen und Warnungen bleiben in hellen und dunklen Designs lesbar.",
       "Abonnementformulare bieten Tarifwahl und Laufzeit nach Tarif, manuelles Ablaufdatum oder unbefristet. Bei der Bearbeitung können Tarif und Geräte-, IP- und Traffic-Limits synchronisiert werden; der Abonnementlink bleibt erhalten.",
       "Geführte Serverwiederherstellung über die bestehende Synchronisierung: Verbindungen neu zuordnen, manuelle und archivierte Clients wiederherstellen, Ergebnisse pro Abonnement und Fehler wiederholen.",
@@ -64,10 +65,10 @@
       "Mehrere VPN-Server können denselben Ländercode verwenden; doppelte interne Servercodes werden automatisch nummeriert (nl, nl-2, nl-3).",
       "Ein nativer 3x-ui-HWID-Gateway für FIREBALL-Abonnements wurde hinzugefügt: Geräte-Header werden vom 3x-ui-Abonnementserver geprüft, bevor FIREBALL Konfigurationen ausliefert.",
       "Die Tarifabstimmung wurde verbessert: klare Abweichungszähler, Erkennung von „alles stimmt überein“, Schutz vor unnötiger manueller Synchronisierung und verständliche Geräte-/IP-Limits.",
-      "Die Tarifsynchronisierung mit 3x-ui wurde vervollständigt: HWID-Gerätelimit, separates IP-Limit, Geräteverwaltung im Adminbereich und detaillierte Abweichungsdiagnose.",
-      "Die Abonnementbearbeitung bietet jetzt Unbefristet; Adminlisten und Detailansichten zeigen den Ablauf anhand des Datums ohne Warten auf Cron."
+      "Die Tarifsynchronisierung mit 3x-ui wurde vervollständigt: HWID-Gerätelimit, separates IP-Limit, Geräteverwaltung im Adminbereich und detaillierte Abweichungsdiagnose."
     ],
     "zh-cn": [
+      "订阅列表新增状态筛选及可点击的已到期和未激活订阅计数卡片。筛选依据实际到期日期，并在返回详情或编辑页面后保留。",
       "VPN 概览卡片采用管理界面配色：服务器为蓝色、订阅为紫色、连接为绿色、套餐为橙色。浅色和深色主题中的指标及警告均保持清晰可读。",
       "订阅表单支持选择套餐及有效期：按套餐、手动设置到期日期或永久。编辑时可更换套餐并同步设备、IP 和流量限制，同时保留订阅链接。",
       "通过现有同步机制新增服务器恢复向导：映射替代面板连接、恢复手动及归档客户端、逐项显示订阅结果并重试错误。",
@@ -76,8 +77,7 @@
       "多个 VPN 服务器可以使用相同的国家代码；重复的内部服务器代码会自动编号（nl、nl-2、nl-3）。",
       "为 FIREBALL 订阅新增原生 3x-ui HWID 网关：FIREBALL 返回配置前，设备请求头会先由 3x-ui 订阅服务器校验。",
       "改进套餐同步界面：显示明确的差异计数、识别“全部一致”状态、防止无意义的手动同步，并明确区分设备限制和 IP 限制。",
-      "已完成与 3x-ui 的套餐同步：支持 HWID 设备限制、独立 IP 限制、后台设备管理和详细差异诊断。",
-      "编辑订阅时新增永久选项；管理列表和详情会按实际到期时间显示已过期，无需等待 cron。"
+      "已完成与 3x-ui 的套餐同步：支持 HWID 设备限制、独立 IP 限制、后台设备管理和详细差异诊断。"
     ]
   },
   "update": {

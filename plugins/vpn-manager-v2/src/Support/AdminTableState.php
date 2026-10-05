@@ -4,7 +4,7 @@ namespace Fireball\VpnManagerV2\Support;
 
 final class AdminTableState
 {
-    private const ALLOWED_KEYS = ['page', 'search', 'status', 'sort', 'direction', 'filters', 'filter', 'per_page'];
+    private const ALLOWED_KEYS = ['page', 'q', 'search', 'status', 'sort', 'direction', 'filters', 'filter', 'per_page'];
 
     public static function capture(): string
     {

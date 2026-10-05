@@ -1071,4 +1071,11 @@ return [
     'vpn_manager_v2_profile_status_deleted' => '已删除',
     'vpn_manager_v2_profile_status_missing_remote' => '连接不可用',
     'vpn_manager_v2_profile_status_pending_remote_delete' => '等待删除',
+    'vpn_manager_v2_subscriptions_filter_all' => '所有状态',
+    'vpn_manager_v2_subscriptions_filter_inactive' => '未激活',
+    'vpn_manager_v2_subscriptions_notice_expired' => '已到期订阅',
+    'vpn_manager_v2_subscriptions_notice_expired_help' => '订阅有效期已结束。',
+    'vpn_manager_v2_subscriptions_notice_inactive' => '未激活订阅',
+    'vpn_manager_v2_subscriptions_notice_inactive_help' => '已暂停、已取消或流量耗尽。已到期订阅单独显示。',
+    'vpn_manager_v2_subscriptions_notice_view' => '查看订阅',
 ];

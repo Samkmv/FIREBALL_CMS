@@ -22,6 +22,7 @@ use Fireball\VpnManagerV2\Services\ExternalVpnSourceService;
 use Fireball\VpnManagerV2\Support\AdminTableState;
 use Fireball\VpnManagerV2\Support\Permissions;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
+use Fireball\VpnManagerV2\Support\SubscriptionListFilter;
 
 final class SubscriptionController
 {
@@ -31,8 +32,9 @@ final class SubscriptionController
 
         // FIREBALL_VPN_SUBSCRIPTIONS_LIST_V1
         $search = mb_substr(trim((string)request()->get('q', '')), 0, 120);
+        $status = SubscriptionListFilter::normalize(request()->get('status', ''));
         $repository = new SubscriptionRepository();
-        $total = $repository->countAdminList($search);
+        $total = $repository->countAdminList($search, $status);
         $pagination = new Pagination($total, 20);
 
         $requestRepository = new VpnAccessRequestRepository();
@@ -41,10 +43,12 @@ final class SubscriptionController
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscriptions', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_subtitle'),
-            'subscriptions' => $repository->adminPage($search, 20, $pagination->getOffset()),
+            'subscriptions' => $repository->adminPage($search, 20, $pagination->getOffset(), $status),
             'subscriptionsTotal' => $total,
             'pagination' => $pagination,
             'searchQuery' => $search,
+            'statusFilter' => $status,
+            'statusCounts' => $repository->adminStatusCounts(),
             'accessRequests' => $requestRepository->pending(),
             'returnQuery' => AdminTableState::capture(),
         ]));

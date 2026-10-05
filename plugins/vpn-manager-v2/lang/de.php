@@ -1071,4 +1071,11 @@ return [
     'vpn_manager_v2_profile_status_deleted' => 'Gelöscht',
     'vpn_manager_v2_profile_status_missing_remote' => 'Verbindung nicht verfügbar',
     'vpn_manager_v2_profile_status_pending_remote_delete' => 'Löschung ausstehend',
+    'vpn_manager_v2_subscriptions_filter_all' => 'Alle Status',
+    'vpn_manager_v2_subscriptions_filter_inactive' => 'Inaktiv',
+    'vpn_manager_v2_subscriptions_notice_expired' => 'Abgelaufene Abonnements',
+    'vpn_manager_v2_subscriptions_notice_expired_help' => 'Die Laufzeit ist abgelaufen.',
+    'vpn_manager_v2_subscriptions_notice_inactive' => 'Inaktive Abonnements',
+    'vpn_manager_v2_subscriptions_notice_inactive_help' => 'Pausiert, gekündigt oder Traffic aufgebraucht. Abgelaufene Abonnements werden separat angezeigt.',
+    'vpn_manager_v2_subscriptions_notice_view' => 'Abonnements ansehen',
 ];

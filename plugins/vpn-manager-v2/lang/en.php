@@ -1071,4 +1071,11 @@ return [
     'vpn_manager_v2_profile_status_deleted' => 'Deleted',
     'vpn_manager_v2_profile_status_missing_remote' => 'Connection unavailable',
     'vpn_manager_v2_profile_status_pending_remote_delete' => 'Pending deletion',
+    'vpn_manager_v2_subscriptions_filter_all' => 'All statuses',
+    'vpn_manager_v2_subscriptions_filter_inactive' => 'Inactive',
+    'vpn_manager_v2_subscriptions_notice_expired' => 'Expired subscriptions',
+    'vpn_manager_v2_subscriptions_notice_expired_help' => 'The subscription term has ended.',
+    'vpn_manager_v2_subscriptions_notice_inactive' => 'Inactive subscriptions',
+    'vpn_manager_v2_subscriptions_notice_inactive_help' => 'Suspended, cancelled or out of traffic. Expired subscriptions are shown separately.',
+    'vpn_manager_v2_subscriptions_notice_view' => 'View subscriptions',
 ];

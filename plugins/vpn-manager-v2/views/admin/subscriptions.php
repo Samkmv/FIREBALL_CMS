@@ -4,11 +4,16 @@ use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
 use Fireball\VpnManagerV2\Support\AdminTableState;
 use Fireball\VpnManagerV2\Support\AdminActionDropdown;
+use Fireball\VpnManagerV2\Support\SubscriptionListFilter;
 
 $subscriptions = is_array($subscriptions ?? null) ? $subscriptions : [];
 $accessRequests = is_array($accessRequests ?? null) ? $accessRequests : [];
 $subscriptionsTotal = max(0, (int)($subscriptionsTotal ?? count($subscriptions)));
 $searchQuery = trim((string)($searchQuery ?? ''));
+$statusFilter = SubscriptionListFilter::normalize($statusFilter ?? '');
+$statusCounts = is_array($statusCounts ?? null) ? $statusCounts : [];
+$attentionCounts = ['expired' => (int)($statusCounts['expired'] ?? 0),
+    'inactive' => SubscriptionListFilter::inactiveCount($statusCounts)];
 $pagination = $pagination ?? null;
 $returnQuery = AdminTableState::sanitize($returnQuery ?? '');
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/create');
@@ -123,6 +128,30 @@ foreach ($subscriptions as $subscription) {
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
+<?php if (array_sum($attentionCounts) > 0): ?>
+    <div class="row g-3 mb-4" data-vpn-subscription-notices>
+        <?php foreach ($attentionCounts as $noticeStatus => $noticeCount): ?>
+            <?php if ($noticeCount <= 0) { continue; } ?>
+            <div class="col-12 col-md-6">
+                <a class="border rounded-5 p-3 p-md-4 h-100 d-flex align-items-center gap-3 text-decoration-none text-body bg-body-tertiary"
+                   href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions?status=' . $noticeStatus)) ?>"
+                   data-vpn-subscription-status="<?= htmlSC($noticeStatus) ?>"
+                   <?= $statusFilter === $noticeStatus ? 'aria-current="page"' : '' ?>>
+                    <span class="rounded-circle bg-warning-subtle text-warning-emphasis p-3 d-inline-flex flex-shrink-0" aria-hidden="true">
+                        <i class="<?= $noticeStatus === 'expired' ? 'ci-clock' : 'ci-pause-circle' ?> fs-4"></i>
+                    </span>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_notice_' . $noticeStatus)) ?></div>
+                        <div class="small text-body-secondary mt-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_notice_' . $noticeStatus . '_help')) ?></div>
+                        <div class="small text-primary mt-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_notice_view')) ?> <i class="ci-arrow-right" aria-hidden="true"></i></div>
+                    </div>
+                    <span class="h3 mb-0 flex-shrink-0"><?= $noticeCount ?></span>
+                </a>
+            </div>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
+
 <?php if ($accessRequests !== []): ?>
     <section class="border rounded-5 p-3 p-md-4 mb-4" aria-labelledby="vpnV2AccessRequestsTitle">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -176,12 +205,25 @@ foreach ($subscriptions as $subscription) {
                 >
             </div>
         </div>
+        <div class="col-12 col-lg-3">
+            <label class="visually-hidden" for="vpnV2SubscriptionStatusFilter"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')) ?></label>
+            <select class="form-select" id="vpnV2SubscriptionStatusFilter" name="status">
+                <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_filter_all')) ?></option>
+                <?php foreach (SubscriptionListFilter::STATUSES as $filterStatus): ?>
+                    <option value="<?= htmlSC($filterStatus) ?>" <?= $statusFilter === $filterStatus ? 'selected' : '' ?>>
+                        <?= htmlSC($filterStatus === 'inactive'
+                            ? FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_filter_inactive')
+                            : ProvisioningStatus::label($filterStatus)) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <div class="col-auto">
             <button class="btn btn-dark rounded-pill" type="submit">
                 <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_button')) ?>
             </button>
         </div>
-        <?php if ($searchQuery !== ''): ?>
+        <?php if ($searchQuery !== '' || $statusFilter !== ''): ?>
             <div class="col-auto">
                 <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions')) ?>">
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_clear')) ?>

@@ -3,9 +3,13 @@
 namespace Fireball\VpnManagerV2\Repositories;
 
 use Fireball\VpnManagerV2\Services\RemoteClientCredentialService;
+use Fireball\VpnManagerV2\Support\ProvisioningStatus;
+use Fireball\VpnManagerV2\Support\SubscriptionListFilter;
 
 final class SubscriptionRepository
 {
+    private ?string $adminListNow = null;
+
     public function usersForForm(): array
     {
         return db()->query(
@@ -237,25 +241,9 @@ final class SubscriptionRepository
     /**
      * Количество подписок для административного списка с учётом поиска.
      */
-    public function countAdminList(string $search = ''): int
+    public function countAdminList(string $search = '', string $status = ''): int
     {
-        $search = trim($search);
-        $params = [];
-        $searchSql = '';
-
-        if ($search !== '') {
-            $like = '%' . $search . '%';
-            $searchSql = " AND (
-                CAST(s.id AS CHAR) LIKE ?
-                OR u.name LIKE ?
-                OR u.login LIKE ?
-                OR u.email LIKE ?
-                OR s.manual_customer_name LIKE ?
-                OR p.name LIKE ?
-                OR s.status LIKE ?
-            )";
-            $params = [$like, $like, $like, $like, $like, $like, $like];
-        }
+        [$searchSql, $params] = $this->adminListWhere($search, $status);
 
         return (int)db()->query(
             "SELECT COUNT(*)
@@ -270,27 +258,11 @@ final class SubscriptionRepository
     /**
      * Страница административного списка. Новые подписки идут первыми.
      */
-    public function adminPage(string $search = '', int $limit = 20, int $offset = 0): array
+    public function adminPage(string $search = '', int $limit = 20, int $offset = 0, string $status = ''): array
     {
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
-        $search = trim($search);
-        $params = [];
-        $searchSql = '';
-
-        if ($search !== '') {
-            $like = '%' . $search . '%';
-            $searchSql = " AND (
-                CAST(s.id AS CHAR) LIKE ?
-                OR u.name LIKE ?
-                OR u.login LIKE ?
-                OR u.email LIKE ?
-                OR s.manual_customer_name LIKE ?
-                OR p.name LIKE ?
-                OR s.status LIKE ?
-            )";
-            $params = [$like, $like, $like, $like, $like, $like, $like];
-        }
+        [$searchSql, $params] = $this->adminListWhere($search, $status);
 
         return db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
@@ -312,6 +284,54 @@ final class SubscriptionRepository
              LIMIT {$limit} OFFSET {$offset}",
             $params
         )->get() ?: [];
+    }
+
+    /** Counts cover the entire list, independently of the current search or page. */
+    public function adminStatusCounts(): array
+    {
+        $rows = db()->query(
+            'SELECT ' . $this->adminStatusSql() . ' AS effective_status, COUNT(*) AS total
+             FROM vpn_v2_subscriptions s
+             INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
+             WHERE s.status <> \'deleted\'
+             GROUP BY effective_status', [$this->adminListTime()]
+        )->get() ?: [];
+        $counts = [];
+        foreach ($rows as $row) { $counts[(string)$row['effective_status']] = (int)$row['total']; }
+        return $counts;
+    }
+
+    private function adminListWhere(string $search, string $status): array
+    {
+        $sql = '';
+        $params = [];
+        if (trim($search) !== '') {
+            $like = '%' . trim($search) . '%';
+            $sql .= ' AND (CAST(s.id AS CHAR) LIKE ? OR u.name LIKE ? OR u.login LIKE ?
+                OR u.email LIKE ? OR s.manual_customer_name LIKE ? OR p.name LIKE ? OR s.status LIKE ?)';
+            $params = array_fill(0, 7, $like);
+        }
+        $status = SubscriptionListFilter::normalize($status);
+        if ($status !== '') {
+            $sql .= ' AND (' . $this->adminStatusSql() . ')';
+            $params[] = $this->adminListTime();
+            $statuses = $status === 'inactive' ? SubscriptionListFilter::INACTIVE_STATUSES : [$status];
+            $sql .= ' IN (' . implode(', ', array_fill(0, count($statuses), '?')) . ')';
+            array_push($params, ...$statuses);
+        }
+        return [$sql, $params];
+    }
+
+    private function adminStatusSql(): string
+    {
+        $statuses = "'" . implode("', '", ProvisioningStatus::EXPIRABLE_STATUSES) . "'";
+        return "CASE WHEN s.status IN ({$statuses}) AND s.expires_at IS NOT NULL
+            AND s.expires_at <= ? THEN 'expired' ELSE s.status END";
+    }
+
+    private function adminListTime(): string
+    {
+        return $this->adminListNow ??= date('Y-m-d H:i:s');
     }
 
     public function find(int $id): ?array

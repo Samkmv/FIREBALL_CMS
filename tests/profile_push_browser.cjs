@@ -24,7 +24,7 @@ async function scenario(browser, options = {}) {
     });
     const page = await context.newPage();
     page.on('pageerror', e => errors.push(e.message));
-    await page.addInitScript(({ active, permission, supported, standalone, deny, ipad, registerFail }) => {
+    await page.addInitScript(({ active, permission, supported, standalone, deny, ipad, registerFail, registerHang, getSubscriptionHang, existingRegistration, digestHang }) => {
         if (!localStorage.getItem('fixture.initialized')) {
             localStorage.setItem('fixture.initialized', '1');
             localStorage.setItem('fixture.permission', permission || (active ? 'granted' : 'default'));
@@ -38,9 +38,12 @@ async function scenario(browser, options = {}) {
             unsubscribe: async () => { window.fixturePushCalls.push('unsubscribe'); localStorage.removeItem('fixture.endpoint'); return true; }
         });
         const registration = {
-            active: { postMessage() {} },
+            active: { scriptURL: 'https://profile.test/service-worker.js', postMessage() {} },
             pushManager: {
-                getSubscription: async () => localStorage.getItem('fixture.endpoint') ? subscription() : null,
+                getSubscription: async () => {
+                    if (getSubscriptionHang && !window.fixtureRecovered) return new Promise(resolve => { window.fixtureResolveSubscription = resolve; });
+                    return localStorage.getItem('fixture.endpoint') ? subscription() : null;
+                },
                 subscribe: async () => {
                     window.fixturePushCalls.push('subscribe');
                     if (!navigator.userActivation.isActive) throw new Error('Lost user activation');
@@ -67,9 +70,19 @@ async function scenario(browser, options = {}) {
             Object.defineProperty(window, 'PushManager', { configurable: true, value: function () {} });
         }
         Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: {
-            register: async () => { if (registerFail) throw new Error('Worker unavailable'); return registration; },
+            register: async () => {
+                window.fixturePushCalls.push('register');
+                if (registerHang && !window.fixtureRecovered) return new Promise(() => {});
+                if (registerFail) throw new Error('Worker unavailable');
+                return registration;
+            },
+            ...(existingRegistration ? { getRegistration: async () => registration } : {}),
             ready: Promise.resolve(registration), controller: registration.active, addEventListener() {}
         }});
+        if (digestHang) {
+            const digest = crypto.subtle.digest.bind(crypto.subtle);
+            crypto.subtle.digest = (...args) => window.fixtureRecovered ? digest(...args) : new Promise(() => {});
+        }
     }, options);
     const renders = new Map();
     await page.route('https://profile.test/**', async route => {
@@ -81,6 +94,7 @@ async function scenario(browser, options = {}) {
         if (url.pathname.startsWith('/api/')) {
             const payload = request.postDataJSON();
             calls.push({ path: url.pathname, method: request.method(), payload, hash: url.searchParams.get('endpoint_hash') });
+            if (options.statusHang && url.pathname === '/api/pwa/status' && !options.recovered) return;
             if (options.failStatus && url.pathname === '/api/pwa/status') return route.fulfill({ status: 503, json: { status: false } });
             if (url.pathname === '/api/pwa/subscriptions') {
                 if (options.failSave) return route.fulfill({ json: { status: false } });
@@ -110,12 +124,12 @@ async function scenario(browser, options = {}) {
         return route.fulfill({ contentType: 'text/html', body: html });
     });
     const prefix = options.locale && options.locale !== 'ru' ? '/' + options.locale : '';
-    const load = async section => {
+    const load = async (section, waitForStatus = true) => {
         await page.goto('https://profile.test' + prefix + (section === 'overview' ? '/profile' : '/profile/settings?section=' + section));
         await page.waitForFunction(() => window.FireballPwa);
-        if (section === 'overview' || section === 'notifications') await page.waitForFunction(() => !document.querySelector('[data-pwa-push-status]').textContent.includes('Проверяем'));
+        if (waitForStatus && (section === 'overview' || section === 'notifications')) await page.waitForFunction(() => !document.querySelector('[data-pwa-push-status]').textContent.includes('Проверяем'));
         // refresh exposes the same promise/state used by both rendered widgets.
-        if (section === 'overview' || section === 'notifications') await page.evaluate(() => window.FireballPwa.refreshPushStatus());
+        if (waitForStatus && (section === 'overview' || section === 'notifications')) await page.evaluate(() => window.FireballPwa.refreshPushStatus());
     };
     const state = () => page.evaluate(() => window.FireballPwa.refreshPushStatus());
     return { page, context, server, calls, errors, load, state };
@@ -128,7 +142,7 @@ async function scenario(browser, options = {}) {
         await s.load('overview');
         check(await s.state() === 'disabled', 'A second active device must not enable this browser');
         check(!s.calls.some(c => c.method === 'POST'), 'No subscription mutations on page load');
-        check((await s.page.evaluate(() => fixturePushCalls)).length === 0, 'No permission request on load');
+        check((await s.page.evaluate(() => fixturePushCalls.filter(call => call !== 'register'))).length === 0, 'No permission request on load');
         const overview = await s.page.locator('[data-pwa-push-status]').textContent();
         await s.load('notifications');
         check((await s.page.locator('[data-pwa-push-status]').textContent()).trim() === overview.trim(), 'Overview/settings same state');
@@ -287,6 +301,59 @@ async function scenario(browser, options = {}) {
                 await s.context.close();
             }
         }
+        for (const failure of ['registerHang', 'getSubscriptionHang', 'statusHang', 'digestHang']) {
+            for (const fallback of [false, true]) {
+                const options = { [failure]: true, active: true, standalone: true, fallback,
+                    userAgent: 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Mobile Safari/604.1' };
+                const s = await scenario(browser, options);
+                s.server.delete(endpoint); // Admin detached this endpoint; another device remains active.
+                await s.page.addInitScript(() => {
+                    const schedule = window.setTimeout.bind(window);
+                    window.fixtureDeadlines = [];
+                    window.setTimeout = (callback, delay, ...args) => {
+                        if (delay === 10000) window.fixtureDeadlines.push(delay);
+                        return schedule(callback, delay === 10000 ? 100 : delay, ...args);
+                    };
+                });
+                await s.load('notifications', false);
+                check(await s.page.evaluate(() => {
+                    const first = FireballPwa.refreshPushStatus();
+                    const second = FireballPwa.refreshPushStatus();
+                    return first === second;
+                }), failure + ': concurrent checks reuse the same deadline/promise');
+                await s.page.waitForFunction(() => document.querySelector('[data-pwa-push-status]').textContent.trim() === 'Не удалось проверить');
+                check(await s.page.locator('[data-pwa-enable-push]').isEnabled(), failure + ': failed check can be retried');
+                check(await s.page.locator('[data-pwa-enable-push]').isVisible(), failure + ': action does not stay hidden');
+                check(await s.page.evaluate(() => fixtureDeadlines.length > 0 && fixtureDeadlines.every(ms => ms === 10000)), failure + ': real code uses a finite 10-second deadline');
+                check(!s.calls.some(call => call.method === 'POST'), failure + ': no automatic endpoint reactivation');
+                if (failure === 'getSubscriptionHang') {
+                    await s.page.evaluate(() => window.fixtureResolveSubscription?.({ endpoint: 'https://web.push.apple.com/late', options: {} }));
+                    await s.page.waitForTimeout(25);
+                    check((await s.page.locator('[data-pwa-push-status]').textContent()).trim() === 'Не удалось проверить', 'Late non-abortable browser result cannot overwrite timeout state');
+                }
+                options.recovered = true;
+                await s.page.evaluate(() => { window.fixtureRecovered = true; });
+                check(await s.state() === 'disabled', failure + ': detached endpoint becomes disabled after recovery');
+                check(!s.calls.some(call => call.method === 'POST'), failure + ': recovery still performs read-only verification');
+                check(s.errors.length === 0, failure + ': no unhandled JS errors');
+                await s.context.close();
+            }
+        }
+
+        const existing = await scenario(browser, { active: true, standalone: true, registerHang: true, existingRegistration: true });
+        existing.server.delete(endpoint);
+        await existing.page.addInitScript(() => {
+            const schedule = window.setTimeout.bind(window);
+            window.setTimeout = (callback, delay, ...args) => schedule(callback, delay === 10000 ? 100 : delay, ...args);
+        });
+        await existing.load('notifications');
+        check(await existing.state() === 'disabled', 'Existing active worker can check a detached endpoint while register() hangs');
+        await existing.page.waitForTimeout(150);
+        check((await existing.page.locator('[data-pwa-push-status]').textContent()).trim() === 'Выключены', 'Failed background register must not erase a completed disabled status');
+        check(!existing.calls.some(call => call.method === 'POST'), 'Existing-worker lookup never restores an endpoint silently');
+        check(existing.errors.length === 0, 'No errors with pending background registration');
+        await existing.context.close();
+
         console.log(`Profile / push browser checks passed: ${checks}`);
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

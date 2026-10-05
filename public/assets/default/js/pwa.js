@@ -10,7 +10,10 @@
   let pushState = 'checking';
   let pushBusy = false;
   let statusGeneration = 0;
+  let statusPromise = null;
+  let statusPromiseGeneration = 0;
   let registrationPromise = null;
+  const pushCheckTimeoutMs = 10000;
   const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const isSecure = window.location.protocol === 'https:' || isLocalhost;
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -39,6 +42,18 @@
     },
     body: JSON.stringify(Object.assign({ needCSRFToken: csrf }, payload || {}))
   });
+
+  const withPushDeadline = async (operation) => {
+    let timer;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise((_, reject) => {
+          timer = window.setTimeout(() => reject(new Error('Push check timed out')), pushCheckTimeoutMs);
+        })
+      ]);
+    } finally { window.clearTimeout(timer); }
+  };
 
   const urlBase64ToUint8Array = (value) => {
     const padding = '='.repeat((4 - value.length % 4) % 4);
@@ -152,7 +167,7 @@
     return '';
   };
 
-  const readDeviceStatus = async (subscription) => {
+  const readDeviceStatus = async (subscription, signal) => {
     // Verify ownership/activation without re-enabling a revoked subscription on page load.
     const url = new URL(body.dataset.pwaStatusUrl, window.location.href);
     if (subscription) {
@@ -160,7 +175,7 @@
       const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
       url.searchParams.set('endpoint_hash', hash);
     }
-    const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+    const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal });
     const result = await response.json();
     if (!response.ok || result.status !== true || Number(result.user_id) !== currentUserId) throw new Error('Push status unavailable');
     const push = result.push || {};
@@ -168,29 +183,55 @@
     return push.current_device_active === true && push.user_enabled === true ? 'enabled' : 'disabled';
   };
 
-  const syncPushStatus = async () => {
-    if (pushBusy) return pushState;
-    const generation = ++statusGeneration;
+  const getPushRegistration = async () => {
+    if (window.FireballPwa.registration) return window.FireballPwa.registration;
+    if (typeof navigator.serviceWorker.getRegistration === 'function') {
+      const existing = await navigator.serviceWorker.getRegistration(window.location.href);
+      const workerUrl = new URL(body.dataset.pwaServiceWorkerUrl || '/service-worker.js', window.location.href).href;
+      if (existing?.active?.scriptURL === workerUrl && existing.pushManager) {
+        // A current endpoint can be checked while register/update is still pending in iOS.
+        window.FireballPwa.registration = existing;
+        return existing;
+      }
+    }
+    return registerServiceWorker();
+  };
+
+  const syncPushStatus = () => {
+    if (pushBusy) return Promise.resolve(pushState);
     const browserStatus = browserPushStatus();
     if (browserStatus) {
+      ++statusGeneration;
       setPushStatusText(browserStatus);
-      return browserStatus;
+      return Promise.resolve(browserStatus);
     }
-    try {
-      const registration = window.FireballPwa.registration || await registerServiceWorker();
-      if (!registration?.pushManager) throw new Error('Push registration unavailable');
-      const subscription = await registration.pushManager.getSubscription();
-      const serverStatus = await readDeviceStatus(subscription);
-      const status = serverStatus === 'enabled'
-        && (Notification.permission !== 'granted' || !subscription || !subscriptionUsesCurrentVapidKey(subscription))
-        ? 'disabled' : serverStatus;
-      if (generation !== statusGeneration || pushBusy) return pushState;
-      knownSubscription = subscription;
-      setPushStatusText(Notification.permission === 'denied' ? 'permission' : status);
-    } catch (_) {
-      if (generation === statusGeneration && !pushBusy) setPushStatusText('error');
-    }
-    return pushState;
+    if (statusPromise && statusPromiseGeneration === statusGeneration) return statusPromise;
+    const generation = ++statusGeneration;
+    statusPromiseGeneration = generation;
+    statusPromise = (async () => {
+      const controller = new AbortController();
+      try {
+        const { subscription, serverStatus } = await withPushDeadline((async () => {
+          const registration = await getPushRegistration();
+          if (!registration?.pushManager) throw new Error('Push registration unavailable');
+          const subscription = await registration.pushManager.getSubscription();
+          const serverStatus = await readDeviceStatus(subscription, controller.signal);
+          return { subscription, serverStatus };
+        })());
+        const status = serverStatus === 'enabled'
+          && (Notification.permission !== 'granted' || !subscription || !subscriptionUsesCurrentVapidKey(subscription))
+          ? 'disabled' : serverStatus;
+        if (generation !== statusGeneration || pushBusy) return pushState;
+        knownSubscription = subscription;
+        setPushStatusText(Notification.permission === 'denied' ? 'permission' : status);
+      } catch (_) {
+        if (generation === statusGeneration && !pushBusy) setPushStatusText('error');
+      } finally { controller.abort(); }
+      return pushState;
+    })().finally(() => {
+      if (statusPromiseGeneration === generation) statusPromise = null;
+    });
+    return statusPromise;
   };
 
   const registerServiceWorker = () => {
@@ -199,26 +240,21 @@
       showIosHint();
       return Promise.resolve(null);
     }
-    registrationPromise = (async () => {
-      let timeout;
-      try {
-        const registration = await navigator.serviceWorker.register(body.dataset.pwaServiceWorkerUrl || '/service-worker.js', {
-          scope: '/', updateViaCache: 'none'
-        });
-        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        // Prepare an active worker before showing Enable, not after the user taps it.
-        const ready = registration.active ? registration : await Promise.race([
-          navigator.serviceWorker.ready,
-          new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Service worker activation timed out')), 10000); })
-        ]);
-        window.FireballPwa.registration = ready;
-        return ready;
-      } catch (error) {
-        registrationPromise = null;
-        console.warn('PWA service worker registration failed', error);
-        return null;
-      } finally { clearTimeout(timeout); }
-    })();
+    registrationPromise = withPushDeadline((async () => {
+      const registration = await navigator.serviceWorker.register(body.dataset.pwaServiceWorkerUrl || '/service-worker.js', {
+        scope: '/', updateViaCache: 'none'
+      });
+      if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // Prepare an active worker before showing Enable, not after the user taps it.
+      return registration.active ? registration : await navigator.serviceWorker.ready;
+    })()).then((ready) => {
+      window.FireballPwa.registration = ready;
+      return ready;
+    }).catch((error) => {
+      registrationPromise = null;
+      console.warn('PWA service worker registration failed', error);
+      return null;
+    });
     return registrationPromise;
   };
 
@@ -418,9 +454,12 @@
   bindInstallPrompt();
   bindPwaLinks();
   bindPushButtons();
-  registerServiceWorker().then(() => {
+  // Start status independently: register() itself can remain pending in a resumed iOS PWA.
+  syncPushStatus();
+  registerServiceWorker().then((registration) => {
     if (badgeValue !== null) syncWorkerBadge(badgeValue);
-    return syncPushStatus();
+    // A failed background update must not restart a timed-out check or erase its result.
+    if (registration) return syncPushStatus();
   });
   window.addEventListener('pageshow', () => syncPushStatus());
   document.addEventListener('visibilitychange', () => {

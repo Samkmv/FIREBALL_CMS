@@ -1071,4 +1071,11 @@ return [
     'vpn_manager_v2_profile_status_deleted' => 'Удалена',
     'vpn_manager_v2_profile_status_missing_remote' => 'Подключение недоступно',
     'vpn_manager_v2_profile_status_pending_remote_delete' => 'Ожидает удаления',
+    'vpn_manager_v2_subscriptions_filter_all' => 'Все статусы',
+    'vpn_manager_v2_subscriptions_filter_inactive' => 'Неактивные',
+    'vpn_manager_v2_subscriptions_notice_expired' => 'Просроченные подписки',
+    'vpn_manager_v2_subscriptions_notice_expired_help' => 'Срок действия закончился.',
+    'vpn_manager_v2_subscriptions_notice_inactive' => 'Неактивные подписки',
+    'vpn_manager_v2_subscriptions_notice_inactive_help' => 'Приостановлены, отменены или исчерпали трафик. Просроченные показаны отдельно.',
+    'vpn_manager_v2_subscriptions_notice_view' => 'Посмотреть подписки',
 ];
