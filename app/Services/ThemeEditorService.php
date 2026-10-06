@@ -259,15 +259,16 @@ class ThemeEditorService
         $extension = strtolower(pathinfo((string)($upload['name'] ?? ''), PATHINFO_EXTENSION));
         $targetExtension = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
 
-        if ($error !== UPLOAD_ERR_OK || !is_uploaded_file($tmp) || $size <= 0 || $size > self::MAX_IMAGE_BYTES) {
-            throw new RuntimeException('Upload a valid image up to 5 MB.');
-        }
+        UploadPolicy::assertUpload($error, $size, self::MAX_IMAGE_BYTES);
+
+        if (!is_uploaded_file($tmp)) throw new UploadException('upload_error_invalid');
         if (!in_array($extension, self::IMAGE_EXTENSIONS, true) || $extension !== $targetExtension) {
-            throw new RuntimeException('The replacement image must use the same allowed extension.');
+            throw new UploadException('upload_error_type');
         }
         if ($extension !== 'svg' && @getimagesize($tmp) === false) {
-            throw new RuntimeException('The uploaded file is not a valid image.');
+            throw new UploadException('upload_error_image');
         }
+        if ($extension !== 'svg') (new SafeUploadService())->validate($tmp, (string)$upload['name'], $size, self::MAX_IMAGE_BYTES, self::IMAGE_EXTENSIONS);
         if ($extension === 'svg') {
             $svg = (string)file_get_contents($tmp);
             $this->validateSvg($svg);

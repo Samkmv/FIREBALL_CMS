@@ -435,7 +435,10 @@ class AuthController extends BaseController
     /**
      * Показывает обзор или настройки; принимает также старые формы профиля.
      */
-    public function profile(bool $isSettings = false)
+    public function sessions() { return $this->profile(true, 'sessions'); }
+    public function favorites() { return $this->profile(true, 'favorites'); }
+
+    public function profile(bool $isSettings = false, ?string $forcedSection = null)
     {
         $user = $this->users->findById((int)get_user()['id']);
 
@@ -445,8 +448,8 @@ class AuthController extends BaseController
             response()->redirect(base_href('/login'));
         }
 
-        $settingsSection = (string)request()->get('section', 'information');
-        if (!in_array($settingsSection, ['information', 'security', 'notifications'], true)) {
+        $settingsSection = $forcedSection ?? (string)request()->get('section', 'information');
+        if (!in_array($settingsSection, ['information', 'security', 'notifications', 'sessions', 'favorites'], true)) {
             $settingsSection = 'information';
         }
 
@@ -581,8 +584,7 @@ class AuthController extends BaseController
 
                 $this->users->updateProfile((int)$user['id'], $data);
                 Auth::setUser();
-                session()->regenerateId();
-                app()->regenerateCSRFToken();
+                Auth::rotateSession();
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_profile_updated'));
                 response()->redirect(base_href($settingsUrl));
@@ -639,11 +641,21 @@ class AuthController extends BaseController
             )
             : '';
 
+        $favorites = $isSettings && $settingsSection === 'favorites' && \App\Models\UserFavorite::available()
+            ? (new \App\Models\UserFavorite())->paginatedPosts((int)$user['id']) : null;
+        if (is_array($favorites)) {
+            $items = apply_filters('public_posts_before_render', $favorites['items'], get_user() ?: []);
+            $favorites['items'] = is_array($items) ? $items : [];
+        }
+
         return Theme::render($isSettings ? 'auth/settings' : 'auth/profile', [
-            'title' => return_translation($isSettings ? 'auth_settings_title' : 'auth_profile_title'),
+            'title' => return_translation($isSettings && $settingsSection === 'favorites' ? 'account_favorites' : ($isSettings && $settingsSection === 'sessions' ? 'account_sessions' : ($isSettings ? 'auth_settings_title' : 'auth_profile_title'))),
             'is_settings' => $isSettings,
             'settings_section' => $settingsSection,
             'user' => $user,
+            'user_favorites' => $favorites,
+            'user_sessions' => $isSettings && $settingsSection === 'sessions' && \App\Services\UserSessionService::available()
+                ? (new \App\Services\UserSessionService())->paginated((int)$user['id'], session_id()) : null,
             'two_factor_setup' => $twoFactorSetup,
             'two_factor_uri' => $twoFactorUri,
             'two_factor_qr_code' => $twoFactor->qrCodeDataUri($twoFactorUri),

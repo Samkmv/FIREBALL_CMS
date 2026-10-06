@@ -9,6 +9,14 @@ final class AccessService
     private array $subscriptionCache = [];
     private array $permissionCache = [];
     private array $roleCache = [];
+    private array $prefetchedRules = [];
+
+    public function prefetchContentRules(string $type, array $ids): void
+    {
+        foreach ((new ContentRuleRepository())->findMany($type, $ids) as $id => $rule) {
+            $this->prefetchedRules[$type . ':' . $id] = $rule;
+        }
+    }
 
     public function activeSubscription(int $userId, bool $lock = false): ?array
     {
@@ -53,8 +61,7 @@ final class AccessService
         if ($userId <= 0) {
             return false;
         }
-        $user = db()->query('SELECT role FROM users WHERE id = ? LIMIT 1', [$userId])->getOne();
-        if (in_array((string)($user['role'] ?? ''), ['creator', 'admin'], true)) {
+        if (in_array($this->userRole($userId), ['creator', 'admin'], true)) {
             return true;
         }
 
@@ -76,7 +83,9 @@ final class AccessService
 
     public function contentDecision(int $userId, string $contentType, string|int $contentId): array
     {
-        $rule = (new ContentRuleRepository())->find($contentType, $contentId);
+        $key = $contentType . ':' . $contentId;
+        $rule = array_key_exists($key, $this->prefetchedRules)
+            ? $this->prefetchedRules[$key] : (new ContentRuleRepository())->find($contentType, $contentId);
         if (!$rule && $contentType === 'post') {
             $rule = $this->defaultPostRule();
         }

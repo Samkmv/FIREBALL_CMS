@@ -930,13 +930,26 @@ final class AnalyticsService
         return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
     }
 
+    /** Shared best-effort browser metadata; not an authentication factor. */
+    public function describeClient(string $ua): array
+    {
+        $browser = $this->detectBrowser($ua);
+        $token = match ($browser) {
+            'Chrome' => '(?:Chrome|CriOS)', 'Safari' => 'Version', 'Firefox' => '(?:Firefox|FxiOS)',
+            'Edge' => '(?:Edg|EdgiOS|EdgA)', 'Opera' => 'OPR', 'Samsung Browser' => 'SamsungBrowser', default => '(?!)',
+        };
+        preg_match('~' . $token . '/([0-9.]+)~i', $ua, $match);
+        return ['device_type' => $this->detectDeviceType($ua), 'browser' => $browser,
+            'browser_version' => substr((string)($match[1] ?? ''), 0, 40), 'os' => $this->detectOs($ua)];
+    }
+
     private function detectDeviceType(string $ua): string
     {
         $ua = strtolower($ua);
         if ($this->isBot($ua)) {
             return 'Bot';
         }
-        if (str_contains($ua, 'ipad') || str_contains($ua, 'tablet')) {
+        if (str_contains($ua, 'ipad') || str_contains($ua, 'tablet') || (str_contains($ua, 'macintosh') && str_contains($ua, 'mobile'))) {
             return 'Tablet';
         }
         if (str_contains($ua, 'mobile') || str_contains($ua, 'iphone') || str_contains($ua, 'android')) {
@@ -986,10 +999,10 @@ final class AnalyticsService
         if (str_contains($ua, 'opr/') || str_contains($ua, 'opera')) {
             return 'Opera';
         }
-        if (str_contains($ua, 'edg/')) {
+        if (str_contains($ua, 'edg/') || str_contains($ua, 'edgios/') || str_contains($ua, 'edga/')) {
             return 'Edge';
         }
-        if (str_contains($ua, 'firefox/')) {
+        if (str_contains($ua, 'firefox/') || str_contains($ua, 'fxios/')) {
             return 'Firefox';
         }
         if (str_contains($ua, 'chrome/') || str_contains($ua, 'crios/')) {

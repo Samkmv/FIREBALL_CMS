@@ -14,6 +14,7 @@ class Auth
     public function handle(): void
     {
         if (!check_auth()) {
+            $this->rejectAjax();
             if (!session()->get('flash.error')) {
                 session()->setFlash('error', \FBL\Language::get('tpl_auth_required_login'));
             }
@@ -23,7 +24,15 @@ class Auth
         \FBL\Auth::setUser();
 
         if (!check_auth()) {
+            $this->rejectAjax();
             response()->redirect(base_href('/login'));
+        }
+    }
+
+    private function rejectAjax(): void
+    {
+        if (request()->isAjax()) {
+            response()->json(['status' => 'error', 'message' => \FBL\Language::get('tpl_auth_required_login')], 401);
         }
     }
 

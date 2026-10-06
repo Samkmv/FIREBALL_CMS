@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,8 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Batch-load post access rules for public lists and favorites without changing subscription restrictions.",
+    "Address directory uploads now use the shared CMS/PHP upload limits, MIME validation and localized upload errors.",
     "Protect recurring payment states from late responses and exclude restricted content from search without access.",
     "Fixed subscription-plan checkboxes overflowing the video access inspector on narrow screens.",
     "Redesigned public plan selection and checkout with responsive cards for one, two, or many subscription plans.",
@@ -36,6 +38,8 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Правила доступа к записям загружаются пакетом для публичных списков и избранного без изменения ограничений подписок.",
+      "Загрузка адресного справочника использует общие лимиты CMS/PHP, проверку MIME и переведённые ошибки загрузки.",
       "Защищены состояния повторных платежей от поздних ответов; закрытый контент исключён из поиска без доступа.",
       "Исправлено отображение чекбоксов тарифов в настройках доступа к видео на узких экранах.",
       "Переработаны публичный выбор тарифов и оформление оплаты: адаптивные карточки поддерживают один, два или любое количество тарифов.",
@@ -48,6 +52,8 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Batch-load post access rules for public lists and favorites without changing subscription restrictions.",
+      "Address directory uploads now use the shared CMS/PHP upload limits, MIME validation and localized upload errors.",
       "Protect recurring payment states from late responses and exclude restricted content from search without access.",
       "Fixed subscription-plan checkboxes overflowing the video access inspector on narrow screens.",
       "Redesigned public plan selection and checkout with responsive cards for one, two, or many subscription plans.",
@@ -60,6 +66,8 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Zugriffsregeln für öffentliche Beitragslisten und Favoriten werden gebündelt geladen; Abo-Beschränkungen bleiben erhalten.",
+      "Adressverzeichnis-Uploads verwenden gemeinsame CMS/PHP-Limits, MIME-Prüfung und übersetzte Upload-Fehler.",
       "Wiederkehrende Zahlungszustände vor verspäteten Antworten schützen und geschützte Inhalte ohne Zugriff aus der Suche ausschließen.",
       "Die über den Videozugriffsbereich hinausragenden Tarif-Kontrollkästchen auf schmalen Bildschirmen wurden korrigiert.",
       "Die öffentliche Tarifauswahl und der Bezahlvorgang wurden mit responsiven Karten für einen, zwei oder beliebig viele Tarife neu gestaltet.",
@@ -72,6 +80,8 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "为公开文章列表和收藏批量加载访问规则，订阅限制保持不变。",
+      "地址目录上传使用统一的 CMS/PHP 限制、MIME 验证和本地化上传错误。",
       "防止延迟响应覆盖续费支付状态，并禁止无权限用户搜索受保护内容。",
       "修复了窄屏下视频访问设置中的订阅套餐复选框溢出问题。",
       "重新设计了公开套餐选择和结账页面，响应式卡片支持一个、两个或任意数量的订阅套餐。",

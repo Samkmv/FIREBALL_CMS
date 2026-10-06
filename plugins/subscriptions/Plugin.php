@@ -497,6 +497,7 @@ final class FireballPluginSubscriptions implements PluginInterface
     public static function filterPublicPosts(array $posts, array $user = []): array
     {
         $access = self::accessService();
+        $access->prefetchContentRules('post', array_column(array_filter($posts, 'is_array'), 'id'));
         $filtered = [];
         foreach ($posts as $post) {
             if (is_array($post)) {

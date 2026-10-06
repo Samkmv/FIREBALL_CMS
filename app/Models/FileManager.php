@@ -619,31 +619,17 @@ class FileManager
      */
     protected function storeUploadedFile(string $relativeDir, string $originalName, string $tmpName, int $error, int $size): string
     {
-        if ($error !== UPLOAD_ERR_OK || $tmpName === '' || !is_uploaded_file($tmpName)) {
-            throw new \RuntimeException(return_translation('admin_files_upload_error'));
-        }
-
+        \App\Services\UploadPolicy::assertUpload($error, $size);
+        if ($tmpName === '' || !is_uploaded_file($tmpName)) throw new \App\Services\UploadException('upload_error_invalid');
         $maxUploadSize = UploadSettings::maxFileSizeBytes();
-        if ($size > $maxUploadSize) {
-            throw new \RuntimeException(return_translation('admin_files_size_error'));
-        }
-
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-        if ($extension === '' || !in_array($extension, $this->allowedExtensions, true)) {
-            throw new \RuntimeException(return_translation('admin_files_type_error'));
-        }
-
-        try {
-            (new SafeUploadService())->validate(
+        (new SafeUploadService())->validate(
                 $tmpName,
                 $originalName,
                 $size,
                 $maxUploadSize,
                 $this->allowedExtensions
             );
-        } catch (\RuntimeException) {
-            throw new \RuntimeException(return_translation('admin_files_type_error'));
-        }
 
         $relativeDir = $this->normalizeRelativePath($relativeDir);
         $absoluteDir = $this->ensureDirectoryExists($relativeDir);
@@ -687,7 +673,8 @@ class FileManager
         }
 
         return array_values(array_filter($normalized, static function (array $file): bool {
-            return trim((string)($file['name'] ?? '')) !== '' || (int)($file['size'] ?? 0) > 0;
+            return trim((string)($file['name'] ?? '')) !== '' || (int)($file['size'] ?? 0) > 0
+                || !in_array((int)$file['error'], [UPLOAD_ERR_OK, UPLOAD_ERR_NO_FILE], true);
         }));
     }
 

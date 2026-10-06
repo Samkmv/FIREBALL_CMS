@@ -40,7 +40,9 @@ class File
             $this->size = $files[$fileName]['size'] ?? 0;
         }
 
-        $this->isFile =(bool)$this->size;
+        // PHP size errors frequently have size=0: they are still attempted uploads.
+        $this->isFile = $this->error !== UPLOAD_ERR_NO_FILE
+            && ($this->name !== '' || $this->size > 0 || $this->error !== UPLOAD_ERR_OK);
     }
 
     /**
@@ -53,12 +55,7 @@ class File
         }
 
         try {
-            (new SafeUploadService())->validate(
-                $this->tmpName,
-                $this->name,
-                $this->size,
-                UploadSettings::maxFileSizeBytes()
-            );
+            $this->validate();
         } catch (\RuntimeException $exception) {
             log_error_details('Unsafe upload rejected', [
                 'Name' => $this->name,
@@ -102,6 +99,13 @@ class File
     {
         $file_ext = explode('.', $this->name);
         return end($file_ext);
+    }
+
+    public function validate(?int $maxSize = null, ?array $extensions = null): string
+    {
+        \App\Services\UploadPolicy::assertUpload($this->error, $this->size, $maxSize);
+        return (new SafeUploadService())->validate($this->tmpName, $this->name, $this->size,
+            $maxSize ?? UploadSettings::maxFileSizeBytes(), $extensions);
     }
 
     /**

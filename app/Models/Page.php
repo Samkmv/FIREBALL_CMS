@@ -266,8 +266,15 @@ class Page extends Model
     }
 
     /**
-     * Finds a published page by URL slug.
+     * Renders a private preview without changing the editor/storage contract.
      */
+    public function findByIdForPreview(int $id): array|false
+    {
+        $page = $this->findById($id);
+        return $page ? $this->normalizePage($page, true) : false;
+    }
+
+    /** Finds a published page by URL slug, with visitor-facing content. */
     public function findPublishedBySlug(string $slug): array|false
     {
         $slug = trim($slug, '/');
@@ -291,7 +298,7 @@ class Page extends Model
             return false;
         }
 
-        $item = $this->normalizePage($page);
+        $item = $this->normalizePage($page, true);
         cache()->set($cacheKey, $item, 600);
 
         return $item;
@@ -326,7 +333,7 @@ class Page extends Model
             return false;
         }
 
-        $item = $this->normalizePage($page);
+        $item = $this->normalizePage($page, true);
         cache()->set($cacheKey, $item, 600);
 
         return $item;
@@ -601,13 +608,14 @@ class Page extends Model
     /**
      * Normalizes a page for templates.
      */
-    protected function normalizePage(array $page): array
+    /** Admin/editor callers receive RAW content; public callers opt into rendering. */
+    protected function normalizePage(array $page, bool $renderContent = false): array
     {
         $page['title'] = trim((string)($page['title'] ?? 'Untitled'));
         $page['menu_title'] = trim((string)($page['menu_title'] ?? ''));
         $page['menu_label'] = $page['menu_title'] !== '' ? $page['menu_title'] : $page['title'];
         $page['slug'] = trim((string)($page['slug'] ?? ''));
-        $page['content'] = trim((string)($page['content'] ?? ''));
+        $page['content'] = (string)($page['content'] ?? '');
         $page['meta_title'] = trim((string)($page['meta_title'] ?? ''));
         $page['meta_description'] = trim((string)($page['meta_description'] ?? ''));
         $page['seo_title'] = $page['meta_title'] !== '' ? $page['meta_title'] : $page['title'];
@@ -622,17 +630,18 @@ class Page extends Model
         $page['created_at'] = (string)($page['created_at'] ?? '');
         $page['updated_at'] = (string)($page['updated_at'] ?? '');
 
-        if ($page['content'] !== '') {
+        if ($renderContent && $page['content'] !== '') {
             $page['content'] = (new BlockRenderer())->renderPublicContent($page['content']);
         }
 
-        if ($page['content'] !== '' && $page['content'] === strip_tags($page['content'])) {
+        if ($renderContent && $page['content'] !== '' && $page['content'] === strip_tags($page['content'])) {
             $page['content'] = '<p>' . nl2br(htmlSC($page['content'])) . '</p>';
         }
 
-        if ($page['meta_description'] === '') {
+        if ($renderContent && $page['meta_description'] === '') {
             $page['meta_description'] = mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags($page['content']))), 0, 160);
         }
+        $page['seo_description'] = $page['meta_description'];
 
         return $page;
     }

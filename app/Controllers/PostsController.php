@@ -45,6 +45,7 @@ class PostsController extends BaseController
         return Theme::render('posts', [
             'title' => return_translation('posts_index_title'),
             'posts' => $publicPosts,
+            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
             'total_posts' => $postsData['total'],
             'pagination' => $postsData['pagination'],
             'current_category' => $postsData['current_category'],
@@ -83,6 +84,7 @@ class PostsController extends BaseController
             'title' => $category['name'],
             'category' => $category,
             'posts' => $this->filterPublicPosts((array)$postsData['posts']),
+            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
             'pagination' => $postsData['pagination'],
             'total_posts' => $postsData['total'],
             'seo_title' => $category['seo_title'] ?: $category['name'],
@@ -99,6 +101,7 @@ class PostsController extends BaseController
         return Theme::render('archive', [
             'title' => return_translation('theme_archive_title'),
             'posts' => $this->filterPublicPosts((array)$postsData['posts']),
+            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
             'pagination' => $postsData['pagination'],
             'total_posts' => $postsData['total'],
             'seo_canonical' => base_href('/archive'),
@@ -121,6 +124,7 @@ class PostsController extends BaseController
         if (!is_array($post)) {
             abort();
         }
+        [$post] = (new \App\Models\UserFavorite())->withPostStates([$post], (int)(get_user()['id'] ?? 0));
 
         $this->posts->incrementViews((int)$post['id']);
         $post['views_count'] = (int)$post['views_count'] + 1;
@@ -165,6 +169,7 @@ class PostsController extends BaseController
         return Theme::render('post', [
             'title' => $post['title'],
             'post' => $post,
+            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
             'categories' => $sidebarData['categories'],
             'trending_posts' => $this->filterPublicPosts((array)$sidebarData['trending_posts']),
             'popular_posts' => $this->filterPublicPosts($popularPosts),
@@ -186,7 +191,7 @@ class PostsController extends BaseController
     {
         $filtered = apply_filters('public_posts_before_render', $posts, get_user() ?: []);
 
-        return is_array($filtered) ? array_values($filtered) : [];
+        return (new \App\Models\UserFavorite())->withPostStates(is_array($filtered) ? array_values($filtered) : [], (int)(get_user()['id'] ?? 0));
     }
 
 }

@@ -24,6 +24,7 @@ foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
         'image_height' => (int)(($post['image_height'] ?? 0) ?: 305),
         'url' => $postUrl($post),
         'locked' => isset($post['subscription_access']) && empty($post['subscription_access']['allowed']),
+        'favorite_post' => $post,
     ];
 }
 $objectCards = [
@@ -102,7 +103,7 @@ $benefitsTitleLines = preg_split('/(?<=[.!?。！？])\s+/u', return_translation
                                     <span class="home-online-badge"><?php if ($camera['locked']): ?><i class="ci-lock" aria-hidden="true"></i><?= htmlSC(return_translation('subscriptions_locked_badge')) ?><?php else: ?><span class="home-online-dot" aria-hidden="true"></span><?= htmlSC(return_translation('home_index_camera_online')) ?><?php endif; ?></span>
                                     <span class="home-camera-card__open" aria-hidden="true"><i class="ci-arrow-up-right"></i></span>
                                 </a>
-                                <div class="home-camera-card__body"><div class="home-camera-card__meta"><a href="<?= htmlSC($camera['category_url']) ?>"><?= htmlSC($camera['city']) ?></a><span><?= htmlSC($camera['date']) ?></span></div><h3><a href="<?= htmlSC($camera['url']) ?>"><?= htmlSC($camera['title']) ?></a></h3><a class="home-text-link" href="<?= htmlSC($camera['url']) ?>"><span class="home-text-link__label"><?= htmlSC(return_translation('home_index_featured_posts_watch')) ?></span><i class="ci-chevron-right" aria-hidden="true"></i></a></div>
+                                <div class="home-camera-card__body"><div class="home-camera-card__meta"><a href="<?= htmlSC($camera['category_url']) ?>"><?= htmlSC($camera['city']) ?></a><span><?= htmlSC($camera['date']) ?></span></div><div class="d-flex align-items-start justify-content-between gap-3 post-favorite-heading"><h3 class="flex-grow-1"><a href="<?= htmlSC($camera['url']) ?>"><?= htmlSC($camera['title']) ?></a></h3><?= $this->partial('favorite_button', ['post' => $camera['favorite_post']]) ?></div><a class="home-text-link" href="<?= htmlSC($camera['url']) ?>"><span class="home-text-link__label"><?= htmlSC(return_translation('home_index_featured_posts_watch')) ?></span><i class="ci-chevron-right" aria-hidden="true"></i></a></div>
                             </article>
                         <?php endforeach; ?>
                     </div>

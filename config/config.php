@@ -191,6 +191,10 @@ if (
 }
 
 $config = array_replace_recursive($defaults, $localConfig);
+// Do not canonicalize the automatically detected installation suggestion.
+if (!defined('APP_URL_CONFIGURED')) {
+    define('APP_URL_CONFIGURED', defined('PATH') || trim((string)($localConfig['PATH'] ?? '')) !== '');
+}
 $defaultLocale = (string)($config['DEFAULT_LOCALE'] ?? $defaults['DEFAULT_LOCALE']);
 if (isset($config['LANGS'][$defaultLocale])) {
     foreach ($config['LANGS'] as $code => $language) {

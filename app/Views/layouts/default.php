@@ -251,6 +251,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Customs styles -->
     <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/style.css') ?>">
+    <?php if (!empty($requiredAssets['favorites'])): ?>
+        <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/favorites.css') ?>">
+    <?php endif; ?>
     <?php if (!$isAdminArea): ?>
         <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/css/back-to-top.css') ?>">
     <?php endif; ?>

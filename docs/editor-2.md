@@ -21,6 +21,10 @@ Editor 2.0 — полноэкранный гибридный редактор з
 
 Миграция базы данных не требуется. Новые поля `settings` и `meta` необязательны.
 
+### RAW и публичный HTML
+
+Методы для админки/редактора обязаны возвращать **RAW** `content` со snapshot, без `renderPublicContent()` и без нормализации пробелов. Для страниц это `Page::findById()`. Публичные `findPublishedBySlug()` / `findPublishedById()` и явный `findByIdForPreview()` возвращают отрендеренный HTML. Preview никогда не записывает преобразованный HTML обратно в БД. `AdminPost` также читает RAW, а публичная модель `Post` рендерит для посетителей. Формат snapshot не меняется; sanitizer сохраняет его, удаляя опасный HTML. Не заполняйте пустые SEO-поля служебным base64 snapshot. Подробности и проверки: [отчёт 2026-10-06](account-origin-upload-audit.md).
+
 ## Архитектура клиента
 
 - `registry.js` — публичный Block/Plugin API, actions и filters;

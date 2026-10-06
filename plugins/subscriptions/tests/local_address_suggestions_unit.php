@@ -5,6 +5,8 @@ declare(strict_types=1);
 // Reuse the isolated SQLite repository harness, never the CMS bootstrap/live database.
 require __DIR__ . '/profile_regions_unit.php';
 require_once __DIR__ . '/../src/Services/AddressSuggestionService.php';
+require_once dirname(__DIR__, 3) . '/app/Services/UploadException.php';
+require_once dirname(__DIR__, 3) . '/app/Services/UploadPolicy.php';
 
 use Fireball\Subscriptions\Services\AddressSuggestionService;
 
@@ -150,7 +152,7 @@ $countBeforeInvalidImport = $service->stats()['rows'];
 try {
     $service->importUploaded(['error' => UPLOAD_ERR_NO_FILE], true);
     check(true, false, 'Missing upload is rejected before replacement');
-} catch (InvalidArgumentException) {
+} catch (\App\Services\UploadException) {
     check($countBeforeInvalidImport, $service->stats()['rows'], 'Invalid upload never clears the existing catalog');
 }
 

@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
+    session_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    session_version INT UNSIGNED NOT NULL,
+    device_type VARCHAR(20) NOT NULL,
+    browser VARCHAR(40) NOT NULL,
+    browser_version VARCHAR(40) NOT NULL DEFAULT '',
+    os VARCHAR(40) NOT NULL,
+    user_agent VARCHAR(1000) NOT NULL DEFAULT '',
+    ip_address VARCHAR(45) NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL,
+    last_activity_at DATETIME NOT NULL,
+    expires_at DATETIME NOT NULL,
+    revoked_at DATETIME NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY session_hash (session_hash),
+    KEY user_id (user_id),
+    KEY user_revoked_activity (user_id, revoked_at, last_activity_at),
+    KEY expires_at (expires_at),
+    KEY revoked_at (revoked_at),
+    CONSTRAINT fk_user_sessions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

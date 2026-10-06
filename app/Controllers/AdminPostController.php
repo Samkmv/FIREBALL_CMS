@@ -420,21 +420,10 @@ class AdminPostController extends BaseController
             return [];
         }
 
-        if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
-            return ['image_file' => [return_translation('admin_validation_image_upload')]];
-        }
-
-        if ($file->getSize() > 25 * 1024 * 1024) {
-            return ['image_file' => [return_translation('admin_validation_image_size')]];
-        }
-
-        $extension = strtolower($file->getExt());
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
-            return ['image_file' => [return_translation('admin_validation_image_type')]];
-        }
-
-        if (!@getimagesize($file->getTmpName())) {
-            return ['image_file' => [return_translation('admin_validation_image_type')]];
+        try {
+            $file->validate(25 * 1024 * 1024, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+        } catch (\App\Services\UploadException $exception) {
+            return ['image_file' => [$exception->getMessage()]];
         }
 
         return [];

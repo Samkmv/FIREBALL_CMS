@@ -550,7 +550,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                         <span class="d-inline-flex align-items-center justify-content-center rounded-circle" data-file-manager-upload-drop-icon><i class="ci-upload"></i></span>
                         <span class="d-block fw-semibold mt-3"><?= print_translation('admin_files_drop_title') ?></span>
                         <span class="d-block small text-body-secondary mt-1"><?= print_translation('admin_files_drop_hint') ?></span>
-                        <span class="d-block small text-body-secondary mt-3"><?= str_replace(':size', (string)\App\Services\UploadSettings::maxFileSizeMb(), return_translation('admin_files_upload_limit_hint')) ?></span>
+                        <span class="d-block small text-body-secondary mt-3"><?= print_translation('upload_limit_effective') ?>: <?= htmlSC(\App\Services\UploadPolicy::formatBytes(\App\Services\UploadPolicy::limits()['effective'])) ?></span>
                     </label>
                     <div class="small mt-3" data-file-manager-upload-selection role="status" aria-live="polite" hidden></div>
                     <div class="form-text mt-3"><?= print_translation('admin_files_upload_hint') ?></div>

@@ -85,7 +85,7 @@ class ChatController extends BaseController
             'chat_audit_clear_url' => base_href('/chat/conversation/audit/clear'),
             'chat_file_manager_enabled' => check_admin(),
             'chat_file_manager_url' => base_href('/admin/files'),
-            'chat_max_file_size' => UploadSettings::maxFileSizeBytes(),
+            'chat_max_file_size' => \App\Services\UploadPolicy::limits()['effective'],
             'chat_permissions' => $this->chatMessages->getPermissionsForRole((string)($currentUser['role'] ?? 'user')),
             'footer_scripts' => $footerScripts,
         ]);
@@ -870,40 +870,10 @@ class ChatController extends BaseController
                 continue;
             }
 
-            if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
-                $errors[] = return_translation('chat_file_upload_error');
-                continue;
-            }
-
-            if ($file->getSize() > UploadSettings::maxFileSizeBytes()) {
-                $errors[] = return_translation('chat_file_size_error');
-                continue;
-            }
-
-            $extension = strtolower($file->getExt());
-            $allowedExtensions = $this->getAllowedAttachmentExtensions();
-            $blockedExtensions = $this->getBlockedAttachmentExtensions();
-
-            if (in_array($extension, $blockedExtensions, true) || !in_array($extension, $allowedExtensions, true)) {
-                $errors[] = return_translation('chat_file_type_error');
-                continue;
-            }
-
-            if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true) && !@getimagesize($file->getTmpName())) {
-                $errors[] = return_translation('chat_file_type_error');
-                continue;
-            }
-
             try {
-                (new SafeUploadService())->validate(
-                    $file->getTmpName(),
-                    $file->getName(),
-                    $file->getSize(),
-                    UploadSettings::maxFileSizeBytes(),
-                    $allowedExtensions
-                );
-            } catch (\RuntimeException) {
-                $errors[] = return_translation('chat_file_type_error');
+                $file->validate(null, array_values(array_diff($this->getAllowedAttachmentExtensions(), $this->getBlockedAttachmentExtensions())));
+            } catch (\App\Services\UploadException $exception) {
+                $errors[] = $exception->getMessage();
             }
         }
 

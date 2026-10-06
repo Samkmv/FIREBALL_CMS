@@ -140,6 +140,10 @@ class AdminController extends BaseController
             'system_status' => [
                 ['label' => return_translation('admin_dashboard_system_cms'), 'value' => (string)($engineRelease['version'] ?? '—'), 'status' => 'success'],
                 ['label' => return_translation('admin_dashboard_system_php'), 'value' => PHP_VERSION, 'status' => 'success'],
+                ['label' => return_translation('upload_limit_cms'), 'value' => \App\Services\UploadPolicy::formatBytes(\App\Services\UploadPolicy::limits()['cms'])],
+                ['label' => return_translation('upload_limit_php'), 'value' => \App\Services\UploadPolicy::formatBytes(\App\Services\UploadPolicy::limits()['php_upload'])],
+                ['label' => return_translation('upload_limit_post'), 'value' => \App\Services\UploadPolicy::formatBytes(\App\Services\UploadPolicy::limits()['php_post'])],
+                ['label' => return_translation('upload_limit_effective'), 'value' => \App\Services\UploadPolicy::formatBytes(\App\Services\UploadPolicy::limits()['effective'])],
                 ['label' => return_translation('admin_dashboard_system_database'), 'value' => return_translation('admin_dashboard_connected'), 'status' => 'success'],
                 ['label' => return_translation('admin_dashboard_system_disk'), 'value' => $formatBytes($freeBytes), 'status' => $freeBytes === false ? 'warning' : 'success'],
             ],
@@ -2509,8 +2513,12 @@ class AdminController extends BaseController
         if (($data['preview_source'] ?? '') !== '' && !$this->isValidThemePreviewSource((string)$data['preview_source'])) {
             $errors['preview_source'][] = return_translation('admin_themes_validation_preview_source_invalid');
         }
-        if (!empty($data['preview_upload']['size']) && !$this->isValidThemePreviewUpload($data['preview_upload'])) {
-            $errors['preview_upload'][] = return_translation('admin_themes_validation_preview_upload_invalid');
+        if ((int)($data['preview_upload']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            try {
+                $this->isValidThemePreviewUpload($data['preview_upload']);
+            } catch (\App\Services\UploadException $exception) {
+                $errors['preview_upload'][] = $exception->getMessage();
+            }
         }
 
         if ($includeSlug) {
@@ -2566,17 +2574,11 @@ class AdminController extends BaseController
 
     protected function isValidThemePreviewUpload(array $file): bool
     {
-        $error = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
-        if ($error !== UPLOAD_ERR_OK) {
-            return false;
-        }
-
+        \App\Services\UploadPolicy::assertUpload((int)($file['error'] ?? UPLOAD_ERR_NO_FILE), (int)($file['size'] ?? 0), 5 * 1024 * 1024);
         $size = (int)($file['size'] ?? 0);
         $name = (string)($file['name'] ?? '');
-
-        return $size > 0
-            && $size <= 5 * 1024 * 1024
-            && preg_match('/\.(png|jpe?g|webp|gif)$/i', $name) === 1;
+        (new \App\Services\SafeUploadService())->validate((string)($file['tmp_name'] ?? ''), $name, $size, 5 * 1024 * 1024, ['png', 'jpg', 'jpeg', 'webp', 'gif']);
+        return true;
     }
 
     protected function themeDocsArticles(): array

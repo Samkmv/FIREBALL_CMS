@@ -247,6 +247,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <!-- Customs styles -->
     <link rel="stylesheet" href="<?= theme_asset_versioned('vendor/toastr/toastr.min.css') ?>">
     <link rel="stylesheet" href="<?= theme_asset_versioned('css/style.css') ?>">
+    <?php if (!empty($requiredAssets['favorites'])): ?>
+        <link rel="stylesheet" href="<?= asset_versioned_url(base_url('/assets/default/css/favorites.css'), WWW . '/assets/default/css/favorites.css') ?>">
+    <?php endif; ?>
     <link rel="stylesheet" href="<?= asset_versioned_url(base_url('/assets/default/css/back-to-top.css'), WWW . '/assets/default/css/back-to-top.css') ?>">
     <?php if (str_contains((string)$this->content, 'data-home-page')): ?>
         <link rel="stylesheet" href="<?= theme_asset_versioned('css/home.css') ?>">

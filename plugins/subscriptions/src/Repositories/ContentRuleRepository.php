@@ -4,6 +4,29 @@ namespace Fireball\Subscriptions\Repositories;
 
 final class ContentRuleRepository
 {
+    /** One joined fetch for a card list, including rules with several allowed plans. */
+    public function findMany(string $type, array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('strval', $ids), static fn(string $id): bool => $id !== '')));
+        if ($ids === []) return [];
+        $rules = array_fill_keys($ids, null);
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $rows = db()->query("SELECT r.*, cp.plan_id FROM subscription_content_rules r
+            LEFT JOIN subscription_content_plans cp ON cp.content_rule_id = r.id
+            WHERE r.content_type = ? AND r.content_id IN ({$marks})", [$type, ...$ids])->get() ?: [];
+        foreach ($rows as $row) {
+            $id = (string)$row['content_id'];
+            if ($rules[$id] === null) {
+                $rule = $row;
+                unset($rule['plan_id']);
+                $rule['plan_ids'] = [];
+                $rules[$id] = $rule;
+            }
+            if ($row['plan_id'] !== null) $rules[$id]['plan_ids'][] = (int)$row['plan_id'];
+        }
+        return $rules;
+    }
+
     public function paginatedPosts(string $search = '', string $accessMode = '', int $perPage = 20): array
     {
         $where = [];

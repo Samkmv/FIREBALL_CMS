@@ -742,21 +742,10 @@ class User
             return [];
         }
 
-        if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
-            return ['avatar_file' => [$this->translate('auth_profile_avatar_upload_error')]];
-        }
-
-        if ($file->getSize() > 5 * 1024 * 1024) {
-            return ['avatar_file' => [$this->translate('auth_profile_avatar_size_error')]];
-        }
-
-        $extension = strtolower($file->getExt());
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
-            return ['avatar_file' => [$this->translate('auth_profile_avatar_type_error')]];
-        }
-
-        if (!@getimagesize($file->getTmpName())) {
-            return ['avatar_file' => [$this->translate('auth_profile_avatar_type_error')]];
+        try {
+            $file->validate(5 * 1024 * 1024, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+        } catch (\App\Services\UploadException $exception) {
+            return ['avatar_file' => [$exception->getMessage()]];
         }
 
         return [];

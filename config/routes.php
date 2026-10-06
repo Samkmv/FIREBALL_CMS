@@ -75,6 +75,14 @@ $app->router->post('/register', [AuthController::class, 'register'])->middleware
 $app->router->get('/profile', [AuthController::class, 'profile'])->middleware(['auth']);
 $app->router->post('/profile', [AuthController::class, 'profile'])->middleware(['auth']);
 $app->router->get('/profile/settings', [AuthController::class, 'settings'])->middleware(['auth']);
+// Router keeps default CSRF protection for all session mutations.
+$app->router->get('/profile/sessions', [AuthController::class, 'sessions'])->middleware(['auth']);
+$app->router->get('/profile/favorites', [AuthController::class, 'favorites'])->middleware(['auth']);
+$app->router->post('/profile/favorites/add', [\App\Controllers\FavoritesController::class, 'add'])->middleware(['auth']);
+$app->router->post('/profile/favorites/remove', [\App\Controllers\FavoritesController::class, 'remove'])->middleware(['auth']);
+$app->router->post('/profile/sessions/revoke', [\App\Controllers\UserSessionsController::class, 'revoke'])->middleware(['auth']);
+$app->router->post('/profile/sessions/others', [\App\Controllers\UserSessionsController::class, 'others'])->middleware(['auth']);
+$app->router->post('/profile/sessions/all', [\App\Controllers\UserSessionsController::class, 'all'])->middleware(['auth']);
 $app->router->post('/profile/settings', [AuthController::class, 'settings'])->middleware(['auth']);
 $app->router->get('/chat', [ChatController::class, 'index'])->middleware(['auth']);
 $app->router->get('/chat/messages', [ChatController::class, 'messages'])->middleware(['auth']);

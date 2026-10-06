@@ -160,21 +160,6 @@ $(function(){
     });
     prepareAdminResponsiveTables(document);
 
-    // Reveal only the active navigation item; never scroll the document on route load.
-    document.querySelectorAll('[data-profile-route-nav]').forEach((nav) => {
-        const revealActive = () => {
-            const active = nav.querySelector('[aria-current="page"]');
-            if (!active) return;
-            const bounds = nav.getBoundingClientRect();
-            const item = active.getBoundingClientRect();
-            if (item.left < bounds.left || item.right > bounds.right) {
-                nav.scrollLeft += item.left - bounds.left - (nav.clientWidth - item.width) / 2;
-            }
-        };
-        window.requestAnimationFrame(revealActive);
-        document.fonts?.ready.then(revealActive);
-    });
-
     const profileScrollStorageKey = 'fireball.profile.scrollTarget';
     const scrollToProfileTarget = (selector, behavior = 'smooth') => {
         if (!selector) {

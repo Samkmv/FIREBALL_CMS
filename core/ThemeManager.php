@@ -896,9 +896,7 @@ class ThemeManager
         }
 
         $error = (int)($zipFile['error'] ?? UPLOAD_ERR_NO_FILE);
-        if ($error !== UPLOAD_ERR_OK) {
-            throw new RuntimeException('Theme ZIP upload failed.');
-        }
+        \App\Services\UploadPolicy::assertUpload($error, (int)($zipFile['size'] ?? 0), self::MAX_PACKAGE_BYTES);
 
         $name = (string)($zipFile['name'] ?? '');
         $tmpName = (string)($zipFile['tmp_name'] ?? '');
@@ -916,6 +914,7 @@ class ThemeManager
                 ['zip']
             );
         } catch (\RuntimeException $exception) {
+            if ($exception instanceof \App\Services\UploadException) throw $exception;
             throw new RuntimeException('Uploaded file must be a valid ZIP archive.', 0, $exception);
         }
 
@@ -1263,8 +1262,10 @@ class ThemeManager
         $size = (int)($file['size'] ?? 0);
         $extension = $this->previewExtension($name);
 
-        if ($error !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName) || $size <= 0 || $size > 5 * 1024 * 1024 || $extension === '' || $extension === 'svg') {
-            throw new RuntimeException('Invalid preview upload.');
+        \App\Services\UploadPolicy::assertUpload($error, $size, 5 * 1024 * 1024);
+
+        if ($tmpName === '' || !is_file($tmpName) || $extension === '' || $extension === 'svg') {
+            throw new \App\Services\UploadException('upload_error_invalid');
         }
 
         (new \App\Services\SafeUploadService())->validate(

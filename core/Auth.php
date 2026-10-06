@@ -81,6 +81,10 @@ class Auth
             'session_version' => (int)($user['session_version'] ?? 1),
         ];
         session()->set('user', $sessionUser);
+        if (\App\Services\UserSessionService::available()) {
+            (new \App\Services\UserSessionService())->register((int)$user['id'], (int)$sessionUser['session_version'], session_id(), $_SERVER, session()->lifetimeSeconds());
+            session()->set('auth.session_registered', true);
+        }
         self::syncAdminSession($sessionUser);
     }
 
@@ -100,11 +104,28 @@ class Auth
         return session()->has('user');
     }
 
-    /**
-     * Завершает сессию пользователя и обновляет идентификатор сессии.
-     */
+    /** Rotate a logged-in session without losing the device registry binding. */
+    public static function rotateSession(): void
+    {
+        $user = self::user();
+        if ($user && \App\Services\UserSessionService::available()) {
+            (new \App\Services\UserSessionService())->revokeCurrent((int)$user['id'], session_id());
+        }
+        session()->regenerateId();
+        app()->regenerateCSRFToken();
+        if ($user && \App\Services\UserSessionService::available()) {
+            (new \App\Services\UserSessionService())->register((int)$user['id'], (int)($user['session_version'] ?? 1), session_id(), $_SERVER, session()->lifetimeSeconds());
+            session()->set('auth.session_registered', true);
+        }
+    }
+
+    /** End authentication and revoke the current device binding. */
     public static function logout(): void
     {
+        $userId = (int)(self::user()['id'] ?? 0);
+        if ($userId > 0 && session_id() !== '' && \App\Services\UserSessionService::available()) {
+            (new \App\Services\UserSessionService())->revokeCurrent($userId, session_id());
+        }
         $publicLocale = session()->get(Localization::PUBLIC_SESSION_KEY);
         $adminLocale = session()->get(Localization::ADMIN_SESSION_KEY);
 
@@ -183,6 +204,17 @@ class Auth
             self::logout();
             session()->setFlash('error', \FBL\Language::get('auth_session_invalidated'));
             return;
+        }
+
+        if (\App\Services\UserSessionService::available()) {
+            $valid = (new \App\Services\UserSessionService())->validate((int)$user['id'], (int)($user['session_version'] ?? 1),
+                session_id(), session()->lifetimeSeconds(), !session()->get('auth.session_registered', false));
+            if (!$valid) {
+                self::logout();
+                session()->setFlash('error', \FBL\Language::get('auth_session_invalidated'));
+                return;
+            }
+            session()->set('auth.session_registered', true);
         }
 
         $sessionUser = [

@@ -7,13 +7,15 @@ $root = dirname(__DIR__, 2);
 $locale = in_array($argv[1] ?? '', ['ru', 'en', 'de', 'zh-cn'], true) ? $argv[1] : 'ru';
 $section = $argv[2] ?? 'overview';
 $fallback = ($argv[3] ?? '') === 'fallback';
-$translations = array_replace(require $root . '/app/Languages/' . $locale . '.php', require $root . '/app/Languages/' . $locale . '/auth/profile.php');
+$languageView = in_array($section, ['sessions', 'favorites'], true) ? $section : 'profile';
+$translations = array_replace(require $root . '/app/Languages/' . $locale . '.php', require $root . '/app/Languages/' . $locale . '/auth/' . $languageView . '.php');
 $_SERVER['REQUEST_URI'] = ($locale === 'ru' ? '' : '/' . $locale) . ($argv[4] ?? '/profile');
 function htmlSC(mixed $value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function return_translation(string $key): string { return $GLOBALS['translations'][$key] ?? $key; }
 function print_translation(string $key): string { return return_translation($key); }
 function base_href(string $path): string { return ($GLOBALS['locale'] === 'ru' ? '' : '/' . $GLOBALS['locale']) . $path; }
 function get_user_avatar(mixed $avatar, string $size): string { return 'data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" width="92" height="92"><circle cx="46" cy="46" r="46" fill="gray"/></svg>'); }
+function get_image(string $path): string { return get_user_avatar(null, 'default'); }
 function get_user_role_label(string $role): string { return 'User'; }
 function render_public_verified_badge(string $role): string { return ''; }
 function apply_filters(string $name, mixed $value, mixed ...$args): mixed {
@@ -40,9 +42,18 @@ $renderer = new class($root, $fallback) {
     }
 };
 $isSettings = $section !== 'overview';
-$settingsSection = in_array($section, ['information', 'security', 'notifications'], true) ? $section : 'information';
+$settingsSection = in_array($section, ['information', 'security', 'notifications', 'sessions', 'favorites'], true) ? $section : 'information';
+$pagination = new class implements ArrayAccess {
+    public function offsetExists(mixed $offset): bool { return true; }
+    public function offsetGet(mixed $offset): mixed { return 2; }
+    public function offsetSet(mixed $offset, mixed $value): void {}
+    public function offsetUnset(mixed $offset): void {}
+    public function getHtml(): string { return '<nav aria-label="Pagination"><ul class="pagination"><li class="page-item active"><a class="page-link" href="?page=1">1</a></li><li class="page-item"><a class="page-link" href="?page=2">2</a></li></ul></nav>'; }
+};
 echo $renderer->partial('auth/profile', [
     'is_settings' => $isSettings, 'settings_section' => $settingsSection,
     'user' => ['id' => 7, 'name' => 'Fixture User', 'login' => 'fixture', 'email' => 'fixture@example.test', 'role' => 'user', 'created_at' => '2026-01-01'],
     'push_status' => ['pwa_enabled' => true, 'global_enabled' => true, 'vapid_ready' => true, 'secure_context' => true, 'user_enabled' => true, 'active_subscriptions' => 2],
+    'user_sessions' => ['pagination' => $pagination, 'items' => [['id' => 1, 'browser' => 'Safari', 'browser_version' => '26.0', 'os' => 'iOS', 'is_current' => true, 'ip_address' => '2001:db8::1', 'created_at' => '2026-10-01', 'last_activity_at' => '2026-10-06'], ['id' => 2, 'browser' => 'Chrome', 'browser_version' => '140.0', 'os' => 'macOS', 'is_current' => false, 'ip_address' => '192.0.2.1', 'created_at' => '2026-10-01', 'last_activity_at' => '2026-10-05']]],
+    'user_favorites' => ['pagination' => $pagination, 'items' => [['id' => 1, 'title' => '<script>window.bad = true</script> Test', 'category' => 'Category', 'published_at' => '2026-10-01', 'excerpt' => '<p>Excerpt</p>', 'url' => base_href('/posts/test'), 'image' => '/uploads/photo.jpg', 'show_post_image' => true]]],
 ]);

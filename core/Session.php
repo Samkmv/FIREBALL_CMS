@@ -44,6 +44,8 @@ class Session
         }
     }
 
+    public function lifetimeSeconds(): int { return $this->lifetimeSeconds; }
+
     /**
      * Продлевает cookie активной PHP-сессии при sliding-сессии.
      */

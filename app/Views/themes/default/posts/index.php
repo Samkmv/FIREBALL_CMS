@@ -37,7 +37,8 @@ $buildExcerpt = static function (array $post, int $limit = 170): string {
 
     return rtrim(mb_substr($excerpt, 0, $limit - 1)) . '...';
 };
-$renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): string {
+$renderFavorite = static fn(array $post): string => view()->renderPartial('incs/favorite_button', ['post' => $post]);
+$renderGridPost = static function (array $post) use ($postUrl, $categoryUrl, $renderFavorite): string {
     ob_start();
     ?>
     <article class="col">
@@ -52,9 +53,12 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl): st
                 <hr class="vr my-1 mx-1">
                 <span class="text-body-tertiary fs-xs"><?= date('d.m.Y', strtotime($post['published_at'])) ?></span>
             </div>
-            <h3 class="h5 mb-0">
-                <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
-            </h3>
+            <div class="d-flex align-items-start justify-content-between gap-3 post-favorite-heading">
+                <h3 class="h5 mb-0 flex-grow-1">
+                    <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
+                </h3>
+                <?= $renderFavorite($post) ?>
+            </div>
         </div>
     </article>
     <?php

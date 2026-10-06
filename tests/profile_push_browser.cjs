@@ -249,20 +249,21 @@ async function scenario(browser, options = {}) {
                         const links = [...nav.querySelectorAll('a')].map(a => a.getBoundingClientRect());
                         const active = nav.querySelector('.active').getBoundingClientRect();
                         const bounds = nav.getBoundingClientRect();
-                        const pill = getComputedStyle(nav.querySelector('.active'));
+                        const selected = getComputedStyle(nav.querySelector('.active'));
                         const normal = getComputedStyle(nav.querySelector('a:not(.active)'));
-                        return { rows: new Set(links.map(r => Math.round(r.top))).size,
+                        return { rows: new Set(links.map(r => Math.round(r.top))).size, count: links.length,
                             visible: active.left >= bounds.left - 1 && active.right <= bounds.right + 1,
                             overflow: document.documentElement.scrollWidth > innerWidth, touch: links.every(r => r.height >= 44),
                             scrollable: nav.scrollWidth > nav.clientWidth,
-                            pillStyled: nav.classList.contains('nav-pills') && parseFloat(pill.borderRadius) >= 100 && parseFloat(pill.borderWidth) > 0 && pill.borderColor !== normal.borderColor };
+                            sidebar: !!nav.closest('.profile-sidebar'),
+                            buttonStyled: nav.classList.contains('nav-tabs') && nav.classList.contains('flex-column')
+                                && parseFloat(selected.borderRadius) > 0 && selected.backgroundColor !== normal.backgroundColor };
                     });
-                    check(geometry.rows === 1 && !geometry.overflow && geometry.touch && geometry.visible, `Mobile nav geometry ${locale} ${section}`);
-                    check(geometry.pillStyled, 'Theme pills and active border retained');
+                    check(geometry.rows === geometry.count && !geometry.overflow && geometry.touch && geometry.visible, `Mobile vertical menu geometry ${locale} ${section}`);
+                    check(geometry.sidebar && geometry.buttonStyled, 'Sidebar uses native theme button-like active state');
                     if (section === 'notifications') {
-                        check(geometry.scrollable || locale === 'zh-cn', 'Long nav is horizontally scrollable');
-                        const swipe = await nav.evaluate(nav => { nav.scrollLeft = 0; const start = nav.scrollLeft; nav.scrollLeft = nav.scrollWidth; return nav.scrollLeft > start; });
-                        check(swipe || locale === 'zh-cn', 'Horizontal scroll works');
+                        check(!geometry.scrollable, 'Vertical menu needs no horizontal scroll');
+                        check(await s.page.locator('.profile-content > nav').count() === 0, 'Old header tabs removed');
                     }
                     await s.page.reload();
                     await s.page.waitForFunction(() => window.FireballPwa);
@@ -271,10 +272,10 @@ async function scenario(browser, options = {}) {
                 const services = s.page.locator('.profile-nav-services .nav');
                 check(await services.evaluate(el => el.classList.contains('nav-tabs') && el.classList.contains('flex-column')), 'Vertical button-like theme tabs');
                 check(await services.locator('[data-bs-toggle]').count() === 0, 'Services stay real page links');
-                const service = services.locator('a').first();
+                const service = services.locator('a[href$="/account/subscription"]');
                 const base = await service.evaluate(el => getComputedStyle(el).backgroundColor);
                 await service.hover();
-                await s.page.waitForFunction(base => getComputedStyle(document.querySelector('.profile-nav-services .nav-link')).backgroundColor !== base, base);
+                await s.page.waitForFunction(base => getComputedStyle(document.querySelector('.profile-nav-services a[href$="/account/subscription"]')).backgroundColor !== base, base);
                 check(await service.evaluate(el => getComputedStyle(el).transitionDuration.split(',').some(s => parseFloat(s) > 0)), 'Theme hover animation retained');
                 check(await s.page.locator('.profile-nav-footer .nav').evaluate(el => el.classList.contains('nav-tabs')), 'Footer uses matching theme tabs');
                 check(await s.page.locator('.profile-logout').evaluate(el => {
@@ -312,7 +313,8 @@ async function scenario(browser, options = {}) {
                     window.fixtureDeadlines = [];
                     window.setTimeout = (callback, delay, ...args) => {
                         if (delay === 10000) window.fixtureDeadlines.push(delay);
-                        return schedule(callback, delay === 10000 ? 100 : delay, ...args);
+                        // Keep deadlines finite but allow intercepted fetches to finish on a busy runner.
+                        return schedule(callback, delay === 10000 ? 1000 : delay, ...args);
                     };
                 });
                 await s.load('notifications', false);

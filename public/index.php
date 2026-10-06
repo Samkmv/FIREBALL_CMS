@@ -14,6 +14,17 @@ if (PHP_VERSION_ID < 80200) {
 
 require_once __DIR__ . '/../config/config.php';
 
+// Before autoload, Session/Auth, plugins, theme and router are started.
+require_once CORE . '/CanonicalOrigin.php';
+if (APP_URL_CONFIGURED) {
+    $canonicalRedirect = \FBL\CanonicalOrigin::redirectUrl(PATH, $_SERVER, (array)TRUSTED_PROXIES);
+    if ($canonicalRedirect !== null) {
+        header('Location: ' . $canonicalRedirect, true, 308);
+        header('Cache-Control: no-store');
+        exit;
+    }
+}
+
 if (!is_dir(dirname(ERROR_LOGS))) {
     @mkdir(dirname(ERROR_LOGS), 0755, true);
 }

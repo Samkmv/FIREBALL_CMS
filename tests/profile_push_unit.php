@@ -158,7 +158,11 @@ foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
             check(!preg_match('/maxipapa/i', $translations[$prefix . $state]), 'No site branding in core translation');
         }
     }
-    foreach (['overview', 'information', 'security', 'notifications'] as $section) {
+    $profileSubtitles = [];
+    foreach (['overview', 'information', 'security', 'notifications', 'sessions', 'favorites'] as $section) {
+        $subtitle = $translations[$section === 'overview' ? 'auth_profile_overview_subtitle' : 'auth_profile_' . $section . '_subtitle'] ?? '';
+        check($subtitle !== '', 'Every profile section has a translated subtitle: ' . $locale . '/' . $section);
+        $profileSubtitles[] = $subtitle;
         foreach (['theme', 'fallback'] as $variant) {
             $output = [];
             exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/fixtures/profile.php') . ' ' . $locale . ' ' . $section . ' ' . $variant, $output, $exitCode);
@@ -170,11 +174,20 @@ foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
             check($xpath->query('//*[@data-profile-route-nav]//a[@aria-current="page"]')->length === 1, 'One active route');
             check($xpath->query('//*[@data-profile-route-nav]//a[contains(concat(" ",normalize-space(@class)," ")," active ")]')->length === 1, 'One active class');
             $active = $xpath->query('//*[@data-profile-route-nav]//a[@aria-current="page"]')->item(0);
-            check(str_ends_with($active->getAttribute('href'), $section === 'overview' ? '/profile' : '/profile/settings?section=' . $section), 'Active real href');
+            $activeHref = $section === 'overview' ? '/profile' : (in_array($section, ['sessions', 'favorites'], true) ? '/profile/' . $section : '/profile/settings?section=' . $section);
+            check(str_ends_with($active->getAttribute('href'), $activeHref), 'Active real href');
             check($xpath->query('//*[@data-profile-route-nav]//*[@data-bs-toggle or @role="tab"]')->length === 0, 'Not JS tabs');
-            check(trim($xpath->query('//*[@data-pwa-push-status]')->item(0)?->textContent ?? '') === $translations['auth_profile_push_status_checking'] || $section === 'information' || $section === 'security', 'No false enabled SSR from aggregate');
+            check($xpath->query('//aside//ul[@data-profile-route-nav]')->length === 1, 'All profile routes live in the sidebar');
+            check($xpath->query('//*[contains(concat(" ",normalize-space(@class)," ")," profile-content ")]/nav')->length === 0, 'Header tabs removed');
+            check($xpath->query('//*[@data-profile-route-nav]//a')->length === 9, 'Six core routes, plugin services and chat without duplicates');
+            check(trim($xpath->query('//aside/nav/h3')->item(0)?->textContent ?? '') === $translations['auth_profile_menu'], 'Menu heading translated');
+            check(trim($xpath->query('//*[contains(concat(" ",normalize-space(@class)," ")," profile-heading ")]/p')->item(0)?->textContent ?? '') === $subtitle, 'Section-specific subtitle rendered');
+            $titleKey = match ($section) { 'overview' => 'auth_profile_heading', 'sessions' => 'account_sessions', 'favorites' => 'account_favorites', default => 'auth_settings_' . $section };
+            check(trim($xpath->query('//*[contains(concat(" ",normalize-space(@class)," ")," profile-heading ")]/h1')->item(0)?->textContent ?? '') === ($translations[$titleKey] ?? $baseTranslations[$titleKey]), 'Section-specific title rendered');
+            check(trim($xpath->query('//*[@data-pwa-push-status]')->item(0)?->textContent ?? '') === $translations['auth_profile_push_status_checking'] || !in_array($section, ['overview', 'notifications'], true), 'No false enabled SSR from aggregate');
         }
     }
+    check(count(array_unique($profileSubtitles)) === 6, 'All six section subtitles are distinct: ' . $locale);
 }
 foreach (['themes/default/templates/layout.php', 'app/Views/layouts/default.php'] as $layout) {
     $source = file_get_contents(dirname(__DIR__) . '/' . $layout);

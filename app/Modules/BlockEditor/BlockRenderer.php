@@ -201,7 +201,7 @@ final class BlockRenderer
     private function heading(array $data): string
     {
         $level = in_array((string)($data['level'] ?? 'h2'), ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], true)
-            ? (string)$data['level']
+            ? (string)($data['level'] ?? 'h2')
             : 'h2';
 
         return '<' . $level . '>' . sanitize_content_html($this->cleanEditorTypography((string)($data['html'] ?? ''))) . '</' . $level . '>';
@@ -581,7 +581,7 @@ final class BlockRenderer
         }
 
         $ratio = in_array((string)($data['aspectRatio'] ?? '16:9'), ['16:9', '4:3', '1:1', '9:16'], true)
-            ? (string)$data['aspectRatio']
+            ? (string)($data['aspectRatio'] ?? '16:9')
             : '16:9';
         $playerAttributes = ' class="fire-player" data-fire-player data-src="' . htmlSC($src) . '" data-media="video"' .
             ' data-aspect-ratio="' . htmlSC($ratio) . '"' .

@@ -18,7 +18,9 @@ final class SchedulerService
         $timezone = new \DateTimeZone(date_default_timezone_get());
         $now = ($now ?: new \DateTimeImmutable('now', $timezone))->setTimezone($timezone);
 
-        $jobs = apply_filters_safe('fireball_scheduled_jobs', []);
+        $jobs = apply_filters_safe('fireball_scheduled_jobs', [
+            'fireball-account-cleanup' => ['schedule' => '15 3 * * *', 'class' => AccountCleanupJob::class],
+        ]);
         if (!is_array($jobs)) {
             $jobs = [];
         }

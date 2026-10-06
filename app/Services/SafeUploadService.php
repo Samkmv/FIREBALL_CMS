@@ -20,6 +20,7 @@ final class SafeUploadService
         'txt' => ['text/plain'],
         'md' => ['text/plain', 'text/markdown'],
         'csv' => ['text/plain', 'text/csv', 'application/csv'],
+        'tsv' => ['text/plain', 'text/tab-separated-values'],
         'json' => ['application/json', 'text/plain'],
         'xml' => ['application/xml', 'text/xml', 'text/plain'],
         'rtf' => ['application/rtf', 'text/rtf'],
@@ -60,32 +61,31 @@ final class SafeUploadService
         int $maxSize,
         ?array $allowedExtensions = null
     ): string {
-        if ($tmpPath === '' || !is_file($tmpPath) || $size <= 0 || $size > $maxSize) {
-            throw new \RuntimeException('Invalid uploaded file.');
-        }
+        UploadPolicy::assertUpload(UPLOAD_ERR_OK, $size, $maxSize);
+        if ($tmpPath === '' || !is_file($tmpPath)) throw new UploadException('upload_error_invalid');
 
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         if ($extension === '' || in_array($extension, self::FORBIDDEN_EXTENSIONS, true)) {
-            throw new \RuntimeException('This file type is not allowed.');
+            throw new UploadException('upload_error_type');
         }
 
         if ($allowedExtensions !== null && !in_array($extension, $allowedExtensions, true)) {
-            throw new \RuntimeException('This file type is not allowed.');
+            throw new UploadException('upload_error_type');
         }
 
         $allowedMimeTypes = self::MIME_TYPES[$extension] ?? [];
         if ($allowedMimeTypes === [] || !class_exists(\finfo::class)) {
-            throw new \RuntimeException('This file type cannot be verified safely.');
+            throw new UploadException('upload_error_type');
         }
 
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mime = strtolower((string)$finfo->file($tmpPath));
         if ($mime === '' || !in_array($mime, $allowedMimeTypes, true)) {
-            throw new \RuntimeException('The file content does not match its extension.');
+            throw new UploadException('upload_error_mime');
         }
 
         if (str_starts_with($mime, 'image/') && @getimagesize($tmpPath) === false) {
-            throw new \RuntimeException('The uploaded image is invalid.');
+            throw new UploadException('upload_error_image');
         }
 
         return $mime;

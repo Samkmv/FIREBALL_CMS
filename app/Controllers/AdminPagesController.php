@@ -95,7 +95,7 @@ class AdminPagesController extends BaseController
     public function preview()
     {
         $pageId = (int)get_route_param('id', 0);
-        $page = $this->pages->findById($pageId);
+        $page = $this->pages->findByIdForPreview($pageId);
 
         if (!$page) {
             abort();

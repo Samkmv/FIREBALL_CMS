@@ -26,14 +26,17 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?= base_href('/') ?>"><?= print_translation('tpl_menu_nav_index') ?></a></li>
         <li class="breadcrumb-item"><a href="<?= base_href('/posts') ?>"><?= print_translation('posts_show_breadcrumb') ?></a></li>
-        <li class="breadcrumb-item active" aria-current="page"><?= htmlSC($post['title']) ?></li>
+        <li class="breadcrumb-item active text-break" aria-current="page"><?= htmlSC($post['title']) ?></li>
     </ol>
 </nav>
 
 <section class="container pb-5 mb-2 mb-md-3 mb-lg-4 mb-xl-5">
     <div class="row">
         <div class="col-lg-8 position-relative z-2">
-            <h1 class="h3 mb-4"><?= htmlSC($post['title']) ?></h1>
+            <div class="d-flex align-items-start justify-content-between gap-3 mb-4 post-favorite-heading">
+                <h1 class="h3 mb-0 flex-grow-1"><?= htmlSC($post['title']) ?></h1>
+                <?= $this->partial('favorite_button', ['post' => $post]) ?>
+            </div>
 
             <div class="nav align-items-center gap-2 border-bottom pb-4 mt-n1 mb-4">
                 <a class="nav-link text-body fs-xs text-uppercase p-0" href="<?= $categoryUrl($post['category_slug'] ?? $post['category']) ?>">
@@ -192,9 +195,12 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                                 <hr class="vr my-1 mx-1">
                                 <span class="text-body-tertiary fs-xs"><?= date('d.m.Y', strtotime($item['published_at'])) ?></span>
                             </div>
-                            <h3 class="h5 mb-0">
-                                <a class="hover-effect-underline" href="<?= $postUrl($item) ?>"><?= htmlSC($item['title']) ?></a>
-                            </h3>
+                            <div class="d-flex align-items-start justify-content-between gap-3 post-favorite-heading">
+                                <h3 class="h5 mb-0 flex-grow-1">
+                                    <a class="hover-effect-underline" href="<?= $postUrl($item) ?>"><?= htmlSC($item['title']) ?></a>
+                                </h3>
+                                <?= $this->partial('favorite_button', ['post' => $item]) ?>
+                            </div>
                         </div>
                     </article>
                     <?php endforeach; ?>

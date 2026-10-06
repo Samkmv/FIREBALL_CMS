@@ -162,6 +162,14 @@ class Router
 
                 Language::load($route['callback']);
 
+                // PHP discards both POST and FILES if the multipart body exceeds post_max_size.
+                // Report the actual limit before the now-empty CSRF token causes a misleading 419.
+                if (\App\Services\UploadPolicy::requestExceedsPostLimit($_SERVER)) {
+                    $message = \App\Services\UploadPolicy::sizeException()->getMessage();
+                    if (request()->isAjax()) response()->json(['status' => 'error', 'message' => $message], 413);
+                    abort($message, 413);
+                }
+
                 if (request()->isStateChanging()) {
                     if ($route['needCSRFToken'] && !$this->checkCSRFToken()) {
                         if (request()->isAjax()) {

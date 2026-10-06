@@ -89,7 +89,7 @@ final class BlockEditorService
             'galleryUploadUrl' => base_href('/admin/block-editor/upload-image'),
             'fileUploadUrl' => base_href('/admin/block-editor/upload-file'),
             'fileUploadExtensions' => \App\Models\FileManager::allowedUploadExtensions(),
-            'fileUploadMaxSize' => \App\Services\UploadSettings::maxFileSizeBytes(),
+            'fileUploadMaxSize' => \App\Services\UploadPolicy::limits()['effective'],
             'defaultDirectory' => $defaultDirectory,
             'previewStyleAssets' => self::previewStyleAssets(),
             'blockTypes' => array_values($this->blockTypes()),

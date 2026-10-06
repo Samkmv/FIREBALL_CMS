@@ -273,9 +273,12 @@
                                                 <?= htmlSC($post['category_label'] ?? $post['category']) ?>
                                             </a>
                                         </div>
-                                        <h3 class="h6 mb-3">
-                                            <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
-                                        </h3>
+                                        <div class="d-flex align-items-start justify-content-between gap-3 mb-3 post-favorite-heading">
+                                            <h3 class="h6 mb-0 flex-grow-1">
+                                                <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
+                                            </h3>
+                                            <?= view()->renderPartial('incs/favorite_button', ['post' => $post]) ?>
+                                        </div>
                                         <div class="nav align-items-center gap-2 fs-xs">
                                             <span class="nav-link text-body-secondary fs-xs fw-normal p-0"><?= htmlSC($post['author_name'] ?? '') ?><?= render_public_verified_badge($post['author_role'] ?? null) ?></span>
                                             <hr class="vr my-1 mx-1">

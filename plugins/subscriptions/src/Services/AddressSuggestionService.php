@@ -135,18 +135,12 @@ final class AddressSuggestionService
         $name = (string)($file['name'] ?? '');
         $size = (int)($file['size'] ?? 0);
 
-        if ($error !== UPLOAD_ERR_OK || $tmp === '' || !is_uploaded_file($tmp)) {
-            throw new \InvalidArgumentException('Не удалось получить загруженный файл.');
+        \App\Services\UploadPolicy::assertUpload($error, $size, 150 * 1024 * 1024);
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            throw new \App\Services\UploadException('upload_error_invalid');
         }
 
-        if ($size <= 0 || $size > 150 * 1024 * 1024) {
-            throw new \InvalidArgumentException('Файл пустой или превышает 150 МБ.');
-        }
-
-        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-        if (!in_array($ext, ['csv', 'txt', 'tsv'], true)) {
-            throw new \InvalidArgumentException('Поддерживаются CSV, TXT и TSV.');
-        }
+        (new \App\Services\SafeUploadService())->validate($tmp, $name, $size, 150 * 1024 * 1024, ['csv', 'txt', 'tsv']);
 
         $fh = fopen($tmp, 'rb');
         if ($fh === false) {

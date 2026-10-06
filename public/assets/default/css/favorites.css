@@ -1,0 +1,27 @@
+/* Shared by the default theme and legacy CMS templates. */
+.post-favorite { position: relative; display: inline-block; flex: none; }
+.post-favorite form { margin: 0; }
+.post-favorite__button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 1.125rem;
+}
+.post-favorite__button > i { line-height: 1; }
+.post-favorite__button[aria-pressed="true"] {
+    --cz-btn-color: var(--cz-danger);
+    --cz-btn-hover-color: var(--cz-danger);
+    --cz-btn-active-color: var(--cz-danger);
+}
+.post-favorite__error {
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + .5rem);
+    width: min(18rem, calc(100vw - 2rem));
+    z-index: 1;
+    font-size: .875rem;
+}
+.post-favorite__error[hidden] { display: none; }
+.post-favorite-heading > :first-child { min-width: 0; overflow-wrap: anywhere; }

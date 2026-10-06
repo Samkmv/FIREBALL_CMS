@@ -54,40 +54,16 @@ final class BlockEditorController extends BaseController
 
         $file = new \FBL\File('image');
 
-        if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
+        try {
+            $file->validate(null, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']);
+        } catch (\App\Services\UploadException $exception) {
             response()->json([
                 'status' => 'error',
-                'message' => return_translation('editor_gallery_upload_failed'),
-            ], 422);
-        }
-
-        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
-        $extension = strtolower(pathinfo($file->getName(), PATHINFO_EXTENSION));
-        $maxSize = \App\Services\UploadSettings::maxFileSizeBytes();
-
-        if ($file->getSize() <= 0 || $file->getSize() > $maxSize) {
-            response()->json([
-                'status' => 'error',
-                'message' => return_translation('admin_files_size_error'),
-            ], 422);
-        }
-
-        if (!in_array($extension, $allowedExtensions, true)) {
-            response()->json([
-                'status' => 'error',
-                'message' => return_translation('admin_files_type_error'),
+                'message' => $exception->getMessage(),
             ], 422);
         }
 
         try {
-            (new \App\Services\SafeUploadService())->validate(
-                $file->getTmpName(),
-                $file->getName(),
-                $file->getSize(),
-                $maxSize,
-                $allowedExtensions
-            );
-
             $directory = $entityType === 'page'
                 ? 'pages/gallery'
                 : 'posts/gallery';
@@ -113,7 +89,7 @@ final class BlockEditorController extends BaseController
 
             response()->json([
                 'status' => 'error',
-                'message' => return_translation('editor_gallery_upload_failed'),
+                'message' => $exception instanceof \App\Services\UploadException ? $exception->getMessage() : return_translation('editor_gallery_upload_failed'),
             ], 422);
         }
     }
@@ -121,10 +97,6 @@ final class BlockEditorController extends BaseController
     public function uploadFile(): void
     {
         $file = new \FBL\File('file');
-        if (!$file->isFile || $file->getError() !== UPLOAD_ERR_OK) {
-            response()->json(['status' => 'error', 'message' => return_translation('editor_downloads_upload_failed')], 422);
-            return;
-        }
         $entityType = $this->service->normalizeEntityType((string)request()->post('entity_type', 'post'));
         try {
             // The file manager checks size, extension and actual MIME content before storing.
@@ -138,7 +110,7 @@ final class BlockEditorController extends BaseController
             ]]);
         } catch (\RuntimeException $exception) {
             log_error_details('Block editor file upload failed', ['Error' => $exception->getMessage()], $exception);
-            response()->json(['status' => 'error', 'message' => return_translation('editor_downloads_upload_failed')], 422);
+            response()->json(['status' => 'error', 'message' => $exception instanceof \App\Services\UploadException ? $exception->getMessage() : return_translation('editor_downloads_upload_failed')], 422);
         }
     }
 

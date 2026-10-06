@@ -29,8 +29,31 @@ if (is_array($profileMenuItems)) {
 } else {
     $profileMenuItems = [];
 }
-$profileMenuItems[] = ['href' => base_href('/chat'), 'label' => return_translation('tpl_auth_chat'), 'icon' => 'ci-chat'];
+$profileRoutes = [
+    'information' => ['ci-settings', 'auth_settings_information', 'auth_profile_information_subtitle'],
+    'security' => ['ci-shield', 'auth_settings_security', 'auth_profile_security_subtitle'],
+    'notifications' => ['ci-bell', 'auth_settings_notifications', 'auth_profile_notifications_subtitle'],
+    'sessions' => ['ci-monitor', 'account_sessions', 'auth_profile_sessions_subtitle'],
+    'favorites' => ['ci-heart', 'account_favorites', 'auth_profile_favorites_subtitle'],
+];
+$profileHeadingKey = $isSettings ? ($profileRoutes[$settingsSection][1] ?? 'auth_settings_title') : 'auth_profile_heading';
+$profileSubtitleKey = $isSettings ? ($profileRoutes[$settingsSection][2] ?? 'auth_settings_subtitle') : 'auth_profile_overview_subtitle';
 $profileCurrentPath = rtrim((string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
+$profileCoreMenu = [
+    ['href' => base_href('/profile'), 'label' => return_translation('auth_profile_overview'), 'icon' => 'ci-user',
+        'active' => !$isSettings && $profileCurrentPath === rtrim((string)parse_url(base_href('/profile'), PHP_URL_PATH), '/')],
+];
+foreach ($profileRoutes as $section => [$icon, $label]) {
+    $profileCoreMenu[] = [
+        'href' => base_href(in_array($section, ['sessions', 'favorites'], true) ? '/profile/' . $section : '/profile/settings?section=' . $section),
+        'label' => return_translation($label),
+        'icon' => $icon,
+        // Settings share the same path; their query section determines the active link.
+        'active' => $isSettings && $settingsSection === $section,
+    ];
+}
+$profileMenuItems = array_merge($profileCoreMenu, $profileMenuItems);
+$profileMenuItems[] = ['href' => base_href('/chat'), 'label' => return_translation('tpl_auth_chat'), 'icon' => 'ci-chat'];
 $profileSubscriptionsAvailable = !$isSettings && (bool)apply_filters('profile_subscriptions_available', false);
 $profileSubscriptions = $profileSubscriptionsAvailable ? apply_filters('profile_subscriptions', [], $user) : [];
 $profileSubscriptions = is_array($profileSubscriptions) ? array_filter($profileSubscriptions, 'is_array') : [];
@@ -48,13 +71,13 @@ $profileSubscriptions = is_array($profileSubscriptions) ? array_filter($profileS
             <div><dt><i class="ci-id-card" aria-hidden="true"></i><?= print_translation('auth_profile_id') ?>:</dt><dd>#<?= (int)$user['id'] ?></dd></div>
             <div class="profile-meta-registration"><dt title="<?= htmlSC(return_translation('auth_profile_created_at')) ?>"><i class="ci-calendar" aria-hidden="true"></i><span class="profile-meta-label" aria-hidden="true"><?= print_translation('auth_profile_created_at_short') ?>:</span><span class="visually-hidden"><?= print_translation('auth_profile_created_at') ?>:</span></dt><dd><?= htmlSC($createdAt) ?></dd></div>
         </dl>
-        <nav class="profile-nav-services" aria-label="<?= print_translation('auth_profile_services') ?>">
-            <h3><?= print_translation('auth_profile_services') ?></h3>
-<ul class="nav nav-tabs flex-column gap-1">
+        <nav class="profile-nav-services" aria-label="<?= print_translation('auth_profile_menu') ?>">
+            <h3><?= print_translation('auth_profile_menu') ?></h3>
+            <ul class="nav nav-tabs flex-column gap-1" data-profile-route-nav>
                 <?php foreach ($profileMenuItems as $item): ?>
                     <?php
                     if (empty($item['href']) || empty($item['label'])) { continue; }
-                    $active = $profileCurrentPath !== '' && $profileCurrentPath === rtrim((string)parse_url((string)$item['href'], PHP_URL_PATH), '/');
+                    $active = (bool)($item['active'] ?? ($profileCurrentPath !== '' && $profileCurrentPath === rtrim((string)parse_url((string)$item['href'], PHP_URL_PATH), '/')));
                     ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center gap-2<?= $active ? ' active' : '' ?>" href="<?= htmlSC($item['href']) ?>"<?= $active ? ' aria-current="page"' : '' ?>><i class="<?= htmlSC($item['icon'] ?? 'ci-chevron-right') ?> fs-base flex-shrink-0" aria-hidden="true"></i><span><?= htmlSC($item['label']) ?></span></a>
@@ -73,18 +96,9 @@ $profileSubscriptions = is_array($profileSubscriptions) ? array_filter($profileS
     </aside>
     <div class="profile-content">
         <header class="profile-heading">
-            <h1 class="h3 mb-1"><?= print_translation($isSettings ? 'auth_settings_title' : 'auth_profile_heading') ?></h1>
-            <p class="text-body-secondary mb-0"><?= print_translation($isSettings ? 'auth_settings_subtitle' : 'auth_profile_overview_subtitle') ?></p>
+            <h1 class="h3 mb-1"><?= print_translation($profileHeadingKey) ?></h1>
+            <p class="text-body-secondary mb-0"><?= print_translation($profileSubtitleKey) ?></p>
         </header>
-        <nav aria-label="<?= print_translation('auth_profile_heading') ?>" class="mb-4">
-            <ul class="nav nav-pills flex-nowrap text-nowrap overflow-x-auto pb-3 profile-route-nav" data-profile-route-nav>
-                <li class="nav-item flex-shrink-0"><a class="nav-link d-flex align-items-center gap-2<?= !$isSettings ? ' active' : '' ?>" href="<?= base_href('/profile') ?>"<?= !$isSettings ? ' aria-current="page"' : '' ?>><i class="ci-user" aria-hidden="true"></i><?= print_translation('auth_profile_overview') ?></a></li>
-                <?php foreach (['information' => ['ci-settings', 'auth_settings_information'], 'security' => ['ci-shield', 'auth_settings_security'], 'notifications' => ['ci-bell', 'auth_settings_notifications']] as $section => [$icon, $label]): ?>
-                    <?php $active = $isSettings && $settingsSection === $section; ?>
-                    <li class="nav-item flex-shrink-0"><a class="nav-link d-flex align-items-center gap-2<?= $active ? ' active' : '' ?>" href="<?= base_href('/profile/settings?section=' . $section) ?>"<?= $active ? ' aria-current="page"' : '' ?>><i class="<?= $icon ?>" aria-hidden="true"></i><?= print_translation($label) ?></a></li>
-                <?php endforeach; ?>
-            </ul>
-        </nav>
         <?php if ($isSettings): ?>
             <?php require __DIR__ . '/profile_' . $settingsSection . '.php'; ?>
         <?php else: ?>

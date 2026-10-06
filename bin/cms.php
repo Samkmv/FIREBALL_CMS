@@ -20,6 +20,7 @@ $app = new \FBL\Application(false);
 try {
     if ($command === 'diagnose') {
         $status = $app->inspectInstallation(true);
+        $status['upload_limits'] = \App\Services\UploadPolicy::limits();
         echo json_encode($status, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
         exit($status['state'] === 'installed' ? 0 : 1);
     }

@@ -73,6 +73,7 @@ class HomeController extends BaseController
             'sales_products' => [],
             'root_categories' => [],
             'featured_posts' => $featured_posts,
+            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
         ]);
     }
 
@@ -107,6 +108,7 @@ class HomeController extends BaseController
         return Theme::render('posts', [
             'title' => return_translation('posts_index_title'),
             'posts' => $this->filterPublicPosts($posts),
+            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
             'total_posts' => count($posts),
             'pagination' => null,
             'current_category' => null,
@@ -122,7 +124,7 @@ class HomeController extends BaseController
     {
         $filtered = apply_filters('public_posts_before_render', $posts, get_user() ?: []);
 
-        return is_array($filtered) ? array_values($filtered) : [];
+        return (new \App\Models\UserFavorite())->withPostStates(is_array($filtered) ? array_values($filtered) : [], (int)(get_user()['id'] ?? 0));
     }
 
     /**
