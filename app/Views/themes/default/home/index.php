@@ -264,21 +264,21 @@
                             <?php foreach ($featured_posts as $post): ?>
                                 <!-- Article -->
                                 <article class="swiper-slide home-reveal">
-                                    <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
-                                        <img src="<?= htmlSC($post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 767px) 72vw, 306px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)($post['image_width'] ?: 416) ?>" height="<?= (int)($post['image_height'] ?: 305) ?>" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async">
-                                    </a>
+                                    <div class="post-favorite-media">
+                                        <a class="ratio d-flex hover-effect-scale rounded-4 overflow-hidden" href="<?= $postUrl($post) ?>" style="--cz-aspect-ratio: calc(260 / 306 * 100%)">
+                                            <img src="<?= htmlSC($post['image_thumb'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="(max-width: 767px) 72vw, 306px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="hover-effect-target w-100 h-100 object-fit-cover" width="<?= (int)($post['image_width'] ?: 416) ?>" height="<?= (int)($post['image_height'] ?: 305) ?>" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async">
+                                        </a>
+                                        <?= view()->renderPartial('incs/favorite_button', ['post' => $post, 'placement' => 'media']) ?>
+                                    </div>
                                     <div class="pt-4">
                                         <div class="nav pb-2 mb-1">
                                             <a class="nav-link text-body fs-xs text-uppercase p-0" href="<?= base_href('/posts') . '?category=' . rawurlencode((string)($post['category_slug'] ?? $post['category'])) ?>">
                                                 <?= htmlSC($post['category_label'] ?? $post['category']) ?>
                                             </a>
                                         </div>
-                                        <div class="d-flex align-items-start justify-content-between gap-3 mb-3 post-favorite-heading">
-                                            <h3 class="h6 mb-0 flex-grow-1">
-                                                <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
-                                            </h3>
-                                            <?= view()->renderPartial('incs/favorite_button', ['post' => $post]) ?>
-                                        </div>
+                                        <h3 class="h6 mb-3 text-break">
+                                            <a class="hover-effect-underline" href="<?= $postUrl($post) ?>"><?= htmlSC($post['title']) ?></a>
+                                        </h3>
                                         <div class="nav align-items-center gap-2 fs-xs">
                                             <span class="nav-link text-body-secondary fs-xs fw-normal p-0"><?= htmlSC($post['author_name'] ?? '') ?><?= render_public_verified_badge($post['author_role'] ?? null) ?></span>
                                             <hr class="vr my-1 mx-1">

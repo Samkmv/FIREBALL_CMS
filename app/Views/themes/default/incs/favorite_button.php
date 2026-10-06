@@ -3,9 +3,10 @@ $favoriteReady = (bool)($post['favorite_ready'] ?? $favorite_ready ?? false);
 $favoriteSaved = (bool)($post['favorite_saved'] ?? $favorite_saved ?? false);
 $favoriteLabel = return_translation($favoriteSaved ? 'account_favorite_remove' : 'account_favorite_add');
 $favoriteClass = 'btn btn-icon btn-outline-secondary rounded-circle post-favorite__button';
+$favoriteOverlay = ($placement ?? 'inline') === 'media';
 ?>
 <?php if ((int)($post['id'] ?? 0) > 0): ?>
-    <div class="post-favorite">
+    <div class="post-favorite<?= $favoriteOverlay ? ' post-favorite--overlay' : '' ?>">
         <?php if (!check_auth()): ?>
             <a class="<?= $favoriteClass ?>" href="<?= base_href('/login') ?>" title="<?= htmlSC(return_translation('account_favorite_login')) ?>" aria-label="<?= htmlSC(return_translation('account_favorite_login')) ?>"><i class="ci-heart" aria-hidden="true"></i></a>
         <?php elseif (!$favoriteReady): ?>

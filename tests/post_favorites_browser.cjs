@@ -37,13 +37,61 @@ const routePage = async (page, html, fallback, post) => page.route('**/*', route
                     }));
                     const at = `${locale}/${kind}/${fallback}/${width}/${theme}`;
                     check(result.controls.length === (kind === 'post' ? 1 : 3), 'One heart per post: ' + at);
-                    check(result.controls.every(([w, h, label]) => w === 44 && h === 44 && label), 'Stable accessible 44px controls: ' + at);
+                    check(result.controls.every(([w, h, label]) => Math.abs(w - 44) < .02 && Math.abs(h - 44) < .02 && label), 'Stable accessible 44px controls: ' + at);
                     check(!result.nested && !result.untranslated && result.icons, 'Links, translations and saved outline/filled states: ' + at);
                     // Legacy homepage has a pre-existing carousel requiring Swiper; validate the affected headings instead.
                     if (!(kind === 'home' && fallback)) check(!result.overflow, 'No document overflow with long titles: ' + at);
+                    if (kind === 'home') {
+                        const overlay = await page.locator('.post-favorite-media').evaluateAll(items => items.map(media => {
+                            const control = media.querySelector('.post-favorite__button'), m = media.getBoundingClientRect(), b = control.getBoundingClientRect();
+                            const overlaps = selector => [...media.querySelectorAll(selector)].some(e => {
+                                const r = e.getBoundingClientRect();
+                                return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top;
+                            });
+                            return {
+                                placed: !!control.closest('.post-favorite--overlay') && Math.abs(b.top - m.top - 12) < .02 && Math.abs(m.right - b.right - 12) < .02 && b.bottom <= m.bottom,
+                                independent: !control.closest('a:not(.post-favorite__button)') && !media.parentElement.querySelector('.post-favorite-heading, .home-camera-card__body .post-favorite'),
+                                unobstructed: !overlaps('.home-online-badge, .home-camera-card__open')
+                            };
+                        }));
+                        check(overlay.length === 3 && overlay.every(o => o.placed), 'Hearts contained in photo, 12px top/right offsets: ' + at);
+                        check(overlay.every(o => o.independent && o.unobstructed), 'Separate media links, titles and photo badges: ' + at);
+                    }
                 }
                 await page.close();
             }
+        }
+        for (const fallback of [false, true]) for (const width of [390, 1440]) {
+            const page = await browser.newPage({ viewport: { width, height: 900 } });
+            let saved = true, fail = false, sent = 0;
+            await routePage(page, fixture('ru', 'home', fallback ? 'fallback' : 'theme'), fallback, route => {
+                sent++; check(route.request().postData().includes('fixture'), 'Photo heart submits CSRF');
+                saved = !saved;
+                return route.fulfill({ status: fail ? 422 : 200, contentType: 'application/json', body: JSON.stringify(fail ? { status: 'error', message: 'Не удалось сохранить. Попробуйте снова.' } : { status: 'success', saved, label: saved ? 'В избранном' : 'В избранное' }) });
+            });
+            await page.goto('https://favorites.test/');
+            await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'public/assets/default/js/favorites.js'), 'utf8') });
+            const media = page.locator('.post-favorite-media').first(), button = media.locator('button'), link = media.locator(':scope > a');
+            await button.click();
+            await page.waitForFunction(() => document.querySelector('.post-favorite-media button').getAttribute('aria-pressed') === 'false' && !document.querySelector('.post-favorite-media button').disabled);
+            check(page.url() === 'https://favorites.test/' && sent === 1, 'Overlay click toggles favorite without opening post');
+            check(await button.evaluate(e => {
+                const r = e.getBoundingClientRect();
+                return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.post-favorite__button') === e;
+            }), 'Photo heart is visible and hit-testable');
+            fail = true; await button.click();
+            const error = media.locator('[data-favorite-error]'); await error.waitFor({ state: 'visible' });
+            check(await error.evaluate(e => {
+                const r = e.getBoundingClientRect(), m = e.closest('.post-favorite-media').getBoundingClientRect();
+                return r.left >= m.left && r.right <= m.right && r.top >= m.top && r.bottom <= m.bottom;
+            }), 'Overlay error fits within photo on mobile/desktop');
+            fail = false; saved = false; await button.click();
+            await page.waitForFunction(() => document.querySelector('.post-favorite-media button').getAttribute('aria-pressed') === 'true' && !document.querySelector('.post-favorite-media button').disabled);
+            check(await media.locator('.ci-heart-filled').count() === 1 && await error.isHidden(), 'Photo favorite retry restores red filled heart');
+            const target = await link.getAttribute('href');
+            await link.click({ position: { x: 70, y: 80 } });
+            check(new URL(page.url()).pathname === target && sent === 3, 'Rest of photo still opens post, not favorite');
+            await page.close();
         }
         const html = component('ru') + component('ru');
         const page = await browser.newPage(); let fail = false, saved = true, sent = 0;
@@ -61,9 +109,9 @@ const routePage = async (page, html, fallback, post) => page.route('**/*', route
         fail = false; saved = false; await controls.last().click(); await page.waitForFunction(() => [...document.querySelectorAll('[data-favorite-form] button')].every(b => b.getAttribute('aria-pressed') === 'false' && !b.disabled));
         check(await page.locator('.ci-heart-filled').count() === 0 && sent === 3, 'Remove/retry restores both outline hearts');
         await page.close();
-        for (const mode of ['guest', 'unavailable']) {
+        for (const mode of ['guest', 'unavailable']) for (const kind of ['posts', 'home']) {
             const page = await browser.newPage();
-            await routePage(page, fixture('ru', 'posts', 'theme', mode), false);
+            await routePage(page, fixture('ru', kind, 'theme', mode), false);
             await page.goto('https://favorites.test/posts');
             check(mode === 'guest' ? await page.locator('.post-favorite a[href$="/login"]').count() === 3 : await page.locator('.post-favorite button:disabled').count() === 3, 'Guest CTA or disabled pending-migration state');
             await page.close();

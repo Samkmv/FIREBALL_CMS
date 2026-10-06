@@ -10,6 +10,33 @@
     font-size: 1.125rem;
 }
 .post-favorite__button > i { line-height: 1; }
+.post-favorite-media { position: relative; isolation: isolate; }
+.post-favorite--overlay {
+    position: absolute;
+    inset-block-start: 12px;
+    inset-inline: 12px;
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none;
+    z-index: 1;
+}
+.post-favorite--overlay > form,
+.post-favorite--overlay > .post-favorite__button,
+.post-favorite--overlay > .post-favorite__error { pointer-events: auto; }
+.post-favorite--overlay .post-favorite__button {
+    --cz-btn-color: #fff;
+    --cz-btn-bg: rgba(14, 22, 38, .72);
+    --cz-btn-border-color: rgba(255, 255, 255, .35);
+    --cz-btn-hover-color: #fff;
+    --cz-btn-hover-bg: rgba(14, 22, 38, .9);
+    --cz-btn-hover-border-color: rgba(255, 255, 255, .65);
+    --cz-btn-active-color: #fff;
+    --cz-btn-active-bg: rgba(14, 22, 38, .9);
+    --cz-btn-active-border-color: rgba(255, 255, 255, .65);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .16);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
 .post-favorite__button[aria-pressed="true"] {
     --cz-btn-color: var(--cz-danger);
     --cz-btn-hover-color: var(--cz-danger);
@@ -24,4 +51,5 @@
     font-size: .875rem;
 }
 .post-favorite__error[hidden] { display: none; }
+.post-favorite--overlay .post-favorite__error { width: min(18rem, 100%); }
 .post-favorite-heading > :first-child { min-width: 0; overflow-wrap: anywhere; }

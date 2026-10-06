@@ -12,6 +12,9 @@ $fallback = ($argv[3] ?? '') === 'fallback';
 $mode = $argv[4] ?? 'member';
 $translations = array_replace(require dirname(__DIR__, 2) . '/app/Languages/' . $locale . '.php',
     require dirname(__DIR__, 2) . '/app/Languages/' . $locale . '/posts/' . ($kind === 'post' ? 'show' : 'index') . '.php');
+if ($kind === 'home') $translations = array_replace($translations,
+    require dirname(__DIR__, 2) . '/app/Languages/' . $locale . '/home/index.php',
+    require dirname(__DIR__, 2) . '/plugins/subscriptions/lang/' . $locale . '.php');
 function htmlSC(mixed $v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function return_translation(string $key): string { return $GLOBALS['translations'][$key] ?? $key; }
 function print_translation(string $key): string { return return_translation($key); }
