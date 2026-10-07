@@ -349,8 +349,14 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
 
     public function updateClient(int $remoteInboundId, string $clientId, array $client): array
     {
+        return $this->updateClientAtEmail($remoteInboundId, $clientId, (string)($client['email'] ?? ''), $client);
+    }
+
+    /** The modern API addresses the existing name, even when the payload renames it. */
+    public function updateClientAtEmail(int $remoteInboundId, string $clientId, string $currentEmail, array $client): array
+    {
         $this->authenticate();
-        $email = trim((string)($client['email'] ?? ''));
+        $email = trim($currentEmail);
 
         if ($email !== '') {
             try {
@@ -365,6 +371,12 @@ final class ThreeXuiClient implements ThreeXuiClientInterface
                 if (!is_array($record) || array_is_list($record)
                     || (string)($record['email'] ?? '') !== $email) {
                     throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_invalid_client_response'));
+                }
+                // A label can be reused or changed between reads. Never update
+                // a different client, or rotate the original protocol credential.
+                if (!$this->clientCredentialMatches($record, $clientId)
+                    || !$this->clientCredentialMatches($client, $clientId)) {
+                    throw new ThreeXuiResponseException($this->message('vpn_manager_v2_error_client_identity_changed'));
                 }
                 // FIREBALL_VPN_REPAIR_V3: normalize-modern-client
                 // Modern 3x-ui can return list fields in display-friendly string form.

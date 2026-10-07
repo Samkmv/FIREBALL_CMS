@@ -52,8 +52,15 @@ final class RemoteClientSyncService
         $verifier->assertStableCredential($before, $expected);
         $changedFields = $verifier->changedFields($before, $expected);
         if ($changedFields !== []) {
-            $client->updateClient($remoteInboundId, (new RemoteClientCredentialService())->credential($node),
-                ($this->payloadFactory ?? new ClientPayloadFactory())->mergeForUpdate($before, $expected));
+            $credential = (new RemoteClientCredentialService())->credential($node);
+            $payload = ($this->payloadFactory ?? new ClientPayloadFactory())->mergeForUpdate($before, $expected);
+            // Resolve by stable credential, then address the panel's current
+            // email. The local desired email may already contain the new name.
+            if (method_exists($client, 'updateClientAtEmail')) {
+                $client->updateClientAtEmail($remoteInboundId, $credential, (string)$before['email'], $payload);
+            } else {
+                $client->updateClient($remoteInboundId, $credential, $payload);
+            }
         }
         $confirmedInbound = $changedFields !== [] ? $client->getInbound($remoteInboundId) : $beforeInbound;
         $confirmed = $changedFields !== [] ? $this->readClientState($client, $confirmedInbound, $node) : $before;
