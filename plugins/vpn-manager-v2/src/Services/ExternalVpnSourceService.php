@@ -4,6 +4,7 @@ namespace Fireball\VpnManagerV2\Services;
 
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Repositories\ExternalSourceRepository;
+use Fireball\VpnManagerV2\Repositories\PlanRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionItemRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Support\NetworkTargetGuard;
@@ -18,6 +19,8 @@ final class ExternalVpnSourceService
     public function __construct(
         private readonly ?ExternalSourceRepository $repository = null,
         private readonly ?VpnSubscriptionRevisionService $revisions = null,
+        private readonly bool $forPlan = false,
+        private readonly ?\Closure $fetcher = null,
     ) {
     }
 
@@ -52,10 +55,24 @@ final class ExternalVpnSourceService
         return $this->sources()->itemsForParent($parentId);
     }
 
+    /** Inherited sources are read-only here; CRUD must use the plan's own scope. */
+    public function planItemsForParent(int $parentId): array
+    {
+        $planId = $this->sources()->planIdForSubscription($parentId);
+        return $planId > 0 ? (new ExternalSourceRepository(forPlan: true))->itemsForParent($planId) : [];
+    }
+
     public function urisForParent(int $parentId): array
     {
         $uris = [];
-        foreach ($this->sources()->activeUris($parentId) as $uri) {
+        $snapshots = $this->sources()->activeUris($parentId);
+        if (!$this->forPlan) {
+            $planId = $this->sources()->planIdForSubscription($parentId);
+            if ($planId > 0) {
+                array_push($snapshots, ...(new ExternalSourceRepository(forPlan: true))->activeUris($planId));
+            }
+        }
+        foreach ($snapshots as $uri) {
             try {
                 $this->validateUri($uri);
                 $uris[] = $uri;
@@ -69,14 +86,22 @@ final class ExternalVpnSourceService
 
     public function configCountForParent(int $parentId): int
     {
-        return $this->sources()->activeConfigCount($parentId);
+        return $this->configCountForSubscriptions([$parentId]);
     }
 
     public function configCountForSubscriptions(array $subscriptionIds): int
     {
         $count = 0;
+        $plans = [];
         foreach (array_values(array_unique(array_filter(array_map('intval', $subscriptionIds)))) as $id) {
-            $count += $this->configCountForParent($id);
+            $count += $this->sources()->activeConfigCount($id);
+            if (!$this->forPlan) {
+                $planId = $this->sources()->planIdForSubscription($id);
+                if ($planId > 0) { $plans[$planId] = true; }
+            }
+        }
+        foreach (array_keys($plans) as $planId) {
+            $count += (new ExternalSourceRepository(forPlan: true))->activeConfigCount($planId);
         }
 
         return $count;
@@ -166,8 +191,12 @@ final class ExternalVpnSourceService
         foreach ($this->sources()->syncCandidates($limit) as $item) {
             $result['processed']++;
             try {
-                $result['configs'] += $this->sync(
-                    (int)$item['parent_subscription_id'],
+                $planId = (int)($item['plan_id'] ?? 0);
+                $forPlan = $planId > 0;
+                $service = $forPlan === $this->forPlan ? $this
+                    : new self(revisions: $this->revisions, forPlan: $forPlan, fetcher: $this->fetcher);
+                $result['configs'] += $service->sync(
+                    $planId > 0 ? $planId : (int)$item['parent_subscription_id'],
                     (int)$item['id']
                 );
                 $result['synced']++;
@@ -312,6 +341,14 @@ final class ExternalVpnSourceService
 
     private function fetch(string $url): string
     {
+        // Trusted dependency injection for offline tests; requests never supply this callback.
+        if ($this->fetcher !== null) {
+            $body = ($this->fetcher)($url);
+            if (!is_string($body) || strlen($body) > self::MAX_SOURCE_BYTES) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_external_fetch'));
+            }
+            return $body;
+        }
         if (!function_exists('curl_init')) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_curl_required'));
         }
@@ -451,6 +488,12 @@ final class ExternalVpnSourceService
 
     private function assertParent(int $parentId): void
     {
+        if ($this->forPlan) {
+            if (!(new PlanRepository())->find($parentId)) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_not_found'));
+            }
+            return;
+        }
         $parent = (new SubscriptionItemRepository())->subscription($parentId);
         if (!$parent || in_array((string)$parent['status'], ['deleting', 'deleted'], true)) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_not_found'));
@@ -459,7 +502,9 @@ final class ExternalVpnSourceService
 
     private function touch(int $parentId): void
     {
-        ($this->revisions ?? new VpnSubscriptionRevisionService())->touchConfig($parentId);
+        $revisions = $this->revisions ?? new VpnSubscriptionRevisionService();
+        if ($this->forPlan) { $revisions->touchByPlan($parentId); }
+        else { $revisions->touchConfig($parentId); }
     }
 
     private function log(
@@ -469,15 +514,16 @@ final class ExternalVpnSourceService
         ?int $adminId,
         array $context = []
     ): void {
-        $parent = (new SubscriptionItemRepository())->subscription($parentId);
+        $parent = $this->forPlan ? null : (new SubscriptionItemRepository())->subscription($parentId);
         (new SubscriptionRepository())->logEvent(
-            $event,
-            $parentId,
+            $this->forPlan ? str_replace('subscription.', 'plan.', $event) : $event,
+            $this->forPlan ? null : $parentId,
             null,
             null,
             $parent ? (int)$parent['user_id'] : null,
             $adminId,
-            ($externalId !== null ? ['external_source_id' => $externalId] : []) + $context
+            ($this->forPlan ? ['plan_id' => $parentId] : [])
+                + ($externalId !== null ? ['external_source_id' => $externalId] : []) + $context
         );
     }
 
@@ -496,6 +542,6 @@ final class ExternalVpnSourceService
 
     private function sources(): ExternalSourceRepository
     {
-        return $this->repository ?? new ExternalSourceRepository();
+        return $this->repository ?? new ExternalSourceRepository(forPlan: $this->forPlan);
     }
 }

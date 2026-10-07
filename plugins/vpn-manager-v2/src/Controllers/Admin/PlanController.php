@@ -7,6 +7,7 @@ use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Repositories\PlanRepository;
 use Fireball\VpnManagerV2\Services\PlanManagerService;
+use Fireball\VpnManagerV2\Services\ExternalVpnSourceService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
 use Fireball\VpnManagerV2\Services\VpnFlowResolver;
 use Fireball\VpnManagerV2\Support\Permissions;
@@ -33,8 +34,11 @@ final class PlanController
     {
         Permissions::authorize(Permissions::MANAGE_PLANS);
         try {
-            (new PlanManagerService())->create(request()->getData());
+            $id = (new PlanManagerService())->create(request()->getData());
             session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_plan_created'));
+            if (!empty(request()->post('manage_external'))) {
+                $this->redirect('/admin/plugins/vpn-manager-v2/plans/edit/' . $id . '#external-sources');
+            }
             $this->redirect('/admin/plugins/vpn-manager-v2/plans');
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());
@@ -287,7 +291,55 @@ final class PlanController
             'obsoleteConnectionCount' => $plan ? $reconciliation->obsoleteNodeCount((int)$plan['id']) : 0,
             'obsoleteSubscriptionCount' => $plan ? $reconciliation->obsoleteSubscriptionCount((int)$plan['id']) : 0,
             'obsoleteTargets' => $plan ? $reconciliation->obsoleteTargetsForPlan((int)$plan['id']) : [],
+            'externalSources' => $plan ? (new ExternalVpnSourceService(forPlan: true))->itemsForParent((int)$plan['id']) : [],
         ]));
+    }
+
+    public function attachExternalSubscription(): void { $this->externalAction('subscription', 'vpn_manager_v2_flash_external_attached'); }
+    public function attachExternalConnection(): void { $this->externalAction('connection', 'vpn_manager_v2_flash_external_attached'); }
+    public function toggleExternalSource(): void { $this->externalAction('toggle', 'vpn_manager_v2_flash_external_updated'); }
+    public function detachExternalSource(): void { $this->externalAction('detach', 'vpn_manager_v2_flash_external_detached'); }
+    public function syncExternalSource(): void { $this->externalAction('sync', 'vpn_manager_v2_flash_external_synced'); }
+    public function updateExternalSourceOrder(): void { $this->externalAction('order', 'vpn_manager_v2_flash_external_order_saved'); }
+
+    private function externalAction(string $action, string $successKey): void
+    {
+        Permissions::authorize(Permissions::MANAGE_PLANS);
+        $id = (int)get_route_param('id');
+        $sourceId = (int)get_route_param('source');
+        $data = request()->getData();
+        try {
+            if (!(new PlanRepository())->find($id)) {
+                throw new \Fireball\VpnManagerV2\Exceptions\ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_not_found'));
+            }
+            $service = new ExternalVpnSourceService(forPlan: true);
+            $result = match ($action) {
+                'subscription' => $service->attachSubscription($id, (string)($data['source_url'] ?? ''), (string)($data['name'] ?? ''), $this->adminId()),
+                'connection' => $service->attachConnection($id, (string)($data['connection_uri'] ?? ''), (string)($data['name'] ?? ''), $this->adminId()),
+                'toggle' => $service->toggle($id, $sourceId, !empty($data['is_enabled']), $this->adminId()),
+                'detach' => $service->detach($id, $sourceId, $this->adminId()),
+                'sync' => $service->sync($id, $sourceId, $this->adminId()),
+                'order' => $service->reorder($id, is_array($data['external_source_order'] ?? null) ? $data['external_source_order'] : [], $this->adminId()),
+            };
+            if (in_array($action, ['toggle', 'detach'], true) && !$result) {
+                throw new \InvalidArgumentException('external_source_missing');
+            }
+            session()->setFlash($action === 'order' && !$result ? 'info' : 'success', \FireballPluginVpnManagerV2::t(
+                $action === 'order' && !$result ? 'vpn_manager_v2_flash_no_changes' : $successKey
+            ));
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\InvalidArgumentException $exception) {
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t(match ($exception->getMessage()) {
+                'external_source_duplicate' => 'vpn_manager_v2_error_external_duplicate',
+                'external_source_order_invalid' => 'vpn_manager_v2_error_external_order_invalid',
+                default => 'vpn_manager_v2_error_external_missing',
+            }));
+        } catch (\Throwable $exception) {
+            log_error_details('VPN Manager V2 plan external source action failed', ['Plan' => $id, 'Error Class' => get_class($exception)], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_external_generic'));
+        }
+        $this->redirect('/admin/plugins/vpn-manager-v2/plans/edit/' . $id . '#external-sources');
     }
 
     private function flashUpdate(PlanUpdateResult $result): void

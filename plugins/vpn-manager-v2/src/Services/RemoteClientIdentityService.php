@@ -48,6 +48,7 @@ final class RemoteClientIdentityService
     public function forSubscription(array $subscription, array $target): array
     {
         $userId = (int)($subscription['user_id'] ?? 0);
+        $displayName = trim((string)($subscription['client_display_name'] ?? ''));
 
         if ($userId > 0) {
             $user = ($this->subscriptions ?? new SubscriptionRepository())
@@ -61,13 +62,14 @@ final class RemoteClientIdentityService
                 );
             }
 
+            if ($displayName !== '') { $user['name'] = $displayName; }
             $identity = $this->forTarget($user, $target);
         } else {
             $profile = ($this->profiles ?? new VpnProfileRepository())->find(
                 (int)($subscription['profile_id'] ?? 0)
             );
             $manualName = trim(
-                (string)($subscription['manual_customer_name'] ?? '')
+                $displayName !== '' ? $displayName : (string)($subscription['manual_customer_name'] ?? '')
             );
 
             if (!$profile || $manualName === '') {

@@ -697,7 +697,7 @@ final class VpnV2SubscriptionDependencyService
                         'sync_client',
                         'reconciliation',
                         (int)$node['server_id'],
-                        $parentId,
+                        (int)$node['subscription_id'],
                         (int)$nodeId,
                         ['dependency_parent_id' => $parentId],
                         $adminId

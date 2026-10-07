@@ -228,7 +228,7 @@ final class PlanReconciliationRepository
     public function subscription(int $subscriptionId): ?array
     {
         $row = db()->query(
-            'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes, traffic_used_bytes,
+            'SELECT id, user_id, profile_id, manual_customer_name, client_display_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes, traffic_used_bytes,
                     device_limit, ip_limit, revision, created_by, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$subscriptionId]

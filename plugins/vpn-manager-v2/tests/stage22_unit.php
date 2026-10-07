@@ -188,6 +188,22 @@ $assert(array_keys($vpnDb->applied) === $migrationNames,
 $assert($vpnDb->newlyCreated === ['vpn_v2_external_sources'],
     'Partial schema recovery did not create exactly the missing VPN table.');
 
+// Upgrade only the new plan-owner/name fields without replaying previous migrations or erasing their journal.
+$pendingNames = ['017_add_plan_external_sources.sql', '018_add_subscription_client_display_name.sql'];
+$GLOBALS['schema_recovery_db'] = new SchemaRecoveryFakeDatabase(array_values(array_diff($migrationNames, $pendingNames)),
+    array_merge($requiredTables, ['vpn_v2_external_sources']));
+(new VpnV2SchemaUpgradeService())->ensureCurrent();
+$upgradeDb = $GLOBALS['schema_recovery_db'];
+$assert(!$upgradeDb->journalReset && $upgradeDb->newlyCreated === [], 'Pending plan/name upgrade must preserve existing tables and journal.');
+$assert(array_keys($upgradeDb->applied) === $migrationNames, 'New migrations were not recorded.');
+$executed = implode("\n", $upgradeDb->executed);
+$assert(str_contains($executed, 'MODIFY parent_subscription_id BIGINT UNSIGNED NULL')
+    && str_contains($executed, 'ADD COLUMN plan_id BIGINT UNSIGNED')
+    && str_contains($executed, 'ADD COLUMN client_display_name VARCHAR(160)'), 'Actual SQL runner did not execute both new migrations.');
+$upgradeDb->executed = [];
+(new VpnV2SchemaUpgradeService())->ensureCurrent();
+$assert(!preg_match('/\b(ALTER|PREPARE|EXECUTE)\b/', implode("\n", $upgradeDb->executed)), 'Recorded migrations must not replay on the next check.');
+
 require_once dirname($pluginRoot) . '/toy-car-rental/Plugin.php';
 $GLOBALS['schema_recovery_db'] = new ToySchemaRecoveryFakeDatabase();
 $reflection = new ReflectionClass(FireballPluginToyCarRental::class);

@@ -3,6 +3,7 @@
 namespace Fireball\VpnManagerV2\Services;
 
 use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Exceptions\ObsoleteOperationException;
 use Fireball\VpnManagerV2\Repositories\AutomationRepository;
 use Fireball\VpnManagerV2\Repositories\ConfigurationSyncRepository;
 use Fireball\VpnManagerV2\Repositories\OperationQueueRepository;
@@ -49,6 +50,7 @@ final class RemoteOperationProcessor
             'processed' => 0,
             'success' => 0,
             'failure' => 0,
+            'cancelled' => 0,
             'idle' => false,
             'operation_ids' => [],
         ];
@@ -61,6 +63,7 @@ final class RemoteOperationProcessor
             $result['processed']++;
             $result['success'] += (int)($item['success'] ?? 0);
             $result['failure'] += (int)($item['failure'] ?? 0);
+            $result['cancelled'] += (int)($item['cancelled'] ?? 0);
             if (!empty($item['operation_id'])) {
                 $result['operation_ids'][] = (string)$item['operation_id'];
             }
@@ -100,7 +103,13 @@ final class RemoteOperationProcessor
                 + $result + ['operation_id' => (string)$operation['operation_id']];
         } catch (\Throwable $exception) {
             $safeError = $this->safeError($exception);
-            $status = $queue->fail((int)$operation['id'], $safeError);
+            $obsolete = $exception instanceof ObsoleteOperationException;
+            if ($obsolete) {
+                $queue->cancelObsolete((int)$operation['id'], $safeError);
+                $status = 'cancelled';
+            } else {
+                $status = $queue->fail((int)$operation['id'], $safeError);
+            }
             ($this->audit ?? new SyncAuditRepository())->log([
                 'operation_id' => (string)$operation['operation_id'],
                 'operation_type' => (string)$operation['operation_type'],
@@ -118,7 +127,8 @@ final class RemoteOperationProcessor
                 'idle' => false,
                 'processed' => 1,
                 'success' => 0,
-                'failure' => 1,
+                'failure' => $obsolete ? 0 : 1,
+                'cancelled' => $obsolete ? 1 : 0,
                 'status' => $status,
                 'operation_id' => (string)$operation['operation_id'],
             ];
@@ -134,6 +144,7 @@ final class RemoteOperationProcessor
         $source = (string)($operation['source'] ?? 'reconciliation');
         $operationId = (string)$operation['operation_id'];
         $payload = json_decode((string)($operation['payload_json'] ?? ''), true);
+        $this->assertOperationTarget($operation);
         if (!empty($payload['repair_server_signature'])) {
             $server = (new ServerRepository())->findWithSecrets($serverId) ?? [];
             if (!hash_equals((string)$payload['repair_server_signature'],
@@ -166,6 +177,45 @@ final class RemoteOperationProcessor
             'detach_child_subscription', 'detach_child_connection' => $this->detachDependency($operation),
             default => throw new \RuntimeException('The queued VPN operation is not implemented.'),
         };
+    }
+
+    private function assertOperationTarget(array $operation): void
+    {
+        $type = (string)$operation['operation_type'];
+        $nodeOperation = in_array($type, [
+            'sync_client', 'create_client', 'update_client', 'rename_client',
+            'enable_client', 'disable_client', 'delete_client', 'reset_traffic',
+        ], true);
+        if (!$nodeOperation && $type !== 'sync_subscription') {
+            return;
+        }
+        $plans = $this->plans ?? new PlanReconciliationRepository();
+        $subscriptionId = (int)($operation['subscription_id'] ?? 0);
+        $subscription = $subscriptionId > 0 ? $plans->subscription($subscriptionId) : null;
+        $node = $nodeOperation ? $plans->node((int)($operation['connection_id'] ?? 0)) : null;
+        // Never follow a connection to a different owner/server than the queued target.
+        // Deleted targets are terminal, not network failures to retry eight times.
+        $obsolete = !$subscription || ($nodeOperation && (
+            !$node
+            || (int)$node['subscription_id'] !== $subscriptionId
+            || (int)$node['server_id'] !== (int)($operation['server_id'] ?? 0)
+        ));
+        if ($type === 'delete_client') {
+            // A restored/retained connection must not be removed by an old cleanup job.
+            $obsolete = $obsolete || !in_array((string)($node['status'] ?? ''),
+                ['deleting', 'pending_remote_delete', 'delete_failed'], true);
+        } else {
+            $removed = ['deleted', 'deleting', 'pending_remote_delete', 'delete_failed'];
+            $obsolete = $obsolete
+                || in_array((string)($subscription['status'] ?? ''), $removed, true)
+                || ($nodeOperation && (in_array((string)($node['status'] ?? ''), $removed, true)
+                    || !empty($node['is_obsolete'])));
+        }
+        if ($obsolete) {
+            throw new ObsoleteOperationException(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_obsolete')
+            );
+        }
     }
 
     private function recalculateDependencies(int $subscriptionId): array
@@ -308,7 +358,7 @@ final class RemoteOperationProcessor
                     $push['flow'] ?? null,
                     $push['traffic_limit_bytes'] ?? null,
                     $push['traffic_used_bytes'] ?? null,
-                    empty($node['desired_enabled']) ? 'disabled' : 'active',
+                    !empty($push['enable']) ? 'active' : 'disabled',
                     !empty($node['desired_enabled'])
                 );
 
@@ -457,7 +507,7 @@ final class RemoteOperationProcessor
             $result['flow'] ?? null,
             $result['traffic_limit_bytes'] ?? null,
             $result['traffic_used_bytes'] ?? null,
-            empty($node['desired_enabled']) ? 'disabled' : 'active',
+            !empty($result['enable']) ? 'active' : 'disabled',
             !empty($node['desired_enabled'])
         );
         ($this->sync ?? new ConfigurationSyncService())->syncServer(

@@ -164,6 +164,7 @@ final class ConfigurationSyncService
                 $identity = ($this->identities ?? new RemoteClientIdentityService())->forSubscription(
                     ['id' => (int)$node['subscription_id'], 'user_id' => (int)$node['user_id'],
                         'profile_id' => $node['profile_id'] ?? null,
+                        'client_display_name' => $node['client_display_name'] ?? null,
                         'manual_customer_name' => $node['manual_customer_name'] ?? null],
                     [
                         'server_id' => $serverId,
@@ -205,7 +206,8 @@ final class ConfigurationSyncService
                     $counts['queued']++;
                 }
 
-                $snapshotClient = $remote['client'];
+                $policyClient = (new RemoteClientSyncService())->readClientState($client, $remote['raw_inbound'], $node) ?? $remote['client'];
+                $snapshotClient = $policyClient;
                 $snapshotClient['email'] = $expectedName;
                 $snapshot = ($this->snapshots ?? new ConfigurationSnapshotService())->fromRemote(
                     $server,
@@ -242,7 +244,6 @@ final class ConfigurationSyncService
                     $counts['changed']++;
                     $changedSubscriptions[(int)$node['subscription_id']] = true;
                 }
-                $policyClient = (new RemoteClientSyncService())->readClientState($client, $remote['raw_inbound'], $node) ?? $remote['client'];
                 if ($this->remotePolicyMismatch($node, $policyClient, $expectedName)) {
                     ($this->operations ?? new OperationQueueRepository())->enqueue(
                         'update_client',
@@ -461,6 +462,7 @@ final class ConfigurationSyncService
             'status' => $node['subscription_status'], 'starts_at' => $node['starts_at'] ?? null,
             'expires_at' => $node['expires_at'] ?? null, 'device_limit' => $node['device_limit'] ?? 0,
             'ip_limit' => $node['ip_limit'] ?? 0, 'traffic_limit_bytes' => $node['subscription_traffic_limit_bytes'] ?? null,
+            'traffic_used_bytes' => $node['subscription_traffic_used_bytes'] ?? 0,
         ], array_replace($node, ['client_email' => $expectedName]));
         return (new ClientVerifier())->changedFields($client, $expected) !== [];
     }

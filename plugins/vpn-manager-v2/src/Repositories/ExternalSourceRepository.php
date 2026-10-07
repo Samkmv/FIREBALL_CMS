@@ -6,9 +6,25 @@ use Fireball\VpnManagerV2\Support\SecretCipher;
 
 final class ExternalSourceRepository
 {
+    public function __construct(private readonly bool $forPlan = false) {}
+
+    /** Scope is internal, never an SQL identifier supplied by a request. */
+    private function ownedQuery(string $sql, array $parameters = []): object
+    {
+        return db()->query($this->forPlan ? str_replace('parent_subscription_id', 'plan_id', $sql) : $sql, $parameters);
+    }
+
+    public function planIdForSubscription(int $subscriptionId): int
+    {
+        return (int)db()->query(
+            "SELECT plan_id FROM vpn_v2_subscriptions WHERE id = ? AND status NOT IN ('deleted', 'deleting') LIMIT 1",
+            [$subscriptionId]
+        )->getColumn();
+    }
+
     public function itemsForParent(int $parentId): array
     {
-        return db()->query(
+        return $this->ownedQuery(
             'SELECT id, parent_subscription_id, source_type, name, source_preview, source_hash,
                     config_count, is_enabled, sort_order, sync_status, last_sync_at, last_error,
                     created_at, updated_at
@@ -21,7 +37,7 @@ final class ExternalSourceRepository
 
     public function find(int $parentId, int $id): ?array
     {
-        $row = db()->query(
+        $row = $this->ownedQuery(
             'SELECT * FROM vpn_v2_external_sources
              WHERE id = ? AND parent_subscription_id = ? AND deleted_at IS NULL LIMIT 1',
             [$id, $parentId]
@@ -45,7 +61,7 @@ final class ExternalSourceRepository
         $database = db();
         $database->beginTransaction();
         try {
-            $duplicate = $database->query(
+            $duplicate = $this->ownedQuery(
                 'SELECT id FROM vpn_v2_external_sources
                  WHERE parent_subscription_id = ? AND relation_key = ? LIMIT 1 FOR UPDATE',
                 [$parentId, $sourceHash]
@@ -53,13 +69,13 @@ final class ExternalSourceRepository
             if (is_array($duplicate)) {
                 throw new \InvalidArgumentException('external_source_duplicate');
             }
-            $sortOrder = (int)$database->query(
+            $sortOrder = (int)$this->ownedQuery(
                 'SELECT COALESCE(MAX(sort_order), 0) + 10 FROM vpn_v2_external_sources
                  WHERE parent_subscription_id = ? AND deleted_at IS NULL FOR UPDATE',
                 [$parentId]
             )->getColumn();
             $now = date('Y-m-d H:i:s');
-            $database->query(
+            $this->ownedQuery(
                 'INSERT INTO vpn_v2_external_sources
                     (parent_subscription_id, source_type, name, encrypted_source, source_hash,
                      source_preview, encrypted_snapshot, snapshot_hash, config_count, is_enabled,
@@ -104,7 +120,7 @@ final class ExternalSourceRepository
     {
         $json = json_encode(array_values($uris), JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $now = date('Y-m-d H:i:s');
-        db()->query(
+        $this->ownedQuery(
             'UPDATE vpn_v2_external_sources
              SET encrypted_snapshot = ?, snapshot_hash = ?, config_count = ?, sync_status = \'synced\',
                  last_sync_at = ?, last_error = NULL, updated_at = ?
@@ -115,7 +131,7 @@ final class ExternalSourceRepository
 
     public function recordFailure(int $id, string $error): void
     {
-        db()->query(
+        $this->ownedQuery(
             'UPDATE vpn_v2_external_sources
              SET sync_status = \'sync_error\', last_error = ?, updated_at = ?
              WHERE id = ? AND deleted_at IS NULL',
@@ -125,7 +141,7 @@ final class ExternalSourceRepository
 
     public function setEnabled(int $parentId, int $id, bool $enabled): bool
     {
-        db()->query(
+        $this->ownedQuery(
             'UPDATE vpn_v2_external_sources
              SET is_enabled = ?,
                  sync_status = IF(? = 1, IF(encrypted_snapshot IS NULL, \'pending\', \'synced\'), \'disabled\'),
@@ -142,7 +158,7 @@ final class ExternalSourceRepository
         $database = db();
         $database->beginTransaction();
         try {
-            $rows = $database->query(
+            $rows = $this->ownedQuery(
                 'SELECT id FROM vpn_v2_external_sources
                  WHERE parent_subscription_id = ? AND deleted_at IS NULL
                  ORDER BY sort_order ASC, id ASC FOR UPDATE',
@@ -163,7 +179,7 @@ final class ExternalSourceRepository
             }
             $now = date('Y-m-d H:i:s');
             foreach ($submitted as $index => $id) {
-                $database->query(
+                $this->ownedQuery(
                     'UPDATE vpn_v2_external_sources SET sort_order = ?, updated_at = ?
                      WHERE id = ? AND parent_subscription_id = ? AND deleted_at IS NULL',
                     [($index + 1) * 10, $now, $id, $parentId]
@@ -183,7 +199,7 @@ final class ExternalSourceRepository
     public function detach(int $parentId, int $id): bool
     {
         $now = date('Y-m-d H:i:s');
-        db()->query(
+        $this->ownedQuery(
             'UPDATE vpn_v2_external_sources
              SET is_enabled = 0, sync_status = \'detached\', relation_key = NULL,
                  deleted_at = ?, updated_at = ?
@@ -196,7 +212,7 @@ final class ExternalSourceRepository
 
     public function activeUris(int $parentId): array
     {
-        $rows = db()->query(
+        $rows = $this->ownedQuery(
             'SELECT encrypted_snapshot FROM vpn_v2_external_sources
              WHERE parent_subscription_id = ? AND is_enabled = 1 AND deleted_at IS NULL
                AND encrypted_snapshot IS NOT NULL AND encrypted_snapshot <> \'\'
@@ -217,7 +233,7 @@ final class ExternalSourceRepository
 
     public function activeConfigCount(int $parentId): int
     {
-        return (int)db()->query(
+        return (int)$this->ownedQuery(
             'SELECT COALESCE(SUM(config_count), 0) FROM vpn_v2_external_sources
              WHERE parent_subscription_id = ? AND is_enabled = 1 AND deleted_at IS NULL
                AND encrypted_snapshot IS NOT NULL AND encrypted_snapshot <> \'\'',

@@ -268,9 +268,23 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
 
     <div class="d-flex flex-wrap gap-2 mt-4">
         <button class="btn btn-dark rounded-pill" type="submit"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_save')) ?></button>
+        <?php if (!$editing): ?><button class="btn btn-outline-primary rounded-pill text-wrap" type="submit" name="manage_external" value="1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_plan_external_save_first')) ?></button><?php endif; ?>
         <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans')) ?>"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_cancel')) ?></a>
     </div>
 </form>
+
+<?php if ($editing): ?>
+    <?php
+    $externalSourceItems = is_array($externalSources ?? null) ? $externalSources : [];
+    $externalOwnerId = $planId;
+    $externalCanManage = Permissions::allows(Permissions::MANAGE_PLANS);
+    $externalHeading = FireballPluginVpnManagerV2::t('vpn_manager_v2_plan_external_title');
+    $externalHelp = FireballPluginVpnManagerV2::t('vpn_manager_v2_plan_external_help');
+    require __DIR__ . '/partials/external-source-editor.php';
+    ?>
+<?php else: ?>
+    <div class="alert alert-info mt-4"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_plan_external_create_help')) ?></div>
+<?php endif; ?>
 
 <?php if ($editing): ?>
     <section class="border rounded-5 p-3 p-md-4 mt-4">
@@ -406,7 +420,7 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
             </form>
             <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/reconcile')) ?>">
                 <?= get_csrf_field() ?>
-                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2"
+                <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2 text-wrap"
                         type="submit"
                         <?= $manualReconcileEnabled ? '' : 'disabled' ?>
                         title="<?= htmlSC(FireballPluginVpnManagerV2::t(

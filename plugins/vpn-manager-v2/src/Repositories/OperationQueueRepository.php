@@ -255,6 +255,18 @@ final class OperationQueueRepository
         return $status;
     }
 
+    public function cancelObsolete(int $id, string $safeReason): void
+    {
+        $now = date('Y-m-d H:i:s');
+        db()->query(
+            "UPDATE vpn_v2_operations
+             SET status = 'cancelled', idempotency_key = NULL, lease_until = NULL,
+                 heartbeat_at = NULL, last_error = ?, finished_at = ?, updated_at = ?
+             WHERE id = ? AND status = 'running'",
+            [mb_substr(trim($safeReason), 0, 1000), $now, $now, $id]
+        );
+    }
+
     public function retryFailed(?int $id = null): int
     {
         $sql = "SELECT id, operation_type, server_id, subscription_id, connection_id, payload_json

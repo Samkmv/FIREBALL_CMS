@@ -222,7 +222,7 @@ final class SubscriptionRepository
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    s.client_display_name, COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
                     SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
              FROM vpn_v2_subscriptions s
@@ -233,7 +233,7 @@ final class SubscriptionRepository
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                       s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                      s.manual_customer_name, u.name, u.login, u.email, p.name
+                      s.manual_customer_name, s.client_display_name, u.name, u.login, u.email, p.name
              ORDER BY s.created_at DESC, s.id DESC"
         )->get() ?: [];
     }
@@ -268,7 +268,7 @@ final class SubscriptionRepository
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    s.client_display_name, COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
                     COUNT(n.id) AS node_count,
                     SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
              FROM vpn_v2_subscriptions s
@@ -279,7 +279,7 @@ final class SubscriptionRepository
              GROUP BY s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                       s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                       s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
-                      s.manual_customer_name, u.name, u.login, u.email, p.name
+                      s.manual_customer_name, s.client_display_name, u.name, u.login, u.email, p.name
              ORDER BY s.created_at DESC, s.id DESC
              LIMIT {$limit} OFFSET {$offset}",
             $params
@@ -308,8 +308,8 @@ final class SubscriptionRepository
         if (trim($search) !== '') {
             $like = '%' . trim($search) . '%';
             $sql .= ' AND (CAST(s.id AS CHAR) LIKE ? OR u.name LIKE ? OR u.login LIKE ?
-                OR u.email LIKE ? OR s.manual_customer_name LIKE ? OR p.name LIKE ? OR s.status LIKE ?)';
-            $params = array_fill(0, 7, $like);
+                OR u.email LIKE ? OR s.manual_customer_name LIKE ? OR s.client_display_name LIKE ? OR p.name LIKE ? OR s.status LIKE ?)';
+            $params = array_fill(0, 8, $like);
         }
         $status = SubscriptionListFilter::normalize($status);
         if ($status !== '') {
@@ -338,10 +338,10 @@ final class SubscriptionRepository
     {
         $row = db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
-                    s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
+                    s.traffic_limit_bytes, s.traffic_used_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     CONCAT(LEFT(s.subscription_token, 4), '…', RIGHT(s.subscription_token, 4)) AS token_preview,
-                    COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name
+                    s.client_display_name, COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name
              FROM vpn_v2_subscriptions s
              LEFT JOIN users u ON u.id = s.user_id
              INNER JOIN vpn_v2_plans p ON p.id = s.plan_id
@@ -355,7 +355,7 @@ final class SubscriptionRepository
     public function findForProvisioning(int $id): ?array
     {
         $row = db()->query(
-            'SELECT id, user_id, profile_id, manual_customer_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
+            'SELECT id, user_id, profile_id, manual_customer_name, client_display_name, plan_id, status, starts_at, expires_at, traffic_limit_bytes,
                     device_limit, ip_limit, revision, created_by, internal_comment, last_error, created_at, updated_at
              FROM vpn_v2_subscriptions WHERE id = ? LIMIT 1',
             [$id]
@@ -387,6 +387,8 @@ final class SubscriptionRepository
                     n.protocol, n.network, n.security, n.flow,
                     n.status, n.sync_status, n.sync_error, n.desired_enabled, n.is_obsolete,
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at,
+                    n.upload_bytes, n.download_bytes, n.traffic_synced_at, n.traffic_sync_status,
+                    n.last_seen_remote_at,
                     n.last_error, n.created_at, n.updated_at,
                     s.name AS server_name, s.code AS server_code, i.name AS inbound_name,
                     i.remote_inbound_id, COALESCE(u.name, sub.manual_customer_name) AS user_name, u.email AS user_email
@@ -507,6 +509,37 @@ final class SubscriptionRepository
             static fn(array $row): int => (int)($row['id'] ?? 0),
             $rows
         )));
+    }
+
+    public function setClientDisplayName(int $subscriptionId, ?string $name): void
+    {
+        db()->query(
+            "UPDATE vpn_v2_subscriptions SET client_display_name = ?, updated_at = ?
+             WHERE id = ? AND status NOT IN ('deleted', 'deleting')",
+            [$name, date('Y-m-d H:i:s'), $subscriptionId]
+        );
+    }
+
+    /** A desired label, not a confirmed remote rename. Credentials/access/counters stay intact. */
+    public function setExpectedClientName(int $subscriptionId, int $nodeId, string $name): bool
+    {
+        db()->query(
+            "UPDATE vpn_v2_subscription_nodes SET client_email = ?, remote_client_name = ?,
+                 sync_status = 'identity_mismatch', updated_at = ?
+             WHERE id = ? AND subscription_id = ? AND status NOT IN ('deleted', 'deleting', 'pending_remote_delete')",
+            [$name, $name, date('Y-m-d H:i:s'), $nodeId, $subscriptionId]
+        );
+
+        return db()->rowCount() === 1;
+    }
+
+    public function markClientNameQueueFailure(int $subscriptionId, int $nodeId, string $safeError): void
+    {
+        db()->query(
+            "UPDATE vpn_v2_subscription_nodes SET sync_status = 'failed', sync_error = ?, last_error = ?, updated_at = ?
+             WHERE id = ? AND subscription_id = ? AND status NOT IN ('deleted', 'deleting', 'pending_remote_delete')",
+            [$safeError, $safeError, date('Y-m-d H:i:s'), $nodeId, $subscriptionId]
+        );
     }
 
     /**

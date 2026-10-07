@@ -14,6 +14,8 @@ use Fireball\VpnManagerV2\Services\QrCodeService;
 use Fireball\VpnManagerV2\Services\SubscriptionProvisioningService;
 use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
 use Fireball\VpnManagerV2\Services\SubscriptionDeletionService;
+use Fireball\VpnManagerV2\Services\SubscriptionClientInfoService;
+use Fireball\VpnManagerV2\Services\SubscriptionNamingService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionUrlService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
@@ -148,6 +150,25 @@ final class SubscriptionController
         response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId, $returnQuery));
     }
 
+    public function rename(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $id = (int)get_route_param('id');
+        $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
+        try {
+            $result = (new SubscriptionNamingService())->rename($id, request()->post('client_display_name', ''), $this->adminId());
+            $key = $result['failed'] > 0 ? 'vpn_manager_v2_client_name_queue_error'
+                : ($result['queued'] > 0 ? 'vpn_manager_v2_client_name_queued' : 'vpn_manager_v2_client_name_saved');
+            session()->setFlash($result['failed'] > 0 ? 'warning' : 'success', sprintf(\FireballPluginVpnManagerV2::t($key), $result['queued']));
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            error_log('VPN Manager V2 client rename failed: ' . get_class($exception));
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_sync_generic'));
+        }
+        response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $id, $returnQuery));
+    }
+
     public function show(): string
     {
         Permissions::authorize(Permissions::VIEW);
@@ -225,8 +246,31 @@ final class SubscriptionController
             'dependencySubscriptionCandidates' => $itemRepository->subscriptionCandidates((int)$subscription['id']),
             'dependencyConnectionCandidates' => $itemRepository->connectionCandidates((int)$subscription['id']),
             'externalSources' => $externalSources->itemsForParent((int)$subscription['id']),
+            'planExternalSources' => $externalSources->planItemsForParent((int)$subscription['id']),
             'returnQuery' => AdminTableState::sanitize(request()->get('return_query', '')),
         ]));
+    }
+
+    public function clientInfo(): never
+    {
+        Permissions::authorize(Permissions::VIEW);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store');
+        try {
+            $data = (new SubscriptionClientInfoService())->read(
+                (int)get_route_param('id'), (int)get_route_param('node')
+            );
+        } catch (\Fireball\VpnManagerV2\Exceptions\ValidationException) {
+            http_response_code(404);
+            $data = ['error' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_not_found')];
+        } catch (\Throwable $exception) {
+            http_response_code(502);
+            // Panel exceptions may contain addresses/credentials; do not return their text.
+            error_log('VPN client inspection failed: ' . get_class($exception));
+            $data = ['error' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_client_inspection_failed')];
+        }
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        exit;
     }
 
     public function attachDependencySubscription(): void

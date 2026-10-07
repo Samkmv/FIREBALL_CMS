@@ -24,6 +24,7 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
 $rows = [];
 $mobileCards = [];
 foreach ($subscriptions as $subscription) {
+    $clientName = trim((string)($subscription['client_display_name'] ?? '')) ?: (string)$subscription['user_name'];
     $id = (int)$subscription['id'];
     $manualCustomer = (int)($subscription['user_id'] ?? 0) <= 0;
     $userMeta = $manualCustomer
@@ -88,8 +89,9 @@ foreach ($subscriptions as $subscription) {
 
     $rows[] = ['cells' => [
         ['value' => '#' . $id],
-        ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['user_name'])
-            . '</span><div class="small text-body-secondary">' . htmlSC($userMeta) . '</div>'],
+        ['html' => '<span class="fw-medium">' . htmlSC($clientName)
+            . '</span>' . (!empty($subscription['client_display_name']) ? '<div class="small text-body-secondary">' . htmlSC((string)$subscription['user_name']) . '</div>' : '')
+            . '<div class="small text-body-secondary">' . htmlSC($userMeta) . '</div>'],
         ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['plan_name'])
             . '</span><div class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</div>'],
         ['html' => $badge],
@@ -110,6 +112,7 @@ foreach ($subscriptions as $subscription) {
         'status' => [['html' => $badge]],
         'actions' => $showAction,
         'extra_fields' => [
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_client_name_title'), 'value' => $clientName],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user'), 'value' => (string)$subscription['user_name']],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_starts_at'), 'value' => (string)$subscription['starts_at']],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_expires_at'), 'value' => $expiresDisplay],

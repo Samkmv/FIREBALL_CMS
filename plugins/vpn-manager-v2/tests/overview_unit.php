@@ -94,7 +94,8 @@ $columns = [
     'vpn_v2_servers.auth_type',
     'vpn_v2_subscriptions.revision',
     'vpn_v2_subscriptions.subscription_token_hash',
-    'vpn_v2_subscriptions.internal_comment',
+        'vpn_v2_subscriptions.internal_comment',
+        'vpn_v2_subscriptions.client_display_name',
     'vpn_v2_subscriptions.traffic_used_bytes',
     'vpn_v2_subscription_nodes.flow',
     'vpn_v2_subscription_nodes.sort_order',
@@ -102,6 +103,7 @@ $columns = [
     'vpn_v2_subscription_nodes.encrypted_client_credential',
     'vpn_v2_subscription_items.effective_status',
     'vpn_v2_external_sources.encrypted_snapshot',
+    'vpn_v2_external_sources.plan_id',
     'vpn_v2_plans.deleted_at',
     'vpn_v2_notifications.occurrence_key',
 ];

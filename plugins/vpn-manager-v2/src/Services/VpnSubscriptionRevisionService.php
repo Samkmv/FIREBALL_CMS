@@ -63,6 +63,17 @@ final class VpnSubscriptionRevisionService
         return $touched;
     }
 
+    /** Existing and future subscriptions inherit the plan's current snapshots; never copy credentials. */
+    public function touchByPlan(int $planId): int
+    {
+        $rows = db()->query(
+            "SELECT id FROM vpn_v2_subscriptions WHERE plan_id = ? AND status NOT IN ('deleted', 'deleting') ORDER BY id ASC",
+            [$planId]
+        )->get() ?: [];
+        foreach ($rows as $row) { $this->touchConfig((int)$row['id']); }
+        return count($rows);
+    }
+
     public function touchParents(int $subscriptionId, bool $touchConfig = true): int
     {
         return $this->propagateToParents($subscriptionId, $touchConfig);

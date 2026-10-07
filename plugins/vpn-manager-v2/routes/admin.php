@@ -70,6 +70,19 @@ $router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/reconcile/?', [Pl
 $router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/remove-obsolete/?', [PlanController::class, 'removeObsolete'])
     ->middleware(['auth', 'admin']);
 
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/external/subscription/?', [PlanController::class, 'attachExternalSubscription'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/external/connection/?', [PlanController::class, 'attachExternalConnection'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/external/order/?', [PlanController::class, 'updateExternalSourceOrder'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/external/(?P<source>\d+)/toggle/?', [PlanController::class, 'toggleExternalSource'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/external/(?P<source>\d+)/detach/?', [PlanController::class, 'detachExternalSource'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/plans/(?P<id>\d+)/external/(?P<source>\d+)/sync/?', [PlanController::class, 'syncExternalSource'])
+    ->middleware(['auth', 'admin']);
+
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions', [SubscriptionController::class, 'index'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/access-requests/(?P<id>\d+)/dismiss/?', [SubscriptionController::class, 'dismissAccessRequest'])
@@ -84,6 +97,8 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/edit/(?P<id>\d+)/?', 
     ->middleware(['auth', 'admin']);
 // FIREBALL_VPN_RENEW_SYNC_PATCH_V1: renew-route
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/renew/?', [SubscriptionController::class, 'renew'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/rename/?', [SubscriptionController::class, 'rename'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/suspend/?', [SubscriptionController::class, 'suspend'])
     ->middleware(['auth', 'admin']);
@@ -119,6 +134,8 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/external/
     ->middleware(['auth', 'admin']);
 
 // FIREBALL_VPN_HWID_RECONCILIATION_FINISH_V1: device-management-routes
+$router->get('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/connections/(?P<node>\d+)/client-info/?', [SubscriptionController::class, 'clientInfo'])
+    ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/devices/?', [SubscriptionDeviceController::class, 'index'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/devices/(?P<node>\d+)/(?P<device>\d+)/delete/?', [SubscriptionDeviceController::class, 'delete'])

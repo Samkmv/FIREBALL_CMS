@@ -20,9 +20,10 @@ final class ConfigurationSyncRepository
     public function nodesForServer(int $serverId): array
     {
         return db()->query(
-            'SELECT n.*, sub.user_id, sub.profile_id, sub.manual_customer_name, sub.plan_id, sub.status AS subscription_status,
+            'SELECT n.*, sub.user_id, sub.profile_id, sub.manual_customer_name, sub.client_display_name, sub.plan_id, sub.status AS subscription_status,
                     sub.starts_at, sub.expires_at, sub.device_limit, sub.ip_limit,
                     sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
+                    sub.traffic_used_bytes AS subscription_traffic_used_bytes,
                     u.name AS cms_user_name, u.login AS cms_user_login,
                     s.name AS server_name, s.code AS server_code, s.panel_url, s.country_code AS server_country_code,
                     s.country_name, s.city, s.show_flag,
@@ -84,7 +85,7 @@ final class ConfigurationSyncRepository
             $changed = $previousHash === '' || !hash_equals($previousHash, $hash);
             $now = date('Y-m-d H:i:s');
             $snapshotJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-            $status = !empty($current['desired_enabled']) ? 'active' : 'disabled';
+            $status = !empty($snapshot['enable']) ? 'active' : 'disabled';
             $protocol = strtolower(trim((string)($snapshot['protocol'] ?? $node['protocol'] ?? '')));
             $credentials = new RemoteClientCredentialService();
             $usesPassword = $credentials->usesPassword($protocol);

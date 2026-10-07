@@ -720,6 +720,58 @@
         });
     }
 
+    function setupClientInspection(button) {
+        var card = button.closest('[data-vpn-v2-client-card]');
+        var result = card.querySelector('[data-vpn-v2-client-result]');
+        var fields = card.querySelector('[data-vpn-v2-client-live]');
+        var label = button.querySelector('[data-vpn-v2-client-button-label]');
+        var originalLabel = label.textContent;
+        button.addEventListener('click', async function () {
+            if (button.disabled) return;
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            label.textContent = button.dataset.loading;
+            result.classList.remove('text-danger');
+            result.textContent = button.dataset.loading;
+            fields.hidden = true;
+            fields.replaceChildren();
+            var controller = new AbortController();
+            var timeout = window.setTimeout(function () { controller.abort(); }, 35000);
+            try {
+                var response = await fetch(button.dataset.vpnV2ClientInspect, {
+                    credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
+                    headers: {'Accept': 'application/json'}
+                });
+                var data = await response.json();
+                if (!response.ok || !Array.isArray(data.fields) || typeof data.checked_at !== 'string') {
+                    throw new Error(button.dataset.failed);
+                }
+                data.fields.forEach(function (field) {
+                    if (typeof field.label !== 'string' || typeof field.value !== 'string') throw new Error(button.dataset.failed);
+                    var term = document.createElement('dt');
+                    term.className = 'col-sm-5 text-body-secondary small';
+                    term.textContent = field.label;
+                    var value = document.createElement('dd');
+                    value.className = 'col-sm-7 mb-0 text-break small';
+                    value.textContent = field.value;
+                    fields.append(term, value);
+                });
+                fields.hidden = false;
+                result.textContent = button.dataset.liveLabel + ' · ' + data.checked_at;
+            } catch (error) {
+                fields.hidden = true;
+                fields.replaceChildren();
+                result.classList.add('text-danger');
+                result.textContent = button.dataset.failed;
+            } finally {
+                window.clearTimeout(timeout);
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                label.textContent = originalLabel;
+            }
+        });
+    }
+
     ready(function () {
         document.querySelectorAll('[data-vpn-v2-plan-nodes]').forEach(setupPlanNodes);
         document.querySelectorAll('[data-vpn-v2-connection-order]').forEach(setupConnectionOrder);
@@ -727,5 +779,6 @@
         setupAsyncOperations();
         document.querySelectorAll('[data-vpn-recovery]').forEach(setupServerRecovery);
         document.querySelectorAll('[data-vpn-v2-server-metrics]').forEach(setupServerMetrics);
+        document.querySelectorAll('[data-vpn-v2-client-inspect]').forEach(setupClientInspection);
     });
 }());
