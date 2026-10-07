@@ -22,6 +22,7 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
             if (url.pathname === '/plugins/vpn-manager-v2/assets/vpn-manager-v2.js') return route.fulfill({ path: root + url.pathname });
             const args = [path.join(__dirname, url.pathname.includes('/subscriptions/') ? 'client_information_render.php' : 'plan_external_sources_render.php')];
             if (url.pathname.includes('/subscriptions/')) args.push('--plan-external');
+            if (url.pathname.includes('/subscriptions/edit/')) args.push('--edit');
             if (url.pathname.endsWith('/create')) args.push('--create');
             const html = execFileSync(php, args, { encoding: 'utf8' });
             assert(!/Warning:|Fatal error:|vpn_manager_v2_/.test(html), 'Real view renders without errors or missing translations');
@@ -69,14 +70,18 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
             if (width === 390 || width === 1440) await section.screenshot({ path: `/private/tmp/vpn-plan-external-${theme}-${width}.png` });
             await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14');
             const inherited = page.locator('[data-vpn-v2-plan-external]');
-            const naming = page.locator('[data-vpn-v2-client-name]');
-            assert.equal(await naming.locator('input[name=client_display_name]').getAttribute('maxlength'), '160');
-            assert.equal(await naming.locator('input[name=client_display_name]').inputValue(), 'Новое имя клиента');
-            assert.equal(await naming.getAttribute('action'), '/admin/plugins/vpn-manager-v2/subscriptions/14/rename');
+            assert.equal(await page.locator('[data-vpn-v2-client-name]').count(), 0, 'Rename removed from overview');
             assert((await inherited.innerText()).includes('Внешние источники из тарифа'));
             assert.equal(await inherited.locator('form').count(), 0, 'Inherited section read-only, personal sources preserved');
             assert.equal(await inherited.locator('a[href$="/plans/edit/1#external-sources"]').count(), 1, 'Go to owning plan');
             assert(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), 'Inherited section fits viewport');
+            await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/edit/14');
+            const naming = page.locator('[data-vpn-v2-client-name]');
+            assert.equal(await naming.locator('input[name=client_display_name]').getAttribute('maxlength'), '160');
+            assert.equal(await naming.locator('input[name=client_display_name]').inputValue(), 'Новое имя клиента');
+            assert.equal(await naming.getAttribute('action'), '/admin/plugins/vpn-manager-v2/subscriptions/14/rename');
+            assert.equal(await page.locator('form form').count(), 0, 'Rename independent of subscription edit');
+            assert(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), 'Rename/edit fits viewport');
         }
         await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/plans/create');
         assert.equal(await page.locator('button[name=manage_external]').count(), 1);
@@ -89,7 +94,7 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
         assert.equal(writes.length, 1);
         assert.equal(writes[0].path, '/admin/plugins/vpn-manager-v2/plans/1/external/subscription');
         assert(new URLSearchParams(writes[0].data).get('needCSRFToken') === 'fixture');
-        await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14');
+        await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/edit/14');
         const naming = page.locator('[data-vpn-v2-client-name]');
         await naming.locator('input[name=client_display_name]').fill('Переименованный клиент');
         await naming.screenshot({ path: '/private/tmp/vpn-subscription-client-name.png' });

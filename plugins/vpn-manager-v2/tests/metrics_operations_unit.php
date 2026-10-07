@@ -58,6 +58,7 @@ namespace {
     };
     $GLOBALS['testDatabase'] = new class {
         public int $total = 41;
+        public string $status = 'completed';
         public string $sql = '';
         public function query(string $sql): self { $this->sql = $sql; return $this; }
         public function getColumn(): int { return $this->total; }
@@ -66,7 +67,7 @@ namespace {
             $rows = [];
             $end = min($this->total, (int)$match[2] + (int)$match[1]);
             for ($index = (int)$match[2]; $index < $end; $index++) {
-                $rows[] = ['operation_id' => 'operation-' . ($this->total - $index), 'operation_type' => 'sync_server', 'source' => 'cms', 'status' => 'completed', 'processed_count' => 1, 'total_count' => 1, 'attempts' => 1, 'max_attempts' => 8, 'last_error' => '', 'updated_at' => '2026-10-01 23:00:00'];
+                $rows[] = ['operation_id' => 'operation-' . ($this->total - $index), 'operation_type' => 'sync_server', 'source' => 'cms', 'status' => $this->status, 'processed_count' => 1, 'total_count' => 1, 'attempts' => 1, 'max_attempts' => 8, 'last_error' => '', 'updated_at' => '2026-10-01 23:00:00'];
             }
             return $rows;
         }
@@ -76,6 +77,8 @@ namespace {
     function check(bool $condition, string $message): void { if (!$condition) throw new \RuntimeException($message); }
     $controller = new \Fireball\VpnManagerV2\Controllers\Admin\SyncController();
     if (in_array('--render', $argv, true) || in_array('--overview', $argv, true)) {
+        if (in_array('--empty', $argv, true)) $GLOBALS['testDatabase']->total = 0;
+        if (in_array('--pending', $argv, true)) $GLOBALS['testDatabase']->status = 'pending';
         foreach ($argv as $argument) if (str_starts_with($argument, '--page=')) request()->get['page'] = substr($argument, 7);
         $controller->operations();
         $data = $GLOBALS['capturedViewData'];

@@ -34,6 +34,14 @@ $nodes = [[
     'upload_bytes' => 1024 ** 3, 'download_bytes' => 1024 ** 3 * 7,
     'traffic_synced_at' => '2026-10-07 12:00:00', 'last_seen_remote_at' => '2026-10-07 12:00:00',
 ]];
+if (in_array('--multi', $argv, true)) {
+    $nodes[] = array_replace($nodes[0], ['id' => 8, 'traffic_used_bytes' => 1024 ** 3 * 2,
+        'upload_bytes' => 1024 ** 3, 'download_bytes' => 1024 ** 3]);
+    $nodes[] = array_replace($nodes[0], ['id' => 9, 'server_id' => 2, 'server_name' => 'Нидерланды',
+        'traffic_used_bytes' => 1024 ** 3 * 3, 'upload_bytes' => 1024 ** 3,
+        'download_bytes' => 1024 ** 3 * 2]);
+    $subscription['traffic_used_bytes'] = 1024 ** 3 * 13;
+}
 if (in_array('--unknown', $argv, true)) {
     $subscription['traffic_used_bytes'] = 0;
     $nodes[0]['traffic_synced_at'] = null; $nodes[0]['traffic_sync_status'] = 'failed';
@@ -47,7 +55,12 @@ if (in_array('--plan-external', $argv, true)) {
     ]];
 }
 ob_start();
-if (in_array('--partial', $argv, true)) {
+if (in_array('--edit', $argv, true)) {
+    $plans = [['id' => 1, 'name' => 'Тестовый тариф', 'duration_days' => 30,
+        'traffic_limit_bytes' => 1024 ** 3 * 10, 'device_limit' => 2, 'ip_limit' => 1, 'node_count' => 1]];
+    $trafficInput = \Fireball\VpnManagerV2\Support\TrafficFormatter::inputParts($subscription['traffic_limit_bytes']);
+    require dirname(__DIR__) . '/views/admin/subscription-edit.php';
+} elseif (in_array('--partial', $argv, true)) {
     $subscriptionId = 14; require dirname(__DIR__) . '/views/admin/partials/subscription-client-info.php';
 } else {
     require dirname(__DIR__) . '/views/admin/subscription-show.php';

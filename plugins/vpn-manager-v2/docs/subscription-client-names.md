@@ -1,6 +1,6 @@
 # VPN subscriber naming (1.5.9)
 
-Open **VPN → Subscriptions → View → VPN client name**, enter the new name and choose **Save and synchronize name**. Leaving it blank restores automatic naming from the CMS account or manual customer's name.
+Open **VPN → Subscriptions → Edit → VPN client name**, enter the new name and choose **Save and synchronize name**. This independent form does not save or modify the tariff, access or term fields. Leaving it blank restores automatic naming from the CMS account or manual customer's name.
 
 The separate subscription field `client_display_name` does not edit the CMS user. The established name generator transliterates the display name and retains the login/manual-profile identifier, country code and server/inbound suffix so different targets keep distinct panel names.
 

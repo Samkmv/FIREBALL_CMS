@@ -92,6 +92,7 @@ final class SubscriptionClientInfoService
         foreach ($fields as &$field) { $field['label'] = \FireballPluginVpnManagerV2::t($field['label']); }
         unset($field);
         return ['connection_id' => $nodeId, 'subscription_id' => $subscriptionId,
+            'server_id' => (int)$node['server_id'], 'traffic' => $traffic,
             'checked_at' => date('Y-m-d H:i:s'), 'fields' => $fields];
     }
 

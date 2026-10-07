@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'vpn_manager_v2_operation_loading' => 'Wird verarbeitet…',
+    'vpn_manager_v2_operation_unknown' => 'Das Ergebnis ist noch unbekannt. Prüfen Sie die Vorgänge vor einem erneuten Start.',
+    'vpn_manager_v2_operation_refresh_failed' => 'Das Ergebnis wurde empfangen, aber die Tabelle konnte nicht aktualisiert werden. Laden Sie die Seite manuell neu.',
+    'vpn_manager_v2_client_server_traffic' => 'Traffic-Verbrauch je Server',
+    'vpn_manager_v2_client_server_traffic_help' => 'Gespeicherter Verbrauch der Verbindungen dieses Abonnements, nach Server gruppiert. Die Prüfung zeigt aktuelle Panel-Zähler, ohne das Abonnement zu ändern.',
+    'vpn_manager_v2_client_refresh_traffic' => 'Traffic aktualisieren',
+    'vpn_manager_v2_client_traffic_saved' => 'Gespeicherte CMS-Daten',
+    'vpn_manager_v2_client_traffic_partial' => 'Unvollständige Daten',
     'vpn_manager_v2_client_name_title' => 'VPN-Clientname',
     'vpn_manager_v2_client_name_action' => 'Name speichern und synchronisieren',
     'vpn_manager_v2_client_name_help' => 'Der neue Name wird über die 3x-ui-Warteschlange auf die Verbindungen dieses Abonnements angewendet. Panelnamen werden mit Ländercode und Verbindungskennung transliteriert. CMS-Konto, UUID, Abonnementlink, Laufzeit, Limits und Traffic bleiben unverändert.',

@@ -166,7 +166,7 @@ final class SubscriptionController
             error_log('VPN Manager V2 client rename failed: ' . get_class($exception));
             session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_sync_generic'));
         }
-        response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $id, $returnQuery));
+        response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $id, $returnQuery));
     }
 
     public function show(): string

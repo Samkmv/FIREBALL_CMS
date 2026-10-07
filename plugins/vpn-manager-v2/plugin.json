@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.5.9",
+  "version": "1.5.10",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "VPN actions now show processing indicators, prevent duplicate submissions, report actual results and refresh the operations table without reloading the page. Client details include per-server traffic with read-only live refresh; renaming is available in subscription editing.",
     "Plans now support encrypted external subscription sources and direct connection links through the existing source mechanism. Existing and future subscriptions inherit them with ordering, refresh, toggles, scoped ownership and cache invalidation.",
     "Subscription details now support a separate VPN client name, synchronized through the native 3x-ui rename queue without rotating credentials or changing access, term, limits or traffic. CMS accounts and inherited external clients remain unchanged.",
     "Subscription details now include traffic usage, remaining allowance and term, per-connection technical data, and a read-only 3x-ui client inspection with live counters, access, limits, expiry, activity and HWID device count.",
@@ -36,6 +37,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Действия VPN показывают обработку, защищены от повторных нажатий и выводят фактический результат с обновлением таблицы без перезагрузки страницы. В обзоре клиента доступен трафик по серверам и проверка свежих счётчиков только для чтения; переименование перенесено в редактирование подписки.",
       "В тарифах доступны зашифрованные внешние подписки и прямые ссылки подключения через существующий механизм источников. Их наследуют действующие и новые подписки тарифа; доступны порядок, обновление, включение и отключение с проверкой принадлежности и сбросом кеша.",
       "В карточке подписки доступно отдельное имя VPN-клиента с синхронизацией через очередь переименования 3x-ui. UUID, доступ, срок, лимиты и трафик не меняются; аккаунт CMS и внешние либо унаследованные клиенты не переименовываются.",
       "В просмотр подписки добавлены расход и остаток трафика, оставшийся срок, технические данные подключений и проверка клиента в 3x-ui только для чтения: свежие счётчики, доступ, лимиты, срок, активность и число HWID-устройств.",
@@ -52,6 +54,7 @@
       "Завершена синхронизация тарифов с 3x-ui: лимит HWID-устройств, отдельный лимит IP, управление устройствами в админке и подробная диагностика расхождений."
     ],
     "en": [
+      "VPN actions now show processing indicators, prevent duplicate submissions, report actual results and refresh the operations table without reloading the page. Client details include per-server traffic with read-only live refresh; renaming is available in subscription editing.",
       "Plans now support encrypted external subscription sources and direct connection links through the existing source mechanism. Existing and future subscriptions inherit them with ordering, refresh, toggles, scoped ownership and cache invalidation.",
       "Subscription details now support a separate VPN client name, synchronized through the native 3x-ui rename queue without rotating credentials or changing access, term, limits or traffic. CMS accounts and inherited external clients remain unchanged.",
       "Subscription details now include traffic usage, remaining allowance and term, per-connection technical data, and a read-only 3x-ui client inspection with live counters, access, limits, expiry, activity and HWID device count.",
@@ -68,6 +71,7 @@
       "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics."
     ],
     "de": [
+      "VPN-Aktionen zeigen die Verarbeitung, verhindern doppelte Anfragen und aktualisieren Ergebnisse und Vorgangstabelle ohne Neuladen. Clientdetails enthalten Traffic je Server mit schreibgeschützter Live-Prüfung; die Umbenennung befindet sich in der Abonnementbearbeitung.",
       "Tarife unterstützen verschlüsselte externe Abonnementquellen und direkte Verbindungslinks über den bestehenden Quellenmechanismus. Bestehende und neue Abonnements erben diese mit Sortierung, Aktualisierung, Aktivierung, Zuordnungsprüfung und Cache-Invalidierung.",
       "Abonnementdetails bieten einen separaten VPN-Clientnamen mit Synchronisierung über die 3x-ui-Umbenennungswarteschlange. Zugangsdaten, Zugriff, Laufzeit, Limits und Traffic bleiben erhalten; CMS-Konten und geerbte externe Clients werden nicht umbenannt.",
       "Abonnementdetails zeigen jetzt Traffic-Verbrauch, Restkontingent und Restlaufzeit, technische Verbindungsdaten sowie eine schreibgeschützte 3x-ui-Clientprüfung mit aktuellen Zählern, Zugriff, Limits, Ablauf, Aktivität und HWID-Geräteanzahl.",
@@ -84,6 +88,7 @@
       "Die Tarifsynchronisierung mit 3x-ui wurde vervollständigt: HWID-Gerätelimit, separates IP-Limit, Geräteverwaltung im Adminbereich und detaillierte Abweichungsdiagnose."
     ],
     "zh-cn": [
+      "VPN 操作显示处理状态并防止重复提交，展示实际结果且无需重新加载页面即可刷新操作表。客户端详情显示各服务器流量并支持只读实时检查；重命名已移至订阅编辑页面。",
       "套餐可通过现有来源机制添加加密的外部订阅和直接连接链接。现有及新订阅自动继承这些来源，支持排序、刷新、启停、归属校验和缓存失效。",
       "订阅详情支持独立的 VPN 客户端名称，并通过原生 3x-ui 重命名队列同步。凭据、访问权限、期限、限制和流量保持不变；CMS 账户及继承的外部客户端不会被重命名。",
       "订阅详情新增流量用量、剩余额度和有效期、各连接技术信息，以及只读 3x-ui 客户端检查：实时计数、访问状态、限制、到期时间、活动和 HWID 设备数量。",

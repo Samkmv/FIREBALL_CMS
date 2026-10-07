@@ -11,6 +11,7 @@ $returnQuery = \Fireball\VpnManagerV2\Support\AdminTableState::sanitize($returnQ
 
 <?= view()->renderPartial('admin/shell_open', ['title' => $title ?? '', 'subtitle' => $subtitle ?? '']) ?>
 <?php require __DIR__ . '/partials/tabs.php'; ?>
+<?php require __DIR__ . '/partials/subscription-client-name.php'; ?>
 
 <form class="border rounded-5 p-3 p-md-4" method="post"
       action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $id)) ?>">

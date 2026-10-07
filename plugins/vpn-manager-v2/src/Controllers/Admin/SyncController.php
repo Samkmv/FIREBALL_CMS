@@ -190,24 +190,28 @@ final class SyncController
     {
         Permissions::authorize(Permissions::RECONCILE);
         $count = (new OperationQueueRepository())->retryFailed();
-        $result = $count > 0 ? $this->processDueOperations(min(10, $count)) : ['processed' => 0];
-        $this->json([
-            'status' => 'queued',
-            'status_label' => LocalizedValue::operationStatus('retry'),
-            'message' => sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_operations_retried'), $count),
-            'retried' => $count,
-            'processed' => (int)$result['processed'],
-        ]);
+        $result = $count > 0 ? $this->processDueOperations(min(10, $count)) : [];
+        $response = $this->batchResult($result);
+        $response['retried'] = $count;
+        $response['message'] = sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_operations_retried'), $count)
+            . ' ' . $response['message'];
+        $this->json($response);
     }
 
     public function processPending(): never
     {
         Permissions::authorize(Permissions::RECONCILE);
         $result = $this->processDueOperations(10);
+        $this->json($this->batchResult($result));
+    }
+
+    private function batchResult(array $result): array
+    {
+        $result += ['processed' => 0, 'success' => 0, 'failure' => 0, 'cancelled' => 0];
         $status = (int)$result['failure'] > 0 || ((int)$result['cancelled'] > 0 && (int)$result['success'] > 0)
             ? 'completed_partial'
             : ((int)$result['cancelled'] > 0 ? 'cancelled' : 'completed');
-        $this->json([
+        return [
             'status' => $status,
             'status_label' => LocalizedValue::operationStatus($status),
             'message' => sprintf(
@@ -218,7 +222,7 @@ final class SyncController
             'success' => (int)$result['success'],
             'failure' => (int)$result['failure'],
             'cancelled' => (int)$result['cancelled'],
-        ]);
+        ];
     }
 
     public function cancel(): never
@@ -270,11 +274,16 @@ final class SyncController
             'status_label' => LocalizedValue::operationStatus($progress['status'] ?? ''),
             'operation_id' => $operationId,
             'created' => !empty($operation['created']),
+            'processed_count' => (int)($progress['processed_count'] ?? 0),
+            'total_count' => (int)($progress['total_count'] ?? 0),
+            'last_error' => (string)($progress['last_error'] ?? ''),
             'message' => (string)$progress['status'] === 'cancelled'
                 ? ((string)($progress['last_error'] ?? '') ?: \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_obsolete'))
-                : \FireballPluginVpnManagerV2::t($completed
+                : (in_array((string)$progress['status'], ['failed', 'retry'], true)
+                    ? LocalizedValue::operationStatus((string)$progress['status'])
+                    : \FireballPluginVpnManagerV2::t($completed
                     ? 'vpn_manager_v2_flash_sync_completed'
-                    : 'vpn_manager_v2_flash_sync_queued'),
+                    : 'vpn_manager_v2_flash_sync_queued')),
             'progress_url' => base_href('/admin/plugins/vpn-manager-v2/operations/' . $operationId),
         ], 202);
     }

@@ -42,6 +42,7 @@ $summaryCards = [
         <?= htmlSC($usage['checked_at'] !== null ? sprintf($clientT('vpn_manager_v2_profile_traffic_updated'), $usage['checked_at']) : $clientT('vpn_manager_v2_client_not_checked')) ?>
         <?php if ($usage['partial']): ?><div class="text-warning mt-1"><?= htmlSC($clientT('vpn_manager_v2_client_partial_traffic')) ?></div><?php endif; ?>
     </div>
+    <?php require __DIR__ . '/subscription-server-traffic.php'; ?>
     <?php foreach ($nodes as $clientNode): ?>
         <?php
         if ((int)($clientNode['subscription_id'] ?? 0) !== $subscriptionId || (string)$clientNode['status'] === 'deleted') { continue; }
@@ -80,6 +81,7 @@ $summaryCards = [
                 <div class="d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-sm btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2 text-wrap text-start mw-100"
                             data-vpn-v2-client-inspect="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/connections/' . $clientNodeId . '/client-info')) ?>"
+                            data-server-id="<?= (int)$clientNode['server_id'] ?>" data-connection-id="<?= $clientNodeId ?>"
                             data-loading="<?= htmlSC($clientT('vpn_manager_v2_client_loading')) ?>"
                             data-failed="<?= htmlSC($clientT('vpn_manager_v2_client_inspection_failed')) ?>"
                             data-live-label="<?= htmlSC($clientT('vpn_manager_v2_client_live_data')) ?>"

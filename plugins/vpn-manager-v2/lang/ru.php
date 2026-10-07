@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'vpn_manager_v2_operation_loading' => 'Обрабатываем…',
+    'vpn_manager_v2_operation_unknown' => 'Результат пока неизвестен. Проверьте раздел «Операции» перед повторным запуском.',
+    'vpn_manager_v2_operation_refresh_failed' => 'Результат получен, но таблица не обновилась. Обновите страницу вручную.',
+    'vpn_manager_v2_client_server_traffic' => 'Использование трафика по серверам',
+    'vpn_manager_v2_client_server_traffic_help' => 'Сохранённый расход подключений этой подписки, сгруппированный по серверу. Проверка показывает текущие счётчики панели без изменения подписки.',
+    'vpn_manager_v2_client_refresh_traffic' => 'Обновить трафик',
+    'vpn_manager_v2_client_traffic_saved' => 'Сохранённые данные CMS',
+    'vpn_manager_v2_client_traffic_partial' => 'Данные неполные',
     'vpn_manager_v2_client_name_title' => 'Имя VPN-клиента',
     'vpn_manager_v2_client_name_action' => 'Сохранить и синхронизировать имя',
     'vpn_manager_v2_client_name_help' => 'Новое имя применяется к подключениям этой подписки через очередь 3x-ui. Для панели оно преобразуется в латиницу с кодом страны и идентификатором подключения. Аккаунт CMS, UUID, ссылка, срок, лимиты и трафик не меняются.',

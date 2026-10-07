@@ -107,6 +107,7 @@ namespace {
     $value = static fn(array $values, string $key): string => $values[$t($key)];
     $result = $service->read(14, 7); $values = $fields($result);
     $check($result['subscription_id'] === 14 && $result['connection_id'] === 7, 'Correct response association');
+    $check($result['server_id'] === 1 && $result['traffic'] === ['upload' => 100, 'download' => 300, 'total' => 400], 'Read-only counters explicitly associated with the owning server');
     $check($value($values, 'profile_traffic_used') === '400 Б', 'Actual upload + download, not local counters');
     $check($value($values, 'client_upload') === '100 Б' && $value($values, 'client_download') === '300 Б', 'Separate traffic directions');
     $check($value($values, 'profile_traffic_remaining') === '624 Б', 'Actual remaining allowance');
@@ -210,6 +211,20 @@ namespace {
         array_replace($node, ['id' => 8, 'status' => 'disabled', 'traffic_synced_at' => '2026-10-07 10:00:00', 'traffic_sync_status' => 'synced']),
         array_replace($node, ['id' => 9, 'status' => 'deleted']), array_replace($node, ['id' => 10, 'subscription_id' => 99])];
     $usage = $summary::from($subscription, $nodes, $now);
+    $serverUsage = $summary::byServer($subscription, $nodes);
+    $check(count($serverUsage) === 1 && $serverUsage[0]['id'] === 1 && $serverUsage[0]['connections'] === 2, 'Server grouping excludes foreign and deleted nodes');
+    $check($serverUsage[0]['used'] === 1 && $serverUsage[0]['upload'] === 20 && $serverUsage[0]['download'] === 30, 'Sum only owned server counters');
+    $check($serverUsage[0]['checked_at'] === '2026-10-07 09:00:00' && !$serverUsage[0]['partial'], 'Oldest sample and completeness per server');
+    $serverUsage = $summary::byServer($subscription, [
+        array_replace($nodes[0], ['server_name' => 'Same name']),
+        array_replace($nodes[0], ['id' => 8, 'server_id' => 2, 'server_name' => 'Same name', 'traffic_used_bytes' => 80]),
+        array_replace($node, ['id' => 9, 'server_id' => 3, 'upload_bytes' => 900, 'download_bytes' => 900]),
+    ]);
+    $check(count($serverUsage) === 3 && $serverUsage[1]['used'] === 80, 'Servers with identical display names remain separate');
+    $check(!$serverUsage[2]['known'] && !$serverUsage[2]['sample_known'] && $serverUsage[2]['partial']
+        && $serverUsage[2]['upload'] === 0, 'Unverified counters stay unknown, not factual zero or corrupt sample');
+    $overflow = $summary::byServer($subscription, [array_replace($nodes[0], ['traffic_used_bytes' => PHP_INT_MAX]), $nodes[0]]);
+    $check($overflow[0]['used'] === PHP_INT_MAX, 'Per-server integer overflow is bounded');
     $check($usage['used'] === 90 && $usage['remaining'] === 10 && $usage['percent'] === 90.0, 'Use aggregate CMS accounting, not per-node sum');
     $check($usage['checked_at'] === '2026-10-07 09:00:00' && !$usage['partial'], 'Oldest sample represents combined data age');
     $check($usage['connections'] === 2 && $usage['active_connections'] === 1, 'Foreign/deleted connections excluded');

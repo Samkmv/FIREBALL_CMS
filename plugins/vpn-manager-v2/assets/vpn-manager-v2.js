@@ -221,14 +221,22 @@
             || document.querySelector('[data-vpn-v2-operation-alert]');
     }
 
-    function showOperationStatus(container, type, message) {
+    function showOperationStatus(container, type, message, busy) {
         if (!container) {
             return;
         }
         var alert = document.createElement('div');
-        alert.className = 'alert alert-' + type + ' rounded-4';
+        alert.className = 'alert alert-' + type + ' rounded-4 d-flex align-items-start gap-2';
         alert.setAttribute('role', 'status');
-        alert.textContent = message;
+        if (busy) {
+            var spinner = document.createElement('span');
+            spinner.className = 'spinner-border spinner-border-sm flex-shrink-0 mt-1';
+            spinner.setAttribute('aria-hidden', 'true');
+            alert.append(spinner);
+        }
+        var label = document.createElement('span');
+        label.textContent = message;
+        alert.append(label);
         container.replaceChildren(alert);
     }
 
@@ -236,64 +244,91 @@
         return container ? (container.getAttribute(attribute) || fallback) : fallback;
     }
 
-    function pollOperation(url, container, attempts) {
-        if (!url || attempts <= 0) {
-            if (url && attempts <= 0) {
-                showOperationStatus(
-                    container,
-                    'danger',
-                    operationMessage(container, 'data-vpn-v2-operation-status-failed', 'Operation status is unavailable.')
-                );
-            }
-            return;
+    function operationIsWaiting(data) {
+        return ['pending', 'queued', 'running'].indexOf(String(data.status || '')) !== -1;
+    }
+
+    function operationResult(container, data, fromPoll) {
+        var status = String(data.status || '');
+        var busy = operationIsWaiting(data);
+        var message = String((fromPoll ? data.status_label : data.message) || data.status_label || status);
+        if (Number(data.total_count) > 0) {
+            message += ' · ' + Number(data.processed_count || 0) + ' / ' + Number(data.total_count);
         }
-        window.setTimeout(function () {
-            fetch(url, {
-                method: 'GET',
-                credentials: 'same-origin',
-                headers: {'Accept': 'application/json'}
-            }).then(function (response) {
-                if (!response.ok) {
-                    throw new Error(operationMessage(
-                        container,
-                        'data-vpn-v2-operation-status-failed',
-                        'Operation status is unavailable.'
-                    ));
-                }
-                return response.json();
-            }).then(function (data) {
-                var status = String(data.status || 'pending');
-                var statusLabel = String(data.status_label || status);
-                var progress = Number(data.processed_count || 0) + ' / ' + Number(data.total_count || 0);
-                showOperationStatus(
-                    container,
-                    status === 'completed' ? 'success'
-                        : (status === 'completed_partial' ? 'warning' : (status === 'failed' ? 'danger' : 'info')),
-                    statusLabel + ' · ' + progress
-                );
-                if (['completed', 'completed_partial', 'failed', 'cancelled'].indexOf(status) === -1) {
-                    pollOperation(url, container, attempts - 1);
-                }
-            }).catch(function (error) {
-                if (attempts <= 1) {
-                    showOperationStatus(
-                        container,
-                        'danger',
-                        error.message || operationMessage(
-                            container,
-                            'data-vpn-v2-operation-status-failed',
-                            'Operation status is unavailable.'
-                        )
-                    );
-                    return;
-                }
-                pollOperation(url, container, attempts - 1);
-            });
-        }, 2000);
+        if (data.last_error && ['failed', 'retry', 'cancelled'].indexOf(status) !== -1
+            && message.indexOf(String(data.last_error)) === -1) {
+            message += ' — ' + String(data.last_error);
+        }
+        showOperationStatus(container,
+            status === 'completed' ? 'success' : (status === 'failed' ? 'danger'
+                : (['completed_partial', 'cancelled', 'retry'].indexOf(status) !== -1 ? 'warning' : 'info')),
+            message, busy);
+    }
+
+    function localOperationUrl(url) {
+        var target = new URL(url, window.location.href);
+        if (target.origin !== window.location.origin) throw new Error('operation_failed');
+        return target.href;
+    }
+
+    async function pollOperation(url, container) {
+        url = localOperationUrl(url);
+        var failures = 0;
+        for (var attempt = 0; attempt < 150; attempt++) {
+            await new Promise(function (resolve) { window.setTimeout(resolve, 2000); });
+            var controller = new AbortController();
+            var timeout = window.setTimeout(function () { controller.abort(); }, 15000);
+            var data;
+            try {
+                var response = await fetch(url, {credentials: 'same-origin', cache: 'no-store',
+                    headers: {'Accept': 'application/json'}, signal: controller.signal});
+                if (!response.ok) throw new Error('operation_failed');
+                data = await response.json();
+                if (!data.status) throw new Error('operation_failed');
+                failures = 0;
+            } catch (error) {
+                if (++failures >= 3) break;
+                continue;
+            } finally {
+                window.clearTimeout(timeout);
+            }
+            operationResult(container, data, true);
+            // A delayed retry is not a completed operation and must not spin indefinitely.
+            if (!operationIsWaiting(data)) return data;
+        }
+        throw new Error(operationMessage(container, 'data-vpn-v2-operation-unknown',
+            'The result is unknown. Check Operations before starting it again.'));
+    }
+
+    async function refreshOperationsTable(container) {
+        var table = document.querySelector('[data-vpn-v2-operations-table]');
+        if (!table) return;
+        var controller = new AbortController();
+        var timeout = window.setTimeout(function () { controller.abort(); }, 15000);
+        try {
+            // Reuse the authenticated CMS view, preserving its pagination, CSRF and action markup.
+            var response = await fetch(window.location.href, {credentials: 'same-origin', cache: 'no-store',
+                headers: {'Accept': 'text/html'}, signal: controller.signal});
+            if (!response.ok || new URL(response.url).pathname !== window.location.pathname) throw new Error('table_refresh_failed');
+            var page = new DOMParser().parseFromString(await response.text(), 'text/html');
+            var next = page.querySelector('[data-vpn-v2-operations-table]');
+            if (!next) throw new Error('table_refresh_failed');
+            table.replaceWith(document.importNode(next, true));
+        } catch (error) {
+            // Keep the operation result even if the separate read-only table refresh fails.
+            var notice = document.createElement('div');
+            notice.className = 'alert alert-warning rounded-4';
+            notice.textContent = operationMessage(container, 'data-vpn-v2-operation-refresh-failed',
+                'The result was received, but the table could not be refreshed. Refresh the page manually.');
+            if (container) container.append(notice);
+        } finally {
+            window.clearTimeout(timeout);
+        }
     }
 
     function setupAsyncOperations() {
-        document.addEventListener('submit', function (event) {
+        var busy = false;
+        document.addEventListener('submit', async function (event) {
             var form = event.target.closest('form[data-vpn-v2-async-operation]');
             if (!form) {
                 return;
@@ -304,6 +339,7 @@
                 return;
             }
             event.preventDefault();
+            if (busy) return;
             if (usesAdminConfirmation) {
                 var modalElement = document.querySelector('[data-admin-delete-modal]');
                 var bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : (window.bootstrap || null);
@@ -311,33 +347,40 @@
                     bootstrapApi.Modal.getOrCreateInstance(modalElement).hide();
                 }
             }
-            var button = form.querySelector('button[type="submit"]');
+            var button = event.submitter || form.querySelector('button[type="submit"]');
             var container = operationAlert(form);
+            var body = new FormData(form);
+            var controls = Array.from(document.querySelectorAll('form[data-vpn-v2-async-operation] button, [data-vpn-v2-operations-table] button'))
+                .map(function (control) { return {element: control, disabled: control.disabled}; });
+            var table = document.querySelector('[data-vpn-v2-operations-table]');
+            var originalChildren = button ? Array.from(button.childNodes) : [];
+            var originalWidth = button ? button.style.minWidth : '';
+            var loading = operationMessage(container, 'data-vpn-v2-operation-loading', 'Processing…');
+            busy = true;
+            controls.forEach(function (control) { control.element.disabled = true; });
+            if (container) container.setAttribute('aria-busy', 'true');
+            if (table) table.setAttribute('aria-busy', 'true');
             if (button) {
-                button.disabled = true;
+                button.style.minWidth = button.getBoundingClientRect().width + 'px';
+                button.setAttribute('aria-busy', 'true');
+                var spinner = document.createElement('span');
+                spinner.className = 'spinner-border spinner-border-sm me-2';
+                spinner.setAttribute('aria-hidden', 'true');
+                var label = document.createElement('span');
+                label.textContent = loading;
+                button.replaceChildren(spinner, label);
             }
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                credentials: 'same-origin',
-                headers: {'Accept': 'application/json'}
-            }).then(function (response) {
-                return response.json().then(function (data) {
-                    if (!response.ok) {
-                        throw new Error(data.error || operationMessage(
-                            container,
-                            'data-vpn-v2-operation-failed',
-                            'The operation could not be completed.'
-                        ));
-                    }
-                    return data;
-                });
-            }).then(function (data) {
-                showOperationStatus(container, 'info', data.message || data.status || 'queued');
-                if (data.progress_url) {
-                    pollOperation(data.progress_url, container, 150);
-                }
-            }).catch(function (error) {
+            showOperationStatus(container, 'info', loading, true);
+            try {
+                var response = await fetch(localOperationUrl(form.action), {method: 'POST', body: body,
+                    credentials: 'same-origin', headers: {'Accept': 'application/json'}});
+                var data;
+                try { data = await response.json(); } catch (error) { throw new Error(response.ok ? 'operation_unknown' : 'operation_failed'); }
+                if (!response.ok) throw new Error(data.error || 'operation_failed');
+                if (!data.status) throw new Error('operation_unknown');
+                operationResult(container, data, false);
+                if (data.progress_url && operationIsWaiting(data)) await pollOperation(data.progress_url, container);
+            } catch (error) {
                 var fallback = operationMessage(
                     container,
                     'data-vpn-v2-operation-failed',
@@ -345,14 +388,24 @@
                 );
                 var message = error.message || fallback;
                 if (message === 'Failed to fetch' || message === 'operation_failed') {
-                    message = fallback;
+                    message = message === 'operation_failed' ? fallback : operationMessage(container,
+                        'data-vpn-v2-operation-unknown', 'The result is unknown. Check Operations before starting it again.');
                 }
+                if (message === 'operation_unknown') message = operationMessage(container,
+                    'data-vpn-v2-operation-unknown', 'The result is unknown. Check Operations before starting it again.');
                 showOperationStatus(container, 'danger', message);
-            }).finally(function () {
+            } finally {
+                await refreshOperationsTable(container);
+                controls.forEach(function (control) { control.element.disabled = control.disabled; });
                 if (button) {
-                    button.disabled = false;
+                    button.replaceChildren.apply(button, originalChildren);
+                    button.style.minWidth = originalWidth;
+                    button.removeAttribute('aria-busy');
                 }
-            });
+                if (container) container.removeAttribute('aria-busy');
+                if (table) table.removeAttribute('aria-busy');
+                busy = false;
+            }
         });
     }
 
@@ -422,7 +475,7 @@
         updateButtons();
     }
 
-    function formatMetricBytes(value) {
+    function formatMetricBytes(value, units) {
         if (value === null || value === undefined || value === '') {
             return '—';
         }
@@ -430,7 +483,8 @@
         if (!Number.isFinite(bytes) || bytes < 0) {
             return '—';
         }
-        var units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        var localized = Array.isArray(units);
+        units = units || ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
         var index = 0;
         while (bytes >= 1024 && index < units.length - 1) {
             bytes /= 1024;
@@ -438,7 +492,9 @@
         }
         var precision = index === 0 || bytes >= 100 ? 0 : (bytes >= 10 ? 1 : 2);
 
-        return bytes.toFixed(precision) + ' ' + units[index];
+        var formatted = bytes.toFixed(localized ? (index === 0 ? 0 : 2) : precision);
+        if (localized) formatted = formatted.replace(/(\.[0-9]*?)0+$/, '$1').replace(/\.$/, '');
+        return formatted + ' ' + units[index];
     }
 
     function formatUptime(value, labels) {
@@ -726,8 +782,8 @@
         var fields = card.querySelector('[data-vpn-v2-client-live]');
         var label = button.querySelector('[data-vpn-v2-client-button-label]');
         var originalLabel = label.textContent;
-        button.addEventListener('click', async function () {
-            if (button.disabled) return;
+        button.vpnV2Inspect = async function () {
+            if (button.disabled) return null;
             button.disabled = true;
             button.setAttribute('aria-busy', 'true');
             label.textContent = button.dataset.loading;
@@ -758,16 +814,96 @@
                 });
                 fields.hidden = false;
                 result.textContent = button.dataset.liveLabel + ' · ' + data.checked_at;
+                return data;
             } catch (error) {
                 fields.hidden = true;
                 fields.replaceChildren();
                 result.classList.add('text-danger');
                 result.textContent = button.dataset.failed;
+                return null;
             } finally {
                 window.clearTimeout(timeout);
                 button.disabled = false;
                 button.removeAttribute('aria-busy');
                 label.textContent = originalLabel;
+            }
+        };
+        button.addEventListener('click', button.vpnV2Inspect);
+    }
+
+    function setupServerTraffic(button) {
+        var section = button.closest('[data-vpn-v2-client-information]');
+        var table = section.querySelector('[data-vpn-v2-server-traffic]');
+        var units = JSON.parse(table.dataset.units);
+        var result = table.querySelector('[data-vpn-v2-server-traffic-result]');
+        var clients = Array.from(section.querySelectorAll('[data-vpn-v2-client-inspect]')).filter(function (client) { return !client.disabled; });
+        if (!clients.length) { button.disabled = true; return; }
+        var originalChildren = Array.from(button.childNodes);
+        button.addEventListener('click', async function () {
+            if (button.disabled) return;
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            var spinner = document.createElement('span');
+            spinner.className = 'spinner-border spinner-border-sm';
+            spinner.setAttribute('aria-hidden', 'true');
+            var label = document.createElement('span');
+            label.textContent = button.dataset.loading;
+            button.replaceChildren(spinner, label);
+            result.textContent = button.dataset.loading;
+            result.classList.remove('text-danger', 'text-warning');
+            var servers = {};
+            var failed = 0;
+            try {
+                // At most two read-only panel inspections at once; never execute a VPN queue here.
+                for (var index = 0; index < clients.length; index += 2) {
+                    await Promise.all(clients.slice(index, index + 2).map(async function (client) {
+                        var data = await client.vpnV2Inspect();
+                        if (!data || Number(data.connection_id) !== Number(client.dataset.connectionId)
+                            || Number(data.server_id) !== Number(client.dataset.serverId)
+                            || !data.traffic || !['upload', 'download', 'total'].every(function (field) {
+                                return Number.isFinite(data.traffic[field]) && data.traffic[field] >= 0;
+                            })) { failed++; return; }
+                        var server = servers[data.server_id] || {used: 0, upload: 0, download: 0, count: 0, checkedAt: data.checked_at};
+                        server.used += data.traffic.total;
+                        server.upload += data.traffic.upload;
+                        server.download += data.traffic.download;
+                        server.count++;
+                        if (data.checked_at < server.checkedAt) server.checkedAt = data.checked_at;
+                        servers[data.server_id] = server;
+                    }));
+                }
+                var incomplete = failed > 0;
+                table.querySelectorAll('[data-vpn-v2-traffic-state]').forEach(function (state) {
+                    var server = servers[state.dataset.serverId];
+                    if (!server) {
+                        incomplete = true;
+                        state.classList.add('text-warning');
+                        // Keep the last saved counters, never replace unavailable data with zero.
+                        state.textContent = table.dataset.failedLabel;
+                        return;
+                    }
+                    var partial = server.count < Number(state.dataset.connections);
+                    incomplete = incomplete || partial;
+                    state.classList.toggle('text-warning', partial);
+                    if (partial) {
+                        // A subtotal from reachable connections is not the full server usage.
+                        state.textContent = table.dataset.savedLabel + ' · ' + table.dataset.partialLabel;
+                        return;
+                    }
+                    table.querySelectorAll('[data-vpn-v2-traffic-value][data-server-id="' + Number(state.dataset.serverId) + '"]').forEach(function (value) {
+                        value.textContent = formatMetricBytes(server[value.dataset.vpnV2TrafficValue], units);
+                    });
+                    state.textContent = table.dataset.liveLabel + ' · ' + server.checkedAt;
+                });
+                result.classList.toggle('text-warning', incomplete);
+                result.textContent = incomplete ? table.dataset.partialLabel : table.dataset.liveLabel;
+            } catch (error) {
+                result.classList.add('text-danger');
+                result.textContent = table.dataset.failedLabel;
+            } finally {
+                button.replaceChildren.apply(button, originalChildren);
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
             }
         });
     }
@@ -780,5 +916,6 @@
         document.querySelectorAll('[data-vpn-recovery]').forEach(setupServerRecovery);
         document.querySelectorAll('[data-vpn-v2-server-metrics]').forEach(setupServerMetrics);
         document.querySelectorAll('[data-vpn-v2-client-inspect]').forEach(setupClientInspection);
+        document.querySelectorAll('[data-vpn-v2-client-traffic-refresh]').forEach(setupServerTraffic);
     });
 }());

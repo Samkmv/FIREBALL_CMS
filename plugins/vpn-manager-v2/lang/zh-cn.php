@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'vpn_manager_v2_operation_loading' => '正在处理…',
+    'vpn_manager_v2_operation_unknown' => '结果尚未确认。再次执行前请查看操作列表。',
+    'vpn_manager_v2_operation_refresh_failed' => '已收到结果，但无法刷新表格。请手动刷新页面。',
+    'vpn_manager_v2_client_server_traffic' => '各服务器流量用量',
+    'vpn_manager_v2_client_server_traffic_help' => '按服务器汇总此订阅各连接已保存的流量用量。检查仅显示面板当前计数，不修改订阅。',
+    'vpn_manager_v2_client_refresh_traffic' => '刷新流量',
+    'vpn_manager_v2_client_traffic_saved' => 'CMS 已保存数据',
+    'vpn_manager_v2_client_traffic_partial' => '数据不完整',
     'vpn_manager_v2_client_name_title' => 'VPN 客户端名称',
     'vpn_manager_v2_client_name_action' => '保存并同步名称',
     'vpn_manager_v2_client_name_help' => '新名称通过 3x-ui 队列应用到此订阅的连接。面板名称将转写为拉丁字母，并附加国家代码和连接标识。CMS 账户、UUID、订阅链接、期限、限制和流量保持不变。',

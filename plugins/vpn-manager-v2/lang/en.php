@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'vpn_manager_v2_operation_loading' => 'Processing…',
+    'vpn_manager_v2_operation_unknown' => 'The result is not yet known. Check Operations before starting it again.',
+    'vpn_manager_v2_operation_refresh_failed' => 'The result was received, but the table could not be refreshed. Refresh the page manually.',
+    'vpn_manager_v2_client_server_traffic' => 'Traffic usage by server',
+    'vpn_manager_v2_client_server_traffic_help' => 'Saved usage for this subscription’s connections, grouped by server. Inspection shows current panel counters without changing the subscription.',
+    'vpn_manager_v2_client_refresh_traffic' => 'Refresh traffic',
+    'vpn_manager_v2_client_traffic_saved' => 'Saved CMS data',
+    'vpn_manager_v2_client_traffic_partial' => 'Incomplete data',
     'vpn_manager_v2_client_name_title' => 'VPN client name',
     'vpn_manager_v2_client_name_action' => 'Save and synchronize name',
     'vpn_manager_v2_client_name_help' => 'The new name is applied to this subscription’s connections through the 3x-ui queue. Panel names are transliterated with a country code and connection identifier. The CMS account, UUID, subscription link, term, limits and traffic remain unchanged.',

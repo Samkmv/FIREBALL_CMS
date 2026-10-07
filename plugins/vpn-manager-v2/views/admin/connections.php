@@ -80,10 +80,7 @@ foreach ($connections as $connection) {
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
-<div data-vpn-v2-operation-alert
-     data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
-     data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
-     aria-live="polite"></div>
+<?php require __DIR__ . '/partials/operation-alert.php'; ?>
 
 <div class="border rounded-5 p-3 p-md-4">
     <?= view()->renderPartial('admin/partials/table', [

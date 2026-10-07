@@ -41,6 +41,41 @@ final class SubscriptionUsageSummary
         ];
     }
 
+    public static function byServer(array $subscription, array $nodes): array
+    {
+        $servers = [];
+        foreach ($nodes as $node) {
+            if ((int)($node['subscription_id'] ?? 0) !== (int)($subscription['id'] ?? 0)
+                || (string)($node['status'] ?? '') === 'deleted') { continue; }
+            $id = (int)($node['server_id'] ?? 0);
+            if ($id <= 0) continue;
+            $servers[$id] ??= ['id' => $id, 'name' => (string)($node['server_name'] ?? ('#' . $id)),
+                'used' => 0, 'upload' => 0, 'download' => 0, 'known' => false,
+                'sample_known' => false, 'partial' => false, 'connections' => 0, 'timestamps' => []];
+            $server = &$servers[$id];
+            $server['connections']++;
+            $used = max(0, (int)($node['traffic_used_bytes'] ?? 0));
+            $timestamp = strtotime((string)($node['traffic_synced_at'] ?? ''));
+            $server['used'] = self::addBytes($server['used'], $used);
+            $server['known'] = $server['known'] || $used > 0 || $timestamp !== false;
+            if ($timestamp !== false) {
+                $server['sample_known'] = true;
+                $server['timestamps'][] = $timestamp;
+                $server['upload'] = self::addBytes($server['upload'], (int)($node['upload_bytes'] ?? 0));
+                $server['download'] = self::addBytes($server['download'], (int)($node['download_bytes'] ?? 0));
+            }
+            $server['partial'] = $server['partial'] || $timestamp === false
+                || (string)($node['traffic_sync_status'] ?? '') !== 'synced';
+            unset($server);
+        }
+        foreach ($servers as &$server) {
+            $server['checked_at'] = $server['timestamps'] === [] ? null : date('Y-m-d H:i:s', min($server['timestamps']));
+            unset($server['timestamps']);
+        }
+        unset($server);
+        return array_values($servers);
+    }
+
     private static function addBytes(int $total, int $value): int
     {
         $value = max(0, $value);

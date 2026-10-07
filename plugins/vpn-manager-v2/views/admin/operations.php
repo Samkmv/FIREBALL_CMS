@@ -43,10 +43,7 @@ foreach ($operations as $operation) {
 ?>
 <?= view()->renderPartial('admin/shell_open', ['title' => $title ?? '', 'subtitle' => $subtitle ?? '']) ?>
 <?php require __DIR__ . '/partials/tabs.php'; ?>
-<div data-vpn-v2-operation-alert
-     data-vpn-v2-operation-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_generic')) ?>"
-     data-vpn-v2-operation-status-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_error_operation_status')) ?>"
-     aria-live="polite"></div>
+<?php require __DIR__ . '/partials/operation-alert.php'; ?>
 <details class="fb-plugin-details border rounded-5 p-3 p-md-4 mb-4 mt-0">
     <summary class="p-0 fs-6">
         <span>
@@ -56,21 +53,21 @@ foreach ($operations as $operation) {
         <i class="ci-chevron-down" aria-hidden="true"></i>
     </summary>
     <div class="d-flex flex-wrap gap-2 border-top pt-3 mt-3">
-        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/full')) ?>" data-vpn-v2-async-operation>
+        <form class="mw-100" method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync/full')) ?>" data-vpn-v2-async-operation>
             <?= get_csrf_field() ?>
-            <button class="btn btn-dark rounded-pill" type="submit"><i class="ci-refresh-cw me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_full_sync')) ?></button>
+            <button class="btn btn-dark rounded-pill mw-100 text-wrap d-inline-flex align-items-center gap-2" type="submit"><i class="ci-refresh-cw flex-shrink-0" aria-hidden="true"></i><span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_full_sync')) ?></span></button>
         </form>
-        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/retry')) ?>" data-vpn-v2-async-operation>
+        <form class="mw-100" method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/retry')) ?>" data-vpn-v2-async-operation>
             <?= get_csrf_field() ?>
-            <button class="btn btn-outline-warning rounded-pill" type="submit"><i class="ci-rotate-ccw me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_operations')) ?></button>
+            <button class="btn btn-outline-warning rounded-pill mw-100 text-wrap d-inline-flex align-items-center gap-2" type="submit"><i class="ci-rotate-ccw flex-shrink-0" aria-hidden="true"></i><span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_operations')) ?></span></button>
         </form>
-        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/process')) ?>" data-vpn-v2-async-operation>
+        <form class="mw-100" method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/process')) ?>" data-vpn-v2-async-operation>
             <?= get_csrf_field() ?>
-            <button class="btn btn-outline-primary rounded-pill" type="submit"><i class="ci-play me-2"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_process_operations')) ?></button>
+            <button class="btn btn-outline-primary rounded-pill mw-100 text-wrap d-inline-flex align-items-center gap-2" type="submit"><i class="ci-play flex-shrink-0" aria-hidden="true"></i><span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_process_operations')) ?></span></button>
         </form>
     </div>
 </details>
-<div class="border rounded-5 p-3 p-md-4">
+<div class="border rounded-5 p-3 p-md-4" data-vpn-v2-operations-table>
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
         <h2 class="h5 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_tab_operations')) ?></h2>
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations/clear')) ?>"
