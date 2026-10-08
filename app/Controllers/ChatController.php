@@ -795,9 +795,11 @@ class ChatController extends BaseController
         $data = $_POST;
         $newPath = null;
         $oldPath = null;
+        $mediaPaths = [];
         $database = db();
         try {
             $database->beginTransaction();
+            db()->query("SELECT id FROM chat_conversations WHERE id = ? AND type = 'group' FOR UPDATE", [$id]);
             $group = (new GroupChatService())->getForUser($id, $userId);
             if (!$group) throw new \RuntimeException('Нет доступа к группе.');
             $action = (string)request()->post('action');
@@ -814,7 +816,7 @@ class ChatController extends BaseController
                 $data['avatar_path'] = null;
                 $oldPath = $group['avatar_path'];
             }
-            (new GroupChatManagementService())->manage($id, $userId, (string)request()->post('action'), $data);
+            $mediaPaths = (new GroupChatManagementService())->manage($id, $userId, (string)request()->post('action'), $data);
             $database->commit();
         } catch (\Throwable $error) {
             if ($database->inTransaction()) $database->rollBack();
@@ -822,6 +824,7 @@ class ChatController extends BaseController
             response()->json(['status' => false, 'message' => $error->getMessage()], 403);
         }
         if ($oldPath) { try { (new ChatMediaStorage())->delete($oldPath); } catch (\Throwable $error) { log_error_details('Old group avatar cleanup failed', ['conversation_id' => $id], $error); } }
+        foreach ($mediaPaths as $path) { try { (new ChatMediaStorage())->delete($path); } catch (\Throwable $error) { log_error_details('Deleted group media cleanup failed', ['conversation_id' => $id], $error); } }
         if (!(new GroupChatService())->isMember($id, $userId)) response()->json(['status' => true, 'redirect' => base_href('/chat')]);
         response()->json($this->buildConversationPayload($userId, $id));
     }
@@ -871,12 +874,16 @@ class ChatController extends BaseController
     {
         $id = $this->workspaceConversation();
         $userId = (int)get_user()['id'];
-        $ids = (new ChatWorkspaceService())->historyIds($id, $userId, mb_substr((string)request()->get('q'), 0, 200), max(0, (int)request()->get('before')), (int)request()->get('media') === 1);
+        $selected = request()->get('message_ids');
+        $ids = $selected !== null
+            ? array_values(array_unique(array_filter(array_map('intval', array_slice((array)$selected, 0, 300)), static fn(int $value): bool => $value > 0)))
+            : (new ChatWorkspaceService())->historyIds($id, $userId, mb_substr((string)request()->get('q'), 0, 200), max(0, (int)request()->get('before')), (int)request()->get('media') === 1);
+        $limit = $selected !== null ? 300 : 100;
         $group = (new GroupChatService())->getForUser($id, $userId);
-        $messages = $group ? (new GroupChatService())->getMessages($id, $userId, 100, $ids)
-            : $this->chatMessages->getConversationMessages($userId, (int)request()->get('user_id'), 100, $ids);
+        $messages = $group ? (new GroupChatService())->getMessages($id, $userId, $limit, $ids)
+            : $this->chatMessages->getConversationMessages($userId, (int)request()->get('user_id'), $limit, $ids);
         session()->close();
-        response()->json(['status' => true, 'messages' => $messages, 'next_before' => count($ids) === 100 ? min($ids) : null]);
+        response()->json(['status' => true, 'messages' => $messages, 'next_before' => $selected === null && count($ids) === 100 ? min($ids) : null]);
     }
 
     public function forward(): void

@@ -1,10 +1,11 @@
 {
-  "name": "Toy Car Rental",
+  "name": "Прокат машинок",
   "slug": "toy-car-rental",
-  "version": "1.0.2",
-  "description": "Модуль проката детских машинок с таймером, оплатой и статистикой.",
+  "version": "1.1.0",
+  "description": "Прокат детских машинок: компактная панель, фиксированные и поминутные поездки, таймеры, оплата и push-уведомления.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Compact cards with round buttons, configurable durations, asynchronous ride actions, capped timers and scheduled push notifications.",
     "Lock concurrent ride starts and completion; repeated payment cannot alter the recorded amount.",
     "Added a complete children's toy car rental module for FIREBALL CMS.",
     "Implemented fleet management, ride timers, billing, active rides and ride history.",
@@ -13,6 +14,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Компактные карточки с круглыми кнопками, настраиваемые длительности, запуск без перезагрузки, ограничение таймеров и фоновые push-уведомления.",
       "Параллельный запуск и завершение аренды защищены блокировками; повторная оплата не меняет рассчитанную сумму.",
       "Добавлен полноценный модуль проката детских машинок для FIREBALL CMS.",
       "Реализованы управление автопарком, таймер поездки, расчёт оплаты, активные поездки и история.",
@@ -20,6 +22,7 @@
       "При повторной активации плагин теперь восстанавливает отсутствующие таблицы проката и платёжные поля."
     ],
     "en": [
+      "Compact cards with round buttons, configurable durations, asynchronous ride actions, capped timers and scheduled push notifications.",
       "Lock concurrent ride starts and completion; repeated payment cannot alter the recorded amount.",
       "Added a complete children's toy car rental module for FIREBALL CMS.",
       "Implemented fleet management, ride timers, billing, active rides and ride history.",
@@ -27,6 +30,7 @@
       "Reactivating the plugin now recreates missing rental database tables and billing columns."
     ],
     "de": [
+      "Kompakte Karten mit runden Tasten, konfigurierbare Dauern, asynchrone Aktionen, begrenzte Timer und geplante Push-Benachrichtigungen.",
       "Gleichzeitige Starts und Abschlüsse sperren; wiederholte Zahlungen ändern den gespeicherten Betrag nicht.",
       "Ein vollständiges Modul für den Verleih von Kinderautos wurde zu FIREBALL CMS hinzugefügt.",
       "Fuhrparkverwaltung, Fahrtimer, Abrechnung, aktive Fahrten und Fahrtverlauf wurden umgesetzt.",
@@ -34,6 +38,7 @@
       "Bei erneuter Aktivierung stellt das Plugin fehlende Verleihtabellen und Abrechnungsspalten wieder her."
     ],
     "zh-cn": [
+      "紧凑卡片和圆形按钮，可配置时长、异步行程操作、计时上限和后台推送通知。",
       "使用锁保护并发租赁开始和结束；重复支付不会更改已记录金额。",
       "为 FIREBALL CMS 新增完整的儿童玩具车租赁模块。",
       "实现车辆管理、行程计时、费用计算、进行中行程和历史记录。",
@@ -50,5 +55,17 @@
   },
   "requires": {
     "cms": ">=1.7.0"
+  },
+  "name_i18n": {
+    "ru": "Прокат машинок",
+    "en": "Toy Car Rental",
+    "de": "Kinderautoverleih",
+    "zh-cn": "儿童车租赁"
+  },
+  "description_i18n": {
+    "ru": "Прокат детских машинок: компактная панель, фиксированные и поминутные поездки, таймеры, оплата и push-уведомления.",
+    "en": "Toy car rental with compact cards, fixed and per-minute rides, timers, payments and push notifications.",
+    "de": "Kinderautoverleih mit kompakten Karten, Festzeit- und Minutenfahrten, Timern, Zahlungen und Push-Benachrichtigungen.",
+    "zh-cn": "儿童车租赁：紧凑卡片、固定及按分钟行程、计时器、付款和推送通知。"
   }
 }

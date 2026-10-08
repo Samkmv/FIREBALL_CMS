@@ -42,18 +42,30 @@ $router->get('/admin/toy-rental', static function (): string {
     return plugin_view('toy-car-rental', 'admin-dashboard', FireballPluginToyCarRental::viewData('dashboard', [
         'title' => FireballPluginToyCarRental::t('toy_rental_dashboard_title'),
         'cars' => FireballPluginToyCarRental::carsForOperator(),
-        'active_rides' => FireballPluginToyCarRental::activeRides(),
         'stats' => FireballPluginToyCarRental::todayStats(),
         'settings' => $settings,
     ]));
 })->middleware(['auth', 'admin']);
 
+$router->get('/admin/toy-rental/state', static function (): void {
+    header('Cache-Control: no-store');
+    response()->json(FireballPluginToyCarRental::operatorState());
+})->middleware(['auth', 'admin']);
+
 $router->post('/admin/toy-rental/rides/start', static function () use ($toyRentalRedirect): void {
     try {
         FireballPluginToyCarRental::startRide(request()->getData());
+        if (request()->isAjax()) {
+            response()->json(array_merge(FireballPluginToyCarRental::operatorState(), [
+                'message' => FireballPluginToyCarRental::t('toy_rental_flash_ride_started'),
+            ]));
+        }
         session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_ride_started'));
     } catch (Throwable $exception) {
         log_error_details('Toy rental start ride failed', [], $exception);
+        if (request()->isAjax()) {
+            response()->json(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
         session()->setFlash('error', $exception->getMessage());
     }
 
@@ -63,9 +75,17 @@ $router->post('/admin/toy-rental/rides/start', static function () use ($toyRenta
 $router->post('/admin/toy-rental/rides/complete', static function () use ($toyRentalRedirect): void {
     try {
         FireballPluginToyCarRental::completeRide((int)request()->post('id'), request()->getData());
+        if (request()->isAjax()) {
+            response()->json(array_merge(FireballPluginToyCarRental::operatorState(), [
+                'message' => FireballPluginToyCarRental::t('toy_rental_flash_ride_completed'),
+            ]));
+        }
         session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_ride_completed'));
     } catch (Throwable $exception) {
         log_error_details('Toy rental complete ride failed', ['Ride' => request()->post('id')], $exception);
+        if (request()->isAjax()) {
+            response()->json(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
         session()->setFlash('error', $exception->getMessage());
     }
 
@@ -166,7 +186,7 @@ $router->post('/admin/toy-rental/cars/hide', static function () use ($toyRentalR
 $router->get('/admin/toy-rental/active', static function (): string {
     return plugin_view('toy-car-rental', 'rides-active', FireballPluginToyCarRental::viewData('active', [
         'title' => FireballPluginToyCarRental::t('toy_rental_active_title'),
-        'rides' => FireballPluginToyCarRental::activeRides(),
+        'cars' => FireballPluginToyCarRental::carsForOperator(),
     ]));
 })->middleware(['auth', 'admin']);
 

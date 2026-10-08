@@ -26,7 +26,7 @@
         ?>
         <?php foreach ($cards as $card): ?>
             <div class="col-md-6 col-xl-4">
-                <div class="border rounded-5 p-4 h-100">
+                <div class="fb-card p-4 h-100">
                     <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                         <span class="text-body-secondary"><?= htmlSC((string)$card[0]) ?></span>
                         <i class="<?= htmlSC((string)$card[2]) ?> text-body-tertiary"></i>

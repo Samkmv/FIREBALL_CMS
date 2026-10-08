@@ -5,20 +5,27 @@
 
     <?php require __DIR__ . '/tabs.php'; ?>
 
-    <form class="border rounded-5 p-3 p-md-4" action="<?= base_href('/admin/toy-rental/settings') ?>" method="post">
+    <form class="fb-card p-3 p-md-4" action="<?= base_href('/admin/toy-rental/settings') ?>" method="post">
         <?= get_csrf_field() ?>
         <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label" for="toyFixedDurations"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_fixed_durations')) ?></label>
+                <input class="form-control" id="toyFixedDurations" type="text" name="fixed_durations" required value="<?= htmlSC(implode(', ', $settings['fixed_durations'])) ?>" placeholder="5, 10, 15, 30">
+                <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_fixed_durations_hint')) ?></div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="toyMaxRide"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_max_ride')) ?></label>
+                <input class="form-control" id="toyMaxRide" type="number" name="max_ride_minutes" min="1" max="1440" required value="<?= (int)$settings['max_ride_minutes'] ?>">
+                <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_max_ride_hint')) ?></div>
+            </div>
             <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_default_duration')) ?></label>
                 <input class="form-control" type="number" name="default_duration" min="1" step="1" value="<?= (int)$settings['default_duration'] ?>">
             </div>
             <div class="col-md-4">
-                <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_default_price')) ?></label>
-                <input class="form-control" type="number" name="default_price" min="0" step="0.01" value="<?= htmlSC((string)$settings['default_price']) ?>">
-            </div>
-            <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_default_minute_price')) ?></label>
                 <input class="form-control" type="number" name="default_minute_price" min="0" step="0.01" value="<?= htmlSC((string)$settings['default_minute_price']) ?>">
+                <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_fixed_price_formula')) ?></div>
             </div>
             <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_currency')) ?></label>
@@ -45,7 +52,7 @@
                 </div>
             </div>
         </div>
-        <button class="btn btn-dark rounded-pill mt-4" type="submit"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_save')) ?></button>
+        <button class="btn btn-primary mt-4" type="submit"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_save')) ?></button>
     </form>
 
 <?= view()->renderPartial('admin/shell_close') ?>

@@ -12,13 +12,14 @@ final class GroupChatManagementService
     }
 
     /** Caller wraps mutations in a transaction; lock the group to serialize role changes. */
-    public function manage(int $id, int $actorId, string $action, array $data): void
+    public function manage(int $id, int $actorId, string $action, array $data): array
     {
         db()->query("SELECT id FROM chat_conversations WHERE id = ? AND type = 'group' FOR UPDATE", [$id]);
         $group = (new GroupChatService())->getForUser($id, $actorId);
         if (!$group) throw new \RuntimeException('Нет доступа к группе.');
         $role = $group['role'];
         $manager = in_array($role, ['owner', 'admin'], true);
+        $mediaPaths = [];
         $targetId = (int)($data['member_id'] ?? 0);
         $target = db()->query('SELECT role FROM chat_members WHERE conversation_id = ? AND user_id = ?', [$id, $targetId])->getColumn();
         if ($action === 'leave') {
@@ -26,7 +27,11 @@ final class GroupChatManagementService
             db()->query('DELETE FROM chat_members WHERE conversation_id = ? AND user_id = ?', [$id, $actorId]);
         } elseif ($action === 'delete') {
             if ($role !== 'owner') throw new \RuntimeException('Удалить группу может только владелец.');
-            db()->query("UPDATE chat_conversations SET type = 'group_deleted' WHERE id = ?", [$id]);
+            $mediaPaths = array_column(db()->query('SELECT attachment_path FROM chat_messages WHERE conversation_id = ? AND attachment_path IS NOT NULL', [$id])->get() ?: [], 'attachment_path');
+            if (!empty($group['avatar_path'])) $mediaPaths[] = $group['avatar_path'];
+            db()->query('UPDATE chat_messages SET deleted_at = COALESCE(deleted_at, ?), deleted_by = COALESCE(deleted_by, ?), attachment_path = NULL, attachment_name = NULL, attachment_type = NULL, attachment_size = NULL WHERE conversation_id = ?', [date('Y-m-d H:i:s'), $actorId, $id]);
+            db()->query('DELETE a FROM chat_attachments a JOIN chat_messages m ON m.id = a.message_id WHERE m.conversation_id = ?', [$id]);
+            db()->query("UPDATE chat_conversations SET type = 'group_deleted', avatar_path = NULL WHERE id = ?", [$id]);
             db()->query('DELETE FROM chat_members WHERE conversation_id = ?', [$id]);
         } elseif ($action === 'transfer') {
             if ($role !== 'owner' || !$target || $targetId === $actorId) throw new \RuntimeException('Выберите участника для передачи владения.');
@@ -58,6 +63,8 @@ final class GroupChatManagementService
         // Revoked members cannot keep publishing typing state.
         db()->query('DELETE t FROM chat_typing_states t LEFT JOIN chat_members cm ON cm.conversation_id = t.conversation_id AND cm.user_id = t.user_id WHERE t.conversation_id = ? AND cm.user_id IS NULL', [$id]);
         (new ChatWorkspaceService())->bump($id);
+        // Delete encrypted objects only after the caller commits the database transaction.
+        return array_values(array_unique(array_filter($mediaPaths)));
     }
 
     public function messageAction(int $id, int $actorId, string $action, array $data): array

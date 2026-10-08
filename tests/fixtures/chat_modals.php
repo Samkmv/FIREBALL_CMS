@@ -40,13 +40,14 @@ const vv=new EventTarget();Object.assign(vv,{height:innerHeight,offsetTop:0,scal
 </script></head><body>
 <div id="fixtureControls"><strong>Проверка окон CMS • тестовые данные</strong><output id="results">Проверка…</output><button class="btn btn-outline-primary" id="showAudit">Открыть тестовый журнал</button></div>
 <?php eval('?>' . substr($template,$begin,$end-$begin)); ?>
+<?php $chat_active_group = ['title' => 'Тестовая группа']; require dirname(__DIR__, 2) . '/themes/default/partials/chat/workspace.php'; ?>
 <script src="<?= $assets ?>/bootstrap/js/bootstrap.bundle.min.js"></script><script src="<?= $assets ?>/js/app-viewport.js"></script><script src="<?= $assets ?>/js/chat-viewport.js"></script>
 <script>
 const result=document.querySelector('#results');
 let checks=0;
 const check=(ok,text)=>{checks++;if(!ok)throw new Error(text);};
 const frames=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-const modalIds=['chatAuditModal','chatAttachmentModal','chatConfirmModal','chatCreateGroupModal'];
+const modalIds=['chatAuditModal','chatAttachmentModal','chatConfirmModal','chatCreateGroupModal','chatGroupSettingsModal','chatGalleryModal','chatForwardModal'];
 const instances=Object.fromEntries(modalIds.map(id=>[id,bootstrap.Modal.getOrCreateInstance(document.getElementById(id))]));
 const opened=id=>new Promise(resolve=>{const e=document.getElementById(id);e.addEventListener('shown.bs.modal',resolve,{once:true});instances[id].show();});
 const closed=id=>new Promise(resolve=>{const e=document.getElementById(id);e.addEventListener('hidden.bs.modal',resolve,{once:true});instances[id].hide();});
@@ -55,6 +56,10 @@ audit.innerHTML='<div class="d-flex flex-column gap-3">'+Array.from({length:15},
 document.querySelector('[data-chat-preview-modal-body]').innerHTML='<pre class="chat-preview-modal__text">'+('Тестовый документ — длинное содержимое\n'.repeat(80))+'</pre>';
 document.querySelector('[data-chat-confirm-message]').textContent='Подтверждение с длинным описанием. '.repeat(45);
 document.querySelector('[data-chat-confirm-reason-wrap]').classList.remove('d-none');
+document.querySelector('[data-chat-group-member-list]').innerHTML=Array.from({length:24},(_,i)=>`<div class="chat-group-settings-member"><div class="flex-grow-1"><strong>Тестовый участник ${i+1}</strong><div class="small text-body-secondary">Участник</div></div><select class="form-select form-select-sm"><option>Участник</option></select><button class="btn btn-sm btn-outline-danger" type="button" aria-label="Удалить участника"><i class="ci-trash"></i></button></div>`).join('');
+document.querySelector('[data-chat-gallery-list]').innerHTML=Array.from({length:24},(_,i)=>`<div class="border rounded-4 p-3 text-break">Тестовый файл ${i+1}<p class="small text-body-secondary mb-0">Изображение или документ</p></div>`).join('');
+document.querySelector('[data-chat-forward-preview]').textContent='Тестовое длинное сообщение для пересылки. '.repeat(100);
+document.querySelector('[data-chat-forward-form] select').innerHTML='<option>Тестовая группа</option>';
 document.addEventListener('submit',e=>e.preventDefault());
 const geometry=el=>el.getBoundingClientRect();
 function inspect(id, keyboard) {

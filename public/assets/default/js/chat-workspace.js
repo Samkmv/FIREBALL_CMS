@@ -26,6 +26,8 @@ $(function () {
     let galleryBefore = null;
     let galleryPending = false;
     let historyPending = false;
+    let historyExhausted = false;
+    let historyRefreshVersion = 0;
     let forwardId = 0;
     const historyButton = $('<button type="button" class="btn btn-sm btn-outline-secondary chat-history-more">Более ранние сообщения</button>').insertBefore(app.find('[data-chat-messages]'));
     const searchMore = $('<button type="button" class="btn btn-sm btn-outline-secondary d-none">Ещё результаты</button>').appendTo(app.find('.chat-thread__searchbar'));
@@ -56,7 +58,9 @@ $(function () {
         rows.each(function () {
             const row = $(this);
             row.find('.chat-preference-mark').remove();
-            if (preferences.pinned || preferences.muted) row.find('.fw-semibold').first().prepend(`<span class="chat-preference-mark" aria-label="${preferences.pinned ? 'Закреплён' : 'Без уведомлений'}">${preferences.pinned ? '📌 ' : ''}${preferences.muted ? '🔕 ' : ''}</span>`);
+            const marks = (preferences.pinned ? '<span class="chat-preference-mark me-1" title="Закреплён" aria-label="Закреплён"><i class="ci-paperclip" aria-hidden="true"></i></span>' : '')
+                + (preferences.muted ? '<span class="chat-preference-mark me-1 text-body-secondary" title="Без уведомлений" aria-label="Без уведомлений"><i class="ci-bell-off" aria-hidden="true"></i></span>' : '');
+            row.find('.fw-semibold').first().prepend(marks);
             const list = row.parent();
             list.children('[data-chat-contact], [data-chat-group-link]').sort((a, b) => Number(b.dataset.pinned || 0) - Number(a.dataset.pinned || 0)).appendTo(list);
         });
@@ -80,7 +84,7 @@ $(function () {
     input.on('blur', saveDraft);
     $(document).on('chat:before-switch', () => { clearTimeout(draftTimer); saveDraft(); draftLoadedFor = 0; });
     $(document).on('chat:sent', () => { clearTimeout(draftTimer); saveDraft(); });
-    $(document).on('chat:active-contact-changed', () => { draftLoadedFor = 0; lastRevision = null; searchBefore = null; searchMore.addClass('d-none'); historyButton.removeClass('d-none'); });
+    $(document).on('chat:active-contact-changed', () => { draftLoadedFor = 0; lastRevision = null; searchBefore = null; historyExhausted = false; historyRefreshVersion++; searchMore.addClass('d-none'); historyButton.removeClass('d-none'); });
 
     const groupRoleLabel = role => ({owner: 'Владелец', admin: 'Администратор', member: 'Участник'}[role] || 'Участник');
     const renderMembers = () => {
@@ -136,7 +140,10 @@ $(function () {
     groupModal.find('[data-chat-group-delete]').on('click', () => confirmGroup('Удалить группу? Все участники потеряют доступ к ней.', 'delete'));
 
     $(document).on('chat:payload', (_, response) => {
-        if (lastRevision !== null && lastRevision !== response.revision && app.find('[data-chat-message-search]').val()) search(false);
+        if (lastRevision !== null && lastRevision !== response.revision) {
+            if (app.find('[data-chat-message-search]').val()) search(false);
+            if (thread.olderIds.length) refreshOlder();
+        }
         lastRevision = response.revision;
         if (response.preferences) {
             preferences = response.preferences;
@@ -158,7 +165,7 @@ $(function () {
             if (app.find('[data-chat-current-avatar]').attr('src') !== avatarUrl) app.find('[data-chat-current-avatar]').attr('src', avatarUrl);
             app.find('[data-chat-typing-indicator] > span').first().text(response.typing?.names?.length ? `${response.typing.names.join(', ')} печатает…` : 'Печатает…');
         }
-        historyButton.toggleClass('d-none', thread.messages.length < 100 || Boolean(app.find('[data-chat-message-search]').val()));
+        historyButton.toggleClass('d-none', historyExhausted || thread.messages.length < 100 || Boolean(app.find('[data-chat-message-search]').val()));
 
     });
     $(document).on('click', '[data-chat-preference]', function () {
@@ -179,9 +186,20 @@ $(function () {
         const id = thread.activeId;
         historyPending = true; historyButton.prop('disabled', true);
         $.getJSON(app.data('history-url'), {...params(), before: Math.min(...ids)})
-            .done(response => { if (id !== thread.activeId) return; thread.prepend(response.messages || []); historyButton.toggleClass('d-none', !response.next_before); })
+            .done(response => { if (id !== thread.activeId) return; thread.prepend(response.messages || []); historyExhausted = !response.next_before; historyButton.toggleClass('d-none', historyExhausted); })
             .fail(request => window.toastr?.error(errorText(request)))
             .always(() => { historyPending = false; historyButton.prop('disabled', false); });
+    };
+    const refreshOlder = async () => {
+        const ids = thread.olderIds;
+        const activeId = thread.activeId;
+        const version = ++historyRefreshVersion;
+        try {
+            const requests = [];
+            for (let start = 0; start < ids.length; start += 300) requests.push($.getJSON(app.data('history-url'), {...params(), message_ids: ids.slice(start, start + 300)}));
+            const responses = await Promise.all(requests);
+            if (activeId === thread.activeId && version === historyRefreshVersion) thread.refreshOlder(ids, responses.flatMap(response => response.messages || []));
+        } catch (_) { /* The next conversation revision retries; preserve the readable history on a network failure. */ }
     };
     historyButton.on('click', loadHistory);
     const search = (append = false) => {
@@ -200,7 +218,7 @@ $(function () {
             .fail(request => { if (request.statusText !== 'abort') window.toastr?.error(errorText(request)); })
             .always(() => searchMore.prop('disabled', false));
     };
-    app.find('[data-chat-message-search]').on('input', () => { historyButton.toggleClass('d-none', Boolean(app.find('[data-chat-message-search]').val()) || thread.messages.length < 100); clearTimeout(searchTimer); searchTimer = setTimeout(() => search(false), 250); });
+    app.find('[data-chat-message-search]').on('input', () => { historyButton.toggleClass('d-none', historyExhausted || Boolean(app.find('[data-chat-message-search]').val()) || thread.messages.length < 100); clearTimeout(searchTimer); searchTimer = setTimeout(() => search(false), 250); });
     searchMore.on('click', () => search(true));
 
     const loadGallery = (append = false) => {

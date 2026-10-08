@@ -728,7 +728,9 @@
                                         <span class="min-w-0 flex-grow-1">
                                             <span class="d-flex align-items-start justify-content-between gap-2">
                                                 <span class="d-block text-truncate fw-semibold">
-                                                    <?= !empty($group['pinned']) ? '📌 ' : '' ?><?= htmlSC($group['title']) ?><?= !empty($group['muted_until']) && strtotime($group['muted_until']) > time() ? ' · 🔕' : '' ?>
+                                                    <?php if (!empty($group['pinned'])): ?><span class="chat-preference-mark me-1" title="Закреплён" aria-label="Закреплён"><i class="ci-paperclip" aria-hidden="true"></i></span><?php endif; ?>
+                                                    <?php if (!empty($group['muted_until']) && strtotime($group['muted_until']) > time()): ?><span class="chat-preference-mark me-1 text-body-secondary" title="Без уведомлений" aria-label="Без уведомлений"><i class="ci-bell-off" aria-hidden="true"></i></span><?php endif; ?>
+                                                    <?= htmlSC($group['title']) ?>
                                                 </span>
                                                 <span class="badge text-bg-danger rounded-pill flex-shrink-0 <?= (int)($group['unread_count'] ?? 0) > 0 ? '' : 'd-none' ?>">
                                                     <?= (int)($group['unread_count'] ?? 0) ?>
@@ -788,7 +790,11 @@
                                         </span>
                                         <span class="min-w-0 flex-grow-1">
                                             <span class="d-flex align-items-start justify-content-between gap-2">
-                                                <span class="d-block text-truncate fw-semibold"><?= htmlSC($contact['name']) ?><?= render_public_verified_badge($contact['role'] ?? null) ?></span>
+                                                <span class="d-block text-truncate fw-semibold">
+                                                    <?php if (!empty($contact['preferences']['pinned'])): ?><span class="chat-preference-mark me-1" title="Закреплён" aria-label="Закреплён"><i class="ci-paperclip" aria-hidden="true"></i></span><?php endif; ?>
+                                                    <?php if (!empty($contact['preferences']['muted_until']) && strtotime($contact['preferences']['muted_until']) > time()): ?><span class="chat-preference-mark me-1 text-body-secondary" title="Без уведомлений" aria-label="Без уведомлений"><i class="ci-bell-off" aria-hidden="true"></i></span><?php endif; ?>
+                                                    <?= htmlSC($contact['name']) ?><?= render_public_verified_badge($contact['role'] ?? null) ?>
+                                                </span>
                                                 <span
                                                     class="badge text-bg-danger rounded-pill flex-shrink-0 chat-contact-unread-badge <?= (int)($contact['unread_count'] ?? 0) > 0 ? '' : 'd-none' ?>"
                                                     data-chat-contact-unread="<?= (int)$contact['id'] ?>"

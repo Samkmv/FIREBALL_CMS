@@ -1,12 +1,12 @@
 <?= view()->renderPartial('admin/shell_open', [
     'title' => FireballPluginToyCarRental::t('toy_rental_cars_title'),
     'subtitle' => FireballPluginToyCarRental::t('toy_rental_cars_subtitle'),
-    'actions' => '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="' . base_href('/admin/toy-rental/cars/create') . '"><i class="ci-plus"></i>' . htmlSC(FireballPluginToyCarRental::t('toy_rental_add_car')) . '</a>',
+    'actions' => '<a class="btn btn-primary d-inline-flex align-items-center gap-2" href="' . base_href('/admin/toy-rental/cars/create') . '"><i class="ci-plus"></i>' . htmlSC(FireballPluginToyCarRental::t('toy_rental_add_car')) . '</a>',
 ]) ?>
 
     <?php require __DIR__ . '/tabs.php'; ?>
 
-    <div class="table-responsive border rounded-5" data-admin-simplebar data-simplebar-auto-hide="false">
+    <div class="table-responsive" data-admin-simplebar data-simplebar-auto-hide="false">
         <table class="table align-middle mb-0">
             <thead>
                 <tr>
@@ -32,8 +32,7 @@
                         <td><?= htmlSC((string)$car['color']) ?></td>
                         <td><span class="badge rounded-pill text-bg-light border"><?= htmlSC(FireballPluginToyCarRental::statusLabel((string)$car['status'])) ?></span></td>
                         <td>
-                            <div><?= number_format((float)$car['price_per_ride'], 2, '.', ' ') ?> <?= htmlSC(FireballPluginToyCarRental::t('toy_rental_price_per_ride_suffix')) ?></div>
-                            <div class="small text-body-secondary"><?= number_format((float)$car['price_per_minute'], 2, '.', ' ') ?> <?= htmlSC(FireballPluginToyCarRental::t('toy_rental_price_per_minute_suffix')) ?></div>
+                            <div><?= number_format(FireballPluginToyCarRental::minutePrice($car, $settings), 2, '.', ' ') ?> <?= htmlSC((string)$settings['currency']) ?> <?= htmlSC(FireballPluginToyCarRental::t('toy_rental_price_per_minute_suffix')) ?></div>
                         </td>
                         <td class="text-end">
                             <div class="dropdown admin-post-actions-dropdown" data-admin-post-actions-dropdown>

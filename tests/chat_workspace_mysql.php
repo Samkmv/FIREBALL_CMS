@@ -46,6 +46,8 @@ try {
     $denied(fn() => $manage->messageAction($id, $owner, 'edit', ['message_id' => $message, 'message' => 'Forbidden']), 'Even owner cannot edit someone else');
     $manage->messageAction($id, $member, 'edit', ['message_id' => $message, 'message' => 'Updated encrypted text']);
     $check($groups->getMessages($id, $owner)[0]['message'] === 'Updated encrypted text', 'Own edit succeeds');
+    $check($groups->getMessages($id, $owner, 300, [$message])[0]['message'] === 'Updated encrypted text', 'Refreshing selected group history returns the updated text');
+    $check($groups->getMessages($id, $owner, 300, [$otherMessage]) === [], 'Selected group history cannot cross the conversation boundary');
     $manage->messageAction($id, $owner, 'react', ['message_id' => $message, 'reaction' => '👍']);
     $check($groups->getMessages($id, $owner)[0]['reactions'][0]['me'], 'Reaction belongs to actor');
     $manage->messageAction($id, $owner, 'react', ['message_id' => $message, 'reaction' => '👍']);
@@ -56,6 +58,8 @@ try {
     $denied(fn() => $manage->messageAction($id, $owner, 'react', ['message_id' => $otherMessage, 'reaction' => '👍']), 'Cross-conversation reaction denied');
     $workspace->update($id, $owner, ['pinned' => 1, 'archived' => 1, 'muted' => 1, 'draft' => 'Private draft']);
     $check($workspace->preferences($id, $owner)['draft'] === 'Private draft', 'Draft decrypts for owner');
+    $workspace->update($id, $owner, ['draft' => "  Draft with lines\n\n "]);
+    $check($workspace->preferences($id, $owner)['draft'] === "  Draft with lines\n\n ", 'Draft preserves leading and trailing whitespace');
     $check($workspace->preferences($id, $member)['draft'] === '', 'Draft isolated per user');
     $check(db()->query('SELECT draft_ciphertext FROM chat_members WHERE conversation_id = ? AND user_id = ?', [$id, $owner])->getColumn() !== 'Private draft', 'Draft encrypted in database');
     $notificationItems = (new App\Models\ChatMessage())->getUnreadNotificationItemsForUser($owner);
@@ -101,8 +105,10 @@ try {
     $check($groups->getForUser($id, $admin)['role'] === 'owner' && $groups->getForUser($id, $owner)['role'] === 'admin', 'Ownership transferred atomically');
     $manage->manage($id, $owner, 'leave', []);
     $check(!$groups->isMember($id, $owner), 'Former owner can leave');
-    $manage->manage($id, $admin, 'delete', []);
+    $deletePaths = $manage->manage($id, $admin, 'delete', []);
     $check(!$groups->getForUser($id, $admin), 'Deleted group inaccessible');
+    $check(in_array($path, $deletePaths, true), 'Group deletion returns encrypted media for cleanup after commit');
+    $check(!(bool)db()->query('SELECT COUNT(*) FROM chat_attachments a JOIN chat_messages m ON m.id = a.message_id WHERE m.conversation_id = ?', [$id])->getColumn(), 'Deleted group has no active attachment metadata');
     echo "PASS {$checks} chat workspace integration checks; database changes rolled back.\n";
 } finally {
     if (db()->inTransaction()) db()->rollBack();

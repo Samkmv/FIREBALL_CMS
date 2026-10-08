@@ -4,6 +4,6 @@
 
 $router->get('/toy-car-rental', static function (): string {
     return plugin_view('toy-car-rental', 'frontend', [
-        'title' => 'Toy Car Rental',
+        'title' => FireballPluginToyCarRental::t('toy_rental_dashboard_title'),
     ]);
 });

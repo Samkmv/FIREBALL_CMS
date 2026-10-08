@@ -38,7 +38,7 @@ $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, login TEXT, e
  CREATE TABLE vpn_v2_subscriptions (id INTEGER PRIMARY KEY, user_id INTEGER, plan_id INTEGER, status TEXT,
  starts_at TEXT, expires_at TEXT, traffic_limit_bytes INTEGER, device_limit INTEGER DEFAULT 3, ip_limit INTEGER DEFAULT 0,
  revision INTEGER DEFAULT 1, config_updated_at TEXT, created_by INTEGER, internal_comment TEXT, last_error TEXT,
- created_at TEXT, updated_at TEXT, manual_customer_name TEXT);
+ created_at TEXT, updated_at TEXT, manual_customer_name TEXT, client_display_name TEXT);
  INSERT INTO vpn_v2_plans VALUES (1, \'Тариф\');
  INSERT INTO users VALUES (1, \'Пользователь\', \'fixture\', \'fixture@example.test\');');
 $past = date('Y-m-d H:i:s', time() - 86400);
@@ -70,7 +70,17 @@ $assert($counts['expired'] === 3 && $counts['active'] === 2, 'Counters use actua
 $assert(Fireball\VpnManagerV2\Support\SubscriptionListFilter::inactiveCount($counts) === 3, 'Inactive counter matches the filter');
 $assert($repository->countAdminList('', 'partial_sync') === 1 && $repository->countAdminList('', 'deleting') === 1, 'Individual error and deletion statuses remain available');
 $assert(Fireball\VpnManagerV2\Support\AdminTableState::sanitize('q=fixture&status=expired&page=2&token=secret') === 'page=2&q=fixture&status=expired', 'Returning from actions retains search and filter, excluding secrets');
-if (($argv[1] ?? '') !== 'render') { echo "PASS subscription status filters, counters, search, pagination and return state\n"; exit; }
+$accessRequests = [[
+    'id' => 17, 'user_id' => 1, 'user_name' => 'Тестовая заявка',
+    'user_login' => 'fixture', 'user_email' => 'fixture@example.test',
+    'requested_at' => '2026-10-08 12:00:00',
+]];
+ob_start();
+require dirname(__DIR__) . '/views/admin/subscriptions.php';
+$accessRequestMarkup = ob_get_clean();
+$assert((bool)preg_match('~<form[^>]+action="/admin/plugins/vpn-manager-v2/subscriptions/access-requests/17/dismiss"[^>]*>.*?<i class="ci-close me-1" aria-hidden="true"></i>~s', $accessRequestMarkup), 'Closing a VPN access request uses the native ci-close icon');
+$assert(!str_contains($accessRequestMarkup, 'class="ci-x me-1"'), 'Access-request card does not retain the old icon');
+if (($argv[1] ?? '') !== 'render') { echo "PASS subscription status filters, counters, search, pagination, return state and access-request icon\n"; exit; }
 function view(): object {
     return new class {
         public function renderPartial(string $name, array $data = []): string {

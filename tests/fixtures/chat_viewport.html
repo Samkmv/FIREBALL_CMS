@@ -35,14 +35,15 @@ body > header.navbar-sticky {height:112px;box-sizing:border-box;padding:47px 8px
 </div></div></div></div></section></main><div id="keyboard">Модель экранной клавиатуры</div>
 <script>
 const app = document.querySelector('.chat-page');
-app.setAttribute(group ? 'data-group-chat-app' : 'data-chat-app', '');
+app.setAttribute('data-chat-app', '');
+app.setAttribute('data-group-id', group ? '1' : '0');
 const messages = document.querySelector('.chat-messages-surface');
-messages.setAttribute(group ? 'data-group-chat-messages' : 'data-chat-messages', '');
+messages.setAttribute('data-chat-messages', '');
 for(let i=0;i<40;i++) messages.insertAdjacentHTML('beforeend', `<div class="chat-message-row chat-message-row--mine"><div class="chat-message-stack"><div class="chat-message-bubble"><div class="chat-message-text">Сообщение ${i+1}</div><div class="chat-message-time">12:00</div></div></div></div>`);
 const input = document.querySelector('textarea');
-input.setAttribute(group ? 'data-group-chat-input' : 'data-chat-message-input', '');
-document.querySelector('form').setAttribute(group ? 'data-group-chat-form' : 'data-chat-form', '');
-for(const file of ['jquery-3.7.1.min.js','app-viewport.js','chat-viewport.js',group?'chat-group.js':'chat.js']) document.write(`<script src="${assetBase}/js/${file}"><\/script>`);
+input.setAttribute('data-chat-message-input', '');
+document.querySelector('form').setAttribute('data-chat-form', '');
+for(const file of ['jquery-3.7.1.min.js','app-viewport.js','chat-viewport.js','chat.js']) document.write(`<script src="${assetBase}/js/${file}"><\/script>`);
 </script>
 <script>
 window.addEventListener('error', e => document.querySelector('#results').textContent = 'ERROR: ' + e.message);
@@ -95,6 +96,28 @@ $(async function () {
         await scenario(Math.min(430,innerHeight-150),0,true);
         check(Math.abs(messages.scrollHeight-messages.clientHeight-messages.scrollTop)<1,'Latest message stays at bottom');
         await scenario(innerHeight,0,false);
+        // Exercise production message rendering with media that arrives late.
+        const history=Array.from({length:130},(_,i)=>({id:i+1,sender_id:0,message:'Проверка загрузки изображения '+(i+1),created_at:'2026-10-08 12:00:00',reactions:[]}));
+        const attachment=url=>({url,name:'Тестовый пиксель',type:'image/png',kind:'image',preview_kind:'image',is_image:true});
+        history[19].attachment=attachment('/delayed-image.png?case=bottom');
+        window.FireballChatThread.prepend(history);
+        let image=messages.querySelector('.chat-message-image');
+        check(!image.complete,'Fixture image arrives after the message payload');
+        await new Promise((resolve,reject)=>{image.addEventListener('load',resolve,{once:true});image.addEventListener('error',reject,{once:true});});
+        await frames();
+        check(Math.abs(messages.scrollHeight-messages.clientHeight-messages.scrollTop)<1,'Late image preserves last-message anchoring');
+        window.FireballChatThread.search(null);
+        image=messages.querySelector('.chat-message-image');
+        check(image.getAttribute('width')==='1' && image.getAttribute('height')==='1','Realtime redraw reserves the known image dimensions');
+        messages.scrollTop=6000;
+        history[19].attachment=attachment('/delayed-image.png?case=reader');
+        window.FireballChatThread.search(history);
+        const row=Array.from(messages.querySelectorAll('[data-chat-message-row]')).find(el=>el.getBoundingClientRect().bottom>messages.getBoundingClientRect().top);
+        const offset=row.getBoundingClientRect().top-messages.getBoundingClientRect().top;
+        image=messages.querySelector('.chat-message-image');
+        await new Promise((resolve,reject)=>{image.addEventListener('load',resolve,{once:true});image.addEventListener('error',reject,{once:true});});
+        await frames();
+        check(Math.abs(row.getBoundingClientRect().top-messages.getBoundingClientRect().top-offset)<1,'Late image preserves the visible reading row');
         results.textContent=`PASS ${checks} • ${group?'группа':'личный'} • ${innerWidth}px`;
         document.title='PASS: '+results.textContent;
     } catch(e) {results.textContent='FAIL: '+e.message;document.title=results.textContent;console.error(e);}

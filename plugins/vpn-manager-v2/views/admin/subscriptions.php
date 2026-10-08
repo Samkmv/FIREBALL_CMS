@@ -183,7 +183,7 @@ foreach ($subscriptions as $subscription) {
                             <?= get_csrf_field() ?>
                             <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
                             <button class="btn btn-sm btn-outline-secondary rounded-pill" type="submit">
-                                <i class="ci-x me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_dismiss')) ?>
+                                <i class="ci-close me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_request_dismiss')) ?>
                             </button>
                         </form>
                     </div>

@@ -9,6 +9,14 @@ const port = Number(process.env.CHAT_VIEWPORT_PORT || 8897);
 const server = http.createServer((request, response) => {
     const url = new URL(request.url, 'http://localhost');
     const pathname = url.pathname;
+    if (pathname === '/delayed-image.png') {
+        // A fixture pixel that deliberately arrives after the message layout.
+        setTimeout(() => {
+            response.writeHead(200, {'Content-Type':'image/png', 'Cache-Control':'no-store'});
+            response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aFYQAAAAASUVORK5CYII=', 'base64'));
+        }, 350);
+        return;
+    }
     if (pathname === '/modals') {
         const php = process.env.PHP_BIN || '/Applications/MAMP/bin/php/php8.2.0/bin/php';
         try {

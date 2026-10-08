@@ -14,6 +14,12 @@ final class FireballPluginToyCarRental implements PluginInterface
 
         foreach (self::defaultSettings() as $key => $value) {
             if (plugin_setting(self::SLUG, $key, null) === null) {
+                if ($key === 'fixed_durations') {
+                    $value = self::fixedDurations(array_merge($value, [(int)plugin_setting(self::SLUG, 'default_duration', 10)]));
+                }
+                if ($key === 'max_ride_minutes') {
+                    $value = max($value, max(self::fixedDurations(plugin_setting(self::SLUG, 'fixed_durations', [5, 10, 15, 30]))));
+                }
                 plugin_setting_set(self::SLUG, $key, $value);
             }
         }
@@ -21,18 +27,20 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public function uninstall(): void
     {
-        // Uninstall is intentionally not exposed in the base plugin UI yet.
+        self::closeOpenRides();
     }
 
     public function activate(): void
     {
         self::ensureDatabaseSchema();
         self::ensureRideSchema();
+        self::expireLongRides(false);
         fireball_event('toy_rental.activated', ['slug' => self::SLUG]);
     }
 
     public function deactivate(): void
     {
+        self::closeOpenRides();
         fireball_event('toy_rental.deactivated', ['slug' => self::SLUG]);
     }
 
@@ -51,8 +59,20 @@ final class FireballPluginToyCarRental implements PluginInterface
             return $menu;
         });
 
-        add_filter('notification_feed_items', [self::class, 'notificationFeedItems'], 10);
+        add_filter('fireball_scheduled_jobs', static function (array $jobs): array {
+            $jobs['toy_rental_expiry'] = [
+                'class' => self::class,
+                'schedule' => '* * * * *',
+                'plugin' => self::SLUG,
+            ];
+            return $jobs;
+        });
         add_filter('admin_dashboard_widgets', [self::class, 'dashboardWidgets'], 10);
+    }
+
+    public function handle(): array
+    {
+        return ['updated' => self::markOverdueRides()];
     }
 
     public static function dashboardWidgets(array $widgets, array $context = []): array
@@ -83,7 +103,8 @@ final class FireballPluginToyCarRental implements PluginInterface
     {
         return [
             'default_duration' => 10,
-            'default_price' => 300,
+            'fixed_durations' => [5, 10, 15, 30],
+            'max_ride_minutes' => 120,
             'default_minute_price' => 50,
             'currency' => '₽',
             'sound_enabled' => true,
@@ -99,9 +120,19 @@ final class FireballPluginToyCarRental implements PluginInterface
             $settings[$key] = plugin_setting(self::SLUG, $key, $default);
         }
 
-        $settings['default_duration'] = max(1, (int)$settings['default_duration']);
-        $settings['default_price'] = self::money($settings['default_price']);
+        $settings['fixed_durations'] = self::fixedDurations($settings['fixed_durations']);
+        $settings['default_duration'] = max(1, min(1440, (int)$settings['default_duration']));
+        if (plugin_setting(self::SLUG, 'fixed_durations', null) === null) {
+            $settings['fixed_durations'] = self::fixedDurations(array_merge($settings['fixed_durations'], [$settings['default_duration']]));
+        }
+        if (!in_array($settings['default_duration'], $settings['fixed_durations'], true)) {
+            $settings['default_duration'] = $settings['fixed_durations'][0];
+        }
         $settings['default_minute_price'] = self::money($settings['default_minute_price']);
+        $settings['max_ride_minutes'] = max(1, min(1440, (int)$settings['max_ride_minutes']));
+        if (plugin_setting(self::SLUG, 'max_ride_minutes', null) === null) {
+            $settings['max_ride_minutes'] = max($settings['max_ride_minutes'], max($settings['fixed_durations']));
+        }
         $settings['currency'] = trim((string)$settings['currency']) ?: '₽';
         $settings['sound_enabled'] = (bool)$settings['sound_enabled'];
         $settings['overdue_push_enabled'] = (bool)$settings['overdue_push_enabled'];
@@ -112,9 +143,19 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function saveSettings(array $data): void
     {
+        $durations = self::fixedDurations($data['fixed_durations'] ?? [5, 10, 15, 30], true);
+        $defaultDuration = max(1, min(1440, (int)($data['default_duration'] ?? 10)));
+        if (!in_array($defaultDuration, $durations, true)) {
+            throw new RuntimeException(self::t('toy_rental_error_default_duration'));
+        }
+        $maxMinutes = max(1, min(1440, (int)($data['max_ride_minutes'] ?? 120)));
+        if (max($durations) > $maxMinutes) {
+            throw new RuntimeException(self::t('toy_rental_error_ride_limit'));
+        }
         $settings = [
-            'default_duration' => max(1, min(1440, (int)($data['default_duration'] ?? 10))),
-            'default_price' => self::money($data['default_price'] ?? 0),
+            'default_duration' => $defaultDuration,
+            'fixed_durations' => $durations,
+            'max_ride_minutes' => $maxMinutes,
             'default_minute_price' => self::money($data['default_minute_price'] ?? 0),
             'currency' => mb_substr(trim((string)($data['currency'] ?? '₽')), 0, 12),
             'sound_enabled' => !empty($data['sound_enabled']),
@@ -129,6 +170,49 @@ final class FireballPluginToyCarRental implements PluginInterface
         foreach ($settings as $key => $value) {
             plugin_setting_set(self::SLUG, $key, $value);
         }
+    }
+
+    public static function fixedDurations(mixed $value, bool $strict = false): array
+    {
+        $items = is_array($value) ? $value : preg_split('/[\s,;]+/u', trim((string)$value), -1, PREG_SPLIT_NO_EMPTY);
+        $durations = [];
+        foreach ($items ?: [] as $item) {
+            $minute = filter_var($item, FILTER_VALIDATE_INT);
+            if ($minute === false || $minute < 1 || $minute > 1440) {
+                if ($strict) {
+                    throw new RuntimeException(self::t('toy_rental_error_fixed_durations'));
+                }
+                continue;
+            }
+            $durations[] = $minute;
+        }
+        $durations = array_values(array_unique($durations));
+        sort($durations);
+        if (!$durations && $strict) {
+            throw new RuntimeException(self::t('toy_rental_error_fixed_durations'));
+        }
+        return $durations ?: [5, 10, 15, 30];
+    }
+
+    public static function minutePrice(array $car, ?array $settings = null): float
+    {
+        $price = self::money($car['price_per_minute'] ?? 0);
+        return $price > 0 ? $price : self::money(($settings ?? self::settings())['default_minute_price']);
+    }
+
+    public static function operatorState(): array
+    {
+        $settings = self::settings();
+        $cards = [];
+        foreach (self::carsForOperator() as $car) {
+            $cards[] = [
+                'car_id' => (int)$car['id'],
+                'ride_id' => (int)($car['active_ride']['id'] ?? 0),
+                'status' => (string)($car['active_ride']['status'] ?? $car['status']),
+                'html' => plugin_view(self::SLUG, 'car-card', ['car' => $car, 'settings' => $settings], false),
+            ];
+        }
+        return ['status' => true, 'cards' => $cards, 'stats' => self::todayStats(), 'max_ride_minutes' => $settings['max_ride_minutes']];
     }
 
     public static function tabs(string $active): array
@@ -209,7 +293,6 @@ final class FireballPluginToyCarRental implements PluginInterface
             'color' => trim((string)($data['color'] ?? '')),
             'status' => self::carStatus((string)($data['status'] ?? 'available')),
             'price_per_minute' => self::money($data['price_per_minute'] ?? 0),
-            'price_per_ride' => self::money($data['price_per_ride'] ?? 0),
             'image' => trim((string)($data['image'] ?? '')),
             'sort_order' => max(0, (int)($data['sort_order'] ?? 0)),
         ];
@@ -221,7 +304,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         if ($id !== null) {
             db()->query(
                 'UPDATE toy_rental_cars
-                 SET name = ?, number = ?, color = ?, status = ?, price_per_minute = ?, price_per_ride = ?, image = ?, sort_order = ?, updated_at = ?
+                 SET name = ?, number = ?, color = ?, status = ?, price_per_minute = ?, image = ?, sort_order = ?, updated_at = ?
                  WHERE id = ?',
                 [
                     $normalized['name'],
@@ -229,7 +312,6 @@ final class FireballPluginToyCarRental implements PluginInterface
                     $normalized['color'],
                     $normalized['status'],
                     $normalized['price_per_minute'],
-                    $normalized['price_per_ride'],
                     $normalized['image'],
                     $normalized['sort_order'],
                     $now,
@@ -241,15 +323,14 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
 
         db()->query(
-            'INSERT INTO toy_rental_cars (name, number, color, status, price_per_minute, price_per_ride, image, sort_order, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO toy_rental_cars (name, number, color, status, price_per_minute, image, sort_order, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $normalized['name'],
                 $normalized['number'],
                 $normalized['color'],
                 $normalized['status'],
                 $normalized['price_per_minute'],
-                $normalized['price_per_ride'],
                 $normalized['image'],
                 $normalized['sort_order'],
                 $now,
@@ -313,13 +394,16 @@ final class FireballPluginToyCarRental implements PluginInterface
         $now = time();
         $startedAt = date('Y-m-d H:i:s', $now);
         $duration = max(1, min(1440, (int)($data['duration_minutes'] ?? $settings['default_duration'])));
+        if ($billingType === 'fixed' && !in_array($duration, $settings['fixed_durations'], true)) {
+            throw new RuntimeException(self::t('toy_rental_error_fixed_durations'));
+        }
+        if ($billingType === 'fixed' && $duration > $settings['max_ride_minutes']) {
+            throw new RuntimeException(self::t('toy_rental_error_ride_limit'));
+        }
         $estimatedMinutes = isset($data['estimated_minutes']) && (string)$data['estimated_minutes'] !== ''
             ? max(1, min(1440, (int)$data['estimated_minutes']))
             : null;
-        $pricePerMinute = self::money($data['price_per_minute'] ?? $settings['default_minute_price'] ?? $car['price_per_minute'] ?? 0);
-        if ($pricePerMinute <= 0) {
-            $pricePerMinute = self::money($settings['default_minute_price'] ?? $car['price_per_minute'] ?? 0);
-        }
+        $pricePerMinute = self::money($data['price_per_minute'] ?? self::minutePrice($car, $settings));
 
         if ($billingType === 'metered') {
             $plannedMinutes = $estimatedMinutes ?: (int)$settings['default_duration'];
@@ -334,7 +418,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         } else {
             $estimatedMinutes = $duration;
             $plannedEndAt = date('Y-m-d H:i:s', $now + $duration * 60);
-            $amount = self::money($data['payment_amount'] ?? $settings['default_price'] ?? $car['price_per_ride'] ?? 0);
+            $amount = self::money($duration * $pricePerMinute);
             $finalAmount = $amount;
             $paymentMethod = self::paymentMethod((string)($data['payment_method'] ?? 'cash'));
             $paymentStatus = self::paymentStatus((string)($data['payment_status'] ?? 'paid'));
@@ -382,7 +466,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
     }
 
-    public static function completeRide(int $rideId, array $data = []): void
+    public static function completeRide(int $rideId, array $data = [], ?int $endedAtOverride = null): bool
     {
 
         $ride = db()->query(
@@ -390,6 +474,9 @@ final class FireballPluginToyCarRental implements PluginInterface
             [$rideId]
         )->getOne();
         if (!$ride) {
+            if ($endedAtOverride !== null) {
+                return false;
+            }
             throw new RuntimeException(self::t('toy_rental_error_ride_not_found'));
         }
 
@@ -399,10 +486,11 @@ final class FireballPluginToyCarRental implements PluginInterface
             $ride = db()->query("SELECT * FROM toy_rental_rides WHERE id = ? AND status IN ('active', 'overdue') LIMIT 1 FOR UPDATE", [$rideId])->getOne();
             if (!$ride) {
                 db()->commit();
-                return;
+                return false;
             }
-            $endedAt = time();
+            $endedAt = min(time(), $endedAtOverride ?? time());
             $startedAt = strtotime((string)$ride['started_at']) ?: $endedAt;
+            $endedAt = max($startedAt, min($endedAt, $startedAt + self::settings()['max_ride_minutes'] * 60));
             $duration = max(1, (int)ceil(($endedAt - $startedAt) / 60));
             $billingType = self::billingType((string)($ride['billing_type'] ?? 'fixed'));
             $pricePerMinute = self::money($ride['price_per_minute'] ?? 0);
@@ -426,6 +514,7 @@ final class FireballPluginToyCarRental implements PluginInterface
                 [date('Y-m-d H:i:s', $endedAt), (int)$ride['car_id']]
             );
             db()->commit();
+            return true;
         } catch (Throwable $exception) {
             if (db()->inTransaction()) {
                 db()->rollBack();
@@ -599,44 +688,70 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function markOverdueRides(): int
     {
-
+        $updated = self::expireLongRides();
         $now = date('Y-m-d H:i:s');
         $newlyOverdue = db()->query(
             "SELECT r.id, r.car_id, r.planned_end_at, c.name AS car_name, c.number AS car_number
              FROM toy_rental_rides r
              INNER JOIN toy_rental_cars c ON c.id = r.car_id
-             WHERE r.status = 'active' AND r.billing_type = 'fixed' AND r.planned_end_at < ?",
+             WHERE r.status = 'active' AND r.billing_type = 'fixed' AND r.planned_end_at <= ?",
             [$now]
         )->get() ?: [];
 
-        db()->query(
-            "UPDATE toy_rental_rides
-             SET status = 'overdue', updated_at = ?
-             WHERE status = 'active' AND billing_type = 'fixed' AND planned_end_at < ?",
-            [$now, $now]
-        );
-
-        if (!empty(self::settings()['overdue_push_enabled'])) {
-            foreach ($newlyOverdue as $ride) {
+        foreach ($newlyOverdue as $ride) {
+            db()->query(
+                "UPDATE toy_rental_rides SET status = 'overdue', updated_at = ? WHERE id = ? AND status = 'active'",
+                [$now, (int)$ride['id']]
+            );
+            if (db()->rowCount() > 0) {
+                $updated++;
                 self::notifyAdminsAboutOverdueRide($ride);
             }
         }
-
-        return count($newlyOverdue);
+        return $updated;
     }
 
-    protected static function notifyAdminsAboutOverdueRide(array $ride): void
+    public static function expireLongRides(bool $notify = true): int
+    {
+        $limit = self::settings()['max_ride_minutes'];
+        $rows = db()->query(
+            "SELECT r.*, c.name AS car_name, c.number AS car_number FROM toy_rental_rides r
+             INNER JOIN toy_rental_cars c ON c.id = r.car_id
+             WHERE r.status IN ('active', 'overdue') AND r.started_at <= ?",
+            [date('Y-m-d H:i:s', time() - $limit * 60)]
+        )->get() ?: [];
+        $updated = 0;
+        foreach ($rows as $ride) {
+            $end = (strtotime((string)$ride['started_at']) ?: time()) + $limit * 60;
+            if (self::completeRide((int)$ride['id'], [], $end)) {
+                $updated++;
+                if ($notify) {
+                    self::notifyAdminsAboutOverdueRide($ride, true);
+                }
+            }
+        }
+        return $updated;
+    }
+
+    private static function closeOpenRides(): void
+    {
+        if (!self::tableExists('toy_rental_rides')) {
+            return;
+        }
+        foreach (db()->query("SELECT id FROM toy_rental_rides WHERE status IN ('active', 'overdue')")->get() ?: [] as $ride) {
+            self::completeRide((int)$ride['id'], [], time());
+        }
+    }
+
+    protected static function notifyAdminsAboutOverdueRide(array $ride, bool $limitReached = false): void
     {
         try {
-            $plannedAt = strtotime((string)($ride['planned_end_at'] ?? '')) ?: time();
-            $minutesOverdue = max(1, (int)floor((time() - $plannedAt) / 60));
             $carLabel = trim((string)($ride['car_name'] ?? '') . ' №' . (string)($ride['car_number'] ?? ''));
 
             \App\Services\NotificationService::createForAdmins([
-                'title' => self::t('toy_rental_notification_overdue_title'),
-                'message' => self::t('toy_rental_notification_overdue_text', [
+                'title' => self::t($limitReached ? 'toy_rental_notification_limit_title' : 'toy_rental_notification_overdue_title'),
+                'message' => self::t($limitReached ? 'toy_rental_notification_limit_text' : 'toy_rental_time_up_message', [
                     'car' => $carLabel,
-                    'minutes' => $minutesOverdue,
                 ]),
                 'type' => 'toy_rental',
                 'action_url' => '/admin/toy-rental',
@@ -646,7 +761,8 @@ final class FireballPluginToyCarRental implements PluginInterface
                     'ride_id' => (int)($ride['id'] ?? 0),
                     'car_id' => (int)($ride['car_id'] ?? 0),
                 ],
-                'store_unread' => false,
+                'store_unread' => true,
+                'push_notification' => (bool)self::settings()['overdue_push_enabled'],
             ]);
         } catch (Throwable $exception) {
             log_error_details('Toy rental overdue notification dispatch failed', [

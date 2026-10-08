@@ -178,6 +178,7 @@ $(function () {
     const state = {
         messages: [],
         olderMessages: [],
+        recentMessages: [],
         searchMessages: null,
         renderedSignature: '',
         messagesRequestId: 0,
@@ -214,6 +215,7 @@ $(function () {
         canViewAudit: String(chatApp.data('can-view-audit')) === '1',
         canDeleteAudit: String(chatApp.data('can-delete-audit')) === '1',
     };
+    const imageDimensions = new Map();
 
     const escapeHtml = (text) => $('<div>').text(text || '').html();
     const escapeRegExp = (text) => String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1136,6 +1138,8 @@ $(function () {
         const standaloneMedia = Boolean(options.standaloneMedia);
 
         if (attachment.is_image) {
+            const dimensions = imageDimensions.get(attachment.url);
+            const imageSize = dimensions ? ` width="${dimensions.width}" height="${dimensions.height}"` : '';
             return `
                 <div class="chat-message-media ${standaloneMedia ? 'chat-message-media--standalone' : 'mt-2'}">
                     <button
@@ -1149,7 +1153,7 @@ $(function () {
                         data-preview-extension="${extension}"
                         style="cursor: zoom-in;"
                     >
-                        <img class="chat-message-image" src="${url}" alt="${name}">
+                        <img class="chat-message-image" src="${url}" alt="${name}"${imageSize}>
                     </button>
                 </div>
             `;
@@ -1865,10 +1869,27 @@ $(function () {
 
         if (shouldStickToBottom) {
             messagesBox.scrollTop(box.scrollHeight);
-            return;
+        } else {
+            messagesBox.scrollTop(previousScrollTop);
         }
-
-        messagesBox.scrollTop(previousScrollTop);
+        // Protected images arrive after the message payload. Keep the same
+        // visible row (or the last message) while their intrinsic size resolves.
+        let expectedScrollTop = box.scrollTop;
+        const anchorRow = Array.from(box.querySelectorAll('[data-chat-message-row]')).find(row => row.getBoundingClientRect().bottom > box.getBoundingClientRect().top);
+        const anchorOffset = anchorRow ? anchorRow.getBoundingClientRect().top - box.getBoundingClientRect().top : 0;
+        messagesBox.find('.chat-message-image').each(function () {
+            const image = this;
+            const loaded = () => {
+                if (!image.isConnected || !image.naturalWidth) return;
+                imageDimensions.set(image.getAttribute('src'), {width: image.naturalWidth, height: image.naturalHeight});
+                if (Math.abs(box.scrollTop - expectedScrollTop) > 1) return;
+                if (shouldStickToBottom) box.scrollTop = box.scrollHeight;
+                else if (anchorRow?.isConnected) box.scrollTop += anchorRow.getBoundingClientRect().top - box.getBoundingClientRect().top - anchorOffset;
+                expectedScrollTop = box.scrollTop;
+            };
+            if (image.complete) loaded();
+            else image.addEventListener('load', loaded, {once: true});
+        });
     };
 
     const setPreviewModalFallback = (text) => {
@@ -1958,13 +1979,15 @@ $(function () {
         });
     };
 
+    const mergeHistory = (older, recent) => Array.from(new Map([...older, ...recent].map(item => [Number(item.id), item])).values()).sort((a, b) => Number(a.id) - Number(b.id));
     const applyPayload = (response, options = {}) => {
         if (!response || !response.status) {
             return;
         }
 
         state.messagesLoadErrorShown = false;
-        state.messages = [...state.olderMessages, ...(Array.isArray(response.messages) ? response.messages : [])].filter((item, index, list) => list.findIndex(other => Number(other.id) === Number(item.id)) === index);
+        state.recentMessages = Array.isArray(response.messages) ? response.messages : [];
+        state.messages = mergeHistory(state.olderMessages, state.recentMessages);
         if (response.permissions) {
             state.canModerate = Boolean(response.permissions.can_moderate);
             state.canBulkDelete = Boolean(response.permissions.can_bulk_delete);
@@ -2174,6 +2197,7 @@ $(function () {
         $(document).trigger('chat:before-switch');
         if (groupMode) { window.location.assign(new URL(`../chat?user_id=${Number(button.data('user-id'))}`, window.location.href)); return; }
         state.olderMessages = [];
+        state.recentMessages = [];
         state.searchMessages = null;
         const previousContactId = activeContactId();
         stopLocalTyping(previousContactId, true);
@@ -2334,6 +2358,9 @@ $(function () {
                 }
 
                 if (contactId === activeContactId()) {
+                    const removed = new Set(messageIds.map(Number));
+                    state.olderMessages = state.olderMessages.filter(item => !removed.has(Number(item.id)));
+                    if (state.searchMessages) state.searchMessages = state.searchMessages.filter(item => !removed.has(Number(item.id)));
                     state.selectedIds.clear();
                     state.messagesRequestId += 1;
                     applyPayload(response, { force: true });
@@ -2379,6 +2406,8 @@ $(function () {
                 }
 
                 if (contactId === activeContactId()) {
+                    state.olderMessages = [];
+                    if (state.searchMessages) state.searchMessages = [];
                     state.selectedIds.clear();
                     state.selectionMode = false;
                     syncSelectionControls();
@@ -2946,11 +2975,18 @@ $(function () {
     window.FireballChatThread = {
         get activeId() { return activeContactId(); },
         get messages() { return [...state.messages, ...(state.searchMessages || [])]; },
+        get olderIds() { return state.olderMessages.map(item => Number(item.id)); },
         groupMode,
         reload: () => loadMessages({force: true}),
         confirm: showConfirm,
         preview: openAttachmentPreview,
         search: messages => { state.searchMessages = messages; renderMessages(state.messages, Number(chatApp.data('current-user-id')), {force: true}); },
+        refreshOlder: (ids, messages) => {
+            const requested = new Set(ids);
+            state.olderMessages = mergeHistory(state.olderMessages.filter(item => !requested.has(Number(item.id))), messages);
+            state.messages = mergeHistory(state.olderMessages, state.recentMessages);
+            renderMessages(state.messages, Number(chatApp.data('current-user-id')));
+        },
         prepend: messages => {
             const box = messagesBox[0]; const height = box.scrollHeight; const top = box.scrollTop;
             state.olderMessages = [...messages, ...state.olderMessages].filter((item, index, list) => list.findIndex(other => Number(other.id) === Number(item.id)) === index);

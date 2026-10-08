@@ -34,7 +34,7 @@ $returnTo = current_url_with_query();
 
     <?php require __DIR__ . '/tabs.php'; ?>
 
-    <form class="border rounded-5 p-3 p-md-4 mb-4" method="get" action="<?= base_href('/admin/toy-rental/rides') ?>">
+    <form class="fb-card p-3 p-md-4 mb-4" method="get" action="<?= base_href('/admin/toy-rental/rides') ?>">
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_filter_period')) ?></label>
@@ -62,7 +62,7 @@ $returnTo = current_url_with_query();
                 </select>
             </div>
             <div class="col-md-2">
-                <button class="btn btn-dark rounded-pill w-100" type="submit"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_filter_show')) ?></button>
+                <button class="btn btn-primary w-100" type="submit"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_filter_show')) ?></button>
             </div>
             <div class="col-md-3">
                 <select class="form-select" name="billing_type" aria-label="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_type')) ?>">
@@ -95,7 +95,7 @@ $returnTo = current_url_with_query();
         </div>
     </form>
 
-    <div class="table-responsive border rounded-5" data-admin-simplebar data-simplebar-auto-hide="false">
+    <div class="table-responsive" data-admin-simplebar data-simplebar-auto-hide="false">
         <table class="table align-middle mb-0">
             <thead>
                 <tr>
@@ -166,7 +166,7 @@ $returnTo = current_url_with_query();
                                             <option value="<?= htmlSC((string)$key) ?>" <?= (string)$ride['payment_method'] === (string)$key ? 'selected' : '' ?>><?= htmlSC($label) ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <button class="btn btn-sm btn-dark rounded-pill" type="submit">
+                                    <button class="btn btn-sm btn-primary" type="submit">
                                         <?= htmlSC(FireballPluginToyCarRental::t('toy_rental_mark_paid')) ?>
                                     </button>
                                 </form>
