@@ -35,14 +35,10 @@ $value = static fn(string $key, mixed $default = ''): string => htmlSC((string)(
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-8">
+            <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_field_price_per_minute')) ?></label>
                 <input class="form-control" type="number" name="price_per_minute" value="<?= $value('price_per_minute', $settings['default_minute_price'] ?? '0') ?>" min="0" step="0.01">
                 <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_fixed_price_formula')) ?></div>
-            </div>
-            <div class="col-md-8">
-                <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_field_image')) ?></label>
-                <input class="form-control" type="text" name="image" value="<?= $value('image') ?>" placeholder="/uploads/toy-rental/car-01.jpg">
             </div>
             <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_field_sort_order')) ?></label>

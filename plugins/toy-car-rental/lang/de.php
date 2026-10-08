@@ -184,7 +184,7 @@ return [
     'toy_rental_active_title' => 'Aktive Fahrten',
     'toy_rental_active_subtitle' => 'Alle laufenden und überzogenen Fahrten.',
     'toy_rental_active_empty' => 'Keine aktiven Fahrten',
-    'toy_rental_notification_source' => 'Verleih',
+    'toy_rental_notification_source' => 'Kinderautoverleih',
     'toy_rental_notification_overdue_title' => 'Fahrzeit ist abgelaufen',
     'toy_rental_notification_overdue_text' => ':car: :minutes Min. überzogen.',
     'toy_rental_frontend_description' => 'Das Kinderauto-Verleihmodul ist als FIREBALL CMS Plugin verbunden.',
@@ -204,4 +204,6 @@ return [
     'toy_rental_notification_limit_title' => 'Fahrt am Zeitlimit beendet',
     'toy_rental_notification_limit_text' => ':car: Maximale Dauer erreicht. Die Fahrt ist beendet; Rückgabe und Zahlung prüfen.',
     'toy_rental_fixed_price_formula' => 'Festzeitfahrt: gewählte Minuten × Minutenpreis.',
+    'toy_rental_stats_transfer' => 'Per Überweisung',
+    'toy_rental_error_payment_method' => 'Wählen Sie Barzahlung oder Überweisung.',
 ];

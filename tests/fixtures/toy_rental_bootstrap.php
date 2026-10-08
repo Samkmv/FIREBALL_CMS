@@ -23,6 +23,7 @@ namespace {
     function htmlSC(mixed $value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
     function base_href(string $path): string { return ($GLOBALS['toyLocale'] === 'ru' ? '' : '/' . $GLOBALS['toyLocale']) . $path; }
     function get_csrf_field(): string { return '<input type="hidden" name="needCSRFToken" value="toy-fixture">'; }
+    function current_url_with_query(): string { return base_href('/admin/toy-rental/rides'); }
     function plugin_view(string $slug, string $view, array $data = [], bool $layout = true): string {
         extract($data, EXTR_SKIP); ob_start(); require dirname(__DIR__, 2) . '/plugins/toy-car-rental/views/' . $view . '.php'; return ob_get_clean();
     }

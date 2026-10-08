@@ -27,9 +27,14 @@ final class ToyDb {
         } elseif (str_starts_with($sql, 'SELECT id FROM toy_rental_rides WHERE car_id')) {
             $this->rows = array_values(array_filter($this->rides, fn($r) => $r['car_id'] === $args[0] && in_array($r['status'], ['active', 'overdue'], true)));
         } elseif (str_starts_with($sql, 'SELECT * FROM toy_rental_rides WHERE id')) {
-            if (isset($this->rides[$args[0]]) && in_array($this->rides[$args[0]]['status'], ['active', 'overdue'], true)) $this->rows[] = $this->rides[$args[0]];
+            $ride = $this->rides[$args[0]] ?? null;
+            if ($ride && (str_contains($sql, "status = 'completed'")
+                ? $ride['status'] === 'completed' && $ride['payment_status'] === 'unpaid'
+                : in_array($ride['status'], ['active', 'overdue'], true))) $this->rows[] = $ride;
         } elseif (str_starts_with($sql, 'SELECT r.*, c.name')) {
-            $this->rows = array_values(array_filter($this->rides, fn($r) => in_array($r['status'], ['active', 'overdue'], true) && $r['started_at'] <= $args[0]));
+            $this->rows = array_values(array_filter($this->rides, fn($r) => str_contains($sql, 'r.started_at >= ?')
+                ? $r['started_at'] >= $args[0] && $r['started_at'] < $args[1]
+                : in_array($r['status'], ['active', 'overdue'], true) && $r['started_at'] <= $args[0]));
         } elseif (str_starts_with($sql, 'SELECT r.id, r.car_id')) {
             $this->rows = array_values(array_filter($this->rides, fn($r) => $r['status'] === 'active' && $r['billing_type'] === 'fixed' && $r['planned_end_at'] <= $args[0]));
         } elseif (str_starts_with($sql, 'SELECT id FROM toy_rental_rides WHERE status')) {
@@ -43,14 +48,16 @@ final class ToyDb {
             $keys = ['ended_at','duration_minutes','payment_amount','final_amount','payment_method','payment_status','updated_at'];
             // The UPDATE carries ended_at, duration, amount, calculated, method, status, updated_at, id.
             $id = $args[7]; $this->rides[$id] = array_replace($this->rides[$id], array_combine($keys, array_slice($args, 0, 7)), ['status' => 'completed']); $this->affected = 1;
+        } elseif (str_starts_with($sql, 'UPDATE toy_rental_rides SET payment_amount')) {
+            $this->rides[$args[3]] = array_replace($this->rides[$args[3]], ['payment_amount'=>$args[0], 'payment_method'=>$args[1], 'payment_status'=>'paid', 'updated_at'=>$args[2]]);
         } elseif (str_starts_with($sql, "UPDATE toy_rental_rides SET status = 'overdue'")) {
             if (($this->rides[$args[1]]['status'] ?? '') === 'active') { $this->rides[$args[1]]['status'] = 'overdue'; $this->affected = 1; }
         } elseif (str_starts_with($sql, 'UPDATE toy_rental_cars SET name')) {
-            $keys = ['name','number','color','status','price_per_minute','image','sort_order','updated_at'];
-            $this->cars[$args[8]] = array_replace($this->cars[$args[8]], array_combine($keys, array_slice($args, 0, 8)));
+            $keys = ['name','number','color','status','price_per_minute','sort_order','updated_at'];
+            $this->cars[$args[7]] = array_replace($this->cars[$args[7]], array_combine($keys, array_slice($args, 0, 7)));
         } elseif (str_starts_with($sql, 'INSERT INTO toy_rental_cars')) {
-            $keys = ['name','number','color','status','price_per_minute','image','sort_order','created_at','updated_at'];
-            $this->cars[++$this->insertId] = array_combine($keys, $args) + ['id'=>$this->insertId,'price_per_ride'=>0];
+            $keys = ['name','number','color','status','price_per_minute','sort_order','created_at','updated_at'];
+            $this->cars[++$this->insertId] = array_combine($keys, $args) + ['id'=>$this->insertId,'price_per_ride'=>0,'image'=>null];
         } elseif (str_starts_with($sql, 'UPDATE toy_rental_cars')) {
             $this->cars[$args[1]]['status'] = str_contains($sql, "'rented'") ? 'rented' : 'available'; $this->affected = 1;
         } else { throw new RuntimeException('Unhandled fixture query: ' . $sql); }
@@ -117,18 +124,49 @@ FireballPluginToyCarRental::startRide(['car_id'=>1,'billing_type'=>'fixed','dura
 $id = $database->getInsertId();
 check($database->rides[$id]['payment_amount'] === 62.5 && FireballPluginToyCarRental::minutePrice($database->cars[1]) === 12.5, 'Preview and start use the default minute price when car rate is missing');
 FireballPluginToyCarRental::completeRide($id);
-FireballPluginToyCarRental::saveCar(['name'=>'Ferrari','number'=>'1','price_per_minute'=>'12,55','price_per_ride'=>9999], 1);
+$database->cars[1]['image'] = '/uploads/old-car.jpg';
+FireballPluginToyCarRental::saveCar(['name'=>'Ferrari','number'=>'1','price_per_minute'=>'12,55','price_per_ride'=>9999,'image'=>'/uploads/new-car.jpg'], 1);
 check($database->cars[1]['price_per_minute'] === 12.55 && $database->cars[1]['price_per_ride'] === 250, 'Car editing stores the minute price and does not overwrite a legacy separate price');
-$newId = FireballPluginToyCarRental::saveCar(['name'=>'BMW','number'=>'2','price_per_minute'=>20,'price_per_ride'=>9999]);
+check($database->cars[1]['image'] === '/uploads/old-car.jpg', 'Editing no longer accepts a posted car image');
+$newId = FireballPluginToyCarRental::saveCar(['name'=>'BMW','number'=>'2','price_per_minute'=>20,'price_per_ride'=>9999,'image'=>'/uploads/new-car.jpg']);
 check($database->cars[$newId]['price_per_minute'] === 20.0 && $database->cars[$newId]['price_per_ride'] === 0, 'New cars do not accept a separate fixed price');
+check($database->cars[$newId]['image'] === null, 'New cars have no image');
+foreach (['card','other'] as $method) {
+    fails(fn() => FireballPluginToyCarRental::startRide(['car_id'=>$newId,'billing_type'=>'fixed','payment_method'=>$method]), 'Reject unsupported payment method at start');
+}
+foreach (['cash','transfer'] as $method) {
+    FireballPluginToyCarRental::startRide(['car_id'=>$newId,'billing_type'=>'metered','payment_method'=>$method]);
+    $id = $database->getInsertId();
+    check($database->rides[$id]['payment_method'] === $method, 'Allow ' . $method . ' at start');
+    fails(fn() => FireballPluginToyCarRental::completeRide($id, ['payment_method'=>'card']), 'Reject card payment at completion');
+    check($database->rides[$id]['status'] === 'active', 'Rejected payment leaves the ride open');
+    FireballPluginToyCarRental::completeRide($id, ['payment_method'=>$method,'payment_status'=>'unpaid']);
+    fails(fn() => FireballPluginToyCarRental::markRidePaid($id, ['payment_method'=>'other']), 'Reject other payment when settling a debt');
+    FireballPluginToyCarRental::markRidePaid($id, ['payment_method'=>$method]);
+    check($database->rides[$id]['payment_method'] === $method && $database->rides[$id]['payment_status'] === 'paid', 'Settle the debt with ' . $method);
+}
+$beforeLegacy = FireballPluginToyCarRental::todayStats();
+check($beforeLegacy['revenue_transfer'] === 20.0, 'Transfer revenue includes the paid transfer ride');
+FireballPluginToyCarRental::startRide(['car_id'=>$newId,'billing_type'=>'fixed','duration_minutes'=>5]);
+$id = $database->getInsertId();
+$database->rides[$id]['payment_method'] = 'card';
+FireballPluginToyCarRental::completeRide($id);
+$afterLegacy = FireballPluginToyCarRental::todayStats();
+check($database->rides[$id]['payment_method'] === 'card' && FireballPluginToyCarRental::paymentMethodLabel('card') === FireballPluginToyCarRental::t('toy_rental_payment_method_card'), 'Historical methods retain their recorded label and method');
+check($afterLegacy['revenue_total'] === $beforeLegacy['revenue_total'] + 100 && $afterLegacy['revenue_cash'] === $beforeLegacy['revenue_cash'] && $afterLegacy['revenue_transfer'] === $beforeLegacy['revenue_transfer'], 'Legacy card payments remain in total revenue without becoming cash or transfer');
 (new FireballPluginToyCarRental())->boot();
 $jobs = $GLOBALS['toyFilters']['fireball_scheduled_jobs']([]);
 check($jobs['toy_rental_expiry']['schedule'] === '* * * * *' && method_exists($jobs['toy_rental_expiry']['class'], 'handle'), 'CMS background scheduler processes rides without the page');
 $manifest = json_decode(file_get_contents(dirname(__DIR__).'/plugins/toy-car-rental/plugin.json'), true, flags: JSON_THROW_ON_ERROR);
 foreach (['ru','en','de','zh-cn'] as $locale) {
+    $GLOBALS['toyLocale'] = $locale;
     check(!empty($manifest['name_i18n'][$locale]) && !empty($manifest['description_i18n'][$locale]), 'Localized plugin card ' . $locale);
     $translations = require dirname(__DIR__).'/plugins/toy-car-rental/lang/'.$locale.'.php';
     $ru = require dirname(__DIR__).'/plugins/toy-car-rental/lang/ru.php';
     check(array_keys($translations) === array_keys($ru), 'Complete translation keys ' . $locale);
+    $item = ['source_label'=>'Toy car rental', 'title'=>'Saved title', 'notification_id'=>123, 'text'=>'Saved message'];
+    $localized = $GLOBALS['toyFilters']['notification_feed_item']($item, ['source'=>'toy-car-rental']);
+    check($localized['source_label'] === $manifest['name_i18n'][$locale] && $localized['notification_id'] === 123 && $localized['text'] === 'Saved message', 'Notification center uses the translated catalog name ' . $locale);
+    check($GLOBALS['toyFilters']['notification_feed_item']($item, ['source'=>'system']) === $item, 'Other notification sources are unchanged ' . $locale);
 }
 echo 'Toy rental unit checks passed: ' . $checks . PHP_EOL;

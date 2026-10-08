@@ -184,7 +184,7 @@ return [
     'toy_rental_active_title' => 'Активные поездки',
     'toy_rental_active_subtitle' => 'Все текущие и просроченные поездки.',
     'toy_rental_active_empty' => 'Активных поездок нет',
-    'toy_rental_notification_source' => 'Прокат',
+    'toy_rental_notification_source' => 'Прокат машинок',
     'toy_rental_notification_overdue_title' => 'Время поездки закончилось',
     'toy_rental_notification_overdue_text' => ':car: просрочка :minutes мин.',
     'toy_rental_frontend_description' => 'Модуль проката детских машинок подключён как плагин FIREBALL CMS.',
@@ -204,4 +204,6 @@ return [
     'toy_rental_notification_limit_title' => 'Поездка остановлена по пределу времени',
     'toy_rental_notification_limit_text' => ':car: достигнута максимальная длительность. Поездка закрыта, проверьте возврат машинки и оплату.',
     'toy_rental_fixed_price_formula' => 'Фиксированная поездка: выбранные минуты × цена минуты.',
+    'toy_rental_stats_transfer' => 'Переводом',
+    'toy_rental_error_payment_method' => 'Выберите оплату наличными или переводом.',
 ];

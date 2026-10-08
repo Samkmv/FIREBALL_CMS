@@ -184,7 +184,7 @@ return [
     'toy_rental_active_title' => 'Active rides',
     'toy_rental_active_subtitle' => 'All current and overdue rides.',
     'toy_rental_active_empty' => 'No active rides',
-    'toy_rental_notification_source' => 'Rental',
+    'toy_rental_notification_source' => 'Toy Car Rental',
     'toy_rental_notification_overdue_title' => 'Ride time is over',
     'toy_rental_notification_overdue_text' => ':car: overdue by :minutes min.',
     'toy_rental_frontend_description' => 'The toy car rental module is connected as a FIREBALL CMS plugin.',
@@ -204,4 +204,6 @@ return [
     'toy_rental_notification_limit_title' => 'Ride stopped at the time limit',
     'toy_rental_notification_limit_text' => ':car: maximum duration reached. The ride is closed; check the car return and payment.',
     'toy_rental_fixed_price_formula' => 'Fixed ride: selected minutes × price per minute.',
+    'toy_rental_stats_transfer' => 'By transfer',
+    'toy_rental_error_payment_method' => 'Choose cash or transfer payment.',
 ];

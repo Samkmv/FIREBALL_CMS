@@ -184,7 +184,7 @@ return [
     'toy_rental_active_title' => '进行中的骑行',
     'toy_rental_active_subtitle' => '所有当前和超时骑行。',
     'toy_rental_active_empty' => '没有进行中的骑行',
-    'toy_rental_notification_source' => '租赁',
+    'toy_rental_notification_source' => '儿童车租赁',
     'toy_rental_notification_overdue_title' => '骑行时间已结束',
     'toy_rental_notification_overdue_text' => ':car：超时 :minutes 分钟。',
     'toy_rental_frontend_description' => '儿童车租赁模块已作为 FIREBALL CMS 插件连接。',
@@ -204,4 +204,6 @@ return [
     'toy_rental_notification_limit_title' => '行程达到时间上限已停止',
     'toy_rental_notification_limit_text' => ':car：已达到最长时长。行程已关闭，请检查车辆归还和付款。',
     'toy_rental_fixed_price_formula' => '固定行程：所选分钟数 × 每分钟价格。',
+    'toy_rental_stats_transfer' => '转账收入',
+    'toy_rental_error_payment_method' => '请选择现金或转账支付。',
 ];

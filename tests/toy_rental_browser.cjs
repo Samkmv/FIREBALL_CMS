@@ -7,7 +7,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const fixture = (locale, mode, clock, id = 1, duration = 10) => execFileSync(process.env.PHP_BIN || 'php', [path.join(__dirname, 'fixtures/toy_rental.php'), locale, mode, String(clock), String(id), String(duration)], {encoding: 'utf8'});
-const shell = html => `<!doctype html><html data-bs-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="needCSRFToken" content="toy-fixture"><link rel="stylesheet" href="/assets/default/css/theme.min.css"><link rel="stylesheet" href="/assets/default/css/style.css"><link rel="stylesheet" href="/assets/default/css/admin-ui.css"><link rel="stylesheet" href="/assets/default/icons/cartzilla-icons.min.css"><link rel="stylesheet" href="/admin/toy-rental/assets/toy-rental.css"></head><body class="fb-admin-body"><div class="fb-admin"><div class="fb-admin-main"><main class="fb-content"><div class="fb-page-content">${html}</div></main></div></div><script src="/assets/default/bootstrap/js/bootstrap.bundle.min.js"></script><script src="/admin/toy-rental/assets/toy-rental.js"></script></body></html>`;
+const shell = html => `<!doctype html><html data-bs-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="needCSRFToken" content="toy-fixture"><link rel="stylesheet" href="/assets/default/css/theme.min.css"><link rel="stylesheet" href="/assets/default/css/style.css"><link rel="stylesheet" href="/assets/default/css/admin-ui.css"><link rel="stylesheet" href="/assets/default/icons/cartzilla-icons.min.css"><link rel="stylesheet" href="/admin/toy-rental/assets/toy-rental.css"></head><body class="fb-admin-body"><div class="fb-admin"><div class="fb-admin-main"><main class="fb-content"><div class="fb-page-content">${html}</div></main></div></div><script>const baseUrl = location.origin;</script><script src="/assets/default/js/jquery-3.7.1.min.js"></script><script src="/assets/default/bootstrap/js/bootstrap.bundle.min.js"></script><script src="/assets/default/js/main.js"></script><script src="/admin/toy-rental/assets/toy-rental.js"></script></body></html>`;
 let checks = 0;
 function check(value, message) { checks++; assert.ok(value, message); }
 (async () => {
@@ -21,6 +21,7 @@ function check(value, message) { checks++; assert.ok(value, message); }
                 check(!/name="(?:default_price|price_per_ride)"/.test(formHtml), `No separate fixed price field ${locale}/${mode}`);
                 check(/name="(?:default_minute_price|price_per_minute)"/.test(formHtml), `Minute rate remains editable ${locale}/${mode}`);
                 check(!/toy_rental_[a-z_]+/.test(formHtml), `Pricing form is translated ${locale}/${mode}`);
+                if (mode==='car-form') check(!/name="image"|type="file"/.test(formHtml), `No image field in car form ${locale}`);
             }
             const states = Array.from({length: 6}, (_, i) => ({id: i + 1, mode: i === 4 ? 'metered' : (i === 5 ? 'maintenance' : 'available'), start: i === 4 ? now - 30 : now}));
             let starts = [], completes = [], syncs = 0, navigations = 0, failNext = false, delayNext = false;
@@ -51,6 +52,12 @@ function check(value, message) { checks++; assert.ok(value, message); }
                 return route.fulfill({contentType:'text/html',body:shell(fixture(locale,'dashboard',now))});
             });
             await page.goto(`https://toy.test/${locale}/admin/toy-rental`);
+            const historyOptions = await page.evaluate(html => {
+                const template=document.createElement('template'); template.innerHTML=html;
+                return [...template.content.querySelectorAll('[name="payment_method"]')].map(select=>[...select.options].map(option=>option.value));
+            }, fixture(locale,'history',now));
+            check(JSON.stringify(historyOptions)===JSON.stringify([['','cash','transfer'],['cash','transfer']]), `History filter and debt payment have only cash and transfer ${locale}`);
+            check(!/toy_rental_[a-z_]+/.test(fixture(locale,'stats',now)), `Transfer revenue is translated ${locale}`);
             await page.evaluate(() => document.fonts.ready);
             await page.addStyleTag({content:"* { transition: none !important; animation: none !important; }"});
             for (const width of [320,390,768,1440]) for (const theme of ['light','dark']) {
@@ -81,23 +88,26 @@ function check(value, message) { checks++; assert.ok(value, message); }
             check(await page.locator('article[data-car-id="1"] [data-toy-rental-fixed-price]').innerText()==='375.00', 'Active fixed card displays the saved amount');
             check(!['','--:--'].includes(await page.locator('article[data-car-id="1"] [data-toy-rental-timer]').innerText()), 'Timer appears immediately after asynchronous start');
             check(navigations===1, 'Start does not navigate');
+            check(await page.locator('[data-app-toast-container] .app-toast--success').count()>0, 'Start uses the native CMS toast');
             await page.locator('article[data-car-id="1"] button').click();
             await page.waitForFunction(()=>document.querySelector('article[data-car-id="1"] select'));
             check(completes.length===1 && navigations===1, 'Fixed completion immediately restores the buttons');
             check(await page.locator('article[data-car-id="1"] [data-toy-rental-fixed-price]').innerText()==='250.00', 'Restored card previews the default duration price');
             failNext=true;
             await page.locator('article[data-car-id="2"] button').last().click();
-            await page.waitForFunction(()=>document.querySelector('[data-toy-rental-notices]').textContent.includes('Error'));
-            check(await page.locator('[data-toy-rental-notices] img').count()===0 && await page.locator('article[data-car-id="2"] button').first().isEnabled(), 'Errors are escaped and controls recover');
+            await page.waitForFunction(()=>document.querySelector('[data-app-toast-container] .app-toast--error')?.textContent.includes('Error'));
+            check(await page.locator('[data-app-toast-container] img').count()===0 && await page.locator('article[data-car-id="2"] button').first().isEnabled(), 'Native CMS errors are escaped and controls recover');
             await page.locator('article[data-car-id="2"] button').last().click();
             await page.waitForFunction(()=>document.querySelector('article[data-car-id="2"] [data-toy-rental-timer]'));
             check(starts.at(-1).get('billing_type')==='metered', 'Per-minute button chooses the right mode');
             await page.locator('article[data-car-id="2"] button').click();
             await page.locator('#toyCompleteRide').waitFor({state:'visible'});
+            check(JSON.stringify(await page.locator('#toyCompleteMethod option').evaluateAll(options=>options.map(option=>option.value)))===JSON.stringify(['cash','transfer']), 'Completion offers only cash and transfer');
+            await page.locator('#toyCompleteMethod').selectOption('transfer');
             check((await page.locator('#toyCompleteAmount').inputValue())==='25.00', 'Payment modal uses car minute rate');
             await page.locator('#toyCompleteRide button[type="submit"]').click();
             await page.waitForFunction(()=>document.querySelector('article[data-car-id="2"] select'));
-            check(!completes.at(-1).has('payment_amount') && completes.at(-1).get('payment_status')==='paid', 'Server computes unedited final amount at actual completion');
+            check(!completes.at(-1).has('payment_amount') && completes.at(-1).get('payment_status')==='paid' && completes.at(-1).get('payment_method')==='transfer', 'Server computes unedited final amount and receives transfer payment');
             await page.locator('article[data-car-id="2"] button').last().click();
             await page.waitForFunction(()=>document.querySelector('article[data-car-id="2"] [data-toy-rental-timer]'));
             await page.locator('article[data-car-id="2"] button').click();
@@ -112,9 +122,12 @@ function check(value, message) { checks++; assert.ok(value, message); }
             await page.evaluate(() => {const t=document.querySelector('article[data-car-id="1"] [data-toy-rental-timer]');t.dataset.endMs=String(Number(t.dataset.serverNowMs)-1000);});
             await page.waitForFunction(()=>document.querySelector('article[data-car-id="1"] [data-toy-rental-timer]').textContent==='00:00');
             check(syncs>0, 'Expiry reaches the server notification system');
-            const noticeCount = await page.locator('[data-toy-rental-notices] .alert-warning').count();
+            check(await page.locator('[data-app-toast-container] .app-toast--warning').count()===1, 'Expiry uses the native CMS warning toast');
+            check(await page.locator('[data-app-toast-container] .app-toast--warning strong').innerText()===await page.evaluate(()=>window.toyRentalSettings.labels.notificationSource), 'Toast title uses the localized plugin name');
+            if(locale==='ru') await page.screenshot({path:'/tmp/toy-rental-notification.png',fullPage:true});
+            const noticeCount = await page.locator('[data-app-toast-container] .app-toast--warning').count();
             await page.waitForTimeout(1100);
-            check(await page.locator('[data-toy-rental-notices] .alert-warning').count()===noticeCount, 'Expiry message is not repeated every second');
+            check(await page.locator('[data-app-toast-container] .app-toast--warning').count()===noticeCount, 'Expiry message is not repeated every second');
             check(errors.length===0, 'No browser runtime errors: '+errors.join('; '));
             await page.close();
         }

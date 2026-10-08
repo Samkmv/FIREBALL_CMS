@@ -29,8 +29,4 @@
 .toy-rental-car-card .text-danger { color: var(--fb-color-danger) !important; }
 .toy-rental-stat-value { font-size: clamp(1.5rem, 3vw, 2.35rem); line-height: 1; }
 .toy-rental-color-dot { display: inline-block; width: .85rem; height: .85rem; border-radius: 50%; border: 1px solid var(--cz-border-color); background: currentColor; }
-.toy-rental-notices { position: fixed; bottom: 1rem; right: 1rem; width: min(360px, calc(100vw - 2rem)); display: grid; gap: .5rem; z-index: 1090; max-height: 45vh; overflow-y: auto; }
-.toy-rental-notices .alert { display: flex; align-items: flex-start; gap: .75rem; margin: 0; padding: .85rem; border-radius: var(--fb-radius-lg); box-shadow: var(--fb-shadow-md); }
-.toy-rental-notices .alert > span { flex: 1; overflow-wrap: anywhere; }
-.toy-rental-notices .btn-close { padding: .5rem; flex-shrink: 0; }
 @media (max-width: 575.98px) { .toy-rental-tabs .btn { padding: .5rem .75rem; font-size: .8rem; } }

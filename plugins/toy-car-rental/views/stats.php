@@ -19,7 +19,7 @@
             [FireballPluginToyCarRental::t('toy_rental_stats_unpaid'), (int)$stats['unpaid'], 'ci-x'],
             [FireballPluginToyCarRental::t('toy_rental_stat_revenue'), number_format((float)$stats['revenue_total'], 0, '.', ' ') . ' ' . $currency, 'ci-wallet'],
             [FireballPluginToyCarRental::t('toy_rental_stats_cash'), number_format((float)$stats['revenue_cash'], 0, '.', ' ') . ' ' . $currency, 'ci-banknote'],
-            [FireballPluginToyCarRental::t('toy_rental_stats_card'), number_format((float)$stats['revenue_card'], 0, '.', ' ') . ' ' . $currency, 'ci-credit-card'],
+            [FireballPluginToyCarRental::t('toy_rental_stats_transfer'), number_format((float)$stats['revenue_transfer'], 0, '.', ' ') . ' ' . $currency, 'ci-send'],
             [FireballPluginToyCarRental::t('toy_rental_stats_avg_duration'), (int)$stats['avg_duration'] . ' ' . FireballPluginToyCarRental::t('toy_rental_min_short'), 'ci-calendar'],
             [FireballPluginToyCarRental::t('toy_rental_stats_popular_car'), (string)$stats['popular_car'], 'ci-star'],
         ];

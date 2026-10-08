@@ -30,5 +30,7 @@ for ($id = 1; $id <= 6; $id++) {
     $cars[] = $item;
 }
 $tabs = FireballPluginToyCarRental::tabs($mode === 'active' ? 'active' : 'dashboard');
-$stats = ['rides_total' => 1, 'active' => 1, 'overdue' => 0, 'revenue_total' => 0];
-echo plugin_view('toy-car-rental', match ($mode) { 'active'=>'rides-active', 'settings'=>'settings', 'car-form'=>'car-form', default=>'admin-dashboard' }, compact('cars', 'car', 'tabs', 'stats', 'settings'), false);
+$stats = ['rides_total'=>1, 'fixed'=>0, 'metered'=>1, 'active'=>1, 'completed'=>0, 'overdue'=>0, 'paid'=>0, 'unpaid'=>1, 'revenue_total'=>0, 'revenue_cash'=>0, 'revenue_transfer'=>0, 'avg_duration'=>0, 'popular_car'=>'Ferrari'];
+$filters = ['date_filter'=>'all', 'date_from'=>'', 'date_to'=>'', 'car_id'=>0, 'billing_type'=>'', 'ride_status'=>'', 'payment_method'=>'', 'payment_status'=>''];
+$rides = [array_replace($makeRide('metered', $clock-90, $clock, 101), ['status'=>'completed', 'duration_minutes'=>2, 'final_amount'=>50, 'payment_amount'=>50, 'payment_method'=>'transfer', 'car_name'=>'Ferrari', 'car_number'=>'1', 'customer_name'=>'', 'customer_phone'=>''])];
+echo plugin_view('toy-car-rental', match ($mode) { 'active'=>'rides-active', 'settings'=>'settings', 'car-form'=>'car-form', 'history'=>'rides-history', 'stats'=>'stats', default=>'admin-dashboard' }, compact('cars', 'car', 'tabs', 'stats', 'settings', 'filters', 'rides'), false);

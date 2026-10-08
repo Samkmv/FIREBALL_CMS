@@ -6,6 +6,7 @@ use FBL\Plugins\PluginInterface;
 final class FireballPluginToyCarRental implements PluginInterface
 {
     public const SLUG = 'toy-car-rental';
+    public const PAYMENT_METHODS = ['cash', 'transfer'];
 
     public function install(): void
     {
@@ -68,6 +69,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             return $jobs;
         });
         add_filter('admin_dashboard_widgets', [self::class, 'dashboardWidgets'], 10);
+        add_filter('notification_feed_item', [self::class, 'localizeNotificationSource']);
     }
 
     public function handle(): array
@@ -293,7 +295,6 @@ final class FireballPluginToyCarRental implements PluginInterface
             'color' => trim((string)($data['color'] ?? '')),
             'status' => self::carStatus((string)($data['status'] ?? 'available')),
             'price_per_minute' => self::money($data['price_per_minute'] ?? 0),
-            'image' => trim((string)($data['image'] ?? '')),
             'sort_order' => max(0, (int)($data['sort_order'] ?? 0)),
         ];
 
@@ -304,7 +305,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         if ($id !== null) {
             db()->query(
                 'UPDATE toy_rental_cars
-                 SET name = ?, number = ?, color = ?, status = ?, price_per_minute = ?, image = ?, sort_order = ?, updated_at = ?
+                 SET name = ?, number = ?, color = ?, status = ?, price_per_minute = ?, sort_order = ?, updated_at = ?
                  WHERE id = ?',
                 [
                     $normalized['name'],
@@ -312,7 +313,6 @@ final class FireballPluginToyCarRental implements PluginInterface
                     $normalized['color'],
                     $normalized['status'],
                     $normalized['price_per_minute'],
-                    $normalized['image'],
                     $normalized['sort_order'],
                     $now,
                     $id,
@@ -323,15 +323,14 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
 
         db()->query(
-            'INSERT INTO toy_rental_cars (name, number, color, status, price_per_minute, image, sort_order, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO toy_rental_cars (name, number, color, status, price_per_minute, sort_order, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $normalized['name'],
                 $normalized['number'],
                 $normalized['color'],
                 $normalized['status'],
                 $normalized['price_per_minute'],
-                $normalized['image'],
                 $normalized['sort_order'],
                 $now,
                 $now,
@@ -500,7 +499,10 @@ final class FireballPluginToyCarRental implements PluginInterface
             $amount = array_key_exists('final_amount', $data)
                 ? self::money($data['final_amount'])
                 : (array_key_exists('payment_amount', $data) ? self::money($data['payment_amount']) : $calculatedAmount);
-            $method = self::paymentMethod((string)($data['payment_method'] ?? $ride['payment_method']));
+            // Keep a historical payment method when completion does not change it.
+            $method = array_key_exists('payment_method', $data)
+                ? self::paymentMethod((string)$data['payment_method'])
+                : (string)$ride['payment_method'];
             $paymentStatus = self::paymentStatus((string)($data['payment_status'] ?? $ride['payment_status']));
 
             db()->query(
@@ -639,7 +641,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             'unpaid' => 0,
             'revenue_total' => 0.0,
             'revenue_cash' => 0.0,
-            'revenue_card' => 0.0,
+            'revenue_transfer' => 0.0,
             'avg_duration' => 0,
             'popular_car' => '—',
         ];
@@ -663,8 +665,8 @@ final class FireballPluginToyCarRental implements PluginInterface
                 if ((string)$row['payment_method'] === 'cash') {
                     $stats['revenue_cash'] += $amount;
                 }
-                if ((string)$row['payment_method'] === 'card') {
-                    $stats['revenue_card'] += $amount;
+                if ((string)$row['payment_method'] === 'transfer') {
+                    $stats['revenue_transfer'] += $amount;
                 }
             }
             if (!empty($row['duration_minutes'])) {
@@ -771,6 +773,14 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
     }
 
+    public static function localizeNotificationSource(array $item, array $row): array
+    {
+        if ((string)($row['source'] ?? $item['source'] ?? '') === self::SLUG) {
+            $item['source_label'] = self::t('toy_rental_notification_source');
+        }
+        return $item;
+    }
+
     public static function notificationFeedItems(array $items, int $userId, bool $isAdmin, int $limit): array
     {
         if (!$isAdmin) {
@@ -848,7 +858,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             'card' => self::t('toy_rental_payment_method_card'),
             'transfer' => self::t('toy_rental_payment_method_transfer'),
             'other' => self::t('toy_rental_payment_method_other'),
-        ][self::paymentMethod($method)] ?? $method;
+        ][$method] ?? $method;
     }
 
     public static function paymentStatusLabel(string $status): string
@@ -941,7 +951,10 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     private static function paymentMethod(string $method): string
     {
-        return in_array($method, ['cash', 'card', 'transfer', 'other'], true) ? $method : 'cash';
+        if (!in_array($method, self::PAYMENT_METHODS, true)) {
+            throw new RuntimeException(self::t('toy_rental_error_payment_method'));
+        }
+        return $method;
     }
 
     private static function paymentStatus(string $status): string

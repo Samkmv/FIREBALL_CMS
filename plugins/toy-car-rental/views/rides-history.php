@@ -2,11 +2,10 @@
 $currency = (string)($settings['currency'] ?? '₽');
 $paymentMethods = [
     '' => FireballPluginToyCarRental::t('toy_rental_filter_all_payment_methods'),
-    'cash' => FireballPluginToyCarRental::paymentMethodLabel('cash'),
-    'card' => FireballPluginToyCarRental::paymentMethodLabel('card'),
-    'transfer' => FireballPluginToyCarRental::paymentMethodLabel('transfer'),
-    'other' => FireballPluginToyCarRental::paymentMethodLabel('other'),
 ];
+foreach (FireballPluginToyCarRental::PAYMENT_METHODS as $method) {
+    $paymentMethods[$method] = FireballPluginToyCarRental::paymentMethodLabel($method);
+}
 $paymentStatuses = [
     '' => FireballPluginToyCarRental::t('toy_rental_filter_all_payment_statuses'),
     'unpaid' => FireballPluginToyCarRental::paymentStatusLabel('unpaid'),

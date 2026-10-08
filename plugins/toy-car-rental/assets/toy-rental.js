@@ -34,21 +34,12 @@
         if (!element.dataset.clientMountedMs) element.dataset.clientMountedMs = String(Date.now());
         return timestamp + Date.now() - Number(element.dataset.clientMountedMs);
     };
-    const notice = (message, tone = 'success', persistent = false) => {
-        const area = document.querySelector('[data-toy-rental-notices]');
-        if (!area || !message) return;
-        const item = document.createElement('div');
-        item.className = `alert alert-${tone} rounded-4`;
-        const text = document.createElement('span');
-        text.textContent = message;
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'btn-close';
-        close.setAttribute('aria-label', labels.close || 'Close');
-        close.addEventListener('click', () => item.remove());
-        item.append(text, close);
-        area.append(item);
-        if (!persistent) window.setTimeout(() => item.remove(), 6000);
+    const notice = (message, tone = 'success') => {
+        if (!message) return;
+        const method = tone === 'danger' ? 'error' : tone;
+        const show = () => window.toastr?.[method]?.(message, labels.notificationSource);
+        if (window.toastr) show();
+        else document.addEventListener('DOMContentLoaded', show, { once: true });
     };
     const unlockAudio = () => {
         if (settings.soundEnabled === false) return;
@@ -177,7 +168,7 @@
             card.querySelector('[data-toy-rental-time-up]')?.classList.remove('d-none');
             if (!notified.has(rideId)) {
                 notified.add(rideId);
-                notice((metered ? labels.limitReached : labels.timeUp)?.replace(':car', card.dataset.carLabel) || card.dataset.carLabel, 'warning', true);
+                notice((metered ? labels.limitReached : labels.timeUp)?.replace(':car', card.dataset.carLabel) || card.dataset.carLabel, 'warning');
                 playSound();
                 syncExpiry(rideId);
             } else if (now - Number(timer.dataset.lastSyncMs || 0) >= 15000) {
@@ -235,7 +226,7 @@
                 const target = modal.querySelector('[data-toy-rental-modal-error]');
                 target.textContent = error.message;
                 target.classList.remove('d-none');
-            } else notice(error.message, 'danger', true);
+            } else notice(error.message, 'danger');
         } finally {
             controls.forEach(field => { field.disabled = false; });
             form.removeAttribute('aria-busy');

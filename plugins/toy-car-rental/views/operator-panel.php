@@ -15,7 +15,6 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
         <a class="btn btn-primary ms-2" href="<?= base_href('/admin/toy-rental/cars/create') ?>"><?= $t('toy_rental_add_car') ?></a>
     <?php endif; ?>
 </div>
-<div class="toy-rental-notices" data-toy-rental-notices aria-live="polite" aria-relevant="additions"></div>
 <div class="modal fade" id="toyCompleteRide" tabindex="-1" aria-labelledby="toyCompleteRideLabel" aria-hidden="true" data-toy-rental-complete-modal>
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content fb-card" action="<?= base_href('/admin/toy-rental/rides/complete') ?>" method="post" data-toy-rental-payment-form>
@@ -43,7 +42,7 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
                     <div class="col-sm-6">
                         <label class="form-label" for="toyCompleteMethod"><?= $t('toy_rental_table_payment_method') ?></label>
                         <select class="form-select" id="toyCompleteMethod" name="payment_method">
-                            <?php foreach (['cash', 'card', 'transfer', 'other'] as $method): ?>
+                            <?php foreach (FireballPluginToyCarRental::PAYMENT_METHODS as $method): ?>
                                 <option value="<?= $method ?>"><?= htmlSC(FireballPluginToyCarRental::paymentMethodLabel($method)) ?></option>
                             <?php endforeach; ?>
                         </select>
@@ -75,6 +74,7 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
         'maxRideMinutes' => (int)$settings['max_ride_minutes'],
         'currency' => $currency,
         'labels' => [
+            'notificationSource' => FireballPluginToyCarRental::t('toy_rental_notification_source'),
             'overdue' => FireballPluginToyCarRental::t('toy_rental_status_overdue'),
             'minutes' => FireballPluginToyCarRental::t('toy_rental_min_short'),
             'timeUp' => FireballPluginToyCarRental::t('toy_rental_time_up_message'),
