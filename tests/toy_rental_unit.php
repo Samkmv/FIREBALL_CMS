@@ -7,6 +7,7 @@ function check(bool $value, string $label): void { $GLOBALS['checks']++; if (!$v
 function fails(callable $call, string $label): void { try { $call(); } catch (RuntimeException) { check(true, $label); return; } check(false, $label); }
 final class ToyDb {
     public array $cars = [], $rides = [];
+    public ?Closure $beforeCarLock = null;
     private array $rows = [];
     private bool $transaction = false;
     private int $affected = 0, $insertId = 0;
@@ -23,7 +24,13 @@ final class ToyDb {
         $sql = preg_replace('/\s+/', ' ', trim($sql)); $this->rows = []; $this->affected = 0;
         if (str_contains($sql, 'information_schema.TABLES')) return $this;
         if (str_starts_with($sql, 'SELECT * FROM toy_rental_cars WHERE id') || str_starts_with($sql, 'SELECT id FROM toy_rental_cars WHERE id')) {
-            if (isset($this->cars[$args[0]])) $this->rows[] = $this->cars[$args[0]];
+            if (str_contains($sql, 'FOR UPDATE') && $this->beforeCarLock) {
+                $callback = $this->beforeCarLock; $this->beforeCarLock = null; $callback();
+            }
+            $car = $this->cars[$args[0]] ?? null;
+            if ($car && (!str_contains($sql, 'deleted_at IS NULL') || empty($car['deleted_at']))) $this->rows[] = $car;
+        } elseif (str_starts_with($sql, 'SELECT * FROM toy_rental_cars')) {
+            $this->rows = array_values(array_filter($this->cars, fn($car) => (!str_contains($sql, 'deleted_at IS NULL') || empty($car['deleted_at'])) && (!str_contains($sql, "status <> 'hidden'") || $car['status'] !== 'hidden')));
         } elseif (str_starts_with($sql, 'SELECT id FROM toy_rental_rides WHERE car_id')) {
             $this->rows = array_values(array_filter($this->rides, fn($r) => $r['car_id'] === $args[0] && in_array($r['status'], ['active', 'overdue'], true)));
         } elseif (str_starts_with($sql, 'SELECT * FROM toy_rental_rides WHERE id')) {
@@ -32,9 +39,11 @@ final class ToyDb {
                 ? $ride['status'] === 'completed' && $ride['payment_status'] === 'unpaid'
                 : in_array($ride['status'], ['active', 'overdue'], true))) $this->rows[] = $ride;
         } elseif (str_starts_with($sql, 'SELECT r.*, c.name')) {
-            $this->rows = array_values(array_filter($this->rides, fn($r) => str_contains($sql, 'r.started_at >= ?')
-                ? $r['started_at'] >= $args[0] && $r['started_at'] < $args[1]
-                : in_array($r['status'], ['active', 'overdue'], true) && $r['started_at'] <= $args[0]));
+            $this->rows = array_values(array_filter($this->rides, fn($r) => isset($this->cars[$r['car_id']]) && (str_contains($sql, 'LIMIT 300')
+                ? (!str_contains($sql, 'r.car_id = ?') || $r['car_id'] === $args[0])
+                : (str_contains($sql, 'r.started_at >= ?')
+                    ? $r['started_at'] >= $args[0] && $r['started_at'] < $args[1]
+                    : in_array($r['status'], ['active', 'overdue'], true) && $r['started_at'] <= $args[0]))));
         } elseif (str_starts_with($sql, 'SELECT r.id, r.car_id')) {
             $this->rows = array_values(array_filter($this->rides, fn($r) => $r['status'] === 'active' && $r['billing_type'] === 'fixed' && $r['planned_end_at'] <= $args[0]));
         } elseif (str_starts_with($sql, 'SELECT id FROM toy_rental_rides WHERE status')) {
@@ -58,6 +67,8 @@ final class ToyDb {
         } elseif (str_starts_with($sql, 'INSERT INTO toy_rental_cars')) {
             $keys = ['name','number','color','status','price_per_minute','sort_order','created_at','updated_at'];
             $this->cars[++$this->insertId] = array_combine($keys, $args) + ['id'=>$this->insertId,'price_per_ride'=>0,'image'=>null];
+        } elseif (str_starts_with($sql, 'UPDATE toy_rental_cars SET deleted_at')) {
+            $this->cars[$args[2]] = array_replace($this->cars[$args[2]], ['deleted_at'=>$args[0], 'updated_at'=>$args[1], 'status'=>'hidden']);
         } elseif (str_starts_with($sql, 'UPDATE toy_rental_cars')) {
             $this->cars[$args[1]]['status'] = str_contains($sql, "'rented'") ? 'rented' : 'available'; $this->affected = 1;
         } else { throw new RuntimeException('Unhandled fixture query: ' . $sql); }
@@ -154,6 +165,37 @@ FireballPluginToyCarRental::completeRide($id);
 $afterLegacy = FireballPluginToyCarRental::todayStats();
 check($database->rides[$id]['payment_method'] === 'card' && FireballPluginToyCarRental::paymentMethodLabel('card') === FireballPluginToyCarRental::t('toy_rental_payment_method_card'), 'Historical methods retain their recorded label and method');
 check($afterLegacy['revenue_total'] === $beforeLegacy['revenue_total'] + 100 && $afterLegacy['revenue_cash'] === $beforeLegacy['revenue_cash'] && $afterLegacy['revenue_transfer'] === $beforeLegacy['revenue_transfer'], 'Legacy card payments remain in total revenue without becoming cash or transfer');
+$historyBeforeDelete = FireballPluginToyCarRental::history(['date_filter'=>'all', 'car_id'=>$newId]);
+FireballPluginToyCarRental::startRide(['car_id'=>$newId, 'billing_type'=>'metered']);
+$openId = $database->getInsertId();
+fails(fn() => FireballPluginToyCarRental::deleteCar($newId), 'Cannot delete a car during an active ride');
+check(!isset($database->cars[$newId]['deleted_at']) && !$database->inTransaction(), 'Blocked deletion leaves car intact and closes the transaction');
+$database->rides[$openId]['status'] = 'overdue';
+$database->cars[$newId]['status'] = 'available';
+fails(fn() => FireballPluginToyCarRental::deleteCar($newId), 'Overdue ride blocks deletion even when the car status is inconsistent');
+FireballPluginToyCarRental::completeRide($openId, ['payment_status'=>'unpaid']);
+$ridesBeforeDelete = $database->rides;
+$statsBeforeDelete = FireballPluginToyCarRental::todayStats();
+FireballPluginToyCarRental::deleteCar($newId);
+check(!empty($database->cars[$newId]['deleted_at']) && FireballPluginToyCarRental::car($newId) === null, 'Deleted car can no longer be opened or started');
+check(!in_array($newId, array_column(FireballPluginToyCarRental::cars(true), 'id'), true), 'Deleted car disappears from the fleet including hidden cars');
+check(in_array($newId, array_column(FireballPluginToyCarRental::cars(true, true), 'id'), true), 'Deleted car remains available to history filters');
+check($database->rides === $ridesBeforeDelete && FireballPluginToyCarRental::todayStats() === $statsBeforeDelete, 'Deletion preserves rides, payments and statistics');
+check(count(FireballPluginToyCarRental::history(['date_filter'=>'all','car_id'=>$newId])) === count($historyBeforeDelete) + 1, 'Ride history still includes the deleted car');
+FireballPluginToyCarRental::markRidePaid($openId, ['payment_method'=>'transfer']);
+check($database->rides[$openId]['payment_status'] === 'paid', 'Debt can still be settled after deleting a car');
+fails(fn() => FireballPluginToyCarRental::startRide(['car_id'=>$newId]), 'Cannot start a deleted car');
+fails(fn() => FireballPluginToyCarRental::saveCar(['name'=>'Restored','number'=>'2'], $newId), 'Editing a deleted ID cannot restore the car');
+fails(fn() => FireballPluginToyCarRental::deleteCar($newId), 'Repeated deletion returns not found');
+fails(fn() => FireballPluginToyCarRental::deleteCar(99999), 'Deleting an unknown ID returns not found');
+$hiddenId = FireballPluginToyCarRental::saveCar(['name'=>'Hidden','number'=>'3','status'=>'hidden']);
+FireballPluginToyCarRental::deleteCar($hiddenId);
+check(FireballPluginToyCarRental::car($hiddenId) === null, 'Hidden cars can be deleted');
+$racingId = FireballPluginToyCarRental::saveCar(['name'=>'Race','number'=>'4']);
+$database->beforeCarLock = static function () use ($database, $racingId): void { $database->cars[$racingId]['deleted_at'] = date('Y-m-d H:i:s'); };
+$rideCount = count($database->rides);
+fails(fn() => FireballPluginToyCarRental::startRide(['car_id'=>$racingId]), 'Deletion between availability check and start lock blocks the start');
+check(count($database->rides) === $rideCount && !$database->inTransaction(), 'Concurrent deletion creates no ride and rolls back the start');
 (new FireballPluginToyCarRental())->boot();
 $jobs = $GLOBALS['toyFilters']['fireball_scheduled_jobs']([]);
 check($jobs['toy_rental_expiry']['schedule'] === '* * * * *' && method_exists($jobs['toy_rental_expiry']['class'], 'handle'), 'CMS background scheduler processes rides without the page');

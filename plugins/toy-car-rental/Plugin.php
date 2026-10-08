@@ -11,6 +11,7 @@ final class FireballPluginToyCarRental implements PluginInterface
     public function install(): void
     {
         self::ensureDatabaseSchema();
+        self::ensureCarSchema();
         self::ensureRideSchema();
 
         foreach (self::defaultSettings() as $key => $value) {
@@ -34,6 +35,7 @@ final class FireballPluginToyCarRental implements PluginInterface
     public function activate(): void
     {
         self::ensureDatabaseSchema();
+        self::ensureCarSchema();
         self::ensureRideSchema();
         self::expireLongRides(false);
         fireball_event('toy_rental.activated', ['slug' => self::SLUG]);
@@ -256,9 +258,16 @@ final class FireballPluginToyCarRental implements PluginInterface
         ], $data);
     }
 
-    public static function cars(bool $includeHidden = false): array
+    public static function cars(bool $includeHidden = false, bool $includeDeleted = false): array
     {
-        $where = $includeHidden ? '' : "WHERE status <> 'hidden'";
+        $conditions = [];
+        if (!$includeDeleted) {
+            $conditions[] = 'deleted_at IS NULL';
+        }
+        if (!$includeHidden) {
+            $conditions[] = "status <> 'hidden'";
+        }
+        $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
         return db()->query(
             "SELECT * FROM toy_rental_cars {$where} ORDER BY sort_order ASC, id ASC"
@@ -281,7 +290,7 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public static function car(int $id): ?array
     {
-        $row = db()->query('SELECT * FROM toy_rental_cars WHERE id = ? LIMIT 1', [$id])->getOne();
+        $row = db()->query('SELECT * FROM toy_rental_cars WHERE id = ? AND deleted_at IS NULL LIMIT 1', [$id])->getOne();
 
         return is_array($row) ? $row : null;
     }
@@ -303,10 +312,13 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
 
         if ($id !== null) {
+            if (!self::car($id)) {
+                throw new RuntimeException(self::t('toy_rental_error_car_not_found'));
+            }
             db()->query(
                 'UPDATE toy_rental_cars
                  SET name = ?, number = ?, color = ?, status = ?, price_per_minute = ?, sort_order = ?, updated_at = ?
-                 WHERE id = ?',
+                 WHERE id = ? AND deleted_at IS NULL',
                 [
                     $normalized['name'],
                     $normalized['number'],
@@ -354,6 +366,33 @@ final class FireballPluginToyCarRental implements PluginInterface
             "UPDATE toy_rental_cars SET status = 'hidden', updated_at = ? WHERE id = ?",
             [date('Y-m-d H:i:s'), $id]
         );
+    }
+
+    public static function deleteCar(int $id): void
+    {
+        db()->beginTransaction();
+        try {
+            // Starting a ride locks the same car first, so deletion cannot race a start.
+            $car = db()->query('SELECT * FROM toy_rental_cars WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [$id])->getOne();
+            if (!$car) {
+                throw new RuntimeException(self::t('toy_rental_error_car_not_found'));
+            }
+            $activeRide = db()->query("SELECT id FROM toy_rental_rides WHERE car_id = ? AND status IN ('active', 'overdue') LIMIT 1 FOR UPDATE", [$id])->getOne();
+            if ($car['status'] === 'rented' || $activeRide) {
+                throw new RuntimeException(self::t('toy_rental_error_delete_rented_car'));
+            }
+            $now = date('Y-m-d H:i:s');
+            db()->query(
+                "UPDATE toy_rental_cars SET deleted_at = ?, status = 'hidden', updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+                [$now, $now, $id]
+            );
+            db()->commit();
+        } catch (Throwable $exception) {
+            if (db()->inTransaction()) {
+                db()->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public static function activeRides(): array
@@ -427,7 +466,7 @@ final class FireballPluginToyCarRental implements PluginInterface
         try {
             $lockedCar = db()->query('SELECT * FROM toy_rental_cars WHERE id = ? FOR UPDATE', [$carId])->getOne();
             $activeRide = db()->query("SELECT id FROM toy_rental_rides WHERE car_id = ? AND status IN ('active', 'overdue') LIMIT 1 FOR UPDATE", [$carId])->getOne();
-            if (!$lockedCar || $lockedCar['status'] !== 'available' || $activeRide) {
+            if (!$lockedCar || !empty($lockedCar['deleted_at']) || $lockedCar['status'] !== 'available' || $activeRide) {
                 throw new RuntimeException(self::t('toy_rental_error_car_unavailable'));
             }
             db()->query(
@@ -998,6 +1037,16 @@ final class FireballPluginToyCarRental implements PluginInterface
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
             [$table]
         )->getColumn() === 1;
+    }
+
+    private static function ensureCarSchema(): void
+    {
+        foreach (db()->query('SHOW COLUMNS FROM toy_rental_cars')->get() ?: [] as $column) {
+            if ($column['Field'] === 'deleted_at') {
+                return;
+            }
+        }
+        db()->query('ALTER TABLE toy_rental_cars ADD COLUMN deleted_at DATETIME NULL AFTER updated_at');
     }
 
     private static function ensureRideSchema(): void

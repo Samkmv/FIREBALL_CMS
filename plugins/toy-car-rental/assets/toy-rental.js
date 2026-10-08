@@ -38,8 +38,9 @@
         if (!message) return;
         const method = tone === 'danger' ? 'error' : tone;
         const show = () => window.toastr?.[method]?.(message, labels.notificationSource);
-        if (window.toastr) show();
-        else document.addEventListener('DOMContentLoaded', show, { once: true });
+        // Plugin footer scripts run before main.js replaces the legacy toast library.
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show, { once: true });
+        else show();
     };
     const unlockAudio = () => {
         if (settings.soundEnabled === false) return;

@@ -6,8 +6,7 @@
 
     <?php require __DIR__ . '/tabs.php'; ?>
 
-    <div class="table-responsive" data-admin-simplebar data-simplebar-auto-hide="false">
-        <table class="table align-middle mb-0">
+    <?php $mobileCards = []; ob_start(); ?>
             <thead>
                 <tr>
                     <th scope="col">#</th>
@@ -23,6 +22,22 @@
                     <tr><td colspan="6" class="text-center text-body-secondary py-5"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_cars_empty')) ?></td></tr>
                 <?php endif; ?>
                 <?php foreach ($cars as $car): ?>
+                    <?php
+                    $actionsHtml = plugin_view('toy-car-rental', 'car-actions', ['car' => $car], false);
+                    $price = number_format(FireballPluginToyCarRental::minutePrice($car, $settings), 2, '.', ' ') . ' ' . (string)$settings['currency'] . ' ' . FireballPluginToyCarRental::t('toy_rental_price_per_minute_suffix');
+                    $mobileCards[] = [
+                        'id' => (int)$car['id'],
+                        'title' => (string)$car['name'],
+                        'extra_fields' => [
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_field_number'), 'value' => (string)$car['number']],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_field_color'), 'value' => (string)$car['color']],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_price'), 'value' => $price],
+                        ],
+                        'status' => [['label' => FireballPluginToyCarRental::statusLabel((string)$car['status']), 'class' => 'text-secondary bg-secondary-subtle']],
+                        'status_label' => FireballPluginToyCarRental::t('toy_rental_table_status'),
+                        'actions' => $actionsHtml,
+                    ];
+                    ?>
                     <tr>
                         <th scope="row"><?= (int)$car['id'] ?></th>
                         <td>
@@ -32,31 +47,20 @@
                         <td><?= htmlSC((string)$car['color']) ?></td>
                         <td><span class="badge rounded-pill text-bg-light border"><?= htmlSC(FireballPluginToyCarRental::statusLabel((string)$car['status'])) ?></span></td>
                         <td>
-                            <div><?= number_format(FireballPluginToyCarRental::minutePrice($car, $settings), 2, '.', ' ') ?> <?= htmlSC((string)$settings['currency']) ?> <?= htmlSC(FireballPluginToyCarRental::t('toy_rental_price_per_minute_suffix')) ?></div>
+                            <div><?= htmlSC($price) ?></div>
                         </td>
                         <td class="text-end">
-                            <div class="dropdown admin-post-actions-dropdown" data-admin-post-actions-dropdown>
-                                <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-label="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_actions')) ?>">
-                                    <i class="ci-more-vertical"></i>
-                                </button>
-                                <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-                                    <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/admin/toy-rental/cars/edit/' . (int)$car['id']) ?>">
-                                        <i class="ci-edit"></i><span><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_edit')) ?></span>
-                                    </a>
-                                    <?php if ((string)$car['status'] !== 'hidden'): ?>
-                                        <form action="<?= base_href('/admin/toy-rental/cars/hide') ?>" method="post" data-admin-delete-form data-delete-message="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_hide_confirm')) ?>" data-delete-item="<?= htmlSC((string)$car['name']) ?>">
-                                            <?= get_csrf_field() ?>
-                                            <input type="hidden" name="id" value="<?= (int)$car['id'] ?>">
-                                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit"><i class="ci-eye-off"></i><span><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_hide')) ?></span></button>
-                                        </form>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
+                            <?= $actionsHtml ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
-        </table>
-    </div>
+    <?php $tableContent = ob_get_clean(); ?>
+    <?= view()->renderPartial('admin/partials/table', [
+        'content' => $tableContent,
+        'mobile_cards' => $mobileCards,
+        'empty_text' => FireballPluginToyCarRental::t('toy_rental_cars_empty'),
+        'wrapper_attributes' => ['data-admin-simplebar' => true, 'data-simplebar-auto-hide' => 'false'],
+    ]) ?>
 
 <?= view()->renderPartial('admin/shell_close') ?>

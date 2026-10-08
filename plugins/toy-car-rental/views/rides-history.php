@@ -56,7 +56,7 @@ $returnTo = current_url_with_query();
                 <select class="form-select" name="car_id">
                     <option value="0"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_filter_all_cars')) ?></option>
                     <?php foreach ($cars as $car): ?>
-                        <option value="<?= (int)$car['id'] ?>" <?= (int)$filters['car_id'] === (int)$car['id'] ? 'selected' : '' ?>><?= htmlSC((string)$car['name'] . ' #' . (string)$car['number']) ?></option>
+                        <option value="<?= (int)$car['id'] ?>" <?= (int)$filters['car_id'] === (int)$car['id'] ? 'selected' : '' ?>><?= htmlSC((string)$car['name'] . ' #' . (string)$car['number'] . (!empty($car['deleted_at']) ? ' (' . FireballPluginToyCarRental::t('toy_rental_deleted') . ')' : '')) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -94,8 +94,7 @@ $returnTo = current_url_with_query();
         </div>
     </form>
 
-    <div class="table-responsive" data-admin-simplebar data-simplebar-auto-hide="false">
-        <table class="table align-middle mb-0">
+    <?php $mobileCards = []; ob_start(); ?>
             <thead>
                 <tr>
                     <th scope="col"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_date')) ?></th>
@@ -126,6 +125,42 @@ $returnTo = current_url_with_query();
                     $paidAmount = (float)($ride['payment_amount'] ?? 0);
                     $isUnpaid = (string)($ride['payment_status'] ?? '') === 'unpaid';
                     $canMarkPaid = $isUnpaid && (string)($ride['status'] ?? '') === 'completed';
+                    $mobileActions = [];
+                    if ($canMarkPaid) {
+                        foreach (FireballPluginToyCarRental::PAYMENT_METHODS as $method) {
+                            $mobileActions[] = [
+                                'type' => 'form',
+                                'icon' => 'ci-check',
+                                'label' => FireballPluginToyCarRental::t('toy_rental_mark_paid') . ': ' . FireballPluginToyCarRental::paymentMethodLabel($method),
+                                'action' => base_href('/admin/toy-rental/rides/pay'),
+                                'hidden' => [
+                                    'id' => (int)$ride['id'],
+                                    'payment_amount' => $paidAmount > 0 ? $paidAmount : $calculated,
+                                    'payment_method' => $method,
+                                    'return_to' => $returnTo,
+                                ],
+                            ];
+                        }
+                    }
+                    $mobileCards[] = [
+                        'id' => (int)$ride['id'],
+                        'title' => (string)$ride['car_name'],
+                        'extra_fields' => [
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_field_number'), 'value' => (string)$ride['car_number']],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_date'), 'value' => date('d.m.Y H:i', strtotime((string)$ride['started_at']))],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_customer'), 'value' => trim((string)$ride['customer_name'] . ' ' . (string)$ride['customer_phone']) ?: '—'],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_type'), 'value' => FireballPluginToyCarRental::billingTypeLabel((string)($ride['billing_type'] ?? 'fixed'))],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_time'), 'value' => $duration . ' ' . FireballPluginToyCarRental::t('toy_rental_min_short')],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_minute_price'), 'value' => number_format($pricePerMinute, 2, '.', ' ') . ' ' . $currency],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_calculated'), 'value' => number_format($calculated, 2, '.', ' ') . ' ' . $currency],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_paid_amount'), 'value' => number_format($paidAmount, 2, '.', ' ') . ' ' . $currency],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_payment_method'), 'value' => FireballPluginToyCarRental::paymentMethodLabel((string)$ride['payment_method'])],
+                            ['label' => FireballPluginToyCarRental::t('toy_rental_table_payment_status'), 'html' => '<span class="' . ($isUnpaid ? 'text-warning' : '') . '">' . htmlSC(FireballPluginToyCarRental::paymentStatusLabel((string)$ride['payment_status'])) . '</span>'],
+                        ],
+                        'status' => [['label' => FireballPluginToyCarRental::statusLabel((string)$ride['status']), 'class' => 'text-secondary bg-secondary-subtle']],
+                        'status_label' => FireballPluginToyCarRental::t('toy_rental_table_status'),
+                        'actions' => $mobileActions,
+                    ];
                     ?>
                     <tr>
                         <td class="text-nowrap"><?= htmlSC(date('d.m.Y H:i', strtotime((string)$ride['started_at']))) ?></td>
@@ -176,7 +211,12 @@ $returnTo = current_url_with_query();
                     </tr>
                 <?php endforeach; ?>
             </tbody>
-        </table>
-    </div>
+    <?php $tableContent = ob_get_clean(); ?>
+    <?= view()->renderPartial('admin/partials/table', [
+        'content' => $tableContent,
+        'mobile_cards' => $mobileCards,
+        'empty_text' => FireballPluginToyCarRental::t('toy_rental_history_empty'),
+        'wrapper_attributes' => ['data-admin-simplebar' => true, 'data-simplebar-auto-hide' => 'false'],
+    ]) ?>
 
 <?= view()->renderPartial('admin/shell_close') ?>

@@ -183,6 +183,18 @@ $router->post('/admin/toy-rental/cars/hide', static function () use ($toyRentalR
     $toyRentalRedirect('/admin/toy-rental/cars');
 })->middleware(['auth', 'admin']);
 
+$router->post('/admin/toy-rental/cars/delete', static function () use ($toyRentalRedirect): void {
+    try {
+        FireballPluginToyCarRental::deleteCar((int)request()->post('id'));
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_car_deleted'));
+    } catch (Throwable $exception) {
+        log_error_details('Toy rental car delete failed', ['Car' => request()->post('id')], $exception);
+        session()->setFlash('error', $exception->getMessage());
+    }
+
+    $toyRentalRedirect('/admin/toy-rental/cars');
+})->middleware(['auth', 'admin']);
+
 $router->get('/admin/toy-rental/active', static function (): string {
     return plugin_view('toy-car-rental', 'rides-active', FireballPluginToyCarRental::viewData('active', [
         'title' => FireballPluginToyCarRental::t('toy_rental_active_title'),
@@ -205,7 +217,7 @@ $router->get('/admin/toy-rental/rides', static function (): string {
     return plugin_view('toy-car-rental', 'rides-history', FireballPluginToyCarRental::viewData('history', [
         'title' => FireballPluginToyCarRental::t('toy_rental_history_title'),
         'rides' => FireballPluginToyCarRental::history($filters),
-        'cars' => FireballPluginToyCarRental::cars(true),
+        'cars' => FireballPluginToyCarRental::cars(true, true),
         'filters' => $filters,
     ]));
 })->middleware(['auth', 'admin']);

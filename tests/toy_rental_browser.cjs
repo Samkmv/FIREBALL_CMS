@@ -6,8 +6,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-const fixture = (locale, mode, clock, id = 1, duration = 10) => execFileSync(process.env.PHP_BIN || 'php', [path.join(__dirname, 'fixtures/toy_rental.php'), locale, mode, String(clock), String(id), String(duration)], {encoding: 'utf8'});
-const shell = html => `<!doctype html><html data-bs-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="needCSRFToken" content="toy-fixture"><link rel="stylesheet" href="/assets/default/css/theme.min.css"><link rel="stylesheet" href="/assets/default/css/style.css"><link rel="stylesheet" href="/assets/default/css/admin-ui.css"><link rel="stylesheet" href="/assets/default/icons/cartzilla-icons.min.css"><link rel="stylesheet" href="/admin/toy-rental/assets/toy-rental.css"></head><body class="fb-admin-body"><div class="fb-admin"><div class="fb-admin-main"><main class="fb-content"><div class="fb-page-content">${html}</div></main></div></div><script>const baseUrl = location.origin;</script><script src="/assets/default/js/jquery-3.7.1.min.js"></script><script src="/assets/default/bootstrap/js/bootstrap.bundle.min.js"></script><script src="/assets/default/js/main.js"></script><script src="/admin/toy-rental/assets/toy-rental.js"></script></body></html>`;
+const fixtureCache = new Map();
+const fixture = (locale, mode, clock, id = 1, duration = 10) => {
+    const key = JSON.stringify([locale,mode,clock,id,duration]);
+    if (!fixtureCache.has(key)) fixtureCache.set(key, execFileSync(process.env.PHP_BIN || 'php', [path.join(__dirname, 'fixtures/toy_rental.php'), locale, mode, String(clock), String(id), String(duration)], {encoding:'utf8'}));
+    // Keep server time current without blocking request handling on repeated PHP renders.
+    return fixtureCache.get(key).replace(/data-server-now-ms="\d+"/g, `data-server-now-ms="${Math.floor(Date.now()/1000)*1000}"`);
+};
+const shell = html => `<!doctype html><html data-bs-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="needCSRFToken" content="toy-fixture"><link rel="stylesheet" href="/assets/default/css/theme.min.css"><link rel="stylesheet" href="/assets/default/css/style.css"><link rel="stylesheet" href="/assets/default/css/admin-ui.css"><link rel="stylesheet" href="/assets/default/icons/cartzilla-icons.min.css"><link rel="stylesheet" href="/admin/toy-rental/assets/toy-rental.css"></head><body class="fb-admin-body"><div class="fb-admin"><div class="fb-admin-main"><main class="fb-content"><div class="fb-page-content">${html}</div></main></div></div><script>const baseUrl = location.origin;</script><script src="/assets/default/js/jquery-3.7.1.min.js"></script><script src="/assets/default/vendor/toastr/toastr.min.js"></script><script src="/admin/toy-rental/assets/toy-rental.js"></script><script src="/assets/default/bootstrap/js/bootstrap.bundle.min.js"></script><script src="/assets/default/js/main.js"></script></body></html>`;
 let checks = 0;
 function check(value, message) { checks++; assert.ok(value, message); }
 (async () => {
@@ -54,7 +60,7 @@ function check(value, message) { checks++; assert.ok(value, message); }
             await page.goto(`https://toy.test/${locale}/admin/toy-rental`);
             const historyOptions = await page.evaluate(html => {
                 const template=document.createElement('template'); template.innerHTML=html;
-                return [...template.content.querySelectorAll('[name="payment_method"]')].map(select=>[...select.options].map(option=>option.value));
+                return [...template.content.querySelectorAll('select[name="payment_method"]')].map(select=>[...select.options].map(option=>option.value));
             }, fixture(locale,'history',now));
             check(JSON.stringify(historyOptions)===JSON.stringify([['','cash','transfer'],['cash','transfer']]), `History filter and debt payment have only cash and transfer ${locale}`);
             check(!/toy_rental_[a-z_]+/.test(fixture(locale,'stats',now)), `Transfer revenue is translated ${locale}`);
@@ -119,10 +125,13 @@ function check(value, message) { checks++; assert.ok(value, message); }
             check(completes.at(-1).get('payment_amount')==='20' && completes.at(-1).get('payment_status')==='unpaid', 'Manual correction and unpaid status survive completion');
             await page.locator('article[data-car-id="1"] button').first().click();
             await page.waitForFunction(()=>document.querySelector('article[data-car-id="1"] [data-toy-rental-timer]'));
+            const expirySync = page.waitForResponse(response=>response.url().endsWith('/sync-overdue') && response.request().method()==='POST');
             await page.evaluate(() => {const t=document.querySelector('article[data-car-id="1"] [data-toy-rental-timer]');t.dataset.endMs=String(Number(t.dataset.serverNowMs)-1000);});
+            await expirySync;
             await page.waitForFunction(()=>document.querySelector('article[data-car-id="1"] [data-toy-rental-timer]').textContent==='00:00');
             check(syncs>0, 'Expiry reaches the server notification system');
-            check(await page.locator('[data-app-toast-container] .app-toast--warning').count()===1, 'Expiry uses the native CMS warning toast');
+            const warningCount = await page.locator('[data-app-toast-container] .app-toast--warning').count();
+            check(warningCount===1, `Expiry uses the native CMS warning toast ${locale}: ${warningCount}`);
             check(await page.locator('[data-app-toast-container] .app-toast--warning strong').innerText()===await page.evaluate(()=>window.toyRentalSettings.labels.notificationSource), 'Toast title uses the localized plugin name');
             if(locale==='ru') await page.screenshot({path:'/tmp/toy-rental-notification.png',fullPage:true});
             const noticeCount = await page.locator('[data-app-toast-container] .app-toast--warning').count();
