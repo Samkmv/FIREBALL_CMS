@@ -1,10 +1,13 @@
 {
   "name": "Прокат машинок",
   "slug": "toy-car-rental",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Прокат детских машинок: компактная панель, фиксированные и поминутные поездки, таймеры, оплата и push-уведомления.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Fixed ride prices now use the minute rate multiplied by the selected duration, with an instant price preview.",
+    "Payments are limited to cash and transfer; car image fields have been removed and statistics show transfer revenue.",
+    "Operator messages use native CMS toasts; the notification center displays the localized plugin name in all four languages.",
     "Compact cards with round buttons, configurable durations, asynchronous ride actions, capped timers and scheduled push notifications.",
     "Lock concurrent ride starts and completion; repeated payment cannot alter the recorded amount.",
     "Added a complete children's toy car rental module for FIREBALL CMS.",
@@ -14,6 +17,9 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Стоимость фиксированной поездки рассчитывается по цене минуты и выбранной длительности; сумма на карточке обновляется сразу.",
+      "Оставлены наличные и перевод, убрано поле изображения машинки; в статистике отображается выручка переводом.",
+      "Сообщения оператора используют штатные уведомления CMS; название плагина в центре уведомлений переведено на четыре языка.",
       "Компактные карточки с круглыми кнопками, настраиваемые длительности, запуск без перезагрузки, ограничение таймеров и фоновые push-уведомления.",
       "Параллельный запуск и завершение аренды защищены блокировками; повторная оплата не меняет рассчитанную сумму.",
       "Добавлен полноценный модуль проката детских машинок для FIREBALL CMS.",
@@ -22,6 +28,9 @@
       "При повторной активации плагин теперь восстанавливает отсутствующие таблицы проката и платёжные поля."
     ],
     "en": [
+      "Fixed ride prices now use the minute rate multiplied by the selected duration, with an instant price preview.",
+      "Payments are limited to cash and transfer; car image fields have been removed and statistics show transfer revenue.",
+      "Operator messages use native CMS toasts; the notification center displays the localized plugin name in all four languages.",
       "Compact cards with round buttons, configurable durations, asynchronous ride actions, capped timers and scheduled push notifications.",
       "Lock concurrent ride starts and completion; repeated payment cannot alter the recorded amount.",
       "Added a complete children's toy car rental module for FIREBALL CMS.",
@@ -30,6 +39,9 @@
       "Reactivating the plugin now recreates missing rental database tables and billing columns."
     ],
     "de": [
+      "Festzeitfahrten werden aus Minutenpreis und gewählter Dauer berechnet; die Preisvorschau aktualisiert sich sofort.",
+      "Nur Barzahlung und Überweisung sind verfügbar; das Fahrzeugbildfeld wurde entfernt und die Statistik zeigt Einnahmen per Überweisung.",
+      "Operatormeldungen verwenden die CMS-Benachrichtigungen; die Benachrichtigungszentrale zeigt den Plugin-Namen in allen vier Sprachen.",
       "Kompakte Karten mit runden Tasten, konfigurierbare Dauern, asynchrone Aktionen, begrenzte Timer und geplante Push-Benachrichtigungen.",
       "Gleichzeitige Starts und Abschlüsse sperren; wiederholte Zahlungen ändern den gespeicherten Betrag nicht.",
       "Ein vollständiges Modul für den Verleih von Kinderautos wurde zu FIREBALL CMS hinzugefügt.",
@@ -38,6 +50,9 @@
       "Bei erneuter Aktivierung stellt das Plugin fehlende Verleihtabellen und Abrechnungsspalten wieder her."
     ],
     "zh-cn": [
+      "固定行程费用根据分钟价格和所选时长计算，卡片上的价格立即更新。",
+      "仅保留现金和转账支付，移除车辆图片字段，统计中显示转账收入。",
+      "操作提示使用 CMS 原生通知，通知中心的插件名称支持全部四种语言。",
       "紧凑卡片和圆形按钮，可配置时长、异步行程操作、计时上限和后台推送通知。",
       "使用锁保护并发租赁开始和结束；重复支付不会更改已记录金额。",
       "为 FIREBALL CMS 新增完整的儿童玩具车租赁模块。",
