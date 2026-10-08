@@ -71,11 +71,11 @@ final class BlockRenderer
                         $items[] = [
                             'src' => $src,
                             'alt' => $this->legacyHtmlAttribute($attributes, 'alt'),
-                            'caption' => trim(strip_tags(html_entity_decode(
-                                (string)($figure[2] ?? ''),
+                            'caption' => trim(html_entity_decode(
+                                strip_tags((string)($figure[2] ?? '')),
                                 ENT_QUOTES | ENT_HTML5,
                                 'UTF-8'
-                            ))),
+                            )),
                         ];
                     }
                 }
@@ -423,28 +423,30 @@ final class BlockRenderer
 
             $galleryId = 'fb-product-gallery-' . $gallerySequence;
 
-            // FIREBALL_GALLERY_3_COL_DESKTOP_V2
-            // Gallery занимает всю ширину контентной колонки:
-            // mobile = 2 изображения, md+ = 3 изображения в ряд.
+            // Cartzilla gallery: two mobile columns, three from sm upwards.
+            // Each block keeps its own group for GLightbox arrows and swipes.
             $html =
                 '<div class="w-100 pb-4 pb-md-0 mb-2 mb-sm-3 mb-md-0">' .
-                '<div class="row row-cols-2 row-cols-md-3 g-3 g-sm-4 g-md-3 g-lg-4">';
+                '<div class="row row-cols-2 row-cols-sm-3 g-3 g-xl-4">';
 
             foreach ($images as $image) {
                 $captionAttr = $image['caption'] !== ''
-                    ? ' data-description="' . htmlSC($image['caption']) . '"'
+                    // GLightbox uses innerHTML for descriptions: keep editor captions plain text.
+                    ? ' data-description="' . htmlSC(htmlSC($image['caption'])) . '"'
                     : '';
 
                 $html .=
                     '<div class="col">' .
-                    '<a class="hover-effect-scale hover-effect-opacity position-relative d-flex rounded-4 overflow-hidden"' .
+                    '<a class="hover-effect-scale hover-effect-opacity position-relative d-flex rounded overflow-hidden"' .
                     ' href="' . htmlSC($image['src']) . '"' .
                     ' data-glightbox=""' .
+                    ' data-type="image"' .
+                    ' data-alt="' . htmlSC($image['alt']) . '"' .
                     ' data-gallery="' . htmlSC($galleryId) . '"' .
                     $captionAttr .
                     '>' .
                     '<i class="ci-zoom-in hover-effect-target fs-3 text-white position-absolute top-50 start-50 translate-middle opacity-0 z-2" aria-hidden="true"></i>' .
-                    '<div class="ratio ratio-1x1 hover-effect-target">' .
+                    '<div class="ratio hover-effect-target bg-body-tertiary rounded" style="--cz-aspect-ratio: 100%">' .
                     // FIREBALL_GALLERY_SLIDER_OBJECT_FIT_V1
                     '<img src="' . htmlSC($image['src']) . '"' .
                     ' class="w-100 h-100 object-fit-cover"' .

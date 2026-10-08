@@ -142,6 +142,21 @@ class ChatMediaStorage
         }
     }
 
+    /** Independent encrypted object for a forwarded attachment; no plaintext temporary file. */
+    public function copy(string $relativePath): string
+    {
+        $this->readMetadata($relativePath);
+        $this->ensureStorageDirectory();
+        $target = 'chat-media/' . bin2hex(random_bytes(24)) . '.fbcm';
+        $absolute = $this->absolutePath($target);
+        if (!copy($this->absolutePath($relativePath), $absolute)) {
+            @unlink($absolute);
+            throw new \RuntimeException('Could not copy protected chat media.');
+        }
+        @chmod($absolute, 0600);
+        return $target;
+    }
+
     /**
      * Decrypts a byte range. Intended for streaming and integrity tests.
      */

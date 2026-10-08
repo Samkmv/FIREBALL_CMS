@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'subscriptions_admin_more' => 'More',
     'subscriptions_address_choose' => 'Select or enter a value',
     'subscriptions_address_search' => 'Search the local directory…',
     'subscriptions_address_minimum' => 'Enter at least :count characters. If the address is not listed, you can enter it manually.',

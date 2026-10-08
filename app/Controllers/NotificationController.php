@@ -92,9 +92,11 @@ class NotificationController extends BaseController
                 'text' => (string)($item['preview'] ?? str_replace(':count', (string)((int)($item['unread_count'] ?? 0)), return_translation('notification_chat_unread_count'))),
                 'avatar' => get_user_avatar($item['avatar'] ?? null, 'sm'),
                 'sender_id' => (int)($item['sender_id'] ?? 0),
+                'group_id' => (int)($item['group_id'] ?? 0),
+                'muted' => !empty($item['muted']),
                 'unread_count' => (int)($item['unread_count'] ?? 0),
                 'sort_id' => (int)($item['sort_id'] ?? 0),
-                'url' => base_href('/chat?user_id=' . (int)($item['sender_id'] ?? 0)),
+                'url' => !empty($item['group_id']) ? base_href('/chat/group?conversation_id=' . (int)$item['group_id']) : base_href('/chat?user_id=' . (int)($item['sender_id'] ?? 0)),
                 'created_at' => (string)($item['created_at'] ?? ''),
                 'time' => (string)($item['time'] ?? ($item['created_at'] ?? '')),
             ];

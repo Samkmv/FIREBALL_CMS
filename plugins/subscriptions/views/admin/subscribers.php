@@ -47,7 +47,7 @@ $renderActions = static function (array $actions) use ($renderAttributes): strin
     ?>
     <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
         <button class="btn btn-sm btn-outline-secondary btn-icon rounded-circle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false" aria-label="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_actions')) ?>">
-            <i class="ci-more-vertical"></i>
+            <i class="ci-more-vertical" aria-hidden="true"></i>
         </button>
         <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
             <?php foreach ($actions as $action): ?>
@@ -161,8 +161,8 @@ foreach ($subscriptions as $subscription) {
 ?>
 
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <details class="subscriptions-grant-panel mb-4" data-subscriptions-grant-panel>
-        <summary class="subscriptions-grant-summary">
+    <details class="border rounded-5 subscriptions-grant-panel mb-4" data-subscriptions-grant-panel>
+        <summary class="subscriptions-grant-summary p-3 p-md-4">
             <span class="subscriptions-grant-summary__icon" aria-hidden="true"><i class="ci-user-plus"></i></span>
             <span class="subscriptions-grant-summary__copy">
                 <strong><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_grant_title')) ?></strong>
@@ -170,7 +170,7 @@ foreach ($subscriptions as $subscription) {
             </span>
             <span class="subscriptions-grant-summary__toggle" aria-hidden="true"><i class="ci-chevron-down"></i></span>
         </summary>
-        <form class="subscriptions-grant-form" action="<?= base_href('/admin/subscriptions/subscribers/grant') ?>" method="post">
+        <form class="subscriptions-grant-form p-3 p-md-4" action="<?= base_href('/admin/subscriptions/subscribers/grant') ?>" method="post">
             <?= get_csrf_field() ?>
             <div class="subscriptions-grant-field subscriptions-grant-field--user">
                 <label class="form-label" for="subscriptionsGrantUser"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_user')) ?></label>

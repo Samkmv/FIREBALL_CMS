@@ -8,7 +8,7 @@ $matchedUsers = is_array($matched_users ?? null) ? $matched_users : [];
 ?>
 
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <form class="border rounded-4 p-4 p-lg-5" method="post">
+    <form class="border rounded-5 p-3 p-md-4" method="post">
         <?= get_csrf_field() ?>
         <div class="row g-3">
             <div class="col-12">
@@ -40,7 +40,7 @@ $matchedUsers = is_array($matched_users ?? null) ? $matched_users : [];
     </form>
 
     <?php if ($isEditing): ?>
-        <section class="border rounded-4 p-4 mt-4">
+        <section class="border rounded-5 p-3 p-md-4 mt-4">
             <h2 class="h5 mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_exclusion_matched_users')) ?>: <?= count($matchedUsers) ?></h2>
             <?php if ($matchedUsers): ?>
                 <div class="vstack gap-2">

@@ -225,22 +225,44 @@ namespace {
         && $serverUsage[2]['upload'] === 0, 'Unverified counters stay unknown, not factual zero or corrupt sample');
     $overflow = $summary::byServer($subscription, [array_replace($nodes[0], ['traffic_used_bytes' => PHP_INT_MAX]), $nodes[0]]);
     $check($overflow[0]['used'] === PHP_INT_MAX, 'Per-server integer overflow is bounded');
-    $check($usage['used'] === 90 && $usage['remaining'] === 10 && $usage['percent'] === 90.0, 'Use aggregate CMS accounting, not per-node sum');
+    $check($usage['used'] === 1 && $usage['remaining'] === 99 && $usage['percent'] === 1.0, 'Summary uses the server counters, not stale CMS aggregate');
     $check($usage['checked_at'] === '2026-10-07 09:00:00' && !$usage['partial'], 'Oldest sample represents combined data age');
     $check($usage['connections'] === 2 && $usage['active_connections'] === 1, 'Foreign/deleted connections excluded');
     $check($usage['days_remaining'] === 2 && !$usage['lifetime'], 'Remaining days');
     $unknown = $summary::from(array_replace($subscription, ['traffic_used_bytes' => 0]), [$node], $now);
     $check(!$unknown['known'] && $unknown['percent'] === null && $unknown['partial'], 'Unverified zero must not become factual usage');
-    $zero = $summary::from(array_replace($subscription, ['traffic_used_bytes' => 0]), [$nodes[0]], $now);
+    $zero = $summary::from(array_replace($subscription, ['traffic_used_bytes' => 90]), [array_replace($nodes[0], ['traffic_used_bytes' => 0])], $now);
     $check($zero['known'] && $zero['percent'] === 0.0, 'Verified zero usage');
     foreach ([101, PHP_INT_MAX] as $used) {
-        $usage = $summary::from(array_replace($subscription, ['traffic_used_bytes' => $used, 'expires_at' => '2026-10-01']), $nodes, $now);
+        $usage = $summary::from(array_replace($subscription, ['traffic_used_bytes' => 0, 'expires_at' => '2026-10-01']),
+            [array_replace($nodes[0], ['traffic_used_bytes' => $used])], $now);
         $check($usage['percent'] === 100 && $usage['remaining'] === 0 && $usage['days_remaining'] === 0, 'Over-limit and expired values clamp safely');
     }
     $usage = $summary::from(array_replace($subscription, ['traffic_limit_bytes' => null, 'expires_at' => null]), [], $now);
     $check($usage['percent'] === null && $usage['remaining'] === null && $usage['lifetime'], 'Lifetime/unlimited and no nodes');
     $nodes[1]['traffic_sync_status'] = 'failed';
     $check($summary::from($subscription, $nodes)['partial'], 'Failed sample must display saved/partial state');
+    $allServers = [array_replace($nodes[0], ['traffic_used_bytes' => 10]),
+        array_replace($nodes[0], ['id' => 8, 'server_id' => 2, 'traffic_used_bytes' => 20]),
+        array_replace($nodes[0], ['id' => 9, 'server_id' => 3, 'traffic_used_bytes' => 30])];
+    $sum = $summary::from(array_replace($subscription, ['traffic_used_bytes' => 0]), $allServers, $now);
+    $check($sum['used'] === 60 && $sum['remaining'] === 40 && $sum['percent'] === 60.0
+        && $sum['known'] && $sum['remaining_known'] && !$sum['partial'], 'Sum all servers even when subscription aggregate is unverified zero');
+    $check($sum['used'] === array_sum(array_column($summary::byServer($subscription, $allServers), 'used')), 'Summary and server table agree');
+    $check($summary::from(['id' => 14, 'traffic_limit_bytes' => 100], $allServers)['used'] === 60, 'Aggregate field is not required for known counters');
+    $missingServer = $allServers;
+    $missingServer[2]['traffic_used_bytes'] = 0;
+    $missingServer[2]['traffic_synced_at'] = null;
+    $missingServer[2]['traffic_sync_status'] = 'pending';
+    $sum = $summary::from($subscription, $missingServer, $now);
+    $check($sum['used'] === 30 && $sum['partial'] && !$sum['failed'] && !$sum['remaining_known'], 'Missing counter is not zero or a complete remaining allowance');
+    $allServers[2]['traffic_sync_status'] = 'failed';
+    $sum = $summary::from($subscription, $allServers, $now);
+    $check($sum['used'] === 60 && $sum['remaining'] === 40 && $sum['remaining_known'] && $sum['failed'], 'Failed refresh retains available server totals with a separate warning');
+    $sum = $summary::from(array_replace($subscription, ['traffic_limit_bytes' => null, 'expires_at' => null]), $allServers, $now);
+    $check($sum['used'] === 60 && $sum['remaining'] === null && $sum['lifetime'], 'Unlimited subscriptions still show total usage');
+    $sum = $summary::from($subscription, [array_replace($nodes[0], ['traffic_used_bytes' => PHP_INT_MAX]), $nodes[0]], $now);
+    $check($sum['used'] === PHP_INT_MAX && $sum['remaining'] === 0, 'Total integer overflow is bounded');
     foreach (['ru', 'en', 'de', 'zh-cn'] as $language) {
         $translations = require dirname(__DIR__) . '/lang/' . $language . '.php';
         foreach (array_keys(require dirname(__DIR__) . '/lang/ru.php') as $key) {

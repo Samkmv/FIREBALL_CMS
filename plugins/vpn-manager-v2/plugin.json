@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.5.11",
+  "version": "1.5.12",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Client information now sums traffic across all owned servers and refreshes total usage, remaining allowance and warnings together with the server table. Unlimited allowance and lifetime remain explicit; incomplete or failed checks preserve available counters without inventing zero usage or a complete remaining allowance.",
     "Fixed 3x-ui client renaming: updates address the verified current panel name while sending the desired new name. Stable credentials, traffic, expiry, limits and panel metadata are preserved; failed reads and identity changes stop before writing.",
     "VPN actions now show processing indicators, prevent duplicate submissions, report actual results and refresh the operations table without reloading the page. Client details include per-server traffic with read-only live refresh; renaming is available in subscription editing.",
     "Plans now support encrypted external subscription sources and direct connection links through the existing source mechanism. Existing and future subscriptions inherit them with ordering, refresh, toggles, scoped ownership and cache invalidation.",
@@ -38,6 +39,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Информация о клиенте суммирует трафик всех серверов подписки и обновляет общий расход, остаток и предупреждения вместе с таблицей. Безлимит и бессрочный срок отображаются явно; неполная или неудачная проверка сохраняет доступные счётчики, не подменяя неизвестный расход нулём и не показывая неполный остаток как точный.",
       "Исправлено переименование клиентов 3x-ui: запрос обращается к подтверждённому текущему имени в панели, а новое имя передаётся в данных обновления. Сохраняются учётные данные, трафик, срок, лимиты и настройки панели; при ошибке чтения или смене клиента запись не выполняется.",
       "Действия VPN показывают обработку, защищены от повторных нажатий и выводят фактический результат с обновлением таблицы без перезагрузки страницы. В обзоре клиента доступен трафик по серверам и проверка свежих счётчиков только для чтения; переименование перенесено в редактирование подписки.",
       "В тарифах доступны зашифрованные внешние подписки и прямые ссылки подключения через существующий механизм источников. Их наследуют действующие и новые подписки тарифа; доступны порядок, обновление, включение и отключение с проверкой принадлежности и сбросом кеша.",
@@ -56,6 +58,7 @@
       "Завершена синхронизация тарифов с 3x-ui: лимит HWID-устройств, отдельный лимит IP, управление устройствами в админке и подробная диагностика расхождений."
     ],
     "en": [
+      "Client information now sums traffic across all owned servers and refreshes total usage, remaining allowance and warnings together with the server table. Unlimited allowance and lifetime remain explicit; incomplete or failed checks preserve available counters without inventing zero usage or a complete remaining allowance.",
       "Fixed 3x-ui client renaming: updates address the verified current panel name while sending the desired new name. Stable credentials, traffic, expiry, limits and panel metadata are preserved; failed reads and identity changes stop before writing.",
       "VPN actions now show processing indicators, prevent duplicate submissions, report actual results and refresh the operations table without reloading the page. Client details include per-server traffic with read-only live refresh; renaming is available in subscription editing.",
       "Plans now support encrypted external subscription sources and direct connection links through the existing source mechanism. Existing and future subscriptions inherit them with ordering, refresh, toggles, scoped ownership and cache invalidation.",
@@ -74,6 +77,7 @@
       "Completed 3x-ui tariff reconciliation with HWID device limits, separate IP limits, administrator device management, and detailed reconciliation diagnostics."
     ],
     "de": [
+      "Clientinformationen summieren jetzt den Traffic aller zugehörigen Server und aktualisieren Gesamtverbrauch, Restkontingent und Hinweise gemeinsam mit der Servertabelle. Unbegrenztes Kontingent und Laufzeit bleiben eindeutig; unvollständige oder fehlgeschlagene Prüfungen erhalten verfügbare Zähler, ohne unbekannten Verbrauch als null oder ein unvollständiges Restkontingent als exakt darzustellen.",
       "Die 3x-ui-Clientumbenennung wurde korrigiert: Anfragen verwenden den bestätigten aktuellen Namen im Panel und senden den gewünschten neuen Namen im Update. Zugangsdaten, Traffic, Ablauf, Limits und Paneleinstellungen bleiben erhalten; bei Lesefehlern oder Identitätswechsel erfolgt kein Schreibzugriff.",
       "VPN-Aktionen zeigen die Verarbeitung, verhindern doppelte Anfragen und aktualisieren Ergebnisse und Vorgangstabelle ohne Neuladen. Clientdetails enthalten Traffic je Server mit schreibgeschützter Live-Prüfung; die Umbenennung befindet sich in der Abonnementbearbeitung.",
       "Tarife unterstützen verschlüsselte externe Abonnementquellen und direkte Verbindungslinks über den bestehenden Quellenmechanismus. Bestehende und neue Abonnements erben diese mit Sortierung, Aktualisierung, Aktivierung, Zuordnungsprüfung und Cache-Invalidierung.",
@@ -92,6 +96,7 @@
       "Die Tarifsynchronisierung mit 3x-ui wurde vervollständigt: HWID-Gerätelimit, separates IP-Limit, Geräteverwaltung im Adminbereich und detaillierte Abweichungsdiagnose."
     ],
     "zh-cn": [
+      "客户端信息现在汇总订阅所有服务器的流量，并与服务器表同步刷新总用量、剩余额度及提示。明确显示无限流量及永久有效期；检查不完整或失败时保留可用计数，不将未知用量视为零，也不将不完整的剩余额度视为准确值。",
       "修复 3x-ui 客户端重命名：请求使用已验证的面板当前名称，在更新数据中发送目标新名称。保留凭据、流量、到期时间、限制及面板设置；读取失败或客户端身份改变时不会写入。",
       "VPN 操作显示处理状态并防止重复提交，展示实际结果且无需重新加载页面即可刷新操作表。客户端详情显示各服务器流量并支持只读实时检查；重命名已移至订阅编辑页面。",
       "套餐可通过现有来源机制添加加密的外部订阅和直接连接链接。现有及新订阅自动继承这些来源，支持排序、刷新、启停、归属校验和缓存失效。",

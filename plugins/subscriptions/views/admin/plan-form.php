@@ -4,7 +4,7 @@ $permissionValues = is_array($values['permissions'] ?? null) ? $values['permissi
 $value = static fn(string $key, mixed $default = ''): mixed => $values[$key] ?? $default;
 ?>
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <form class="border rounded-4 p-4 p-lg-5" method="post">
+    <form class="border rounded-5 p-3 p-md-4" method="post">
         <?= get_csrf_field() ?>
         <div class="row g-3">
             <div class="col-md-8"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_name')) ?></label><input class="form-control" id="subscription_plan_name" name="name" value="<?= htmlSC((string)$value('name')) ?>" data-slug-source="#subscription_plan_slug" required></div>

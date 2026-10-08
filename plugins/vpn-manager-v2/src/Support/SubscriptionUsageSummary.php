@@ -10,27 +10,35 @@ final class SubscriptionUsageSummary
             (int)($node['subscription_id'] ?? 0) === (int)($subscription['id'] ?? 0)
             && (string)($node['status'] ?? '') !== 'deleted'
         ));
-        $used = max(0, (int)($subscription['traffic_used_bytes'] ?? 0));
+        $used = 0;
         $limit = max(0, (int)($subscription['traffic_limit_bytes'] ?? 0));
         $timestamps = [];
         $upload = 0;
         $download = 0;
-        $partial = $nodes === [];
-        foreach ($nodes as $node) {
-            $upload = self::addBytes($upload, (int)($node['upload_bytes'] ?? 0));
-            $download = self::addBytes($download, (int)($node['download_bytes'] ?? 0));
-            $timestamp = strtotime((string)($node['traffic_synced_at'] ?? ''));
+        $known = false;
+        $missing = 0;
+        $failed = false;
+        // Use exactly the same owned counters as the server table, not a stale
+        // subscription-level accounting value. Viewing never changes accounting.
+        foreach (self::byServer($subscription, $nodes) as $server) {
+            $used = self::addBytes($used, $server['used']);
+            $upload = self::addBytes($upload, $server['upload']);
+            $download = self::addBytes($download, $server['download']);
+            $known = $known || $server['known'];
+            $missing += $server['missing'];
+            $failed = $failed || $server['failed'];
+            $timestamp = strtotime((string)($server['checked_at'] ?? ''));
             if ($timestamp !== false) { $timestamps[] = $timestamp; }
-            if ($timestamp === false || (string)($node['traffic_sync_status'] ?? '') !== 'synced') { $partial = true; }
         }
-        $known = array_key_exists('traffic_used_bytes', $subscription) && ($used > 0 || $timestamps !== []);
         $expires = trim((string)($subscription['expires_at'] ?? ''));
         $expiration = $expires !== '' ? strtotime($expires) : false;
         return [
             'used' => $used, 'limit' => $limit,
             'remaining' => $limit > 0 ? max(0, $limit - $used) : null,
-            'percent' => $known && $limit > 0 ? min(100, round($used / $limit * 100, 1)) : null,
-            'known' => $known, 'partial' => $partial,
+            'remaining_known' => $known && $missing === 0,
+            'percent' => $known && $missing === 0 && $limit > 0 ? min(100, round($used / $limit * 100, 1)) : null,
+            'known' => $known, 'partial' => $missing > 0 || $failed,
+            'missing' => $missing, 'failed' => $failed,
             'upload' => $upload, 'download' => $download,
             // Show the oldest included sample, not a misleading newest-only timestamp.
             'checked_at' => $timestamps !== [] ? date('Y-m-d H:i:s', min($timestamps)) : null,
@@ -51,7 +59,8 @@ final class SubscriptionUsageSummary
             if ($id <= 0) continue;
             $servers[$id] ??= ['id' => $id, 'name' => (string)($node['server_name'] ?? ('#' . $id)),
                 'used' => 0, 'upload' => 0, 'download' => 0, 'known' => false,
-                'sample_known' => false, 'partial' => false, 'connections' => 0, 'timestamps' => []];
+                'sample_known' => false, 'partial' => false, 'missing' => 0, 'failed' => false,
+                'connections' => 0, 'timestamps' => []];
             $server = &$servers[$id];
             $server['connections']++;
             $used = max(0, (int)($node['traffic_used_bytes'] ?? 0));
@@ -64,8 +73,9 @@ final class SubscriptionUsageSummary
                 $server['upload'] = self::addBytes($server['upload'], (int)($node['upload_bytes'] ?? 0));
                 $server['download'] = self::addBytes($server['download'], (int)($node['download_bytes'] ?? 0));
             }
-            $server['partial'] = $server['partial'] || $timestamp === false
-                || (string)($node['traffic_sync_status'] ?? '') !== 'synced';
+            if ($timestamp === false) { $server['missing']++; }
+            $server['failed'] = $server['failed'] || (string)($node['traffic_sync_status'] ?? '') === 'failed';
+            $server['partial'] = $server['missing'] > 0 || $server['failed'];
             unset($server);
         }
         foreach ($servers as &$server) {

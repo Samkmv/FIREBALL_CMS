@@ -1,5 +1,9 @@
 <?php
 $exclusions = is_array($exclusions ?? null) ? $exclusions : [];
+$renderActions = require __DIR__ . '/action-dropdown.php';
+$headerActions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
+    . htmlSC(base_href('/admin/subscriptions/exclusions/create')) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
+    . htmlSC(FireballPluginSubscriptions::t('subscriptions_exclusion_create')) . '</span></a>';
 $rows = [];
 $mobileCards = [];
 foreach ($exclusions as $exclusion) {
@@ -10,18 +14,6 @@ foreach ($exclusions as $exclusion) {
     $comment = trim((string)($exclusion['comment'] ?? ''));
     $usersCount = (int)($exclusion['matched_users_count'] ?? 0);
 
-    ob_start();
-    ?>
-    <div class="d-inline-flex flex-wrap justify-content-end gap-1">
-        <a class="btn btn-sm btn-outline-secondary" href="<?= htmlSC(base_href('/admin/subscriptions/exclusions/edit/' . $id)) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_edit')) ?></a>
-        <form action="<?= htmlSC(base_href('/admin/subscriptions/exclusions/delete')) ?>" method="post" data-admin-delete-form data-confirm-title="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_exclusion_delete_title')) ?>" data-delete-message="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_exclusion_delete_confirm')) ?>" data-delete-item="<?= htmlSC((string)$exclusion['address']) ?>" data-delete-confirm-label="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_delete')) ?>">
-            <?= get_csrf_field() ?>
-            <input type="hidden" name="id" value="<?= $id ?>">
-            <button class="btn btn-sm btn-outline-danger" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_delete')) ?></button>
-        </form>
-    </div>
-    <?php
-    $actions = (string)ob_get_clean();
     $mobileActions = [
         [
             'label' => FireballPluginSubscriptions::t('subscriptions_edit'),
@@ -44,6 +36,7 @@ foreach ($exclusions as $exclusion) {
             ],
         ],
     ];
+    $actions = $renderActions($mobileActions);
     $rows[] = ['cells' => [
         ['value' => '#' . $id],
         ['value' => (string)$exclusion['address']],
@@ -76,7 +69,6 @@ foreach ($exclusions as $exclusion) {
             <input class="form-control" type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>" placeholder="<?= htmlSC(FireballPluginSubscriptions::t('subscriptions_search')) ?>">
             <button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_apply')) ?></button>
         </form>
-        <a class="btn btn-dark rounded-pill" href="<?= htmlSC(base_href('/admin/subscriptions/exclusions/create')) ?>"><i class="ci-plus me-2"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_exclusion_create')) ?></a>
     </div>
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>

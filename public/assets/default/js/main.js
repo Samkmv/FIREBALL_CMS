@@ -354,6 +354,10 @@ $(function(){
             const formData = new FormData(form);
             url.search = '';
             formData.forEach((value, key) => {
+                if (form.elements.namedItem(key)?.hasAttribute?.('data-admin-table-page')) {
+                    url.searchParams.set(key, '1');
+                    return;
+                }
                 const normalizedValue = String(value || '').trim();
                 if (key === 'page' || normalizedValue === '') {
                     return;
@@ -375,7 +379,7 @@ $(function(){
                         return;
                     }
                     if (url.searchParams.has(queryName) || field.type === 'hidden') {
-                        field.value = url.searchParams.get(queryName) || (field.name === 'page' ? '1' : '');
+                        field.value = url.searchParams.get(queryName) || (field.name === 'page' || field.hasAttribute('data-admin-table-page') ? '1' : '');
                     }
                 });
             });
@@ -936,7 +940,7 @@ $(function(){
             seenNotificationKeys.add(key);
 
             if (type === 'chat') {
-                if (isSameChatOpen(item.sender_id) || !window.toastr || typeof window.toastr.chat !== 'function') {
+                if (item.muted || (item.group_id ? Number(window.__chatAppState?.groupId) === Number(item.group_id) : (!window.__chatAppState?.groupId && isSameChatOpen(item.sender_id))) || !window.toastr || typeof window.toastr.chat !== 'function') {
                     return;
                 }
 

@@ -2556,19 +2556,6 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     color: var(--fb-color-primary);
 }
 
-.fb-admin-body .modal-content {
-    border: 1px solid var(--fb-color-border) !important;
-    border-radius: var(--fb-radius-xl) !important;
-    background: var(--fb-color-surface-elevated);
-    box-shadow: var(--fb-shadow-lg);
-    color: var(--fb-color-text);
-}
-
-.fb-admin-body .modal-header,
-.fb-admin-body .modal-footer {
-    border-color: var(--fb-color-border);
-}
-
 .fb-admin-body .dropdown-menu {
     border-color: var(--fb-color-border);
     background: var(--fb-color-surface-elevated);
@@ -2987,6 +2974,160 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
 }
 
 /* Legacy admin compatibility */
+/* Full analytics page: keep these rules separate from dashboard charts/tables. */
+.fb-analytics-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 16px;
+}
+
+.fb-analytics-filters > div {
+    min-width: 0;
+}
+
+.fb-analytics-filter-search,
+.fb-analytics-filter-actions {
+    grid-column: 1 / -1;
+}
+
+.fb-analytics-table-card {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+}
+
+.fb-analytics-table-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-bottom: 16px;
+}
+
+.fb-analytics-table-total {
+    padding: 4px 9px;
+    border-radius: 8px;
+    background: var(--fb-color-surface-secondary);
+    color: var(--fb-color-text-secondary);
+    font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.fb-analytics-page .admin-analytics-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+.fb-analytics-page .admin-analytics-table th,
+.fb-analytics-page .admin-analytics-table td {
+    padding: 14px 12px;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+}
+
+.fb-analytics-page .admin-analytics-table th {
+    white-space: normal;
+}
+
+.fb-analytics-page .admin-analytics-table th a {
+    font-size: .8rem !important;
+}
+
+.fb-analytics-page .admin-analytics-table--pages-full th:last-child {
+    width: 112px;
+}
+
+.fb-analytics-page .admin-analytics-table--visits-full th:first-child {
+    width: 29%;
+}
+
+.fb-analytics-page .admin-analytics-table--visits-full th:nth-child(2) {
+    width: 31%;
+}
+
+.fb-analytics-page .admin-analytics-table--visits-full td {
+    font-size: .8rem;
+}
+
+.fb-analytics-sort {
+    display: block;
+    width: fit-content;
+    color: var(--fb-color-text);
+    text-decoration: none;
+}
+
+.fb-analytics-sort + .fb-analytics-sort,
+.fb-analytics-cell-detail {
+    display: block;
+    margin-top: 5px;
+    color: var(--fb-color-text-secondary);
+    font-size: .75rem;
+    font-weight: 400;
+}
+
+.fb-analytics-sort:hover,
+.fb-analytics-sort:focus-visible {
+    color: var(--fb-color-primary);
+    text-decoration: underline;
+}
+
+.fb-analytics-visit-time,
+.fb-analytics-page .admin-analytics-page-views {
+    font-variant-numeric: tabular-nums;
+}
+
+.fb-analytics-share {
+    display: block;
+    height: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--fb-color-surface-secondary);
+}
+
+.fb-analytics-share > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--fb-color-primary);
+}
+
+.fb-analytics-page .admin-table-footer {
+    margin-top: auto;
+}
+
+@media (min-width: 768px) {
+    .fb-admin-body .fb-analytics-page .admin-table-component__scroll {
+        max-height: 36rem;
+        overflow: auto;
+        scrollbar-width: thin;
+    }
+
+    .fb-analytics-page .admin-analytics-table thead {
+        z-index: 1;
+    }
+}
+
+@media (min-width: 1200px) {
+    .fb-analytics-filters {
+        grid-template-columns: minmax(0, 1.6fr) repeat(5, minmax(0, 1fr));
+    }
+
+    .fb-analytics-filter-search {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 359.98px) {
+    .fb-analytics-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .fb-admin-body .fb-page-content > .border,
 .fb-admin-body .fb-page-content > form > .border,
 .fb-admin-body .fb-page-content > .row > [class*="col"] > .border,

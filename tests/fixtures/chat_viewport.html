@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru" class="pwa-standalone" data-bs-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chat PWA viewport regression fixture</title>
+<script>
+// This fixture models viewport events, not a physical iOS keyboard. It uses
+// production CSS/controllers, no account, backend or persistent browser state.
+const params = new URLSearchParams(location.search);
+const group = params.get('chat') === 'group';
+const assetBase = params.get('assets') === 'theme' ? '/themes/default/assets' : '/assets/default';
+document.documentElement.dataset.bsTheme = params.get('theme') || 'dark';
+const realMatchMedia = window.matchMedia.bind(window);
+window.matchMedia = query => /hover: none|pointer: coarse/.test(query) ? {matches: true, addEventListener() {}, removeEventListener() {}} : realMatchMedia(query);
+Object.defineProperty(navigator, 'standalone', {value: true});
+const mockViewport = new EventTarget();
+Object.assign(mockViewport, {height: innerHeight, offsetTop: 0, scale: 1});
+Object.defineProperty(window, 'visualViewport', {value: mockViewport});
+for (const file of ['css/theme.min.css', 'icons/cartzilla-icons.min.css', 'css/style.css']) document.write(`<link rel="stylesheet" href="${assetBase}/${file}">`);
+</script>
+<style>
+:root {--pwa-safe-top:47px;--pwa-safe-bottom:34px}
+body > header.navbar-sticky {height:112px;box-sizing:border-box;padding:47px 8px 4px!important;display:flex;align-items:center;gap:8px;background:var(--cz-body-bg)}
+#results {font:12px monospace;white-space:pre-wrap;max-width:100%}
+#keyboard {position:fixed;inset:auto 0 0;display:none;z-index:1060;background:#3b414c;color:white;font:14px sans-serif;text-align:center;padding:16px;box-sizing:border-box}
+.chat-current-avatar {display:inline-flex;align-items:center;justify-content:center;background:#777;color:white}
+</style>
+</head>
+<body>
+<header class="navbar-sticky"><span>ENGINE</span><output id="results">Проверка…</output></header>
+<main class="content-wrapper"><section class="chat-page"><div class="chat-app-shell"><div class="chat-app-layout" style="grid-template-columns:minmax(0,1fr)"><div class="chat-layout-main"><div class="chat-thread">
+<div class="chat-thread__head"><div class="chat-thread__topline"><div class="d-flex align-items-center gap-3 min-w-0"><button class="chat-thread__mobile-chats btn btn-outline-secondary" aria-label="Диалоги"><i class="ci-sidebar"></i></button><span class="chat-current-avatar rounded-circle">A</span><div class="min-w-0"><strong class="d-block text-truncate">Тестовый чат</strong><div class="chat-current-meta small">Администратор • Не в сети</div></div></div><div class="chat-thread__toolbar"><button class="chat-thread__tool-btn btn btn-outline-secondary" aria-label="Выделение"><i class="ci-check-circle"></i><span class="chat-thread__tool-label">Выделение</span></button><button class="chat-thread__tool-btn btn btn-outline-danger" aria-label="Очистить"><i class="ci-trash"></i></button><button class="chat-thread__tool-btn btn btn-outline-secondary" aria-label="Логи"><i class="ci-file-text"></i></button></div></div><div class="chat-thread__searchbar d-flex"><input class="form-control" type="search" placeholder="Поиск по сообщениям…" data-chat-message-search></div></div>
+<div class="chat-thread__body"><div class="chat-messages-surface"></div></div>
+<div class="chat-thread__composer border-top"><form><input type="hidden" data-chat-user-id value="0"><div class="chat-composer"><div id="reply" style="display:none;height:64px;padding:8px">Ответ на сообщение</div><div class="chat-composer__row"><div class="chat-composer__actions d-flex gap-2"><button class="chat-composer__attach btn btn-outline-secondary rounded-circle" type="button" aria-label="Прикрепить"><i class="ci-paperclip"></i></button><button class="chat-composer__attach btn btn-outline-secondary rounded-circle" type="button" aria-label="Микрофон"><i class="ci-mic"></i></button></div><textarea class="chat-composer__message form-control border-0 shadow-none bg-transparent" rows="1" placeholder="Введите сообщение…"></textarea><button class="chat-composer__submit btn btn-primary" type="submit" aria-label="Отправить"><i class="ci-send"></i></button></div><div class="chat-composer__hint text-body-secondary small">Поддерживаются изображения, видео, аудио, документы и архивы.</div></div></form></div>
+</div></div></div></div></section></main><div id="keyboard">Модель экранной клавиатуры</div>
+<script>
+const app = document.querySelector('.chat-page');
+app.setAttribute(group ? 'data-group-chat-app' : 'data-chat-app', '');
+const messages = document.querySelector('.chat-messages-surface');
+messages.setAttribute(group ? 'data-group-chat-messages' : 'data-chat-messages', '');
+for(let i=0;i<40;i++) messages.insertAdjacentHTML('beforeend', `<div class="chat-message-row chat-message-row--mine"><div class="chat-message-stack"><div class="chat-message-bubble"><div class="chat-message-text">Сообщение ${i+1}</div><div class="chat-message-time">12:00</div></div></div></div>`);
+const input = document.querySelector('textarea');
+input.setAttribute(group ? 'data-group-chat-input' : 'data-chat-message-input', '');
+document.querySelector('form').setAttribute(group ? 'data-group-chat-form' : 'data-chat-form', '');
+for(const file of ['jquery-3.7.1.min.js','app-viewport.js','chat-viewport.js',group?'chat-group.js':'chat.js']) document.write(`<script src="${assetBase}/js/${file}"><\/script>`);
+</script>
+<script>
+window.addEventListener('error', e => document.querySelector('#results').textContent = 'ERROR: ' + e.message);
+$(async function () {
+    const frames = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const results = document.querySelector('#results');
+    const keyboard = document.querySelector('#keyboard');
+    let checks = 0;
+    const check = (ok, label) => {checks++; if(!ok) throw new Error(label);};
+    async function scenario(height, top, focused) {
+        focused ? input.focus() : input.blur();
+        Object.assign(mockViewport,{height,offsetTop:top});
+        keyboard.style.display = focused ? 'block' : 'none';
+        keyboard.style.height = `${Math.max(0,innerHeight-height-top)}px`;
+        mockViewport.dispatchEvent(new Event('resize'));
+        mockViewport.dispatchEvent(new Event('scroll'));
+        await frames();
+        const expectedBottom = focused ? height+top : innerHeight;
+        const composer = document.querySelector('.chat-thread__composer').getBoundingClientRect();
+        const field = input.getBoundingClientRect();
+        const send = document.querySelector('.chat-composer__submit').getBoundingClientRect();
+        check(Math.abs(composer.bottom-expectedBottom)<2, 'Composer bottom aligns to viewport');
+        check(field.top>=composer.top && field.bottom<=expectedBottom+1, 'Complete input is visible');
+        check(send.top>=composer.top && send.bottom<=expectedBottom+1, 'Complete send button is visible');
+        check(document.documentElement.scrollWidth<=innerWidth, 'No horizontal overflow');
+        check(document.documentElement.classList.contains('chat-keyboard-visible')===focused, 'Keyboard state follows touch viewport at any width');
+    }
+    try {
+        await frames();
+        await scenario(innerHeight,0,false);
+        messages.scrollTop=300;
+        // Discard the previous event batch so this captures the reader's place.
+        await new Promise(resolve=>setTimeout(resolve,240));
+        await scenario(Math.min(430,innerHeight-150),0,true);
+        check(Math.abs(messages.scrollTop-300)<1,'Reading position preserved');
+        await scenario(Math.min(280,innerHeight-180),120,true);
+        input.value='Строка\n'.repeat(14);input.dispatchEvent(new Event('input',{bubbles:true}));
+        await frames();
+        await scenario(Math.min(220,innerHeight-200),0,true);
+        check(input.scrollHeight>input.clientHeight,'Long draft scrolls inside input');
+        document.querySelector('#reply').style.display='block';
+        await scenario(Math.min(220,innerHeight-200),0,true);
+        document.querySelector('#reply').style.display='none';
+        input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));
+        await scenario(innerHeight-81,120,false);
+        check(!document.documentElement.classList.contains('chat-compact-viewport'),'Full header restores after dismiss');
+        // Last-message anchoring across the same production event handlers.
+        await new Promise(resolve=>setTimeout(resolve,240));
+        messages.scrollTop=messages.scrollHeight;
+        await scenario(Math.min(430,innerHeight-150),0,true);
+        check(Math.abs(messages.scrollHeight-messages.clientHeight-messages.scrollTop)<1,'Latest message stays at bottom');
+        await scenario(innerHeight,0,false);
+        results.textContent=`PASS ${checks} • ${group?'группа':'личный'} • ${innerWidth}px`;
+        document.title='PASS: '+results.textContent;
+    } catch(e) {results.textContent='FAIL: '+e.message;document.title=results.textContent;console.error(e);}
+});
+</script>
+</body></html>

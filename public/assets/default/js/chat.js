@@ -6,43 +6,16 @@ $(function () {
 
     const mobileFullscreenQuery = window.matchMedia('(max-width: 767.98px)');
     let mobileViewportFrame = 0;
-    let messageViewportFrame = 0;
+    let resizeComposerForViewport = () => {};
     let viewportAnchorReleaseTimer = 0;
     let viewportAnchor = null;
 
-    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
-    const readMessageViewportAnchor = () => {
-        const box = chatApp.find('[data-chat-messages]')[0];
-        if (!box) {
-            return null;
-        }
-
-        const distanceFromBottom = Math.max(0, box.scrollHeight - box.scrollTop - box.clientHeight);
-        return {
-            distanceFromBottom,
-            stickToBottom: distanceFromBottom <= 48,
-        };
-    };
-
-    const restoreMessageViewportAnchor = (anchor) => {
-        if (!anchor) {
-            return;
-        }
-        if (messageViewportFrame) {
-            cancelAnimationFrame(messageViewportFrame);
-        }
-        messageViewportFrame = requestAnimationFrame(() => {
-            messageViewportFrame = 0;
-            const box = chatApp.find('[data-chat-messages]')[0];
-            if (!box) {
-                return;
-            }
-
-            box.scrollTop = anchor.stickToBottom
-                ? box.scrollHeight
-                : Math.max(0, box.scrollHeight - box.clientHeight - anchor.distanceFromBottom);
-        });
-    };
+    const readMessageViewportAnchor = () => window.FireballChatViewport.captureMessageAnchor(
+        chatApp.find('[data-chat-messages]')[0]
+    );
+    const restoreMessageViewportAnchor = anchor => window.FireballChatViewport.restoreMessageAnchor(
+        chatApp.find('[data-chat-messages]')[0], anchor
+    );
 
     const beginMessageViewportAnchorSession = () => {
         if (!viewportAnchor) {
@@ -63,6 +36,7 @@ $(function () {
         const focused = Boolean(active && chatApp[0].contains(active)
             && active.matches('input, textarea, [contenteditable="true"]'));
         window.FireballChatViewport.sync(focused);
+        resizeComposerForViewport();
         restoreMessageViewportAnchor(viewportAnchor);
     };
 
@@ -80,9 +54,11 @@ $(function () {
         mobileFullscreenQuery.addListener(scheduleMobileFullscreenSync);
     }
     window.addEventListener('resize', scheduleMobileFullscreenSync, {passive: true});
+    window.addEventListener('scroll', scheduleMobileFullscreenSync, {passive: true});
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', scheduleMobileFullscreenSync, {passive: true});
         window.visualViewport.addEventListener('scroll', scheduleMobileFullscreenSync, {passive: true});
+        window.visualViewport.addEventListener('scrollend', scheduleMobileFullscreenSync, {passive: true});
     }
     document.addEventListener('focusin', scheduleMobileFullscreenSync, {passive: true});
     document.addEventListener('focusout', scheduleMobileFullscreenSync, {passive: true});
@@ -95,6 +71,7 @@ $(function () {
     }, {passive: true});
     syncMobileFullscreen();
 
+    const groupMode = Number(chatApp.data('group-id')) > 0;
     const fetchUrl = String(chatApp.data('fetch-url') || '');
     const streamUrl = String(chatApp.data('stream-url') || '');
     const typingUrl = String(chatApp.data('typing-url') || '');
@@ -135,6 +112,7 @@ $(function () {
     const selectionCountBadge = chatApp.find('[data-chat-selection-count]');
     const form = chatApp.find('[data-chat-form]');
     const userIdInput = form.find('[data-chat-user-id]');
+    if (groupMode) userIdInput.attr('name', 'conversation_id');
     const messageInput = form.find('[data-chat-message-input]');
     const replyInput = form.find('[data-chat-reply-to-id]');
     const replyPreview = form.find('[data-chat-reply-preview]');
@@ -199,6 +177,8 @@ $(function () {
 
     const state = {
         messages: [],
+        olderMessages: [],
+        searchMessages: null,
         renderedSignature: '',
         messagesRequestId: 0,
         auditRequestId: 0,
@@ -223,6 +203,7 @@ $(function () {
         editing: null,
         reactionRequestPending: false,
         openReactionMessageId: 0,
+        openMessageMenuId: 0,
         localTyping: false,
         remoteTyping: false,
         typingLastSentAt: 0,
@@ -264,7 +245,7 @@ $(function () {
         }
 
         const isMobile = typeof window.matchMedia === 'function'
-            && window.matchMedia('(max-width: 767.98px)').matches;
+            && document.documentElement.classList.contains('chat-mobile-fullscreen');
         const resizeAnchor = isMobile ? (viewportAnchor || readMessageViewportAnchor()) : null;
 
         input.style.height = 'auto';
@@ -274,6 +255,7 @@ $(function () {
         const nextHeight = Math.max(minHeight, Math.min(input.scrollHeight, maxHeight));
         input.style.height = `${nextHeight}px`;
         input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
+        window.FireballChatViewport.keepComposerInputVisible(input);
 
         if (!input.dataset.chatBaseHeight || String(input.value || '') === '') {
             input.dataset.chatBaseHeight = String(nextHeight);
@@ -457,6 +439,7 @@ $(function () {
         item.created_at || '',
         item.edited_at || '',
         item.message || '',
+        item.forwarded_label || '',
         item.attachment && item.attachment.url ? item.attachment.url : '',
         Number(item.reply_to_id) || 0,
         item.reply && item.reply.message ? item.reply.message : '',
@@ -1214,7 +1197,7 @@ $(function () {
             return state.messages.slice();
         }
 
-        return state.messages.filter((item) => {
+        return (state.searchMessages || state.messages).filter((item) => {
             const attachmentName = item.attachment && item.attachment.name ? item.attachment.name : '';
             const haystack = [item.message || '', attachmentName].join(' ').toLowerCase();
             return haystack.includes(query);
@@ -1273,7 +1256,7 @@ $(function () {
         };
 
         replyInput.val(String(state.replyTo.id));
-        replyAuthor.text(senderIsMe ? String(chatApp.data('reply-you-text') || 'You') : contactName);
+        replyAuthor.text(senderIsMe ? String(chatApp.data('reply-you-text') || 'You') : (item.sender_name || contactName));
         replyText.text(replyPreviewText(item));
         replyPreview.removeClass('d-none');
         messageInput.trigger('focus');
@@ -1292,7 +1275,7 @@ $(function () {
 
         const author = deleted
             ? ''
-            : (senderIsMe ? String(chatApp.data('reply-you-text') || 'You') : contactName);
+            : (senderIsMe ? String(chatApp.data('reply-you-text') || 'You') : (reply.sender_name || contactName));
 
         let preview = deleted
             ? String(chatApp.data('reply-deleted-text') || 'Original message is unavailable')
@@ -1402,7 +1385,7 @@ $(function () {
             dataType: 'json',
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: contactId,
+                [groupMode ? 'conversation_id' : 'user_id']: contactId,
                 message_id: editing.id,
                 message: text,
             },
@@ -1415,7 +1398,7 @@ $(function () {
                     return;
                 }
 
-                clearEdit({clearInput: true});
+                clearEdit({restoreDraft: true});
                 state.messagesRequestId += 1;
 
                 if (contactId === activeContactId()) {
@@ -1546,7 +1529,7 @@ $(function () {
             dataType: 'json',
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: contactId,
+                [groupMode ? 'conversation_id' : 'user_id']: contactId,
                 message_id: messageId,
                 reaction: reaction,
             },
@@ -1656,7 +1639,7 @@ $(function () {
             global: false,
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: contactId,
+                [groupMode ? 'conversation_id' : 'user_id']: contactId,
                 typing: isTyping ? 1 : 0,
             }
         });
@@ -1776,7 +1759,7 @@ $(function () {
             const previousDayKey = previousItem ? getMessageDayKey(previousItem.created_at) : '';
             const dayLabel = formatMessageDate(item.created_at);
             const checks = mine ? renderDeliveryChecks(item) : '';
-            const avatar = escapeHtml(getContactButtons().filter('.active').first().data('user-avatar') || currentAvatar.attr('src') || '');
+            const avatar = escapeHtml(item.sender_avatar || getContactButtons().filter('.active').first().data('user-avatar') || currentAvatar.attr('src') || '');
             const messageValue = String(item.message || '').trim();
             const hasText = messageValue !== '';
             const mediaOnly = Boolean(item.attachment && item.attachment.is_image && !hasText);
@@ -1812,11 +1795,13 @@ $(function () {
             }
 
             html += `
-                <div class="chat-message-row ${mine ? 'chat-message-row--mine' : 'chat-message-row--theirs'} ${startsGroup ? 'is-group-start' : ''} ${endsGroup ? 'is-group-end' : ''} ${isSelected ? 'is-selected' : ''}" data-chat-message-row data-message-id="${Number(item.id) || 0}">
+                <div class="chat-message-row ${mine ? 'chat-message-row--mine' : 'chat-message-row--theirs'} ${startsGroup ? 'is-group-start' : ''} ${endsGroup ? 'is-group-end' : ''} ${isSelected ? 'is-selected' : ''} ${state.openMessageMenuId === Number(item.id) ? 'is-actions-open' : ''}" data-chat-message-row data-message-id="${Number(item.id) || 0}">
                     ${avatarHtml}
                     ${canShowCheckbox ? `<input type="checkbox" class="form-check-input chat-message-select" data-chat-message-select value="${Number(item.id) || 0}" ${isSelected ? 'checked' : ''}>` : ''}
                     <div class="chat-message-stack ${canShowActions ? 'has-actions' : ''}">
+                        ${groupMode && !mine && startsGroup ? `<div class="group-chat-sender">${escapeHtml(item.sender_name)}</div>` : ''}
                         <div class="chat-message-bubble ${mine ? 'chat-message-bubble--mine' : 'chat-message-bubble--theirs'} ${mediaOnly ? 'chat-message-bubble--media-only' : ''}">
+                            ${item.forwarded_label ? `<div class="chat-forwarded-label">↗ ${escapeHtml(item.forwarded_label)}</div>` : ''}
                             ${replyQuote}
                             ${messageText}
                             ${attachment}
@@ -1827,9 +1812,11 @@ $(function () {
                             </div>
                         </div>
                         ${reactionsMarkup}
+                        ${canShowActions ? `<button type="button" class="chat-message-menu-toggle" data-chat-message-menu="${Number(item.id)}" aria-label="Действия с сообщением" aria-expanded="${state.openMessageMenuId === Number(item.id)}" aria-controls="chatMessageActions${Number(item.id)}">⋯</button>` : ''}
                         ${reactionPickerMarkup}
                         ${canShowActions ? `
-                            <div class="chat-message-actions">
+                            <div class="chat-message-actions" id="chatMessageActions${Number(item.id)}">
+                                <button type="button" class="chat-message-reply-btn" data-chat-forward-message="${Number(item.id) || 0}" title="Переслать" aria-label="Переслать"><i class="ci-send" aria-hidden="true"></i></button>
                                 <!-- FIREBALL_CHAT21_REPLY_UI_FIX_V2 -->
                                 <button type="button" class="chat-message-reply-btn" data-chat-reply-message="${Number(item.id) || 0}" title="${actionReplyText}" aria-label="${actionReplyText}">
                                     <i class="ci-arrow-left" aria-hidden="true"></i>
@@ -1842,7 +1829,7 @@ $(function () {
                                         <i class="ci-edit-2" aria-hidden="true"></i>
                                     </button>
                                 ` : ''}
-                                ${state.canModerate ? `
+                                ${(state.canModerate || (groupMode && mine)) ? `
                                     <button type="button" class="chat-message-delete-btn" data-chat-delete-message="${Number(item.id) || 0}" title="${actionDeleteText}" aria-label="${actionDeleteText}">
                                         <i class="ci-trash" aria-hidden="true"></i>
                                     </button>
@@ -1977,7 +1964,7 @@ $(function () {
         }
 
         state.messagesLoadErrorShown = false;
-        state.messages = Array.isArray(response.messages) ? response.messages : [];
+        state.messages = [...state.olderMessages, ...(Array.isArray(response.messages) ? response.messages : [])].filter((item, index, list) => list.findIndex(other => Number(other.id) === Number(item.id)) === index);
         if (response.permissions) {
             state.canModerate = Boolean(response.permissions.can_moderate);
             state.canBulkDelete = Boolean(response.permissions.can_bulk_delete);
@@ -1992,9 +1979,12 @@ $(function () {
         window.__chatAppState = {
             activeContactId: activeContactId(),
             currentUserId: Number(response.current_user_id) || 0,
+            groupId: groupMode ? activeContactId() : 0,
         };
 
-        if (response.contact) {
+        $(document).trigger('chat:payload', [response]);
+        if (groupMode && response.typing) applyRemoteTyping(Boolean(response.typing.is_typing));
+        if (!groupMode && response.contact) {
             updateCurrentContactPresence(Boolean(response.contact.is_online));
         }
     };
@@ -2056,7 +2046,7 @@ $(function () {
         stopChatRealtime();
 
         const url = new URL(streamUrl, window.location.href);
-        url.searchParams.set('user_id', String(contactId));
+        url.searchParams.set(groupMode ? 'conversation_id' : 'user_id', String(contactId));
 
         const source = new window.EventSource(url.toString(), {withCredentials: true});
         chatEventSource = source;
@@ -2067,7 +2057,7 @@ $(function () {
             }
         });
 
-        source.addEventListener('chat', (event) => {
+        source.addEventListener(groupMode ? 'group-chat' : 'chat', (event) => {
             if (chatEventSource !== source) return;
 
             let payload = {};
@@ -2077,7 +2067,7 @@ $(function () {
                 return;
             }
 
-            if (Number(payload.contact_id) !== activeContactId()) return;
+            if (Number(groupMode ? payload.conversation_id : payload.contact_id) !== activeContactId()) return;
 
             const changes = Array.isArray(payload.changes)
                 ? payload.changes
@@ -2131,7 +2121,7 @@ $(function () {
             method: 'GET',
             dataType: 'json',
             timeout: 15000,
-            data: { user_id: contactId },
+            data: { [groupMode ? 'conversation_id' : 'user_id']: contactId },
             success: function (response) {
                 if (requestId !== state.messagesRequestId || contactId !== activeContactId()) {
                     return;
@@ -2142,6 +2132,7 @@ $(function () {
             },
             error: function (request) {
                 if (request.statusText === 'abort') return;
+                if (groupMode && request.status === 403) { messagesBox.empty(); window.location.assign(fetchUrl.replace(/\/group\/messages.*$/, '')); return; }
                 chatPollDelay = Math.min(chatPollDelay * 2, 60000);
                 chatNextPollAt = Date.now() + chatPollDelay;
                 if (requestId !== state.messagesRequestId || contactId !== activeContactId()) {
@@ -2180,6 +2171,10 @@ $(function () {
     };
 
     const setActiveContact = (button) => {
+        $(document).trigger('chat:before-switch');
+        if (groupMode) { window.location.assign(new URL(`../chat?user_id=${Number(button.data('user-id'))}`, window.location.href)); return; }
+        state.olderMessages = [];
+        state.searchMessages = null;
         const previousContactId = activeContactId();
         stopLocalTyping(previousContactId, true);
         applyRemoteTyping(false);
@@ -2290,6 +2285,7 @@ $(function () {
                 }
 
                 messageInput.val('');
+                $(document).trigger('chat:sent', [contactId]);
                 clearReply();
                 resizeMessageInput();
                 clearPendingAttachment();
@@ -2323,7 +2319,7 @@ $(function () {
             dataType: 'json',
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: contactId,
+                [groupMode ? 'conversation_id' : 'user_id']: contactId,
                 message_ids: messageIds,
                 reason: String(reason || '').trim(),
             },
@@ -2369,7 +2365,7 @@ $(function () {
             dataType: 'json',
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: contactId,
+                [groupMode ? 'conversation_id' : 'user_id']: contactId,
                 reason: String(reason || '').trim(),
             },
             beforeSend: function () {
@@ -2415,7 +2411,7 @@ $(function () {
             dataType: 'json',
             data: {
                 needCSRFToken: form.find('input[name="needCSRFToken"]').val(),
-                user_id: contactId,
+                [groupMode ? 'conversation_id' : 'user_id']: contactId,
             },
             beforeSend: function () {
                 state.moderationRequestPending = true;
@@ -2537,7 +2533,7 @@ $(function () {
             url: auditUrl,
             method: 'GET',
             dataType: 'json',
-            data: { user_id: contactId },
+            data: { [groupMode ? 'conversation_id' : 'user_id']: contactId },
             success: function (response) {
                 if (requestId !== state.auditRequestId || contactId !== activeContactId()) {
                     return;
@@ -2608,16 +2604,29 @@ $(function () {
     });
 
     $(document).on('click', function (event) {
+        if (!$(event.target).closest('[data-chat-message-menu], .chat-message-actions').length) {
+            state.openMessageMenuId = 0;
+            chatApp.find('.is-actions-open').removeClass('is-actions-open').find('[data-chat-message-menu]').attr('aria-expanded', 'false');
+        }
         if (!$(event.target).closest('[data-chat-reaction-picker], [data-chat-reaction-open]').length) {
             closeReactionPickers();
         }
     });
 
+    chatApp.on('click', '[data-chat-message-menu]', function (event) {
+        event.stopPropagation();
+        const row = $(this).closest('[data-chat-message-row]');
+        const open = !row.hasClass('is-actions-open');
+        chatApp.find('.is-actions-open').removeClass('is-actions-open').find('[data-chat-message-menu]').attr('aria-expanded', 'false');
+        state.openMessageMenuId = open ? Number($(this).data('chat-message-menu')) : 0;
+        row.toggleClass('is-actions-open', open);
+        $(this).attr('aria-expanded', String(open));
+    });
     chatApp.on('click', '[data-chat-edit-message]', function () {
         const messageId = Number($(this).data('chat-edit-message')) || 0;
         if (!messageId) return;
 
-        const item = state.messages.find((message) => Number(message.id) === messageId);
+        const item = [...state.messages, ...(state.searchMessages || [])].find((message) => Number(message.id) === messageId);
         if (item) beginEdit(item);
     });
 
@@ -2629,7 +2638,7 @@ $(function () {
     chatApp.on('click', '[data-chat-reply-message]', function () {
         const messageId = Number($(this).data('chat-reply-message')) || 0;
         if (!messageId) return;
-        const item = state.messages.find((message) => Number(message.id) === messageId);
+        const item = [...state.messages, ...(state.searchMessages || [])].find((message) => Number(message.id) === messageId);
         if (item) beginReply(item);
     });
 
@@ -2766,7 +2775,7 @@ $(function () {
         updateLocalTyping();
     });
 
-    window.addEventListener('resize', resizeMessageInput);
+    resizeComposerForViewport = resizeMessageInput;
 
     messageInput.on('keydown', function (event) {
         const originalEvent = event.originalEvent || event;
@@ -2934,7 +2943,23 @@ $(function () {
         });
     });
 
-    window.__chatAppState = { activeContactId: activeContactId(), currentUserId: 0 };
+    window.FireballChatThread = {
+        get activeId() { return activeContactId(); },
+        get messages() { return [...state.messages, ...(state.searchMessages || [])]; },
+        groupMode,
+        reload: () => loadMessages({force: true}),
+        confirm: showConfirm,
+        preview: openAttachmentPreview,
+        search: messages => { state.searchMessages = messages; renderMessages(state.messages, Number(chatApp.data('current-user-id')), {force: true}); },
+        prepend: messages => {
+            const box = messagesBox[0]; const height = box.scrollHeight; const top = box.scrollTop;
+            state.olderMessages = [...messages, ...state.olderMessages].filter((item, index, list) => list.findIndex(other => Number(other.id) === Number(item.id)) === index);
+            state.messages = [...messages, ...state.messages].filter((item, index, list) => list.findIndex(other => Number(other.id) === Number(item.id)) === index);
+            renderMessages(state.messages, Number(chatApp.data('current-user-id')), {force: true});
+            box.scrollTop = top + box.scrollHeight - height;
+        },
+    };
+    window.__chatAppState = { activeContactId: activeContactId(), currentUserId: Number(chatApp.data('current-user-id')), groupId: groupMode ? activeContactId() : 0 };
     $(document).trigger('chat:active-contact-changed', [activeContactId()]);
 
     loadMessages({ stickToBottom: true });

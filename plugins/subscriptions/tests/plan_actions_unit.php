@@ -43,7 +43,7 @@ function view(): object
     return new class {
         public function renderPartial(string $name, array $data = []): string
         {
-            if ($name === 'admin/shell_open') return '<main class="subscriptions-admin">';
+            if ($name === 'admin/shell_open') return '<main class="subscriptions-admin">' . ($data['actions'] ?? '');
             if ($name === 'admin/shell_close') return '</main>';
             if (!in_array($name, ['admin/partials/table', 'admin/partials/responsive_table_cards'], true)) {
                 throw new RuntimeException('Unexpected template: ' . $name);
@@ -104,7 +104,8 @@ foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
             planActionsCheck($xpath->query($dropdown)->length === 1, $context . ': one CMS dropdown');
             planActionsCheck($xpath->query($dropdown . '/button[@type="button" and @data-bs-toggle="dropdown" and @aria-expanded="false" and @data-bs-display="static" and @data-bs-boundary="viewport"]')->length === 1, $context . ': existing CMS dropdown behavior');
             $toggle = $xpath->query($dropdown . '/button')->item(0);
-            planActionsCheck(($layout === 'desktop' ? trim($toggle->textContent) : $toggle->getAttribute('aria-label')) === ($layout === 'desktop' ? $t['subscriptions_actions'] : return_translation('admin_posts_col_actions')), $context . ': localized accessible action label');
+            planActionsCheck($toggle->getAttribute('aria-label') === ($layout === 'desktop' ? $t['subscriptions_actions'] : return_translation('admin_posts_col_actions')), $context . ': localized accessible action label');
+            planActionsCheck(str_contains($toggle->getAttribute('class'), 'btn-icon') && str_contains($toggle->getAttribute('class'), 'rounded-circle'), $context . ': standard CMS icon action button');
             $menu = $dropdown . '/div[contains(@class,"dropdown-menu")]';
             planActionsCheck($xpath->query($menu)->length === 1, $context . ': menu container retained');
             planActionsCheck($xpath->query($menu . '//*[self::a or self::button]')->length === 4, $context . ': all four actions present');

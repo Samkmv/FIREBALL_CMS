@@ -1,6 +1,10 @@
 <?php
 
 $plans = is_array($plans ?? null) ? $plans : [];
+$renderActions = require __DIR__ . '/action-dropdown.php';
+$headerActions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
+    . htmlSC(base_href('/admin/subscriptions/plans/create')) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
+    . htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_create')) . '</span></a>';
 
 $planActions = static function (array $plan): array {
     $id = (int)$plan['id'];
@@ -61,34 +65,7 @@ foreach ($plans as $plan) {
         : '';
     $actions = $planActions($plan);
 
-    ob_start();
-    ?>
-    <div class="dropdown admin-post-actions-dropdown d-inline-block" data-admin-post-actions-dropdown>
-        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" data-bs-boundary="viewport" aria-expanded="false">
-            <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_actions')) ?>
-        </button>
-        <div class="dropdown-menu dropdown-menu-end shadow-sm rounded-4">
-            <?php foreach ($actions as $action): ?>
-                <?php if (($action['type'] ?? 'link') === 'form'): ?>
-                    <form action="<?= htmlSC((string)$action['action']) ?>" method="post">
-                        <?= get_csrf_field() ?>
-                        <?php foreach ($action['hidden'] as $name => $value): ?><input type="hidden" name="<?= htmlSC((string)$name) ?>" value="<?= htmlSC((string)$value) ?>"><?php endforeach; ?>
-                        <button class="dropdown-item d-flex align-items-center gap-2" type="submit">
-                            <i class="<?= htmlSC((string)$action['icon']) ?>" aria-hidden="true"></i>
-                            <span><?= htmlSC((string)$action['label']) ?></span>
-                        </button>
-                    </form>
-                <?php else: ?>
-                    <a class="dropdown-item d-flex align-items-center gap-2" href="<?= htmlSC((string)$action['href']) ?>">
-                        <i class="<?= htmlSC((string)$action['icon']) ?>" aria-hidden="true"></i>
-                        <span><?= htmlSC((string)$action['label']) ?></span>
-                    </a>
-                <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <?php
-    $desktopActions = (string)ob_get_clean();
+    $desktopActions = $renderActions($actions);
 
     $rows[] = [
         'cells' => [
@@ -121,10 +98,6 @@ foreach ($plans as $plan) {
 ?>
 
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <div class="d-flex justify-content-end mb-3">
-        <a class="btn btn-dark rounded-pill" href="<?= base_href('/admin/subscriptions/plans/create') ?>"><i class="ci-plus me-2"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_create')) ?></a>
-    </div>
-
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
         <?= view()->renderPartial('admin/partials/table', [
             'columns' => [

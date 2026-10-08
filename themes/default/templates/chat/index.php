@@ -1,3 +1,4 @@
+<?php $chat_active_group = $chat_active_group ?? null; ?>
 <?php if (!empty($active_contact)) { echo $this->partial('chat/viewport', get_defined_vars()); } ?>
 
 <style id="fireball-chat-reply-ui-v2">
@@ -650,7 +651,7 @@
 
     $chatPermissions = is_array($chat_permissions ?? null) ? $chat_permissions : [];
 
-    $renderChatSidebar = static function () use ($contactsByGroup, $contactGroupTitles, $active_contact, $chat_groups, $chat_group_url) {
+    $renderChatSidebar = static function () use ($contactsByGroup, $contactGroupTitles, $active_contact, $chat_groups, $chat_group_url, $chat_active_group) {
         ?>
         <div class="chat-sidebar">
             <div class="chat-sidebar__head">
@@ -687,6 +688,7 @@
                 </div>
             </div>
             <div class="chat-sidebar__body">
+                <div class="chat-sidebar-tabs px-3 pt-3 d-flex gap-2"><button type="button" class="btn btn-sm btn-secondary flex-fill" data-chat-archive-view="0">Диалоги</button><button type="button" class="btn btn-sm btn-outline-secondary flex-fill" data-chat-archive-view="1">Архив</button></div>
                 <!-- FIREBALL_CHAT30_GROUPS -->
                 <div class="px-3 pt-3">
                     <button
@@ -714,16 +716,19 @@
                             <?php foreach ($chat_groups as $group): ?>
                                 <a
                                     href="<?= htmlSC($chat_group_url) ?>?conversation_id=<?= (int)$group['id'] ?>"
-                                    class="list-group-item list-group-item-action chat-contact-item"
+                                    class="list-group-item list-group-item-action chat-contact-item <?= $chat_active_group && (int)$chat_active_group['id'] === (int)$group['id'] ? 'active' : '' ?>"
+                                    data-chat-group-link data-group-id="<?= (int)$group['id'] ?>"
+                                    data-archived="<?= (int)($group['archived'] ?? 0) ?>" data-pinned="<?= (int)($group['pinned'] ?? 0) ?>"
+                                    data-user-name="<?= htmlSC($group['title']) ?>"
                                 >
                                     <span class="d-flex align-items-center gap-3 min-w-0">
                                         <span class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
-                                            <i class="ci-user" aria-hidden="true"></i>
+                                            <?php if (!empty($group['avatar_path'])): ?><img src="<?= htmlSC(base_href('/chat/group/avatar?conversation_id=' . (int)$group['id'] . '&v=' . strtotime($group['updated_at']))) ?>" class="rounded-circle object-fit-cover w-100 h-100" alt=""><?php else: ?><i class="ci-user" aria-hidden="true"></i><?php endif; ?>
                                         </span>
                                         <span class="min-w-0 flex-grow-1">
                                             <span class="d-flex align-items-start justify-content-between gap-2">
                                                 <span class="d-block text-truncate fw-semibold">
-                                                    <?= htmlSC($group['title']) ?>
+                                                    <?= !empty($group['pinned']) ? '📌 ' : '' ?><?= htmlSC($group['title']) ?><?= !empty($group['muted_until']) && strtotime($group['muted_until']) > time() ? ' · 🔕' : '' ?>
                                                 </span>
                                                 <span class="badge text-bg-danger rounded-pill flex-shrink-0 <?= (int)($group['unread_count'] ?? 0) > 0 ? '' : 'd-none' ?>">
                                                     <?= (int)($group['unread_count'] ?? 0) ?>
@@ -753,11 +758,13 @@
                         </div>
                         <div class="list-group list-group-flush chat-contact-list" data-chat-contact-group-list="<?= htmlSC($groupKey) ?>">
                             <?php foreach ($groupContacts as $contact): ?>
-                                <?php $isActive = (int)$active_contact['id'] === (int)$contact['id']; ?>
+                                <?php $isActive = !$chat_active_group && (int)$active_contact['id'] === (int)$contact['id']; ?>
                                 <button
                                     type="button"
                                     class="list-group-item list-group-item-action chat-contact-item <?= $isActive ? 'active' : '' ?>"
                                     data-chat-contact
+                                    data-archived="<?= (int)($contact['preferences']['archived'] ?? 0) ?>"
+                                    data-pinned="<?= (int)($contact['preferences']['pinned'] ?? 0) ?>"
                                     data-chat-id="<?= (int)$contact['id'] ?>"
                                     data-contact-group="<?= htmlSC((string)($contact['chat_group'] ?? 'clients')) ?>"
                                     data-contact-group-label="<?= htmlSC($contactGroupTitles[$groupKey] ?? $groupKey) ?>"
@@ -830,7 +837,7 @@
             </div>
         </div>
 
-        <?php if (empty($contacts)): ?>
+        <?php if (empty($contacts) && !$chat_active_group): ?>
             <div class="chat-empty-state border rounded-5 p-4 p-md-5 text-center">
                 <div class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px;">
                     <i class="ci-chat fs-2 text-body-secondary"></i>
@@ -842,6 +849,13 @@
             <div
                 class="chat-app-shell"
                 data-chat-app
+                data-default-group-avatar="<?= htmlSC(get_user_avatar(null, 'sm')) ?>"
+                data-group-id="<?= (int)($chat_active_group['id'] ?? 0) ?>"
+                data-current-user-id="<?= (int)get_user()['id'] ?>"
+                data-workspace-url="<?= htmlSC($chat_workspace_url ?? '') ?>"
+                data-group-manage-url="<?= htmlSC($chat_group_manage_url ?? '') ?>"
+                data-history-url="<?= htmlSC($chat_history_url ?? '') ?>"
+                data-forward-url="<?= htmlSC($chat_forward_url ?? '') ?>"
                 data-fetch-url="<?= htmlSC($chat_fetch_url) ?>"
                 data-stream-url="<?= htmlSC($chat_stream_url ?? '') ?>"
                 data-typing-url="<?= htmlSC($chat_typing_url ?? '') ?>"
@@ -958,23 +972,23 @@
                                         </button>
                                         <span class="position-relative flex-shrink-0">
                                             <img
-                                                src="<?= get_user_avatar($active_contact['avatar'] ?? null, 'sm') ?>"
+                                                src="<?= $chat_active_group && !empty($chat_active_group['avatar_path']) ? htmlSC(base_href('/chat/group/avatar?conversation_id=' . (int)$chat_active_group['id'])) : get_user_avatar($active_contact['avatar'] ?? null, 'sm') ?>"
                                                 alt="<?= htmlSC($active_contact['name']) ?>"
                                                 class="chat-current-avatar rounded-circle border object-fit-cover"
                                                 data-chat-current-avatar
                                             >
                                             <span
                                                 class="chat-contact-presence <?= !empty($active_contact['is_online']) ? 'is-online' : 'is-offline' ?>"
-                                                data-chat-current-presence
+                                                data-chat-current-presence <?= $chat_active_group ? 'hidden' : '' ?>
                                                 aria-hidden="true"
                                             ></span>
                                         </span>
                                         <div class="min-w-0">
                                             <strong class="d-block text-truncate" data-chat-current-name><?= htmlSC($active_contact['name']) ?><?= render_public_verified_badge($active_contact['role'] ?? null) ?></strong>
                                             <div class="chat-current-meta small d-flex align-items-center gap-2 text-body-secondary">
-                                                <span class="text-truncate" data-chat-current-role><?= htmlSC(get_user_role_label((string)($active_contact['role'] ?? 'user'))) ?></span>
-                                                <span aria-hidden="true">•</span>
-                                                <span class="d-inline-flex align-items-center gap-1 flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'text-success' : 'text-body-secondary' ?>" data-chat-current-status>
+                                                <span class="text-truncate" data-chat-current-role><?= $chat_active_group ? (int)$chat_active_group['member_count'] . ' ' . return_translation('chat_group_members_short') : htmlSC(get_user_role_label((string)($active_contact['role'] ?? 'user'))) ?></span>
+                                                <span aria-hidden="true" <?= $chat_active_group ? 'hidden' : '' ?>>•</span>
+                                                <span class="d-inline-flex align-items-center gap-1 flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'text-success' : 'text-body-secondary' ?>" data-chat-current-status <?= $chat_active_group ? 'hidden' : '' ?>>
                                                     <span class="rounded-circle d-inline-block flex-shrink-0 <?= !empty($active_contact['is_online']) ? 'bg-success' : 'bg-secondary' ?>" style="width: 8px; height: 8px;"></span>
                                                     <span><?= !empty($active_contact['is_online']) ? print_translation('chat_status_online') : print_translation('chat_status_offline') ?></span>
                                                 </span>
@@ -987,14 +1001,26 @@
                                     </div>
 
                                     <div class="chat-thread__toolbar">
+                                        <?php if ($chat_active_group): ?><button type="button" class="btn btn-outline-secondary chat-thread__tool-btn" data-chat-group-settings aria-label="Участники и настройки группы" title="Участники и настройки группы"><i class="ci-user" aria-hidden="true"></i></button><?php endif; ?>
+                                        <div class="dropdown admin-post-actions-dropdown" data-admin-post-actions-dropdown>
+                                            <button type="button" class="btn btn-outline-secondary chat-thread__tool-btn" data-bs-display="static" data-bs-boundary="viewport" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Действия с диалогом" title="Действия с диалогом"><i class="ci-settings" aria-hidden="true"></i></button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <button class="dropdown-item" type="button" data-chat-preference="pinned">Закрепить диалог</button>
+                                                <button class="dropdown-item" type="button" data-chat-preference="muted">Выключить уведомления</button>
+                                                <button class="dropdown-item" type="button" data-chat-preference="archived">В архив</button>
+                                                <button class="dropdown-item" type="button" data-chat-gallery>Медиа и файлы</button>
+                                                <?php if (!empty($chatPermissions['can_bulk_delete'])): ?><button class="dropdown-item d-md-none" type="button" data-chat-selection-toggle><?= print_translation('chat_selection_mode') ?></button><?php endif; ?>
+                                                <?php if (!empty($chatPermissions['can_clear_chat'])): ?><button class="dropdown-item d-md-none text-danger" type="button" data-chat-clear-conversation><?= print_translation('chat_clear_chat_btn') ?></button><?php endif; ?>
+                                            </div>
+                                        </div>
                                         <?php if (!empty($chatPermissions['can_bulk_delete'])): ?>
-                                            <button type="button" class="btn btn-outline-secondary chat-thread__tool-btn" title="<?= htmlSC(return_translation('chat_selection_mode')) ?>" aria-label="<?= htmlSC(return_translation('chat_selection_mode')) ?>" data-chat-selection-toggle>
+                                            <button type="button" class="btn btn-outline-secondary chat-thread__tool-btn d-none d-md-inline-flex" title="<?= htmlSC(return_translation('chat_selection_mode')) ?>" aria-label="<?= htmlSC(return_translation('chat_selection_mode')) ?>" data-chat-selection-toggle>
                                                 <i class="ci-check-circle" aria-hidden="true"></i>
                                                 <span class="chat-thread__tool-label"><?= print_translation('chat_selection_mode') ?></span>
                                             </button>
                                         <?php endif; ?>
                                         <?php if (!empty($chatPermissions['can_clear_chat'])): ?>
-                                            <button type="button" class="btn btn-outline-danger chat-thread__tool-btn" title="<?= htmlSC(return_translation('chat_clear_chat_btn')) ?>" aria-label="<?= htmlSC(return_translation('chat_clear_chat_btn')) ?>" data-chat-clear-conversation>
+                                            <button type="button" class="btn btn-outline-danger chat-thread__tool-btn d-none d-md-inline-flex" title="<?= htmlSC(return_translation('chat_clear_chat_btn')) ?>" aria-label="<?= htmlSC(return_translation('chat_clear_chat_btn')) ?>" data-chat-clear-conversation>
                                                 <i class="ci-trash" aria-hidden="true"></i>
                                                 <span class="chat-thread__tool-label"><?= print_translation('chat_clear_chat_btn') ?></span>
                                             </button>
@@ -1223,12 +1249,12 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="chatAttachmentModal" tabindex="-1" role="dialog" aria-hidden="true" data-chat-preview-modal>
-                <div class="modal-dialog modal-lg" role="document">
+            <div class="modal fade fb-cms-modal" id="chatAttachmentModal" tabindex="-1" aria-labelledby="chatAttachmentModalTitle" role="dialog" aria-hidden="true" data-chat-preview-modal>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
                     <div class="modal-content chat-preview-modal">
                         <div class="modal-header chat-preview-modal__header align-items-center gap-3">
-                            <h2 class="modal-title fs-5 text-truncate min-w-0 flex-grow-1" data-chat-preview-modal-title><?= print_translation('chat_image_modal_title') ?></h2>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <h2 class="modal-title fs-5 text-truncate min-w-0 flex-grow-1" id="chatAttachmentModalTitle" data-chat-preview-modal-title><?= print_translation('chat_image_modal_title') ?></h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"></button>
                         </div>
                         <div class="modal-body chat-preview-modal__body">
                             <div class="chat-preview-modal__stage rounded-4 bg-body-tertiary d-flex align-items-center justify-content-center p-2 p-md-3" data-chat-preview-modal-body>
@@ -1250,12 +1276,12 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="chatAuditModal" tabindex="-1" aria-hidden="true" data-chat-audit-modal>
-                <div class="modal-dialog modal-dialog-scrollable modal-lg">
+            <div class="modal fade fb-cms-modal" id="chatAuditModal" tabindex="-1" aria-labelledby="chatAuditModalTitle" aria-hidden="true" data-chat-audit-modal>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
                     <div class="modal-content border-0 rounded-5 overflow-hidden">
                         <div class="modal-header">
-                            <h2 class="modal-title fs-5"><?= print_translation('chat_audit_title') ?></h2>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <h2 class="modal-title fs-5" id="chatAuditModalTitle"><?= print_translation('chat_audit_title') ?></h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"></button>
                         </div>
                         <div class="modal-body" data-chat-audit-list>
                             <p class="text-body-secondary mb-0"><?= print_translation('chat_loading') ?></p>
@@ -1272,14 +1298,14 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="chatConfirmModal" tabindex="-1" aria-hidden="true" data-chat-confirm-modal>
-                <div class="modal-dialog modal-dialog-centered">
+            <div class="modal fade fb-cms-modal" id="chatConfirmModal" tabindex="-1" aria-labelledby="chatConfirmModalTitle" aria-hidden="true" data-chat-confirm-modal>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content border-0 rounded-5 overflow-hidden">
                         <div class="modal-body p-4 p-md-5 text-center">
                             <div class="rounded-circle bg-body-tertiary border d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px;">
                                 <i class="ci-trash fs-2 text-danger"></i>
                             </div>
-                            <h2 class="h4 mb-2"><?= print_translation('admin_delete_modal_title') ?></h2>
+                            <h2 class="h4 mb-2" id="chatConfirmModalTitle"><?= print_translation('admin_delete_modal_title') ?></h2>
                             <p class="text-body-secondary mb-0" data-chat-confirm-message><?= print_translation('chat_confirm_delete_message') ?></p>
                             <div class="text-start mt-4 d-none" data-chat-confirm-reason-wrap>
                                 <label class="form-label" for="chatConfirmReason"><?= print_translation('chat_confirm_reason_label') ?></label>
@@ -1306,10 +1332,9 @@
             </div>
 
             <!-- FIREBALL_CHAT30_GROUPS -->
-            <div class="modal fade" id="chatCreateGroupModal" tabindex="-1" aria-hidden="true">
+            <div class="modal fade fb-cms-modal" id="chatCreateGroupModal" tabindex="-1" aria-labelledby="chatCreateGroupModalTitle" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content border-0 rounded-5 overflow-hidden">
-                        <form
+                    <form class="modal-content"
                             action="<?= htmlSC($chat_group_create_url) ?>"
                             method="post"
                             data-chat-create-group-form
@@ -1317,7 +1342,7 @@
                             <?= get_csrf_field() ?>
                             <div class="modal-header border-0 px-4 pt-4 pb-2">
                                 <div>
-                                    <h2 class="h5 mb-1"><?= print_translation('chat_group_create') ?></h2>
+                                    <h2 class="h5 mb-1" id="chatCreateGroupModalTitle"><?= print_translation('chat_group_create') ?></h2>
                                     <p class="small text-body-secondary mb-0"><?= print_translation('chat_group_create_hint') ?></p>
                                 </div>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= htmlSC(return_translation('admin_btn_close')) ?>"></button>
@@ -1368,8 +1393,9 @@
                                     <?= print_translation('chat_group_create_submit') ?>
                                 </button>
                             </div>
-                        </form>
-                    </div>
+                    </form>
                 </div>
             </div>
 <?php endif; ?>
+
+<?= $this->partial('chat/workspace', get_defined_vars()) ?>

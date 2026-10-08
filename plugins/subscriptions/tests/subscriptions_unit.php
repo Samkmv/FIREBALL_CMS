@@ -582,13 +582,14 @@ foreach (['dashboard', 'plans', 'plan-form', 'subscribers', 'exclusions', 'exclu
 $tabsTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/tabs.php');
 $subscriptionStyles = (string)file_get_contents(__DIR__ . '/../assets/subscriptions.css');
 assertTrueValue(
-    str_contains($tabsTemplate, 'subscriptions-admin-tabs')
+    str_contains($tabsTemplate, 'data-subscriptions-admin-nav')
     && str_contains($tabsTemplate, 'aria-current="page"')
-    && str_contains($subscriptionStyles, 'scroll-snap-type: x proximity')
-    && str_contains($subscriptionStyles, 'overflow-x: auto')
-    && str_contains($subscriptionStyles, '.subscriptions-admin-tabs::-webkit-scrollbar-thumb')
-    && !preg_match('/\.subscriptions-admin-tabs\s*\{[^}]*grid-template-columns/s', $subscriptionStyles),
-    'Subscription admin tabs must remain in one horizontally scrollable mobile row with a slim scrollbar'
+    && str_contains($tabsTemplate, 'd-flex flex-wrap gap-2 mb-4')
+    && str_contains($tabsTemplate, 'btn-outline-secondary')
+    && str_contains($tabsTemplate, 'data-bs-toggle="dropdown"')
+    && str_contains($tabsTemplate, 'subscriptions_admin_more')
+    && !str_contains($subscriptionStyles, '.subscriptions-admin-tabs'),
+    'Subscription navigation must use the standard CMS/VPN buttons and More menu without custom scroll styling'
 );
 
 $planFormTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/plan-form.php');
@@ -722,8 +723,10 @@ assertTrueValue(
     str_contains($subscriptionStyles, '.subscriptions-grant-panel')
     && str_contains($subscriptionStyles, '.subscriptions-grant-form')
     && str_contains($subscriptionStyles, '@keyframes subscriptionsGrantReveal')
-    && preg_match('/@media \(max-width: 767\.98px\).*?\.subscriptions-admin\s*\{[^}]*overflow-x:\s*hidden/s', $subscriptionStyles),
-    'Manual subscription grants must stay within the mobile viewport while retaining their responsive reveal treatment'
+    && str_contains($subscribersTemplate, 'border rounded-5 subscriptions-grant-panel')
+    && preg_match('/\.subscriptions-grant-panel\s*\{[^}]*min-width:\s*0/s', $subscriptionStyles)
+    && preg_match('/@media \(max-width: 767\.98px\).*?\.subscriptions-grant-form\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s', $subscriptionStyles),
+    'Manual subscription grants must retain the responsive reveal layout inside the shared CMS card'
 );
 
 $contentTableTemplate = (string)file_get_contents(__DIR__ . '/../views/admin/content.php');

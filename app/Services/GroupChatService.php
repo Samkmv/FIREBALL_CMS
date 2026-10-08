@@ -112,9 +112,12 @@ final class GroupChatService
             "SELECT
                 c.id,
                 c.title,
+                c.avatar_path,
+                c.revision,
                 c.created_by,
                 c.updated_at,
                 cm.role,
+                cm.pinned, cm.archived, cm.muted_until,
                 cm.last_read_message_id,
                 (
                     SELECT COUNT(*)
@@ -134,7 +137,7 @@ final class GroupChatService
                ON c.id = cm.conversation_id
               AND c.type = 'group'
              WHERE cm.user_id = ?
-             ORDER BY c.updated_at DESC, c.id DESC",
+             ORDER BY cm.pinned DESC, c.updated_at DESC, c.id DESC",
             [$userId, $userId]
         )->get() ?: [];
     }
@@ -149,6 +152,8 @@ final class GroupChatService
             "SELECT
                 c.id,
                 c.title,
+                c.avatar_path,
+                c.revision,
                 c.created_by,
                 c.created_at,
                 c.updated_at,
@@ -196,129 +201,70 @@ final class GroupChatService
         )->get() ?: [];
     }
 
-    public function createMessage(
-        int $conversationId,
-        int $senderId,
-        string $message,
-        array $meta = []
-    ): int {
+    public function createMessage(int $conversationId, int $senderId, string $message, array $meta = [], ?array $attachment = null, ?int $replyToId = null): int
+    {
+        db()->query("SELECT id FROM chat_conversations WHERE id = ? AND type = 'group' FOR UPDATE", [$conversationId]);
         $message = trim($message);
-
-        if (
-            $message === ''
-            || mb_strlen($message) > 2000
-            || !$this->isMember($conversationId, $senderId)
-        ) {
-            throw new \InvalidArgumentException('Invalid group message.');
+        if (($message === '' && !$attachment) || mb_strlen($message) > 2000 || !$this->isMember($conversationId, $senderId)) {
+            throw new \InvalidArgumentException('Некорректное сообщение.');
         }
-
-        $encryptedMessage = ChatCipher::encrypt($message);
-        $encryptionKeyId = ChatCipher::currentKeyId();
-        $ip = mb_substr(trim((string)($meta['ip'] ?? '')), 0, 64);
-        $userAgent = mb_substr(trim((string)($meta['user_agent'] ?? '')), 0, 255);
-        $now = date('Y-m-d H:i:s');
-
-        db()->query(
-            "INSERT INTO chat_messages
-                (
-                    conversation_id,
-                    sender_id,
-                    receiver_id,
-                    message_ciphertext,
-                    encryption_key_id,
-                    attachment_path,
-                    attachment_name,
-                    attachment_type,
-                    attachment_size,
-                    sender_ip,
-                    sender_user_agent,
-                    is_read,
-                    delivered_at,
-                    edited_at,
-                    reply_to_id,
-                    deleted_at,
-                    deleted_by,
-                    deleted_reason,
-                    created_at
-                )
-             VALUES (?, ?, 0, ?, ?, NULL, NULL, NULL, NULL, ?, ?, 0, NULL, NULL, NULL, NULL, NULL, NULL, ?)",
-            [
-                $conversationId,
-                $senderId,
-                $encryptedMessage,
-                $encryptionKeyId,
-                $ip !== '' ? $ip : null,
-                $userAgent !== '' ? $userAgent : null,
-                $now,
-            ]
-        );
-
-        $messageId = (int)db()->getInsertId();
-        if ($messageId <= 0) {
-            throw new \RuntimeException('Could not create group message.');
+        if ($replyToId && !db()->query('SELECT id FROM chat_messages WHERE id = ? AND conversation_id = ? AND deleted_at IS NULL', [$replyToId, $conversationId])->getColumn()) {
+            throw new \InvalidArgumentException('Сообщение для ответа недоступно.');
         }
-
-        (new ConversationService())->touchMessage($conversationId, $messageId);
-
-        return $messageId;
+        db()->query("INSERT INTO chat_messages (conversation_id, sender_id, receiver_id, message_ciphertext, encryption_key_id, attachment_path, attachment_name, attachment_type, attachment_size, sender_ip, sender_user_agent, is_read, reply_to_id, created_at) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", [
+            $conversationId, $senderId, ChatCipher::encrypt($message), $message === '' ? null : ChatCipher::currentKeyId(),
+            $attachment['path'] ?? null, $attachment['name'] ?? null, $attachment['type'] ?? null, $attachment['size'] ?? null,
+            mb_substr((string)($meta['ip'] ?? ''), 0, 64), mb_substr((string)($meta['user_agent'] ?? ''), 0, 255),
+            $replyToId ?: null, date('Y-m-d H:i:s'),
+        ]);
+        $id = (int)db()->getInsertId();
+        (new ChatAttachmentService())->registerLegacyAttachment($id, $attachment);
+        (new ConversationService())->touchMessage($conversationId, $id);
+        (new ChatWorkspaceService())->bump($conversationId);
+        return $id;
     }
 
-    public function getMessages(
-        int $conversationId,
-        int $currentUserId,
-        int $limit = 100
-    ): array {
-        if (!$this->isMember($conversationId, $currentUserId)) {
-            return [];
-        }
-
+    public function getMessages(int $conversationId, int $currentUserId, int $limit = 100, ?array $ids = null): array
+    {
+        if (!$this->isMember($conversationId, $currentUserId)) return [];
         $limit = max(1, min(300, $limit));
-
-        $rows = db()->query(
-            "SELECT
-                m.id,
-                m.sender_id,
-                m.message_ciphertext,
-                m.created_at,
-                m.edited_at,
-                u.name AS sender_name,
-                u.avatar AS sender_avatar,
-                u.role AS sender_role
-             FROM chat_messages m
-             INNER JOIN users u ON u.id = m.sender_id
-             WHERE m.conversation_id = ?
-               AND m.deleted_at IS NULL
-             ORDER BY m.id DESC
-             LIMIT {$limit}",
-            [$conversationId]
-        )->get() ?: [];
-
-        $rows = array_reverse($rows);
-
-        return array_map(
-            static function (array $row) use ($currentUserId): array {
-                return [
-                    'id' => (int)$row['id'],
-                    'sender_id' => (int)$row['sender_id'],
-                    'sender_name' => (string)($row['sender_name'] ?? ''),
-                    // FIREBALL_CHAT31_GROUP_UI_V2
-                    'sender_avatar' => get_user_avatar(
-                        $row['sender_avatar'] ?? null,
-                        'sm'
-                    ),
-                    'sender_role' => (string)($row['sender_role'] ?? 'user'),
-                    'message' => ChatCipher::decrypt(
-                        (string)($row['message_ciphertext'] ?? '')
-                    ),
-                    'created_at' => (string)$row['created_at'],
-                    'edited_at' => !empty($row['edited_at'])
-                        ? (string)$row['edited_at']
-                        : null,
-                    'is_mine' => (int)$row['sender_id'] === $currentUserId,
-                ];
-            },
-            $rows
-        );
+        $constraint = '';
+        $params = [$conversationId];
+        if ($ids !== null) {
+            $ids = array_values(array_filter(array_map('intval', $ids)));
+            if (!$ids) return [];
+            $constraint = ' AND m.id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+            $params = array_merge($params, $ids);
+        }
+        $rows = db()->query("SELECT m.*, u.name AS sender_name, u.avatar AS sender_avatar,
+            r.id AS reply_id, r.sender_id AS reply_sender_id, r.message_ciphertext AS reply_ciphertext,
+            r.attachment_name AS reply_attachment_name, r.deleted_at AS reply_deleted_at, ru.name AS reply_sender_name,
+            (SELECT COUNT(*) FROM chat_receipts cr JOIN chat_members cm ON cm.user_id = cr.user_id WHERE cm.conversation_id = m.conversation_id AND cr.message_id = m.id AND cr.user_id <> m.sender_id AND cr.delivered_at IS NOT NULL) AS delivered_count,
+            (SELECT COUNT(*) FROM chat_receipts cr JOIN chat_members cm ON cm.user_id = cr.user_id WHERE cm.conversation_id = m.conversation_id AND cr.message_id = m.id AND cr.user_id <> m.sender_id AND cr.read_at IS NOT NULL) AS read_count,
+            (SELECT COUNT(*) FROM chat_members cm WHERE cm.conversation_id = m.conversation_id AND cm.user_id <> m.sender_id) AS recipient_count
+            FROM chat_messages m LEFT JOIN users u ON u.id = m.sender_id
+            LEFT JOIN chat_messages r ON r.id = m.reply_to_id AND r.conversation_id = m.conversation_id
+            LEFT JOIN users ru ON ru.id = r.sender_id
+            WHERE m.conversation_id = ? AND m.deleted_at IS NULL {$constraint} ORDER BY m.id DESC LIMIT {$limit}", $params)->get() ?: [];
+        $model = new \App\Models\ChatMessage();
+        $reactions = $model->getReactionsForMessages(array_column($rows, 'id'), $currentUserId);
+        return array_map(static function (array $m) use ($reactions, $currentUserId): array {
+            $reply = null;
+            if (!empty($m['reply_to_id'])) {
+                $deleted = empty($m['reply_id']) || !empty($m['reply_deleted_at']);
+                $reply = ['id' => (int)$m['reply_to_id'], 'sender_id' => (int)($m['reply_sender_id'] ?? 0), 'sender_name' => $m['reply_sender_name'] ?? '', 'deleted' => $deleted, 'message' => $deleted ? '' : ChatCipher::decrypt((string)$m['reply_ciphertext']), 'attachment_name' => $deleted ? '' : ($m['reply_attachment_name'] ?? '')];
+            }
+            return [
+                'id' => (int)$m['id'], 'sender_id' => (int)$m['sender_id'], 'receiver_id' => 0,
+                'sender_name' => $m['sender_name'] ?? '', 'sender_avatar' => get_user_avatar($m['sender_avatar'] ?? null, 'sm'),
+                'message' => ChatCipher::decrypt((string)$m['message_ciphertext']),
+                'attachment' => \App\Models\ChatMessage::normalizeAttachment($m), 'created_at' => $m['created_at'],
+                'edited_at' => $m['edited_at'], 'reply_to_id' => $m['reply_to_id'], 'reply' => $reply,
+                'forwarded_label' => $m['forwarded_label'], 'is_mine' => (int)$m['sender_id'] === $currentUserId,
+                'delivery_status' => (int)$m['recipient_count'] > 0 && (int)$m['read_count'] >= (int)$m['recipient_count'] ? 'read' : ((int)$m['delivered_count'] > 0 ? 'delivered' : 'sent'),
+                'reactions' => $reactions[(int)$m['id']] ?? [],
+            ];
+        }, array_reverse($rows));
     }
 
     public function markDelivered(int $conversationId, int $userId): void

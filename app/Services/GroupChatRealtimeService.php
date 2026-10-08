@@ -42,7 +42,7 @@ final class GroupChatRealtimeService
         $lastRevision = '';
 
         while ((microtime(true) - $startedAt) < self::STREAM_LIFETIME_SECONDS) {
-            if (connection_aborted()) {
+            if (connection_aborted() || !$groups->isMember($conversationId, $currentUserId)) {
                 break;
             }
 
@@ -80,28 +80,10 @@ final class GroupChatRealtimeService
 
     private function revision(int $conversationId): string
     {
-        $state = db()->query(
-            "SELECT
-                COUNT(*) AS total,
-                COALESCE(MAX(id), 0) AS max_id,
-                COALESCE(MAX(GREATEST(
-                    UNIX_TIMESTAMP(created_at),
-                    COALESCE(UNIX_TIMESTAMP(deleted_at), 0),
-                    COALESCE(UNIX_TIMESTAMP(edited_at), 0)
-                )), 0) AS last_change
-             FROM chat_messages
-             WHERE conversation_id = ?",
-            [$conversationId]
-        )->getOne() ?: [];
-
-        return substr(hash(
-            'sha256',
-            implode(':', [
-                (int)($state['total'] ?? 0),
-                (int)($state['max_id'] ?? 0),
-                (int)($state['last_change'] ?? 0),
-            ])
-        ), 0, 24);
+        $revision = db()->query('SELECT revision FROM chat_conversations WHERE id = ?', [$conversationId])->getColumn();
+        $receipts = db()->query('SELECT COUNT(*) AS total, SUM(cr.read_at IS NOT NULL) AS read_count FROM chat_receipts cr JOIN chat_messages m ON m.id = cr.message_id WHERE m.conversation_id = ?', [$conversationId])->getOne();
+        $typing = db()->query('SELECT t.user_id FROM chat_typing_states t JOIN chat_members cm ON cm.user_id = t.user_id AND cm.conversation_id = t.conversation_id WHERE t.conversation_id = ? AND t.typing_until > NOW() ORDER BY t.user_id', [$conversationId])->get() ?: [];
+        return substr(hash('sha256', json_encode([$revision, $receipts, $typing])), 0, 24);
     }
 
     private function pendingDelivery(

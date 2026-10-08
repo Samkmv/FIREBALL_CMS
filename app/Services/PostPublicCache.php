@@ -8,7 +8,8 @@ final class PostPublicCache
     private const DEFAULT_VERSION = '1';
     // FIREBALL_POST_RENDER_CACHE_V2
     // Версия server-side рендера публичного контента.
-    private const RENDER_VERSION = '6';
+    private const RENDER_VERSION = '8';
+    // Square grouped Cartzilla galleries with typed images and plain-text lightbox captions.
     // FIREBALL_GALLERY_SLIDER_IMAGE_FIT_CACHE_V1
     // FIREBALL_CARTZILLA_ALERT_CACHE_V1
     // FIREBALL_LEGACY_MEDIA_RENDER_CACHE_V1

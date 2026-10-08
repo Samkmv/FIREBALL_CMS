@@ -3,6 +3,7 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_admin_more' => 'Ещё',
     'subscriptions_address_choose' => 'Выберите или введите значение',
     'subscriptions_address_search' => 'Поиск в локальном справочнике…',
     'subscriptions_address_minimum' => 'Введите не менее :count символов. Если адреса нет в списке, его можно добавить вручную.',

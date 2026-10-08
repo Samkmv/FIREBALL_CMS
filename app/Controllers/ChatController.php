@@ -4,12 +4,15 @@ namespace App\Controllers;
 
 use App\Models\ChatMessage;
 use App\Models\User;
+use App\Services\ChatCipher;
 use App\Services\ChatMediaStorage;
 use App\Services\ChatRealtimeService;
 use App\Services\ChatTypingService;
 use App\Services\ConversationService;
 use App\Services\GroupChatService;
 use App\Services\GroupChatRealtimeService;
+use App\Services\GroupChatManagementService;
+use App\Services\ChatWorkspaceService;
 use App\Services\NotificationService;
 use App\Services\SafeUploadService;
 use App\Services\UploadSettings;
@@ -53,8 +56,16 @@ class ChatController extends BaseController
         $this->users->touchPresence($currentUserId);
         $contacts = $this->chatMessages->getContactsForUser($currentUserId, $this->isPrivilegedChatUser());
         $activeContact = $this->resolveActiveContact($contacts);
+        $conversationId = max(0, (int)request()->get('conversation_id'));
+        $group = null;
+        if ($conversationId) {
+            $group = (new GroupChatService())->getForUser($conversationId, $currentUserId);
+            if (!$group) response()->text('', 404);
+            $activeContact = ['id' => $conversationId, 'name' => $group['title'], 'avatar' => null, 'role' => 'group', 'is_online' => false];
+        }
         $footerScripts = [
             theme_asset_versioned('js/chat.js'),
+            theme_asset_versioned('js/chat-workspace.js'),
         ];
 
         if (check_admin()) {
@@ -69,8 +80,14 @@ class ChatController extends BaseController
                 theme_asset_versioned('js/chat-viewport.js'),
             ],
             'active_contact' => $activeContact,
-            'chat_fetch_url' => base_href('/chat/messages'),
-            'chat_stream_url' => base_href('/chat/stream'),
+            'chat_active_group' => $group,
+            'chat_members' => $group ? (new GroupChatService())->getMembers($conversationId) : [],
+            'chat_workspace_url' => base_href('/chat/workspace'),
+            'chat_group_manage_url' => base_href('/chat/group/manage'),
+            'chat_history_url' => base_href('/chat/history'),
+            'chat_forward_url' => base_href('/chat/forward'),
+            'chat_fetch_url' => base_href($group ? '/chat/group/messages' : '/chat/messages'),
+            'chat_stream_url' => base_href($group ? '/chat/group/stream' : '/chat/stream'),
             'chat_typing_url' => base_href('/chat/typing'),
             'chat_groups' => (new GroupChatService())->listForUser($currentUserId),
             'chat_group_candidates' => $contacts,
@@ -86,7 +103,7 @@ class ChatController extends BaseController
             'chat_file_manager_enabled' => check_admin(),
             'chat_file_manager_url' => base_href('/admin/files'),
             'chat_max_file_size' => \App\Services\UploadPolicy::limits()['effective'],
-            'chat_permissions' => $this->chatMessages->getPermissionsForRole((string)($currentUser['role'] ?? 'user')),
+            'chat_permissions' => $group ? (new GroupChatManagementService())->permissions($group['role']) : $this->chatMessages->getPermissionsForRole((string)($currentUser['role'] ?? 'user')),
             'footer_scripts' => $footerScripts,
         ]);
     }
@@ -149,6 +166,8 @@ class ChatController extends BaseController
     {
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->post('user_id');
+        $conversationId = max(0, (int)request()->post('conversation_id'));
+        $isGroup = $conversationId > 0;
         $message = trim((string)request()->post('message'));
         $replyToId = max(0, (int)request()->post('reply_to_id'));
         $files = $this->getAttachmentFiles();
@@ -180,7 +199,7 @@ class ChatController extends BaseController
             ], 422);
         }
 
-        if (!$this->isAllowedContact($currentUserId, $contactId)) {
+        if (!($isGroup ? (new GroupChatService())->isMember($conversationId, $currentUserId) : $this->isAllowedContact($currentUserId, $contactId))) {
             response()->json([
                 'status' => false,
                 'message' => return_translation('chat_access_denied'),
@@ -188,7 +207,7 @@ class ChatController extends BaseController
         }
 
         if ($replyToId > 0
-            && !$this->chatMessages->getReplyTargetForConversation($replyToId, $currentUserId, $contactId)) {
+            && !($isGroup ? db()->query('SELECT id FROM chat_messages WHERE id = ? AND conversation_id = ? AND deleted_at IS NULL', [$replyToId, $conversationId])->getColumn() : $this->chatMessages->getReplyTargetForConversation($replyToId, $currentUserId, $contactId))) {
             response()->json([
                 'status' => false,
                 'message' => return_translation('chat_reply_invalid'),
@@ -213,22 +232,16 @@ class ChatController extends BaseController
                 $database->beginTransaction();
             }
 
-            if (empty($attachments)) {
-                $this->chatMessages->create($currentUserId, $contactId, $message, null, $requestContext, $replyToId);
-            } else {
-                foreach ($attachments as $index => $attachment) {
-                    $text = $index === 0 ? $message : '';
-                    $this->chatMessages->create(
-                        $currentUserId,
-                        $contactId,
-                        $text,
-                        $attachment,
-                        $requestContext,
-                        $index === 0 ? $replyToId : null
-                    );
+            foreach ($attachments ?: [null] as $index => $attachment) {
+                $text = $index === 0 ? $message : '';
+                $reply = $index === 0 ? ($replyToId ?: null) : null;
+                if ($isGroup) {
+                    (new GroupChatService())->createMessage($conversationId, $currentUserId, $text, $requestContext, $attachment, $reply);
+                } else {
+                    $this->chatMessages->create($currentUserId, $contactId, $text, $attachment, $requestContext, $reply);
                 }
             }
-
+            if ($isGroup) (new GroupChatService())->markRead($conversationId, $currentUserId);
             if ($ownsTransaction) {
                 $database->commit();
             }
@@ -250,8 +263,10 @@ class ChatController extends BaseController
             ], 422);
         }
 
-        $this->notifyChatRecipient($currentUserId, $contactId, $message, $attachments);
+        if ($isGroup) $this->notifyGroupRecipients($conversationId, $currentUserId, $message);
+        else $this->notifyChatRecipient($currentUserId, $contactId, $message, $attachments);
 
+        if (!(int)request()->post('conversation_id')) (new ChatWorkspaceService())->bump((new ConversationService())->ensureDirectConversation($currentUserId, $contactId));
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
         $payload['message'] = return_translation('chat_message_sent');
 
@@ -263,6 +278,7 @@ class ChatController extends BaseController
      */
     public function reactMessage()
     {
+        if ((int)request()->post('conversation_id') > 0) return $this->groupMessageAction('react');
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->post('user_id');
         $messageId = max(0, (int)request()->post('message_id'));
@@ -304,6 +320,7 @@ class ChatController extends BaseController
             ], 422);
         }
 
+        if (!(int)request()->post('conversation_id')) (new ChatWorkspaceService())->bump((new ConversationService())->ensureDirectConversation($currentUserId, $contactId));
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
         $payload['reaction_active'] = !empty($result['active']);
         $payload['reaction'] = (string)($result['reaction'] ?? '');
@@ -317,6 +334,7 @@ class ChatController extends BaseController
      */
     public function editMessage()
     {
+        if ((int)request()->post('conversation_id') > 0) return $this->groupMessageAction('edit');
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->post('user_id');
         $messageId = max(0, (int)request()->post('message_id'));
@@ -374,6 +392,7 @@ class ChatController extends BaseController
             ], $reason === 'message_required' ? 422 : 403);
         }
 
+        if (!(int)request()->post('conversation_id')) (new ChatWorkspaceService())->bump((new ConversationService())->ensureDirectConversation($currentUserId, $contactId));
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
         $payload['edited_message_id'] = $messageId;
         $payload['message'] = return_translation('chat_message_edited');
@@ -386,6 +405,7 @@ class ChatController extends BaseController
      */
     public function deleteMessages()
     {
+        if ((int)request()->post('conversation_id') > 0) return $this->groupMessageAction('delete');
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->post('user_id');
         $messageIds = $this->normalizeMessageIds($_POST['message_ids'] ?? request()->post('message_id'));
@@ -412,6 +432,7 @@ class ChatController extends BaseController
             ], 403);
         }
 
+        if (!(int)request()->post('conversation_id')) (new ChatWorkspaceService())->bump((new ConversationService())->ensureDirectConversation($currentUserId, $contactId));
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
         $payload['deleted_count'] = (int)($result['deleted_count'] ?? 0);
         $payload['message'] = (int)($result['deleted_count'] ?? 0) > 1
@@ -426,6 +447,7 @@ class ChatController extends BaseController
      */
     public function clearConversation()
     {
+        if ((int)request()->post('conversation_id') > 0) return $this->groupMessageAction('clear');
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->post('user_id');
 
@@ -449,6 +471,7 @@ class ChatController extends BaseController
             ], 403);
         }
 
+        if (!(int)request()->post('conversation_id')) (new ChatWorkspaceService())->bump((new ConversationService())->ensureDirectConversation($currentUserId, $contactId));
         $payload = $this->buildConversationPayload($currentUserId, $contactId);
         $payload['cleared_count'] = (int)($result['deleted_count'] ?? 0);
         $payload['message'] = return_translation('chat_conversation_cleared');
@@ -597,33 +620,7 @@ class ChatController extends BaseController
      */
     public function group()
     {
-        $currentUserId = (int)get_user()['id'];
-        $conversationId = (int)request()->get('conversation_id');
-        $groups = new GroupChatService();
-        $group = $groups->getForUser($conversationId, $currentUserId);
-
-        if (!$group) {
-            response()->text('', 404);
-        }
-
-        $groups->markRead($conversationId, $currentUserId);
-
-        return Theme::render('chat/group', [
-            'title' => (string)$group['title'],
-            'header_scripts' => [
-                theme_asset_versioned('js/app-viewport.js'),
-                theme_asset_versioned('js/chat-viewport.js'),
-            ],
-            'group' => $group,
-            'members' => $groups->getMembers($conversationId),
-            'chat_index_url' => base_href('/chat'),
-            'chat_group_messages_url' => base_href('/chat/group/messages'),
-            'chat_group_send_url' => base_href('/chat/group/send'),
-            'chat_group_stream_url' => base_href('/chat/group/stream'),
-            'footer_scripts' => [
-                theme_asset_versioned('js/chat-group.js'),
-            ],
-        ]);
+        return $this->index();
     }
 
     /**
@@ -631,26 +628,13 @@ class ChatController extends BaseController
      */
     public function groupMessages()
     {
-        $currentUserId = (int)get_user()['id'];
-        $conversationId = (int)request()->get('conversation_id');
+        $id = (int)request()->get('conversation_id');
+        $userId = (int)get_user()['id'];
         $groups = new GroupChatService();
-
-        if (!$groups->isMember($conversationId, $currentUserId)) {
-            response()->json([
-                'status' => false,
-                'message' => return_translation('chat_group_access_denied'),
-            ], 403);
-        }
-
-        $groups->markRead($conversationId, $currentUserId);
-
-        response()->json([
-            'status' => true,
-            'messages' => $groups->getMessages(
-                $conversationId,
-                $currentUserId
-            ),
-        ]);
+        if (!$groups->isMember($id, $userId)) response()->json(['status' => false, 'message' => return_translation('chat_group_access_denied')], 403);
+        $groups->markRead($id, $userId);
+        session()->close();
+        response()->json($this->buildConversationPayload($userId, $id));
     }
 
     /**
@@ -658,55 +642,7 @@ class ChatController extends BaseController
      */
     public function groupSend()
     {
-        $currentUserId = (int)get_user()['id'];
-        $conversationId = (int)request()->post('conversation_id');
-        $message = trim((string)request()->post('message'));
-        $groups = new GroupChatService();
-
-        if (!$groups->isMember($conversationId, $currentUserId)) {
-            response()->json([
-                'status' => false,
-                'message' => return_translation('chat_group_access_denied'),
-            ], 403);
-        }
-
-        if ($message === '' || mb_strlen($message) > 2000) {
-            response()->json([
-                'status' => false,
-                'message' => return_translation('chat_message_required'),
-            ], 422);
-        }
-
-        try {
-            $groups->createMessage(
-                $conversationId,
-                $currentUserId,
-                $message,
-                [
-                    'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
-                    'user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
-                ]
-            );
-            $groups->markRead($conversationId, $currentUserId);
-        } catch (\Throwable $exception) {
-            log_error_details('Group chat send failed', [
-                'conversation_id' => $conversationId,
-                'sender_id' => $currentUserId,
-            ], $exception);
-
-            response()->json([
-                'status' => false,
-                'message' => return_translation('chat_group_send_error'),
-            ], 422);
-        }
-
-        response()->json([
-            'status' => true,
-            'messages' => $groups->getMessages(
-                $conversationId,
-                $currentUserId
-            ),
-        ]);
+        return $this->send();
     }
 
     /**
@@ -738,17 +674,18 @@ class ChatController extends BaseController
     {
         $currentUserId = (int)get_user()['id'];
         $contactId = (int)request()->post('user_id');
+        $groupId = max(0, (int)request()->post('conversation_id'));
         $isTyping = (int)request()->post('typing') === 1;
         $this->users->touchPresence($currentUserId);
 
-        if (!$this->isAllowedContact($currentUserId, $contactId)) {
+        if (!($groupId ? (new GroupChatService())->isMember($groupId, $currentUserId) : $this->isAllowedContact($currentUserId, $contactId))) {
             response()->json([
                 'status' => false,
                 'message' => return_translation('chat_access_denied'),
             ], 403);
         }
 
-        $conversationId = (new ConversationService())->ensureDirectConversation(
+        $conversationId = $groupId ?: (new ConversationService())->ensureDirectConversation(
             $currentUserId,
             $contactId
         );
@@ -789,9 +726,10 @@ class ChatController extends BaseController
 
         response()->json([
             'status' => true,
-            'unread_count' => $this->chatMessages->getUnreadCountForUser($currentUserId),
+            'unread_count' => $this->totalChatUnread($currentUserId),
             'contact_unread_counts' => $this->chatMessages->getUnreadCountsByContactForUser($currentUserId),
             'contacts' => $this->chatMessages->getContactsForUser($currentUserId, $this->isPrivilegedChatUser()),
+            'groups' => (new GroupChatService())->listForUser($currentUserId),
         ]);
     }
 
@@ -801,17 +739,198 @@ class ChatController extends BaseController
     protected function buildConversationPayload(int $currentUserId, int $contactId): array
     {
         $currentUser = get_user();
+        $groupId = max(0, (int)(request()->post('conversation_id') ?: request()->get('conversation_id')));
+        $workspace = new ChatWorkspaceService();
+        if ($groupId) {
+            $groups = new GroupChatService();
+            $group = $groups->getForUser($groupId, $currentUserId);
+            if (!$group) response()->json(['status' => false, 'message' => 'Нет доступа к группе.'], 403);
+            $members = $groups->getMembers($groupId);
+            $typing = db()->query('SELECT t.typing_until, u.name FROM chat_typing_states t JOIN users u ON u.id = t.user_id JOIN chat_members cm ON cm.user_id = t.user_id AND cm.conversation_id = t.conversation_id WHERE t.conversation_id = ? AND t.user_id <> ? AND t.typing_until > NOW()', [$groupId, $currentUserId])->get() ?: [];
+            return ['status' => true, 'current_user_id' => $currentUserId,
+                'permissions' => (new GroupChatManagementService())->permissions($group['role']),
+                'revision' => (int)$group['revision'], 'messages' => $groups->getMessages($groupId, $currentUserId), 'group' => $group, 'members' => $members,
+                'typing' => ['is_typing' => !empty($typing), 'names' => array_column($typing, 'name')],
+                'preferences' => $workspace->preferences($groupId, $currentUserId),
+                'unread_count' => $this->totalChatUnread($currentUserId),
+                'contact_unread_counts' => $this->chatMessages->getUnreadCountsByContactForUser($currentUserId)];
+        }
+        $conversationId = (new ConversationService())->ensureDirectConversation($currentUserId, $contactId);
 
         return [
             'status' => true,
             'current_user_id' => $currentUserId,
             'permissions' => $this->chatMessages->getPermissionsForRole((string)($currentUser['role'] ?? 'user')),
-            'unread_count' => $this->chatMessages->getUnreadCountForUser($currentUserId),
+            'unread_count' => $this->totalChatUnread($currentUserId),
             'contact_unread_counts' => $this->chatMessages->getUnreadCountsByContactForUser($currentUserId),
             'messages' => $this->chatMessages->getConversationMessages($currentUserId, $contactId),
             'contacts' => $this->chatMessages->getContactsForUser($currentUserId, $this->isPrivilegedChatUser()),
             'contact' => $this->users->getPresenceForChat($contactId),
+            'preferences' => $workspace->preferences($conversationId, $currentUserId),
+            'revision' => (int)db()->query('SELECT revision FROM chat_conversations WHERE id = ?', [$conversationId])->getColumn(),
         ];
+    }
+
+    protected function groupMessageAction(string $action): void
+    {
+        $id = (int)request()->post('conversation_id');
+        $userId = (int)get_user()['id'];
+        $database = db();
+        try {
+            $database->beginTransaction();
+            $mediaPaths = (new GroupChatManagementService())->messageAction($id, $userId, $action, $_POST);
+            $database->commit();
+        } catch (\Throwable $error) {
+            if ($database->inTransaction()) $database->rollBack();
+            response()->json(['status' => false, 'message' => $error->getMessage()], 403);
+        }
+        foreach ($mediaPaths as $path) { try { (new ChatMediaStorage())->delete($path); } catch (\Throwable $error) { log_error_details('Deleted group media cleanup failed', ['conversation_id' => $id], $error); } }
+        response()->json($this->buildConversationPayload($userId, $id));
+    }
+
+    public function groupManage(): void
+    {
+        $id = (int)request()->post('conversation_id');
+        $userId = (int)get_user()['id'];
+        $data = $_POST;
+        $newPath = null;
+        $oldPath = null;
+        $database = db();
+        try {
+            $database->beginTransaction();
+            $group = (new GroupChatService())->getForUser($id, $userId);
+            if (!$group) throw new \RuntimeException('Нет доступа к группе.');
+            $action = (string)request()->post('action');
+            if ($action === 'add' && !$this->isAllowedContact($userId, (int)request()->post('member_id'))) throw new \RuntimeException('Нельзя добавить этого пользователя.');
+            $file = $action === 'update' ? ($_FILES['avatar'] ?? null) : null;
+            if ($file && (int)$file['error'] !== UPLOAD_ERR_NO_FILE) {
+                if (!in_array($group['role'], ['owner', 'admin'], true) || (int)$file['error'] !== UPLOAD_ERR_OK || (int)$file['size'] > 5 * 1024 * 1024 || !is_uploaded_file($file['tmp_name'])) throw new \RuntimeException('Не удалось загрузить аватар (максимум 5 МБ).');
+                $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+                if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true) || !getimagesize($file['tmp_name'])) throw new \RuntimeException('Выберите изображение JPEG, PNG, WebP или GIF.');
+                $newPath = (new ChatMediaStorage())->store($file['tmp_name']);
+                $data['avatar_path'] = $newPath;
+                $oldPath = $group['avatar_path'];
+            } elseif ($action === 'update' && !empty($data['remove_avatar'])) {
+                $data['avatar_path'] = null;
+                $oldPath = $group['avatar_path'];
+            }
+            (new GroupChatManagementService())->manage($id, $userId, (string)request()->post('action'), $data);
+            $database->commit();
+        } catch (\Throwable $error) {
+            if ($database->inTransaction()) $database->rollBack();
+            if ($newPath) (new ChatMediaStorage())->delete($newPath);
+            response()->json(['status' => false, 'message' => $error->getMessage()], 403);
+        }
+        if ($oldPath) { try { (new ChatMediaStorage())->delete($oldPath); } catch (\Throwable $error) { log_error_details('Old group avatar cleanup failed', ['conversation_id' => $id], $error); } }
+        if (!(new GroupChatService())->isMember($id, $userId)) response()->json(['status' => true, 'redirect' => base_href('/chat')]);
+        response()->json($this->buildConversationPayload($userId, $id));
+    }
+
+    public function groupAvatar(): void
+    {
+        $id = (int)request()->get('conversation_id');
+        $group = (new GroupChatService())->getForUser($id, (int)get_user()['id']);
+        if (!$group || empty($group['avatar_path'])) response()->text('', 404);
+        session()->close();
+        try {
+            $storage = new ChatMediaStorage();
+            // Avatar uploads are bounded at 5 MB and validated as raster images.
+            $bytes = $storage->readRange($group['avatar_path']);
+            $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
+            header('Content-Type: ' . $mime);
+            header('Cache-Control: private, no-store');
+            header('X-Content-Type-Options: nosniff');
+            echo $bytes;
+            exit;
+        } catch (\Throwable $error) {
+            response()->text('', 404);
+        }
+    }
+
+    protected function workspaceConversation(): int
+    {
+        $userId = (int)get_user()['id'];
+        $groupId = (int)(request()->post('conversation_id') ?: request()->get('conversation_id'));
+        if ($groupId) {
+            if (!(new GroupChatService())->isMember($groupId, $userId)) response()->json(['status' => false, 'message' => 'Нет доступа к группе.'], 403);
+            return $groupId;
+        }
+        $contactId = (int)(request()->post('user_id') ?: request()->get('user_id'));
+        if (!$this->isAllowedContact($userId, $contactId)) response()->json(['status' => false, 'message' => return_translation('chat_access_denied')], 403);
+        return (new ConversationService())->ensureDirectConversation($userId, $contactId);
+    }
+
+    public function workspace(): void
+    {
+        $id = $this->workspaceConversation();
+        $changes = array_intersect_key($_POST, array_flip(['pinned', 'muted', 'archived', 'draft']));
+        response()->json(['status' => true, 'preferences' => (new ChatWorkspaceService())->update($id, (int)get_user()['id'], $changes)]);
+    }
+
+    public function history(): void
+    {
+        $id = $this->workspaceConversation();
+        $userId = (int)get_user()['id'];
+        $ids = (new ChatWorkspaceService())->historyIds($id, $userId, mb_substr((string)request()->get('q'), 0, 200), max(0, (int)request()->get('before')), (int)request()->get('media') === 1);
+        $group = (new GroupChatService())->getForUser($id, $userId);
+        $messages = $group ? (new GroupChatService())->getMessages($id, $userId, 100, $ids)
+            : $this->chatMessages->getConversationMessages($userId, (int)request()->get('user_id'), 100, $ids);
+        session()->close();
+        response()->json(['status' => true, 'messages' => $messages, 'next_before' => count($ids) === 100 ? min($ids) : null]);
+    }
+
+    public function forward(): void
+    {
+        $sourceId = $this->workspaceConversation();
+        $userId = (int)get_user()['id'];
+        $messageId = (int)request()->post('message_id');
+        $message = db()->query('SELECT m.*, u.name AS sender_name FROM chat_messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.id = ? AND m.conversation_id = ? AND m.deleted_at IS NULL', [$messageId, $sourceId])->getOne();
+        if (!$message) response()->json(['status' => false, 'message' => 'Сообщение недоступно.'], 403);
+        $groupId = (int)request()->post('target_group_id');
+        $contactId = (int)request()->post('target_user_id');
+        if ($groupId ? !(new GroupChatService())->isMember($groupId, $userId) : !$this->isAllowedContact($userId, $contactId)) response()->json(['status' => false, 'message' => 'Нет доступа к получателю.'], 403);
+        $attachment = null;
+        $path = null;
+        $database = db();
+        try {
+            if (!empty($message['attachment_path'])) {
+                // Copy encrypted bytes to a new opaque object; deleting the source cannot break the forward.
+                $path = (new ChatMediaStorage())->copy($message['attachment_path']);
+                $attachment = ['path' => $path, 'name' => $message['attachment_name'], 'type' => $message['attachment_type'], 'size' => (int)$message['attachment_size']];
+            }
+            $text = ChatCipher::decrypt((string)$message['message_ciphertext']);
+            $database->beginTransaction();
+            $id = $groupId ? (new GroupChatService())->createMessage($groupId, $userId, $text, $this->getRequestContext(), $attachment)
+                : $this->chatMessages->create($userId, $contactId, $text, $attachment, $this->getRequestContext());
+            db()->query('UPDATE chat_messages SET forwarded_label = ? WHERE id = ?', [mb_substr((string)($message['forwarded_label'] ?: $message['sender_name']), 0, 190), $id]);
+            $database->commit();
+        } catch (\Throwable $error) {
+            if ($database->inTransaction()) $database->rollBack();
+            if ($path) (new ChatMediaStorage())->delete($path);
+            log_error_details('Chat forwarding failed', ['message_id' => $messageId, 'conversation_id' => $sourceId], $error);
+            response()->json(['status' => false, 'message' => 'Не удалось переслать сообщение.'], 422);
+        }
+        if ($groupId) $this->notifyGroupRecipients($groupId, $userId, $text);
+        else $this->notifyChatRecipient($userId, $contactId, $text, $attachment ? [$attachment] : []);
+        response()->json(['status' => true]);
+    }
+
+    protected function totalChatUnread(int $userId): int
+    {
+        return $this->chatMessages->getUnreadCountForUser($userId);
+    }
+
+    protected function notifyGroupRecipients(int $id, int $senderId, string $text): void
+    {
+        $group = (new GroupChatService())->getForUser($id, $senderId);
+        $recipients = db()->query('SELECT user_id FROM chat_members WHERE conversation_id = ? AND user_id <> ? AND (muted_until IS NULL OR muted_until <= NOW())', [$id, $senderId])->get() ?: [];
+        foreach ($recipients as $recipient) {
+            try {
+                NotificationService::create(['user_id' => (int)$recipient['user_id'], 'title' => (string)$group['title'], 'message' => get_user()['name'] . ': ' . mb_substr($text ?: return_translation('chat_attachment_label'), 0, 200), 'type' => 'chat', 'source' => 'chat', 'action_url' => '/chat/group?conversation_id=' . $id, 'store_unread' => false]);
+            } catch (\Throwable $error) {
+                log_error_details('Group notification dispatch failed', ['conversation_id' => $id], $error);
+            }
+        }
     }
 
     /**
@@ -1223,6 +1342,8 @@ class ChatController extends BaseController
             return;
         }
 
+        $conversationId = (new ConversationService())->findDirectConversationId($senderId, $receiverId);
+        if ($conversationId && (new ChatWorkspaceService())->preferences($conversationId, $receiverId)['muted']) return;
         try {
             $sender = get_user();
             $preview = trim($message);

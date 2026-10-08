@@ -1,6 +1,10 @@
 <?php
 
 $fields = is_array($fields ?? null) ? $fields : [];
+$renderActions = require __DIR__ . '/action-dropdown.php';
+$headerActions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
+    . htmlSC(base_href('/admin/subscriptions/profile-fields/create')) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
+    . htmlSC(FireballPluginSubscriptions::t('subscriptions_field_create')) . '</span></a>';
 $rows = [];
 $mobileCards = [];
 
@@ -37,20 +41,7 @@ foreach ($fields as $field) {
         ];
     }
 
-    ob_start();
-    ?>
-    <div class="d-inline-flex gap-1">
-        <a class="btn btn-sm btn-outline-secondary" href="<?= base_href('/admin/subscriptions/profile-fields/edit/' . $id) ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_edit')) ?></a>
-        <?php if (empty($field['is_system'])): ?>
-            <form action="<?= base_href('/admin/subscriptions/profile-fields/delete') ?>" method="post">
-                <?= get_csrf_field() ?>
-                <input type="hidden" name="id" value="<?= $id ?>">
-                <button class="btn btn-sm btn-outline-danger" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_delete')) ?></button>
-            </form>
-        <?php endif; ?>
-    </div>
-    <?php
-    $desktopActions = (string)ob_get_clean();
+    $desktopActions = $renderActions($actions);
 
     $rows[] = [
         'cells' => [
@@ -78,10 +69,6 @@ foreach ($fields as $field) {
 ?>
 
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <div class="d-flex justify-content-end mb-3">
-        <a class="btn btn-dark rounded-pill" href="<?= base_href('/admin/subscriptions/profile-fields/create') ?>"><i class="ci-plus me-2"></i><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_create')) ?></a>
-    </div>
-
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
         <?= view()->renderPartial('admin/partials/table', [
             'columns' => [

@@ -1,0 +1,111 @@
+<?php
+/** Local MySQL integration test. All database changes are rolled back. */
+if (PHP_SAPI !== 'cli') exit;
+define('FIREBALL_CLI', true);
+require dirname(__DIR__) . '/config/config.php';
+require ROOT . '/vendor/autoload.php';
+require HELPERS . '/helpers.php';
+$app = new FBL\Application(false);
+$app->db = new FBL\Database();
+$checks = 0;
+$check = static function (bool $condition, string $label) use (&$checks): void {
+    if (!$condition) throw new RuntimeException($label);
+    $checks++;
+};
+$denied = static function (callable $call, string $label) use ($check): void {
+    try { $call(); } catch (RuntimeException | InvalidArgumentException $error) { $check(true, $label); return; }
+    $check(false, $label);
+};
+$paths = [];
+$plain = tempnam(sys_get_temp_dir(), 'chat-workspace-');
+db()->beginTransaction();
+try {
+    $ids = [];
+    $token = bin2hex(random_bytes(6));
+    foreach (['Owner', 'Member', 'Admin', 'Outsider'] as $name) {
+        db()->query('INSERT INTO users (name, login, email, password, role, created_at) VALUES (?, ?, ?, ?, ?, ?)', [$name, 'qa-' . $token . '-' . $name, $name . '-' . $token . '@example.test', 'disabled-test-account', 'user', date('Y-m-d H:i:s')]);
+        $ids[] = (int)db()->getInsertId();
+    }
+    [$owner, $member, $admin, $outsider] = $ids;
+    $groups = new App\Services\GroupChatService();
+    $manage = new App\Services\GroupChatManagementService();
+    $workspace = new App\Services\ChatWorkspaceService();
+    $id = $groups->createGroup($owner, 'QA chat workspace', [$member, $admin]);
+    $revision = (new ReflectionMethod(App\Services\GroupChatRealtimeService::class, 'revision'))->invoke(new App\Services\GroupChatRealtimeService(), $id);
+    $check(strlen($revision) === 24, 'Group realtime snapshot executes against MySQL');
+    $check($groups->getForUser($id, $owner)['role'] === 'owner', 'Creator owns the group');
+    $check(!$groups->getForUser($id, $outsider), 'Outsider cannot read group');
+    $message = $groups->createMessage($id, $member, 'Encrypted @Owner message');
+    $check(db()->query('SELECT message_ciphertext FROM chat_messages WHERE id = ?', [$message])->getColumn() !== 'Encrypted @Owner message', 'Text is encrypted');
+    $reply = $groups->createMessage($id, $owner, 'Reply', [], null, $message);
+    $check($groups->getMessages($id, $owner)[1]['reply']['sender_name'] === 'Member', 'Reply carries real group author');
+    $denied(fn() => $groups->createMessage($id, $outsider, 'Forbidden'), 'Outsider cannot send');
+    $other = $groups->createGroup($owner, 'Other QA group', [$admin, $outsider]);
+    $otherMessage = $groups->createMessage($other, $owner, 'Other conversation');
+    $denied(fn() => $groups->createMessage($id, $owner, 'Cross-group reply', [], null, $otherMessage), 'Cross-group reply denied');
+    $denied(fn() => $manage->messageAction($id, $owner, 'edit', ['message_id' => $message, 'message' => 'Forbidden']), 'Even owner cannot edit someone else');
+    $manage->messageAction($id, $member, 'edit', ['message_id' => $message, 'message' => 'Updated encrypted text']);
+    $check($groups->getMessages($id, $owner)[0]['message'] === 'Updated encrypted text', 'Own edit succeeds');
+    $manage->messageAction($id, $owner, 'react', ['message_id' => $message, 'reaction' => '👍']);
+    $check($groups->getMessages($id, $owner)[0]['reactions'][0]['me'], 'Reaction belongs to actor');
+    $manage->messageAction($id, $owner, 'react', ['message_id' => $message, 'reaction' => '👍']);
+    $check(!$groups->getMessages($id, $owner)[0]['reactions'], 'Reaction toggles off');
+    $manage->messageAction($id, $member, 'react', ['message_id' => $message, 'reaction' => '❤️']);
+    $manage->messageAction($id, $member, 'react', ['message_id' => $message, 'reaction' => '😂']);
+    $check(count($groups->getMessages($id, $owner)[0]['reactions']) === 1, 'Reaction replaces prior reaction');
+    $denied(fn() => $manage->messageAction($id, $owner, 'react', ['message_id' => $otherMessage, 'reaction' => '👍']), 'Cross-conversation reaction denied');
+    $workspace->update($id, $owner, ['pinned' => 1, 'archived' => 1, 'muted' => 1, 'draft' => 'Private draft']);
+    $check($workspace->preferences($id, $owner)['draft'] === 'Private draft', 'Draft decrypts for owner');
+    $check($workspace->preferences($id, $member)['draft'] === '', 'Draft isolated per user');
+    $check(db()->query('SELECT draft_ciphertext FROM chat_members WHERE conversation_id = ? AND user_id = ?', [$id, $owner])->getColumn() !== 'Private draft', 'Draft encrypted in database');
+    $notificationItems = (new App\Models\ChatMessage())->getUnreadNotificationItemsForUser($owner);
+    $groupItems = array_values(array_filter($notificationItems, static fn(array $item): bool => (int)($item['group_id'] ?? 0) === $id));
+    $check(count($groupItems) === 1 && $groupItems[0]['muted'], 'Muted groups remain visible in the feed without toast delivery');
+    $denied(fn() => $workspace->update($id, $outsider, ['draft' => 'Forbidden']), 'Outsider cannot write preference');
+    $check($workspace->historyIds($id, $owner, 'UPDATED') === [$message], 'Search scans decrypted text case-insensitively');
+    $check($workspace->historyIds($id, $owner, '', $reply) === [$message], 'History cursor excludes newer messages');
+    $directModel = new App\Models\ChatMessage();
+    $directMessage = $directModel->create($owner, $outsider, 'Direct encrypted history');
+    $directId = (new App\Services\ConversationService())->findDirectConversationId($owner, $outsider);
+    $check((int)db()->query('SELECT revision FROM chat_conversations WHERE id = ?', [$directId])->getColumn() > 0, 'Direct sends advance the revision');
+    $check($directModel->getConversationMessages($owner, $outsider, 100, [$directMessage])[0]['message'] === 'Direct encrypted history', 'Direct history normalizes selected IDs');
+    $check($directModel->getConversationMessages($owner, $member, 100, [$directMessage]) === [], 'Direct history ID filter cannot cross conversation boundary');
+    $manage->manage($id, $owner, 'role', ['member_id' => $admin, 'role' => 'admin']);
+    $denied(fn() => $manage->manage($id, $member, 'update', ['title' => 'Forbidden']), 'Member cannot rename');
+    $denied(fn() => $manage->manage($id, $admin, 'remove', ['member_id' => $owner]), 'Admin cannot remove owner');
+    $denied(fn() => $manage->manage($id, $admin, 'role', ['member_id' => $member, 'role' => 'admin']), 'Admin cannot elevate members');
+    $manage->manage($id, $admin, 'update', ['title' => 'Renamed QA group']);
+    $check($groups->getForUser($id, $owner)['title'] === 'Renamed QA group', 'Admin can rename');
+    $denied(fn() => $manage->manage($id, $owner, 'leave', []), 'Owner must transfer before leaving');
+    file_put_contents($plain, 'encrypted attachment bytes');
+    $storage = new App\Services\ChatMediaStorage();
+    $paths[] = $path = $storage->store($plain);
+    $attachment = $groups->createMessage($id, $member, '', [], ['path' => $path, 'name' => 'qa.txt', 'type' => 'text/plain', 'size' => 26]);
+    $model = new App\Models\ChatMessage();
+    $check($model->getAttachmentForUser($attachment, $owner) !== null, 'Other group member can download');
+    $check($model->getAttachmentForUser($attachment, $outsider) === null, 'Outsider cannot download');
+    $check($workspace->historyIds($id, $owner, '', 0, true) === [$attachment], 'Media gallery returns only attachments');
+    $paths[] = $copy = $storage->copy($path);
+    $storage->delete($path);
+    $check($storage->readRange($copy) === 'encrypted attachment bytes', 'Forward copy survives source deletion');
+    $groups->markDelivered($id, $owner);
+    $groups->markRead($id, $owner);
+    $check((int)db()->query('SELECT COUNT(*) FROM chat_receipts WHERE message_id = ? AND user_id = ? AND read_at IS NOT NULL', [$message, $owner])->getColumn() === 1, 'Group read receipt saved');
+    (new App\Services\ChatTypingService())->setTyping($id, $member, true);
+    $manage->manage($id, $admin, 'remove', ['member_id' => $member]);
+    $check(!$groups->isMember($id, $member), 'Removed member loses access');
+    $check($model->getAttachmentForUser($attachment, $member) === null, 'Removed sender cannot download their old group attachment');
+    $check(!(new App\Services\ChatTypingService())->setTyping($id, $member, true), 'Removed member cannot type');
+    $check(!(bool)db()->query('SELECT COUNT(*) FROM chat_typing_states WHERE conversation_id = ? AND user_id = ?', [$id, $member])->getColumn(), 'Typing state removed on revocation');
+    $manage->manage($id, $owner, 'transfer', ['member_id' => $admin]);
+    $check($groups->getForUser($id, $admin)['role'] === 'owner' && $groups->getForUser($id, $owner)['role'] === 'admin', 'Ownership transferred atomically');
+    $manage->manage($id, $owner, 'leave', []);
+    $check(!$groups->isMember($id, $owner), 'Former owner can leave');
+    $manage->manage($id, $admin, 'delete', []);
+    $check(!$groups->getForUser($id, $admin), 'Deleted group inaccessible');
+    echo "PASS {$checks} chat workspace integration checks; database changes rolled back.\n";
+} finally {
+    if (db()->inTransaction()) db()->rollBack();
+    @unlink($plain);
+    foreach ($paths as $path) (new App\Services\ChatMediaStorage())->delete($path);
+}

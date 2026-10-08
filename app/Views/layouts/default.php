@@ -223,6 +223,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <?php if ($isAdminArea || !empty($requiredAssets['swiper'])): ?>
     <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/swiper/swiper-bundle.min.css') ?>">
 <?php endif; ?>
+<?php if (!empty($requiredAssets['glightbox'])): ?>
+    <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/glightbox/glightbox.min.css') ?>">
+<?php endif; ?>
 <?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>
     <link rel="stylesheet" href="<?= $defaultAsset('/assets/default/vendor/plyr/plyr.css') ?>">
 <?php endif; ?>
@@ -952,6 +955,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
 </script>
 <?php if ($isAdminArea || !empty($requiredAssets['swiper'])): ?>
 <script src="<?= $defaultAsset('/assets/default/vendor/swiper/swiper-bundle.min.js') ?>"></script>
+<?php endif; ?>
+<?php if (!empty($requiredAssets['glightbox'])): ?>
+<script src="<?= $defaultAsset('/assets/default/vendor/glightbox/glightbox.min.js') ?>"></script>
 <?php endif; ?>
 <script src="<?= $defaultAsset('/assets/default/vendor/toastr/toastr.min.js') ?>"></script>
 <?php if ($isAdminArea || !empty($requiredAssets['player'])): ?>

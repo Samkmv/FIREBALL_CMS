@@ -128,11 +128,17 @@ class ChatMessage
      * Возвращает сообщения диалога между двумя пользователями.
      * В Chat 2.1 также возвращает безопасный preview сообщения, на которое дан ответ.
      */
-    public function getConversationMessages(int $firstUserId, int $secondUserId, int $limit = 100): array
+    public function getConversationMessages(int $firstUserId, int $secondUserId, int $limit = 100, ?array $ids = null): array
     {
         $this->ensureTableExists();
         $limit = max(1, min(300, $limit));
 
+        $idConstraint = '';
+        if ($ids !== null) {
+            $ids = array_values(array_filter(array_map('intval', $ids)));
+            if (!$ids) return [];
+            $idConstraint = ' AND m.id IN (' . implode(',', $ids) . ')';
+        }
         $messages = db()->query(
             "SELECT
                 m.id,
@@ -152,6 +158,7 @@ class ChatMessage
                 cr.delivered_at AS receipt_delivered_at,
                 cr.read_at AS receipt_read_at,
                 m.reply_to_id,
+                m.forwarded_label,
                 r.id AS reply_id,
                 r.sender_id AS reply_sender_id,
                 r.message_ciphertext AS reply_message_ciphertext,
@@ -169,7 +176,7 @@ class ChatMessage
              LEFT JOIN chat_receipts cr
                ON cr.message_id = m.id
               AND cr.user_id = m.receiver_id
-             WHERE m.deleted_at IS NULL
+             WHERE m.deleted_at IS NULL {$idConstraint}
                AND (
                     (m.sender_id = :first_user_id AND m.receiver_id = :second_user_id)
                     OR (m.sender_id = :second_user_id AND m.receiver_id = :first_user_id)
@@ -236,6 +243,7 @@ class ChatMessage
                 'read_at' => $readAt !== '' ? $readAt : null,
                 'edited_at' => !empty($message['edited_at']) ? (string)$message['edited_at'] : null,
                 'reply_to_id' => $replyToId > 0 ? $replyToId : null,
+                'forwarded_label' => $message['forwarded_label'] ?? null,
                 'reply' => $reply,
                 'created_at' => (string)$message['created_at'],
             ];
@@ -359,7 +367,7 @@ class ChatMessage
     /**
      * Собирает агрегированные реакции для набора сообщений без N+1 запросов.
      */
-    protected function getReactionsForMessages(array $messageIds, int $currentUserId): array
+    public function getReactionsForMessages(array $messageIds, int $currentUserId): array
     {
         $messageIds = array_values(array_unique(array_filter(array_map('intval', $messageIds))));
         if (empty($messageIds)) {
@@ -567,12 +575,13 @@ class ChatMessage
                AND deleted_at IS NULL
                AND attachment_path IS NOT NULL
                AND attachment_path != ''
-               AND (sender_id = :sender_user_id OR receiver_id = :receiver_user_id)
+               AND ((receiver_id > 0 AND (sender_id = :sender_user_id OR receiver_id = :receiver_user_id)) OR EXISTS (SELECT 1 FROM chat_members cm JOIN chat_conversations c ON c.id = cm.conversation_id AND c.type = 'group' WHERE cm.conversation_id = chat_messages.conversation_id AND cm.user_id = :member_user_id))
              LIMIT 1",
             [
                 'message_id' => $messageId,
                 'sender_user_id' => $userId,
                 'receiver_user_id' => $userId,
+                'member_user_id' => $userId,
             ]
         )->getOne();
 
@@ -662,7 +671,10 @@ class ChatMessage
             ['user_id' => $userId]
         );
 
-        return db()->rowCount();
+        $count = db()->rowCount();
+        $groups = new \App\Services\GroupChatService();
+        foreach ($groups->listForUser($userId) as $group) { $count += (int)$group['unread_count']; $groups->markRead((int)$group['id'], $userId); }
+        return $count;
     }
 
     /**
@@ -672,13 +684,14 @@ class ChatMessage
     {
         $this->ensureTableExists();
 
-        return (int)db()->query(
+        $directCount = (int)db()->query(
             "SELECT COUNT(*) FROM {$this->table}
              WHERE receiver_id = :user_id
                AND is_read = 0
                AND deleted_at IS NULL",
             ['user_id' => $userId]
         )->getColumn();
+        return $directCount + array_sum(array_column((new \App\Services\GroupChatService())->listForUser($userId), 'unread_count'));
     }
 
     /**
@@ -715,9 +728,10 @@ class ChatMessage
 
         $rows = db()->query(
             "SELECT m.sender_id, COUNT(*) AS unread_count, MAX(m.id) AS sort_id, MAX(m.created_at) AS created_at,
-                    u.name, u.avatar, u.role
+                    u.name, u.avatar, u.role, MAX(cm.muted_until > NOW()) AS muted
              FROM {$this->table} m
              INNER JOIN users u ON u.id = m.sender_id
+             LEFT JOIN chat_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = m.receiver_id
              WHERE m.receiver_id = :user_id
                AND m.is_read = 0
                AND m.deleted_at IS NULL
@@ -733,6 +747,7 @@ class ChatMessage
             $items[] = [
                 'type' => 'chat',
                 'sender_id' => (int)$row['sender_id'],
+                'muted' => !empty($row['muted']),
                 'name' => (string)($row['name'] ?? ''),
                 'avatar' => (string)($row['avatar'] ?? ''),
                 'role' => (string)($row['role'] ?? 'user'),
@@ -744,7 +759,14 @@ class ChatMessage
             ];
         }
 
-        return $items;
+        foreach ((new \App\Services\GroupChatService())->listForUser($userId) as $group) {
+            if (!(int)$group['unread_count']) continue;
+            $latest = db()->query('SELECT id FROM chat_messages WHERE conversation_id = ? AND deleted_at IS NULL AND sender_id <> ? ORDER BY id DESC LIMIT 1', [(int)$group['id'], $userId])->getColumn();
+            $preview = $this->getMessagePreviewMetaById((int)$latest);
+            $items[] = ['type' => 'chat', 'group_id' => (int)$group['id'], 'muted' => !empty($group['muted_until']) && strtotime($group['muted_until']) > time(), 'sender_id' => 0, 'name' => $group['title'], 'avatar' => null, 'unread_count' => (int)$group['unread_count'], 'created_at' => $preview['created_at'] ?? $group['updated_at'], 'sort_id' => (int)$latest, 'preview' => $preview['preview'] ?? '', 'time' => $preview['created_at'] ?? $group['updated_at']];
+        }
+        usort($items, static fn(array $a, array $b): int => (int)$b['sort_id'] <=> (int)$a['sort_id']);
+        return array_slice($items, 0, $limit);
     }
 
     /**
@@ -1143,7 +1165,7 @@ class ChatMessage
     /**
      * Преобразует поля вложения сообщения в удобную структуру для клиента.
      */
-    protected static function normalizeAttachment(array $message): ?array
+    public static function normalizeAttachment(array $message): ?array
     {
         $path = trim((string)($message['attachment_path'] ?? ''));
         if ($path === '') {
@@ -1181,7 +1203,11 @@ class ChatMessage
     {
         $users = new User();
 
-        $contacts = array_map(function (array $contact) use ($unreadCounts, $users, $currentUserId): array {
+        $prefs = [];
+        foreach (db()->query("SELECT c.direct_key, cm.pinned, cm.archived, cm.muted_until FROM chat_members cm JOIN chat_conversations c ON c.id = cm.conversation_id AND c.type = 'direct' WHERE cm.user_id = ?", [$currentUserId])->get() ?: [] as $row) $prefs[$row['direct_key']] = $row;
+        $contacts = array_map(function (array $contact) use ($unreadCounts, $users, $currentUserId, $prefs): array {
+            $key = min($currentUserId, (int)$contact['id']) . ':' . max($currentUserId, (int)$contact['id']);
+            $contact['preferences'] = $prefs[$key] ?? ['pinned' => 0, 'archived' => 0, 'muted_until' => null];
             $contact['unread_count'] = $unreadCounts[(int)$contact['id']] ?? 0;
             $contact['is_online'] = $users->isOnline($contact['last_seen_at'] ?? null);
             $contact['chat_group'] = in_array(($contact['role'] ?? 'user'), ['creator', 'admin', 'moderator'], true) ? 'admins' : 'clients';
@@ -1192,6 +1218,8 @@ class ChatMessage
         }, $contacts);
 
         usort($contacts, static function (array $left, array $right): int {
+            $pin = (int)($right['preferences']['pinned'] ?? 0) <=> (int)($left['preferences']['pinned'] ?? 0);
+            if ($pin) return $pin;
             $leftTime = strtotime((string)($left['last_message_at'] ?? '')) ?: 0;
             $rightTime = strtotime((string)($right['last_message_at'] ?? '')) ?: 0;
 

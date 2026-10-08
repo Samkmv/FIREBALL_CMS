@@ -56,7 +56,7 @@ final class ConversationService
     {
         if ($conversationId <= 0 || $messageId <= 0) return;
         db()->query(
-            "UPDATE chat_conversations SET last_message_id = ?, updated_at = ? WHERE id = ?",
+            "UPDATE chat_conversations SET last_message_id = ?, updated_at = ?, revision = revision + 1 WHERE id = ?",
             [$messageId, date('Y-m-d H:i:s'), $conversationId]
         );
     }

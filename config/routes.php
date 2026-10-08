@@ -96,6 +96,11 @@ $app->router->get('/chat/group', [ChatController::class, 'group'])->middleware([
 $app->router->get('/chat/group/messages', [ChatController::class, 'groupMessages'])->middleware(['auth']);
 $app->router->post('/chat/group/send', [ChatController::class, 'groupSend'])->middleware(['auth']);
 $app->router->get('/chat/group/stream', [ChatController::class, 'groupStream'])->middleware(['auth']);
+$app->router->post('/chat/group/manage', [ChatController::class, 'groupManage'])->middleware(['auth']);
+$app->router->get('/chat/group/avatar', [ChatController::class, 'groupAvatar'])->middleware(['auth']);
+$app->router->post('/chat/workspace', [ChatController::class, 'workspace'])->middleware(['auth']);
+$app->router->get('/chat/history', [ChatController::class, 'history'])->middleware(['auth']);
+$app->router->post('/chat/forward', [ChatController::class, 'forward'])->middleware(['auth']);
 $app->router->get('/chat/media/(?P<id>\d+)/?', [ChatController::class, 'media'])->middleware(['auth']);
 $app->router->get('/chat/unread-count', [ChatController::class, 'unreadCount'])->middleware(['auth']);
 $app->router->post('/chat/send', [ChatController::class, 'send'])->middleware(['auth']);

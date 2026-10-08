@@ -36,13 +36,20 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
                 if (mode === 'login') return route.fulfill({ status: 403, contentType: 'text/html', body: '<h1>Login</h1>' });
                 if (mode === 'malformed') return route.fulfill({ json: { checked_at: 'now', fields: [{ label: 'Partial', value: 'one' }, { label: 12, value: 'invalid' }] } });
                 return route.fulfill({ json: {...result, connection_id: mode === 'wrong-owner' ? 999 : id,
-                    server_id: id === 9 ? 2 : 1,
-                    traffic: {...result.traffic, download: (id === 8 ? 1 : id === 9 ? 4 : 3) * 1024 ** 3,
+                    server_id: mode === 'three-servers' ? id - 6 : id === 9 ? 2 : 1,
+                    traffic: mode === 'zero' ? {upload: 0, download: 0, total: 0}
+                        : mode === 'over-limit' ? {upload: 1024 ** 3, download: 19 * 1024 ** 3, total: 20 * 1024 ** 3}
+                        : {...result.traffic, download: (id === 8 ? 1 : id === 9 ? 4 : 3) * 1024 ** 3,
                         total: (id === 8 ? 2 : id === 9 ? 5 : 4) * 1024 ** 3}} });
             }
             const args = [path.join(__dirname, 'client_information_render.php')];
             if (url.searchParams.has('unknown')) args.push('--unknown');
             if (url.searchParams.has('multi')) args.push('--multi');
+            if (url.searchParams.has('unlimited')) args.push('--unlimited');
+            if (url.searchParams.has('stale-total')) args.push('--stale-total');
+            if (url.searchParams.has('large-limit')) args.push('--large-limit');
+            if (url.searchParams.has('three-servers')) args.push('--three-servers');
+            if (url.searchParams.has('all-unknown')) args.push('--all-unknown');
             const html = execFileSync(php, args, { encoding: 'utf8' });
             assert(!html.includes('Warning:') && !html.includes('Fatal error:') && !html.includes('vpn_manager_v2_'), 'Actual PHP view must render cleanly and translate every key');
             return route.fulfill({ contentType: 'text/html; charset=utf-8', body: html });
@@ -54,6 +61,13 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
             await page.evaluate(theme => document.documentElement.dataset.bsTheme = theme, theme);
             assert.equal(reads, before, 'Opening subscription must not contact panels automatically');
             const card = page.locator('[data-vpn-v2-client-card]');
+            const summary = page.locator('[data-vpn-v2-client-information]');
+            const total = summary.locator('[data-vpn-v2-usage-value=used]');
+            const remaining = summary.locator('[data-vpn-v2-usage-value=remaining]');
+            const warning = summary.locator('[data-vpn-v2-usage-warning]');
+            assert.equal(await total.innerText(), '8 ГБ', 'Stored server total is visible immediately');
+            assert.equal(await remaining.innerText(), '2 ГБ');
+            assert.match(await summary.locator('[data-vpn-v2-usage-value=term]').innerText(), /^\d+ дн\.$/);
             await card.locator('summary').click();
             const live = card.locator('[data-vpn-v2-client-live]');
             assert.equal(await live.evaluate(element => getComputedStyle(element).display), 'none', 'Live fields start hidden');
@@ -68,13 +82,19 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
             assert.equal(await button.isDisabled(), false);
             const traffic = page.locator('[data-vpn-v2-server-traffic]');
             const used = traffic.locator('[data-vpn-v2-traffic-value=used][data-server-id="1"]').first();
-            assert.equal(await used.innerText(), '8 ГБ', 'Saved per-server traffic visible immediately');
+            assert.equal(await used.innerText(), '4 ГБ', 'Individual inspection also updates server traffic');
+            assert.equal(await total.innerText(), '4 ГБ', 'Individual inspection updates total immediately');
+            assert.equal(await remaining.innerText(), '6 ГБ');
+            assert.equal(await warning.isVisible(), false, 'Confirmed counters have no stale warning');
             const refresh = traffic.locator('[data-vpn-v2-client-traffic-refresh]');
             const readCount = reads;
             await refresh.click();
             await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
             assert.equal(reads, readCount + 1, 'Single explicit read-only inspection');
             assert.equal(await used.innerText(), '4 ГБ', 'Fresh per-server traffic displayed');
+            assert.equal(await total.innerText(), '4 ГБ');
+            assert.equal(await remaining.innerText(), '6 ГБ');
+            assert.equal(await summary.locator('[role=progressbar]').getAttribute('aria-valuenow'), '40');
             assert(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), 'No page-level horizontal overflow');
             assert(await button.evaluate(element => element.getBoundingClientRect().right <= element.closest('[data-vpn-v2-client-card]').getBoundingClientRect().right), 'Button fits mobile card');
             if (width === 1440) {
@@ -95,39 +115,91 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
                 await refresh.click();
                 await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
                 assert.equal(await used.innerText(), '4 ГБ', 'Unavailable/malformed panel retains previous traffic');
+                assert.equal(await total.innerText(), '4 ГБ', 'Total retains the same available counters as the table');
+                assert.equal(await warning.isVisible(), true);
+                assert((await warning.innerText()).includes('Не удалось обновить'));
                 assert.equal(await traffic.locator('[data-vpn-v2-server-traffic-result].text-warning').count(), 1);
             }
             mode = 'success';
         }
         await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14?unknown=1');
         const section = page.locator('[data-vpn-v2-client-information]');
-        assert.equal(await section.locator('[role=progressbar]').count(), 0, 'Unverified zero has no factual progress bar');
+        assert.equal(await section.locator('[role=progressbar]:visible').count(), 0, 'Unverified zero has no factual progress bar');
+        assert.equal(await section.locator('[data-vpn-v2-usage-value=used]').innerText(), '—');
+        assert.equal(await section.locator('[data-vpn-v2-usage-value=remaining]').innerText(), '—');
         assert((await section.innerText()).includes('Трафик ещё не проверялся'));
         await section.locator('summary').click();
         assert(!(await section.innerText()).includes('failed'), 'Traffic error localized');
-        mode = 'partial'; await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14?multi=1');
+        mode = 'zero'; await section.locator('[data-vpn-v2-client-traffic-refresh]').click();
+        await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
+        assert.equal(await section.locator('[data-vpn-v2-usage-value=used]').innerText(), '0 Б', 'Confirmed zero is not unknown');
+        assert.equal(await section.locator('[data-vpn-v2-usage-value=remaining]').innerText(), '10 ГБ');
+        assert.equal(await section.locator('[data-vpn-v2-usage-warning]').isVisible(), false, 'Fresh counters clear the persisted failure warning');
+        assert(!(await section.locator('[data-vpn-v2-usage-checked]').innerText()).includes('не проверялся'));
+        mode = 'partial'; await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14?multi=1&stale-total=1&large-limit=1');
         const traffic = page.locator('[data-vpn-v2-server-traffic]');
         const refresh = traffic.locator('[data-vpn-v2-client-traffic-refresh]');
         const values = id => traffic.locator(`[data-vpn-v2-traffic-value=used][data-server-id="${id}"]`).allTextContents();
         assert((await values(1)).every(value => value === '10 ГБ'), 'Two connections grouped under one server');
         assert((await values(2)).every(value => value === '3 ГБ'));
+        const total = section.locator('[data-vpn-v2-usage-value=used]');
+        const remaining = section.locator('[data-vpn-v2-usage-value=remaining]');
+        assert.equal(await total.innerText(), '13 ГБ', 'Server sum ignores stale zero in subscription accounting');
+        assert.equal(await remaining.innerText(), '17 ГБ');
         await refresh.click();
         await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
         assert((await values(1)).every(value => value === '10 ГБ'), 'Partial server response must not replace total with a subtotal');
         assert((await values(2)).every(value => value === '5 ГБ'), 'Other server independently refreshed');
+        assert.equal(await total.innerText(), '15 ГБ', 'Saved full server plus fresh reachable server; not a misleading subtotal');
+        assert.equal(await remaining.innerText(), '15 ГБ');
+        assert.equal(await section.locator('[data-vpn-v2-usage-warning]').isVisible(), true);
         assert.equal(maxConcurrent, 2, 'At most two panel inspections in parallel');
         mode = 'success'; await refresh.click();
         await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
         assert((await values(1)).every(value => value === '6 ГБ'), 'All reachable connections summed for server');
         assert.equal(await traffic.locator('[data-vpn-v2-server-traffic-result].text-warning').count(), 0);
+        assert.equal(await total.innerText(), '11 ГБ', 'All servers contribute once to total');
+        assert.equal(await remaining.innerText(), '19 ГБ');
+        assert.equal(await section.locator('[data-vpn-v2-usage-warning]').isVisible(), false);
+        await refresh.click();
+        await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
+        assert.equal(await total.innerText(), '11 ГБ', 'Repeated refresh does not double-count');
         mode = 'wrong-owner'; await refresh.click();
         await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
         assert((await values(1)).every(value => value === '6 ГБ'), 'Mismatched connection ID cannot overwrite counters');
+        assert.equal(await total.innerText(), '11 ГБ', 'Foreign response cannot overwrite total');
+        mode = 'over-limit'; await refresh.click();
+        await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
+        assert.equal(await total.innerText(), '60 ГБ');
+        assert.equal(await remaining.innerText(), '0 Б', 'Remaining allowance never becomes negative');
+        assert.equal(await section.locator('[role=progressbar]').getAttribute('aria-valuenow'), '100');
+        mode = 'success'; await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14?multi=1&unlimited=1&stale-total=1');
+        assert.equal(await total.innerText(), '13 ГБ');
+        assert.equal(await remaining.innerText(), 'Безлимит');
+        assert.equal(await section.locator('[data-vpn-v2-usage-value=term]').innerText(), 'Бессрочно');
+        await section.locator('[data-vpn-v2-client-traffic-refresh]').click();
+        await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
+        assert.equal(await total.innerText(), '11 ГБ');
+        assert.equal(await remaining.innerText(), 'Безлимит');
+        assert.equal(await section.locator('[role=progressbar]:visible').count(), 0);
+        mode = 'three-servers';
+        await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14?multi=1&three-servers=1&all-unknown=1&unlimited=1');
+        assert.equal(await total.innerText(), '—');
+        assert.equal(await remaining.innerText(), 'Безлимит');
+        assert.equal(await section.locator('[data-vpn-v2-usage-warning]').isVisible(), true);
+        await section.locator('[data-vpn-v2-client-traffic-refresh]').click();
+        await page.waitForFunction(() => !document.querySelector('[data-vpn-v2-client-traffic-refresh]').disabled);
+        assert.equal(await total.innerText(), '11 ГБ', 'Three previously unknown servers produce a complete total');
+        assert.equal(await remaining.innerText(), 'Безлимит');
+        assert.equal(await section.locator('[data-vpn-v2-usage-warning]').isVisible(), false);
+        assert((await values(1)).every(value => value === '4 ГБ'));
+        assert((await values(2)).every(value => value === '2 ГБ'));
+        assert((await values(3)).every(value => value === '5 ГБ'));
         const foreign = spawnSync(php, [path.join(__dirname, 'client_information_unit.php'), '--foreign-endpoint'], { encoding: 'utf8' });
         assert.equal(foreign.status, 0);
         assert(foreign.stderr.includes('HTTP_STATUS=404'));
         assert.equal(JSON.parse(foreign.stdout).error, 'Подключение VPN V2 не найдено.');
         assert.deepEqual(errors, []);
-        console.log('PASS client info browser: 320–1440px, dark/light, per-server grouping/live refresh, max 2 concurrent reads, partial/offline retention, ownership, equal cards, XSS and actual 404 controller');
+        console.log('PASS client info browser: 320–1440px, dark/light, total/server agreement, remaining allowance, unlimited/lifetime, confirmed zero, stale-warning recovery, max 2 concurrent reads, partial/offline retention, ownership, equal cards, XSS and actual 404 controller');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

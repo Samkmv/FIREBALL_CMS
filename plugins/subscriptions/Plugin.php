@@ -623,7 +623,7 @@ final class FireballPluginSubscriptions implements PluginInterface
         $definitions = [
             'overview' => ['subscriptions_admin_overview', '/admin/subscriptions', 'ci-layout'],
             'plans' => ['subscriptions_admin_plans', '/admin/subscriptions/plans', 'ci-package'],
-            'subscribers' => ['subscriptions_admin_subscribers', '/admin/subscriptions/subscribers', 'ci-users'],
+            'subscribers' => ['subscriptions_admin_subscribers', '/admin/subscriptions/subscribers', 'ci-user'],
             'exclusions' => ['subscriptions_admin_exclusions', '/admin/subscriptions/exclusions', 'ci-map-pin'],
             'payments' => ['subscriptions_admin_payments', '/admin/subscriptions/payments', 'ci-credit-card'],
             'content' => ['subscriptions_admin_content', '/admin/subscriptions/content', 'ci-file-text'],

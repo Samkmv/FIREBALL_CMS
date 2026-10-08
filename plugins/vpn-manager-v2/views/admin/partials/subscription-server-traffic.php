@@ -30,9 +30,11 @@ foreach ($serverTraffic as $serverUsage) {
 ?>
 <?php if ($serverTrafficRows !== []): ?>
 <div class="mt-4 mb-4" data-vpn-v2-server-traffic
+     data-snapshot="<?= htmlSC(json_encode($serverTraffic, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) ?>"
      data-units="<?= htmlSC(json_encode(array_map(static fn($unit) => $clientT('vpn_manager_v2_traffic_unit_' . $unit), ['b', 'kb', 'mb', 'gb', 'tb', 'pb']), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) ?>"
      data-live-label="<?= htmlSC($clientT('vpn_manager_v2_client_live_data')) ?>"
      data-saved-label="<?= htmlSC($clientT('vpn_manager_v2_client_traffic_saved')) ?>"
+     data-mixed-label="<?= htmlSC($clientT('vpn_manager_v2_client_traffic_mixed')) ?>"
      data-partial-label="<?= htmlSC($clientT('vpn_manager_v2_client_traffic_partial')) ?>"
      data-failed-label="<?= htmlSC($clientT('vpn_manager_v2_client_inspection_failed')) ?>">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">

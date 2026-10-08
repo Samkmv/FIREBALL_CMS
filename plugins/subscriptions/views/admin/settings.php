@@ -1,5 +1,5 @@
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <form class="border rounded-4 p-4 p-lg-5" method="post" action="<?= htmlSC(base_href('/admin/subscriptions/settings/save')) ?>" autocomplete="off" data-subscriptions-settings-form>
+    <form class="border rounded-5 p-3 p-md-4" method="post" action="<?= htmlSC(base_href('/admin/subscriptions/settings/save')) ?>" autocomplete="off" data-subscriptions-settings-form>
         <?= get_csrf_field() ?>
         <div class="alert alert-info"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_settings_urls_hint')) ?></div>
         <?php $gatewayReady = trim((string)$settings['merchant_login']) !== '' && !empty($settings['password1_configured']) && !empty($settings['password2_configured']); ?>
@@ -54,8 +54,8 @@
     </form>
 
     <?php $addressStats = (array)($address_catalog_stats ?? []); ?>
-    <div class="card border-0 shadow-sm mt-4" data-local-address-catalog>
-        <div class="card-body p-4">
+    <div class="border rounded-5 p-3 p-md-4 mt-4" data-local-address-catalog>
+        <div>
             <h2 class="h5 mb-2">Локальный справочник адресов</h2>
             <p class="text-body-secondary mb-2">
                 Города, улицы и дома ищутся только в локальной базе FIREBALL CMS.
@@ -93,7 +93,7 @@
                     </label>
                 </div>
                 <div class="col-lg-2">
-                    <button class="btn btn-dark w-100" type="submit" disabled>Импортировать</button>
+                    <button class="btn btn-dark rounded-pill w-100" type="submit" disabled>Импортировать</button>
                 </div>
                 <div class="col-12" data-import-unavailable role="status">
                     <div class="alert alert-warning mb-0">Загрузчик CSV ещё не готов. Если кнопка «Импортировать» не становится доступной, обновите страницу и проверьте, что JavaScript включён.</div>
@@ -104,9 +104,9 @@
                     </div>
                     <p class="small mb-2" data-import-status role="status" aria-live="polite"></p>
                     <div class="alert alert-danger mb-2" data-import-error role="alert" hidden></div>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" data-import-resume hidden>Продолжить импорт</button>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" data-import-pause hidden>Приостановить</button>
-                    <button class="btn btn-outline-danger btn-sm" type="button" data-import-cancel hidden>Отменить импорт</button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-import-resume hidden>Продолжить импорт</button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-import-pause hidden>Приостановить</button>
+                    <button class="btn btn-outline-danger btn-sm rounded-pill" type="button" data-import-cancel hidden>Отменить импорт</button>
                 </div>
                 <div class="col-12"><p class="form-text mb-0">Не закрывайте страницу до завершения. При замене старый справочник доступен до окончания импорта; при добавлении готовые порции сохраняются сразу.</p></div>
                 <noscript><div class="col-12 alert alert-warning">Для импорта справочника включите JavaScript: файл загружается небольшими порциями, а не целиком.</div></noscript>
@@ -119,7 +119,7 @@
                     class="mt-3"
                 >
                     <?= get_csrf_field() ?>
-                    <button class="btn btn-outline-danger btn-sm" type="submit">
+                    <button class="btn btn-outline-danger btn-sm rounded-pill" type="submit">
                         Очистить справочник
                     </button>
                 </form>

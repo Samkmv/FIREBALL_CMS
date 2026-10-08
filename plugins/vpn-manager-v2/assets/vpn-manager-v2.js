@@ -778,12 +778,13 @@
 
     function setupClientInspection(button) {
         var card = button.closest('[data-vpn-v2-client-card]');
+        var section = button.closest('[data-vpn-v2-client-information]');
         var result = card.querySelector('[data-vpn-v2-client-result]');
         var fields = card.querySelector('[data-vpn-v2-client-live]');
         var label = button.querySelector('[data-vpn-v2-client-button-label]');
         var originalLabel = label.textContent;
-        button.vpnV2Inspect = async function () {
-            if (button.disabled) return null;
+        button.vpnV2Inspect = async function (batchRequest) {
+            if (button.disabled || (section.vpnV2TrafficBusy && batchRequest !== true)) return null;
             button.disabled = true;
             button.setAttribute('aria-busy', 'true');
             label.textContent = button.dataset.loading;
@@ -799,7 +800,14 @@
                     headers: {'Accept': 'application/json'}
                 });
                 var data = await response.json();
-                if (!response.ok || !Array.isArray(data.fields) || typeof data.checked_at !== 'string') {
+                if (!response.ok || !Array.isArray(data.fields) || typeof data.checked_at !== 'string'
+                    || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(data.checked_at)
+                    || Number(data.subscription_id) !== Number(section.dataset.subscriptionId)
+                    || Number(data.connection_id) !== Number(button.dataset.connectionId)
+                    || Number(data.server_id) !== Number(button.dataset.serverId)
+                    || !data.traffic || !['upload', 'download', 'total'].every(function (field) {
+                        return Number.isSafeInteger(data.traffic[field]) && data.traffic[field] >= 0;
+                    })) {
                     throw new Error(button.dataset.failed);
                 }
                 data.fields.forEach(function (field) {
@@ -814,12 +822,14 @@
                 });
                 fields.hidden = false;
                 result.textContent = button.dataset.liveLabel + ' · ' + data.checked_at;
+                if (section.vpnV2RecordTraffic) section.vpnV2RecordTraffic(button, data);
                 return data;
             } catch (error) {
                 fields.hidden = true;
                 fields.replaceChildren();
                 result.classList.add('text-danger');
                 result.textContent = button.dataset.failed;
+                if (section.vpnV2RecordTraffic) section.vpnV2RecordTraffic(button, null);
                 return null;
             } finally {
                 window.clearTimeout(timeout);
@@ -828,7 +838,7 @@
                 label.textContent = originalLabel;
             }
         };
-        button.addEventListener('click', button.vpnV2Inspect);
+        button.addEventListener('click', function () { button.vpnV2Inspect(false); });
     }
 
     function setupServerTraffic(button) {
@@ -836,12 +846,96 @@
         var table = section.querySelector('[data-vpn-v2-server-traffic]');
         var units = JSON.parse(table.dataset.units);
         var result = table.querySelector('[data-vpn-v2-server-traffic-result]');
-        var clients = Array.from(section.querySelectorAll('[data-vpn-v2-client-inspect]')).filter(function (client) { return !client.disabled; });
+        var allClients = Array.from(section.querySelectorAll('[data-vpn-v2-client-inspect]'));
+        var clients = allClients.filter(function (client) { return !client.disabled; });
+        var snapshots = JSON.parse(table.dataset.snapshot);
+        var readings = {}, failures = {};
+        var addBytes = function (total, value) { return Math.min(Number.MAX_SAFE_INTEGER, total + Math.max(0, Number(value))); };
+
+        function renderTraffic() {
+            var used = 0, known = false, complete = true, partial = false, failed = false;
+            var checkedAt = null, liveCount = 0;
+            snapshots.forEach(function (server) {
+                var serverClients = allClients.filter(function (client) { return Number(client.dataset.serverId) === server.id; });
+                var responses = serverClients.map(function (client) { return readings[client.dataset.connectionId]; }).filter(Boolean);
+                var serverFailed = serverClients.some(function (client) { return failures[client.dataset.connectionId]; });
+                if (responses.length === server.connections && !serverFailed) {
+                    server.used = server.upload = server.download = 0;
+                    server.checked_at = null;
+                    responses.forEach(function (data) {
+                        server.used = addBytes(server.used, data.traffic.total);
+                        server.upload = addBytes(server.upload, data.traffic.upload);
+                        server.download = addBytes(server.download, data.traffic.download);
+                        if (!server.checked_at || data.checked_at < server.checked_at) server.checked_at = data.checked_at;
+                    });
+                    server.known = server.sample_known = server.live = true;
+                    server.partial = server.failed = false;
+                    server.missing = 0;
+                } else if (responses.length || serverFailed) {
+                    // Keep the last full server snapshot. A reachable subtotal
+                    // must not replace it or be presented as the complete total.
+                    server.partial = true;
+                    server.failed = server.failed || serverFailed;
+                }
+                used = addBytes(used, server.used);
+                known = known || server.known;
+                complete = complete && server.known && server.missing === 0;
+                partial = partial || server.partial;
+                failed = failed || server.failed;
+                if (server.live) liveCount++;
+                if (server.checked_at && (!checkedAt || server.checked_at < checkedAt)) checkedAt = server.checked_at;
+                table.querySelectorAll('[data-vpn-v2-traffic-value][data-server-id="' + server.id + '"]').forEach(function (value) {
+                    var field = value.dataset.vpnV2TrafficValue;
+                    value.textContent = (field === 'used' ? server.known : server.sample_known)
+                        ? formatMetricBytes(server[field], units) : '—';
+                });
+                table.querySelectorAll('[data-vpn-v2-traffic-state][data-server-id="' + server.id + '"]').forEach(function (state) {
+                    var source = server.live ? table.dataset.liveLabel : table.dataset.savedLabel;
+                    state.textContent = source + (server.checked_at ? ' · ' + server.checked_at : '')
+                        + (server.failed ? ' · ' + table.dataset.failedLabel : server.partial ? ' · ' + table.dataset.partialLabel : '');
+                    state.classList.toggle('text-warning', server.partial);
+                });
+            });
+            var limit = Number(section.dataset.trafficLimit);
+            section.querySelector('[data-vpn-v2-usage-value="used"]').textContent = known ? formatMetricBytes(used, units) : '—';
+            section.querySelector('[data-vpn-v2-usage-value="remaining"]').textContent = limit <= 0
+                ? section.dataset.unlimitedLabel : complete ? formatMetricBytes(Math.max(0, limit - used), units) : '—';
+            var progress = section.querySelector('[data-vpn-v2-usage-progress]');
+            var percent = limit > 0 && complete ? Math.min(100, Math.round(used / limit * 1000) / 10) : null;
+            progress.hidden = percent === null;
+            progress.classList.toggle('d-none', percent === null);
+            progress.setAttribute('aria-valuenow', percent === null ? '0' : String(percent));
+            var bar = progress.querySelector('.progress-bar');
+            bar.style.width = (percent || 0) + '%';
+            bar.classList.toggle('bg-danger', percent >= 100);
+            bar.classList.toggle('bg-warning', percent >= 80 && percent < 100);
+            bar.classList.toggle('bg-primary', percent < 80);
+            var source = liveCount === snapshots.length ? table.dataset.liveLabel
+                : liveCount > 0 ? table.dataset.mixedLabel : table.dataset.savedLabel;
+            section.querySelector('[data-vpn-v2-usage-checked]').textContent = checkedAt
+                ? source + ' · ' + checkedAt : section.dataset.notCheckedLabel;
+            var warning = section.querySelector('[data-vpn-v2-usage-warning]');
+            warning.hidden = !partial;
+            warning.textContent = failed ? section.dataset.failedTrafficLabel : section.dataset.partialTrafficLabel;
+            result.classList.toggle('text-warning', partial);
+            result.textContent = partial ? table.dataset.partialLabel : source;
+        }
+
+        section.vpnV2RecordTraffic = function (client, data) {
+            var id = client.dataset.connectionId;
+            if (data) { readings[id] = data; delete failures[id]; }
+            else { delete readings[id]; failures[id] = true; }
+            if (!section.vpnV2TrafficBusy) renderTraffic();
+        };
         if (!clients.length) { button.disabled = true; return; }
         var originalChildren = Array.from(button.childNodes);
         button.addEventListener('click', async function () {
             if (button.disabled) return;
+            // An individual inspection may still be running. Do not launch a
+            // duplicate batch or mistake its disabled button for missing data.
+            if (clients.some(function (client) { return client.disabled; })) return;
             button.disabled = true;
+            section.vpnV2TrafficBusy = true;
             button.setAttribute('aria-busy', 'true');
             var spinner = document.createElement('span');
             spinner.className = 'spinner-border spinner-border-sm';
@@ -851,56 +945,20 @@
             button.replaceChildren(spinner, label);
             result.textContent = button.dataset.loading;
             result.classList.remove('text-danger', 'text-warning');
-            var servers = {};
-            var failed = 0;
+            readings = {}; failures = {};
             try {
                 // At most two read-only panel inspections at once; never execute a VPN queue here.
                 for (var index = 0; index < clients.length; index += 2) {
                     await Promise.all(clients.slice(index, index + 2).map(async function (client) {
-                        var data = await client.vpnV2Inspect();
-                        if (!data || Number(data.connection_id) !== Number(client.dataset.connectionId)
-                            || Number(data.server_id) !== Number(client.dataset.serverId)
-                            || !data.traffic || !['upload', 'download', 'total'].every(function (field) {
-                                return Number.isFinite(data.traffic[field]) && data.traffic[field] >= 0;
-                            })) { failed++; return; }
-                        var server = servers[data.server_id] || {used: 0, upload: 0, download: 0, count: 0, checkedAt: data.checked_at};
-                        server.used += data.traffic.total;
-                        server.upload += data.traffic.upload;
-                        server.download += data.traffic.download;
-                        server.count++;
-                        if (data.checked_at < server.checkedAt) server.checkedAt = data.checked_at;
-                        servers[data.server_id] = server;
+                        await client.vpnV2Inspect(true);
                     }));
                 }
-                var incomplete = failed > 0;
-                table.querySelectorAll('[data-vpn-v2-traffic-state]').forEach(function (state) {
-                    var server = servers[state.dataset.serverId];
-                    if (!server) {
-                        incomplete = true;
-                        state.classList.add('text-warning');
-                        // Keep the last saved counters, never replace unavailable data with zero.
-                        state.textContent = table.dataset.failedLabel;
-                        return;
-                    }
-                    var partial = server.count < Number(state.dataset.connections);
-                    incomplete = incomplete || partial;
-                    state.classList.toggle('text-warning', partial);
-                    if (partial) {
-                        // A subtotal from reachable connections is not the full server usage.
-                        state.textContent = table.dataset.savedLabel + ' · ' + table.dataset.partialLabel;
-                        return;
-                    }
-                    table.querySelectorAll('[data-vpn-v2-traffic-value][data-server-id="' + Number(state.dataset.serverId) + '"]').forEach(function (value) {
-                        value.textContent = formatMetricBytes(server[value.dataset.vpnV2TrafficValue], units);
-                    });
-                    state.textContent = table.dataset.liveLabel + ' · ' + server.checkedAt;
-                });
-                result.classList.toggle('text-warning', incomplete);
-                result.textContent = incomplete ? table.dataset.partialLabel : table.dataset.liveLabel;
+                renderTraffic();
             } catch (error) {
                 result.classList.add('text-danger');
                 result.textContent = table.dataset.failedLabel;
             } finally {
+                section.vpnV2TrafficBusy = false;
                 button.replaceChildren.apply(button, originalChildren);
                 button.disabled = false;
                 button.removeAttribute('aria-busy');

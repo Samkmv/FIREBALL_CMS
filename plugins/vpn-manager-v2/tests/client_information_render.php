@@ -47,6 +47,25 @@ if (in_array('--unknown', $argv, true)) {
     $nodes[0]['traffic_synced_at'] = null; $nodes[0]['traffic_sync_status'] = 'failed';
     $nodes[0]['traffic_used_bytes'] = 0;
 }
+if (in_array('--three-servers', $argv, true) && count($nodes) === 3) {
+    $nodes[1]['server_id'] = 2; $nodes[1]['server_name'] = 'Нидерланды';
+    $nodes[2]['server_id'] = 3; $nodes[2]['server_name'] = 'Нидерланды 2';
+}
+if (in_array('--all-unknown', $argv, true)) {
+    foreach ($nodes as &$fixtureNode) {
+        $fixtureNode['traffic_used_bytes'] = $fixtureNode['upload_bytes'] = $fixtureNode['download_bytes'] = 0;
+        $fixtureNode['traffic_synced_at'] = null; $fixtureNode['traffic_sync_status'] = 'pending';
+    }
+    unset($fixtureNode);
+    $subscription['traffic_used_bytes'] = 0;
+}
+if (in_array('--unlimited', $argv, true)) {
+    $subscription['traffic_limit_bytes'] = null;
+    $subscription['expires_at'] = null;
+}
+if (in_array('--stale-total', $argv, true)) { $subscription['traffic_used_bytes'] = 0; }
+if (in_array('--large-limit', $argv, true)) { $subscription['traffic_limit_bytes'] = 30 * 1024 ** 3; }
+if (in_array('--expired', $argv, true)) { $subscription['expires_at'] = '2026-01-01 00:00:00'; }
 if (in_array('--plan-external', $argv, true)) {
     $planExternalSources = [[
         'id' => 3, 'plan_id' => 1, 'name' => 'Общая внешняя подписка', 'source_type' => 'subscription_url',

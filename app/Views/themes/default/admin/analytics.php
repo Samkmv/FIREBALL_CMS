@@ -89,6 +89,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
     'title' => return_translation('admin_analytics_full_heading'),
     'subtitle' => return_translation('admin_analytics_full_subtitle'),
     'actions' => $adminPageActions,
+    'container_class' => 'fb-analytics-page',
 ]) ?>
 
     <div class="alert <?= $geoIpState === 'enabled' ? 'alert-success' : 'alert-warning' ?> rounded-4 mb-3" role="status" data-geoip-status="<?= htmlSC($geoIpState) ?>">
@@ -105,15 +106,15 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
         <input type="hidden" name="pages_direction" value="<?= htmlSC((string)($pages['direction'] ?? 'desc')) ?>">
         <input type="hidden" name="visits_sort" value="<?= htmlSC((string)($visits['sort'] ?? 'created_at')) ?>">
         <input type="hidden" name="visits_direction" value="<?= htmlSC((string)($visits['direction'] ?? 'desc')) ?>">
-        <input type="hidden" name="pages_page" value="1">
-        <input type="hidden" name="visits_page" value="1">
+        <input type="hidden" name="pages_page" value="1" data-admin-table-page>
+        <input type="hidden" name="visits_page" value="1" data-admin-table-page>
 
-        <div class="row g-3 align-items-end">
-            <div class="col-md-6 col-xl-3">
+        <div class="fb-analytics-filters">
+            <div class="fb-analytics-filter-search">
                 <label class="form-label" for="analytics-search"><?= print_translation('admin_analytics_filter_search') ?></label>
                 <input id="analytics-search" class="form-control" type="search" name="search" value="<?= htmlSC((string)($filters['search'] ?? '')) ?>" placeholder="<?= print_translation('admin_table_search_placeholder') ?>" autocomplete="off" data-admin-table-search>
             </div>
-            <div class="col-sm-6 col-xl-2">
+            <div>
                 <label class="form-label" for="analytics-period"><?= print_translation('admin_analytics_filter_period') ?></label>
                 <select id="analytics-period" class="form-select" name="period">
                     <?php foreach (['7' => 'admin_analytics_range_7', '30' => 'admin_analytics_range_30', '90' => 'admin_analytics_range_90', 'all' => 'admin_analytics_range_all'] as $value => $labelKey): ?>
@@ -121,7 +122,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-sm-6 col-xl-2">
+            <div>
                 <label class="form-label" for="analytics-country"><?= print_translation('admin_analytics_col_country') ?></label>
                 <select id="analytics-country" class="form-select" name="country">
                     <option value=""><?= print_translation('admin_analytics_filter_all') ?></option>
@@ -131,7 +132,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-sm-6 col-xl-2">
+            <div>
                 <label class="form-label" for="analytics-device"><?= print_translation('admin_analytics_col_device') ?></label>
                 <select id="analytics-device" class="form-select" name="device_type">
                     <option value=""><?= print_translation('admin_analytics_filter_all') ?></option>
@@ -141,7 +142,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-sm-6 col-xl-2">
+            <div>
                 <label class="form-label" for="analytics-browser"><?= print_translation('admin_analytics_col_browser') ?></label>
                 <select id="analytics-browser" class="form-select" name="browser">
                     <option value=""><?= print_translation('admin_analytics_filter_all') ?></option>
@@ -151,7 +152,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-sm-6 col-xl-2">
+            <div>
                 <label class="form-label" for="analytics-source"><?= print_translation('admin_analytics_col_source') ?></label>
                 <select id="analytics-source" class="form-select" name="source">
                     <option value=""><?= print_translation('admin_analytics_filter_all') ?></option>
@@ -161,17 +162,20 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-12 d-flex flex-wrap gap-2">
+            <div class="fb-analytics-filter-actions d-flex flex-wrap gap-2">
                 <button class="btn btn-dark rounded-pill" type="submit"><?= print_translation('admin_analytics_filter_apply') ?></button>
                 <a class="btn btn-outline-secondary rounded-pill" href="<?= base_href('/admin/analytics') ?>"><?= print_translation('admin_analytics_filter_reset') ?></a>
             </div>
         </div>
     </form>
 
-    <div class="row g-3">
-        <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-pages">
-                <h2 class="h5 mb-3"><?= print_translation('admin_analytics_pages_title') ?></h2>
+    <div class="row g-3 fb-analytics-tables">
+        <div class="col-12 col-xl-6">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card fb-analytics-table-card" data-admin-table data-ajax-table="analytics-pages">
+                <div class="fb-analytics-table-heading">
+                    <h2 class="h5 mb-0"><?= print_translation('admin_analytics_pages_title') ?></h2>
+                    <span class="fb-analytics-table-total"><?= print_translation('admin_stat_pages') ?> · <?= number_format((int)($pages['total'] ?? 0), 0, '.', ' ') ?></span>
+                </div>
                 <?php $pagesMobileCards = []; ?>
                 <?php ob_start(); ?>
                     <thead class="position-sticky top-0">
@@ -183,15 +187,21 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     <tbody>
                         <?php foreach (($pages['items'] ?? []) as $row): ?>
                             <?php
+                            $pageViews = (int)($row['views'] ?? $row['total'] ?? 0);
+                            $pageShare = (int)($visits['total'] ?? 0) > 0
+                                ? max(0, min(100, $pageViews / (int)$visits['total'] * 100)) : 0;
                             $pagesMobileCards[] = [
                                 'title' => (string)($row['label'] ?? '/'),
-                                'views' => (int)($row['views'] ?? $row['total'] ?? 0),
+                                'views' => $pageViews,
                                 'views_label' => return_translation('admin_analytics_col_views'),
                             ];
                             ?>
                             <tr>
                                 <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['label'] ?? '/')) ?></td>
-                                <td class="text-end admin-analytics-page-views"><?= (int)($row['views'] ?? $row['total'] ?? 0) ?></td>
+                                <td class="text-end admin-analytics-page-views">
+                                    <strong><?= number_format($pageViews, 0, '.', ' ') ?></strong>
+                                    <span class="fb-analytics-share" aria-hidden="true"><span style="width: <?= round($pageShare, 2) ?>%"></span></span>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($pages['items'])): ?>
@@ -203,6 +213,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     'content' => $adminTableContent,
                     'table_class' => 'admin-analytics-table admin-analytics-table--pages-full',
                     'mobile_cards' => $pagesMobileCards,
+                    'caption' => return_translation('admin_analytics_pages_title'),
                 ]) ?>
                 <?= view()->renderPartial('admin/partials/table_footer', [
                     'visible' => count((array)($pages['items'] ?? [])),
@@ -213,19 +224,23 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
             </div>
         </div>
 
-        <div class="col-12">
-            <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table data-ajax-table="analytics-visits">
-                <h2 class="h5 mb-3"><?= print_translation('admin_analytics_latest_title') ?></h2>
+        <div class="col-12 col-xl-6">
+            <div class="border rounded-5 p-3 p-md-4 admin-table-card fb-analytics-table-card" data-admin-table data-ajax-table="analytics-visits">
+                <div class="fb-analytics-table-heading">
+                    <h2 class="h5 mb-0"><?= print_translation('admin_analytics_latest_title') ?></h2>
+                    <span class="fb-analytics-table-total"><?= print_translation('admin_analytics_col_visits') ?> · <?= number_format((int)($visits['total'] ?? 0), 0, '.', ' ') ?></span>
+                </div>
                 <?php $visitsMobileCards = []; ?>
                 <?php ob_start(); ?>
                     <thead class="position-sticky top-0">
                         <tr>
-                            <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('created_at') ?>"><?= print_translation('admin_analytics_col_time') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'created_at') ?></a></th>
-                            <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('country') ?>"><?= print_translation('admin_analytics_col_country') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'country') ?></a></th>
-                            <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('device') ?>"><?= print_translation('admin_analytics_col_device') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'device') ?></a></th>
-                            <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('browser') ?>"><?= print_translation('admin_analytics_col_browser') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'browser') ?></a></th>
-                            <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('source') ?>"><?= print_translation('admin_analytics_col_source') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'source') ?></a></th>
-                            <th scope="col"><a class="btn fs-base fw-semibold text-body-emphasis text-decoration-none p-0" href="<?= $visitsSortUrl('page') ?>"><?= print_translation('admin_analytics_col_page') ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), 'page') ?></a></th>
+                            <?php foreach ([['created_at' => 'admin_analytics_col_time', 'country' => 'admin_analytics_col_country'], ['device' => 'admin_analytics_col_device', 'browser' => 'admin_analytics_col_browser'], ['page' => 'admin_analytics_col_page', 'source' => 'admin_analytics_col_source']] as $columns): ?>
+                                <th scope="col">
+                                    <?php foreach ($columns as $column => $labelKey): ?>
+                                        <a class="fb-analytics-sort" href="<?= $visitsSortUrl($column) ?>"><?= print_translation($labelKey) ?><?= $sortIndicator((string)($visits['sort'] ?? 'created_at'), (string)($visits['direction'] ?? 'desc'), $column) ?></a>
+                                    <?php endforeach; ?>
+                                </th>
+                            <?php endforeach; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -255,16 +270,22 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                             ];
                             ?>
                             <tr>
-                                <td class="text-nowrap"><?= htmlSC($visitTime) ?></td>
-                                <td><?= htmlSC((string)($row['country'] ?? $unknownCountryLabel)) ?></td>
-                                <td><?= htmlSC((string)($row['device_type'] ?? '')) ?> / <?= htmlSC((string)($row['os'] ?? '')) ?></td>
-                                <td><?= htmlSC((string)($row['browser'] ?? '')) ?></td>
-                                <td><?= htmlSC((string)($row['source'] ?? '')) ?></td>
-                                <td class="text-break admin-analytics-page-path"><?= htmlSC((string)($row['current_page'] ?? '/')) ?></td>
+                                <td>
+                                    <time class="fb-analytics-visit-time" datetime="<?= htmlSC(date('c', strtotime((string)($row['created_at'] ?? 'now')))) ?>"><?= htmlSC($visitTime) ?></time>
+                                    <span class="fb-analytics-cell-detail"><?= htmlSC((string)($row['country'] ?? $unknownCountryLabel)) ?></span>
+                                </td>
+                                <td>
+                                    <span><?= htmlSC(trim((string)($row['device_type'] ?? '') . ' / ' . (string)($row['os'] ?? ''), ' /')) ?></span>
+                                    <span class="fb-analytics-cell-detail"><?= htmlSC((string)($row['browser'] ?? '')) ?></span>
+                                </td>
+                                <td class="text-break admin-analytics-page-path">
+                                    <span><?= htmlSC((string)($row['current_page'] ?? '/')) ?></span>
+                                    <span class="fb-analytics-cell-detail"><?= print_translation('admin_analytics_col_source') ?>: <?= htmlSC((string)($row['source'] ?? '')) ?></span>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($visits['items'])): ?>
-                            <tr><td colspan="6" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
+                            <tr><td colspan="3" class="text-center text-body-secondary py-5"><?= print_translation('admin_table_empty') ?></td></tr>
                         <?php endif; ?>
                     </tbody>
                 <?php $adminTableContent = ob_get_clean(); ?>
@@ -272,6 +293,7 @@ $visitsSortUrl = static function (string $column) use ($visits, $urlFor): string
                     'content' => $adminTableContent,
                     'table_class' => 'admin-analytics-table admin-analytics-table--visits-full',
                     'mobile_cards' => $visitsMobileCards,
+                    'caption' => return_translation('admin_analytics_latest_title'),
                 ]) ?>
                 <?= view()->renderPartial('admin/partials/table_footer', [
                     'visible' => count((array)($visits['items'] ?? [])),

@@ -3,6 +3,7 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_admin_more' => '更多',
     'subscriptions_address_choose' => '选择或输入',
     'subscriptions_address_search' => '搜索本地地址库…',
     'subscriptions_address_minimum' => '请输入至少 :count 个字符。如果列表中没有地址，可以手动输入。',

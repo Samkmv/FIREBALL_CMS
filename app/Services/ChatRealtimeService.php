@@ -167,6 +167,7 @@ final class ChatRealtimeService
         ];
 
         $messagesHash = $this->fingerprint([
+            (int)db()->query('SELECT revision FROM chat_conversations WHERE id = ?', [$conversationId])->getColumn(),
             (int)($messageState['total'] ?? 0),
             (int)($messageState['max_id'] ?? 0),
             (int)($messageState['content_change'] ?? 0),

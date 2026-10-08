@@ -23,7 +23,14 @@ function base_url(string $path = ''): string { return 'https://example.test' . $
 function get_csrf_field(): string { return '<input type="hidden" name="csrf" value="test-only">'; }
 function get_alerts(): void {}
 function plugin_setting(string $slug, string $key, mixed $default = null): mixed { return $default; }
-function return_translation(string $key): string { return ['admin_table_showing' => 'Показано', 'admin_table_of' => 'из'][$key] ?? $key; }
+function return_translation(string $key): string {
+    static $translations;
+    $translations ??= array_replace(
+        require __DIR__ . '/../../../../public/lang/' . FireballPluginSubscriptions::$locale . '.php',
+        require __DIR__ . '/../../../../app/Languages/' . FireballPluginSubscriptions::$locale . '.php'
+    );
+    return $translations[$key] ?? $key;
+}
 function print_translation(string $key): string { return return_translation($key); }
 function render_partial(string $name, array $data = []): string
 {
@@ -44,8 +51,10 @@ function view(): object
     return new class {
         public function renderPartial(string $name, array $data = []): string
         {
-            if ($name === 'admin/shell_open') return '<main class="container-fluid p-4 subscriptions-admin">';
-            if ($name === 'admin/shell_close') return '</main>';
+            if ($name === 'admin/shell_open') return '<main class="fb-content"><header class="fb-page-header"><div class="fb-page-heading"><h1 class="fb-page-title">'
+                . htmlSC($data['title'] ?? '') . '</h1><p class="fb-page-subtitle">' . htmlSC($data['subtitle'] ?? '')
+                . '</p></div><div class="fb-page-actions">' . ($data['actions'] ?? '') . '</div></header><div class="fb-page-content subscriptions-admin">';
+            if ($name === 'admin/shell_close') return '</div></main>';
             $allowed = ['admin/partials/table', 'admin/partials/responsive_table_cards', 'admin/partials/table_footer'];
             if (!in_array($name, $allowed, true)) throw new RuntimeException('Unexpected fixture partial');
             extract($data);
@@ -58,6 +67,27 @@ function view(): object
 ?>
 <!doctype html><html lang="<?= htmlSC(FireballPluginSubscriptions::$locale) ?>" data-bs-theme="<?= $previewTheme ?>"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Subscription preview</title><body>
 <?php
+$tabDefinitions = [
+    'overview' => ['subscriptions_admin_overview', '/admin/subscriptions', 'ci-layout'],
+    'plans' => ['subscriptions_admin_plans', '/admin/subscriptions/plans', 'ci-package'],
+    'subscribers' => ['subscriptions_admin_subscribers', '/admin/subscriptions/subscribers', 'ci-user'],
+    'exclusions' => ['subscriptions_admin_exclusions', '/admin/subscriptions/exclusions', 'ci-map-pin'],
+    'payments' => ['subscriptions_admin_payments', '/admin/subscriptions/payments', 'ci-credit-card'],
+    'content' => ['subscriptions_admin_content', '/admin/subscriptions/content', 'ci-file-text'],
+    'fields' => ['subscriptions_admin_profile_fields', '/admin/subscriptions/profile-fields', 'ci-list'],
+    'settings' => ['subscriptions_admin_settings', '/admin/subscriptions/settings', 'ci-settings'],
+];
+$activeTab = ['plan-form' => 'plans', 'field-form' => 'fields', 'exclusion-form' => 'exclusions'][$argv[1] ?? ''] ?? ($argv[1] ?? 'payments');
+$tabs = [];
+foreach ($tabDefinitions as $key => [$label, $href, $icon]) {
+    $tabs[] = ['key' => $key, 'label' => FireballPluginSubscriptions::t($label), 'href' => $href, 'icon' => $icon, 'active' => $key === $activeTab];
+}
+$title = FireballPluginSubscriptions::t($tabDefinitions[$activeTab][0] ?? 'subscriptions_admin_title');
+$fixturePlan = ['id' => 1, 'name' => 'Многоквартирные дома', 'slug' => 'residential', 'is_active' => 1, 'is_public' => 1,
+    'auto_renew_enabled' => true, 'duration_value' => 30, 'duration_unit' => 'days', 'price_display' => '150 RUB', 'price_minor' => 15000];
+$fixtureExclusion = ['id' => 1, 'address' => 'Октябрьская 15', 'normalized_address' => 'октябрьская 15', 'comment' => '', 'is_active' => 1,
+    'created_at' => '2026-10-01 12:00:00', 'matched_users_count' => 14];
+$fixtureField = ['id' => 1, 'label' => 'Телефон', 'field_key' => 'phone', 'field_type' => 'tel', 'is_system' => true, 'is_required' => true, 'is_active' => true];
 if (in_array($argv[1] ?? '', ['account', 'account-recurring', 'account-renewal-off', 'account-utility', 'account-grace', 'account-cancelled', 'account-empty', 'account-long', 'account-no-permissions'], true)) {
     $scenario = $argv[1];
     $subscription = [
@@ -82,6 +112,17 @@ if (in_array($argv[1] ?? '', ['account', 'account-recurring', 'account-renewal-o
     $profile = array_fill_keys(Fireball\Subscriptions\Repositories\ProfileRepository::SYSTEM_FIELDS, '');
     $plan = ['id' => 1, 'name' => 'Тариф', 'description' => '', 'price_display' => '150 RUB', 'duration_value' => 30, 'duration_unit' => 'days', 'auto_renew_enabled' => true, 'permissions' => []];
     require __DIR__ . '/../../views/public/checkout.php';
+} elseif (in_array($argv[1] ?? '', ['overview', 'plans', 'plan-form', 'exclusions', 'exclusion-form', 'fields', 'field-form', 'content'], true)) {
+    $stats = ['active' => 124, 'expiring' => 8, 'paid_total_minor' => 1980000, 'failed' => 2];
+    $by_plan = [['name' => 'Многоквартирные дома', 'total' => 118], ['name' => 'Для бизнеса', 'total' => 6]];
+    $plans = [$fixturePlan]; $plan = $fixturePlan;
+    $fields = [$fixtureField, array_replace($fixtureField, ['id' => 2, 'field_key' => 'note', 'label' => 'Комментарий', 'is_system' => false])];
+    $field = $fixtureField; $field_types = ['text', 'tel', 'select'];
+    $exclusions = [$fixtureExclusion]; $exclusion = $fixtureExclusion;
+    $posts = [['id' => 1, 'title' => 'Новости дома', 'slug' => 'news', 'access_mode' => 'plans', 'plan_ids' => [1]]];
+    $total = 1;
+    if (($argv[4] ?? '') === 'empty') { $plans = $fields = $exclusions = $posts = $by_plan = []; $total = 0; }
+    require __DIR__ . '/../../views/admin/' . ($argv[1] === 'overview' ? 'dashboard' : $argv[1]) . '.php';
 } elseif (($argv[1] ?? '') === 'settings') {
     $settings = array_replace((new Fireball\Subscriptions\Services\SettingsService())->defaults(), [
         'merchant_login' => 'test-shop', 'password1_configured' => true, 'password2_configured' => true,

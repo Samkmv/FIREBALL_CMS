@@ -18,29 +18,12 @@ $(function () {
 
     // Use the same viewport shell as direct chat, including the on-screen keyboard.
     let viewportFrame = 0;
-    let messageViewportFrame = 0;
+    let resizeComposerForViewport = () => {};
     let viewportAnchor = null;
     let viewportAnchorReleaseTimer = 0;
 
-    // FIREBALL_CHAT_VIEWPORT_IOS_FIX_20260929
-    const readViewportAnchor = () => {
-        const element = box[0];
-        if (!element) return null;
-        const distanceFromBottom = Math.max(0, element.scrollHeight - element.scrollTop - element.clientHeight);
-        return {distanceFromBottom, stickToBottom: distanceFromBottom <= 48};
-    };
-    const restoreViewportAnchor = (anchor) => {
-        if (!anchor) return;
-        if (messageViewportFrame) cancelAnimationFrame(messageViewportFrame);
-        messageViewportFrame = window.requestAnimationFrame(() => {
-            messageViewportFrame = 0;
-            const element = box[0];
-            if (!element) return;
-            element.scrollTop = anchor.stickToBottom
-                ? element.scrollHeight
-                : Math.max(0, element.scrollHeight - element.clientHeight - anchor.distanceFromBottom);
-        });
-    };
+    const readViewportAnchor = () => window.FireballChatViewport.captureMessageAnchor(box[0]);
+    const restoreViewportAnchor = anchor => window.FireballChatViewport.restoreMessageAnchor(box[0], anchor);
     const beginViewportAnchorSession = () => {
         if (!viewportAnchor) viewportAnchor = readViewportAnchor();
         if (viewportAnchorReleaseTimer) clearTimeout(viewportAnchorReleaseTimer);
@@ -55,6 +38,7 @@ $(function () {
         const focused = Boolean(active && app[0].contains(active)
             && active.matches('input, textarea, [contenteditable="true"]'));
         window.FireballChatViewport.sync(focused);
+        resizeComposerForViewport();
         restoreViewportAnchor(viewportAnchor);
     };
     const scheduleViewport = () => {
@@ -62,10 +46,12 @@ $(function () {
         if (!viewportFrame) viewportFrame = requestAnimationFrame(syncViewport);
     };
     window.addEventListener('resize', scheduleViewport, {passive: true});
+    window.addEventListener('scroll', scheduleViewport, {passive: true});
     window.addEventListener('pageshow', scheduleViewport, {passive: true});
     window.addEventListener('orientationchange', scheduleViewport, {passive: true});
     window.visualViewport?.addEventListener('resize', scheduleViewport, {passive: true});
     window.visualViewport?.addEventListener('scroll', scheduleViewport, {passive: true});
+    window.visualViewport?.addEventListener('scrollend', scheduleViewport, {passive: true});
     document.addEventListener('focusin', scheduleViewport);
     document.addEventListener('focusout', scheduleViewport);
     document.addEventListener('visibilitychange', () => {
@@ -292,8 +278,12 @@ $(function () {
 
         const resizeAnchor = viewportAnchor || readViewportAnchor();
         el.style.height = 'auto';
-        el.style.height = `${Math.max(44, Math.min(el.scrollHeight, 132))}px`;
-        el.style.overflowY = el.scrollHeight > 132 ? 'auto' : 'hidden';
+        const style = window.getComputedStyle(el);
+        const minHeight = Number.parseFloat(style.minHeight) || 44;
+        const maxHeight = Number.parseFloat(style.maxHeight) || 132;
+        el.style.height = `${Math.max(minHeight, Math.min(el.scrollHeight, maxHeight))}px`;
+        el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
+        window.FireballChatViewport.keepComposerInputVisible(el);
         restoreViewportAnchor(resizeAnchor);
     };
 
@@ -336,6 +326,7 @@ $(function () {
     });
 
     input.on('input', resizeInput);
+    resizeComposerForViewport = resizeInput;
 
     input.on('keydown', function (event) {
         const original = event.originalEvent || event;
