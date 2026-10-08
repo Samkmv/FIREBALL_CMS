@@ -2650,6 +2650,20 @@ $(function () {
         state.openMessageMenuId = open ? Number($(this).data('chat-message-menu')) : 0;
         row.toggleClass('is-actions-open', open);
         $(this).attr('aria-expanded', String(open));
+        if (open) {
+            const actions = row.find('.chat-message-actions')[0];
+            const box = messagesBox[0];
+            if (actions && box) {
+                const bounds = box.getBoundingClientRect();
+                const actionBounds = actions.getBoundingClientRect();
+                const previousScrollTop = box.scrollTop;
+                if (actionBounds.bottom > bounds.bottom - 8) box.scrollTop += Math.ceil(actionBounds.bottom - bounds.bottom + 8);
+                else if (actionBounds.top < bounds.top + 8) box.scrollTop -= Math.ceil(bounds.top + 8 - actionBounds.top);
+                // focusin may already have scheduled a viewport sync. Preserve
+                // this intentional scroll instead of restoring its old anchor.
+                if (box.scrollTop !== previousScrollTop && viewportAnchor) viewportAnchor = readMessageViewportAnchor();
+            }
+        }
     });
     chatApp.on('click', '[data-chat-edit-message]', function () {
         const messageId = Number($(this).data('chat-edit-message')) || 0;

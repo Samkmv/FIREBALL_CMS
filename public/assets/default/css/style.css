@@ -7973,7 +7973,7 @@ body:not(.fb-admin-body) .search-suggest-menu__item:focus-visible {
     .chat-media-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-[data-chat-app] .group-chat-sender { color: var(--cz-secondary-color); font-size: .75rem; font-weight: 600; margin: 0 .4rem .3rem; }
+[data-chat-app] .group-chat-sender { color: var(--cz-secondary-color); font-size: .75rem; font-weight: 600; margin: 0 .4rem .3rem; max-width: calc(100% - .8rem); overflow-wrap: anywhere; }
 .chat-message-menu-toggle { display: none; }
 @media (max-width: 767.98px), (hover: none) {
     [data-chat-app] .chat-message-row .chat-message-actions { display: none !important; }
@@ -7981,7 +7981,16 @@ body:not(.fb-admin-body) .search-suggest-menu__item:focus-visible {
     [data-chat-app] .chat-message-row .chat-message-menu-toggle { display: inline-flex; position: absolute; top: 50%; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; transform: translateY(-50%); border: 0; border-radius: 50%; background: var(--cz-tertiary-bg); color: var(--cz-secondary-color); }
     [data-chat-app] .chat-message-row--mine .chat-message-menu-toggle { right: calc(100% + 5px); }
     [data-chat-app] .chat-message-row--theirs .chat-message-menu-toggle { left: calc(100% + 5px); }
-    [data-chat-app] .chat-message-row .chat-message-stack { max-width: calc(100% - 34px); }
+    /* Reserve the toggle in the row, so flex also subtracts the avatar and gap. */
+    [data-chat-app] .chat-message-row--mine { padding-left: 33px; }
+    [data-chat-app] .chat-message-row--theirs { padding-right: 33px; }
+    [data-chat-app] .chat-message-row .chat-message-stack { max-width: min(100%, 35rem); }
+    [data-chat-app] .chat-message-row .chat-message-actions { max-width: 100% !important; flex-wrap: wrap !important; }
+    [data-chat-app] .chat-message-row .chat-message-reply-btn,
+    [data-chat-app] .chat-message-row .chat-message-delete-btn { color: var(--cz-body-color) !important; }
+    [data-chat-app] .chat-message-row .chat-message-stack.has-actions .chat-message-bubble:not(.chat-message-bubble--media-only) { padding-right: .7rem !important; }
+    [data-chat-app] .chat-message-voice__wave { gap: 1px; }
+    [data-chat-app] .chat-message-voice__wave > span { min-width: 0; }
 }
 
 @media (max-width: 767.98px) {

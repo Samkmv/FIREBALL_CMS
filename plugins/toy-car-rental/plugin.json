@@ -1,10 +1,11 @@
 {
   "name": "Прокат машинок",
   "slug": "toy-car-rental",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Прокат детских машинок: компактная панель, фиксированные и поминутные поездки, таймеры, оплата и push-уведомления.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Overdue alerts from the notification center now use the standard CMS warning toast in light and dark themes and retain the link to the rental panel.",
     "Fixed ride prices now use the minute rate multiplied by the selected duration, with an instant price preview.",
     "Payments are limited to cash and transfer; car image fields have been removed and statistics show transfer revenue.",
     "Operator messages use native CMS toasts; the notification center displays the localized plugin name in all four languages.",
@@ -17,6 +18,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Уведомления о просрочке из центра уведомлений используют обычное предупреждение CMS в светлой и тёмной темах с переходом к панели проката.",
       "Стоимость фиксированной поездки рассчитывается по цене минуты и выбранной длительности; сумма на карточке обновляется сразу.",
       "Оставлены наличные и перевод, убрано поле изображения машинки; в статистике отображается выручка переводом.",
       "Сообщения оператора используют штатные уведомления CMS; название плагина в центре уведомлений переведено на четыре языка.",
@@ -28,6 +30,7 @@
       "При повторной активации плагин теперь восстанавливает отсутствующие таблицы проката и платёжные поля."
     ],
     "en": [
+      "Overdue alerts from the notification center now use the standard CMS warning toast in light and dark themes and retain the link to the rental panel.",
       "Fixed ride prices now use the minute rate multiplied by the selected duration, with an instant price preview.",
       "Payments are limited to cash and transfer; car image fields have been removed and statistics show transfer revenue.",
       "Operator messages use native CMS toasts; the notification center displays the localized plugin name in all four languages.",
@@ -39,6 +42,7 @@
       "Reactivating the plugin now recreates missing rental database tables and billing columns."
     ],
     "de": [
+      "Überfälligkeitsmeldungen aus der Benachrichtigungszentrale verwenden die CMS-Warnmeldung in hellen und dunklen Designs mit Link zum Verleihpanel.",
       "Festzeitfahrten werden aus Minutenpreis und gewählter Dauer berechnet; die Preisvorschau aktualisiert sich sofort.",
       "Nur Barzahlung und Überweisung sind verfügbar; das Fahrzeugbildfeld wurde entfernt und die Statistik zeigt Einnahmen per Überweisung.",
       "Operatormeldungen verwenden die CMS-Benachrichtigungen; die Benachrichtigungszentrale zeigt den Plugin-Namen in allen vier Sprachen.",
@@ -50,6 +54,7 @@
       "Bei erneuter Aktivierung stellt das Plugin fehlende Verleihtabellen und Abrechnungsspalten wieder her."
     ],
     "zh-cn": [
+      "通知中心的超时提醒使用 CMS 标准警告样式，支持明暗主题，并保留前往租赁面板的链接。",
       "固定行程费用根据分钟价格和所选时长计算，卡片上的价格立即更新。",
       "仅保留现金和转账支付，移除车辆图片字段，统计中显示转账收入。",
       "操作提示使用 CMS 原生通知，通知中心的插件名称支持全部四种语言。",

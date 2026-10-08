@@ -865,7 +865,7 @@ $(function(){
             } else if (type === 'update') {
                 sourceClass = 'text-bg-success';
             } else if (type === 'toy_rental') {
-                sourceClass = 'text-bg-danger';
+                sourceClass = 'text-bg-warning';
             } else if (type && type !== 'chat') {
                 sourceClass = 'text-bg-info';
             }
@@ -983,8 +983,8 @@ $(function(){
                         href: item.url || '#',
                         time: item.time || item.created_at || '',
                     });
-                } else if (typeof window.toastr.error === 'function') {
-                    window.toastr.error(message, title);
+                } else if (typeof window.toastr.warning === 'function') {
+                    window.toastr.warning(message, title);
                 }
             } else if (type === 'contact_request' && typeof window.toastr.warning === 'function') {
                 window.toastr.warning(message, title);
@@ -1739,7 +1739,7 @@ $(function(){
         return container;
     };
 
-    const showToast = (type, message, titleOverride) => {
+    const showToast = (type, message, titleOverride, targetHref = '') => {
         const variant = variants[type] || variants.info;
         const container = getContainer();
         const toast = document.createElement('div');
@@ -1759,6 +1759,12 @@ $(function(){
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
             </div>
         `;
+
+        if (targetHref && targetHref !== '#') {
+            toast.addEventListener('click', (event) => {
+                if (!event.target.closest('.btn-close')) window.location.href = targetHref;
+            });
+        }
 
         if (config.newestOnTop && container.firstChild) {
             container.insertBefore(toast, container.firstChild);
@@ -1848,65 +1854,9 @@ $(function(){
         }, Number(config.timeOut) || 5000);
     };
 
-    const showRentalToast = (payload = {}) => {
-        const container = getContainer();
-        const toast = document.createElement('div');
-        const targetHref = String(payload.href || '#');
-
-        toast.className = 'toast app-toast--rental border-danger fade bg-white text-body shadow-sm';
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        toast.setAttribute('data-bs-theme', 'light');
-
-        toast.innerHTML = `
-            <div class="toast-header bg-white text-body">
-                <i class="ci-clock text-danger fs-base me-2"></i>
-                <span class="fw-semibold text-truncate">${escapeHtml(payload.title || 'Прокат машинок')}</span>
-                <span class="small text-body-tertiary ms-2">${escapeHtml(payload.time || '')}</span>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="${escapeHtml(closeLabel)}"></button>
-            </div>
-            <div class="toast-body me-2 bg-white text-body">
-                ${escapeHtml(payload.message || '')}
-            </div>
-        `;
-
-        toast.addEventListener('click', function (event) {
-            if ($(event.target).closest('.btn-close').length || targetHref === '' || targetHref === '#') {
-                return;
-            }
-
-            window.location.href = targetHref;
-        });
-
-        if (config.newestOnTop && container.firstChild) {
-            container.insertBefore(toast, container.firstChild);
-        } else {
-            container.appendChild(toast);
-        }
-
-        if (bootstrapApi && bootstrapApi.Toast) {
-            const instance = bootstrapApi.Toast.getOrCreateInstance(toast, {
-                autohide: true,
-                delay: Number(config.timeOut) || 5000,
-            });
-
-            toast.addEventListener('hidden.bs.toast', function () {
-                toast.remove();
-            }, { once: true });
-
-            instance.show();
-            return;
-        }
-
-        $(toast).addClass('show');
-        setTimeout(function () {
-            $(toast).removeClass('show');
-            setTimeout(function () {
-                toast.remove();
-            }, 200);
-        }, Number(config.timeOut) || 5000);
-    };
+    const showRentalToast = (payload = {}) => showToast(
+        'warning', payload.message || '', payload.title, String(payload.href || '')
+    );
 
     window.toastr = {
         options: config,
