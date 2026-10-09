@@ -35,7 +35,13 @@ final class RemoteClientCredentialService
             return trim((string)($client['password'] ?? ''));
         }
 
-        return trim((string)($client['id'] ?? $client['uuid'] ?? ''));
+        // Modern REST clients expose a numeric row id alongside the protocol UUID.
+        foreach (['uuid', 'id'] as $field) {
+            $credential = trim((string)($client[$field] ?? ''));
+            if ($credential !== '') { return $credential; }
+        }
+
+        return '';
     }
 
     public function usesPassword(string $protocol): bool

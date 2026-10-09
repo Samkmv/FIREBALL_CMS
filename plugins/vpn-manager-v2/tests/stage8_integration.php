@@ -27,6 +27,7 @@ final class Stage8Panel
     public int $updateCount = 0;
     public int $readCount = 0;
     public bool $unavailable = false;
+    public bool $malformed = false;
     public bool $transactionViolation = false;
     public array $remoteInboundIds = [];
 }
@@ -58,6 +59,8 @@ final class Stage8Client implements ThreeXuiClientInterface
         if ($this->panel->unavailable) {
             throw new ThreeXuiTransportException('stage8 unavailable');
         }
+
+        if ($this->panel->malformed) { return ['id' => $remoteInboundId, 'settings' => 'invalid json']; }
 
         return [
             'id' => $remoteInboundId,
@@ -157,7 +160,7 @@ $planIds = [];
 $subscriptionIds = [];
 $tokens = [];
 $results = [];
-$keys = ['single', 'multi-a', 'multi-b', 'partial-a', 'partial-b', 'absent'];
+$keys = ['single', 'multi-a', 'multi-b', 'partial-a', 'partial-b', 'absent', 'modern', 'password', 'shared-absent', 'conflict', 'malformed'];
 
 try {
     foreach ($keys as $index => $key) {
@@ -292,9 +295,9 @@ try {
     $assert(cache()->get($qr->cacheKey($single['token'])) !== null, 'QR cache was not prepared.');
     $singleDelete = $service->deleteForever($single['id'], $adminId);
     $assert($singleDelete->successful() && $panels['single']->clients === [], 'Single subscription deletion failed.');
-    $assert(!(bool)db()->query('SELECT id FROM vpn_v2_subscriptions WHERE id = ?', [$single['id']])->getOne()
-        && !(bool)db()->query('SELECT id FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$single['id']])->getOne(),
-        'Single local subscription rows remain.');
+    $assert(db()->query('SELECT status FROM vpn_v2_subscriptions WHERE id = ?', [$single['id']])->getColumn() === 'deleted'
+        && db()->query('SELECT status FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$single['id']])->getColumn() === 'deleted',
+        'Deletion was not finalized with revoked subscription history.');
     $assert($cache->get($single['token'], (int)$singleLocal['revision'], 'base64') === null
         && cache()->get($qr->cacheKey($single['token'])) === null, 'Subscription or QR cache was not cleared.');
     $assert((new VpnSubscriptionEndpointService())->respond($single['token'])->status === 404, 'Old token did not return 404.');
@@ -320,15 +323,16 @@ try {
     $firstAttempt = $service->deleteForever($partial['id'], $adminId);
     $partialState = db()->query('SELECT status, subscription_token FROM vpn_v2_subscriptions WHERE id = ?', [$partial['id']])->getOne();
     $partialNodes = db()->query('SELECT server_id, status FROM vpn_v2_subscription_nodes WHERE subscription_id = ? ORDER BY id', [$partial['id']])->get() ?: [];
-    $assert(!$firstAttempt->successful() && $partialState['status'] === 'delete_failed'
+    $assert(!$firstAttempt->successful() && $partialState['status'] === 'pending_remote_delete'
         && hash_equals($partial['token'], (string)$partialState['subscription_token'])
-        && $partialNodes[0]['status'] === 'deleted' && $partialNodes[1]['status'] === 'delete_failed',
+        && $partialNodes[0]['status'] === 'deleted' && $partialNodes[1]['status'] === 'pending_remote_delete',
         'Partial deletion state was not retained.');
     $goodDeleteCount = $panels['partial-a']->deleteCount;
     $panels['partial-b']->unavailable = false;
     $retry = $service->deleteForever($partial['id'], $adminId);
     $assert($retry->successful() && $panels['partial-a']->deleteCount === $goodDeleteCount
-        && !(bool)db()->query('SELECT id FROM vpn_v2_subscriptions WHERE id = ?', [$partial['id']])->getOne(),
+        && db()->query('SELECT status FROM vpn_v2_subscriptions WHERE id = ?', [$partial['id']])->getColumn() === 'deleted'
+        && db()->query('SELECT last_error FROM vpn_v2_subscriptions WHERE id = ?', [$partial['id']])->getColumn() === null,
         'Retry was not idempotent after server recovery.');
     $results['unavailable_server'] = true;
     $results['retry_after_recovery'] = true;
@@ -341,6 +345,83 @@ try {
         'Already-absent or repeated deletion was not idempotent.');
     $results['already_absent'] = true;
     $results['repeat_after_delete'] = true;
+
+    foreach (['modern' => 'uuid', 'password' => 'password'] as $key => $credentialField) {
+        $modern = $createSubscription($key, [$key]);
+        $credential = array_key_first($panels[$key]->clients);
+        $panels[$key]->clients[$credential]['id'] = 123;
+        $panels[$key]->clients[$credential][$credentialField] = $credential;
+        $panels[$key]->clients[$credential]['subId'] = 'changed-group';
+        $modernResult = $service->deleteForever($modern['id'], $adminId);
+        $assert($modernResult->successful() && $panels[$key]->clients === [], 'Numeric REST id masked ' . $credentialField);
+        $results['numeric_id_' . $credentialField . '_deletion'] = true;
+    }
+
+    $sharedAbsent = $createSubscription('shared-absent', ['shared-absent'], ['shared-absent']);
+    $localNode = db()->query('SELECT client_sub_id FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$sharedAbsent['id']])->getOne();
+    $otherClient = ['id' => 'different-client', 'email' => 'different-owner', 'subId' => $localNode['client_sub_id']];
+    $panels['shared-absent']->clients['different-client'] = $otherClient;
+    $result = $service->deleteForever($sharedAbsent['id'], $adminId);
+    $assert($result->successful() && $result->alreadyAbsentNodes === 1 && $panels['shared-absent']->deleteCount === 0
+        && $panels['shared-absent']->clients['different-client'] === $otherClient,
+        'Shared subscription ID caused deletion of another client or blocked absence confirmation');
+    $results['absent_with_shared_subid'] = true;
+
+    $conflict = $createSubscription('conflict', ['conflict']);
+    $credential = array_key_first($panels['conflict']->clients);
+    $panels['conflict']->clients[$credential]['id'] = 'changed-credential';
+    $conflictResult = $service->deleteForever($conflict['id'], $adminId);
+    $assert(!$conflictResult->successful() && $panels['conflict']->deleteCount === 0, 'Identity conflict deleted an unverified client');
+    $panels['conflict']->clients = []; // The administrator removed the client directly from the panel.
+    $retry = $service->deleteForever($conflict['id'], $adminId);
+    $assert($retry->successful() && $retry->alreadyAbsentNodes === 1
+        && db()->query('SELECT last_error FROM vpn_v2_subscriptions WHERE id = ?', [$conflict['id']])->getColumn() === null,
+        'Manual removal did not finish pending deletion and clear the old error');
+    $results['identity_conflict_and_manual_removal_retry'] = true;
+
+    $malformed = $createSubscription('malformed', ['malformed']);
+    $panels['malformed']->malformed = true;
+    $result = $service->deleteForever($malformed['id'], $adminId);
+    $assert(!$result->successful() && $panels['malformed']->deleteCount === 0, 'Invalid response was treated as proof of absence');
+    $panels['malformed']->malformed = false;
+    $assert($service->deleteForever($malformed['id'], $adminId)->successful(), 'Valid response did not recover deletion');
+    $results['invalid_response_not_absence'] = true;
+
+    try {
+        (new Fireball\VpnManagerV2\Services\SubscriptionEditingService())->update($conflict['id'], [], $adminId);
+        throw new LogicException('Deleted subscription could be renewed');
+    } catch (Fireball\VpnManagerV2\Exceptions\ProvisioningException) {}
+    $results['deleted_subscription_cannot_be_renewed'] = true;
+    try {
+        $service->suspend($conflict['id'], $adminId);
+        throw new RuntimeException('Deleted subscription was moved back into suspended status.');
+    } catch (Fireball\VpnManagerV2\Exceptions\ProvisioningException $exception) {
+        $assert($exception->getMessage() === FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_deletion_started'),
+            'Deleted subscription suspension guard returned the wrong error.');
+    }
+    $results['deleted_subscription_cannot_be_suspended'] = true;
+    $removedNodeId = $conflict['nodes']['conflict'];
+    $connectionEditor = new Fireball\VpnManagerV2\Services\ConnectionEditingService(remoteSync: $remoteSync);
+    $readsBefore = $panels['conflict']->readCount;
+    foreach (['update', 'sendToRemote', 'receiveFromRemote'] as $method) {
+        try {
+            if ($method === 'update') $connectionEditor->update($removedNodeId, [], $adminId);
+            else $connectionEditor->$method($removedNodeId, $adminId);
+            throw new RuntimeException('Deleted connection accepted ' . $method);
+        } catch (Fireball\VpnManagerV2\Exceptions\ProvisioningException $exception) {
+            $assert($exception->getMessage() === FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_deletion_started'),
+                'Deleted connection guard returned the wrong error.');
+        }
+    }
+    try {
+        (new Fireball\VpnManagerV2\Services\SubscriptionProvisioningService(clientFactory: $factory))->retryNode($removedNodeId);
+        throw new RuntimeException('Deleted subscription accepted a creation retry.');
+    } catch (Fireball\VpnManagerV2\Exceptions\ProvisioningException $exception) {
+        $assert($exception->getMessage() === FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_deletion_started'),
+            'Deleted subscription retry guard returned the wrong error.');
+    }
+    $assert($panels['conflict']->readCount === $readsBefore, 'Deleted connection actions still reached the panel.');
+    $results['deleted_connections_are_read_only'] = true;
 
     foreach ($panels as $key => $panel) {
         $assert(!$panel->transactionViolation, 'HTTP ran inside a DB transaction for ' . $key . '.');
@@ -355,7 +436,9 @@ try {
     echo json_encode(['status' => 'ok', 'results' => $results, 'fixtures_cleaned' => true], JSON_UNESCAPED_SLASHES) . PHP_EOL;
 } finally {
     foreach ($subscriptionIds as $subscriptionId) {
+        db()->query('DELETE FROM vpn_v2_operations WHERE subscription_id = ?', [$subscriptionId]);
         db()->query('DELETE FROM vpn_v2_events WHERE subscription_id = ?', [$subscriptionId]);
+        db()->query('DELETE FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$subscriptionId]);
         db()->query('DELETE FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId]);
     }
     foreach ($planIds as $planId) {

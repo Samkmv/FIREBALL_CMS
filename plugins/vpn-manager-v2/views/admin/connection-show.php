@@ -6,6 +6,8 @@ use Fireball\VpnManagerV2\Support\LocalizedValue;
 
 $connection = is_array($connection ?? null) ? $connection : [];
 $id = (int)($connection['id'] ?? 0);
+$deletionStarted = ProvisioningStatus::deletionStarted((string)($connection['status'] ?? ''))
+    || ProvisioningStatus::deletionStarted((string)($connection['subscription_status'] ?? ''));
 $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_flow_none');
 ?>
 
@@ -21,6 +23,7 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
     <a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . (int)$connection['subscription_id'])) ?>">
         <i class="ci-link" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_open_subscription')) ?> #<?= (int)$connection['subscription_id'] ?>
     </a>
+    <?php if (!$deletionStarted): ?>
     <a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/edit')) ?>">
         <i class="ci-edit-2" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit')) ?>
     </a>
@@ -32,8 +35,10 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
             </button>
         </form>
     <?php endif; ?>
+    <?php endif; ?>
 </div>
 
+<?php if (!$deletionStarted): ?>
 <div class="border rounded-5 p-3 p-md-4 mb-4">
     <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_title')) ?></h2>
     <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_sync_modes_help')) ?></p>
@@ -61,6 +66,7 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
         </form>
     </div>
 </div>
+<?php endif; ?>
 
 <div class="border rounded-5 p-3 p-md-4">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -92,7 +98,9 @@ $flow = trim((string)($connection['flow'] ?? '')) ?: FireballPluginVpnManagerV2:
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_remote_client')) ?></dt>
         <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)($connection['remote_client_preview'] ?: '—')) ?></code></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_limits')) ?></dt>
-        <dd class="col-sm-9 mb-0"><?= htmlSC(TrafficFormatter::limit(isset($connection['traffic_limit_bytes']) ? (int)$connection['traffic_limit_bytes'] : null)) ?> · <?= (int)$connection['device_limit'] ?> IP</dd>
+        <dd class="col-sm-9 mb-0"><?= htmlSC(TrafficFormatter::limit(isset($connection['traffic_limit_bytes']) ? (int)$connection['traffic_limit_bytes'] : null)) ?> ·
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_device_limit')) ?>: <?= (int)$connection['device_limit'] ?> ·
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_ip_limit')) ?>: <?= (int)($connection['ip_limit'] ?? 0) ?></dd>
         <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_sync')) ?></dt>
         <dd class="col-sm-9 mb-0"><?= htmlSC((string)($connection['last_sync_at'] ?: '—')) ?></dd>
         <?php if (!empty($connection['last_error'])): ?>

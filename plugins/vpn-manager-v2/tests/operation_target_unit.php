@@ -11,13 +11,21 @@ namespace Fireball\VpnManagerV2\Repositories {
             $GLOBALS['confirmed'][] = compact('id', 'status', 'desired');
         }
         public function markNodeDeleted(int $id): void { $GLOBALS['nodes'][$id]['status'] = 'deleted'; }
-        public function allNodesFinalizable(int $id): bool { return false; }
+        public function allNodesFinalizable(int $id): bool { return !empty($GLOBALS['allFinalizable']); }
+        public function findForDeletion(int $id): ?array { return $GLOBALS['subscriptions'][$id] ?? null; }
+        public function finalizeDeletion(int $id, string $token): void { $GLOBALS['finalized'][] = $id; }
     }
     class SyncAuditRepository {
         public function log(array $entry): void { $GLOBALS['audit'][] = $entry; }
     }
 }
 namespace Fireball\VpnManagerV2\Services {
+    class VpnSubscriptionCache {
+        public function invalidate(string $token, int $revision): void { $GLOBALS['invalidated'][] = $token; }
+    }
+    class QrCodeService {
+        public function invalidateToken(string $token): void { $GLOBALS['invalidated'][] = $token; }
+    }
     class ConfigurationSyncService {
         public function syncServer(int $id, string $source, string $operation): array {
             $GLOBALS['scans'][] = $id;
@@ -106,8 +114,9 @@ namespace {
         $GLOBALS['nodes'] = [7 => ['id' => 7, 'subscription_id' => 14, 'server_id' => 1,
             'status' => 'active', 'desired_enabled' => 1, 'is_obsolete' => 0, 'protocol' => 'vless',
             'client_uuid' => '00000000-0000-4000-8000-000000000007', 'client_email' => 'fixture']];
-        foreach (['pushes', 'confirmed', 'scans', 'audit', 'deletions'] as $key) $GLOBALS[$key] = [];
+        foreach (['pushes', 'confirmed', 'scans', 'audit', 'deletions', 'finalized', 'invalidated'] as $key) $GLOBALS[$key] = [];
         $GLOBALS['failPanel'] = false;
+        $GLOBALS['allFinalizable'] = false;
     }
     $GLOBALS['checks'] = 0;
     $processor = new \Fireball\VpnManagerV2\Services\RemoteOperationProcessor();
@@ -148,6 +157,18 @@ namespace {
         fixture('delete_client'); $GLOBALS['nodes'][7]['status'] = $status;
         $GLOBALS['subscriptions'][14]['status'] = 'pending_remote_delete';
         check($processor->processNext()['success'] === 1 && $GLOBALS['deletions'] === [7], 'Legitimate cleanup retry was cancelled');
+    }
+    foreach (['active', 'suspended', 'pending_remote_delete'] as $status) {
+        fixture('delete_client');
+        $GLOBALS['nodes'][7]['status'] = 'pending_remote_delete';
+        $GLOBALS['allFinalizable'] = true;
+        $GLOBALS['subscriptions'][14] += ['subscription_token' => 'fixture-token', 'revision' => 1];
+        $GLOBALS['subscriptions'][14]['status'] = $status;
+        check($processor->processNext()['success'] === 1, 'Last obsolete connection cleanup failed');
+        check($GLOBALS['finalized'] === ($status === 'pending_remote_delete' ? [14] : []),
+            'Obsolete connection cleanup revoked a subscription that was not being deleted');
+        check(count($GLOBALS['invalidated']) === ($status === 'pending_remote_delete' ? 2 : 0),
+            'Obsolete connection cleanup invalidated an unrelated subscription link');
     }
     fixture('sync_client');
     check($processor->processNext()['success'] === 1 && $GLOBALS['scans'] === [1], 'Valid client inventory scan was cancelled');

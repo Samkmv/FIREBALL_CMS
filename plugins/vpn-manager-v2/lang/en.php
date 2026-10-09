@@ -1128,4 +1128,7 @@ return [
     'vpn_manager_v2_subscriptions_notice_inactive' => 'Inactive subscriptions',
     'vpn_manager_v2_subscriptions_notice_inactive_help' => 'Suspended, cancelled or out of traffic. Expired subscriptions are shown separately.',
     'vpn_manager_v2_subscriptions_notice_view' => 'View subscriptions',
+    'vpn_manager_v2_error_subscription_deletion_started' => 'The subscription is being deleted or has already been deleted. It cannot be edited or renewed.',
+    'vpn_manager_v2_subscription_deletion_pending_note' => 'The subscription is disabled. If its connections have already been removed from the panel, select Retry deletion to confirm completion. Deleted connections will not be recreated.',
+    'vpn_manager_v2_subscription_deleted_note' => 'The subscription has been deleted. Its link is revoked and connections do not need to be restored.',
 ];

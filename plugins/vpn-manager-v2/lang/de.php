@@ -1128,4 +1128,7 @@ return [
     'vpn_manager_v2_subscriptions_notice_inactive' => 'Inaktive Abonnements',
     'vpn_manager_v2_subscriptions_notice_inactive_help' => 'Pausiert, gekündigt oder Traffic aufgebraucht. Abgelaufene Abonnements werden separat angezeigt.',
     'vpn_manager_v2_subscriptions_notice_view' => 'Abonnements ansehen',
+    'vpn_manager_v2_error_subscription_deletion_started' => 'Das Abonnement wird gelöscht oder wurde bereits gelöscht. Bearbeitung und Verlängerung sind nicht möglich.',
+    'vpn_manager_v2_subscription_deletion_pending_note' => 'Das Abonnement ist deaktiviert. Wenn die Verbindungen bereits aus dem Panel entfernt wurden, wählen Sie Löschung wiederholen, um den Abschluss zu bestätigen. Gelöschte Verbindungen werden nicht neu erstellt.',
+    'vpn_manager_v2_subscription_deleted_note' => 'Das Abonnement wurde gelöscht. Der Link ist widerrufen; Verbindungen müssen nicht wiederhergestellt werden.',
 ];

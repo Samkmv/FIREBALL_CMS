@@ -420,21 +420,20 @@ final class ConfigurationSyncService
     {
         $candidates = [];
         $localCredential = (new RemoteClientCredentialService())->credential($node);
+        $expectedName = trim((string)($node['remote_client_name'] ?? ''))
+            ?: trim((string)($node['client_email'] ?? ''));
         foreach ($remoteClients as $remote) {
             $identity = $remote['identity'];
-            $score = 0;
+            $credentialMatches = $localCredential !== ''
+                && hash_equals($localCredential, (string)$identity['uuid']);
+            $nameMatches = $expectedName !== '' && hash_equals($expectedName, (string)$identity['name']);
+            // A shared subId or a reused numeric REST id cannot identify a client.
+            if (!$credentialMatches && !$nameMatches) { continue; }
+            $score = $credentialMatches ? 90 : 60;
+            if ($credentialMatches && $nameMatches) { $score += 20; }
             if (trim((string)($node['remote_client_id'] ?? '')) !== ''
                 && hash_equals((string)$node['remote_client_id'], (string)$identity['remote_client_id'])) {
-                $score = 100;
-            } elseif ($localCredential !== ''
-                && hash_equals($localCredential, (string)$identity['uuid'])) {
-                $score = 90;
-            } elseif (trim((string)($node['client_sub_id'] ?? '')) !== ''
-                && hash_equals((string)$node['client_sub_id'], (string)$identity['sub_id'])) {
-                $score = 80;
-            } elseif (trim((string)($node['remote_client_name'] ?? $node['client_email'] ?? '')) !== ''
-                && hash_equals((string)($node['remote_client_name'] ?? $node['client_email']), (string)$identity['name'])) {
-                $score = 60;
+                $score += 10;
             }
             if ($score > 0 && (int)$remote['inbound']['id'] === (int)$node['inbound_id']) {
                 $score += 5;

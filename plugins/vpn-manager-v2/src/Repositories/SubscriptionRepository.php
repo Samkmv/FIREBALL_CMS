@@ -429,7 +429,7 @@ final class SubscriptionRepository
                     n.protocol, n.network, n.security, n.flow, n.status, n.sync_status, n.sync_error,
                     n.desired_enabled, n.is_obsolete,
                     n.traffic_limit_bytes, n.traffic_used_bytes, n.last_sync_at, n.last_error,
-                    n.created_at, n.updated_at, sub.user_id, sub.plan_id,
+                    n.created_at, n.updated_at, sub.user_id, sub.plan_id, sub.status AS subscription_status,
                     COALESCE(u.name, sub.manual_customer_name) AS user_name, u.email AS user_email, p.name AS plan_name,
                     s.name AS server_name, s.code AS server_code, i.name AS inbound_name,
                     i.remote_inbound_id
@@ -459,6 +459,7 @@ final class SubscriptionRepository
                     n.last_error, n.created_at, n.updated_at, sub.user_id, sub.plan_id,
                     sub.status AS subscription_status, sub.starts_at, sub.expires_at,
                     sub.device_limit, sub.ip_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
+                    sub.traffic_used_bytes AS subscription_traffic_used_bytes,
                     sub.created_by, COALESCE(u.name, sub.manual_customer_name) AS user_name, u.email AS user_email,
                     p.name AS plan_name, s.name AS server_name, s.code AS server_code,
                     s.is_enabled AS server_is_enabled, i.name AS inbound_name,
@@ -488,7 +489,7 @@ final class SubscriptionRepository
                     n.last_sync_at, n.last_error, sub.user_id, sub.plan_id,
                     sub.status AS subscription_status, sub.starts_at, sub.expires_at,
                     sub.device_limit, sub.ip_limit, sub.traffic_limit_bytes AS subscription_traffic_limit_bytes,
-                    sub.created_by
+                    sub.traffic_used_bytes AS subscription_traffic_used_bytes, sub.created_by
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
              WHERE n.id = ? LIMIT 1',
@@ -748,7 +749,7 @@ final class SubscriptionRepository
             $now = date('Y-m-d H:i:s');
             $database->query(
                 "UPDATE vpn_v2_subscriptions
-                 SET status = 'deleting', last_error = NULL, updated_at = ? WHERE id = ?",
+                 SET status = 'deleting', last_error = NULL, updated_at = ? WHERE id = ? AND status <> 'deleted'",
                 [$now, $id]
             );
             if ($database->rowCount() !== 1) {
@@ -777,7 +778,8 @@ final class SubscriptionRepository
         $now = date('Y-m-d H:i:s');
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
-             SET status = 'deleted', last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?",
+             SET status = 'deleted', desired_enabled = 0, sync_status = 'synced', sync_error = NULL,
+                 last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?",
             [$now, $now, $id]
         );
     }
@@ -879,7 +881,7 @@ final class SubscriptionRepository
             $database->query(
                 "UPDATE vpn_v2_subscriptions
                  SET subscription_token = ?, subscription_token_hash = ?,
-                     status = 'deleted', config_updated_at = ?, updated_at = ? WHERE id = ?",
+                     status = 'deleted', last_error = NULL, config_updated_at = ?, updated_at = ? WHERE id = ?",
                 [
                     $revokedToken,
                     hash('sha256', $revokedToken),

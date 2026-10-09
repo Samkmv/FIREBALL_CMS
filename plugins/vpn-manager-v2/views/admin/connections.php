@@ -29,7 +29,10 @@ foreach ($connections as $connection) {
         'form_attributes' => ['data-vpn-v2-async-operation' => true],
         'icon' => 'ci-refresh-cw',
     ]];
-    if (ProvisioningStatus::canRetry((string)$connection['status'])) {
+    $deletionStarted = ProvisioningStatus::deletionStarted((string)($connection['status'] ?? ''))
+        || ProvisioningStatus::deletionStarted((string)($connection['subscription_status'] ?? ''));
+    if ($deletionStarted) { $actions = array_slice($actions, 0, 1); }
+    if (!$deletionStarted && ProvisioningStatus::canRetry((string)$connection['status'])) {
         $retryUrl = base_href('/admin/plugins/vpn-manager-v2/connections/' . $id . '/retry');
         $actions[] = [
             'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_retry_creation'),

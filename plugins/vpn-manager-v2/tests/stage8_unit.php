@@ -53,6 +53,15 @@ $assert(count($deletion->matches(['settings' => ['clients' => [$client]]], $node
     'Client was not matched by deletion identities.');
 $assert($deletion->matches(['settings' => json_encode(['clients' => []])], $node) === [],
     'Absent client was reported as present.');
+$modern = array_replace($client, ['id' => 123, 'uuid' => $node['client_uuid']]);
+$assert(count($deletion->matches(['settings' => ['clients' => [$modern]]], $node)) === 1,
+    'Numeric REST ID masked the protocol UUID.');
+$credentials = new \Fireball\VpnManagerV2\Services\RemoteClientCredentialService();
+$assert($credentials->remoteCredential('vless', $modern) === $node['client_uuid'],
+    'Configuration synchronization read a numeric REST ID as the UUID.');
+$other = array_replace($client, ['id' => 'different-client', 'email' => 'different-user']);
+$assert($deletion->matches(['settings' => ['clients' => [$other]]], $node) === [],
+    'Shared subscription ID was mistaken for the deleted client.');
 
 $qrKey = (new QrCodeService())->cacheKey(str_repeat('a', 64));
 $assert(str_starts_with($qrKey, 'vpn-v2:qr:') && !str_contains($qrKey, str_repeat('a', 64)),
@@ -68,7 +77,9 @@ echo json_encode([
         'table_state_preserved',
         'open_redirect_rejected',
         'permission_guard',
-        'identity_match_uuid_email_subid',
+        'identity_match_uuid_email',
+        'numeric_rest_id_and_uuid',
+        'shared_subid_not_client_identity',
         'already_absent_detection',
         'qr_cache_token_hash',
         'deletion_result',

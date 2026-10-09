@@ -15,6 +15,7 @@ use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\VpnProfileRepository;
 use Fireball\VpnManagerV2\Repositories\VpnAccessRequestRepository;
 use Fireball\VpnManagerV2\Support\SubscriptionToken;
+use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Validators\SubscriptionValidator;
 
 final class SubscriptionProvisioningService
@@ -251,6 +252,9 @@ final class SubscriptionProvisioningService
         $node = $repository->connectionForProvisioning($nodeId);
         if (!$node) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_not_found'));
+        }
+        if (ProvisioningStatus::deletionStarted((string)($node['subscription_status'] ?? ''))) {
+            throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_deletion_started'));
         }
         if (!$repository->claimRetry($nodeId)) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_retry_status'));

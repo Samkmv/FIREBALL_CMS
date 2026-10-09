@@ -110,7 +110,12 @@ final class Stage5FakeClient implements ThreeXuiClientInterface
 
     public function updateClient(int $remoteInboundId, string $clientId, array $client): array
     {
-        throw new LogicException('Not used in stage 5.');
+        $this->touch();
+        if ($this->panel->behavior === 'strip_flow') {
+            $client['flow'] = '';
+        }
+        $this->panel->clients[$clientId] = $client;
+        return ['success' => true];
     }
 
     public function deleteClient(int $remoteInboundId, string $clientId, ?string $clientEmail = null): array
@@ -170,8 +175,8 @@ try {
     foreach (array_keys($panels) as $key) {
         db()->query(
             'INSERT INTO vpn_v2_servers
-                (name, code, panel_url, panel_path, auth_type, show_flag, status, is_enabled, created_at, updated_at)
-             VALUES (?, ?, ?, NULL, ?, 0, ?, 1, ?, ?)',
+                (name, code, panel_url, panel_path, auth_type, country_code, show_flag, status, is_enabled, created_at, updated_at)
+             VALUES (?, ?, ?, NULL, ?, \'DE\', 0, ?, 1, ?, ?)',
             ['Stage 5 ' . $key, 'stage5-' . $key . '-' . $suffix, 'https://' . $key . '.stage5.invalid', 'token', 'online', $now, $now]
         );
         $serverIds[$key] = (int)db()->getInsertId();
@@ -204,8 +209,8 @@ try {
     $createPlan = static function (string $name, array $keys) use (&$planIds, $serverIds, $inboundIds, $now, $suffix): int {
         db()->query(
             'INSERT INTO vpn_v2_plans
-                (name, description, duration_days, traffic_limit_bytes, device_limit, is_active, created_at, updated_at)
-             VALUES (?, ?, 30, ?, 3, 1, ?, ?)',
+                (name, description, duration_days, traffic_limit_bytes, device_limit, ip_limit, is_active, created_at, updated_at)
+             VALUES (?, ?, 30, ?, 3, 3, 1, ?, ?)',
             [$name . ' ' . $suffix, 'Stage 5 fixture', 50 * (1024 ** 3), $now, $now]
         );
         $planId = (int)db()->getInsertId();
@@ -253,7 +258,8 @@ try {
         notificationCallback: static fn(string $type, int $subscriptionId, ?string $operation): null => null
     );
     $input = static fn(int $planId): array => [
-        'user_id' => $userId,
+        'owner_type' => 'manual',
+        'manual_customer_name' => 'Stage 5 fixture ' . $planId . ' ' . $suffix,
         'plan_id' => $planId,
         'starts_at' => date('Y-m-d\\TH:i'),
     ];
@@ -319,10 +325,21 @@ try {
     $results['local_first_commit'] = true;
     $results['unique_tokens'] = true;
 } finally {
+    $fixtureSubscriptions = db()->query(
+        'SELECT id, profile_id FROM vpn_v2_subscriptions WHERE manual_customer_name LIKE ?',
+        ['Stage 5 fixture % ' . $suffix]
+    )->get() ?: [];
+    $subscriptionIds = array_unique(array_merge($subscriptionIds, array_map(
+        static fn(array $row): int => (int)$row['id'], $fixtureSubscriptions
+    )));
     if ($subscriptionIds !== []) {
         $placeholders = implode(',', array_fill(0, count($subscriptionIds), '?'));
+        db()->query("DELETE FROM vpn_v2_operations WHERE subscription_id IN ({$placeholders})", $subscriptionIds);
         db()->query("DELETE FROM vpn_v2_events WHERE subscription_id IN ({$placeholders})", $subscriptionIds);
         db()->query("DELETE FROM vpn_v2_subscriptions WHERE id IN ({$placeholders})", $subscriptionIds);
+    }
+    foreach ($fixtureSubscriptions as $fixtureSubscription) {
+        (new Fireball\VpnManagerV2\Repositories\VpnProfileRepository())->deleteManualIfUnused((int)$fixtureSubscription['profile_id']);
     }
     foreach ($planIds as $planId) {
         db()->query('DELETE FROM vpn_v2_plans WHERE id = ?', [$planId]);

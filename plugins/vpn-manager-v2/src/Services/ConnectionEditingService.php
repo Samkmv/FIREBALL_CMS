@@ -7,6 +7,7 @@ use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Validators\ConnectionEditValidator;
+use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 
 final class ConnectionEditingService
 {
@@ -48,15 +49,16 @@ final class ConnectionEditingService
         $adminId = $adminId ?? $this->adminId();
         try {
             $remote = ($this->remoteSync ?? new RemoteClientSyncService())->pull($node);
+            $confirmedStatus = filter_var($remote['enable'] ?? false, FILTER_VALIDATE_BOOL) ? 'active' : 'disabled';
             $changed = $this->flow($node['flow'] ?? null) !== $remote['flow']
                 || $this->limit($node['traffic_limit_bytes'] ?? null) !== $remote['traffic_limit_bytes']
-                || (string)$node['status'] !== (!empty($node['desired_enabled']) ? 'active' : 'disabled');
+                || (string)$node['status'] !== $confirmedStatus;
             $repository->updateNodeConfirmed(
                 $nodeId,
                 $remote['flow'],
                 $remote['traffic_limit_bytes'],
                 $remote['traffic_used_bytes'],
-                !empty($node['desired_enabled']) ? 'active' : 'disabled',
+                $confirmedStatus,
                 !empty($node['desired_enabled'])
             );
             $revision = $changed
@@ -87,16 +89,17 @@ final class ConnectionEditingService
                 $this->subscriptionState($node),
                 $desiredNode
             );
+            $confirmedStatus = filter_var($result['enable'] ?? false, FILTER_VALIDATE_BOOL) ? 'active' : 'disabled';
             $repository->updateNodeConfirmed(
                 (int)$node['id'],
                 $desiredNode['flow'],
                 $desiredNode['traffic_limit_bytes'],
                 $result['traffic_used_bytes'],
-                !empty($node['desired_enabled']) ? 'active' : 'disabled',
+                $confirmedStatus,
                 !empty($node['desired_enabled'])
             );
             $changed = $localChanged || $result['remote_updated']
-                || (string)$node['status'] !== (!empty($node['desired_enabled']) ? 'active' : 'disabled');
+                || (string)$node['status'] !== $confirmedStatus;
             $revision = $changed
                 ? ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId)
                 : (int)$this->subscriptionRevision($subscriptionId);
@@ -132,6 +135,10 @@ final class ConnectionEditingService
         if (!$node) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_not_found'));
         }
+        if (ProvisioningStatus::deletionStarted((string)($node['status'] ?? ''))
+            || ProvisioningStatus::deletionStarted((string)($node['subscription_status'] ?? ''))) {
+            throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_deletion_started'));
+        }
 
         return $node;
     }
@@ -139,10 +146,13 @@ final class ConnectionEditingService
     private function subscriptionState(array $node): array
     {
         return [
+            'starts_at' => $node['starts_at'] ?? null,
             'expires_at' => $node['expires_at'] ?? null,
             'status' => $node['subscription_status'] ?? 'active',
             'device_limit' => $node['device_limit'] ?? 0,
+            'ip_limit' => $node['ip_limit'] ?? 0,
             'traffic_limit_bytes' => $node['subscription_traffic_limit_bytes'] ?? null,
+            'traffic_used_bytes' => $node['subscription_traffic_used_bytes'] ?? 0,
         ];
     }
 

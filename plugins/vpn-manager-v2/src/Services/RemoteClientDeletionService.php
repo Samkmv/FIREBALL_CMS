@@ -63,22 +63,33 @@ final class RemoteClientDeletionService
         $settings = $inbound['settings'] ?? [];
         if (is_string($settings)) {
             $decoded = json_decode($settings, true);
-            $settings = is_array($decoded) ? $decoded : [];
+            $settings = $decoded;
+        }
+        if (!is_array($settings) || !isset($settings['clients']) || !is_array($settings['clients'])) {
+            throw new ClientVerificationException(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_invalid_client_response')
+            );
         }
         $uuid = (new RemoteClientCredentialService())->credential($node);
         $email = trim((string)($node['client_email'] ?? ''));
-        $subId = trim((string)($node['client_sub_id'] ?? ''));
+        if ($uuid === '' || $email === '') {
+            throw new ClientVerificationException(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_identity_changed')
+            );
+        }
+        $verifier = new ClientVerifier();
         $matches = [];
-        foreach ((array)($settings['clients'] ?? []) as $candidate) {
+        foreach ($settings['clients'] as $candidate) {
             if (!is_array($candidate)) {
-                continue;
+                throw new ClientVerificationException(
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_invalid_client_response')
+                );
             }
-            $remoteId = trim((string)($candidate['id'] ?? $candidate['uuid'] ?? $candidate['password'] ?? ''));
             $remoteEmail = trim((string)($candidate['email'] ?? ''));
-            $remoteSubId = trim((string)($candidate['subId'] ?? $candidate['subid'] ?? ''));
-            if (($uuid !== '' && $remoteId !== '' && hash_equals($uuid, $remoteId))
-                || ($email !== '' && $remoteEmail !== '' && hash_equals($email, $remoteEmail))
-                || ($subId !== '' && $remoteSubId !== '' && hash_equals($subId, $remoteSubId))) {
+            // subId identifies a subscription group and can belong to other clients.
+            // A numeric REST id also differs from the uuid/password credential.
+            if ($verifier->credentialMatches($candidate, $uuid)
+                || ($email !== '' && $remoteEmail !== '' && hash_equals($email, $remoteEmail))) {
                 $matches[] = $candidate;
             }
         }
@@ -88,19 +99,10 @@ final class RemoteClientDeletionService
 
     private function assertExactIdentity(array $remote, array $node): void
     {
-        $uuid = (new RemoteClientCredentialService())->credential($node);
-        $email = trim((string)($node['client_email'] ?? ''));
-        $subId = trim((string)($node['client_sub_id'] ?? ''));
-        $remoteId = trim((string)($remote['id'] ?? $remote['uuid'] ?? $remote['password'] ?? ''));
-        $remoteEmail = trim((string)($remote['email'] ?? ''));
-        $remoteSubId = trim((string)($remote['subId'] ?? $remote['subid'] ?? ''));
-        if ($uuid === '' || $remoteId === '' || !hash_equals($uuid, $remoteId)
-            || $email === '' || $remoteEmail === '' || !hash_equals($email, $remoteEmail)
-            || ($subId !== '' && $remoteSubId !== '' && !hash_equals($subId, $remoteSubId))) {
-            throw new ClientVerificationException(
-                \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_identity_changed')
-            );
-        }
+        (new ClientVerifier())->assertIdentity($remote, [
+            'id' => (new RemoteClientCredentialService())->credential($node),
+            'email' => (string)($node['client_email'] ?? ''),
+        ]);
     }
 
     private function client(array $server, array $inbound, array $node): ThreeXuiClientInterface

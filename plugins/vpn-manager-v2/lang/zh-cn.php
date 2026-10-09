@@ -1128,4 +1128,7 @@ return [
     'vpn_manager_v2_subscriptions_notice_inactive' => '未激活订阅',
     'vpn_manager_v2_subscriptions_notice_inactive_help' => '已暂停、已取消或流量耗尽。已到期订阅单独显示。',
     'vpn_manager_v2_subscriptions_notice_view' => '查看订阅',
+    'vpn_manager_v2_error_subscription_deletion_started' => '订阅正在删除或已删除，无法编辑或续期。',
+    'vpn_manager_v2_subscription_deletion_pending_note' => '订阅已停用。如果连接已从面板中删除，请选择重试删除以确认完成。不会重新创建已删除的连接。',
+    'vpn_manager_v2_subscription_deleted_note' => '订阅已删除，链接已失效，无需恢复连接。',
 ];

@@ -25,14 +25,20 @@ foreach (glob($root . '/plugins/*/plugin.json') ?: [] as $file) {
 
 $assert(isset($manifests['vpn-manager-v2'], $manifests['toy-car-rental']),
     'Every update-enabled plugin was not discovered.');
+$reflection = new ReflectionClass(PluginUpdateService::class);
+$service = $reflection->newInstanceWithoutConstructor();
+$normalize = $reflection->getMethod('normalizeReleaseNotes');
+$normalize->setAccessible(true);
 foreach ($manifests as $slug => $manifest) {
     $fallback = $manifest['release_notes'] ?? null;
     $notes = $manifest['release_notes_i18n'] ?? null;
-    $assert(is_array($fallback) && array_is_list($fallback) && $fallback !== [] && count($fallback) <= 10,
+    $assert(is_array($fallback) && array_is_list($fallback) && $fallback !== [],
         'Legacy release note fallback is invalid for ' . $slug . '.');
     $assert(is_array($notes) && array_keys($notes) === $expectedLocales,
         'Localized release note locales differ for ' . $slug . '.');
     foreach ($notes as $locale => $items) {
+        // CMS bounds notes on display, rather than restricting manifest history.
+        $items = $normalize->invoke($service, $notes, $locale);
         $assert(is_array($items) && $items !== [] && count($items) <= 10,
             'Release note count is invalid for ' . $slug . ':' . $locale . '.');
         foreach ($items as $item) {
@@ -42,10 +48,9 @@ foreach ($manifests as $slug => $manifest) {
     }
 }
 
-$reflection = new ReflectionClass(PluginUpdateService::class);
-$service = $reflection->newInstanceWithoutConstructor();
-$normalize = $reflection->getMethod('normalizeReleaseNotes');
-$normalize->setAccessible(true);
+$bounded = $normalize->invoke($service, array_fill(0, 12, str_repeat('x', 300)), 'ru');
+$assert(count($bounded) === 10 && array_unique(array_map('mb_strlen', $bounded)) === [240],
+    'Long manifest history is not bounded to ten notes of 240 characters.');
 $vpnNotes = $manifests['vpn-manager-v2']['release_notes_i18n'];
 $assert($normalize->invoke($service, $vpnNotes, 'ru') === $vpnNotes['ru'],
     'Russian release notes are not selected.');

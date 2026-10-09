@@ -66,6 +66,13 @@ if (in_array('--unlimited', $argv, true)) {
 if (in_array('--stale-total', $argv, true)) { $subscription['traffic_used_bytes'] = 0; }
 if (in_array('--large-limit', $argv, true)) { $subscription['traffic_limit_bytes'] = 30 * 1024 ** 3; }
 if (in_array('--expired', $argv, true)) { $subscription['expires_at'] = '2026-01-01 00:00:00'; }
+if (in_array('--pending-delete', $argv, true) || in_array('--deleted', $argv, true)) {
+    $subscription['status'] = in_array('--deleted', $argv, true) ? 'deleted' : 'pending_remote_delete';
+    $nodes[0]['status'] = $subscription['status'];
+    $nodes[0]['desired_enabled'] = 0;
+    $reconciliationSummary = ['plan_count' => 3, 'created_count' => 0, 'missing_count' => 3,
+        'obsolete_count' => 0, 'matches' => false, 'checked_at' => '2026-10-09 23:57:01'];
+}
 if (in_array('--plan-external', $argv, true)) {
     $planExternalSources = [[
         'id' => 3, 'plan_id' => 1, 'name' => 'Общая внешняя подписка', 'source_type' => 'subscription_url',
@@ -74,7 +81,13 @@ if (in_array('--plan-external', $argv, true)) {
     ]];
 }
 ob_start();
-if (in_array('--edit', $argv, true)) {
+if (in_array('--connection', $argv, true)) {
+    $connection = array_replace($subscription, $nodes[0], [
+        'subscription_status' => $subscription['status'], 'server_code' => 'de',
+        'last_sync_at' => '2026-10-07 12:00:00', 'sync_status' => 'synced',
+    ]);
+    require dirname(__DIR__) . '/views/admin/connection-show.php';
+} elseif (in_array('--edit', $argv, true)) {
     $plans = [['id' => 1, 'name' => 'Тестовый тариф', 'duration_days' => 30,
         'traffic_limit_bytes' => 1024 ** 3 * 10, 'device_limit' => 2, 'ip_limit' => 1, 'node_count' => 1]];
     $trafficInput = \Fireball\VpnManagerV2\Support\TrafficFormatter::inputParts($subscription['traffic_limit_bytes']);

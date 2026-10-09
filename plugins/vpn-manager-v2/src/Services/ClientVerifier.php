@@ -202,7 +202,7 @@ final class ClientVerifier
         return '';
     }
 
-    private function credentialMatches(array $client, string $expected): bool
+    public function credentialMatches(array $client, string $expected): bool
     {
         $expected = trim($expected);
         if ($expected === '') {

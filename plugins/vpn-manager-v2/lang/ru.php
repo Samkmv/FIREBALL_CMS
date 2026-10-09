@@ -1128,4 +1128,7 @@ return [
     'vpn_manager_v2_subscriptions_notice_inactive' => 'Неактивные подписки',
     'vpn_manager_v2_subscriptions_notice_inactive_help' => 'Приостановлены, отменены или исчерпали трафик. Просроченные показаны отдельно.',
     'vpn_manager_v2_subscriptions_notice_view' => 'Посмотреть подписки',
+    'vpn_manager_v2_error_subscription_deletion_started' => 'Подписка удаляется или уже удалена. Изменять и продлевать её нельзя.',
+    'vpn_manager_v2_subscription_deletion_pending_note' => 'Подписка отключена. Если подключения уже удалены из панели, нажмите «Повторить удаление», чтобы подтвердить завершение. Ранее удалённые подключения не создаются заново.',
+    'vpn_manager_v2_subscription_deleted_note' => 'Подписка удалена. Её ссылка отключена, восстановление подключений не требуется.',
 ];

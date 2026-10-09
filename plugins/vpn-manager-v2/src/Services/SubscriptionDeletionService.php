@@ -9,6 +9,7 @@ use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Repositories\OperationQueueRepository;
 use Fireball\VpnManagerV2\Repositories\ExternalSourceRepository;
+use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 
 final class SubscriptionDeletionService
 {
@@ -30,6 +31,9 @@ final class SubscriptionDeletionService
         $subscription = $repository->findForDeletion($subscriptionId);
         if (!$subscription) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_not_found'));
+        }
+        if (ProvisioningStatus::deletionStarted((string)$subscription['status'])) {
+            throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_deletion_started'));
         }
         $adminId = $adminId ?? $this->adminId();
         $desired = array_replace($subscription, ['status' => 'suspended']);

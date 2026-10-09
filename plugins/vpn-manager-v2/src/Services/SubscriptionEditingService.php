@@ -10,6 +10,7 @@ use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Validators\SubscriptionEditValidator;
 use Fireball\VpnManagerV2\Support\TrafficFormatter;
+use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 
 final class SubscriptionEditingService
 {
@@ -30,6 +31,9 @@ final class SubscriptionEditingService
         $current = $repository->findForProvisioning($subscriptionId);
         if (!$current) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_not_found'));
+        }
+        if (ProvisioningStatus::deletionStarted((string)$current['status'])) {
+            throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_deletion_started'));
         }
         [$input, $planChanges] = $this->preparePlanAndTerm($repository, $current, $input);
         $validatedEdit = ($this->validator ?? new SubscriptionEditValidator())->validate($input);

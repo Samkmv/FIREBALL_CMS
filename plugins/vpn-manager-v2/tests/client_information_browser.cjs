@@ -6,7 +6,8 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../../..');
 const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin/php';
 (async () => {
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({ headless: true, ...(process.env.VPN_TEST_CHROMIUM
+        ? {executablePath: process.env.VPN_TEST_CHROMIUM} : {}) });
     try {
         const page = await browser.newPage({ locale: 'ru-RU' });
         const errors = [];
@@ -50,10 +51,43 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
             if (url.searchParams.has('large-limit')) args.push('--large-limit');
             if (url.searchParams.has('three-servers')) args.push('--three-servers');
             if (url.searchParams.has('all-unknown')) args.push('--all-unknown');
+            if (url.searchParams.has('pending-delete')) args.push('--pending-delete');
+            if (url.searchParams.has('deleted')) args.push('--deleted');
+            if (url.searchParams.has('connection')) args.push('--connection');
             const html = execFileSync(php, args, { encoding: 'utf8' });
             assert(!html.includes('Warning:') && !html.includes('Fatal error:') && !html.includes('vpn_manager_v2_'), 'Actual PHP view must render cleanly and translate every key');
             return route.fulfill({ contentType: 'text/html; charset=utf-8', body: html });
         });
+        for (const width of [320, 390, 1440]) for (const state of ['pending-delete', 'deleted']) {
+            await page.setViewportSize({width, height: 1100});
+            await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14?' + state);
+            assert.equal(await page.locator('a[href*="/subscriptions/edit/"], a[href$="/edit"], a[href$="/devices"]').count(), 0,
+                'Removed subscriptions still expose editing or device changes');
+            assert.equal(await page.locator('form[action*="/sync/subscription/"], form[action$="/renew"], form[action$="/suspend"]').count(), 0,
+                'Removed subscriptions still expose access-changing actions');
+            assert.equal(await page.getByText('Создать отсутствующее подключение', {exact: true}).count(), 0,
+                'Removed clients are suggested for re-creation');
+            assert.equal(await page.getByText('Доступ к подписке', {exact: true}).count(), 0,
+                'Revoked subscription still promises a connection URL after provisioning');
+            const retry = page.locator('form[action$="/delete"]');
+            assert.equal(await retry.count(), state === 'pending-delete' ? 1 : 0,
+                'Deletion retry visibility is wrong');
+            if (state === 'pending-delete') assert.match(await retry.innerText(), /Повторить удаление/);
+            else assert.match(await page.locator('.alert-success').innerText(), /Подписка удалена/);
+            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+                'Deletion details overflow on mobile');
+            if (width === 390) await page.screenshot({path: `/private/tmp/vpn-subscription-${state}-390.png`, fullPage: true});
+            await page.goto('https://vpn.test/admin/plugins/vpn-manager-v2/subscriptions/14?connection&' + state);
+            assert.equal(await page.locator('a[href$="/edit"], form').count(), 0,
+                'Deleted connection details still expose mutations');
+            assert.match(await page.locator('dl').innerText(), /Лимит устройств: 2 · Лимит IP: 1/,
+                'Connection details confuse physical device and IP limits');
+        }
+        if (process.argv.includes('--deletion-only')) {
+            assert.deepEqual(errors, []);
+            console.log('PASS deletion details: 320/390/1440px, subscription and connection guards, retry visibility, revoked URL hidden, separate device/IP limits');
+            return;
+        }
         for (const width of [320, 390, 768, 1280, 1440]) for (const theme of ['dark', 'light']) {
             await page.setViewportSize({ width, height: 1100 });
             const before = reads;

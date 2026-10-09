@@ -7,6 +7,11 @@ final class ProvisioningStatus
     public const EXPIRABLE_STATUSES = ['active', 'partial_sync', 'sync_error', 'suspended',
         'traffic_exceeded', 'provisioning', 'provisioning_failed'];
 
+    public static function deletionStarted(string $status): bool
+    {
+        return in_array($status, ['deleting', 'pending_remote_delete', 'delete_failed', 'deleted'], true);
+    }
+
     public static function subscriptionStatus(array $subscription, ?int $now = null): string
     {
         $status = strtolower(trim((string)($subscription['status'] ?? '')));

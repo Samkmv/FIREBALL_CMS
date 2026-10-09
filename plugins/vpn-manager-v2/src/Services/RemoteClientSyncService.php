@@ -194,11 +194,13 @@ final class RemoteClientSyncService
     private function subscriptionState(array $node): array
     {
         return [
+            'starts_at' => $node['starts_at'] ?? null,
             'expires_at' => $node['expires_at'] ?? null,
             'status' => $node['subscription_status'] ?? 'active',
             'device_limit' => $node['device_limit'] ?? 0,
             'ip_limit' => $node['ip_limit'] ?? 0,
             'traffic_limit_bytes' => $node['subscription_traffic_limit_bytes'] ?? null,
+            'traffic_used_bytes' => $node['subscription_traffic_used_bytes'] ?? 0,
         ];
     }
 

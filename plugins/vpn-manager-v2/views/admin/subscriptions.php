@@ -38,7 +38,7 @@ foreach ($subscriptions as $subscription) {
     $editUrl = AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/edit/' . $id, $returnQuery);
     $suspendUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $id . '/suspend');
     $deleteUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $id . '/delete');
-    $deleteRetry = (string)$subscription['status'] === 'delete_failed';
+    $deleteRetry = in_array((string)$subscription['status'], ['delete_failed', 'pending_remote_delete'], true);
     $deleteLabel = FireballPluginVpnManagerV2::t($deleteRetry
         ? 'vpn_manager_v2_action_retry_delete'
         : 'vpn_manager_v2_action_delete_forever');
@@ -60,6 +60,9 @@ foreach ($subscriptions as $subscription) {
         'href' => $editUrl,
         'icon' => 'ci-edit-2',
     ]];
+    if (ProvisioningStatus::deletionStarted((string)$subscription['status'])) {
+        $showAction = array_slice($showAction, 0, 1);
+    }
     if ($displayStatus === 'active') {
         $showAction[] = [
             'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_suspend'),

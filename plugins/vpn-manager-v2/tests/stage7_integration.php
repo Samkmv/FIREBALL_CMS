@@ -429,6 +429,34 @@ try {
         'Push mode did not restore local state.');
     $results['explicit_push'] = true;
 
+    $originalAccess = db()->query('SELECT status, starts_at, expires_at, traffic_limit_bytes,
+        traffic_used_bytes, device_limit, ip_limit FROM vpn_v2_subscriptions WHERE id = ?', [$subscriptionId])->getOne();
+    foreach (['future', 'expired', 'traffic_exceeded', 'suspended'] as $accessCase) {
+        db()->query('UPDATE vpn_v2_subscriptions SET status = ?, starts_at = ?, expires_at = ?,
+            traffic_limit_bytes = 1000, traffic_used_bytes = ?, device_limit = 2, ip_limit = 3 WHERE id = ?', [
+            $accessCase === 'suspended' ? 'suspended' : 'active',
+            date('Y-m-d H:i:s', time() + ($accessCase === 'future' ? 86400 : -86400)),
+            date('Y-m-d H:i:s', time() + ($accessCase === 'expired' ? -1 : 86400)),
+            $accessCase === 'traffic_exceeded' ? 1000 : 0, $subscriptionId,
+        ]);
+        $connections->sendToRemote($nodeIds[0], $adminId);
+        $confirmedNode = db()->query('SELECT status, desired_enabled FROM vpn_v2_subscription_nodes WHERE id = ?', [$nodeIds[0]])->getOne();
+        $assert($panels[0]->clients[$uuid0]['enable'] === false && $confirmedNode['status'] === 'disabled'
+            && (int)$confirmedNode['desired_enabled'] === 1, $accessCase . ': explicit push enabled restricted access or lost manual intent.');
+        $assert((int)$panels[0]->clients[$uuid0]['limitIp'] === 3
+            && (int)$panels[0]->clients[$uuid0]['limitHwid'] === 2, 'Explicit push mixed IP and HWID device limits.');
+    }
+    db()->query('UPDATE vpn_v2_subscriptions SET status = ?, starts_at = ?, expires_at = ?,
+        traffic_limit_bytes = ?, traffic_used_bytes = ?, device_limit = ?, ip_limit = ? WHERE id = ?',
+        array_merge(array_values($originalAccess), [$subscriptionId]));
+    $panels[0]->clients[$uuid0]['enable'] = false;
+    $connections->receiveFromRemote($nodeIds[0], $adminId);
+    $assert(db()->query('SELECT status FROM vpn_v2_subscription_nodes WHERE id = ?', [$nodeIds[0]])->getColumn() === 'disabled',
+        'Explicit pull displayed an inactive panel client as active.');
+    $connections->sendToRemote($nodeIds[0], $adminId);
+    $assert($panels[0]->clients[$uuid0]['enable'] === true, 'Explicit push did not restore eligible access.');
+    $results['explicit_sync_access_policy_and_confirmed_status'] = true;
+
     $panels[1]->failUpdates = true;
     $partialExpires = date('Y-m-d\TH:i', time() + 50 * 86400);
     $partial = $subscriptions->update($subscriptionId, [

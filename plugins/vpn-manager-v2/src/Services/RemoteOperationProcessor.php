@@ -530,7 +530,8 @@ final class RemoteOperationProcessor
         $subscriptions->markNodeDeleted($nodeId);
         if ($subscriptions->allNodesFinalizable((int)$node['subscription_id'])) {
             $subscription = $subscriptions->findForDeletion((int)$node['subscription_id']);
-            if ($subscription) {
+            if ($subscription && in_array((string)$subscription['status'],
+                ['deleting', 'pending_remote_delete', 'delete_failed'], true)) {
                 (new VpnSubscriptionCache())->invalidate(
                     (string)$subscription['subscription_token'],
                     (int)$subscription['revision']
