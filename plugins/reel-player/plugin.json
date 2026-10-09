@@ -1,0 +1,15 @@
+{
+  "name": "Tape Room",
+  "slug": "reel-player",
+  "class": "FireballPluginReelPlayer",
+  "version": "1.1.0",
+  "type": "system",
+  "description": "A private reel-to-reel music player with a persistent library and playlists.",
+  "name_i18n": {"ru": "Tape Room · Аудиоплеер", "en": "Tape Room"},
+  "description_i18n": {"ru": "Личный катушечный аудиоплеер с загрузкой музыки, живыми индикаторами и плейлистами.", "en": "A private reel-to-reel music player with a persistent library and playlists."},
+  "author": "FIREBALL CMS",
+  "auto_migrate": true,
+  "release_notes": ["Private music library, playlists, animated reels, stereo meters and Google Drive streaming."],
+  "release_notes_i18n": {"ru": ["Личный аудиоплеер: вращающиеся катушки, перемещение ленты, плейлисты и музыка из Google Drive."], "en": ["Private music library, playlists, animated reels, stereo meters and Google Drive streaming."], "de": ["Privater Musikplayer mit animierten Spulen, Playlists und Google-Drive-Streaming."], "zh-cn": ["私人音乐播放器，支持动态卷轴、播放列表和 Google Drive 流媒体。"]},
+  "update": {"enabled": true, "provider": "github_directory", "repository": "Samkmv/FIREBALL_CMS", "branch": "main", "path": "plugins/reel-player"}
+}
