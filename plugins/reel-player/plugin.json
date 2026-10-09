@@ -2,14 +2,46 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.1.0",
+  "version": "1.2.5",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
-  "name_i18n": {"ru": "Tape Room · Аудиоплеер", "en": "Tape Room"},
-  "description_i18n": {"ru": "Личный катушечный аудиоплеер с загрузкой музыки, живыми индикаторами и плейлистами.", "en": "A private reel-to-reel music player with a persistent library and playlists."},
+  "name_i18n": {
+    "ru": "Tape Room · Аудиоплеер",
+    "en": "Tape Room"
+  },
+  "description_i18n": {
+    "ru": "Личный катушечный аудиоплеер с загрузкой музыки, живыми индикаторами и плейлистами.",
+    "en": "A private reel-to-reel music player with a persistent library and playlists."
+  },
   "author": "FIREBALL CMS",
   "auto_migrate": true,
-  "release_notes": ["Private music library, playlists, animated reels, stereo meters and Google Drive streaming."],
-  "release_notes_i18n": {"ru": ["Личный аудиоплеер: вращающиеся катушки, перемещение ленты, плейлисты и музыка из Google Drive."], "en": ["Private music library, playlists, animated reels, stereo meters and Google Drive streaming."], "de": ["Privater Musikplayer mit animierten Spulen, Playlists und Google-Drive-Streaming."], "zh-cn": ["私人音乐播放器，支持动态卷轴、播放列表和 Google Drive 流媒体。"]},
-  "update": {"enabled": true, "provider": "github_directory", "repository": "Samkmv/FIREBALL_CMS", "branch": "main", "path": "plugins/reel-player"}
+  "release_notes": [
+    "Google Drive folder navigation, audio-only selection and a clearer import dialog.",
+    "More space below library filters; subtle buffering indicator and loaded-audio progress."
+  ],
+  "release_notes_i18n": {
+    "ru": [
+      "Навигация по папкам Google Drive, выбор только аудиофайлов и удобное окно добавления музыки.",
+      "Отступ под поиском и сортировкой, спокойный индикатор буферизации и загруженная часть аудио на шкале."
+    ],
+    "en": [
+      "Google Drive folder navigation, audio-only selection and a clearer import dialog.",
+      "More space below library filters; subtle buffering indicator and loaded-audio progress."
+    ],
+    "de": [
+      "Google-Drive-Ordnernavigation, Auswahl von Audiodateien und ein übersichtlicher Importdialog.",
+      "Mehr Abstand unter den Bibliotheksfiltern sowie eine dezente Pufferanzeige und Fortschritt der geladenen Audiodaten."
+    ],
+    "zh-cn": [
+      "新增 Google Drive 文件夹导航、音频文件选择和更清晰的导入窗口。",
+      "音乐列表与筛选控件之间增加间距，新增缓冲提示和已加载音频进度。"
+    ]
+  },
+  "update": {
+    "enabled": true,
+    "provider": "github_directory",
+    "repository": "Samkmv/FIREBALL_CMS",
+    "branch": "main",
+    "path": "plugins/reel-player"
+  }
 }

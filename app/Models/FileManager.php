@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\SafeUploadService;
 use App\Services\UploadSettings;
+use App\Services\UploadReferences;
 use FBL\Pagination;
 
 /**
@@ -18,11 +19,11 @@ class FileManager
     ];
     protected array $undeletableDirectories = [
         'avatars',
-        'categories',
-        'chat',
         'posts',
-        'seo',
+        'pwa',
+        'cache',
     ];
+    protected UploadReferences $uploadReferences;
     private const ALLOWED_EXTENSIONS = [
         'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
         'pdf', 'txt', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
@@ -42,8 +43,9 @@ class FileManager
     /**
      * Настраивает корневую директорию менеджера и создаёт её при необходимости.
      */
-    public function __construct()
+    public function __construct(?UploadReferences $uploadReferences = null)
     {
+        $this->uploadReferences = $uploadReferences ?? new UploadReferences();
         $this->rootPath = rtrim(UPLOADS, '/');
         $this->rootUrl = rtrim(base_url('/uploads'), '/');
         $this->ensureDirectoryExists('');
@@ -199,6 +201,7 @@ class FileManager
         }
 
         $absolutePath = $this->resolveExistingPath($relativePath);
+        $this->assertUnusedPath($relativePath, false);
         if (!is_file($absolutePath) || !@unlink($absolutePath)) {
             throw new \RuntimeException(return_translation('admin_files_delete_error'));
         }
@@ -236,6 +239,7 @@ class FileManager
                 if (!is_dir($this->resolveExistingPath($path))) {
                     throw new \RuntimeException(return_translation('admin_files_folder_delete_error'));
                 }
+                $this->assertUnusedPath($path, true);
 
                 $seenPaths[$path] = true;
                 $normalizedItems[] = ['path' => $path, 'type' => 'directory'];
@@ -245,6 +249,7 @@ class FileManager
             if ($this->isProtectedPath($path) || !is_file($this->resolveExistingPath($path))) {
                 throw new \RuntimeException(return_translation('admin_files_delete_error'));
             }
+            $this->assertUnusedPath($path, false);
 
             $seenPaths[$path] = true;
             $normalizedItems[] = ['path' => $path, 'type' => 'file'];
@@ -291,6 +296,7 @@ class FileManager
         if (!is_dir($absolutePath)) {
             throw new \RuntimeException(return_translation('admin_files_folder_delete_error'));
         }
+        $this->assertUnusedPath($relativePath, true);
 
         $this->deleteDirectoryRecursively($absolutePath);
     }
@@ -313,6 +319,7 @@ class FileManager
         if (is_dir($absolutePath) && $this->isDeletionProtectedPath($relativePath)) {
             throw new \RuntimeException(return_translation('admin_files_folder_rename_protected'));
         }
+        $this->assertUnusedPath($relativePath, is_dir($absolutePath));
 
         $newName = trim($newName);
         if ($newName === '') {
@@ -487,6 +494,13 @@ class FileManager
         foreach (explode('/', $path) as $segment) {
             $segment = trim($segment);
             if ($segment === '' || $segment === '.' || $segment === '..') {
+                continue;
+            }
+
+            // Preserve server-control names so submitted operations check the
+            // same protected file as the UI, not a dot-stripped alias.
+            if (in_array(strtolower($segment), ['.htaccess', '.user.ini', 'web.config'], true)) {
+                $segments[] = $segment;
                 continue;
             }
 
@@ -805,6 +819,7 @@ class FileManager
         } elseif (!is_file($absoluteSourcePath) || is_link($absoluteSourcePath)) {
             throw new \RuntimeException(return_translation('admin_files_invalid_path'));
         }
+        $this->assertUnusedPath($relativePath, $type === 'directory');
 
         $sourceDirectory = dirname($relativePath);
         $sourceDirectory = $sourceDirectory === '.' ? '' : $sourceDirectory;
@@ -882,7 +897,7 @@ class FileManager
         }
 
         $segments = explode('/', $relativePath);
-        $rootSegment = $segments[0] ?? '';
+        $rootSegment = strtolower($segments[0] ?? '');
 
         return in_array($rootSegment, $this->protectedDirectories, true);
     }
@@ -892,15 +907,38 @@ class FileManager
      */
     protected function isDeletionProtectedPath(string $relativePath): bool
     {
-        $relativePath = $this->normalizeRelativePath($relativePath);
+        $relativePath = strtolower($this->normalizeRelativePath($relativePath));
         if ($relativePath === '') {
             return false;
         }
 
-        $segments = explode('/', $relativePath);
-        $rootSegment = $segments[0] ?? '';
+        // Only fixed service roots are reserved. Unused dated/user subfolders
+        // under posts are managed normally; PWA outputs and image cache are not.
+        return in_array($relativePath, $this->undeletableDirectories, true)
+            || str_starts_with($relativePath, 'pwa/')
+            || str_starts_with($relativePath, 'cache/');
+    }
 
-        return in_array($rootSegment, $this->undeletableDirectories, true);
+    protected function mutationProtection(string $relativePath, bool $directory): ?string
+    {
+        if ($this->isProtectedPath($relativePath) || $this->isDeletionProtectedPath($relativePath)
+            || in_array(strtolower(basename($relativePath)), ['.htaccess', '.user.ini', 'web.config'], true)) {
+            return 'admin_files_item_system_protected';
+        }
+        try {
+            return $this->uploadReferences->contains($relativePath, $directory)
+                ? 'admin_files_item_in_use' : null;
+        } catch (\Throwable $error) {
+            return 'admin_files_reference_check_failed';
+        }
+    }
+
+    protected function assertUnusedPath(string $relativePath, bool $directory): void
+    {
+        $reason = $this->mutationProtection($relativePath, $directory);
+        if ($reason !== null) {
+            throw new \RuntimeException(return_translation($reason));
+        }
     }
 
     /**
@@ -1006,6 +1044,7 @@ class FileManager
     protected function buildDirectoryItem(string $name, string $relativePath, string $absolutePath): array
     {
         $modifiedTimestamp = (int)(filemtime($absolutePath) ?: time());
+        $protection = $this->mutationProtection($relativePath, true);
 
         return [
             'type' => 'directory',
@@ -1018,9 +1057,10 @@ class FileManager
             'modified_at' => date('Y-m-d H:i', $modifiedTimestamp),
             'modified_timestamp' => $modifiedTimestamp,
             'type_sort' => 0,
-            'can_delete' => !$this->isDeletionProtectedPath($relativePath),
-            'can_rename' => !$this->isDeletionProtectedPath($relativePath),
-            'can_transfer' => !$this->isDeletionProtectedPath($relativePath),
+            'can_delete' => $protection === null,
+            'can_rename' => $protection === null,
+            'can_transfer' => $protection === null,
+            'protection_reason' => $protection === null ? '' : return_translation($protection),
         ];
     }
 
@@ -1032,6 +1072,7 @@ class FileManager
         $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         $sizeBytes = (int)filesize($absolutePath);
         $modifiedTimestamp = (int)(filemtime($absolutePath) ?: time());
+        $protection = $this->mutationProtection($relativePath, false);
 
         return [
             'type' => 'file',
@@ -1046,9 +1087,10 @@ class FileManager
             'modified_timestamp' => $modifiedTimestamp,
             'type_sort' => 1,
             'is_image' => in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true),
-            'can_delete' => true,
-            'can_rename' => true,
-            'can_transfer' => true,
+            'can_delete' => $protection === null,
+            'can_rename' => $protection === null,
+            'can_transfer' => $protection === null,
+            'protection_reason' => $protection === null ? '' : return_translation($protection),
         ];
     }
 

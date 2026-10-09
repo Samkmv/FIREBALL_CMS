@@ -520,11 +520,18 @@ $(function () {
         };
     }
 
+    function protectionMessage(rows, fallback) {
+        const protectedRow = rows.filter(function () {
+            return !!$(this).attr('data-protection-reason');
+        }).first();
+        return String(protectedRow.attr('data-protection-reason') || fallback);
+    }
+
     function hasProtectedTransferRows(rows) {
         let blocked = false;
 
         rows.each(function () {
-            if (String($(this).data('canTransfer') || '1') !== '1') {
+            if (String($(this).data('canTransfer') ?? '1') !== '1') {
                 blocked = true;
                 return false;
             }
@@ -538,7 +545,7 @@ $(function () {
         let blocked = false;
 
         rows.each(function () {
-            if (String($(this).data('canDelete') || '1') !== '1') {
+            if (String($(this).data('canDelete') ?? '1') !== '1') {
                 blocked = true;
                 return false;
             }
@@ -562,7 +569,7 @@ $(function () {
         }
 
         if (hasProtectedDeleteRows(rows)) {
-            renderFeedback('error', messages.deleteProtected);
+            renderFeedback('error', protectionMessage(rows, messages.deleteProtected));
             return false;
         }
 
@@ -600,7 +607,7 @@ $(function () {
             const path = String(row.data('path') || '');
             const type = String(row.data('type') || 'file');
 
-            if (!path || String(row.data('canTransfer') || '1') !== '1') {
+            if (!path || String(row.data('canTransfer') ?? '1') !== '1') {
                 allowed = false;
                 return false;
             }
@@ -627,7 +634,7 @@ $(function () {
             const type = String(row.data('type') || 'file');
             const sourceDirectory = path.indexOf('/') === -1 ? '' : path.split('/').slice(0, -1).join('/');
 
-            if (!path || String(row.data('canTransfer') || '1') !== '1') {
+            if (!path || String(row.data('canTransfer') ?? '1') !== '1') {
                 allowed = false;
                 return false;
             }
@@ -686,6 +693,10 @@ $(function () {
     }
 
     function openRenameModal(row) {
+        if (String(row.data('canRename') ?? '1') !== '1') {
+            renderFeedback('error', protectionMessage(row, currentMessages().deleteProtected));
+            return;
+        }
         const modal = getModal('[data-file-rename-modal]');
         if (!modal || !row.length) {
             return;
@@ -930,7 +941,7 @@ $(function () {
         const target = $(originalEvent.target);
         const row = $(this);
 
-        if (target.closest('a, button, input, label, [data-file-manager-actions-menu]').length || String(row.data('canTransfer') || '1') !== '1') {
+        if (target.closest('a, button, input, label, [data-file-manager-actions-menu]').length || String(row.data('canTransfer') ?? '1') !== '1') {
             event.preventDefault();
             return;
         }
@@ -1099,7 +1110,7 @@ $(function () {
 
         if (action === 'copy' || action === 'move') {
             if (hasProtectedTransferRows(rows)) {
-                renderFeedback('error', messages.transferProtected);
+                renderFeedback('error', protectionMessage(rows, messages.transferProtected));
                 return;
             }
 
@@ -1132,8 +1143,8 @@ $(function () {
         }
 
         if (action === 'delete') {
-            if (String(row.data('canDelete') || '1') !== '1') {
-                renderFeedback('error', messages.deleteProtected);
+            if (String(row.data('canDelete') ?? '1') !== '1') {
+                renderFeedback('error', protectionMessage(row, messages.deleteProtected));
                 return;
             }
 
@@ -1151,8 +1162,8 @@ $(function () {
         }
 
         if (action === 'copy' || action === 'move') {
-            if (String(row.data('canTransfer') || '1') !== '1') {
-                renderFeedback('error', messages.transferProtected);
+            if (String(row.data('canTransfer') ?? '1') !== '1') {
+                renderFeedback('error', protectionMessage(row, messages.transferProtected));
                 return;
             }
 

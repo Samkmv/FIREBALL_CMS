@@ -1,0 +1,1 @@
+ALTER TABLE reel_tracks ADD COLUMN favorite TINYINT(1) NOT NULL DEFAULT 0;

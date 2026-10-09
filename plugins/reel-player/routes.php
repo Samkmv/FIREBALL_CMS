@@ -15,7 +15,7 @@ $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|cover\.svg
     exit;
 });
 
-$guard = ['auth', 'admin', 'creator'];
+$guard = ['auth', 'admin'];
 $router->get('/admin/reel-player', [PlayerController::class, 'index'])->middleware($guard);
 $router->get('/admin/reel-player/api/state', [PlayerController::class, 'state'])->middleware($guard);
 $router->post('/admin/reel-player/api/action', [PlayerController::class, 'action'])->middleware($guard);

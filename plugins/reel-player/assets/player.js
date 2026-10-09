@@ -6,13 +6,18 @@
     const $ = selector => app.querySelector(selector);
     const audio = $('[data-audio]');
     const dialog = $('[data-dialog]');
+    let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     let data = config.state, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
     let selected = Number(saved.playlist) || 0;
     let current = 0, queue = [], queueName = '', queuePlaylist = Number(saved.queuePlaylist) || 0, repeat = ['off', 'all', 'one'].includes(saved.repeat) ? saved.repeat : 'off';
+    let librarySort = ['new','old'].includes(saved.librarySort) ? saved.librarySort : 'new';
+    let playlistSort = ['playlist','new','old'].includes(saved.playlistSort) ? saved.playlistSort : 'playlist';
+    let queueSort = ['playlist','new','old'].includes(saved.queueSort) ? saved.queueSort : (queuePlaylist > 0 ? 'playlist' : librarySort);
     let shuffle = Boolean(saved.shuffle), bag = [], history = [], seekActive = false, restoreTime = 0;
-    let toastTimer, frameId = 0, frameTime = 0, angles = [0, 0], graph, uploading = false, dialogHandler;
-    let loading = false, generation = 0, lastSave = 0, mutations = 0;
+    let toastTimer, frameId = 0, frameTime = 0, angles = [0, 0], graph, uploading = false, dialogHandler, dialogSubmitting = false;
+    let loading = false, bufferVisible = false, bufferTimer, generation = 0, lastSave = 0, mutations = 0;
+    let mutationQueue = Promise.resolve();
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const formatTime = value => {
         if (!Number.isFinite(value) || value < 0) return '0:00';
@@ -25,42 +30,81 @@
     const track = id => data.tracks.find(t => t.id === Number(id));
     const playlist = id => data.playlists.find(p => p.id === Number(id));
     const activeTrack = () => track(current);
-    const selectedTracks = () => selected ? (playlist(selected)?.tracks || []).map(track).filter(Boolean) : data.tracks;
+    const collectionName = id => id === -1 ? 'Избранное' : playlist(id)?.name || 'Вся музыка';
+    const collectionTracks = id => id === -1 ? data.tracks.filter(t => t.favorite) : id > 0 ? (playlist(id)?.tracks || []).map(track).filter(Boolean) : data.tracks;
+    const sortedTracks = (tracks, mode) => mode === 'playlist' ? [...tracks] : [...tracks].sort((a,b) => mode === 'old' ? a.id - b.id : b.id - a.id);
+    const selectedSort = () => selected > 0 ? playlistSort : librarySort;
+    const selectedTracks = () => sortedTracks(collectionTracks(selected), selectedSort());
     const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
     const setIcon = (node, name) => node.querySelector('use').setAttribute('href', `#rp-i-${name}`);
     const rangeFill = (node, fraction) => node.style.setProperty('--fill', `${Math.max(0, Math.min(1, fraction)) * 100}%`);
+
+    function applyTheme() {
+        const dark = theme === 'dark', control = $('[data-action="theme"]');
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="color-scheme"]').content = theme;
+        document.querySelectorAll('meta[name="theme-color"]').forEach(meta => { meta.content = dark ? '#191c1a' : '#f7f5f0'; });
+        const label = dark ? 'Включить светлую тему' : 'Включить тёмную тему';
+        control.setAttribute('aria-label', label); control.title = label;
+        control.setAttribute('aria-pressed', String(dark));
+        setIcon(control, dark ? 'sun' : 'moon');
+        try { localStorage.setItem(`${config.storageKey}:theme`, theme); } catch (_) {}
+    }
 
     function toast(message, error = false) {
         const node = $('[data-toast]'); node.textContent = message; node.classList.toggle('is-error', error); node.hidden = false;
         clearTimeout(toastTimer); toastTimer = setTimeout(() => { node.hidden = true; }, error ? 7000 : 3500);
     }
     function save() {
-        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, current, queue, queueName, queuePlaylist, time:audio.currentTime || 0, volume:audio.volume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
+        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:audio.currentTime || 0, volume:audio.volume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
+    }
+    function closeSort() {
+        const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
+        options.hidden = true;
+        $('[data-sort-trigger]').setAttribute('aria-expanded', 'false');
+        if (restoreFocus) $('[data-sort-trigger]').focus();
+    }
+    function openSort() {
+        $('[data-sort-options]').hidden = false;
+        $('[data-sort-trigger]').setAttribute('aria-expanded', 'true');
+        $('[data-sort-options] [aria-selected="true"]')?.focus();
+    }
+    function renderSort() {
+        closeSort();
+        const modes = [...(selected > 0 ? [['playlist','Порядок в ленте']] : []), ['new','Сначала новые'], ['old','Сначала старые']];
+        const options = $('[data-sort-options]'); options.replaceChildren();
+        for (const [value,label] of modes) {
+            const option = element('button','rp-sort-option',label);
+            option.type = 'button'; option.tabIndex = -1; option.dataset.sortMode = value;
+            option.setAttribute('role','option'); option.setAttribute('aria-selected', String(value === selectedSort()));
+            options.append(option);
+        }
+        const label = modes.find(([value]) => value === selectedSort())[1];
+        $('[data-sort-label]').textContent = label;
+        $('[data-sort-trigger]').setAttribute('aria-label', `Сортировка музыки: ${label}`);
     }
     function render() {
-        if (selected && !playlist(selected)) selected = 0;
-        queue = queue.filter(id => Boolean(track(id)));
-        if (queuePlaylist) {
-            const playingPlaylist = playlist(queuePlaylist);
-            if (playingPlaylist) { queue = [...playingPlaylist.tracks]; queueName = playingPlaylist.name; }
-            else { queuePlaylist = 0; queueName = 'Вся музыка'; }
-        }
+        if (selected > 0 && !playlist(selected)) selected = 0;
+        if (queuePlaylist > 0 && !playlist(queuePlaylist)) { queuePlaylist = 0; queueSort = librarySort; }
+        queue = sortedTracks(collectionTracks(queuePlaylist), queueSort).map(t => t.id);
+        queueName = collectionName(queuePlaylist);
         bag = bag.filter(id => queue.includes(id)); history = history.filter(id => Boolean(track(id)));
         if (current && !activeTrack()) { audio.pause(); audio.removeAttribute('src'); audio.load(); current = 0; updateNow(); }
         const nav = $('[data-playlists]'); nav.replaceChildren();
-        for (const item of [{id:0, name:'Вся музыка', tracks:data.tracks}, ...data.playlists]) {
+        for (const item of [{id:0, name:'Вся музыка', tracks:data.tracks}, {id:-1, name:'Избранное', tracks:collectionTracks(-1)}, ...data.playlists]) {
             const node = element('button', `rp-playlist${item.id === selected ? ' is-selected' : ''}`);
             node.type = 'button'; node.dataset.action = 'select-playlist'; node.dataset.id = item.id;
             node.setAttribute('aria-current', item.id === selected ? 'page' : 'false');
-            node.innerHTML = icon(item.id ? 'list' : 'music');
+            node.innerHTML = icon(item.id === -1 ? 'heart' : item.id ? 'list' : 'music');
             node.append(element('span', 'rp-playlist-name', item.name), element('span', 'rp-playlist-count', item.tracks.length));
             nav.append(node);
         }
         const list = selectedTracks(), query = $('[data-search]').value.trim().toLocaleLowerCase();
         const visible = list.filter(t => `${t.title} ${t.artist} ${t.filename}`.toLocaleLowerCase().includes(query));
-        $('[data-list-title]').textContent = playlist(selected)?.name || 'Вся музыка';
+        $('[data-list-title]').textContent = collectionName(selected);
         $('[data-list-summary]').textContent = `${list.length} ${list.length % 10 === 1 && list.length % 100 !== 11 ? 'трек' : list.length % 10 >= 2 && list.length % 10 <= 4 && !(list.length % 100 >= 12 && list.length % 100 <= 14) ? 'трека' : 'треков'}${list.some(t => t.duration) ? ' · ' + formatTime(list.reduce((total, t) => total + t.duration, 0)) : ''}`;
-        $('[data-playlist-actions]').hidden = !selected;
+        $('[data-playlist-actions]').hidden = selected <= 0;
+        renderSort();
         const rows = $('[data-tracks]'); rows.replaceChildren();
         for (const t of visible) {
             const index = list.indexOf(t), row = element('article', `rp-track${t.id === current ? ' is-current' : ''}`);
@@ -72,16 +116,18 @@
             const info = element('div', 'rp-track-info');
             info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : ''}`));
             const actions = element('div', 'rp-track-actions');
-            actions.innerHTML = (selected ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + button('edit-track', 'Изменить трек', 'edit', t.id) + button(selected ? 'remove-track' : 'delete-track', selected ? 'Убрать из плейлиста' : 'Удалить из библиотеки', 'trash', t.id);
-            if (selected) {
+            const canReorder = selected > 0 && playlistSort === 'playlist';
+            actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + button('edit-track', 'Изменить трек', 'edit', t.id) + button(selected > 0 ? 'remove-track' : 'delete-track', selected > 0 ? 'Убрать из плейлиста' : 'Удалить из библиотеки', 'trash', t.id);
+            actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
+            if (canReorder) {
                 actions.querySelector('[data-action="move-up"]').disabled = index === 0;
                 actions.querySelector('[data-action="move-down"]').disabled = index === list.length - 1;
             }
             row.append(play, cover, info, element('span', 'rp-track-duration', t.duration ? formatTime(t.duration) : '—'), actions); rows.append(row);
         }
         $('[data-empty]').hidden = visible.length > 0;
-        $('[data-empty-title]').textContent = query ? 'Ничего не найдено' : selected ? 'Эта лента пока пустая' : 'Здесь начинается ваша коллекция';
-        $('[data-empty-description]').textContent = query ? 'Попробуйте другое название или имя исполнителя.' : selected ? 'Загрузите музыку сюда или добавьте треки из общей библиотеки.' : 'Перетащите аудиофайлы сюда или добавьте их кнопкой выше.';
+        $('[data-empty-title]').textContent = query ? 'Ничего не найдено' : selected === -1 ? 'Любимые песни будут здесь' : selected > 0 ? 'Эта лента пока пустая' : 'Здесь начинается ваша коллекция';
+        $('[data-empty-description]').textContent = query ? 'Попробуйте другое название или имя исполнителя.' : selected === -1 ? 'Нажмите сердечко рядом с песней, чтобы добавить её в избранное.' : selected > 0 ? 'Загрузите музыку сюда или добавьте треки из общей библиотеки.' : 'Перетащите аудиофайлы сюда или добавьте их кнопкой выше.';
         $('[data-action="play"]').disabled = !current && list.length === 0;
         $('[data-action="prev"]').disabled = !current;
         $('[data-action="next"]').disabled = !current;
@@ -101,10 +147,12 @@
     }
     function updateButtons() {
         const playing = !audio.paused && !audio.ended;
-        document.body.classList.toggle('is-playing', playing);
+        document.body.classList.toggle('is-playing', playing && !loading);
+        document.body.classList.toggle('is-buffering', bufferVisible);
         const play = $('[data-action="play"]'); setIcon(play, playing ? 'pause' : 'play');
+        play.setAttribute('aria-busy', String(loading));
         play.setAttribute('aria-label', playing ? 'Пауза' : 'Воспроизвести'); play.title = playing ? 'Пауза' : 'Воспроизвести';
-        $('[data-play-status]').textContent = loading ? 'ЗАГРУЖАЕМ ЛЕНТУ' : playing ? 'ЛЕНТА В ДВИЖЕНИИ' : current ? 'ПАУЗА' : 'ГОТОВ К ПРОСЛУШИВАНИЮ';
+        $('[data-play-status]').textContent = bufferVisible ? 'БУФЕРИЗАЦИЯ…' : playing ? 'ЛЕНТА В ДВИЖЕНИИ' : current ? 'ПАУЗА' : 'ГОТОВ К ПРОСЛУШИВАНИЮ';
         const sh = $('[data-action="shuffle"]'); sh.classList.toggle('is-active', shuffle); sh.setAttribute('aria-pressed', String(shuffle));
         sh.setAttribute('aria-label', `Случайный порядок: ${shuffle ? 'включён' : 'выключен'}`); sh.title = sh.getAttribute('aria-label');
         const re = $('[data-action="repeat"]'); re.classList.toggle('is-active', repeat !== 'off'); re.setAttribute('aria-label', `Повтор: ${repeat === 'off' ? 'выключен' : repeat === 'one' ? 'одного трека' : 'плейлиста'}`); re.title = re.getAttribute('aria-label'); $('[data-repeat-one]').hidden = repeat !== 'one';
@@ -116,10 +164,30 @@
         }
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
     }
+    function setBuffering(active) {
+        loading = Boolean(active && current && !audio.paused && !audio.ended);
+        if (!loading) { clearTimeout(bufferTimer); bufferTimer = undefined; bufferVisible = false; }
+        else if (!bufferVisible && !bufferTimer) {
+            bufferTimer = setTimeout(() => {
+                bufferTimer = undefined;
+                if (loading && !audio.paused) { bufferVisible = true; updateButtons(); }
+            }, 350);
+        }
+        updateButtons();
+    }
+    function drawBuffered(duration, progress) {
+        let end = audio.currentTime; const buffered = audio.buffered;
+        for (let i = 0; i < buffered.length; i++) {
+            if (buffered.start(i) <= audio.currentTime + .25 && buffered.end(i) >= audio.currentTime) end = buffered.end(i);
+        }
+        const fraction = duration > 0 ? Math.max(progress,Math.min(1,end/duration)) : 0;
+        $('[data-seek]').style.setProperty('--buffered', `${fraction * 100}%`);
+    }
     function drawProgress() {
         const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
         const progress = duration > 0 ? Math.max(0, Math.min(1, audio.currentTime / duration)) : 0;
         if (!seekActive) { $('[data-seek]').value = Math.round(progress * 1000); rangeFill($('[data-seek]'), progress); }
+        drawBuffered(duration,seekActive ? Number($('[data-seek]').value)/1000 : progress);
         $('[data-seek]').disabled = !current || !duration;
         $('[data-elapsed]').textContent = formatTime(audio.currentTime);
         $('[data-duration]').textContent = formatTime(duration);
@@ -155,24 +223,75 @@
         return radii;
     }
     function initGraph() {
-        if (graph || !(window.AudioContext || window.webkitAudioContext)) return;
+        if (graph) { if (graph.stream) bindCapture(); return; }
+        const capture = audio.captureStream || audio.mozCaptureStream;
+        if (!(window.AudioContext || window.webkitAudioContext)) return;
+        let context;
         try {
-            const context = new (window.AudioContext || window.webkitAudioContext)();
-            const source = context.createMediaElementSource(audio), splitter = context.createChannelSplitter(2);
-            // Mono tracks must reach both meters, while genuine stereo stays separate.
-            source.channelCount = 2; source.channelCountMode = 'explicit';
-            source.connect(context.destination); source.connect(splitter);
+            // Observe a copy of the signal. The native audio element remains the
+            // only audible output, including when iOS suspends Web Audio in PWA.
+            context = new (window.AudioContext || window.webkitAudioContext)();
+            const splitter = context.createChannelSplitter(2);
             const analysers = [context.createAnalyser(), context.createAnalyser()];
             analysers.forEach((a,i) => { a.fftSize = 256; a.smoothingTimeConstant = .78; splitter.connect(a, i); });
-            graph = {context, analysers, samples:new Float32Array(256)};
-        } catch (_) { graph = null; }
+            graph = {context, splitter, analysers, source:null, capturedTrack:null, samples:new Float32Array(256)};
+            if (capture) {
+                graph.stream = capture.call(audio);
+                graph.stream.addEventListener('addtrack', bindCapture);
+                graph.stream.addEventListener('removetrack', bindCapture);
+                bindCapture();
+            } else {
+                // Safari: the silent analysis copy is separate from the audible
+                // player and is unloaded when hidden. It cannot gate native sound.
+                const mirror = new Audio(); mirror.preload = 'metadata'; mirror.setAttribute('playsinline','');
+                const source = context.createMediaElementSource(mirror);
+                source.channelCount = 2; source.channelCountMode = 'explicit'; source.connect(splitter);
+                const silent = context.createGain(); silent.gain.value = 0;
+                analysers.forEach(a => a.connect(silent)); silent.connect(context.destination);
+                graph.mirror = mirror; graph.source = source;
+                mirror.addEventListener('loadedmetadata', syncMirror);
+                mirror.addEventListener('playing', syncMirror);
+            }
+        } catch (_) { graph = null; context?.close().catch(() => {}); }
+    }
+    function bindCapture() {
+        if (!graph?.stream) return;
+        const capturedTrack = graph.stream.getAudioTracks().find(t => t.readyState === 'live');
+        if (capturedTrack === graph.capturedTrack) return;
+        graph.source?.disconnect(); graph.source = null; graph.capturedTrack = capturedTrack;
+        if (!capturedTrack) return;
+        try {
+            const source = graph.context.createMediaStreamSource(new MediaStream([capturedTrack]));
+            source.channelCount = 2; source.channelCountMode = 'explicit';
+            source.connect(graph.splitter); graph.source = source;
+        } catch (_) { graph.capturedTrack = null; }
+    }
+    function resumeMeters() {
+        if (document.hidden) return;
+        initGraph();
+        if (graph && graph.context.state !== 'running') graph.context.resume().catch(() => {});
+        syncMirror();
+    }
+    function syncMirror() {
+        const mirror = graph?.mirror; if (!mirror) return;
+        if (document.hidden || audio.paused || audio.ended) { mirror.pause(); return; }
+        if (mirror.src !== audio.src) { mirror.src = audio.src; return; }
+        if (!mirror.readyState) return;
+        mirror.playbackRate = audio.playbackRate;
+        if (Math.abs(mirror.currentTime - audio.currentTime) > .2) {
+            try { mirror.currentTime = audio.currentTime; } catch (_) {}
+        }
+        if (mirror.paused) mirror.play().catch(() => {});
+    }
+    function configureAudioSession() {
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
     }
     function drawMeters(playing) {
         ['left','right'].forEach((side,i) => {
             let level = 0;
             if (playing && graph && !audio.muted && audio.volume > 0) {
                 graph.analysers[i].getFloatTimeDomainData(graph.samples);
-                const rms = Math.sqrt(graph.samples.reduce((sum,value) => sum + value * value, 0) / graph.samples.length);
+                const rms = Math.sqrt(graph.samples.reduce((sum,value) => sum + value * value, 0) / graph.samples.length) * audio.volume;
                 level = Math.max(0, Math.min(15, (20 * Math.log10(Math.max(rms, .00001)) + 45) / 3));
             }
             $(`[data-meter="${side}"]`).querySelectorAll('i').forEach((bar, n) => bar.classList.toggle('is-lit', n < level));
@@ -186,23 +305,25 @@
         if (playing && !loading && !reducedMotion.matches) {
             ['left','right'].forEach((side,i) => { angles[i] = (angles[i] - elapsed * 95 * 126 / radii[i] * audio.playbackRate) % 360; $(`[data-rotor="${side}"]`).style.transform = `rotate(${angles[i]}deg)`; });
         }
-        if (playing) frameId = requestAnimationFrame(animate);
+        if (playing && !document.hidden) frameId = requestAnimationFrame(animate);
     }
-    function startAnimation() { frameTime = 0; if (!frameId) frameId = requestAnimationFrame(animate); }
+    function startAnimation() { frameTime = 0; if (!frameId && !document.hidden) frameId = requestAnimationFrame(animate); }
     async function play() {
         if (!current) {
             const first = selectedTracks()[0]; if (!first) return;
             setQueue(); load(first.id);
         }
-        initGraph(); if (graph?.context.state === 'suspended') await graph.context.resume();
+        configureAudioSession();
+        if (audio.ended) audio.currentTime = 0;
         const version = generation;
-        try { await audio.play(); }
-        catch (error) { if (version === generation && error.name !== 'AbortError') { loading = false; updateButtons(); toast('Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
+        // Keep play() inside the tap's activation; meter setup never gates sound.
+        try { const playback = audio.play(); resumeMeters(); await playback; }
+        catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); toast('Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
     }
-    function setQueue() { queue = selectedTracks().map(t => t.id); queuePlaylist = selected; queueName = playlist(selected)?.name || 'Вся музыка'; bag = []; history = []; }
+    function setQueue() { queue = selectedTracks().map(t => t.id); queuePlaylist = selected; queueSort = selectedSort(); queueName = collectionName(selected); bag = []; history = []; }
     function load(id, time = 0) {
         const t = track(id); if (!t) return;
-        generation++; audio.pause(); current = t.id; restoreTime = time; loading = false;
+        generation++; audio.pause(); current = t.id; restoreTime = time; setBuffering(false);
         audio.src = t.url; audio.load(); render(); drawProgress(); save();
     }
     function next(automatic = false) {
@@ -230,6 +351,14 @@
         if (id) { load(id); play(); }
     }
     function applyState(result) { data = {tracks:result.tracks, playlists:result.playlists}; render(); save(); }
+    function mutate(operation) {
+        // Library snapshots must be applied in commit order. Metadata, uploads
+        // and button actions share this queue so an older reply cannot erase rows.
+        mutations++;
+        const pending = mutationQueue.then(operation);
+        mutationQueue = pending.catch(() => {});
+        return pending.finally(() => { mutations--; });
+    }
     async function api(path, form) {
         const response = await fetch(`${config.api}/${path}`, {method:form ? 'POST' : 'GET', credentials:'same-origin', headers:form ? {'X-CSRF-Token':config.csrf,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'} : {'Accept':'application/json'}, body:form});
         let result;
@@ -243,11 +372,11 @@
             if (Array.isArray(value)) value.forEach(item => form.append(`${key}[]`, item)); else form.set(key, value);
         }
         if (cover?.size) form.set('cover', cover);
-        mutations++;
-        try { const result = await api('action', form); if (result.tracks) applyState(result); return result; }
-        finally { mutations--; }
+        return mutate(async () => { const result = await api('action', form); if (result.tracks) applyState(result); return result; });
     }
     function openDialog(title, fields, handler, description = '', submit = 'Сохранить', danger = false) {
+        dialogSubmitting = false;
+        dialog.classList.remove('rp-dialog--drive');
         $('[data-dialog-title]').textContent = title;
         $('[data-dialog-fields]').innerHTML = fields;
         $('[data-dialog-description]').textContent = description; $('[data-dialog-description]').hidden = !description;
@@ -263,10 +392,25 @@
         const t = track(id); if (!t) return;
         openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + '<label class="rp-field">Обложка · JPG, PNG, WebP<input type="file" name="cover" accept="image/jpeg,image/png,image/webp"></label>', form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
     }
+    function readDuration(source) {
+        return new Promise(resolve => {
+            const probe = new Audio(); probe.preload = 'metadata';
+            const local = source instanceof Blob, url = local ? URL.createObjectURL(source) : source;
+            let timer;
+            const finish = () => {
+                const duration = Number.isFinite(probe.duration) && probe.duration > 0 && probe.duration <= 604800 ? probe.duration : 0;
+                clearTimeout(timer); probe.onloadedmetadata = probe.onerror = null;
+                probe.removeAttribute('src'); probe.load(); if (local) URL.revokeObjectURL(url);
+                resolve(duration);
+            };
+            probe.onloadedmetadata = probe.onerror = finish;
+            timer = setTimeout(finish, 5000); probe.src = url;
+        });
+    }
     async function uploadFiles(files) {
         if (uploading) { toast('Дождитесь завершения текущей загрузки.'); return; }
         if (!files.length) return;
-        uploading = true; const destination = selected; const progress = $('[data-upload-progress]'); progress.hidden = false;
+        uploading = true; const destination = selected > 0 ? selected : 0, favorite = selected === -1; const progress = $('[data-upload-progress]'); progress.hidden = false;
         let completed = 0, failed = 0;
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
@@ -274,21 +418,27 @@
             try {
                 if (file.size > config.maxUpload) throw new Error(`${file.name}: файл превышает лимит ${(config.maxUpload/1048576).toFixed(1)} МБ.`);
                 if (!/\.(mp3|flac|wav|m4a|ogg|opus|aac|webm)$/i.test(file.name)) throw new Error(`${file.name}: неподдерживаемый формат.`);
-                const form = new FormData(); form.set('audio',file); form.set('playlist_id', destination); form.set('needCSRFToken',config.csrf);
-                const result = await new Promise((resolve,reject) => {
-                    const xhr = new XMLHttpRequest(); xhr.open('POST',`${config.api}/upload`); xhr.timeout = 300000;
-                    xhr.setRequestHeader('X-CSRF-Token',config.csrf); xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); xhr.setRequestHeader('Accept','application/json');
-                    xhr.upload.onprogress = event => { if (event.lengthComputable) progress.querySelector('progress').value = event.loaded / event.total * 100; };
-                    xhr.onload = () => { try { const r = JSON.parse(xhr.responseText); if (xhr.status >= 200 && xhr.status < 300 && r.status) resolve(r); else reject(new Error(r.message || 'Ошибка загрузки.')); } catch (_) { reject(new Error('Сессия завершена или сервер недоступен. Обновите страницу.')); } };
-                    xhr.onerror = () => reject(new Error('Загрузка прервана. Проверьте соединение.')); xhr.ontimeout = () => reject(new Error('Истекло время загрузки. Попробуйте ещё раз.'));
-                    xhr.send(form);
+                const duration = await readDuration(file);
+                const form = new FormData(); form.set('audio',file); form.set('playlist_id', destination); form.set('duration', duration); form.set('favorite', favorite ? '1' : '0'); form.set('needCSRFToken',config.csrf);
+                progress.querySelector('progress').value = 0;
+                const result = await mutate(async () => {
+                    const response = await new Promise((resolve,reject) => {
+                        const xhr = new XMLHttpRequest(); xhr.open('POST',`${config.api}/upload`); xhr.timeout = 300000;
+                        xhr.setRequestHeader('X-CSRF-Token',config.csrf); xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); xhr.setRequestHeader('Accept','application/json');
+                        xhr.upload.onprogress = event => { if (event.lengthComputable) progress.querySelector('progress').value = event.loaded / event.total * 100; };
+                        xhr.onload = () => { try { const r = JSON.parse(xhr.responseText); if (xhr.status >= 200 && xhr.status < 300 && r.status) resolve(r); else reject(new Error(r.message || 'Ошибка загрузки.')); } catch (_) { reject(new Error('Сессия завершена или сервер недоступен. Обновите страницу.')); } };
+                        xhr.onerror = () => reject(new Error('Загрузка прервана. Проверьте соединение.')); xhr.ontimeout = () => reject(new Error('Истекло время загрузки. Попробуйте ещё раз.'));
+                        xhr.send(form);
+                    });
+                    applyState(response); return response;
                 });
-                applyState(result); completed++;
+                completed++;
                 if (!current) { setQueue(); load(result.id); }
             } catch (error) { failed++; toast(error.message,true); }
         }
         uploading = false; progress.hidden = true; $('[data-audio-files]').value = '';
         if (!failed) toast(`Добавлено треков: ${completed}`);
+        else if (completed) toast(`Добавлено: ${completed}. Не удалось загрузить: ${failed}.`,true);
     }
 
     app.addEventListener('click', async event => {
@@ -303,11 +453,12 @@
                 case 'shuffle': shuffle = !shuffle; bag = []; history = []; updateButtons(); save(); break;
                 case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; updateButtons(); save(); break;
                 case 'mute': audio.muted = !audio.muted; updateButtons(); save(); break;
-                case 'focus': document.body.classList.toggle('is-focus'); control.setAttribute('aria-pressed', String(document.body.classList.contains('is-focus'))); break;
+                case 'theme': theme = theme === 'dark' ? 'light' : 'dark'; applyTheme(); break;
                 case 'select-playlist': selected = id; $('[data-search]').value = ''; render(); save(); break;
+                case 'favorite': control.disabled = true; await action('track.favorite',{id,favorite:track(id).favorite ? 0 : 1}); break;
                 case 'upload': $('[data-audio-files]').click(); break;
                 case 'create-playlist': createPlaylist(); break;
-                case 'close-dialog': if (!$('[data-dialog-submit]').disabled) dialog.close(); break;
+                case 'close-dialog': if (!dialogSubmitting) dialog.close(); break;
                 case 'edit-current': editTrack(current); break;
                 case 'edit-track': editTrack(id); break;
                 case 'rename-playlist': openDialog('Название ленты', field('name','Название плейлиста',playlist(selected).name,160), form => action('playlist.rename',{id:selected,name:form.get('name')})); break;
@@ -331,39 +482,84 @@
                 }
                 case 'drive-disconnect': openDialog('Отключить Google Drive?', '', async () => { await action('drive.disconnect'); config.drive.connected = false; toast('Google Drive отключён.'); }, 'Ленты сохранятся. Чтобы слушать облачные треки, подключите аккаунт снова.', 'Отключить'); break;
                 case 'drive-more': await driveFiles(control.dataset.page); break;
+                case 'drive-select-all': {
+                    const ids = [...driveKnownFiles.keys()], allSelected = ids.every(id => driveSelection.has(id));
+                    for (const fileId of ids) {
+                        if (allSelected) driveSelection.delete(fileId);
+                        else if (driveSelection.size < 100) driveSelection.add(fileId);
+                    }
+                    dialog.querySelectorAll('[data-drive-file]').forEach(box => { box.checked = driveSelection.has(box.value); });
+                    updateDriveSelection(); break;
+                }
+                case 'drive-clear': driveSelection.clear(); dialog.querySelectorAll('[data-drive-file]').forEach(box => { box.checked = false; }); updateDriveSelection(); break;
+                case 'drive-folder': drivePath.push({id:control.dataset.folderId,name:control.dataset.folderName}); await navigateDrive(); break;
+                case 'drive-root': drivePath = [{id:'root',name:'Мой Drive'}]; await navigateDrive(); break;
+                case 'drive-parent': drivePath = drivePath.slice(0,Number(control.dataset.depth)+1); await navigateDrive(); break;
+                case 'drive-all': drivePath = []; await navigateDrive(); break;
+                case 'drive-add-folder':
+                    dialog.querySelector('[name="link"]').value = `https://drive.google.com/drive/folders/${drivePath.at(-1).id}`;
+                    updateDriveSelection(); toast('Ссылка на текущую папку подставлена. Нажмите «Добавить музыку».'); break;
             }
         } catch (error) { toast(error.message,true); if (control.isConnected) control.disabled = false; }
     });
     $('[data-dialog-form]').addEventListener('submit', async event => {
         event.preventDefault(); const control = $('[data-dialog-submit]'); if (control.disabled) return;
-        control.disabled = true; $('[data-dialog-error]').hidden = true;
+        dialogSubmitting = true; control.disabled = true; $('[data-dialog-error]').hidden = true;
         try { await dialogHandler(new FormData(event.currentTarget)); dialog.close(); }
         catch (error) { $('[data-dialog-error]').textContent = error.message; $('[data-dialog-error]').hidden = false; }
-        finally { control.disabled = false; }
+        finally { dialogSubmitting = false; control.disabled = false; }
     });
-    dialog.addEventListener('cancel', event => { if ($('[data-dialog-submit]').disabled) event.preventDefault(); });
+    dialog.addEventListener('cancel', event => { if (dialogSubmitting) event.preventDefault(); });
     $('[data-search]').addEventListener('input', render);
+    $('[data-sort]').addEventListener('click', event => {
+        if (event.target.closest('[data-sort-trigger]')) {
+            $('[data-sort-options]').hidden ? openSort() : closeSort();
+            return;
+        }
+        const option = event.target.closest('[data-sort-mode]'); if (!option) return;
+        if (selected > 0) playlistSort = option.dataset.sortMode; else librarySort = option.dataset.sortMode;
+        render(); save();
+    });
+    $('[data-sort]').addEventListener('keydown', event => {
+        const keys = ['ArrowDown','ArrowUp','Home','End','Escape']; if (!keys.includes(event.key)) return;
+        event.preventDefault(); event.stopPropagation();
+        if (event.key === 'Escape') { closeSort(); return; }
+        if ($('[data-sort-options]').hidden) { openSort(); return; }
+        const options = [...$('[data-sort-options]').children], index = options.indexOf(document.activeElement);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+        options[next]?.focus();
+    });
+    $('[data-sort]').addEventListener('focusout', event => { if (!$('[data-sort]').contains(event.relatedTarget)) closeSort(); });
+    document.addEventListener('click', event => { if (!$('[data-sort]').contains(event.target)) closeSort(); });
     $('[data-volume]').addEventListener('input', event => { audio.volume = Number(event.target.value); audio.muted = false; rangeFill(event.target, audio.volume); updateButtons(); save(); });
     $('[data-seek]').addEventListener('input', event => { seekActive = true; const fraction = Number(event.target.value) / 1000; rangeFill(event.target,fraction); $('[data-elapsed]').textContent = formatTime(audio.duration * fraction); });
     $('[data-seek]').addEventListener('change', event => { if (Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(event.target.value) / 1000; seekActive = false; drawProgress(); save(); });
     $('[data-audio-files]').addEventListener('change', event => uploadFiles([...event.target.files]));
     audio.addEventListener('loadedmetadata', () => {
-        if (restoreTime) { audio.currentTime = Math.min(restoreTime, Math.max(0,audio.duration - .1)); restoreTime = 0; }
+        if (restoreTime) {
+            if (Number.isFinite(audio.duration)) audio.currentTime = restoreTime >= audio.duration - .25 ? 0 : Math.max(0, restoreTime);
+            restoreTime = 0;
+        }
         drawProgress();
         const t = activeTrack();
         if (t && Number.isFinite(audio.duration) && Math.abs(t.duration - audio.duration) > 1) {
             t.duration = audio.duration;
-            action('track.update',{id:t.id,duration:audio.duration}).catch(() => {});
+            action('track.duration',{id:t.id,duration:audio.duration}).catch(() => {});
         }
     });
-    audio.addEventListener('play', () => { updateButtons(); startAnimation(); });
-    audio.addEventListener('playing', () => { loading = false; updateButtons(); startAnimation(); });
-    audio.addEventListener('waiting', () => { loading = true; updateButtons(); });
-    audio.addEventListener('pause', () => { loading = false; updateButtons(); drawMeters(false); save(); });
+    audio.addEventListener('play', () => { setBuffering(audio.readyState < 3); startAnimation(); });
+    audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); });
+    audio.addEventListener('waiting', () => { setBuffering(true); });
+    audio.addEventListener('stalled', () => { if (audio.readyState < 3) setBuffering(true); });
+    audio.addEventListener('canplay', () => { if (audio.readyState >= 3) setBuffering(false); });
+    audio.addEventListener('progress', drawProgress);
+    audio.addEventListener('seeking', () => { if (audio.readyState < 3) setBuffering(true); drawProgress(); });
+    audio.addEventListener('pause', () => { setBuffering(false); graph?.mirror?.pause(); drawMeters(false); save(); });
     audio.addEventListener('timeupdate', () => { drawProgress(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
-    audio.addEventListener('seeked', drawProgress);
-    audio.addEventListener('ended', () => { updateButtons(); drawProgress(); drawMeters(false); next(true); });
-    audio.addEventListener('error', () => { if (!current) return; loading = false; updateButtons(); toast(activeTrack()?.source === 'drive' ? 'Не удалось открыть Google Drive. Проверьте подключение аккаунта и доступ к файлу.' : 'Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); });
+    audio.addEventListener('seeked', () => { drawProgress(); syncMirror(); });
+    audio.addEventListener('ratechange', syncMirror);
+    audio.addEventListener('ended', () => { setBuffering(false); drawProgress(); drawMeters(false); next(true); });
+    audio.addEventListener('error', () => { if (!current) return; setBuffering(false); toast(activeTrack()?.source === 'drive' ? 'Не удалось открыть Google Drive. Проверьте подключение аккаунта и доступ к файлу.' : 'Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); });
     $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== config.defaultCover) event.target.src = config.defaultCover; });
     let dragDepth = 0;
     window.addEventListener('dragenter', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) { event.preventDefault(); dragDepth++; $('[data-drop-overlay]').hidden = false; } });
@@ -384,11 +580,81 @@
         for (const [name,handler] of Object.entries(handlers)) { try { navigator.mediaSession.setActionHandler(name,handler); } catch (_) {} }
     }
     window.addEventListener('pagehide', save);
+    document.addEventListener('visibilitychange', () => {
+        save();
+        if (document.hidden) {
+            cancelAnimationFrame(frameId); frameId = 0; frameTime = 0; drawMeters(false);
+            if (graph?.mirror) { graph.mirror.pause(); graph.mirror.removeAttribute('src'); graph.mirror.load(); }
+        } else {
+            drawProgress(); updateButtons();
+            if (!audio.paused) { configureAudioSession(); resumeMeters(); startAnimation(); }
+        }
+    });
+    window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });
+    if (config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {
+        navigator.serviceWorker.register(config.pwa.worker, {scope:'/', updateViaCache:'none'}).catch(() => {});
+    }
 
-    let driveSelection = new Set();
+    let driveSelection = new Set(), driveKnownFiles = new Map(), driveFolders = new Set(), drivePath = [], driveBrowseGeneration = 0;
+    const isDriveFolder = file => file.mimeType === 'application/vnd.google-apps.folder';
+    const isDriveAudio = file => /\.(mp3|flac|wav|m4a|ogg|opus|aac|webm)$/i.test(file.name || '') && Number(file.size) > 0 && file.capabilities?.canDownload !== false;
+    const driveSize = value => {
+        const size = Number(value);
+        if (size < 1024) return 'Меньше 1 КБ';
+        const unit = size >= 1073741824 ? [1073741824,'ГБ'] : size >= 1048576 ? [1048576,'МБ'] : [1024,'КБ'];
+        return `${(size / unit[0]).toLocaleString('ru-RU',{maximumFractionDigits:1})} ${unit[1]}`;
+    };
+    function updateDriveSelection() {
+        const summary = dialog.querySelector('[data-drive-selected]'); if (!summary) return;
+        summary.textContent = `Выбрано: ${driveSelection.size}`;
+        const bulk = dialog.querySelector('[data-action="drive-select-all"]');
+        bulk.disabled = driveKnownFiles.size === 0;
+        bulk.textContent = driveKnownFiles.size && [...driveKnownFiles.keys()].every(id => driveSelection.has(id)) ? 'Снять выбор в папке' : driveKnownFiles.size > 100 ? 'Выбрать до 100' : 'Выбрать показанные';
+        dialog.querySelector('[data-action="drive-clear"]').hidden = !driveSelection.size;
+        const hasLink = Boolean(dialog.querySelector('[name="link"]').value.trim());
+        const submit = $('[data-dialog-submit]');
+        submit.disabled = dialogSubmitting || (!driveSelection.size && !hasLink);
+        submit.textContent = hasLink ? 'Добавить музыку' : driveSelection.size ? `Добавить (${driveSelection.size})` : 'Выберите песни';
+    }
+    function renderDrivePath() {
+        const nav = dialog.querySelector('[data-drive-path]'); nav.replaceChildren();
+        const root = element('button','rp-drive-crumb','Мой Drive'); root.type = 'button'; root.dataset.action = 'drive-root'; root.disabled = drivePath.length === 1; nav.append(root);
+        const crumbs = drivePath.length ? drivePath.slice(1) : [{id:'',name:'Вся музыка'}];
+        crumbs.forEach((folder,index) => {
+            nav.append(element('span','rp-drive-path-separator','›'));
+            const crumb = element('button','rp-drive-crumb',folder.name); crumb.type = 'button'; crumb.title = folder.name; crumb.dataset.action = 'drive-parent'; crumb.dataset.depth = index+1; crumb.disabled = index === crumbs.length-1; nav.append(crumb);
+        });
+        const all = dialog.querySelector('[data-action="drive-all"]'); all.hidden = !drivePath.length;
+        dialog.querySelector('[data-action="drive-add-folder"]').hidden = drivePath.length <= 1;
+    }
+    async function navigateDrive() {
+        driveBrowseGeneration++; driveKnownFiles = new Map(); driveFolders = new Set();
+        const list = dialog.querySelector('[data-drive-files]'); list.replaceChildren(element('p','rp-drive-loading','Загружаем папки и музыку…'));
+        dialog.querySelector('[data-drive-count]').textContent = 'Загрузка…';
+        renderDrivePath(); updateDriveSelection();
+        await driveFiles();
+    }
+    function driveSetupHelp(callback) {
+        return `<div class="rp-drive-description">
+            <p>Адрес возврата после входа в Google. Добавьте его без изменений в <strong>Authorized redirect URIs</strong>:</p>
+            <code>${esc(callback)}</code>
+            <details class="rp-drive-help"><summary>Как подключить свой Google Drive</summary>
+                <ol>
+                    <li>Откройте <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console ↗</a> и создайте проект <strong>Tape Room</strong>.</li>
+                    <li>В выбранном проекте откройте <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer">Google Drive API ↗</a> и нажмите <strong>Enable / Включить</strong>.</li>
+                    <li>В <strong>Google Auth Platform</strong> укажите название приложения и свою почту. Выберите <strong>External</strong>; в <strong>Audience → Test users</strong> добавьте почту своего Google-аккаунта. В <strong>Data Access</strong> добавьте разрешение <strong>drive.readonly</strong> для чтения файлов.</li>
+                    <li>В <strong>Clients → Create client</strong> выберите <strong>Web application</strong>. В <strong>Authorized redirect URIs</strong> вставьте адрес, показанный выше.</li>
+                    <li>Вставьте полученные <strong>Client ID</strong> и <strong>Client Secret</strong> в поля этой формы. Нажмите <strong>Сохранить</strong>, затем <strong>Войти через Google</strong>, либо сразу <strong>Сохранить и войти</strong>.</li>
+                    <li>Выберите аккаунт и разрешите чтение Drive. Затем отметьте песни в списке или вставьте ссылку на папку и нажмите <strong>Добавить</strong>.</li>
+                </ol>
+                <p>В режиме Testing Google выдаёт доступ на 7 дней, затем нужно подключиться снова. Для постоянного использования настройте публикацию приложения в Google Auth Platform.</p>
+                <a href="https://developers.google.com/identity/protocols/oauth2/web-server#prerequisites" target="_blank" rel="noopener noreferrer">Официальная инструкция Google ↗</a>
+            </details>
+        </div>`;
+    }
     async function driveSettings(connectAfter = false) {
         const status = await api('drive/status'); config.drive = status.drive;
-        openDialog('Разовая настройка Google', field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label><p class="rp-drive-description">В Google Cloud включите Drive API, создайте OAuth-клиент типа «Веб-приложение» и добавьте этот адрес в разрешённые URI перенаправления:<code>' + esc(status.drive.callback) + '</code><a href="https://developers.google.com/identity/protocols/oauth2/web-server#prerequisites" target="_blank" rel="noopener noreferrer">Инструкция Google ↗</a></p>', async form => {
+        openDialog('Разовая настройка Google', field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label>' + driveSetupHelp(status.drive.callback), async form => {
             const result = await action('drive.settings',{client_id:form.get('client_id'),client_secret:form.get('client_secret')}); config.drive = result.drive;
             if (connectAfter) { const connection = await action('drive.connect'); location.assign(connection.authUrl); }
             else toast('Настройки сохранены. Теперь можно войти через Google.');
@@ -401,30 +667,71 @@
             $('[data-dialog-submit]').hidden = true;
             return;
         }
-        driveSelection = new Set();
-        openDialog('Музыка из Google Drive', '<label class="rp-field">Ссылка на файл или папку<input name="link" placeholder="https://drive.google.com/…"></label><div class="rp-drive-files" data-drive-files>Загружаем список…</div><button type="button" class="rp-drive-settings-link" data-action="drive-settings">Настройки</button> · <button type="button" class="rp-drive-settings-link" data-action="drive-disconnect">Отключить аккаунт</button>', async form => {
+        driveSelection = new Set(); drivePath = [{id:'root',name:'Мой Drive'}];
+        openDialog('Добавить музыку из Drive', '<div class="rp-drive-location"><nav class="rp-drive-path" data-drive-path aria-label="Папки Google Drive"></nav><button type="button" class="rp-drive-settings-link" data-action="drive-all">Вся музыка</button></div><div class="rp-drive-heading"><span>Папки и музыка</span><small data-drive-count>Загрузка…</small></div><button type="button" class="rp-button rp-drive-add-folder" data-action="drive-add-folder" hidden>Добавить эту папку целиком</button><div class="rp-drive-selection"><span data-drive-selected>Выбрано: 0</span><div class="rp-drive-selection-buttons"><button type="button" class="rp-drive-settings-link" data-action="drive-clear" hidden>Сбросить</button><button type="button" class="rp-button" data-action="drive-select-all" disabled>Выбрать показанные</button></div></div><div class="rp-drive-files" data-drive-files aria-live="polite">Загружаем папки и музыку…</div><label class="rp-field rp-drive-link-field">Или вставьте ссылку на песню / папку<input name="link" type="url" placeholder="https://drive.google.com/…" inputmode="url" autocomplete="off"><small>Ссылка на папку добавит все поддерживаемые песни из самой папки.</small></label><div class="rp-drive-account-actions"><button type="button" class="rp-drive-settings-link" data-action="drive-settings">Настройки подключения</button><button type="button" class="rp-drive-settings-link" data-action="drive-disconnect">Отключить аккаунт</button></div>', async form => {
             if (!driveSelection.size && !form.get('link').trim()) throw new Error('Выберите хотя бы один трек или вставьте ссылку.');
-            const result = await action('drive.import',{ids:[...driveSelection],link:form.get('link'),playlist_id:selected});
+            const result = await action('drive.import',{ids:[...driveSelection],link:form.get('link'),playlist_id:selected > 0 ? selected : 0});
+            if (selected === -1) { selected = 0; render(); save(); }
             toast(`Добавлено треков из Google Drive: ${result.imported}`);
-        }, 'Выберите файлы или вставьте ссылку на аудиофайл / папку. Треки появятся в открытой ленте.', 'Добавить');
-        await driveFiles();
+        }, 'Откройте папку с музыкой, отметьте песни и нажмите «Добавить». Музыка останется на Google Drive.', 'Выберите песни');
+        dialog.classList.add('rp-dialog--drive');
+        dialog.querySelector('[name="link"]').addEventListener('input', updateDriveSelection);
+        await navigateDrive();
     }
     async function driveFiles(page = '') {
-        const result = await api('drive/files' + (page ? '?page=' + encodeURIComponent(page) : ''));
         const list = $('[data-drive-files]'); if (!list) return;
-        if (!page) list.replaceChildren(); else list.querySelector('[data-action="drive-more"]')?.remove();
-        for (const file of result.files) {
-            const label = element('label','rp-drive-file'), box = element('input',''); box.type = 'checkbox'; box.value = file.id; box.checked = driveSelection.has(file.id);
-            box.addEventListener('change', () => box.checked ? driveSelection.add(file.id) : driveSelection.delete(file.id));
-            label.append(box,element('span','',file.name),element('small','',file.size ? `${(Number(file.size)/1048576).toFixed(1)} МБ` : '')); list.append(label);
+        const folder = drivePath.at(-1)?.id || '', browseGeneration = driveBrowseGeneration;
+        const more = list.querySelector('[data-action="drive-more"]'); if (more) { more.disabled = true; more.textContent = 'Ищем музыку…'; }
+        let result, files, token = page, attempts = 0;
+        try {
+            do {
+                const params = new URLSearchParams(); if (token) params.set('page',token); if (folder) params.set('folder',folder);
+                result = await api('drive/files' + (params.size ? '?' + params : ''));
+                if ($('[data-drive-files]') !== list || !dialog.open || browseGeneration !== driveBrowseGeneration) return;
+                files = (result.files || []).filter(file => isDriveAudio(file) || (folder && isDriveFolder(file)));
+                const next = result.nextPageToken || '';
+                if (!next || next === token || files.length) break;
+                token = next;
+            } while (++attempts < 3);
+        } catch (error) {
+            if ($('[data-drive-files]') !== list || browseGeneration !== driveBrowseGeneration) return;
+            if (more) { more.disabled = false; more.textContent = 'Повторить загрузку'; }
+            else { list.replaceChildren(element('p','rp-drive-empty',error.message)); const retry = element('button','rp-button','Повторить загрузку'); retry.type = 'button'; retry.dataset.action = 'drive-more'; list.append(retry); }
+            throw error;
         }
-        if (!result.files.length && !page) list.textContent = 'Аудиофайлы не найдены. Можно вставить ссылку на файл или папку выше.';
-        if (result.nextPageToken) { const more = element('button','rp-button','Показать ещё'); more.type = 'button'; more.dataset.action = 'drive-more'; more.dataset.page = result.nextPageToken; list.append(more); }
+        if (!page) list.replaceChildren(); else more?.remove();
+        list.querySelector('.rp-drive-empty')?.remove();
+        for (const file of files) {
+            if (isDriveFolder(file)) {
+                if (driveFolders.has(file.id)) continue;
+                driveFolders.add(file.id);
+                const entry = element('button','rp-drive-folder'); entry.type = 'button'; entry.dataset.action = 'drive-folder'; entry.dataset.folderId = file.id; entry.dataset.folderName = file.name; entry.setAttribute('aria-label',`Открыть папку ${file.name}`);
+                const mark = element('span','rp-drive-folder-icon'); mark.innerHTML = icon('folder');
+                entry.append(mark,element('span','rp-drive-folder-name',file.name),element('span','rp-drive-folder-arrow','›'));
+                list.insertBefore(entry,list.querySelector('.rp-drive-file')); continue;
+            }
+            if (driveKnownFiles.has(file.id)) continue;
+            driveKnownFiles.set(file.id,file);
+            const label = element('label','rp-drive-file'), box = element('input',''); box.type = 'checkbox'; box.value = file.id; box.checked = driveSelection.has(file.id); box.dataset.driveFile = '';
+            box.setAttribute('aria-label',`Выбрать ${file.name}`);
+            box.addEventListener('change', () => {
+                if (box.checked && driveSelection.size >= 100) { box.checked = false; toast('За один раз можно выбрать до 100 песен. Папку целиком можно добавить по ссылке.',true); return; }
+                box.checked ? driveSelection.add(file.id) : driveSelection.delete(file.id); updateDriveSelection();
+            });
+            const mark = element('span','rp-drive-file-icon'); mark.innerHTML = icon('music');
+            const info = element('span','rp-drive-file-info'); info.append(element('span','rp-drive-file-name',file.name),element('small','rp-drive-file-format',file.name.split('.').pop().toUpperCase()));
+            label.append(box,mark,info,element('small','rp-drive-file-size',driveSize(file.size))); list.append(label);
+        }
+        if (!driveKnownFiles.size && !driveFolders.size) list.prepend(element('p','rp-drive-empty',result.nextPageToken ? 'В этой порции файлов нет папок и музыки. Продолжите поиск.' : 'Здесь нет папок и поддерживаемой музыки. Вернитесь назад или вставьте ссылку ниже.'));
+        dialog.querySelector('[data-drive-count]').textContent = `${folder ? `Папок: ${driveFolders.size} · ` : ''}песен: ${driveKnownFiles.size}${result.nextPageToken ? ' · есть ещё' : ''}`;
+        if (result.nextPageToken) { const next = element('button','rp-button rp-drive-more','Показать ещё'); next.type = 'button'; next.dataset.action = 'drive-more'; next.dataset.page = result.nextPageToken; list.append(next); }
+        updateDriveSelection();
     }
     dialog.addEventListener('close', () => { $('[data-dialog-submit]').hidden = false; });
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
     audio.muted = Boolean(saved.muted); $('[data-volume]').value = audio.volume; rangeFill($('[data-volume]'),audio.volume);
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;
+    applyTheme();
     render();
     if (track(saved.current)) { queue = Array.isArray(saved.queue) ? saved.queue.filter(id => Boolean(track(id))) : []; if (!queue.length) setQueue(); queueName = saved.queueName || 'Вся музыка'; load(saved.current,Number(saved.time) || 0); }
     else if (data.tracks.length) { setQueue(); load(selectedTracks()[0]?.id || data.tracks[0].id); }

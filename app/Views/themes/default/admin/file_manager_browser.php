@@ -123,23 +123,23 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                 </li>
             <?php endif; ?>
             <li>
-                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_rename']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="rename" <?= empty($item['can_rename']) ? 'aria-disabled="true"' : '' ?>>
+                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_rename']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="rename" <?= empty($item['can_rename']) ? 'disabled aria-disabled="true"' : '' ?> title="<?= htmlSC((string)($item['protection_reason'] ?? '')) ?>">
                     <i class="ci-edit"></i><?= print_translation('admin_files_rename') ?>
                 </button>
             </li>
             <li>
-                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="copy" <?= empty($item['can_transfer']) ? 'aria-disabled="true"' : '' ?>>
+                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="copy" <?= empty($item['can_transfer']) ? 'disabled aria-disabled="true"' : '' ?> title="<?= htmlSC((string)($item['protection_reason'] ?? '')) ?>">
                     <i class="ci-copy"></i><?= print_translation('admin_files_copy') ?>
                 </button>
             </li>
             <li>
-                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="move" <?= empty($item['can_transfer']) ? 'aria-disabled="true"' : '' ?>>
+                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_transfer']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="move" <?= empty($item['can_transfer']) ? 'disabled aria-disabled="true"' : '' ?> title="<?= htmlSC((string)($item['protection_reason'] ?? '')) ?>">
                     <i class="ci-move"></i><?= print_translation('admin_files_move') ?>
                 </button>
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
-                <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2<?= empty($item['can_delete']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="delete" <?= empty($item['can_delete']) ? 'aria-disabled="true"' : '' ?>>
+                <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2<?= empty($item['can_delete']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="delete" <?= empty($item['can_delete']) ? 'disabled aria-disabled="true"' : '' ?> title="<?= htmlSC((string)($item['protection_reason'] ?? '')) ?>">
                     <i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?>
                 </button>
             </li>
@@ -406,6 +406,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                                     'data-can-delete' => !empty($item['can_delete']) ? '1' : '0',
                                     'data-can-rename' => !empty($item['can_rename']) ? '1' : '0',
                                     'data-can-transfer' => !empty($item['can_transfer']) ? '1' : '0',
+                                    'data-protection-reason' => (string)($item['protection_reason'] ?? ''),
                                     'draggable' => !empty($item['can_transfer']) ? 'true' : null,
                                     'data-fm-drop-dir' => $isDirectory ? $relativePath : null,
                                 ];
@@ -458,6 +459,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
                                     data-can-delete="<?= !empty($item['can_delete']) ? '1' : '0' ?>"
                                     data-can-rename="<?= !empty($item['can_rename']) ? '1' : '0' ?>"
                                     data-can-transfer="<?= !empty($item['can_transfer']) ? '1' : '0' ?>"
+                                    data-protection-reason="<?= htmlSC((string)($item['protection_reason'] ?? '')) ?>"
                                     <?= !empty($item['can_transfer']) ? 'draggable="true"' : '' ?>
                                     <?= $isDirectory ? 'data-fm-drop-dir="' . htmlSC((string)($item['relative_path'] ?? '')) . '"' : '' ?>
                                 >

@@ -11,9 +11,20 @@ $button = static function (string $action, string $label, string $name, string $
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light">
+    <?= $pwa_head ?? '' ?>
+    <meta name="theme-color" content="#f7f5f0">
     <title>Tape Room — личная музыкальная комната</title>
+    <script>
+        (() => {
+            let theme = 'light';
+            try { if (localStorage.getItem(<?= json_encode($config['storageKey'] . ':theme', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>) === 'dark') theme = 'dark'; } catch (_) {}
+            document.documentElement.dataset.theme = theme;
+            document.querySelector('meta[name="color-scheme"]').content = theme;
+            document.querySelectorAll('meta[name="theme-color"]').forEach(meta => { meta.content = theme === 'dark' ? '#191c1a' : '#f7f5f0'; });
+        })();
+    </script>
     <link rel="stylesheet" href="<?= htmlSC($css_url) ?>">
 </head>
 <body class="rp-body">
@@ -30,20 +41,23 @@ $button = static function (string $action, string $label, string $name, string $
     <symbol id="rp-i-volume" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
     <symbol id="rp-i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6m0-6-5 6"/></symbol>
     <symbol id="rp-i-list" viewBox="0 0 24 24"><path d="M8 5h13M8 12h13M8 19h13M3 5h.1M3 12h.1M3 19h.1"/></symbol>
+    <symbol id="rp-i-folder" viewBox="0 0 24 24"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></symbol>
     <symbol id="rp-i-edit" viewBox="0 0 24 24"><path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-4-4L5 15z"/></symbol>
     <symbol id="rp-i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
     <symbol id="rp-i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="rp-i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
     <symbol id="rp-i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="rp-i-back" viewBox="0 0 24 24"><path d="m10 5-7 7 7 7M3 12h18"/></symbol>
-    <symbol id="rp-i-focus" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+    <symbol id="rp-i-moon" viewBox="0 0 24 24"><path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z"/></symbol>
+    <symbol id="rp-i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="rp-i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/></symbol>
+    <symbol id="rp-i-heart" viewBox="0 0 24 24"><path d="M20.3 5.4a5.3 5.3 0 0 0-7.5 0L12 6.2l-.8-.8a5.3 5.3 0 0 0-7.5 7.5L12 21l8.3-8.1a5.3 5.3 0 0 0 0-7.5Z"/></symbol>
 </defs></svg>
 <main class="rp-app" data-player>
     <header class="rp-header">
         <a class="rp-back" href="<?= htmlSC(base_href('/admin')) ?>" aria-label="Вернуться в CMS"><?= $icon('back') ?><span>FIREBALL</span></a>
         <div class="rp-brand">TAPE ROOM<span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
-        <?= $button('focus', 'Режим прослушивания', 'focus') ?>
+        <?= $button('theme', 'Включить тёмную тему', 'moon') ?>
     </header>
     <section class="rp-machine" aria-label="Катушечный аудиоплеер">
         <div class="rp-machine-caption"><span class="rp-status-dot"></span><span data-play-status>ГОТОВ К ПРОСЛУШИВАНИЮ</span><span class="rp-model">STEREO / 01</span></div>
@@ -129,7 +143,13 @@ $button = static function (string $action, string $label, string $name, string $
                 <div class="rp-list-heading"><h2 data-list-title>Вся музыка</h2><span data-list-summary>0 треков</span></div>
                 <div class="rp-library-actions"><div data-playlist-actions hidden><?= $button('rename-playlist', 'Переименовать плейлист', 'edit') ?><?= $button('delete-playlist', 'Удалить плейлист', 'trash') ?></div><button type="button" class="rp-upload-button" data-action="upload"><?= $icon('plus') ?><span>Добавить музыку</span></button></div>
             </div>
-            <label class="rp-search"><?= $icon('search') ?><input type="search" data-search placeholder="Найти трек или исполнителя" aria-label="Найти трек или исполнителя"></label>
+            <div class="rp-library-filters">
+                <label class="rp-search"><?= $icon('search') ?><input type="search" data-search placeholder="Найти трек или исполнителя" aria-label="Найти трек или исполнителя"></label>
+                <div class="rp-sort" data-sort>
+                    <button type="button" class="rp-sort-trigger" data-sort-trigger aria-label="Сортировка музыки: сначала новые" aria-haspopup="listbox" aria-expanded="false" aria-controls="rp-sort-options"><span data-sort-label>Сначала новые</span><?= $icon('down') ?></button>
+                    <div class="rp-sort-options" id="rp-sort-options" data-sort-options role="listbox" aria-label="Сортировка музыки" hidden></div>
+                </div>
+            </div>
             <div class="rp-track-list" data-tracks></div>
             <div class="rp-empty" data-empty>
                 <div class="rp-empty-icon"><?= $icon('music') ?></div><h3 data-empty-title>Здесь начинается ваша коллекция</h3><p data-empty-description>Перетащите аудиофайлы сюда или добавьте их кнопкой выше.</p><span>MP3 · FLAC · WAV · M4A · OGG · OPUS · AAC · WEBM</span>
@@ -141,7 +161,7 @@ $button = static function (string $action, string $label, string $name, string $
     <div class="rp-drop-overlay" hidden data-drop-overlay><?= $icon('upload') ?><strong>Положите музыку на ленту</strong><span>Файлы добавятся в открытый плейлист</span></div>
     <div class="rp-upload-progress" hidden data-upload-progress><span data-upload-message></span><progress max="100" value="0"></progress></div>
     <div class="rp-toast" role="status" data-toast hidden></div>
-    <audio data-audio preload="metadata"></audio>
+    <audio data-audio preload="auto" playsinline></audio>
     <input class="rp-sr-only" tabindex="-1" aria-hidden="true" type="file" data-audio-files accept=".mp3,.wav,.flac,.m4a,.ogg,.opus,.aac,.webm" multiple>
     <dialog class="rp-dialog" data-dialog>
         <form data-dialog-form>

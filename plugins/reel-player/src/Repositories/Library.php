@@ -10,10 +10,11 @@ final class Library
 
     public function state(): array
     {
-        $tracks = db()->query('SELECT id, title, artist, filename, duration, file_size, cover_path, source FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
+        $tracks = db()->query('SELECT id, title, artist, filename, duration, file_size, cover_path, source, favorite, created_at FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
         foreach ($tracks as &$track) {
             $track['id'] = (int)$track['id'];
             $track['duration'] = (float)$track['duration'];
+            $track['favorite'] = (bool)$track['favorite'];
             $track['url'] = base_href('/admin/reel-player/media/' . $track['id']);
             $track['cover'] = $track['cover_path'] ? base_href('/admin/reel-player/cover/' . $track['id']) . '?v=' . basename($track['cover_path']) : '';
             unset($track['cover_path']);
@@ -50,9 +51,18 @@ final class Library
         return $value;
     }
 
-    public function upload(array $file, int $playlist = 0): int
+    private static function duration(mixed $value): float
+    {
+        if (!is_numeric($value)) throw new \InvalidArgumentException('Некорректная длительность.');
+        $duration = (float)$value;
+        if (!is_finite($duration) || $duration < 0 || $duration > 604800) throw new \InvalidArgumentException('Некорректная длительность.');
+        return $duration;
+    }
+
+    public function upload(array $file, int $playlist = 0, mixed $duration = 0, bool $favorite = false): int
     {
         if ($playlist) $this->playlist($playlist);
+        $duration = self::duration($duration);
         $storage = new MediaStorage();
         $saved = $storage->upload($file, $this->owner);
         try {
@@ -61,8 +71,8 @@ final class Library
             $parts = explode(' - ', $base, 2);
             $artist = count($parts) === 2 ? trim($parts[0]) : '';
             $title = trim(count($parts) === 2 ? $parts[1] : $base) ?: 'Без названия';
-            db()->query('INSERT INTO reel_tracks (owner_id, title, artist, filename, file_path, mime, file_size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [$this->owner, mb_substr($title, 0, 240), mb_substr($artist, 0, 240), $name, $saved['path'], $saved['mime'], $saved['size'], date('Y-m-d H:i:s')]);
+            db()->query('INSERT INTO reel_tracks (owner_id, title, artist, filename, file_path, mime, file_size, duration, favorite, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [$this->owner, mb_substr($title, 0, 240), mb_substr($artist, 0, 240), $name, $saved['path'], $saved['mime'], $saved['size'], $duration, (int)$favorite, date('Y-m-d H:i:s')]);
             $id = (int)db()->getInsertId();
         } catch (\Throwable $error) {
             $storage->delete($saved['path']);
@@ -145,8 +155,7 @@ final class Library
                 $track = $this->track($id);
                 $title = self::text($data['title'] ?? $track['title'], 240, 'Название');
                 $artist = self::text($data['artist'] ?? $track['artist'], 240, 'Исполнитель', false);
-                $duration = (float)($data['duration'] ?? $track['duration']);
-                if (!is_finite($duration) || $duration < 0 || $duration > 604800) throw new \InvalidArgumentException('Некорректная длительность.');
+                $duration = self::duration($data['duration'] ?? $track['duration']);
                 $storage = new MediaStorage();
                 $saved = $cover && (int)$cover['error'] !== UPLOAD_ERR_NO_FILE ? $storage->upload($cover, $this->owner, true) : null;
                 try {
@@ -154,6 +163,16 @@ final class Library
                         [$title, $artist, $duration, $saved['path'] ?? $track['cover_path'], $saved['mime'] ?? $track['cover_mime'], $id, $this->owner]);
                 } catch (\Throwable $error) { if ($saved) $storage->delete($saved['path']); throw $error; }
                 if ($saved) $storage->delete($track['cover_path']);
+                break;
+            case 'track.duration':
+                $this->track($id);
+                db()->query('UPDATE reel_tracks SET duration = ? WHERE id = ? AND owner_id = ?', [self::duration($data['duration'] ?? null), $id, $this->owner]);
+                break;
+            case 'track.favorite':
+                $this->track($id);
+                $favorite = $data['favorite'] ?? null;
+                if (!in_array($favorite, [0, 1, '0', '1', false, true], true)) throw new \InvalidArgumentException('Некорректное значение избранного.');
+                db()->query('UPDATE reel_tracks SET favorite = ? WHERE id = ? AND owner_id = ?', [(int)$favorite, $id, $this->owner]);
                 break;
             case 'track.delete':
                 $track = $this->track($id);

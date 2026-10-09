@@ -29,6 +29,8 @@ try {
     $rejected(fn()=>$foreign->track($tracks[0]),'Other owners cannot read tracks');
     $rejected(fn()=>$foreign->playlist($p),'Other owners cannot read playlists');
     $rejected(fn()=>$foreign->action('track.delete',['id'=>$tracks[0]]),'Other owners cannot delete tracks');
+    $rejected(fn()=>$foreign->action('track.favorite',['id'=>$tracks[0],'favorite'=>1]),'Other owners cannot favorite tracks');
+    $rejected(fn()=>$foreign->action('track.duration',['id'=>$tracks[0],'duration'=>22]),'Other owners cannot change durations');
     $rejected(fn()=>$foreign->action('playlist.add',['id'=>$p,'track_id'=>$tracks[0]]),'Other owners cannot add membership');
     foreach ($tracks as $track) $library->add($p,$track);
     $library->add($p,$tracks[0]);
@@ -43,6 +45,18 @@ try {
     $assert($library->playlist($p)['name']==='__reel_test_🎵','Unicode playlist metadata');
     $library->action('track.update',['id'=>$tracks[0],'title'=>'__reel_test_New title','artist'=>'Artist','duration'=>48.25]);
     $assert((float)$library->track($tracks[0])['duration']===48.25,'Track metadata and duration persist');
+    $library->action('track.favorite',['id'=>$tracks[0],'favorite'=>1]);
+    $stateTrack = array_values(array_filter($library->state()['tracks'],static fn(array $track): bool => $track['id'] === $tracks[0]))[0];
+    $assert($stateTrack['favorite'] === true,'Favorites persist and are returned as booleans');
+    $library->action('track.favorite',['id'=>$tracks[0],'favorite'=>1]);
+    $assert((int)$library->track($tracks[0])['favorite'] === 1,'Setting favorite twice is idempotent');
+    $library->action('track.duration',['id'=>$tracks[0],'duration'=>17.5]);
+    $durationTrack = $library->track($tracks[0]);
+    $assert((float)$durationTrack['duration'] === 17.5 && $durationTrack['title'] === '__reel_test_New title' && (int)$durationTrack['favorite'] === 1,'Duration-only writes preserve title and favorite');
+    $library->action('track.favorite',['id'=>$tracks[0],'favorite'=>0]);
+    $assert((int)$library->track($tracks[0])['favorite'] === 0,'Favorites can be removed');
+    $rejected(fn()=>$library->action('track.favorite',['id'=>$tracks[0],'favorite'=>'yes']),'Reject invalid favorite flags');
+    $rejected(fn()=>$library->action('track.duration',['id'=>$tracks[0],'duration'=>'unknown']),'Reject invalid metadata duration');
     $rejected(fn()=>$library->action('track.update',['id'=>$tracks[0],'duration'=>-1]),'Reject negative duration');
     $library->action('playlist.remove',['id'=>$p,'track_id'=>$tracks[0]]);
     $assert($ids()===[$tracks[1]] && $library->track($tracks[0])['id']==$tracks[0],'Removing membership keeps original track');

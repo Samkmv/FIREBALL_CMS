@@ -135,17 +135,52 @@ final class GoogleDrive
 
     private static function audioQuery(): string
     {
-        return "trashed = false and (mimeType contains 'audio/' or name contains '.mp3' or name contains '.flac' or name contains '.wav' or name contains '.m4a' or name contains '.ogg' or name contains '.opus' or name contains '.aac' or name contains '.webm')";
+        // Drive's name contains operator is not an extension/suffix search.
+        // Validate every returned file; generic files can be imported by folder/link.
+        return "trashed = false and (mimeType contains 'audio/' or mimeType = 'application/ogg' or mimeType = 'video/mp4' or mimeType = 'video/webm')";
     }
 
     public function files(string $page = '', ?string $folder = null): array
     {
         if (strlen($page) > 2000) throw new \InvalidArgumentException('Некорректная страница Google Drive.');
-        $q = self::audioQuery() . ($folder ? " and '" . self::id($folder) . "' in parents" : '');
-        return $this->request('https://www.googleapis.com/drive/v3/files?' . http_build_query([
+        $q = $folder ? "trashed = false and '" . self::id($folder) . "' in parents" : self::audioQuery();
+        $result = $this->request('https://www.googleapis.com/drive/v3/files?' . http_build_query([
             'q' => $q, 'fields' => 'nextPageToken,files(id,name,mimeType,size,capabilities(canDownload))', 'pageSize' => 100,
             'orderBy' => 'name', 'pageToken' => $page, 'supportsAllDrives' => 'true', 'includeItemsFromAllDrives' => 'true',
-        ]), null, $this->token());
+        ], '', '&', PHP_QUERY_RFC3986), null, $this->token());
+        return self::audioPage($result);
+    }
+
+    public static function audioPage(array $result): array
+    {
+        $files = [];
+        foreach ($result['files'] ?? [] as $file) {
+            if (!is_array($file)) continue;
+            try { $files[] = self::assertAudio($file); } catch (\InvalidArgumentException) {}
+        }
+        return ['files' => $files, 'nextPageToken' => (string)($result['nextPageToken'] ?? '')];
+    }
+
+    public function browse(string $page = '', string $folder = 'root'): array
+    {
+        if (strlen($page) > 2000) throw new \InvalidArgumentException('Некорректная страница Google Drive.');
+        $folder = $folder === 'root' ? 'root' : self::id($folder);
+        $result = $this->request('https://www.googleapis.com/drive/v3/files?' . http_build_query([
+            'q' => "trashed = false and '" . $folder . "' in parents",
+            'fields' => 'nextPageToken,files(id,name,mimeType,size,capabilities(canDownload))', 'pageSize' => 100,
+            'orderBy' => 'name', 'pageToken' => $page, 'supportsAllDrives' => 'true', 'includeItemsFromAllDrives' => 'true',
+        ], '', '&', PHP_QUERY_RFC3986), null, $this->token());
+        return self::browsePage($result);
+    }
+
+    public static function browsePage(array $result): array
+    {
+        $folders = [];
+        foreach ($result['files'] ?? [] as $file) {
+            if (is_array($file) && ($file['mimeType'] ?? '') === 'application/vnd.google-apps.folder' && !empty($file['id']) && !empty($file['name'])) $folders[] = $file;
+        }
+        $audio = self::audioPage($result);
+        return ['files' => [...$folders, ...$audio['files']], 'nextPageToken' => $audio['nextPageToken']];
     }
 
     public function file(string $id): array

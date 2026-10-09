@@ -16,6 +16,7 @@ final class PlayerController
     {
         header('Cache-Control: private, no-store');
         $assets = dirname(__DIR__, 2) . '/assets';
+        $pwa = function_exists('pwa_head_data') ? pwa_head_data() : [];
         return plugin_view('reel-player', 'player', [
             'config' => [
                 'api' => base_href('/admin/reel-player/api'),
@@ -25,7 +26,9 @@ final class PlayerController
                 'maxUpload' => UploadPolicy::limits()['effective'],
                 'state' => $this->library()->state(),
                 'drive' => $this->drive()->status(),
+                'pwa' => ['enabled' => !empty($pwa['enabled']), 'worker' => $pwa['service_worker_url'] ?? ''],
             ],
+            'pwa_head' => function_exists('pwa_head_tags') ? pwa_head_tags() : '',
             'css_url' => base_href('/plugins/reel-player/assets/player.css?v=' . filemtime($assets . '/player.css')),
             'js_url' => base_href('/plugins/reel-player/assets/player.js?v=' . filemtime($assets . '/player.js')),
         ], false);
@@ -69,7 +72,7 @@ final class PlayerController
     public function upload(): void
     {
         $this->respond(function (): array {
-            $id = $this->library()->upload($_FILES['audio'] ?? [], (int)request()->post('playlist_id', 0));
+            $id = $this->library()->upload($_FILES['audio'] ?? [], (int)request()->post('playlist_id', 0), request()->post('duration', 0), request()->post('favorite', '0') === '1');
             return ['id' => $id, ...$this->library()->state()];
         });
     }
@@ -99,7 +102,13 @@ final class PlayerController
 
     public function driveFiles(): void
     {
-        $this->respond(fn(): array => $this->drive()->files((string)request()->get('page', '')));
+        $this->respond(function (): array {
+            $page = (string)request()->get('page', '');
+            $folder = (string)request()->get('folder', '');
+            $drive = $this->drive();
+            session()->close();
+            return $folder !== '' ? $drive->browse($page, $folder) : $drive->files($page);
+        });
     }
 
     public function driveCallback(): void

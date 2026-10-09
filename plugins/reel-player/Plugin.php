@@ -22,7 +22,7 @@ final class FireballPluginReelPlayer implements PluginInterface
     public function boot(): void
     {
         add_filter('admin_menu', static function (array $menu): array {
-            if (check_creator()) {
+            if (check_admin()) {
                 $menu[] = ['group' => 'applications', 'label' => 'Tape Room',
                     'href' => base_href('/admin/reel-player'), 'icon' => 'ci-music',
                     'plugin_menu' => true, 'order' => 36];
