@@ -1,170 +1,118 @@
 'use strict';
-const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
-const source = fs.readFileSync(require('node:path').join(__dirname,'../assets/player.js'),'utf8');
-const meters = source.slice(source.indexOf('    function initGraph()'),source.indexOf('    function configureAudioSession()'));
-class Events {
-    constructor(){ this.listeners = new Map(); }
-    addEventListener(name,callback){ if (!this.listeners.has(name)) this.listeners.set(name,new Set()); this.listeners.get(name).add(callback); }
-    removeEventListener(name,callback){ this.listeners.get(name)?.delete(callback); }
-    emit(name){ for (const callback of this.listeners.get(name) || []) callback(); }
-}
-class Node {
-    constructor(){ this.connections=[]; }
-    connect(node){ this.connections.push(node); }
-    disconnect(){ this.connections=[]; }
-}
-class Context extends Events {
-    constructor(){ super(); this.state='running'; this.currentTime=0; this.sampleRate=44100; this.destination=new Node(); this.resumeCount=0; this.gains=[]; this.wakes=[]; }
-    createChannelSplitter(){ return new Node(); }
-    createAnalyser(){ return new Node(); }
-    createGain(){ const gain=new Node(); gain.gain={value:1}; this.gains.push(gain); return gain; }
-    createMediaStreamSource(stream){ const node=new Node(); node.stream=stream; return node; }
-    createMediaElementSource(element){ const node=new Node(); node.element=element; return node; }
-    createBuffer(channels,length,sampleRate){return {channels,length,sampleRate,data:new Float32Array(length)};}
-    createBufferSource(){const node=new Node();node.start=()=>{node.started=true;};this.wakes.push(node);return node;}
-    resume(){ this.resumeCount++; this.state='running'; return Promise.resolve(); }
-    close(){ this.state='closed'; return Promise.resolve(); }
-}
-class Mirror extends Events {
-    constructor(){ super(); this.src=''; this.readyState=0; this.currentTime=0; this.paused=true; this.ended=false; this.seeking=false; this.playCount=0; this.loadCount=0; this.rate=1; this.rateWrites=0; }
-    get playbackRate(){return this.rate;}
-    set playbackRate(value){this.rate=value;this.rateWrites++;}
-    setAttribute(){}
-    hasAttribute(name){return name==='src'&&Boolean(this.src);}
-    removeAttribute(name){ if(name==='src')this.src=''; }
-    load(){ this.loadCount++; this.readyState=0; this.paused=true; }
-    pause(){ this.paused=true; }
-    play(){ this.playCount++; this.paused=false; return Promise.resolve(); }
-}
-function stream(){ const track=new Events(); track.readyState='live'; track.stop=()=>{track.readyState='ended';}; const result=new Events(); result.getTracks=result.getAudioTracks=()=>[track]; return result; }
-function setup(capture){
-    const intervals=new Map(); let intervalId=0, nativePauses=0, now=0; const notice={hidden:true};
-    const audio={src:'https://fixture.invalid/song-1',currentTime:0,readyState:4,seeking:false,playbackRate:1,paused:false,ended:false,pause(){nativePauses++;},...(capture?{captureStream:()=>stream()}:{})};
-    const context=vm.createContext({audio,$:()=>notice,meterRecovery:{generation:-1,rebuilds:0,blocked:false,forceMirror:false},performance:{now:()=>now},current:1,loading:false,bufferVisible:false,bufferTimer:undefined,meterBufferTimer:undefined,bufferedAhead:()=>20,navigator:{},location:{href:'https://fixture.invalid/player'},URL,activeTrack:()=>({source:'local'}),graph:undefined,generation:1,meterTimer:undefined,document:{hidden:false},window:{AudioContext:Context},Audio:Mirror,MediaStream:class {constructor(tracks){this.tracks=tracks;}},Float32Array,setInterval(callback){intervals.set(++intervalId,callback);return intervalId;},clearInterval(id){intervals.delete(id);},setTimeout(callback){intervals.set(++intervalId,callback);return intervalId;},clearTimeout(id){intervals.delete(id);},drawMeters(){},updateButtons(){},prepareUpcoming(){}});
-    vm.runInContext(meters,context);
-    context.syncReels=()=>{};
-    vm.runInContext(source.slice(source.indexOf('    function setBuffering('),source.indexOf('    function drawBuffered(')),context);
-    return {context,audio,intervals,notice,advance(ms){now+=ms;audio.currentTime+=ms/1000;if(context.graph)context.graph.context.currentTime+=ms/1000;},nativePauses:()=>nativePauses};
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const Meters=require('../assets/meters.js');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/player.js'),'utf8');
+class Events {constructor(){this.listeners=new Map();}addEventListener(n,f){if(!this.listeners.has(n))this.listeners.set(n,new Set());this.listeners.get(n).add(f);}removeEventListener(n,f){this.listeners.get(n)?.delete(f);}emit(n){for(const f of [...(this.listeners.get(n)||[])])f();}}
+class Node {constructor(){this.connections=[];this.gain={value:1};}connect(n){this.connections.push(n);}disconnect(){this.connections=[];}}
+const flush=async()=>{for(let n=0;n<6;n++)await Promise.resolve();};
+function setup({capture=false,contextState='running',resumeHang=false}={}){
+    let now=0,generation=1,nativePauses=0,serial=0,origin='local',ahead=20;
+    const timers=new Map(),contexts=[],copies=[];
+    const env={performance:{now:()=>now},document:{hidden:false},navigator:{onLine:true,userActivation:{isActive:false}},location:{href:'https://fixture.invalid/player'},URL,Float32Array,MediaStream:class{constructor(tracks){this.tracks=tracks;}},setInterval(fn){timers.set(++serial,fn);return serial;},clearInterval(id){timers.delete(id);}};
+    const streams=[];
+    function stream(){const t=new Events();t.readyState='live';t.muted=false;t.stop=()=>{t.readyState='ended';};const s=new Events();s.getTracks=s.getAudioTracks=()=>[t];streams.push(s);return s;}
+    const audio={src:'https://fixture.invalid/track-1',currentTime:0,readyState:4,seeking:false,playbackRate:1,paused:false,ended:false,volume:.8,muted:false,pause(){nativePauses++;},...(capture?{captureStream:()=>stream()}:{})};
+    class Context extends Events {
+        constructor(){super();this.state=contextState;this.currentTime=0;this.sampleRate=44100;this.destination=new Node();this.wakes=[];this.resumes=0;contexts.push(this);}
+        createChannelSplitter(){return new Node();}createGain(){return new Node();}createAnalyser(){const n=new Node();n.getFloatTimeDomainData=a=>a.fill(0);return n;}
+        createMediaElementSource(element){const n=new Node();n.element=element;return n;}createMediaStreamSource(stream){const n=new Node();n.stream=stream;return n;}
+        createBuffer(channels,length,sampleRate){return {channels,length,sampleRate,data:new Float32Array(length)};}
+        createBufferSource(){const n=new Node();n.start=()=>{n.started=true;};this.wakes.push(n);return n;}
+        resume(){this.resumes++;if(resumeHang)return new Promise(()=>{});this.state='running';return Promise.resolve();}
+        close(){this.state='closed';return Promise.resolve();}
+    }
+    class Mirror extends Events {
+        constructor(){super();this.url='';this.currentSrc='';this.currentTime=0;this.readyState=0;this.paused=true;this.ended=false;this.seeking=false;this.rate=1;this.rateWrites=0;this.playCount=0;this.loadCount=0;this.errors=[];copies.push(this);}
+        setAttribute(){}hasAttribute(n){return n==='src'&&Boolean(this.url);}removeAttribute(n){if(n==='src')this.url='';}
+        get src(){return this.url;}set src(url){this.url=url;this.currentSrc='';this.currentTime=0;this.readyState=0;this.paused=true;this.error=null;this.loadCount++;}
+        get playbackRate(){return this.rate;}set playbackRate(v){this.rate=v;this.rateWrites++;}
+        load(){this.loadCount++;this.readyState=0;this.paused=true;this.currentSrc='';this.error=null;}pause(){this.paused=true;}
+        play(){this.playCount++;const error=this.errors.shift();if(error==='hung')return new Promise(()=>{});if(error)return Promise.reject(Object.assign(new Error('never include private URL'),{name:error}));this.paused=false;return Promise.resolve();}
+    }
+    env.window={AudioContext:Context};env.Audio=Mirror;
+    const m=new Meters({audio,generation:()=>generation,source:()=>origin,bufferedAhead:()=>ahead,env});
+    return {m,audio,env,contexts,copies,timers,streams,setSource(v){origin=v;},setAhead(v){ahead=v;},setResumeHang(v){resumeHang=v;},setContextState(v){contextState=v;},gesture(){env.navigator.userActivation.isActive=true;m.resume('user',{isTrusted:true,type:'click'});env.navigator.userActivation.isActive=false;},
+        ready(){const copy=m.engine?.mirror;if(copy){copy.currentSrc=copy.src;copy.readyState=4;copy.error=null;copy.emit('loadedmetadata');copy.emit('playing');}},
+        advance(ms,{freezeContext=false,freezeCopy=false}={}){now+=ms;audio.currentTime+=ms/1000;const e=m.engine;if(e){if(!freezeContext)e.context.currentTime+=ms/1000;if(e.mirror&&!e.mirror.paused&&e.mirror.readyState>=2&&!e.mirror.seeking&&!freezeCopy)e.mirror.currentTime+=ms/1000*e.mirror.playbackRate;}m.tick();},
+        change(){generation++;audio.src='https://fixture.invalid/track-'+generation;audio.currentTime=0;audio.ended=false;},nativePauses:()=>nativePauses};
 }
 (async()=>{
-    const captured=setup(true), c=captured.context;
-    c.resumeMeters(); const firstTrack=c.graph.capturedTrack, firstSource=c.graph.source;
-    assert.equal(c.graph.analysers[0].connections[0].gain.value,0);
-    assert.equal(c.graph.analysers[0].connections[0].connections[0],c.graph.context.destination);
-    c.generation++; captured.audio.src='https://fixture.invalid/song-2'; c.resumeMeters();
-    assert.notEqual(c.graph.capturedTrack,firstTrack); assert.notEqual(c.graph.source,firstSource); assert.equal(firstTrack.readyState,'ended');
-    const liveTrack=c.graph.capturedTrack; liveTrack.stop(); c.resumeMeters(); assert.notEqual(c.graph.capturedTrack,liveTrack);
-    c.graph.context.state='interrupted'; c.graph.context.emit('statechange'); await c.graph.resuming;
-    assert.equal(c.graph.context.state,'running'); assert.equal(c.graph.context.resumeCount,1);
-    const closed=c.graph.context; closed.state='closed'; c.resumeMeters(); assert.notEqual(c.graph.context,closed);
-    c.document.hidden=true; c.resumeMeters(); assert.equal(captured.intervals.size,0); assert.equal(captured.nativePauses(),0);
-    c.document.hidden=false; c.resumeMeters(); assert.equal(captured.intervals.size,1);
-    const mirrored=setup(false), m=mirrored.context;
-    m.resumeMeters(); const mirror=m.graph.mirror; await m.graph.mirrorStarting; assert.equal(mirror.playCount,1); assert.equal(mirror.src,mirrored.audio.src);
-    mirrored.audio.src='https://fixture.invalid/song-2'; m.generation++; m.resumeMeters(); await m.graph.mirrorStarting; assert.equal(mirror.src,mirrored.audio.src); assert.equal(mirror.playCount,2);
-    mirror.readyState=4; mirrored.audio.currentTime=20; m.syncMirror(); assert.equal(mirror.currentTime,20);
-    mirror.paused=true; [...mirrored.intervals.values()][0](); await m.graph.mirrorStarting; assert.equal(mirror.paused,false); assert.equal(mirror.playCount,3);
-    m.document.hidden=true; m.stopMeters(true); assert.equal(mirror.src,''); assert.equal(mirrored.nativePauses(),0);
-    m.document.hidden=false; m.resumeMeters(); await m.graph.mirrorStarting; assert.equal(mirror.src,mirrored.audio.src); assert.equal(mirror.paused,false);
-    m.stopMeters(true);m.activeTrack=()=>({source:'drive'});mirrored.audio.readyState=2;m.bufferedAhead=()=>0;m.resumeMeters();assert.equal(mirror.src,'');assert.equal(mirrored.nativePauses(),0);
-    m.bufferedAhead=()=>20;m.resumeMeters();await m.graph.mirrorStarting;assert.equal(mirror.src,mirrored.audio.src+'?meter=1');assert.equal(mirror.paused,false);
-    m.loading=true;m.resumeMeters();assert.equal(mirror.src,mirrored.audio.src+'?meter=1');assert.equal(mirror.paused,true);m.loading=false;m.navigator.connection={saveData:true};m.resumeMeters();assert.equal(mirror.src,'');m.navigator.connection={};
-    m.resumeMeters();await m.graph.mirrorStarting;mirror.error={code:2};mirror.emit('error');m.resumeMeters();assert.equal(mirror.src,'');assert.equal(m.meterRecovery.blocked,true);assert.equal(m.graph,null);
-    m.generation++;m.resumeMeters();await m.graph.mirrorStarting;assert.equal(m.graph.mirror.src,mirrored.audio.src+'?meter=1');m.document.hidden=true;m.stopMeters(true);assert.equal(m.graph.mirror.src,'');assert.equal(mirrored.nativePauses(),0);
-    c.activeTrack=()=>({source:'drive'}); c.resumeMeters(); assert.ok(c.graph?.capture); assert.equal(captured.nativePauses(),0);
-    const startup=setup(false), s=startup.context;s.activeTrack=()=>({source:'drive'});startup.audio.readyState=0;s.bufferedAhead=()=>0;s.loading=true;
-    s.resumeMeters();assert.equal(s.graph.mirror.src,'');s.resumeMeters(true);await s.graph.mirrorStarting;assert.ok(s.graph.mirror.src.endsWith('?meter=1'));
-    const analysis=s.graph.mirror, initialLoads=analysis.loadCount;
-    s.setBuffering(true);analysis.emit('loadedmetadata');s.resumeMeters();assert.equal(analysis.loadCount,initialLoads);assert.equal(analysis.paused,false,'Brief startup buffering preserves gesture-unlocked request');
-    const grace=s.meterBufferTimer;s.setBuffering(false);startup.audio.readyState=3;s.bufferedAhead=()=>0;s.resumeMeters();assert.equal(analysis.loadCount,initialLoads);assert.equal(startup.intervals.has(grace),false);
-    // Once metadata has aligned the mirror, a pending seek may finish instead
-    // of being reset to the audible player's continually moving position.
-    startup.audio.currentTime=20;analysis.readyState=1;s.syncMirror();assert.equal(analysis.currentTime,20);
-    analysis.seeking=true;startup.audio.currentTime=21;analysis.readyState=3;s.syncMirror();assert.equal(analysis.currentTime,20,'Do not chase a moving target while a seek is decoding');
-    analysis.seeking=false;analysis.currentTime=20.8;s.syncMirror();assert.equal(analysis.currentTime,20.8);assert.equal(analysis.playbackRate,startup.audio.playbackRate);assert.equal(startup.audio.playbackRate,1);
-    // Streaming can keep sounding at HAVE_CURRENT_DATA. Repeated callbacks
-    // must neither pause the decoder nor continuously retune its speed.
-    s.bufferedAhead=()=>0;startup.audio.readyState=2;analysis.readyState=2;s.loading=false;
-    for(let n=0;n<120;n++){startup.advance(500);analysis.currentTime=startup.audio.currentTime-.2;s.resumeMeters();}
-    assert.equal(analysis.paused,false);assert.equal(analysis.rateWrites,0);assert.equal(s.graph.mirror,analysis);assert.equal(s.meterRecovery.rebuilds,0);
-    startup.audio.playbackRate=1.25;s.syncMirror();s.syncMirror();assert.equal(analysis.rateWrites,1);assert.equal(analysis.playbackRate,1.25);assert.equal(startup.audio.playbackRate,1.25);
-    startup.audio.playbackRate=1;s.syncMirror();
-    const beforeSeek=analysis.currentTime;analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();assert.equal(analysis.currentTime,startup.audio.currentTime-1,'A transient clock difference does not seek');
-    startup.advance(1000);analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();assert.equal(analysis.currentTime,startup.audio.currentTime,'Persistent drift receives one alignment');
-    assert.equal(s.graph.watch,null,'Alignment resets the stall baseline');
-    startup.advance(1000);analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();startup.advance(1000);analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();assert.equal(analysis.currentTime,startup.audio.currentTime-1,'Cooldown lets a decoder finish instead of chasing every tick');
-    assert.ok(beforeSeek>20);
-    s.setBuffering(true);startup.intervals.get(s.meterBufferTimer)();assert.equal(analysis.src,'','Persistent buffering yields the secondary download');s.setBuffering(false);
-    s.stopMeters(true);analysis.play=()=>Promise.reject(Object.assign(new Error('cancelled'),{name:'AbortError'}));
-    s.loading=false;s.bufferedAhead=()=>1;s.resumeMeters();await s.graph.mirrorStarting;assert.equal(s.graph.mirrorFailedGeneration,undefined);
-    analysis.play=Mirror.prototype.play;s.resumeMeters();await s.graph.mirrorStarting;assert.equal(analysis.paused,false);
-    s.setMeterBlocked(true);s.resumeMeters(true);await s.graph.mirrorStarting;assert.equal(s.meterRecovery.blocked,false);assert.equal(startup.nativePauses(),0);
-    const replacement=s.graph.mirror;
-    s.stopMeters(true);let rejectOld;replacement.play=()=>new Promise((resolve,reject)=>{rejectOld=reject;});s.resumeMeters(true);const oldPlay=s.graph.mirrorStarting;
-    s.stopMeters(true);replacement.play=Mirror.prototype.play;s.resumeMeters(true);await s.graph.mirrorStarting;
-    rejectOld(Object.assign(new Error('old request'),{name:'NotAllowedError'}));await oldPlay;
-    assert.equal(s.meterRecovery.blocked,false,'Old rejected play cannot disable a newer request for the same song');assert.equal(replacement.paused,false);
-    // Safari may defer native playback while a trusted tap is still the only
-    // opportunity to activate Web Audio and the separate analysis element.
-    const deferred=setup(false), d=deferred.context;
-    deferred.audio.paused=true; d.window.AudioContext=class extends Context {constructor(){super();this.state='suspended';}};
-    d.resumeMeters(true); const unlocked=d.graph; await unlocked.resuming; await unlocked.mirrorStarting;
-    assert.equal(unlocked.context.resumeCount,1);assert.equal(unlocked.mirror.playCount,1);assert.ok(unlocked.mirror.src);
-    assert.equal(unlocked.context.wakes.length,1);assert.equal(unlocked.context.wakes[0].started,true);assert.equal(unlocked.context.wakes[0].buffer.data[0],0);assert.equal(unlocked.context.wakes[0].connections[0],unlocked.context.destination,'Silent activation never enters the measured channels');
-    unlocked.mirror.emit('loadedmetadata');d.resumeMeters();assert.ok(unlocked.mirror.src,'Pending native playback preserves the gesture-unlocked analysis');
-    deferred.audio.paused=false;d.resumeMeters();assert.equal(d.graph,unlocked);assert.equal(deferred.nativePauses(),0);
-    // A pending resume cannot suppress a fresh user tap indefinitely.
-    const hanging=setup(true), h=hanging.context;h.resumeMeters();const abandoned=h.graph;
-    abandoned.context.state='interrupted';abandoned.context.resume=()=>new Promise(()=>{});h.resumeMeters();assert.ok(abandoned.resuming);
-    h.resumeMeters(true);assert.notEqual(h.graph,abandoned);assert.equal(abandoned.context.state,'closed');assert.equal(hanging.nativePauses(),0);
-    // iOS sometimes reports running while its audio clock is frozen. One
-    // bounded rebuild recovers; a persistent failure stops automatic retries.
-    const frozen=setup(true), f=frozen.context;f.resumeMeters();const dead=f.graph;
-    frozen.advance(2100);dead.context.currentTime=0;f.resumeMeters();assert.notEqual(f.graph,dead);assert.equal(f.meterRecovery.rebuilds,1);
-    const second=f.graph;frozen.advance(2100);second.context.currentTime=0;f.resumeMeters();
-    assert.equal(f.graph,null);assert.equal(f.meterRecovery.blocked,true);assert.equal(frozen.notice.hidden,false);assert.equal(frozen.intervals.size,0);
-    f.resumeMeters();assert.equal(f.graph,null,'No unbounded context recreation or secondary traffic');
-    f.resumeMeters(true);assert.ok(f.graph);assert.equal(frozen.notice.hidden,true);assert.equal(f.meterRecovery.rebuilds,0);
-    const fresh=f.graph;frozen.advance(2100);f.resumeMeters();assert.equal(f.graph,fresh,'A healthy engine stays alive even when samples represent silence');assert.equal(frozen.nativePauses(),0);
-    frozen.advance(2100);fresh.context.currentTime=fresh.watch.clock;f.resumeMeters(true);assert.notEqual(f.graph,fresh);assert.equal(f.graph.context.wakes.length,1,'A frozen running engine preserves the trusted tap when rebuilt');
-    // The same bounded recovery applies when resume() never resolves.
-    const timed=setup(true), t=timed.context;t.resumeMeters();const timedOld=t.graph;
-    timedOld.context.state='suspended';timedOld.context.resume=()=>new Promise(()=>{});t.resumeMeters();timed.advance(2100);timedOld.context.currentTime=0;t.resumeMeters();assert.notEqual(t.graph,timedOld);
-    timedOld.context.emit('statechange');assert.equal(t.graph.context.resumeCount,0,'Discarded engine events cannot resume or replace its successor');
-    // A capture capability without an audio track falls back once, leaving
-    // the audible element untouched. No test assumes nonzero music samples.
-    const missing=setup(true), n=missing.context;missing.audio.captureStream=()=>{const empty=new Events();empty.getTracks=empty.getAudioTracks=()=>[];return empty;};
-    n.resumeMeters();const engine=n.graph.context;missing.advance(2100);n.resumeMeters();assert.equal(n.graph.capture,null);assert.ok(n.graph.mirror);assert.equal(n.graph.context,engine);assert.equal(missing.nativePauses(),0);
-    const denied=setup(false), e=denied.context;e.resumeMeters();await e.graph.mirrorStarting;
-    const deniedMirror=e.graph.mirror;deniedMirror.pause();deniedMirror.play=()=>Promise.reject(Object.assign(new Error('activation required'),{name:'NotAllowedError'}));
-    e.resumeMeters();const deniedPlay=e.graph.mirrorStarting;await deniedPlay;assert.equal(e.graph,null);assert.equal(e.meterRecovery.blocked,true);assert.equal(denied.intervals.size,0);
-    e.resumeMeters();assert.equal(e.graph,null,'Local tracks do not repeatedly retry a rejected play');e.resumeMeters(true);await e.graph.mirrorStarting;assert.ok(e.graph.mirror.src);assert.equal(e.meterRecovery.blocked,false);assert.equal(denied.nativePauses(),0);
-    const stalled=setup(false), q=stalled.context;q.resumeMeters();await q.graph.mirrorStarting;
-    const stalledEngine=q.graph;stalledEngine.mirror.readyState=4;stalled.advance(2100);q.resumeMeters();assert.notEqual(q.graph,stalledEngine,'A decoded mirror with a frozen clock recovers independently');assert.equal(stalled.nativePauses(),0);
-    const slow=setup(false), z=slow.context;z.resumeMeters();await z.graph.mirrorStarting;const waitingEngine=z.graph;slow.advance(16000);z.resumeMeters();assert.notEqual(z.graph,waitingEngine,'A hung metadata request has a deadline');
-    const background=setup(true), b=background.context;b.resumeMeters();const beforeHide=b.graph;
-    b.document.hidden=true;b.resumeMeters();background.advance(10000);b.document.hidden=false;b.resumeMeters();assert.equal(b.graph,beforeHide,'Hidden time does not count as a foreground engine stall');assert.equal(background.nativePauses(),0);
-    const economical=setup(false), k=economical.context;k.activeTrack=()=>({source:'drive'});k.resumeMeters();await k.graph.mirrorStarting;
-    k.navigator.connection={saveData:true};k.resumeMeters();const idle=k.graph;economical.advance(20000);k.resumeMeters();assert.equal(k.graph,idle,'An intentionally unloaded analysis stream is not treated as hung');assert.equal(k.meterRecovery.blocked,false);
-    f.setMeterBlocked(true);f.document.hidden=true;f.resumeMeters();assert.equal(frozen.notice.hidden,true);f.document.hidden=false;f.resumeMeters();assert.equal(frozen.notice.hidden,false,'Recovery action returns with the foreground app');
-    const playbackEvents=new Events(), waits=[];
-    Object.assign(playbackEvents,{paused:false,ended:false,readyState:2,currentTime:15});
-    const eventsContext=vm.createContext({audio:playbackEvents,setBuffering:value=>waits.push(value),drawProgress(){},resumeMeters(){},startAnimation(){},preloader:{cancel(){}},stopMeters(){},save(){},prepareUpcoming(){},Date,lastSave:0,graph:undefined,syncMirror(){},next(){}});
+    const first=setup({contextState:'suspended'});first.audio.paused=true;first.gesture();await flush();
+    assert.equal(first.m.lastActivation,true);assert.equal(first.m.engine.context.wakes.length,1);assert.equal(first.m.engine.context.wakes[0].buffer.data[0],0);assert.equal(first.m.engine.context.wakes[0].connections[0],first.m.engine.context.destination);
+    first.audio.paused=false;first.ready();first.m.resume('lifecycle');await flush();assert.equal(first.m.engine.context.state,'running');assert.equal(first.nativePauses(),0);
+    const fake=setup();fake.m.resume(true);assert.equal(fake.m.lastActivation,false);assert.equal(fake.m.engine.context.wakes.length,0);fake.m.resume('user',{type:'click',isTrusted:false});assert.equal(fake.m.lastActivation,false);
+    fake.m.resume('user',{type:'click',isTrusted:true});assert.equal(fake.m.lastActivation,false,'Expired transient activation is not restored by a saved event');
+    const normal=setup();normal.gesture();normal.ready();await flush();const retained=normal.m.engine,copy=retained.mirror;
+    for(let n=0;n<20;n++){normal.change();normal.m.stop('track-change');normal.m.resume('automatic');normal.ready();await flush();normal.advance(1000);normal.m.sample(0,.08);normal.m.sample(1,.04);assert.equal(normal.m.lastActivation,false);assert.equal(normal.m.needsGesture,false);assert.equal(normal.m.engine,retained);assert.equal(normal.m.engine.mirror,copy);}
+    assert.equal(normal.m.counts.contexts,1);assert.equal(normal.m.counts.copies,1);assert.equal(copy.rateWrites,0);assert.equal(normal.m.canSample(),true);assert.equal(copy.loadCount,21,'20 automatic transitions select one source each, without redundant load');
+    for(let n=0;n<20;n++){normal.change();normal.m.stop('track-change');normal.gesture();normal.ready();await flush();normal.advance(40);assert.equal(normal.m.engine,retained);assert.equal(normal.m.needsGesture,false);}
+    assert.equal(normal.m.counts.contexts,1);assert.equal(normal.m.counts.copies,1);assert.equal(normal.nativePauses(),0);
+    normal.audio.paused=true;normal.m.stop();const loads=copy.loadCount;normal.audio.paused=false;normal.gesture();await flush();assert.equal(copy.loadCount,loads,'Pause/resume preserves decoded resource and authorisation');
+    normal.audio.currentTime=0;normal.m.seek();assert.equal(copy.currentTime,0);normal.audio.playbackRate=1.25;normal.m.tick();normal.m.tick();assert.equal(copy.rateWrites,1);
+    normal.audio.playbackRate=1;normal.m.tick();normal.audio.readyState=2;normal.setAhead(0);
+    for(let n=0;n<120;n++)normal.advance(500);assert.equal(normal.m.engine,retained);assert.equal(copy.paused,false);assert.equal(normal.m.counts.rebuilds,0);
+    normal.setSource('drive');normal.m.tick();normal.ready();await flush();const initialLoads=copy.loadCount;
+    normal.m.buffering(true);normal.advance(1000);assert.equal(copy.loadCount,initialLoads);normal.m.buffering(false);normal.advance(600);assert.equal(copy.loadCount,initialLoads);
+    normal.m.buffering(true);normal.advance(1600);const yieldedLoads=copy.loadCount;assert.ok(!copy.src);normal.advance(1600);assert.equal(copy.loadCount,yieldedLoads,'One unload per long wait episode');
+    normal.m.buffering(false);normal.advance(500);assert.equal(copy.src,'');normal.m.buffering(true);normal.advance(2000);assert.equal(copy.loadCount,yieldedLoads,'Flapping network does not keep restarting requests');
+    normal.m.buffering(false);normal.audio.readyState=4;normal.setAhead(20);normal.advance(2000);normal.ready();await flush();assert.ok(copy.src.endsWith('?meter=1'));assert.equal(normal.m.engine,retained);
+    normal.env.document.hidden=true;normal.m.stop('hidden');assert.equal(copy.src,'');assert.equal(normal.audio.paused,false);const afterHidden=copy.loadCount;
+    normal.advance(60000);normal.env.document.hidden=false;normal.m.resume('lifecycle');normal.ready();await flush();assert.equal(normal.m.engine,retained);assert.equal(copy.loadCount,afterHidden+1);assert.equal(normal.nativePauses(),0);
+    const warm=setup();warm.gesture();warm.ready();await flush();assert.equal(warm.m.canSample(),false);warm.advance(50);assert.equal(warm.m.canSample(),true);warm.change();warm.m.stop('track-change');warm.m.resume('automatic');warm.ready();assert.equal(warm.m.canSample(),false,'Old analyser window must expire on new source');warm.advance(50);assert.equal(warm.m.canSample(),true);
+    const capture=setup({capture:true});capture.gesture();const captureEngine=capture.m.engine;
+    assert.equal(captureEngine.input.channelCount,2);assert.equal(captureEngine.input.channelCountMode,'explicit');assert.equal(captureEngine.input.channelInterpretation,'speakers');
+    captureEngine.capturedTrack.muted=true;captureEngine.capturedTrack.emit('mute');capture.ready();await flush();assert.ok(captureEngine.mirror);assert.equal(capture.m.engine,captureEngine);assert.equal(capture.nativePauses(),0);
+    const missing=setup({capture:true});missing.audio.captureStream=()=>{const s=new Events();s.getTracks=s.getAudioTracks=()=>[];return s;};missing.gesture();missing.advance(1500);assert.ok(missing.m.engine.mirror);
+    const ended=setup({capture:true});ended.gesture();ended.m.engine.capturedTrack.emit('ended');assert.ok(ended.m.engine.mirror);
+    const silent=setup();silent.gesture();silent.ready();await flush();for(let n=0;n<20;n++){silent.advance(500);silent.m.sample(0,0);silent.m.sample(1,0);}
+    assert.equal(silent.m.phase,'zero-or-unavailable');assert.equal(silent.m.firstSignal,null);assert.equal(silent.m.counts.rebuilds,0,'Valid zero signal does not restart a healthy decoder');silent.m.sample(0,1e-6);silent.m.sample(1,2e-6);assert.equal(silent.m.phase,'sampling');assert.ok(silent.m.firstSignal>=10000);
+    silent.m.readFailure(0);assert.equal(silent.m.reason,'sample-read-failed');assert.equal(silent.m.counts.sampleErrors,1);silent.m.sample(0,.1);assert.equal(silent.m.phase,'sampling');assert.equal(silent.m.counts.rebuilds,0);
+    const frozen=setup({capture:true});frozen.gesture();frozen.advance(3100,{freezeContext:true});assert.equal(frozen.m.counts.rebuilds,1);assert.equal(frozen.contexts[0].state,'closed');frozen.advance(500,{freezeContext:true});frozen.advance(3100,{freezeContext:true});assert.equal(frozen.m.terminal,true);assert.equal(frozen.m.needsGesture,false);for(let n=0;n<50;n++)frozen.advance(500,{freezeContext:true});assert.equal(frozen.m.counts.contexts,2);assert.equal(frozen.nativePauses(),0);
+    const frozenCopy=setup();frozenCopy.gesture();frozenCopy.ready();await flush();frozenCopy.advance(3100,{freezeContext:true});frozenCopy.ready();await flush();frozenCopy.advance(100,{freezeContext:true});frozenCopy.advance(3100,{freezeContext:true});assert.equal(frozenCopy.m.terminal,true);assert.equal(frozenCopy.m.engine.mirror.src,'','Exhausted context recovery closes analysis requests');assert.equal(frozenCopy.m.engine.mirror.paused,true);assert.equal(frozenCopy.nativePauses(),0);
+    const hung=setup({contextState:'suspended',resumeHang:true,capture:true});hung.gesture();hung.advance(4000,{freezeContext:true});assert.equal(hung.m.counts.contexts,1,'Resume has its own deadline, not a two-second decoder timeout');hung.setResumeHang(false);hung.setContextState('running');hung.advance(4100,{freezeContext:true});assert.equal(hung.m.counts.rebuilds,1);hung.advance(1000);assert.equal(hung.m.engine.context.state,'running');assert.equal(hung.nativePauses(),0);
+    const resumeRace=setup({contextState:'suspended',capture:true});let rejectResume;
+    resumeRace.env.window.AudioContext.prototype.resume=function(){return new Promise((resolve,reject)=>{rejectResume=reject;});};
+    resumeRace.gesture();resumeRace.change();resumeRace.m.stop('track-change');resumeRace.m.resume('automatic');resumeRace.m.engine.context.state='running';
+    rejectResume(Object.assign(new Error('old resume'),{name:'NotAllowedError'}));await flush();assert.equal(resumeRace.m.needsGesture,false,'Old resume rejection cannot block a new generation');
+    resumeRace.advance(91000);resumeRace.m.snapshot();assert.ok(resumeRace.m.events.every(event=>event.ms>=1000),'Old events expire on report even when phase stays unchanged');
+    const interrupted=setup();interrupted.gesture();interrupted.ready();await flush();const before=interrupted.m.engine;before.context.state='interrupted';before.context.emit('statechange');await flush();assert.equal(interrupted.m.engine,before);assert.equal(before.context.state,'running');before.context.state='closed';interrupted.m.tick();assert.notEqual(interrupted.m.engine,before);
+    const denied=setup();denied.m.create=(()=>{const original=denied.m.create.bind(denied.m);return ()=>{original();denied.m.engine.mirror.errors=['NotAllowedError'];};})();denied.m.resume('automatic');await flush();assert.equal(denied.m.needsGesture,true);const deniedEngine=denied.m.engine;for(let n=0;n<20;n++)denied.advance(500);assert.equal(denied.m.counts.contexts,1);denied.gesture();denied.ready();await flush();assert.equal(denied.m.needsGesture,false);assert.equal(denied.m.engine,deniedEngine,'Real activation reuses Safari element');assert.equal(denied.nativePauses(),0);
+    for(const name of ['AbortError','NotSupportedError','NetworkError']){
+        const failed=setup();failed.gesture();failed.ready();await flush();const e=failed.m.engine;e.mirror.pause();e.mirror.errors=[name];failed.m.tick();await flush();assert.equal(failed.m.needsGesture,false,name+' is not an autoplay refusal');
+        if(name==='NotSupportedError')assert.equal(failed.m.terminal,true);else{failed.advance(2100);failed.ready();await flush();assert.equal(failed.m.terminal,false);assert.equal(failed.m.engine,e);assert.equal(failed.m.counts.retries,1);}assert.equal(failed.nativePauses(),0);
+    }
+    const network=setup();network.gesture();network.ready();await flush();const networkEngine=network.m.engine;
+    for(let n=0;n<3;n++){networkEngine.mirror.error={code:2};networkEngine.mirror.emit('error');network.advance(4100);network.ready();await flush();}
+    assert.equal(network.m.terminal,true);assert.equal(network.m.needsGesture,false);assert.equal(network.m.counts.retries,2);
+    network.env.navigator.onLine=false;network.m.network(false);network.advance(25000);network.env.navigator.onLine=true;network.m.network(true);network.advance(1600);network.ready();await flush();assert.equal(network.m.terminal,false);assert.equal(network.m.engine,networkEngine);assert.equal(network.m.networkRecoveries,1);
+    const delay=setup();delay.gesture();await flush();delay.advance(10000);assert.equal(delay.m.counts.retries,0,'Initial metadata has a separate 20-second deadline');delay.advance(10100);assert.equal(delay.m.reason,'copy-load-timeout');assert.equal(delay.m.counts.retries,1);assert.equal(delay.m.needsGesture,false);
+    const seekDelay=setup();seekDelay.gesture();seekDelay.ready();await flush();seekDelay.m.engine.mirror.seeking=true;seekDelay.advance(4000);assert.equal(seekDelay.m.counts.retries,0);seekDelay.advance(8100);assert.equal(seekDelay.m.reason,'copy-seek-timeout');
+    const stalled=setup();stalled.gesture();stalled.ready();await flush();stalled.advance(3100,{freezeCopy:true});assert.equal(stalled.m.reason,'copy-decode-stalled');assert.equal(stalled.m.counts.contexts,1,'Decoder recovery preserves Web Audio');
+    const racing=setup();racing.gesture();racing.ready();await flush();const oldEngine=racing.m.engine;let rejectOld;
+    oldEngine.mirror.pause();oldEngine.mirror.play=()=>new Promise((resolve,reject)=>{rejectOld=reject;});racing.m.tick();
+    const oldError=[...oldEngine.mirror.listeners.get('error')][0];racing.change();racing.m.stop('track-change');oldEngine.mirror.play=()=>{oldEngine.mirror.paused=false;return Promise.resolve();};racing.gesture();racing.ready();await flush();
+    rejectOld(Object.assign(new Error('private-url'),{name:'NotAllowedError'}));oldError();await flush();assert.equal(racing.m.needsGesture,false);assert.equal(racing.m.engine,oldEngine);
+    racing.m.sample(0,.12);racing.m.sample(1,.03);racing.m.nativeFailure(3,206);const report=JSON.stringify({snapshot:racing.m.snapshot(),events:racing.m.events});assert.ok(!report.includes('fixture.invalid')&&!report.includes('private-url'));assert.equal(racing.m.snapshot().nativeError,3);assert.equal(racing.m.snapshot().driveStatus,206);
+    const events=new Events(),waits=[];Object.assign(events,{paused:false,ended:false,readyState:2,currentTime:15});
+    const eventsContext=vm.createContext({audio:events,setBuffering:v=>waits.push(v),drawProgress(){},resumeMeters(){},startAnimation(){},preloader:{cancel(){}},stopMeters(){},save(){},prepareUpcoming(){},Date,lastSave:0,meterController:{seek(){}},syncMirror(){},next(){}});
     vm.runInContext(source.slice(source.indexOf("    audio.addEventListener('playing'"),source.indexOf('    let errorProbe =')),eventsContext);
-    playbackEvents.emit('stalled');assert.deepEqual(waits,[],'A download stall does not mean the native song stopped sounding');
-    playbackEvents.emit('waiting');assert.deepEqual(waits,[true],'An actual playback wait still shows buffering');
-    playbackEvents.emit('playing');assert.deepEqual(waits,[true,false]);
+    events.emit('stalled');assert.deepEqual(waits,[]);events.emit('waiting');events.emit('playing');assert.deepEqual(waits,[true,false]);
+    const playback=source.slice(source.indexOf('    async function play('),source.indexOf('    function shuffled('));
+    const wrapper=source.slice(source.indexOf('    function resumeMeters('),source.indexOf('    function stopMeters('));
+    let nativePlays=0,analysisErrors=0;
+    const isolated=vm.createContext({current:1,generation:1,audio:{paused:true,ended:false,error:null,play(){nativePlays++;this.paused=false;return Promise.resolve();}},meterController:{engine:null,resume(){throw new Error('analysis fault');},state(phase){assert.equal(phase,'unavailable');analysisErrors++;}},configureAudioSession(){},toast(){throw new Error('Analysis must not be misreported as native audio failure');},graph:null});
+    vm.runInContext(wrapper+playback,isolated);await isolated.play('user',{isTrusted:true,type:'click'});assert.equal(nativePlays,1);assert.equal(isolated.audio.paused,false);assert.equal(analysisErrors,1,'Analysis command exceptions do not reject native play');
     const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),source.indexOf("    window.addEventListener('pagehide', save);"));
-    const navigation=source.slice(source.indexOf('    function next(automatic = false)'),source.indexOf('    function applyState(result)'));
+    const navigation=source.slice(source.indexOf('    function next(automatic = false,'),source.indexOf('    function applyState(result)'));
     const actions=new Map(); const audio={duration:200,currentTime:75,paused:false,pause(){this.paused=true;}};
-    const context=vm.createContext({audio,current:2,queue:[1,2,3],repeat:'off',shuffle:false,bag:[],futureBag:[],history:[],navigator:{mediaSession:{setActionHandler(name,handler){actions.set(name,handler);}}},drawProgress(){}});
-    vm.runInContext('function load(id){current=id;audio.currentTime=0;} function play(){audio.paused=false;}',context);
+    const context=vm.createContext({audio,current:2,queue:[1,2,3],repeat:'off',shuffle:false,bag:[],futureBag:[],history:[],playOrigins:[],navigator:{mediaSession:{setActionHandler(name,handler){actions.set(name,handler);}}},drawProgress(){}});
+    vm.runInContext('function load(id){current=id;audio.currentTime=0;} function play(origin){playOrigins.push(origin);audio.paused=false;}',context);
     vm.runInContext(navigation+controls,context);
     assert.equal(actions.get('seekbackward'),null); assert.equal(actions.get('seekforward'),null);
     actions.get('nexttrack')(); assert.equal(context.current,3); assert.equal(audio.currentTime,0);
     actions.get('previoustrack')(); assert.equal(context.current,2);
     actions.get('seekto')({seekTime:150}); assert.equal(audio.currentTime,150);
-    actions.get('pause')(); assert.equal(audio.paused,true); actions.get('play')(); assert.equal(audio.paused,false);
+    actions.get('pause')(); assert.equal(audio.paused,true); actions.get('play')(); assert.equal(audio.paused,false);assert.deepEqual(Array.from(context.playOrigins),['system','system','system'],'Lock-screen commands never pretend to be user gestures');
     const cover=source.slice(source.indexOf('    function updateNow()'),source.indexOf('    function updateButtons()'));
     const nodes=new Map(); const currentTrack={title:'Fixture',artist:'Artist',cover:'',source:'drive'};
     const metaContext=vm.createContext({activeTrack:()=>currentTrack,$:selector=>{if(!nodes.has(selector))nodes.set(selector,{textContent:'',getAttribute(){return '';}});return nodes.get(selector);},config:{defaultCover:'/cover.svg',defaultArtwork:'/cover.png'},current:1,queueName:'Fixture',navigator:{mediaSession:{}},window:{MediaMetadata:true},MediaMetadata:class {constructor(metadata){Object.assign(this,metadata);}},URL,location:{href:'https://fixture.invalid/player'}});
@@ -178,5 +126,5 @@ function setup(capture){
     volumeContext.toggleMute();assert.equal(Number(volumeSlider.value),0);assert.equal(volumeFill,0);assert.equal(volumeContext.audio.volume,.65);assert.equal(volumeIcon,'mute');assert.equal(attributes['aria-pressed'],'true');
     volumeContext.toggleMute();assert.equal(Number(volumeSlider.value),.65);assert.equal(volumeContext.audio.muted,false);
     volumeContext.audio.volume=0;volumeContext.syncVolume();assert.equal(attributes['aria-label'],'Включить звук');volumeContext.toggleMute();assert.equal(volumeContext.audio.volume,.65);assert.equal(saves,3);
-    console.log('Audio checks passed: trusted activation, hung resume, frozen running clock, bounded recovery, missing capture fallback, local autoplay rejection, mirror deadlines, background return, native audio isolation and Media Session controls.');
+    console.log('Audio audit passed: activation origins, 20 automatic and 20 rapid transitions, persistent copy, buffering hysteresis, bounded recovery, separate deadlines, racing callbacks, silence, privacy, native isolation and Media Session.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

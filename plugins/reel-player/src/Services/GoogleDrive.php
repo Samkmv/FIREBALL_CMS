@@ -6,7 +6,7 @@ namespace Fireball\ReelPlayer\Services;
 final class GoogleDrive
 {
     private bool $meterStream = false;
-    private int $meterSpeed = 524288;
+    private int $meterSpeed = 2097152;
     private const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
     private string $directory;
     private string $root;
@@ -378,12 +378,19 @@ final class GoogleDrive
         } finally { curl_close($curl); }
     }
 
+    /** Byte/s, with room for high-bitrate FLAC and a bounded unknown-duration default. */
+    public static function meterRate(int $bytes, float $duration): int
+    {
+        if ($duration <= 0 || !is_finite($duration)) return 2 * 1048576;
+        return (int)min(8 * 1048576,max(524288,ceil($bytes/$duration*1.5)));
+    }
+
     public function stream(string $id, bool $meterStream = false, float $duration = 0): never
     {
         $this->meterStream = $meterStream;
         session()->close(); $this->token();
         $file = self::assertAudio($this->file($id)); $started = false;
-        if ($meterStream && $duration > 0) $this->meterSpeed = (int)min(2097152,max(524288,ceil((int)$file['size']/$duration*1.5)));
+        if ($meterStream) $this->meterSpeed = self::meterRate((int)$file['size'],$duration);
         while (ob_get_level() > 0) ob_end_clean();
         header('Cache-Control: private, no-store, max-age=0'); header('X-Content-Type-Options: nosniff'); header('X-Accel-Buffering: no');
         $headers = static function(int $status,array $fields) use (&$started): void {

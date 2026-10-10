@@ -3,7 +3,9 @@ declare(strict_types=1);
 // Isolated browser test server. No production accounts, database or music are used.
 if (PHP_SAPI !== 'cli-server') { http_response_code(404); exit; }
 $project = dirname(__DIR__, 3);
-define('STORAGE', $project . '/tmp/reel-player-browser');
+$auditMode = getenv('REEL_PLAYER_SEQUENCE_PREVIEW');
+$audit = in_array($auditMode, ['short','long'], true);
+define('STORAGE', $project . '/tmp/reel-player-browser' . ($audit ? '-audit-'.$auditMode : ''));
 if (!is_dir(STORAGE)) mkdir(STORAGE, 0700, true);
 require $project . '/vendor/autoload.php';
 require dirname(__DIR__) . '/Plugin.php';
@@ -26,9 +28,11 @@ function response(): \FBL\Response { static $response; return $response ??= new 
 function get_route_param(string $key): string { return (string)($GLOBALS['route'][$key] ?? ''); }
 function return_translation(string $key): string { return $key; }
 function plugin_view(string $slug,string $view,array $data,bool $layout=true): string {
-    if (getenv('REEL_PLAYER_STREAM_PREVIEW') === '1') foreach ($data['config']['state']['tracks'] as &$track) $track['source'] = 'drive';
-    if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && ($_GET['mirror'] ?? '') === '1') $data['js_url'] .= '&mirror=1';
-    if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && in_array($_GET['meterFault'] ?? '', ['clock','resume','blocked'], true)) $data['js_url'] .= '&meterFault=' . $_GET['meterFault'];
+    if (getenv('REEL_PLAYER_STREAM_PREVIEW') === '1') foreach ($data['config']['state']['tracks'] as &$track) {
+        if(($_GET['local']??'')==='1'){$track['source']='local';$track['url'].='?local=1';}else $track['source'] = 'drive';
+    }
+    if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && ($_GET['mirror'] ?? '') === '1') $data['meters_url'] .= '&mirror=1';
+    if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && in_array($_GET['meterFault'] ?? '', ['clock','resume','blocked'], true)) $data['meters_url'] .= '&meterFault=' . $_GET['meterFault'];
     unset($track); extract($data); ob_start(); require dirname(__DIR__).'/views/'.$view.'.php'; return (string)ob_get_clean();
 }
 function setting(string $key,mixed $default=null): mixed { return $default; }
@@ -50,17 +54,24 @@ function db(): object { static $db; return $db ??= new class {
     public function commit(): void { $this->pdo->commit(); }
     public function rollBack(): void { $this->pdo->rollBack(); }
 }; }
+$router=new class {
+    public string $assetPattern='';public mixed $assetHandler=null;
+    public function get(string $pattern,mixed $handler):static{if(str_starts_with($pattern,'/plugins/reel-player/assets/')){$this->assetPattern=$pattern;$this->assetHandler=$handler;}return $this;}
+    public function post(string $pattern,mixed $handler):static{return $this;}
+    public function middleware(array $guard):static{return $this;}
+};
+require dirname(__DIR__).'/routes.php';
 $path = parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
 if (str_starts_with($path,'/assets/')) {
     $file=$project.'/public'.$path;
     if (!is_file($file) || !str_ends_with($path,'.woff2')) abort();
     header('Content-Type:font/woff2'); readfile($file); exit;
 }
-if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|preload\.js|cover\.(svg|png))$~',$path,$match)) {
+if (preg_match('~^'.$router->assetPattern.'$~',$path,$match)) {
     header('Content-Type:'.match(pathinfo($match[1],PATHINFO_EXTENSION)) {'css'=>'text/css','js'=>'application/javascript','png'=>'image/png',default=>'image/svg+xml'});
-    if ($match[1] === 'player.js' && getenv('REEL_PLAYER_METERS_PREVIEW') === '1') {
-        $source = file_get_contents(dirname(__DIR__).'/assets/player.js');
-        if (getenv('REEL_PLAYER_MIRROR_PREVIEW') === '1' || ($_GET['mirror'] ?? '') === '1') $source = str_replace('const capture = audio.captureStream || audio.mozCaptureStream;', 'const capture = null;', $source);
+    if ($match[1] === 'meters.js' && getenv('REEL_PLAYER_METERS_PREVIEW') === '1') {
+        $source = file_get_contents(dirname(__DIR__).'/assets/meters.js');
+        if (getenv('REEL_PLAYER_MIRROR_PREVIEW') === '1' || ($_GET['mirror'] ?? '') === '1') $source = str_replace('const capture = this.forceMirror ? null : this.audio.captureStream || this.audio.mozCaptureStream;', 'const capture = null;', $source);
         if (in_array($_GET['meterFault'] ?? '', ['clock','resume','blocked'], true)) {
             $fault = json_encode($_GET['meterFault']);
             $injection = <<<'JS'
@@ -77,6 +88,10 @@ if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|preload\.js|cove
 JS;
             $source = str_replace("    'use strict';", "    'use strict';\n" . str_replace('PREVIEW_FAULT', $fault, $injection), $source);
         }
+        echo $source; exit;
+    }
+    if ($match[1] === 'player.js' && getenv('REEL_PLAYER_METERS_PREVIEW') === '1') {
+        $source = file_get_contents(dirname(__DIR__).'/assets/player.js');
         $diagnostic = <<<'JS'
     // Opt-in, DOM-visible measurements for browser QA, absent in production.
     let previewStart = 0, previewFirstMeter = null, previewFrames = 0, previewGeometry = 0, previewFrameTime = 0, previewMaxGap = 0;
@@ -94,16 +109,44 @@ JS;
         requestAnimationFrame(previewFrame);
     };
     requestAnimationFrame(previewFrame);
-    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, clock:graph?.context.currentTime, rebuilds:meterRecovery.rebuilds, blocked:meterRecovery.blocked, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState, preloadActive:preloader.active, preloadDone:[...preloader.done.keys()], upcoming:upcoming().map(t=>t.id), sampleMs:previewStart ? performance.now()-previewStart : 0, firstMeterMs:previewFirstMeter, frames:previewFrames, geometryWrites:previewGeometry, maxFrameGapMs:previewMaxGap, rotors:visuals.reels.map(reel=>({state:reel.motion?.playState,rate:reel.motion?.playbackRate,time:reel.motion?.currentTime}))}); }, 500);
+    let previewGeneration=-1,previewCurrent=null;const previewTransitions=[];
+    setInterval(() => {
+        if(previewGeneration!==generation){previewGeneration=generation;previewCurrent={generation,phase:meterController.phase,firstSignalMs:null,maxRms:[0,0],track:current};previewTransitions.push(previewCurrent);if(previewTransitions.length>100)previewTransitions.shift();}
+        if(previewCurrent){previewCurrent.phase=meterController.phase;previewCurrent.firstSignalMs=meterController.firstSignal;previewCurrent.maxRms=previewCurrent.maxRms.map((v,i)=>Math.max(v,meterController.rms[i]));}
+        app.dataset.meterDiagnostics = JSON.stringify({health:meterController.snapshot(),nativeTime:audio.currentTime,nativePaused:audio.paused,nativeReady:audio.readyState,waiting:loading,captureTrack:graph?.capturedTrack?.readyState,preloadActive:preloader.active,preloadDone:preloader.done.size,firstMeterMs:previewFirstMeter,frames:previewFrames,geometryWrites:previewGeometry,maxFrameGapMs:previewMaxGap,transitions:previewTransitions,rotors:visuals.reels.map(reel=>({state:reel.motion?.playState,rate:reel.motion?.playbackRate,time:reel.motion?.currentTime}))});
+    }, 100);
 JS;
         echo preg_replace('/\}\)\(\);\s*$/', $diagnostic . "\n})();", $source); exit;
     }
-    readfile(dirname(__DIR__).'/assets/'.$match[1]); exit;
+    $GLOBALS['route']=['file'=>$match['file']];($router->assetHandler)();
 }
 if ($_SERVER['REQUEST_METHOD']==='POST' && ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '') !== 'reel-browser-fixture') { response()->json(['status'=>false,'message'=>'Invalid CSRF'],419); }
+// Reproducible opt-in PCM fixtures, kept in a separate database and directory.
+// Levels come from the audible file, including true zero and unequal stereo.
+if ($audit && $path === '/admin/reel-player') {
+    $lock=fopen(STORAGE.'/seed.lock','c');flock($lock,LOCK_EX);
+    try {
+        if(!(int)db()->query('SELECT COUNT(*) FROM reel_tracks')->getColumn()) {
+            $owner=(int)get_user()['id'];$dir=STORAGE.'/reel-player/'.$owner;
+            if(!is_dir($dir))mkdir($dir,0700,true);
+            $duration=$auditMode==='short'?2:24;$rate=44100;
+            foreach ([['Zero',2,0,0],['Quiet',2,.014,.007],['Mono',1,.12,.12],['Stereo',2,.18,.04]] as [$name,$channels,$left,$right]) {
+                $data='';for($n=0;$n<$duration*$rate;$n++){ $tone=sin(2*M_PI*440*$n/$rate);$data.=pack('v',((int)round($tone*$left*32767))&65535);if($channels===2)$data.=pack('v',((int)round($tone*$right*32767))&65535); }
+                $relative=$owner.'/'.sha1('audit-'.$name).'.wav';$bytes='RIFF'.pack('V',36+strlen($data)).'WAVEfmt '.pack('VvvVVvv',16,1,$channels,$rate,$rate*$channels*2,$channels*2,16).'data'.pack('V',strlen($data)).$data;
+                file_put_contents(STORAGE.'/reel-player/'.$relative,$bytes);chmod(STORAGE.'/reel-player/'.$relative,0600);
+                db()->query('INSERT INTO reel_tracks(owner_id,title,artist,filename,file_path,mime,file_size,duration,created_at) VALUES(?,?,?,?,?,?,?,?,?)',[$owner,$name,'PCM audit',$name.'.wav',$relative,'audio/wav',strlen($bytes),$duration,date('Y-m-d H:i:s')]);
+            }
+            $mp3=getenv('REEL_PLAYER_MP3_PREVIEW');
+            if($mp3 && is_file($mp3) && pathinfo($mp3,PATHINFO_EXTENSION)==='mp3') {
+                $relative=$owner.'/'.sha1('audit-mp3').'.mp3';copy($mp3,STORAGE.'/reel-player/'.$relative);chmod(STORAGE.'/reel-player/'.$relative,0600);
+                db()->query('INSERT INTO reel_tracks(owner_id,title,artist,filename,file_path,mime,file_size,duration,created_at) VALUES(?,?,?,?,?,?,?,?,?)',[$owner,'MP3','WPT test tone','sine440.mp3',$relative,'audio/mpeg',filesize($mp3),0,date('Y-m-d H:i:s')]);
+            }
+        }
+    } finally {flock($lock,LOCK_UN);fclose($lock);}
+}
 // Exercise the real streaming/cache code with disposable local audio as the
 // upstream. No Google credentials or user libraries are exposed by this mode.
-if (getenv('REEL_PLAYER_STREAM_PREVIEW') === '1' && (preg_match('~^/admin/reel-player/media/(\d+)$~',$path,$mediaMatch) || $path === '/admin/reel-player/api/prepare')) {
+if (getenv('REEL_PLAYER_STREAM_PREVIEW') === '1' && ($_GET['local']??'')!=='1' && (preg_match('~^/admin/reel-player/media/(\d+)$~',$path,$mediaMatch) || $path === '/admin/reel-player/api/prepare')) {
     $warming = $path === '/admin/reel-player/api/prepare'; $id = (int)($warming ? ($_POST['id'] ?? 0) : $mediaMatch[1]);
     try { $track = (new \Fireball\ReelPlayer\Repositories\Library((int)get_user()['id']))->track($id); } catch (\InvalidArgumentException) { abort('Not found',404); }
     $filePath = (new \Fireball\ReelPlayer\Services\MediaStorage())->path($track['file_path']);

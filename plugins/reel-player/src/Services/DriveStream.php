@@ -36,19 +36,24 @@ final class DriveStream
     /** Reader calls head(status,headers), then body(bytes); false cancels body. */
     private static function read(array $file, int $start, int $end, callable $reader, callable $consume, bool $warming): void
     {
-        $remaining = $end - $start + 1; $skip = 0; $headed = false;
+        $remaining = $end - $start + 1; $skip = 0; $headed = false; $cancelled = false;
         $reader($file, $start, $end, $warming,
             static function(int $status, array $headers) use ($file,$start,$end,&$skip,&$headed): void {
                 $skip = self::response($status,$headers,$start,$end,(int)$file['size']); $headed = true;
             },
-            static function(string $bytes) use (&$skip,&$remaining,&$headed,$consume): bool {
+            static function(string $bytes) use (&$skip,&$remaining,&$headed,&$cancelled,$consume): bool {
                 if (!$headed) throw new \RuntimeException('Google Drive не вернул заголовки.', 502);
                 $discard = min($skip,strlen($bytes)); $skip -= $discard; $bytes = substr($bytes,$discard);
                 $chunk = substr($bytes,0,$remaining);
-                if ($chunk !== '') { if ($consume($chunk) === false) return false; $remaining -= strlen($chunk); }
+                if ($chunk !== '') {
+                    $remaining -= strlen($chunk);
+                    if ($consume($chunk) === false) { $cancelled = true; return false; }
+                }
                 return $remaining > 0;
             });
-        if (!$headed || $remaining !== 0) throw new \RuntimeException('Загрузка Google Drive прервалась. Повторите воспроизведение.', 502);
+        // Closing the analysis copy or cancelling a warm-up is intentional;
+        // an upstream ending early without cancellation is still an error.
+        if (!$cancelled && (!$headed || $remaining !== 0)) throw new \RuntimeException('Загрузка Google Drive прервалась. Повторите воспроизведение.', 502);
     }
 
     public function prepare(array $file, callable $reader): array

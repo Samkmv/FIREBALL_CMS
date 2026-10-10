@@ -187,6 +187,7 @@ $button = static function (string $action, string $label, string $name, string $
 </main>
 <script type="application/json" data-player-config><?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?></script>
 <script src="<?= htmlSC($preload_url) ?>" defer></script>
+<script src="<?= htmlSC($meters_url) ?>" defer></script>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>
 </html>

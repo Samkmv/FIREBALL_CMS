@@ -33,9 +33,10 @@ final class PlayerController
                 'pwa' => ['enabled' => !empty($pwa['enabled']), 'worker' => $pwa['service_worker_url'] ?? ''],
             ],
             'pwa_head' => function_exists('pwa_head_tags') ? pwa_head_tags() : '',
-            'css_url' => base_href('/plugins/reel-player/assets/player.css?v=' . filemtime($assets . '/player.css')),
-            'js_url' => base_href('/plugins/reel-player/assets/player.js?v=' . filemtime($assets . '/player.js')),
-            'preload_url' => base_href('/plugins/reel-player/assets/preload.js?v=' . filemtime($assets . '/preload.js')),
+            'css_url' => base_href('/plugins/reel-player/assets/player.css?v=' . substr(hash_file('sha256',$assets . '/player.css'),0,16)),
+            'js_url' => base_href('/plugins/reel-player/assets/player.js?v=' . substr(hash_file('sha256',$assets . '/player.js'),0,16)),
+            'meters_url' => base_href('/plugins/reel-player/assets/meters.js?v=' . substr(hash_file('sha256',$assets . '/meters.js'),0,16)),
+            'preload_url' => base_href('/plugins/reel-player/assets/preload.js?v=' . substr(hash_file('sha256',$assets . '/preload.js'),0,16)),
         ], false);
     }
 

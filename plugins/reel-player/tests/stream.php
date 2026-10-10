@@ -4,6 +4,7 @@ require dirname(__DIR__,3).'/vendor/autoload.php';
 require dirname(__DIR__).'/Plugin.php';
 use Fireball\ReelPlayer\Services\DriveCache;
 use Fireball\ReelPlayer\Services\DriveStream;
+use Fireball\ReelPlayer\Services\GoogleDrive;
 $checks = 0;
 $assert = static function(bool $value,string $label) use (&$checks): void { $checks++; if (!$value) throw new RuntimeException($label); };
 $reject = static function(callable $operation,int $code,string $label) use ($assert): void { try { $operation(); } catch (RuntimeException $e) { $assert($e->getCode() === $code,$label); return; } $assert(false,$label); };
@@ -60,6 +61,16 @@ try {
     $valid=false; $reject(fn()=>$pipe->prepare($file,$reader),403,'Disconnect during warm prevents publishing cache'); $assert($cache->prefix($file)===null,'No prefix saved after disconnect'); $valid=true;
     $broken=static function(array $f,int $s,int $e,bool $w,callable $h,callable $b):void { $h(206,['content-range'=>"bytes {$s}-{$e}/{$f['size']}"]); $b('short'); };
     $reject(fn()=>$pipe->prepare($file,$broken),502,'Truncated warm rejected'); $assert($cache->prefix($file)===null,'Partial warm not published');
+    $uncached=[...$file,'headRevisionId'=>''];$cancelledBytes=0;
+    $pipe->serve($uncached,'',$reader,static function(){},static function(string $chunk)use(&$cancelledBytes):bool{$cancelledBytes+=strlen($chunk);return false;});
+    $assert($cancelledBytes===57341,'Intentional analysis disconnect is not reported as truncated upstream');
+    $reject(fn()=>$pipe->serve($uncached,'',$broken,static function(){},static function(){}),502,'Audible truncated upstream is still rejected');
+    $reject(fn()=>$pipe->serve($uncached,'',static function($f,$s,$e,$w,$h,$b){$b('without headers');},static function(){},static function(){}),502,'Body before upstream headers is rejected');
+    $assert(GoogleDrive::meterRate(100,0)===2097152,'Unknown imported duration has a 2 MiB analysis ceiling');
+    $assert(GoogleDrive::meterRate(100,NAN)===2097152 && GoogleDrive::meterRate(100,INF)===2097152,'Invalid duration cannot break transfer options');
+    $assert(GoogleDrive::meterRate(12000000,300)===524288,'Low bitrate analysis remains bounded at 512 KiB/s');
+    $assert(GoogleDrive::meterRate(125829120,30)===6291456,'High bitrate file receives 1.5 times its 4 MiB/s average');
+    $assert(GoogleDrive::meterRate(PHP_INT_MAX,.001)===8388608,'Extreme bitrate never removes the 8 MiB/s ceiling');
     // The audible stream publishes a complete prefix before its tail finishes.
     // A simultaneous mirror can reuse it, with the per-file lock released.
     $earlyReader=static function(array $f,int $s,int $e,bool $w,callable $h,callable $b) use ($bytes,$cache,$assert):void {

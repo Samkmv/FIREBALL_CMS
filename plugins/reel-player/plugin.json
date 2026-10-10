@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.11",
+  "version": "1.2.12",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
   "name_i18n": {
@@ -16,35 +16,35 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Keep Safari analysis at a steady playback rate and resynchronise persistent drift with a bounded seek cooldown.",
-    "Keep real meters active during current-data streaming; distinguish download stalls from playback buffering.",
-    "Measure a longer audio window with fast attack and a short decay; clear stale readings after 180 ms, pause, mute or user seek.",
-    "Show the installed version and offer a local, bounded meter report without track or account data."
+    "Separate trusted input, automatic transitions and lock-screen commands; retain the analysis element across tracks.",
+    "Use independent startup deadlines, bounded recovery and buffering hysteresis without interrupting native audio.",
+    "Measure real mono/stereo samples after the new analysis window; add private stage, error and timing diagnostics.",
+    "Handle intentional stream cancellation, bounded network prefetch retries and high-bitrate Drive analysis; fingerprint assets by content."
   ],
   "release_notes_i18n": {
     "en": [
-      "Keep Safari analysis at a steady playback rate and resynchronise persistent drift with a bounded seek cooldown.",
-      "Keep real meters active during current-data streaming; distinguish download stalls from playback buffering.",
-      "Measure a longer audio window with fast attack and a short decay; clear stale readings after 180 ms, pause, mute or user seek.",
-      "Show the installed version and offer a local, bounded meter report without track or account data."
+      "Separate trusted input, automatic transitions and lock-screen commands; retain the analysis element across tracks.",
+      "Use independent startup deadlines, bounded recovery and buffering hysteresis without interrupting native audio.",
+      "Measure real mono/stereo samples after the new analysis window; add private stage, error and timing diagnostics.",
+      "Handle intentional stream cancellation, bounded network prefetch retries and high-bitrate Drive analysis; fingerprint assets by content."
     ],
     "ru": [
-      "Анализатор Safari работает на постоянной скорости; устойчивая рассинхронизация исправляется без непрерывных перемоток.",
-      "Индикаторы не выключаются из-за кратких изменений буфера; задержка загрузки отделена от остановки воспроизведения.",
-      "Более длинное окно настоящего сигнала и плавное затухание; старые показания сбрасываются через 180 мс, при паузе, отключении звука или перемотке пользователем.",
-      "Отображается версия плеера и доступен локальный ограниченный отчёт об индикаторах без данных песен и аккаунта."
+      "Реальные нажатия, автоматические переходы и команды экрана блокировки разделены; аудиоэлемент анализатора сохраняется между песнями.",
+      "Отдельные сроки запуска, ограниченное восстановление и защита от повторных загрузок при буферизации без остановки основного звука.",
+      "Настоящие уровни моно и стерео измеряются после обновления окна отсчётов; отчёт содержит стадии, ошибки и время первого сигнала.",
+      "Исправлена отмена облачного потока; ограничены сетевые повторы подготовки, увеличен запас для высокобитрейтных файлов; версия ресурсов зависит от содержимого."
     ],
     "de": [
-      "Safari-Analyse mit konstanter Geschwindigkeit; anhaltende Abweichungen mit begrenzten Suchvorgängen korrigieren.",
-      "Echte Pegel bleiben bei Streaming aktiv; Downloadverzögerungen von Wiedergabepufferung unterscheiden.",
-      "Längeres Messfenster mit kurzem Abfall; alte Werte nach 180 ms, Pause, Stummschaltung oder Benutzersuche löschen.",
-      "Installierte Version und lokaler, begrenzter Pegelbericht ohne Titel- oder Kontodaten."
+      "Benutzereingaben, automatische Titelwechsel und Sperrbildschirmbefehle trennen; Analyse-Audioelement beibehalten.",
+      "Getrennte Startfristen, begrenzte Wiederherstellung und Puffer-Hysterese ohne Unterbrechung der nativen Wiedergabe.",
+      "Echte Mono-/Stereo-Pegel nach Aktualisierung des Messfensters; private Diagnose von Phasen, Fehlern und Signalstart.",
+      "Beabsichtigte Stream-Abbrüche, begrenzte Netzwerkwiederholungen und hohe Drive-Bitraten berücksichtigen; Ressourcen per Inhalt versionieren."
     ],
     "zh-cn": [
-      "Safari 分析使用固定播放速度，仅在持续不同步时进行有限的定位。",
-      "短暂的缓冲状态变化不再关闭真实电平；区分下载停顿与播放缓冲。",
-      "使用更长的真实采样窗口和短暂衰减；180 毫秒后或暂停、静音、用户跳转时清除旧读数。",
-      "显示已安装版本，并提供不含歌曲或账户数据的本地有限电平报告。"
+      "区分真实点击、自动切歌和锁屏命令，跨曲目保留分析音频元素。",
+      "独立启动期限、有限恢复和缓冲滞回，不中断原生音频。",
+      "新采样窗口更新后测量真实单声道和立体声电平，增加私密的阶段、错误和信号启动诊断。",
+      "修正主动取消流的处理，限制网络预加载重试，支持更高比特率的 Drive 分析并按内容为资源版本编号。"
     ]
   },
   "update": {

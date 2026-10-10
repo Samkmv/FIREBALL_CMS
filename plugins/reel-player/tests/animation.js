@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const source = fs.readFileSync(require('node:path').join(__dirname,'../assets/player.js'),'utf8');
-const progress = source.slice(source.indexOf('    function drawBuffered('),source.indexOf('    function initGraph('));
+const progress = source.slice(source.indexOf('    function drawBuffered('),source.indexOf('    const meterController ='));
 const animation = source.slice(source.indexOf('    function drawMeters('),source.indexOf('    async function play('));
 let geometryWrites=0, barWrites=0, samples=0, scheduled=0, positions=0, fills=0, now=0;
 function shape(radius) { const attributes={r:radius}; return {getAttribute:name=>attributes[name],setAttribute(name,value){attributes[name]=value;geometryWrites++;}}; }
@@ -11,7 +11,7 @@ const styles=new Map(), visuals={
     reels:[0,1].map(i=>({pack:shape(i?'78.00':'174.00'),clip:shape(i?'78.00':'174.00'),rotor:{style:{}},bars:Array.from({length:15},()=>({classList:{toggle(){barWrites++;}}}))}))
 };
 const audio={duration:240,currentTime:0,playbackRate:1,volume:.8,muted:false,paused:false,ended:false,buffered:{length:1,start:()=>0,end:()=>80}};
-const context=vm.createContext({audio,visuals,generation:1,positionKey:'',packRadii:[174,78],meterLevels:[0,0],meterSignal:{generation:-1,values:[0,0],rms:[0,0],sampled:[-Infinity,-Infinity],drawn:0},meterReport:{samples:[],time:-Infinity,status:null},meterRecovery:{rebuilds:0,blocked:false},performance:{now:()=>now},progressFrame:-Infinity,meterFrame:-Infinity,frameId:0,frameTime:0,angles:[0,0],loading:false,seekActive:false,current:1,activeTrack:()=>({duration:240}),graph:{context:{state:'running'},samples:new Float32Array(2048),analysers:[0,1].map(()=>({getFloatTimeDomainData(array){samples++;array.fill(.15);}}))},navigator:{mediaSession:{setPositionState(){positions++;}}},document:{hidden:false},reducedMotion:{matches:false},formatTime:value=>String(Math.floor(value)),rangeFill(){fills++;},requestAnimationFrame(){scheduled++;return scheduled;}});
+const context=vm.createContext({audio,visuals,generation:1,positionKey:'',packRadii:[174,78],meterLevels:[0,0],meterSignal:{generation:-1,values:[0,0],rms:[0,0],sampled:[-Infinity,-Infinity],drawn:0},meterReport:{samples:[],time:-Infinity,status:null},meterController:{sample(){},readFailure(){},canSample(){return true;},snapshot(){return {phase:'test'};}},performance:{now:()=>now},progressFrame:-Infinity,meterFrame:-Infinity,frameId:0,frameTime:0,angles:[0,0],loading:false,seekActive:false,current:1,activeTrack:()=>({duration:240}),graph:{context:{state:'running'},samples:new Float32Array(2048),analysers:[0,1].map(()=>({getFloatTimeDomainData(array){samples++;array.fill(.15);}}))},navigator:{mediaSession:{setPositionState(){positions++;}}},document:{hidden:false},reducedMotion:{matches:false},formatTime:value=>String(Math.floor(value)),rangeFill(){fills++;},requestAnimationFrame(){scheduled++;return scheduled;}});
 vm.runInContext(progress+animation,context);
 // A 120 Hz screen must not cause 120 geometry rebuilds or system updates.
 for (let n=0;n<=120;n++) { audio.currentTime=n/120; now=n*1000/120; context.animate(now); }
@@ -49,6 +49,7 @@ assert.ok(context.meterLevels.every(level=>level===0),'Real silence settles to z
 audio.src='https://private.invalid/secret-song?token=secret';audio.title='Private music';
 for(let n=0;n<200;n++){now+=500;context.recordMeterDiagnostic();}
 assert.equal(context.meterReport.samples.length,180,'Device diagnostics retain only a bounded history');
+const retry={hidden:true};context.$=()=>retry;context.dialog={open:true};context.meterReport.status={isConnected:true,textContent:''};context.meterController.needsGesture=true;context.recordMeterDiagnostic(true);assert.equal(retry.hidden,false,'Manual activation is offered only for confirmed autoplay refusal');audio.paused=true;context.recordMeterDiagnostic(true);assert.equal(retry.hidden,true,'Paused music does not request activation');audio.paused=false;context.meterController.needsGesture=false;context.recordMeterDiagnostic(true);assert.equal(retry.hidden,true,'Healthy analysis does not request a gesture');context.meterReport.status=null;
 const diagnostic=JSON.stringify(context.meterReport.samples);assert.ok(!diagnostic.includes('secret')&&!diagnostic.includes('Private music'),'Diagnostics contain no URLs, tokens or track names');
 assert.ok(context.meterReport.samples.every(sample=>sample.analysis.rms.every(rms=>rms===0)),'Diagnostics distinguish actual zero samples from a frozen clock');
 now+=100000;context.recordMeterDiagnostic();assert.equal(context.meterReport.samples.length,1,'Old history expires after a long pause or background interval');
