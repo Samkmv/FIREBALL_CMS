@@ -26,13 +26,27 @@ $metadata = new VpnSubscriptionMetadataService();
 $assert($defaults['happ_server_settings_policy'] === 'default'
     && !isset($metadata->headers([], $defaults)['hide-settings']), 'existing_clients_unchanged');
 foreach (['default' => null, 'hide' => '1', 'show' => '0'] as $policy => $header) {
-    $settings = $validator->validate(array_replace($defaults, ['happ_server_settings_policy' => $policy]), $defaults)->toArray();
+    $settings = $validator->validate(array_replace($defaults, ['happ_server_settings_policy' => $policy,
+        'smart_connect_happ_provider_id' => 'fixture-provider']), $defaults)->toArray();
     $assert($settings['happ_server_settings_policy'] === $policy
         && $validator->validateStored($settings)->toArray() === $settings, 'dto_roundtrip_' . $policy);
     $headers = $metadata->headers([], $settings);
-    $assert(($headers['hide-settings'] ?? null) === $header && !isset($headers['providerid']), 'documented_header_without_provider_' . $policy);
+    $assert(($headers['hide-settings'] ?? null) === $header
+        && ($headers['providerid'] ?? null) === ($header === null ? null : 'fixture-provider'), 'documented_header_with_provider_' . $policy);
     $assert(!$settings['smart_connect_enabled'] && !isset($headers['subscription-autoconnect']), 'independent_of_smart_connect_' . $policy);
 }
+foreach (['hide', 'show'] as $policy) {
+    try { $validator->validate(array_replace($defaults, ['happ_server_settings_policy' => $policy]), $defaults); $rejected = false; }
+    catch (ValidationException $exception) { $rejected = $exception->getMessage() === 'vpn_manager_v2_happ_protection_provider_required'; }
+    $assert($rejected, 'require_provider_' . $policy);
+    $legacy = $validator->validateStored(array_replace($defaults, ['happ_server_settings_policy' => $policy]))->toArray();
+    $headers = $metadata->headers([], $legacy);
+    $assert($legacy['happ_server_settings_policy'] === $policy && !isset($headers['hide-settings']) && !isset($headers['providerid']),
+        'legacy_missing_provider_no_unsupported_headers_' . $policy);
+}
+$unsafeHeaders = $metadata->headers([], array_replace($defaults, ['happ_server_settings_policy' => 'hide',
+    'smart_connect_happ_provider_id' => "fixture\r\nInjected: yes"]));
+$assert(!isset($unsafeHeaders['hide-settings']) && !isset($unsafeHeaders['providerid']), 'invalid_provider_no_header_injection');
 foreach (['1', 'fake', "hide\r\nInjected: yes", [], true] as $index => $bad) {
     try { $validator->validate(array_replace($defaults, ['happ_server_settings_policy' => $bad]), $defaults); $rejected = false; }
     catch (ValidationException) { $rejected = true; }
@@ -41,12 +55,13 @@ foreach (['1', 'fake', "hide\r\nInjected: yes", [], true] as $index => $bad) {
     $assert($stored['happ_server_settings_policy'] === 'default' && !isset($metadata->headers([], $stored)['hide-settings']), 'bad_stored_policy_safe_' . $index);
 }
 $hidden = array_replace($defaults, ['happ_server_settings_policy' => 'hide', 'happ_routing_enabled' => true,
+    'smart_connect_happ_provider_id' => 'fixture-provider',
     'happ_routing_link' => (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->normalize('{"Name":"Fixture","DirectSites":["example.com"]}')]);
 $assert(isset($metadata->headers([], $hidden)['routing']) && $metadata->headers([], $hidden)['hide-settings'] === '1', 'routing_preserved');
 foreach (['ru', 'en', 'de', 'zh-cn'] as $language) {
     $strings = require dirname(__DIR__) . '/lang/' . $language . '.php';
     $keys = array_filter(array_keys($strings), static fn(string $key): bool => str_starts_with($key, 'vpn_manager_v2_happ_protection_'));
-    $assert(count($keys) === 8 && count(array_filter(array_intersect_key($strings, array_flip($keys)), static fn($value): bool => !is_string($value) || $value === '')) === 0,
+    $assert(count($keys) === 10 && count(array_filter(array_intersect_key($strings, array_flip($keys)), static fn($value): bool => !is_string($value) || $value === '')) === 0,
         'translations_' . $language);
 }
 echo json_encode(['status' => 'ok', 'count' => count($cases), 'cases' => $cases]), PHP_EOL;

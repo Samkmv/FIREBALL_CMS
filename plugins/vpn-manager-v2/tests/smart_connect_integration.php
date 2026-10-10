@@ -71,16 +71,22 @@ try {
     $storedSub = $repo->findByToken($tokens[0]);
     $originalUuid = db()->query('SELECT client_uuid FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$id])->getColumn();
     $originalOrder = db()->query('SELECT sort_order FROM vpn_v2_subscription_nodes WHERE subscription_id = ?', [$id])->getColumn();
+    try { $settingsService->save(array_replace($manualSettings, ['happ_server_settings_policy' => 'hide'])); $rejected = false; }
+    catch (\Fireball\VpnManagerV2\Exceptions\ValidationException) { $rejected = true; }
+    $assert($rejected && $settingsService->current()['happ_server_settings_policy'] === 'default', 'happ_protection_missing_provider_save_rejected');
     foreach (['hide' => '1', 'show' => '0', 'default' => null] as $policy => $hideHeader) {
-        $policySettings = array_replace($manualSettings, ['happ_server_settings_policy' => $policy]);
+        $policySettings = array_replace($manualSettings, ['happ_server_settings_policy' => $policy,
+            'smart_connect_happ_provider_id' => 'fixture-provider']);
         $settingsService->save($policySettings);
         $assert($settingsService->current()['happ_server_settings_policy'] === $policy, 'happ_protection_store_' . $policy);
         $protected = $endpoint->respond($tokens[0], 'plain', $manual->headers['ETag']);
         $assert($protected->status === 200 && $protected->body === $manual->body
             && ($protected->headers['hide-settings'] ?? null) === $hideHeader
-            && !isset($protected->headers['providerid']), 'happ_protection_header_manual_' . $policy);
+            && ($protected->headers['providerid'] ?? null) === ($hideHeader === null ? null : 'fixture-provider')
+            && !isset($protected->headers['subscription-autoconnect']), 'happ_protection_header_manual_' . $policy);
         $protected304 = $endpoint->respond($tokens[0], 'plain', $protected->headers['ETag']);
-        $assert($protected304->status === 304 && ($protected304->headers['hide-settings'] ?? null) === $hideHeader,
+        $assert($protected304->status === 304 && ($protected304->headers['hide-settings'] ?? null) === $hideHeader
+            && ($protected304->headers['providerid'] ?? null) === ($hideHeader === null ? null : 'fixture-provider'),
             'happ_protection_header_304_' . $policy);
     }
     $smart = array_replace($manualSettings, ['smart_connect_enabled' => true, 'smart_connect_happ_enabled' => true,

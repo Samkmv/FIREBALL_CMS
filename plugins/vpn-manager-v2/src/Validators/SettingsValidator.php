@@ -86,6 +86,10 @@ final class SettingsValidator
         if (!is_string($serverSettingsPolicy) || !in_array($serverSettingsPolicy, ['default', 'hide', 'show'], true)) {
             $serverSettingsPolicy = $this->invalid($strict, 'vpn_manager_v2_happ_protection_invalid', 'default');
         }
+        $smartConnect = (new SmartConnectValidator())->validate($data, $strict);
+        if ($strict && $serverSettingsPolicy !== 'default' && $smartConnect['smart_connect_happ_provider_id'] === '') {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_provider_required'));
+        }
 
         return new VpnSettingsData(
             $serviceName,
@@ -125,7 +129,7 @@ final class SettingsValidator
             $this->boolean($data['show_qr_in_profile'] ?? false),
             $routingEnabled,
             $routingLink,
-            (new SmartConnectValidator())->validate($data, $strict),
+            $smartConnect,
             $serverSettingsPolicy,
         );
     }

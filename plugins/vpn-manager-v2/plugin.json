@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,7 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
-    "Added independent Happ viewing/export policy. It hides sharing in the app without changing keys; copied credentials are not revoked.",
+    "Fixed Happ viewing/export policy: Provider ID is required and sent even with Smart Connect disabled. Added a client setup guide; keys are unchanged.",
     "Added Happ Smart Connect: proxy tests, sorting and launch auto-connect with Provider ID.",
     "Added a separate sing-box JSON profile with urltest, interval, switching tolerance and failover mode.",
     "Added background infrastructure monitoring with history and retries. Checks do not change client connections.",
@@ -27,28 +27,28 @@
   ],
   "release_notes_i18n": {
     "ru": [
-      "Добавлена отдельная защита просмотра и экспорта в Happ. Скрывает передачу подключений в приложении без замены ключей; уже скопированные ключи не отзываются.",
+      "Исправлена защита просмотра и экспорта Happ: требуется Provider ID, который передаётся даже при выключенном Smart Connect. Добавлена инструкция по настройке; ключи не меняются.",
       "Добавлен Smart Connect для Happ: проверка через прокси, сортировка и автоподключение при запуске с Provider ID.",
       "Добавлен отдельный JSON-профиль sing-box с urltest, интервалом, порогом переключения и режимом резервирования.",
       "Добавлен фоновый мониторинг инфраструктуры с историей и повторами. Проверки не изменяют клиентские подключения.",
       "Новые функции выключены по умолчанию. Сохранены обычные подписки, HWID, идентификаторы, кэш и маршрутизация Happ."
     ],
     "en": [
-      "Added independent Happ viewing/export policy. It hides sharing in the app without changing keys; copied credentials are not revoked.",
+      "Fixed Happ viewing/export policy: Provider ID is required and sent even with Smart Connect disabled. Added a client setup guide; keys are unchanged.",
       "Added Happ Smart Connect: proxy tests, sorting and launch auto-connect with Provider ID.",
       "Added a separate sing-box JSON profile with urltest, interval, switching tolerance and failover mode.",
       "Added background infrastructure monitoring with history and retries. Checks do not change client connections.",
       "New features are disabled by default. Regular subscriptions, HWID, identifiers, caching and Happ routing are preserved."
     ],
     "de": [
-      "Separate Happ-Richtlinie für Anzeige und Export hinzugefügt. Sie verbirgt die Weitergabe in der App ohne Schlüsselwechsel; kopierte Zugangsdaten werden nicht widerrufen.",
+      "Happ-Richtlinie für Anzeige und Export korrigiert: Provider ID ist erforderlich und wird auch ohne Smart Connect übertragen. Anleitung ergänzt; Schlüssel bleiben unverändert.",
       "Happ Smart Connect hinzugefügt: Proxy-Prüfungen, Sortierung und automatische Verbindung beim Start mit Provider ID.",
       "Separates sing-box-JSON-Profil mit urltest, Prüfintervall, Wechseltoleranz und Ausfallsicherung hinzugefügt.",
       "Infrastrukturüberwachung im Hintergrund mit Verlauf und Wiederholungen hinzugefügt. Prüfungen verändern keine Clientverbindungen.",
       "Neue Funktionen sind standardmäßig deaktiviert. Normale Abonnements, HWID, Kennungen, Cache und Happ-Routing bleiben erhalten."
     ],
     "zh-cn": [
-      "新增独立的 Happ 查看和导出策略。隐藏应用内连接分享功能，无需更换密钥；已复制的凭据不会被撤销。",
+      "修复 Happ 查看和导出策略：需要 Provider ID，即使 Smart Connect 关闭也会发送。新增客户端设置指南；密钥保持不变。",
       "新增 Happ Smart Connect：通过代理检测、排序以及使用 Provider ID 在启动时自动连接。",
       "新增独立 sing-box JSON 配置，支持 urltest、检测间隔、切换容差和故障切换模式。",
       "新增后台基础设施监控、历史记录和重试。检测不会修改客户端连接。",

@@ -28,6 +28,7 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
             assert.equal(await page.locator('#smart-connect .form-select').count(), 2);
             assert.equal(await page.locator('[name="smart_connect_server_priorities[1]"]').count(), 1);
             assert.equal(await page.locator('[data-vpn-v2-happ-protection]').count(), 1);
+            assert.equal(await page.locator('[data-vpn-v2-happ-protection] a[href="#vpnSmartProvider"]').count(), 1);
             assert.equal(await page.inputValue('#vpnV2HappServerSettingsPolicy'), 'default');
             await page.selectOption('#vpnV2HappServerSettingsPolicy', 'hide');
             await page.selectOption('#vpnSmartMode', 'manual');
@@ -37,6 +38,7 @@ const php = process.env.VPN_TEST_PHP || '/Applications/MAMP/bin/php/php8.2.0/bin
             assert.equal(form.smart_connect_happ_ping_on_open, '1');
             assert.equal(form.smart_connect_interval_seconds, '180');
             assert.equal(form.happ_server_settings_policy, 'hide');
+            assert.equal(form.smart_connect_happ_provider_id, 'fixture-provider');
             assert(!await page.evaluate(() => window.injected), 'Escaped server name');
             await page.goto('https://vpn.test/?mode=access&lang=' + lang);
             assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Access card overflow');

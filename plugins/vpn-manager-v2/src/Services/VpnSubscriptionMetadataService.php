@@ -38,13 +38,17 @@ final class VpnSubscriptionMetadataService
         if ($this->httpUrl($supportUrl)) {
             $headers['support-url'] = $supportUrl;
         }
-        // Standard Happ parameter: UI visibility/export only, never tunnel authentication.
+        // Advanced Happ parameter: requires Provider ID even with Smart Connect disabled.
+        // This restricts the app UI, not tunnel authentication.
         $visibility = match ($settings['happ_server_settings_policy'] ?? 'default') {
             'hide' => '1',
             'show' => '0',
             default => null,
         };
-        if ($visibility !== null) {
+        $smartConnect = (new \Fireball\VpnManagerV2\Validators\SmartConnectValidator())->validate($settings, false);
+        $providerId = $smartConnect['smart_connect_happ_provider_id'];
+        if ($visibility !== null && $providerId !== '') {
+            $headers['providerid'] = $providerId;
             $headers['hide-settings'] = $visibility;
         }
 

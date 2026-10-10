@@ -200,6 +200,9 @@ $switch = static function (string $key, string $label, string $help = '') use ($
                     <?php endforeach; ?>
                 </select>
                 <div class="form-text" id="vpnV2HappProtectionHelp"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_help')) ?></div>
+                <a class="btn btn-sm btn-outline-secondary rounded-pill mt-3" href="#vpnSmartProvider">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_configure_provider')) ?>
+                </a>
                 <p class="small text-body-secondary mt-3 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_limit')) ?></p>
             </div>
             <div class="alert alert-info rounded-4 mb-0 small">
