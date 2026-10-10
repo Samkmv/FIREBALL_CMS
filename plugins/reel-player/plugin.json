@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.12",
+  "version": "1.2.13",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
   "name_i18n": {
@@ -16,35 +16,25 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Separate trusted input, automatic transitions and lock-screen commands; retain the analysis element across tracks.",
-    "Use independent startup deadlines, bounded recovery and buffering hysteresis without interrupting native audio.",
-    "Measure real mono/stereo samples after the new analysis window; add private stage, error and timing diagnostics.",
-    "Handle intentional stream cancellation, bounded network prefetch retries and high-bitrate Drive analysis; fingerprint assets by content."
+    "Draw straight, symmetrical reel spokes with a shared centre and equal 120-degree spacing.",
+    "Join the spokes to the stationary rim and retain a single outer contour for stable rotation."
   ],
   "release_notes_i18n": {
     "en": [
-      "Separate trusted input, automatic transitions and lock-screen commands; retain the analysis element across tracks.",
-      "Use independent startup deadlines, bounded recovery and buffering hysteresis without interrupting native audio.",
-      "Measure real mono/stereo samples after the new analysis window; add private stage, error and timing diagnostics.",
-      "Handle intentional stream cancellation, bounded network prefetch retries and high-bitrate Drive analysis; fingerprint assets by content."
+      "Draw straight, symmetrical reel spokes with a shared centre and equal 120-degree spacing.",
+      "Join the spokes to the stationary rim and retain a single outer contour for stable rotation."
     ],
     "ru": [
-      "Реальные нажатия, автоматические переходы и команды экрана блокировки разделены; аудиоэлемент анализатора сохраняется между песнями.",
-      "Отдельные сроки запуска, ограниченное восстановление и защита от повторных загрузок при буферизации без остановки основного звука.",
-      "Настоящие уровни моно и стерео измеряются после обновления окна отсчётов; отчёт содержит стадии, ошибки и время первого сигнала.",
-      "Исправлена отмена облачного потока; ограничены сетевые повторы подготовки, увеличен запас для высокобитрейтных файлов; версия ресурсов зависит от содержимого."
+      "Спицы катушек стали ровными и симметричными: общий центр и одинаковый шаг 120 градусов.",
+      "Спицы соединены с неподвижным ободом, оставлен единый внешний контур для ровного вращения."
     ],
     "de": [
-      "Benutzereingaben, automatische Titelwechsel und Sperrbildschirmbefehle trennen; Analyse-Audioelement beibehalten.",
-      "Getrennte Startfristen, begrenzte Wiederherstellung und Puffer-Hysterese ohne Unterbrechung der nativen Wiedergabe.",
-      "Echte Mono-/Stereo-Pegel nach Aktualisierung des Messfensters; private Diagnose von Phasen, Fehlern und Signalstart.",
-      "Beabsichtigte Stream-Abbrüche, begrenzte Netzwerkwiederholungen und hohe Drive-Bitraten berücksichtigen; Ressourcen per Inhalt versionieren."
+      "Gerade, symmetrische Spulenspeichen mit gemeinsamem Mittelpunkt und gleichen Abständen von 120 Grad.",
+      "Speichen mit dem festen Rand verbunden; eine einzige Außenkontur sorgt für eine gleichmäßige Drehung."
     ],
     "zh-cn": [
-      "区分真实点击、自动切歌和锁屏命令，跨曲目保留分析音频元素。",
-      "独立启动期限、有限恢复和缓冲滞回，不中断原生音频。",
-      "新采样窗口更新后测量真实单声道和立体声电平，增加私密的阶段、错误和信号启动诊断。",
-      "修正主动取消流的处理，限制网络预加载重试，支持更高比特率的 Drive 分析并按内容为资源版本编号。"
+      "卷盘辐条改为笔直、对称的形状，共用中心并保持相等的 120 度间距。",
+      "辐条与固定外圈连接，仅保留一条外轮廓，使旋转更加平稳。"
     ]
   },
   "update": {
