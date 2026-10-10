@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
   "name_i18n": {
@@ -16,35 +16,35 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Faster cloud meter startup: keep short buffering requests and finish pending seeks before resynchronizing.",
-    "Independent native reel animations preserve rotation phase while tape size and speed change.",
-    "Limit progress geometry to 10 Hz, meters to 30 Hz and system position to once per second; avoid unchanged DOM writes.",
-    "Publish the complete private 2 MiB prefix during playback so concurrent analysis can reuse it immediately."
+    "Activate Safari audio analysis directly in the Play gesture with a silent scheduled source.",
+    "Recover hung resume promises and frozen audio clocks with one bounded automatic rebuild; allow manual activation without interrupting the song.",
+    "Fall back when capture exposes no live audio track; handle local and cloud analysis failures consistently.",
+    "Separate playlist edit and delete buttons by 12 pixels on desktop and mobile."
   ],
   "release_notes_i18n": {
     "en": [
-      "Faster cloud meter startup: keep short buffering requests and finish pending seeks before resynchronizing.",
-      "Independent native reel animations preserve rotation phase while tape size and speed change.",
-      "Limit progress geometry to 10 Hz, meters to 30 Hz and system position to once per second; avoid unchanged DOM writes.",
-      "Publish the complete private 2 MiB prefix during playback so concurrent analysis can reuse it immediately."
+      "Activate Safari audio analysis directly in the Play gesture with a silent scheduled source.",
+      "Recover hung resume promises and frozen audio clocks with one bounded automatic rebuild; allow manual activation without interrupting the song.",
+      "Fall back when capture exposes no live audio track; handle local and cloud analysis failures consistently.",
+      "Separate playlist edit and delete buttons by 12 pixels on desktop and mobile."
     ],
     "ru": [
-      "Более быстрый запуск облачных индикаторов: короткая буферизация не сбрасывает загрузку, незавершённая перемотка не запускается заново.",
-      "Катушки вращаются отдельной браузерной анимацией с сохранением угла при изменении намотки и скорости.",
-      "Геометрия и прогресс обновляются до 10 раз в секунду, индикаторы до 30, системная позиция раз в секунду; неизменённые элементы не перерисовываются.",
-      "Готовые первые 2 МБ приватного кэша доступны во время воспроизведения для повторного использования анализатором."
+      "Анализатор Safari активируется прямо при нажатии Play с помощью неслышного запланированного источника.",
+      "Зависший запуск и остановившийся звуковой движок восстанавливаются одной автоматической попыткой; повторное включение индикаторов не прерывает песню.",
+      "Если захват не отдаёт живой аудиоканал, используется отдельный анализатор; ошибки загруженной и облачной музыки обрабатываются одинаково.",
+      "Между кнопками редактирования и удаления плейлиста добавлено 12 пикселей на телефонах и компьютерах."
     ],
     "de": [
-      "Schnellerer Start der Cloud-Pegelanzeigen: kurze Pufferpausen erhalten die Anfrage; laufende Suchvorgänge werden nicht neu gestartet.",
-      "Separate Browseranimationen der Spulen erhalten den Drehwinkel bei wechselnder Bandmenge und Geschwindigkeit.",
-      "Fortschritt und Geometrie bis 10 Hz, Pegel bis 30 Hz und Systemposition einmal pro Sekunde; unveränderte DOM-Elemente bleiben bestehen.",
-      "Der vollständige private 2-MiB-Anfang wird bereits während der Wiedergabe für die Analyse verfügbar."
+      "Safari-Audioanalyse direkt beim Drücken von Play mit einer stummen geplanten Quelle aktivieren.",
+      "Hängende Resume-Vorgänge und eingefrorene Audiotakte mit einem begrenzten Neuaufbau wiederherstellen; manuelle Aktivierung unterbricht den Titel nicht.",
+      "Ohne aktive Audiospur auf separate Analyse wechseln; lokale und Cloud-Fehler gleich behandeln.",
+      "12 Pixel Abstand zwischen Bearbeiten und Löschen von Wiedergabelisten auf Desktop und Mobilgeräten."
     ],
     "zh-cn": [
-      "加快云端电平指示器启动：短暂缓冲不重置请求，未完成的定位不会重复启动。",
-      "卷轴使用独立浏览器动画，在磁带量和速度变化时保持旋转角度。",
-      "进度和几何更新不超过 10 Hz，电平不超过 30 Hz，系统位置每秒更新一次，避免重复 DOM 更新。",
-      "播放期间即可发布完整的私有 2 MiB 文件开头，供分析流立即复用。"
+      "按下播放时使用静音计划音源直接激活 Safari 音频分析。",
+      "通过一次有限的自动重建恢复挂起的启动和冻结的音频时钟；手动激活不会中断歌曲。",
+      "捕获未提供有效音轨时使用独立分析；统一处理本地与云端分析错误。",
+      "桌面和手机上的播放列表编辑与删除按钮之间增加 12 像素间距。"
     ]
   },
   "update": {

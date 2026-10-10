@@ -224,3 +224,6 @@
 @media(max-width:480px){.rp-volume{gap:10px}.rp-back-control{width:32px;height:32px;flex-basis:32px}}
 @media(max-width:760px){.rp-track{grid-template-columns:34px 38px minmax(0,1fr) 36px auto}.rp-track-play{width:34px;height:34px}.rp-track-cover{display:block;width:38px;height:38px}}
 @media(max-width:480px){.rp-track{grid-template-columns:34px 42px minmax(0,1fr) 35px;gap:8px}.rp-track-cover{width:42px;height:42px}.rp-track-actions{grid-column:3/5;justify-content:flex-end;margin-top:0}.rp-track-title{font-size:12px}}
+
+.rp-meter-recovery{text-align:center;margin:12px 0 0}.rp-meter-recovery .rp-button{color:var(--rp-ink);border-color:var(--rp-accent);font-size:11px}.rp-meter-recovery .rp-button:hover{background:var(--rp-line)}.rp-meter-recovery .rp-button:focus-visible{outline:2px solid var(--rp-accent);outline-offset:3px}
+[data-playlist-actions]{display:flex;align-items:center;gap:12px}.rp-library-actions{gap:12px}

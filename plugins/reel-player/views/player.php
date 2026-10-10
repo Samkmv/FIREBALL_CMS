@@ -141,6 +141,7 @@ $button = static function (string $action, string $label, string $name, string $
             <span class="rp-source" data-source>ВАША МУЗЫКА. ВАШ РИТМ.</span>
             <div class="rp-volume"><?= $button('mute', 'Выключить звук', 'volume') ?><label><span class="rp-sr-only">Громкость</span><input type="range" class="rp-range" data-volume min="0" max="1" step="0.01" value="0.8"></label></div>
         </div>
+        <div class="rp-meter-recovery" data-meter-recovery hidden><button type="button" class="rp-button" data-action="meters">Включить индикаторы</button></div>
     </section>
     <section class="rp-library" aria-label="Музыкальная библиотека">
         <aside class="rp-playlists">

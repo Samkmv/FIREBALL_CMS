@@ -27,6 +27,7 @@
     let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
     let meterBufferTimer, progressFrame = -Infinity, meterFrame = -Infinity, packRadii = [174,78], positionKey = '';
     const meterLevels = [0,0];
+    const meterRecovery = {generation:-1, rebuilds:0, blocked:false, forceMirror:false};
     let mutationQueue = Promise.resolve();
     let futureBag = [], shuffleCycleStarted = false;
     const preloader = new window.TapeRoomPreloader({url:`${config.api}/prepare`,csrf:config.csrf});
@@ -289,7 +290,7 @@
     function initGraph() {
         const capture = audio.captureStream || audio.mozCaptureStream;
         if (graph?.context.state === 'closed') { releaseGraph(); }
-        if (graph) { if (graph.capture) refreshCapture(); return; }
+        if (graph) { if (graph.capture) { try { refreshCapture(); } catch (_) { initMirror(); } } return; }
         if (!(window.AudioContext || window.webkitAudioContext)) return;
         let context;
         try {
@@ -303,21 +304,22 @@
             // is silent; native HTML Audio remains the only audible output.
             const silent = context.createGain(); silent.gain.value = 0;
             analysers.forEach(a => a.connect(silent)); silent.connect(context.destination);
-            graph = {context, splitter, analysers, source:null, capturedTrack:null, samples:new Float32Array(256), capture, captureGeneration:-1};
-            context.addEventListener('statechange', () => { if (!document.hidden && !audio.paused && !audio.ended) resumeMeters(); });
-            if (capture) {
-                refreshCapture();
-            } else {
-                // Safari: the silent analysis copy is separate from the audible
-                // player and is unloaded when hidden. It cannot gate native sound.
-                const mirror = new Audio(); mirror.preload = 'auto'; mirror.setAttribute('playsinline','');
-                const source = context.createMediaElementSource(mirror);
-                source.channelCount = 2; source.channelCountMode = 'explicit'; source.connect(splitter);
-                graph.mirror = mirror; graph.source = source;
-                for (const event of ['loadedmetadata','canplay','playing','seeked','ended']) mirror.addEventListener(event, syncMirror);
-                mirror.addEventListener('error', () => { if (graph?.mirror === mirror && mirror.error && mirror.error.code !== 1) { graph.mirrorFailedGeneration = generation; stopMeters(true); } });
-            }
+            graph = {context, splitter, analysers, source:null, capturedTrack:null, samples:new Float32Array(256), capture:meterRecovery.forceMirror ? null : capture, captureGeneration:-1};
+            context.addEventListener('statechange', () => { if (graph?.context === context && !graph.resumePending && !document.hidden && !audio.paused && !audio.ended) resumeMeters(); });
+            if (graph.capture) { try { refreshCapture(); } catch (_) { initMirror(); } }
+            else initMirror();
         } catch (_) { graph = null; context?.close().catch(() => {}); }
+    }
+    function initMirror() {
+        detachCapture(); graph.capture = null; meterRecovery.forceMirror = true;
+        // A separate, silent output keeps the native player responsible for
+        // sound and background playback. Never mute the source before analysis.
+        const active = graph, mirror = new Audio(); mirror.preload = 'auto'; mirror.setAttribute('playsinline','');
+        const source = active.context.createMediaElementSource(mirror);
+        source.channelCount = 2; source.channelCountMode = 'explicit'; source.connect(active.splitter);
+        active.mirror = mirror; active.source = source;
+        for (const event of ['loadedmetadata','canplay','playing','seeked','ended']) mirror.addEventListener(event, () => { if (graph === active) syncMirror(); });
+        mirror.addEventListener('error', () => { if (graph === active && mirror.error && mirror.error.code !== 1) blockMeters(); });
     }
     function detachCapture() {
         if (!graph?.stream) return;
@@ -330,8 +332,10 @@
     function releaseGraph() {
         if (!graph) return;
         detachCapture();
-        if (graph.mirror) { graph.mirror.pause(); graph.mirror.removeAttribute('src'); graph.mirror.load(); }
-        graph.source?.disconnect(); graph.context.close().catch(() => {}); graph = null;
+        const previous = graph; graph = null;
+        // Ignore events and late promises from the discarded engine.
+        if (previous.mirror) { previous.mirror.pause(); previous.mirror.removeAttribute('src'); previous.mirror.load(); }
+        previous.source?.disconnect(); previous.context.close().catch(() => {});
     }
     function refreshCapture() {
         if (!graph?.capture) return;
@@ -357,20 +361,79 @@
         } catch (_) { graph.capturedTrack = null; }
     }
     function resumeMeters(userGesture = false) {
-        if (document.hidden || audio.paused || audio.ended) { stopMeters(); return; }
-        try { initGraph(); } catch (_) { return; }
-        if (!graph) { stopMeters(true); return; }
-        if (graph && graph.context.state !== 'running' && !graph.resuming) {
-            const active = graph;
-            active.resuming = active.context.resume().then(() => { if (graph === active) syncMirror(); }).catch(() => {}).finally(() => { active.resuming = null; });
+        userGesture = userGesture === true;
+        if (!document.hidden && !userGesture && audio.paused && !audio.ended && graph?.gestureUntil > performance.now()) return;
+        if (document.hidden || (!userGesture && (audio.paused || audio.ended))) { stopMeters(); return; }
+        if (!audio.src) return;
+        if (meterRecovery.generation !== generation) {
+            meterRecovery.generation = generation; meterRecovery.rebuilds = 0; setMeterBlocked(false);
+            if (graph) graph.watch = null;
         }
-        if (userGesture === true && graph.mirrorFailedGeneration === generation) delete graph.mirrorFailedGeneration;
-        syncMirror(userGesture === true);
+        if (userGesture) {
+            // iOS may leave a resume() promise pending forever, even while the
+            // native song plays. A new tap must not be held by that old promise.
+            if (meterRecovery.blocked || graph?.resuming || (graph && graph.context.state !== 'running')) releaseGraph();
+            meterRecovery.rebuilds = 0; setMeterBlocked(false);
+        } else if (meterRecovery.blocked) { setMeterBlocked(true); return; }
+        try { initGraph(); } catch (_) { return; }
+        if (!graph) { blockMeters(); return; }
+        if (userGesture) graph.gestureUntil = performance.now() + 1500;
+        if (!checkMeterHealth(userGesture)) return;
+        if (userGesture) {
+            // WebKit can queue resume() until after the trusted tap ends.
+            // Starting a scheduled source removes its gesture restriction now.
+            // One zero sample is silent and never feeds the music analysers.
+            try {
+                const wake = graph.context.createBufferSource();
+                wake.buffer = graph.context.createBuffer(1,1,graph.context.sampleRate);
+                wake.connect(graph.context.destination); wake.onended = () => wake.disconnect(); wake.start();
+            } catch (_) {}
+        }
+        if (graph.context.state !== 'running' && !graph.resuming) {
+            const active = graph;
+            active.resumePending = true;
+            try {
+                const pending = active.context.resume().then(() => { if (graph === active && !audio.paused) syncMirror(); }).catch(() => {}).finally(() => { if (active.resuming === pending) { active.resuming = null; active.resumePending = false; } });
+                active.resuming = pending;
+            } catch (_) { active.resumePending = false; }
+        }
+        syncMirror(userGesture);
         if (!meterTimer) meterTimer = setInterval(resumeMeters, 500);
+    }
+    function setMeterBlocked(blocked) {
+        meterRecovery.blocked = blocked;
+        const notice = $('[data-meter-recovery]'); if (notice) notice.hidden = !blocked || audio.paused || audio.ended;
+    }
+    function blockMeters() { stopMeters(true); releaseGraph(); setMeterBlocked(true); }
+    function checkMeterHealth(userGesture = false) {
+        const active = graph, now = performance.now(), clock = active.context.currentTime;
+        if (!active.watch || loading || audio.seeking || audio.readyState < 2) {
+            active.watch = {time:now, native:audio.currentTime, clock, mirror:active.mirror?.currentTime}; return true;
+        }
+        const watch = active.watch;
+        if (now - watch.time < 2000) return true;
+        const progressing = audio.currentTime - watch.native > .05;
+        // Use clocks, not sample amplitudes: a genuinely silent song is valid.
+        const stoppedEngine = progressing && clock - watch.clock < .01;
+        const requested = active.mirror?.hasAttribute('src') && (audio.readyState >= 3 || bufferedAhead() >= .25);
+        const stoppedMirror = progressing && requested && active.mirror.readyState >= 2 && !active.mirror.seeking && active.mirror.currentTime - watch.mirror < .01;
+        const stuckRequest = progressing && requested && now - active.mirrorLoadStarted > 15000 && (active.mirror.readyState < 2 || active.mirror.seeking);
+        if (stoppedEngine || stoppedMirror || stuckRequest) {
+            releaseGraph(); drawMeters(false);
+            if (meterRecovery.rebuilds++ < 1) resumeMeters(userGesture); else blockMeters();
+            return false;
+        }
+        // captureStream can exist yet provide no live audio track. Fall back
+        // once rather than constructing a new context on every timer tick.
+        if (progressing && active.capture && (!active.capturedTrack || active.capturedTrack.muted)) { initMirror(); syncMirror(); }
+        active.watch = {time:now, native:audio.currentTime, clock, mirror:active.mirror?.currentTime};
+        return true;
     }
     function stopMeters(unload = false) {
         unload ||= activeTrack()?.source === 'drive';
         clearInterval(meterTimer); meterTimer = undefined;
+        if (graph) { graph.watch = null; graph.gestureUntil = 0; }
+        const notice = $('[data-meter-recovery]'); if (notice) notice.hidden = true;
         if (graph?.mirror) {
             graph.mirror.pause();
             if (unload) { graph.mirrorStarting = null; graph.mirrorAligned = ''; graph.mirror.removeAttribute('src'); graph.mirror.load(); }
@@ -379,12 +442,13 @@
     }
     function syncMirror(userGesture = false) {
         const mirror = graph?.mirror; if (!mirror) return;
+        if (userGesture !== true && audio.paused && !audio.ended && !document.hidden && graph.gestureUntil > performance.now()) return;
         const cloud = activeTrack()?.source === 'drive', connection = navigator.connection;
         const enough = audio.readyState >= 3 || bufferedAhead() >= .25;
         // Unlock Safari's analysis element in the same user gesture as native
         // play(). Later resumes yield while the main player is actually waiting.
         const waiting = userGesture !== true && (loading || audio.seeking || !enough);
-        if (document.hidden || audio.paused || audio.ended || (cloud && (connection?.saveData || ['slow-2g','2g'].includes(connection?.effectiveType) || graph.mirrorFailedGeneration === generation))) {
+        if (document.hidden || (userGesture !== true && (audio.paused || audio.ended)) || (cloud && (connection?.saveData || ['slow-2g','2g'].includes(connection?.effectiveType)))) {
             mirror.pause();
             if (mirror.hasAttribute('src')) { graph.mirrorAligned = ''; mirror.removeAttribute('src'); mirror.load(); }
             return;
@@ -396,7 +460,7 @@
             return;
         }
         const url = new URL(audio.src,location.href); if (cloud) url.searchParams.set('meter','1');
-        if (mirror.src !== url.href) { graph.mirrorAligned = ''; mirror.src = url.href; mirror.load(); }
+        if (mirror.src !== url.href) { graph.mirrorAligned = ''; graph.mirrorLoadStarted = performance.now(); mirror.src = url.href; mirror.load(); }
         const drift = audio.currentTime - mirror.currentTime;
         // Align once at metadata, then let a pending seek finish decoding. A
         // moving target at every canplay/timer used to repeatedly discard it.
@@ -408,7 +472,7 @@
         mirror.playbackRate = audio.playbackRate * (Math.abs(drift) < 1 ? 1 + Math.max(-.1,Math.min(.1,drift * .2)) : 1);
         if (mirror.paused && !graph.mirrorStarting) {
             const active = graph, version = generation;
-            const pending = mirror.play().catch(error => { if (error.name !== 'AbortError' && graph === active && active.mirrorStarting === pending && version === generation && mirror.src === url.href) { active.mirrorFailedGeneration = version; mirror.pause(); mirror.removeAttribute('src'); mirror.load(); } }).finally(() => { if (active.mirrorStarting === pending) active.mirrorStarting = null; });
+            const pending = mirror.play().catch(error => { if (error.name !== 'AbortError' && graph === active && active.mirrorStarting === pending && version === generation && mirror.src === url.href) blockMeters(); }).finally(() => { if (active.mirrorStarting === pending) active.mirrorStarting = null; });
             active.mirrorStarting = pending;
         }
     }
@@ -457,7 +521,7 @@
         const version = generation;
         // Keep play() inside the tap's activation; meter setup never gates sound.
         try { const playback = audio.play(); resumeMeters(true); await playback; }
-        catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); toast('Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
+        catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); stopMeters(true); toast('Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
     }
     function shuffled(exclude) {
         const ids = queue.filter(id => id !== exclude);
@@ -640,6 +704,7 @@
                 case 'shuffle': shuffle = !shuffle; bag = []; futureBag = []; shuffleCycleStarted = false; history = []; preloader.reset(); updateButtons(); prepareUpcoming(); save(); break;
                 case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); break;
                 case 'mute': toggleMute(); break;
+                case 'meters': if (!audio.paused && !audio.ended) resumeMeters(true); break;
                 case 'theme': theme = theme === 'dark' ? 'light' : 'dark'; applyTheme(); break;
                 case 'select-playlist': selected = id; $('[data-search]').value = ''; render(); save(); break;
                 case 'favorite': control.disabled = true; await action('track.favorite',{id,favorite:track(id).favorite ? 0 : 1}); break;

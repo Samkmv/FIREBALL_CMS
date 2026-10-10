@@ -28,6 +28,7 @@ function return_translation(string $key): string { return $key; }
 function plugin_view(string $slug,string $view,array $data,bool $layout=true): string {
     if (getenv('REEL_PLAYER_STREAM_PREVIEW') === '1') foreach ($data['config']['state']['tracks'] as &$track) $track['source'] = 'drive';
     if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && ($_GET['mirror'] ?? '') === '1') $data['js_url'] .= '&mirror=1';
+    if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && in_array($_GET['meterFault'] ?? '', ['clock','resume','blocked'], true)) $data['js_url'] .= '&meterFault=' . $_GET['meterFault'];
     unset($track); extract($data); ob_start(); require dirname(__DIR__).'/views/'.$view.'.php'; return (string)ob_get_clean();
 }
 function setting(string $key,mixed $default=null): mixed { return $default; }
@@ -60,7 +61,22 @@ if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|preload\.js|cove
     if ($match[1] === 'player.js' && getenv('REEL_PLAYER_METERS_PREVIEW') === '1') {
         $source = file_get_contents(dirname(__DIR__).'/assets/player.js');
         if (getenv('REEL_PLAYER_MIRROR_PREVIEW') === '1' || ($_GET['mirror'] ?? '') === '1') $source = str_replace('const capture = audio.captureStream || audio.mozCaptureStream;', 'const capture = null;', $source);
-        $source = str_replace('if (mirror.paused) mirror.play().catch(() => {});', 'if (mirror.paused) mirror.play().catch(error => { graph.mirrorError = error.name; });', $source);
+        if (in_array($_GET['meterFault'] ?? '', ['clock','resume','blocked'], true)) {
+            $fault = json_encode($_GET['meterFault']);
+            $injection = <<<'JS'
+    // Explicit test-only faults reproduce a running-but-frozen engine and a
+    // never-settling resume promise. No production browser APIs are changed.
+    const previewBaseContext = window.AudioContext;
+    let previewContexts = 0;
+    window.AudioContext = class extends previewBaseContext {
+        constructor(...args) { super(...args); this.previewFault = ++previewContexts === 1 || PREVIEW_FAULT === 'blocked'; }
+        get currentTime() { return this.previewFault ? 0 : super.currentTime; }
+        get state() { return this.previewFault && PREVIEW_FAULT === 'resume' && super.state !== 'closed' ? 'suspended' : super.state; }
+        resume() { return this.previewFault && PREVIEW_FAULT === 'resume' ? new Promise(() => {}) : super.resume(); }
+    };
+JS;
+            $source = str_replace("    'use strict';", "    'use strict';\n" . str_replace('PREVIEW_FAULT', $fault, $injection), $source);
+        }
         $diagnostic = <<<'JS'
     // Opt-in, DOM-visible measurements for browser QA, absent in production.
     let previewStart = 0, previewFirstMeter = null, previewFrames = 0, previewGeometry = 0, previewFrameTime = 0, previewMaxGap = 0;
@@ -78,7 +94,7 @@ if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|preload\.js|cove
         requestAnimationFrame(previewFrame);
     };
     requestAnimationFrame(previewFrame);
-    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorError:graph?.mirrorError, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState, preloadActive:preloader.active, preloadDone:[...preloader.done.keys()], upcoming:upcoming().map(t=>t.id), sampleMs:previewStart ? performance.now()-previewStart : 0, firstMeterMs:previewFirstMeter, frames:previewFrames, geometryWrites:previewGeometry, maxFrameGapMs:previewMaxGap, rotors:visuals.reels.map(reel=>({state:reel.motion?.playState,rate:reel.motion?.playbackRate,time:reel.motion?.currentTime}))}); }, 500);
+    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, clock:graph?.context.currentTime, rebuilds:meterRecovery.rebuilds, blocked:meterRecovery.blocked, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState, preloadActive:preloader.active, preloadDone:[...preloader.done.keys()], upcoming:upcoming().map(t=>t.id), sampleMs:previewStart ? performance.now()-previewStart : 0, firstMeterMs:previewFirstMeter, frames:previewFrames, geometryWrites:previewGeometry, maxFrameGapMs:previewMaxGap, rotors:visuals.reels.map(reel=>({state:reel.motion?.playState,rate:reel.motion?.playbackRate,time:reel.motion?.currentTime}))}); }, 500);
 JS;
         echo preg_replace('/\}\)\(\);\s*$/', $diagnostic . "\n})();", $source); exit;
     }
