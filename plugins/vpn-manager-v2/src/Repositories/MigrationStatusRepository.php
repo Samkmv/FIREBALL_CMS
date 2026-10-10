@@ -6,6 +6,8 @@ final class MigrationStatusRepository
 {
     private const EXPECTED_TABLES = [
         'vpn_v2_servers',
+        'vpn_v2_server_health',
+        'vpn_v2_server_health_checks',
         'vpn_v2_inbounds',
         'vpn_v2_plans',
         'vpn_v2_plan_nodes',

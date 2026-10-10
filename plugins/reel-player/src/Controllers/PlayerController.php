@@ -6,6 +6,7 @@ use App\Services\UploadPolicy;
 use Fireball\ReelPlayer\Repositories\Library;
 use Fireball\ReelPlayer\Services\MediaStorage;
 use Fireball\ReelPlayer\Services\GoogleDrive;
+use Fireball\ReelPlayer\Services\DriveCache;
 
 final class PlayerController
 {
@@ -23,6 +24,7 @@ final class PlayerController
                 'csrf' => (string)session()->get('needCSRFToken', ''),
                 'storageKey' => 'fireball-tape-room:' . (int)get_user()['id'],
                 'defaultCover' => base_href('/plugins/reel-player/assets/cover.svg'),
+                'defaultArtwork' => base_href('/plugins/reel-player/assets/cover.png'),
                 'maxUpload' => UploadPolicy::limits()['effective'],
                 'state' => $this->library()->state(),
                 'drive' => $this->drive()->status(),
@@ -31,6 +33,7 @@ final class PlayerController
             'pwa_head' => function_exists('pwa_head_tags') ? pwa_head_tags() : '',
             'css_url' => base_href('/plugins/reel-player/assets/player.css?v=' . filemtime($assets . '/player.css')),
             'js_url' => base_href('/plugins/reel-player/assets/player.js?v=' . filemtime($assets . '/player.js')),
+            'preload_url' => base_href('/plugins/reel-player/assets/preload.js?v=' . filemtime($assets . '/preload.js')),
         ], false);
     }
 
@@ -95,6 +98,22 @@ final class PlayerController
     public function media(): void { $this->stream(false); }
     public function cover(): void { $this->stream(true); }
 
+    public function prepare(): void
+    {
+        // Authentication/CSRF are checked before releasing the session lock.
+        try { $track = $this->library()->track((int)request()->post('id',0)); }
+        catch (\InvalidArgumentException) { abort('Трек не найден.',404); }
+        session()->close();
+        header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: private, no-store'); header('X-Accel-Buffering: no');
+        while (ob_get_level() > 0) ob_end_clean();
+        echo ' '; flush();
+        try {
+            $result = ($track['source'] ?? 'local') === 'drive' ? $this->drive()->prepare($track['source_id']) : ['ready'=>true,'bytes'=>min(DriveCache::PREFIX_BYTES,(int)$track['file_size'])];
+            echo json_encode(['status'=>true,...$result],JSON_THROW_ON_ERROR);
+        } catch (\Throwable $error) { echo json_encode(['status'=>false,'ready'=>false,'message'=>$error->getMessage()],JSON_THROW_ON_ERROR); }
+        exit;
+    }
+
     public function driveStatus(): void
     {
         header('Cache-Control: private, no-store');
@@ -129,8 +148,8 @@ final class PlayerController
         try { $track = $this->library()->track((int)get_route_param('id')); }
         catch (\InvalidArgumentException) { abort('Трек не найден.', 404); }
         if (!$cover && ($track['source'] ?? 'local') === 'drive') {
-            try { $this->drive()->stream($track['source_id']); }
-            catch (\InvalidArgumentException $error) { abort($error->getMessage(), 403); }
+            try { $this->drive()->stream($track['source_id'], (string)request()->get('meter','') === '1', (float)($track['duration'] ?? 0)); }
+            catch (\InvalidArgumentException $error) { http_response_code(403); header('Content-Type: text/plain; charset=utf-8'); header('Cache-Control: private, no-store'); exit($error->getMessage()); }
         }
         $path = $cover ? $track['cover_path'] : $track['file_path'];
         if (!$path) abort('Обложка не найдена.', 404);

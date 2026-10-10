@@ -107,7 +107,7 @@ $router = new class {
 };
 require dirname(__DIR__) . '/routes.php';
 $privateRoutes = array_values(array_filter($router->routes, static fn(array $route): bool => str_starts_with($route['path'],'/admin/reel-player')));
-$assert(count($privateRoutes) === 9, 'Player, API, media, covers and Google callback are registered');
+$assert(count($privateRoutes) === 10, 'Player, API, preparation, media, covers and Google callback are registered');
 foreach ($privateRoutes as $route) $assert($route['guard'] === ['auth','admin'],'Authenticated admin guard: ' . $route['path']);
 (new FireballPluginReelPlayer())->boot();
 foreach (['creator'=>true,'admin'=>true,'moderator'=>false,'user'=>false,'unknown'=>false,'guest'=>false] as $role=>$allowed) {

@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "1.5.14",
+  "version": "1.6.1",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,40 +19,40 @@
   },
   "auto_migrate": true,
   "release_notes": [
-    "Fixed 3x-ui client matching: numeric record IDs no longer replace UUIDs or passwords, and shared subId values never bind unrelated connections.",
-    "Deletion retries finish subscriptions when clients are already absent, clear previous errors and reject malformed panel responses as proof of deletion.",
-    "Queued removal of obsolete connections no longer revokes active subscriptions. Deleted subscriptions cannot be edited, renewed or suspended.",
-    "Deletion details hide restoration and client creation while offering deletion retry. Verified provisioning, plan changes, server replacement and mobile layout.",
-    "Manual connection synchronization saves confirmed panel state and respects subscription start, expiry and exhausted traffic. Connection details display separate device and IP limits."
+    "Added independent Happ viewing/export policy. It hides sharing in the app without changing keys; copied credentials are not revoked.",
+    "Added Happ Smart Connect: proxy tests, sorting and launch auto-connect with Provider ID.",
+    "Added a separate sing-box JSON profile with urltest, interval, switching tolerance and failover mode.",
+    "Added background infrastructure monitoring with history and retries. Checks do not change client connections.",
+    "New features are disabled by default. Regular subscriptions, HWID, identifiers, caching and Happ routing are preserved."
   ],
   "release_notes_i18n": {
     "ru": [
-      "Исправлено сопоставление клиентов 3x-ui: числовой ID больше не подменяет UUID или пароль, общий subId не связывает чужие подключения.",
-      "Повторное удаление корректно завершает подписку, если клиент уже удалён из панели; старые ошибки очищаются, повреждённые ответы панели не считаются подтверждением удаления.",
-      "Фоновое удаление устаревшего подключения больше не отзывает действующую подписку. Удалённые подписки защищены от редактирования, продления и приостановки.",
-      "В карточке удаляемой подписки скрыты восстановление и создание подключений; доступен повтор удаления. Проверены создание, смена тарифа, замена сервера и мобильная вёрстка.",
-      "Ручная синхронизация сохраняет подтверждённое панелью состояние и учитывает дату начала, срок и исчерпанный трафик подписки. Лимиты устройств и IP в карточке подключения показаны раздельно."
+      "Добавлена отдельная защита просмотра и экспорта в Happ. Скрывает передачу подключений в приложении без замены ключей; уже скопированные ключи не отзываются.",
+      "Добавлен Smart Connect для Happ: проверка через прокси, сортировка и автоподключение при запуске с Provider ID.",
+      "Добавлен отдельный JSON-профиль sing-box с urltest, интервалом, порогом переключения и режимом резервирования.",
+      "Добавлен фоновый мониторинг инфраструктуры с историей и повторами. Проверки не изменяют клиентские подключения.",
+      "Новые функции выключены по умолчанию. Сохранены обычные подписки, HWID, идентификаторы, кэш и маршрутизация Happ."
     ],
     "en": [
-      "Fixed 3x-ui client matching: numeric record IDs no longer replace UUIDs or passwords, and shared subId values never bind unrelated connections.",
-      "Deletion retries finish subscriptions when clients are already absent, clear previous errors and reject malformed panel responses as proof of deletion.",
-      "Queued removal of obsolete connections no longer revokes active subscriptions. Deleted subscriptions cannot be edited, renewed or suspended.",
-      "Deletion details hide restoration and client creation while offering deletion retry. Verified provisioning, plan changes, server replacement and mobile layout.",
-      "Manual connection synchronization saves confirmed panel state and respects subscription start, expiry and exhausted traffic. Connection details display separate device and IP limits."
+      "Added independent Happ viewing/export policy. It hides sharing in the app without changing keys; copied credentials are not revoked.",
+      "Added Happ Smart Connect: proxy tests, sorting and launch auto-connect with Provider ID.",
+      "Added a separate sing-box JSON profile with urltest, interval, switching tolerance and failover mode.",
+      "Added background infrastructure monitoring with history and retries. Checks do not change client connections.",
+      "New features are disabled by default. Regular subscriptions, HWID, identifiers, caching and Happ routing are preserved."
     ],
     "de": [
-      "3x-ui-Clientzuordnung korrigiert: numerische Datensatz-IDs ersetzen keine UUIDs oder Passwörter; gemeinsame subId-Werte verbinden keine fremden Clients.",
-      "Erneutes Löschen beendet Abonnements auch bei bereits entfernten Clients und bereinigt alte Fehler. Ungültige Panelantworten gelten nicht als Löschbestätigung.",
-      "Das Löschen veralteter Verbindungen widerruft keine aktiven Abonnements mehr. Gelöschte Abonnements sind vor Bearbeitung, Verlängerung und Pausierung geschützt.",
-      "Bei laufender Löschung werden Wiederherstellung und Clienterstellung ausgeblendet; erneutes Löschen bleibt verfügbar. Erstellung, Tarifwechsel, Serverersatz und mobile Ansicht geprüft.",
-      "Manuelle Synchronisierung speichert den bestätigten Panelstatus und berücksichtigt Beginn, Ablauf und verbrauchtes Kontingent. Verbindungsdetails zeigen Geräte- und IP-Limits getrennt."
+      "Separate Happ-Richtlinie für Anzeige und Export hinzugefügt. Sie verbirgt die Weitergabe in der App ohne Schlüsselwechsel; kopierte Zugangsdaten werden nicht widerrufen.",
+      "Happ Smart Connect hinzugefügt: Proxy-Prüfungen, Sortierung und automatische Verbindung beim Start mit Provider ID.",
+      "Separates sing-box-JSON-Profil mit urltest, Prüfintervall, Wechseltoleranz und Ausfallsicherung hinzugefügt.",
+      "Infrastrukturüberwachung im Hintergrund mit Verlauf und Wiederholungen hinzugefügt. Prüfungen verändern keine Clientverbindungen.",
+      "Neue Funktionen sind standardmäßig deaktiviert. Normale Abonnements, HWID, Kennungen, Cache und Happ-Routing bleiben erhalten."
     ],
     "zh-cn": [
-      "修复 3x-ui 客户端匹配：数字记录 ID 不再替代 UUID 或密码，共用 subId 不会关联其他客户端。",
-      "客户端已从面板删除时，重试删除可正常完成订阅并清除旧错误。无效面板响应不会被视为删除确认。",
-      "队列删除旧连接不再撤销有效订阅。已删除订阅禁止编辑、续期和暂停。",
-      "删除中的订阅隐藏恢复及创建连接操作，并提供重试删除。已验证创建、套餐变更、服务器替换及移动端布局。",
-      "手动连接同步保存面板确认的状态，并遵守订阅开始时间、到期时间及流量额度。连接详情分别显示设备限制和 IP 限制。"
+      "新增独立的 Happ 查看和导出策略。隐藏应用内连接分享功能，无需更换密钥；已复制的凭据不会被撤销。",
+      "新增 Happ Smart Connect：通过代理检测、排序以及使用 Provider ID 在启动时自动连接。",
+      "新增独立 sing-box JSON 配置，支持 urltest、检测间隔、切换容差和故障切换模式。",
+      "新增后台基础设施监控、历史记录和重试。检测不会修改客户端连接。",
+      "新功能默认关闭。保留普通订阅、HWID、标识、缓存和 Happ 路由。"
     ]
   },
   "update": {

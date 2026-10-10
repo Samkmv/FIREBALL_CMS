@@ -6,14 +6,17 @@ use Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException;
 
 final class VpnSubscriptionUrlService
 {
-    public function forToken(string $token): string
+    public function forToken(string $token, string $format = ''): string
     {
         $token = strtolower(trim($token));
         if (preg_match('/^[a-f0-9]{64}$/', $token) !== 1) {
             throw new VpnConfigValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_url'));
         }
 
-        return base_url('/vpn-v2/subscription/' . rawurlencode($token));
+        if (!in_array($format, ['', 'singbox'], true)) {
+            throw new VpnConfigValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_url'));
+        }
+        return base_url('/vpn-v2/subscription/' . rawurlencode($token)) . ($format !== '' ? '?format=' . $format : '');
     }
 
     public function isPublicSubscriptionUrl(string $url): bool

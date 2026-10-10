@@ -130,6 +130,8 @@ $switch = static function (string $key, string $label, string $help = '') use ($
         </div>
     </section>
 
+    <?php require __DIR__ . '/partials/smart-connect-settings.php'; ?>
+
     <section class="border rounded-5 p-3 p-md-4 mb-4" id="happ-routing">
         <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_title')) ?></h2>
         <div class="vstack gap-3">
@@ -189,6 +191,17 @@ $switch = static function (string $key, string $label, string $help = '') use ($
         <div class="vstack gap-3">
             <?= $switch('hide_sensitive_data', FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_hide_sensitive_data')) ?>
             <?= $switch('mask_subscription_links', FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_mask_subscription_links')) ?>
+            <div class="border rounded-4 p-3 p-md-4" id="happ-connection-protection" data-vpn-v2-happ-protection>
+                <h3 class="h6 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_title')) ?></h3>
+                <label class="form-label" for="vpnV2HappServerSettingsPolicy"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_policy')) ?></label>
+                <select class="form-select" id="vpnV2HappServerSettingsPolicy" name="happ_server_settings_policy" aria-describedby="vpnV2HappProtectionHelp">
+                    <?php foreach (['default', 'hide', 'show'] as $policy): ?>
+                        <option value="<?= $policy ?>" <?= ($settings['happ_server_settings_policy'] ?? 'default') === $policy ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_' . $policy)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text" id="vpnV2HappProtectionHelp"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_help')) ?></div>
+                <p class="small text-body-secondary mt-3 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_limit')) ?></p>
+            </div>
             <div class="alert alert-info rounded-4 mb-0 small">
                 <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_secrets_unchanged')) ?>
             </div>

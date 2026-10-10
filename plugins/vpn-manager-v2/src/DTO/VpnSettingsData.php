@@ -35,12 +35,14 @@ final readonly class VpnSettingsData
         public bool $showQrInProfile,
         public bool $happRoutingEnabled = false,
         public string $happRoutingLink = '',
+        public array $smartConnect = [],
+        public string $happServerSettingsPolicy = 'default',
     ) {
     }
 
     public function toArray(): array
     {
-        return [
+        return array_replace([
             'subscription_name' => $this->subscriptionName,
             'service_name' => $this->serviceName,
             'server_name_template' => $this->serverNameTemplate,
@@ -71,6 +73,7 @@ final readonly class VpnSettingsData
             'show_qr_in_profile' => $this->showQrInProfile,
             'happ_routing_enabled' => $this->happRoutingEnabled,
             'happ_routing_link' => $this->happRoutingLink,
-        ];
+            'happ_server_settings_policy' => $this->happServerSettingsPolicy,
+        ], $this->smartConnect);
     }
 }

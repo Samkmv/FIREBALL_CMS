@@ -8,9 +8,9 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $arguments = array_slice($argv, 1);
-if (array_diff($arguments, ['--access-only', '--notifications-only', '--reconcile-only']) !== []
+if (array_diff($arguments, ['--access-only', '--notifications-only', '--reconcile-only', '--health-only']) !== []
     || count($arguments) > 1) {
-    fwrite(STDERR, "Usage: php cron.php [--access-only|--notifications-only|--reconcile-only]\n");
+    fwrite(STDERR, "Usage: php cron.php [--access-only|--notifications-only|--reconcile-only|--health-only]\n");
     exit(2);
 }
 
@@ -47,6 +47,9 @@ try {
             $failed = $failed || ($step['status'] ?? 'error') !== 'ok'
                 || (int)($step['result']['failed'] ?? 0) > 0;
         }
+    }
+    if ($arguments === [] || in_array('--health-only', $arguments, true)) {
+        $result['health'] = (new \Fireball\VpnManagerV2\Jobs\VpnV2ServerHealthJob())->handle();
     }
     fwrite(STDOUT, json_encode([
         'status' => $failed ? 'partial_failure' : 'ok',

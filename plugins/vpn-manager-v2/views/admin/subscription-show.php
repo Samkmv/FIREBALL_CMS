@@ -366,6 +366,7 @@ foreach ($nodes as $node) {
 <div class="border rounded-5 p-3 p-md-4 mb-4">
     <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_access_title')) ?></h2>
     <?php if ($subscriptionUrl !== ''): ?>
+        <?php require __DIR__ . '/../partials/smart-connect-access.php'; ?>
         <div class="row g-4 align-items-start">
             <div class="col-lg-7">
                 <label class="form-label" for="vpnV2SubscriptionUrl"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_public_url')) ?></label>

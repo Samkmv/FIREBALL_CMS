@@ -259,6 +259,9 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                         <div class="col-12">
                             <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_access_title')) ?></h2>
                             <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_access_help')) ?></p>
+                            <?php if ($linkReady): ?>
+                                <?php require __DIR__ . '/../partials/smart-connect-access.php'; ?>
+                            <?php endif; ?>
                             <?php if ($localSubscriptionUrl && $linkReady): ?>
                                 <div class="alert alert-warning rounded-4">
                                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_local_url_warning')) ?>

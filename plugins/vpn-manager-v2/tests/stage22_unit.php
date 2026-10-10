@@ -161,6 +161,8 @@ sort($migrationNames);
 require_once $pluginRoot . '/src/Repositories/MigrationStatusRepository.php';
 require_once $pluginRoot . '/src/Services/VpnV2SchemaUpgradeService.php';
 $requiredTables = [
+    'vpn_v2_server_health',
+    'vpn_v2_server_health_checks',
     'vpn_v2_servers',
     'vpn_v2_inbounds',
     'vpn_v2_plans',
@@ -189,7 +191,7 @@ $assert($vpnDb->newlyCreated === ['vpn_v2_external_sources'],
     'Partial schema recovery did not create exactly the missing VPN table.');
 
 // Upgrade only the new plan-owner/name fields without replaying previous migrations or erasing their journal.
-$pendingNames = ['017_add_plan_external_sources.sql', '018_add_subscription_client_display_name.sql'];
+$pendingNames = ['017_add_plan_external_sources.sql', '018_add_subscription_client_display_name.sql', '019_add_server_health.sql'];
 $GLOBALS['schema_recovery_db'] = new SchemaRecoveryFakeDatabase(array_values(array_diff($migrationNames, $pendingNames)),
     array_merge($requiredTables, ['vpn_v2_external_sources']));
 (new VpnV2SchemaUpgradeService())->ensureCurrent();

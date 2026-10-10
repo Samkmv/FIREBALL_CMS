@@ -171,6 +171,7 @@ final class ProfileVpnService
             'requestedSubscriptionFound' => $requestedFound,
             'servers' => $servers,
             'subscriptionUrl' => $subscriptionUrl,
+            'smartConnectSettings' => $settings,
             'subscriptionQr' => $subscriptionQr,
             'happRoutingLink' => $linkReady && $subscriptionUrl !== ''
                 ? (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->activeLink($settings)

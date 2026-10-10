@@ -301,6 +301,11 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
     public static function jobs(): array
     {
         return [
+            'vpn_v2_server_health' => [
+                'class' => \Fireball\VpnManagerV2\Jobs\VpnV2ServerHealthJob::class,
+                'schedule' => '* * * * *',
+                'plugin' => self::SLUG,
+            ],
             'vpn_v2_sync_configuration' => [
                 'class' => VpnV2SyncConfigurationJob::class,
                 'schedule' => '*/10 * * * *',

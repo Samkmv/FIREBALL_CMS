@@ -25,7 +25,11 @@ function request(): \FBL\Request { static $request; return $request ??= new \FBL
 function response(): \FBL\Response { static $response; return $response ??= new \FBL\Response(); }
 function get_route_param(string $key): string { return (string)($GLOBALS['route'][$key] ?? ''); }
 function return_translation(string $key): string { return $key; }
-function plugin_view(string $slug,string $view,array $data,bool $layout=true): string { extract($data); ob_start(); require dirname(__DIR__).'/views/'.$view.'.php'; return (string)ob_get_clean(); }
+function plugin_view(string $slug,string $view,array $data,bool $layout=true): string {
+    if (getenv('REEL_PLAYER_STREAM_PREVIEW') === '1') foreach ($data['config']['state']['tracks'] as &$track) $track['source'] = 'drive';
+    if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && ($_GET['mirror'] ?? '') === '1') $data['js_url'] .= '&mirror=1';
+    unset($track); extract($data); ob_start(); require dirname(__DIR__).'/views/'.$view.'.php'; return (string)ob_get_clean();
+}
 function setting(string $key,mixed $default=null): mixed { return $default; }
 function config_value(string $key,mixed $default=null): mixed { return $default; }
 function db(): object { static $db; return $db ??= new class {
@@ -51,20 +55,49 @@ if (str_starts_with($path,'/assets/')) {
     if (!is_file($file) || !str_ends_with($path,'.woff2')) abort();
     header('Content-Type:font/woff2'); readfile($file); exit;
 }
-if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|cover\.svg)$~',$path,$match)) {
-    header('Content-Type:'.match(pathinfo($match[1],PATHINFO_EXTENSION)) {'css'=>'text/css','js'=>'application/javascript',default=>'image/svg+xml'});
+if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|preload\.js|cover\.(svg|png))$~',$path,$match)) {
+    header('Content-Type:'.match(pathinfo($match[1],PATHINFO_EXTENSION)) {'css'=>'text/css','js'=>'application/javascript','png'=>'image/png',default=>'image/svg+xml'});
     if ($match[1] === 'player.js' && getenv('REEL_PLAYER_METERS_PREVIEW') === '1') {
         $source = file_get_contents(dirname(__DIR__).'/assets/player.js');
-        if (getenv('REEL_PLAYER_MIRROR_PREVIEW') === '1') $source = str_replace('const capture = audio.captureStream || audio.mozCaptureStream;', 'const capture = null;', $source);
+        if (getenv('REEL_PLAYER_MIRROR_PREVIEW') === '1' || ($_GET['mirror'] ?? '') === '1') $source = str_replace('const capture = audio.captureStream || audio.mozCaptureStream;', 'const capture = null;', $source);
         $source = str_replace('if (mirror.paused) mirror.play().catch(() => {});', 'if (mirror.paused) mirror.play().catch(error => { graph.mirrorError = error.name; });', $source);
         $diagnostic = <<<'JS'
-    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorError:graph?.mirrorError, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState}); }, 500);
+    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorError:graph?.mirrorError, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState, preloadActive:preloader.active, preloadDone:[...preloader.done.keys()], upcoming:upcoming().map(t=>t.id)}); }, 500);
 JS;
         echo preg_replace('/\}\)\(\);\s*$/', $diagnostic . "\n})();", $source); exit;
     }
     readfile(dirname(__DIR__).'/assets/'.$match[1]); exit;
 }
 if ($_SERVER['REQUEST_METHOD']==='POST' && ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '') !== 'reel-browser-fixture') { response()->json(['status'=>false,'message'=>'Invalid CSRF'],419); }
+// Exercise the real streaming/cache code with disposable local audio as the
+// upstream. No Google credentials or user libraries are exposed by this mode.
+if (getenv('REEL_PLAYER_STREAM_PREVIEW') === '1' && (preg_match('~^/admin/reel-player/media/(\d+)$~',$path,$mediaMatch) || $path === '/admin/reel-player/api/prepare')) {
+    $warming = $path === '/admin/reel-player/api/prepare'; $id = (int)($warming ? ($_POST['id'] ?? 0) : $mediaMatch[1]);
+    try { $track = (new \Fireball\ReelPlayer\Repositories\Library((int)get_user()['id']))->track($id); } catch (\InvalidArgumentException) { abort('Not found',404); }
+    $filePath = (new \Fireball\ReelPlayer\Services\MediaStorage())->path($track['file_path']);
+    $file = ['id'=>'fixture-audio-'.$id,'name'=>$track['filename'],'size'=>(string)filesize($filePath),'mimeType'=>$track['mime'],'headRevisionId'=>'fixture-'.filemtime($filePath)];
+    $cache = new \Fireball\ReelPlayer\Services\DriveCache(STORAGE.'/reel-player',(int)get_user()['id'],hash('sha256','stream-fixture'));
+    $pipe = new \Fireball\ReelPlayer\Services\DriveStream($cache,static fn():bool=>true);
+    $meter = ($_GET['meter'] ?? '') === '1';
+    $reader = static function(array $file,int $start,int $end,bool $warm,callable $head,callable $body) use ($filePath,$id,$meter):void {
+        file_put_contents(STORAGE.'/stream-events.jsonl',json_encode(['track'=>$id,'warming'=>$warm,'meter'=>$meter,'start'=>$start,'end'=>$end,'time'=>microtime(true)])."\n",FILE_APPEND|LOCK_EX);
+        $head(206,['content-range'=>"bytes {$start}-{$end}/{$file['size']}",'content-length'=>(string)($end-$start+1)]);
+        $handle=fopen($filePath,'rb'); fseek($handle,$start); $remaining=$end-$start+1;
+        try { while($remaining>0 && !feof($handle) && !connection_aborted()) {
+            if(getenv('REEL_PLAYER_SLOW_PREVIEW')==='1') usleep($warm?100000:200000);
+            $chunk=fread($handle,min(65536,$remaining)); if($chunk===''||$chunk===false)break; $remaining-=strlen($chunk);
+            $more=$body($chunk); if($warm){echo ' ';flush();} if($more===false)break;
+        }} finally {fclose($handle);}
+    };
+    header('Cache-Control: private, no-store'); header('X-Accel-Buffering: no');
+    if ($warming) {
+        header('Content-Type: application/json'); echo ' '; flush();
+        try { $result=$pipe->prepare($file,$reader); echo json_encode(['status'=>true,...$result]); } catch (Throwable $e) { echo json_encode(['status'=>false,'message'=>$e->getMessage()]); }
+    } else {
+        $pipe->serve($file,(string)($_SERVER['HTTP_RANGE']??''),$reader,static function(int $code,array $headers):void {http_response_code($code);foreach($headers as $name=>$value)header($name.': '.$value);},static function(string $chunk):bool {echo $chunk;flush();return !connection_aborted();});
+    }
+    exit;
+}
 // Opt-in UI fixture for the Drive picker; never reads or changes a Google account.
 if (getenv('REEL_PLAYER_DRIVE_PREVIEW') === '1') {
     if ($path === '/admin/reel-player/api/drive/status') response()->json(['status'=>true,'drive'=>['configured'=>true,'connected'=>true,'canManage'=>check_creator(),'clientId'=>'','callback'=>base_url('/admin/reel-player/drive/callback')]]);
@@ -111,7 +144,7 @@ try {
     // Real network delay for buffering UI checks; only on this opt-in test server.
     if (getenv('REEL_PLAYER_BUFFER_PREVIEW') === '1' && $path === '/admin/reel-player/media/2') sleep(10);
     if (preg_match('~^/admin/reel-player/(media|cover)/(\d+)$~',$path,$match)) { $GLOBALS['route']=['id'=>$match[2]]; $controller->{$match[1]}(); exit; }
-    $method = match ($path) { '/admin/reel-player'=>'index','/admin/reel-player/api/state'=>'state','/admin/reel-player/api/action'=>'action','/admin/reel-player/api/upload'=>'upload','/admin/reel-player/api/drive/status'=>'driveStatus',default=>'' };
+    $method = match ($path) { '/admin/reel-player'=>'index','/admin/reel-player/api/state'=>'state','/admin/reel-player/api/action'=>'action','/admin/reel-player/api/upload'=>'upload','/admin/reel-player/api/prepare'=>'prepare','/admin/reel-player/api/drive/status'=>'driveStatus',default=>'' };
     if ($method==='') abort();
     echo $controller->$method();
 } catch (Throwable $error) { error_log((string)$error); response()->json(['status'=>false,'message'=>$error->getMessage()],500); }

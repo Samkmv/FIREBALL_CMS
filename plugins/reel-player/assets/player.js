@@ -9,6 +9,7 @@
     let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     let data = config.state, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
+    let audibleVolume = Number(saved.audibleVolume) > 0 ? Math.min(1, Number(saved.audibleVolume)) : Number(saved.volume) > 0 ? Math.min(1, Number(saved.volume)) : .8;
     let selected = Number(saved.playlist) || 0;
     let current = 0, queue = [], queueName = '', queuePlaylist = Number(saved.queuePlaylist) || 0, repeat = ['off', 'all', 'one'].includes(saved.repeat) ? saved.repeat : 'off';
     let librarySort = ['new','old'].includes(saved.librarySort) ? saved.librarySort : 'new';
@@ -18,6 +19,8 @@
     let toastTimer, frameId = 0, frameTime = 0, angles = [0, 0], graph, meterTimer, uploading = false, dialogHandler, dialogSubmitting = false;
     let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
     let mutationQueue = Promise.resolve();
+    let futureBag = [], shuffleCycleStarted = false;
+    const preloader = new window.TapeRoomPreloader({url:`${config.api}/prepare`,csrf:config.csrf});
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const formatTime = value => {
         if (!Number.isFinite(value) || value < 0) return '0:00';
@@ -56,7 +59,7 @@
         clearTimeout(toastTimer); toastTimer = setTimeout(() => { node.hidden = true; }, error ? 7000 : 3500);
     }
     function save() {
-        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:audio.currentTime || 0, volume:audio.volume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
+        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:audio.currentTime || 0, volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
     }
     function closeSort() {
         const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
@@ -88,7 +91,7 @@
         if (queuePlaylist > 0 && !playlist(queuePlaylist)) { queuePlaylist = 0; queueSort = librarySort; }
         queue = sortedTracks(collectionTracks(queuePlaylist), queueSort).map(t => t.id);
         queueName = collectionName(queuePlaylist);
-        bag = bag.filter(id => queue.includes(id)); history = history.filter(id => Boolean(track(id)));
+        bag = bag.filter(id => queue.includes(id)); futureBag = futureBag.filter(id => queue.includes(id)); history = history.filter(id => Boolean(track(id)));
         if (current && !activeTrack()) { audio.pause(); audio.removeAttribute('src'); audio.load(); current = 0; updateNow(); }
         const nav = $('[data-playlists]'); nav.replaceChildren();
         for (const item of [{id:0, name:'Вся музыка', tracks:data.tracks}, {id:-1, name:'Избранное', tracks:collectionTracks(-1)}, ...data.playlists]) {
@@ -132,7 +135,7 @@
         $('[data-action="prev"]').disabled = !current;
         $('[data-action="next"]').disabled = !current;
         $('[data-action="edit-current"]').disabled = !current;
-        updateNow(); updateButtons();
+        updateNow(); updateButtons(); prepareUpcoming();
     }
     function updateNow() {
         const t = activeTrack();
@@ -142,8 +145,24 @@
         if ($('[data-cover]').getAttribute('src') !== cover) $('[data-cover]').src = cover;
         $('[data-source]').textContent = current ? (queueName || 'Вся музыка') + (t?.source === 'drive' ? ' · GOOGLE DRIVE' : ' · STEREO') : 'ВАША МУЗЫКА. ВАШ РИТМ.';
         if (t && 'mediaSession' in navigator && 'MediaMetadata' in window) {
-            navigator.mediaSession.metadata = new MediaMetadata({title:t.title, artist:t.artist, album:queueName || 'Tape Room', artwork:[{src:new URL(cover, location.href).href}]});
+            const artwork = t.cover ? {src:new URL(t.cover,location.href).href,...(t.cover_mime ? {type:t.cover_mime} : {})}
+                : {src:new URL(config.defaultArtwork || config.defaultCover,location.href).href,sizes:'512x512',type:'image/png'};
+            try { navigator.mediaSession.metadata = new MediaMetadata({title:t.title, artist:t.artist, album:queueName || 'Tape Room', artwork:[artwork]}); } catch (_) {}
         }
+    }
+    function syncVolume() {
+        const silent = audio.muted || audio.volume === 0, volume = $('[data-volume]');
+        volume.value = silent ? 0 : audio.volume; rangeFill(volume, Number(volume.value));
+        const mute = $('[data-action="mute"]'), label = silent ? 'Включить звук' : 'Выключить звук';
+        setIcon(mute, silent ? 'mute' : 'volume'); mute.setAttribute('aria-label', label); mute.title = label;
+        mute.setAttribute('aria-pressed', String(silent)); mute.classList.toggle('is-active', silent);
+    }
+    function toggleMute() {
+        if (audio.muted || audio.volume === 0) {
+            if (audio.volume === 0) audio.volume = audibleVolume;
+            audio.muted = false;
+        } else { audibleVolume = audio.volume; audio.muted = true; }
+        syncVolume(); save();
     }
     function updateButtons() {
         const playing = !audio.paused && !audio.ended;
@@ -156,7 +175,7 @@
         const sh = $('[data-action="shuffle"]'); sh.classList.toggle('is-active', shuffle); sh.setAttribute('aria-pressed', String(shuffle));
         sh.setAttribute('aria-label', `Случайный порядок: ${shuffle ? 'включён' : 'выключен'}`); sh.title = sh.getAttribute('aria-label');
         const re = $('[data-action="repeat"]'); re.classList.toggle('is-active', repeat !== 'off'); re.setAttribute('aria-label', `Повтор: ${repeat === 'off' ? 'выключен' : repeat === 'one' ? 'одного трека' : 'плейлиста'}`); re.title = re.getAttribute('aria-label'); $('[data-repeat-one]').hidden = repeat !== 'one';
-        const mute = $('[data-action="mute"]'); setIcon(mute, audio.muted || audio.volume === 0 ? 'mute' : 'volume'); mute.setAttribute('aria-label', audio.muted ? 'Включить звук' : 'Выключить звук');
+        syncVolume();
         for (const row of $('[data-tracks]').children) {
             row.classList.toggle('is-current', Number(row.dataset.trackId) === current);
             const control = row.querySelector('.rp-track-play'); setIcon(control, Number(row.dataset.trackId) === current && playing ? 'pause' : 'play');
@@ -173,7 +192,8 @@
                 if (loading && !audio.paused) { bufferVisible = true; updateButtons(); }
             }, 350);
         }
-        updateButtons();
+        if (loading) stopMeters(true);
+        updateButtons(); prepareUpcoming();
     }
     function drawBuffered(duration, progress) {
         let end = audio.currentTime; const buffered = audio.buffered;
@@ -223,9 +243,9 @@
         return radii;
     }
     function initGraph() {
+        const capture = audio.captureStream || audio.mozCaptureStream;
         if (graph?.context.state === 'closed') { releaseGraph(); }
         if (graph) { if (graph.capture) refreshCapture(); return; }
-        const capture = audio.captureStream || audio.mozCaptureStream;
         if (!(window.AudioContext || window.webkitAudioContext)) return;
         let context;
         try {
@@ -251,6 +271,7 @@
                 source.channelCount = 2; source.channelCountMode = 'explicit'; source.connect(splitter);
                 graph.mirror = mirror; graph.source = source;
                 for (const event of ['loadedmetadata','canplay','playing','ended']) mirror.addEventListener(event, syncMirror);
+                mirror.addEventListener('error', () => { if (graph?.mirror === mirror && mirror.error && mirror.error.code !== 1) { graph.mirrorFailedGeneration = generation; stopMeters(true); } });
             }
         } catch (_) { graph = null; context?.close().catch(() => {}); }
     }
@@ -291,33 +312,50 @@
             source.connect(graph.splitter); graph.source = source;
         } catch (_) { graph.capturedTrack = null; }
     }
-    function resumeMeters() {
+    function resumeMeters(userGesture = false) {
         if (document.hidden || audio.paused || audio.ended) { stopMeters(); return; }
         try { initGraph(); } catch (_) { return; }
+        if (!graph) { stopMeters(true); return; }
         if (graph && graph.context.state !== 'running' && !graph.resuming) {
             const active = graph;
             active.resuming = active.context.resume().then(() => { if (graph === active) syncMirror(); }).catch(() => {}).finally(() => { active.resuming = null; });
         }
-        syncMirror();
+        if (userGesture === true && graph.mirrorFailedGeneration === generation) delete graph.mirrorFailedGeneration;
+        syncMirror(userGesture === true);
         if (!meterTimer) meterTimer = setInterval(resumeMeters, 1500);
     }
     function stopMeters(unload = false) {
+        unload ||= activeTrack()?.source === 'drive';
         clearInterval(meterTimer); meterTimer = undefined;
         if (graph?.mirror) {
             graph.mirror.pause();
-            if (unload) { graph.mirror.removeAttribute('src'); graph.mirror.load(); }
+            if (unload) { graph.mirrorStarting = null; graph.mirror.removeAttribute('src'); graph.mirror.load(); }
         }
         drawMeters(false);
     }
-    function syncMirror() {
+    function syncMirror(userGesture = false) {
         const mirror = graph?.mirror; if (!mirror) return;
-        if (document.hidden || audio.paused || audio.ended) { mirror.pause(); return; }
-        if (mirror.src !== audio.src) { mirror.src = audio.src; mirror.load(); }
+        const cloud = activeTrack()?.source === 'drive', connection = navigator.connection;
+        const enough = bufferedAhead() >= 1 || (audio.readyState >= 3 && audio.currentTime >= 1);
+        // Unlock Safari's analysis element in the same user gesture as native
+        // play(). Later resumes yield while the main player is actually waiting.
+        const waiting = userGesture !== true && (loading || audio.seeking || !enough);
+        if (document.hidden || audio.paused || audio.ended || (cloud && (waiting || connection?.saveData || ['slow-2g','2g'].includes(connection?.effectiveType) || graph.mirrorFailedGeneration === generation))) {
+            mirror.pause();
+            if (cloud && mirror.hasAttribute('src')) { mirror.removeAttribute('src'); mirror.load(); }
+            return;
+        }
+        const url = new URL(audio.src,location.href); if (cloud) url.searchParams.set('meter','1');
+        if (mirror.src !== url.href) { mirror.src = url.href; mirror.load(); }
         mirror.playbackRate = audio.playbackRate;
         if (mirror.readyState && Math.abs(mirror.currentTime - audio.currentTime) > .35) {
             try { mirror.currentTime = audio.currentTime; } catch (_) {}
         }
-        if (mirror.paused) mirror.play().catch(() => {});
+        if (mirror.paused && !graph.mirrorStarting) {
+            const active = graph, version = generation;
+            const pending = mirror.play().catch(error => { if (error.name !== 'AbortError' && graph === active && version === generation && mirror.src === url.href) { active.mirrorFailedGeneration = version; mirror.pause(); mirror.removeAttribute('src'); mirror.load(); } }).finally(() => { if (active.mirrorStarting === pending) active.mirrorStarting = null; });
+            active.mirrorStarting = pending;
+        }
     }
     function configureAudioSession() {
         try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
@@ -325,7 +363,7 @@
     function drawMeters(playing) {
         ['left','right'].forEach((side,i) => {
             let level = 0;
-            if (playing && graph?.context.state === 'running' && !audio.muted && audio.volume > 0) {
+            if (playing && graph?.context.state === 'running' && !audio.muted && audio.volume > 0 && (!graph.mirror || (!graph.mirror.paused && graph.mirror.readyState >= 2 && Math.abs(graph.mirror.currentTime-audio.currentTime) < .5))) {
                 try {
                     graph.analysers[i].getFloatTimeDomainData(graph.samples);
                     const rms = Math.sqrt(graph.samples.reduce((sum,value) => sum + value * value, 0) / graph.samples.length) * audio.volume;
@@ -352,16 +390,50 @@
             setQueue(); load(first.id);
         }
         configureAudioSession();
+        if (audio.error) load(current,audio.currentTime || 0);
         if (audio.ended) audio.currentTime = 0;
         const version = generation;
         // Keep play() inside the tap's activation; meter setup never gates sound.
-        try { const playback = audio.play(); resumeMeters(); await playback; }
+        try { const playback = audio.play(); resumeMeters(true); await playback; }
         catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); toast('Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
     }
-    function setQueue() { queue = selectedTracks().map(t => t.id); queuePlaylist = selected; queueSort = selectedSort(); queueName = collectionName(selected); bag = []; history = []; }
+    function shuffled(exclude) {
+        const ids = queue.filter(id => id !== exclude);
+        for (let i = ids.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [ids[i],ids[j]] = [ids[j],ids[i]]; }
+        return ids.length ? ids : [exclude];
+    }
+    function upcoming() {
+        if (!current || !queue.length || repeat === 'one') return [];
+        if (shuffle) {
+            if (!bag.length && !shuffleCycleStarted) { bag = shuffled(current); shuffleCycleStarted = true; }
+            const ids = bag.slice(-2).reverse();
+            if (repeat === 'all' && ids.length < 2) {
+                if (!futureBag.length) futureBag = shuffled(ids.at(-1) || current);
+                ids.push(...futureBag.slice(-(2-ids.length)).reverse());
+            }
+            return [...new Set(ids)].filter(id => id !== current).map(track).filter(Boolean);
+        }
+        const index = queue.indexOf(current), ids = [];
+        for (let step=1; step<=2; step++) {
+            if (index+step >= queue.length && repeat === 'off') break;
+            const id = queue[(index+step)%queue.length]; if (id !== current && !ids.includes(id)) ids.push(id);
+        }
+        return ids.map(track).filter(Boolean);
+    }
+    function bufferedAhead() {
+        for (let i=0; i<audio.buffered.length; i++) if (audio.buffered.start(i) <= audio.currentTime+.1 && audio.buffered.end(i) >= audio.currentTime) return audio.buffered.end(i)-audio.currentTime;
+        return 0;
+    }
+    function prepareUpcoming() {
+        const connection = navigator.connection;
+        const enough = bufferedAhead() >= 8 || (Number.isFinite(audio.duration) && bufferedAhead() >= audio.duration-audio.currentTime-.25 && audio.readyState >= 3);
+        const allowed = !document.hidden && !audio.paused && !audio.ended && !audio.seeking && !loading && enough && !connection?.saveData && !['slow-2g','2g'].includes(connection?.effectiveType);
+        preloader.schedule(upcoming(),allowed);
+    }
+    function setQueue() { preloader.reset(); queue = selectedTracks().map(t => t.id); queuePlaylist = selected; queueSort = selectedSort(); queueName = collectionName(selected); bag = []; futureBag = []; shuffleCycleStarted = false; history = []; }
     function load(id, time = 0) {
         const t = track(id); if (!t) return;
-        generation++; audio.pause(); current = t.id; restoreTime = time; setBuffering(false);
+        preloader.cancel(); generation++; audio.pause(); stopMeters(true); current = t.id; restoreTime = time; setBuffering(false);
         audio.src = t.url; audio.load(); render(); drawProgress(); save();
     }
     function next(automatic = false) {
@@ -370,9 +442,9 @@
         let id;
         if (shuffle) {
             if (!bag.length) {
-                if (automatic && repeat === 'off' && history.length >= queue.length - 1) return;
-                bag = queue.filter(t => t !== current).sort(() => Math.random() - .5);
-                if (!bag.length) { if (automatic && repeat === 'off') return; bag = [current]; }
+                if (automatic && repeat === 'off' && shuffleCycleStarted) return;
+                bag = futureBag.length ? futureBag : shuffled(current); futureBag = []; shuffleCycleStarted = true;
+                if (queue.length === 1 && automatic && repeat === 'off') return;
             }
             id = bag.pop();
         } else {
@@ -386,7 +458,7 @@
         if (!current) return;
         if (audio.currentTime > 3) { audio.currentTime = 0; drawProgress(); return; }
         const id = shuffle && history.length ? history.pop() : queue[(Math.max(0, queue.indexOf(current)) - 1 + queue.length) % queue.length];
-        if (id) { load(id); play(); }
+        if (id) { futureBag = []; load(id); play(); }
     }
     function applyState(result) { data = {tracks:result.tracks, playlists:result.playlists}; render(); save(); }
     function mutate(operation) {
@@ -503,9 +575,9 @@
                 case 'prev': previous(); break;
                 case 'next': next(); break;
                 case 'play-track': setQueue(); if (current === id) { if (audio.paused) await play(); else audio.pause(); } else { load(id); await play(); } break;
-                case 'shuffle': shuffle = !shuffle; bag = []; history = []; updateButtons(); save(); break;
-                case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; updateButtons(); save(); break;
-                case 'mute': audio.muted = !audio.muted; updateButtons(); save(); break;
+                case 'shuffle': shuffle = !shuffle; bag = []; futureBag = []; shuffleCycleStarted = false; history = []; preloader.reset(); updateButtons(); prepareUpcoming(); save(); break;
+                case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); break;
+                case 'mute': toggleMute(); break;
                 case 'theme': theme = theme === 'dark' ? 'light' : 'dark'; applyTheme(); break;
                 case 'select-playlist': selected = id; $('[data-search]').value = ''; render(); save(); break;
                 case 'favorite': control.disabled = true; await action('track.favorite',{id,favorite:track(id).favorite ? 0 : 1}); break;
@@ -585,7 +657,8 @@
     });
     $('[data-sort]').addEventListener('focusout', event => { if (!$('[data-sort]').contains(event.relatedTarget)) closeSort(); });
     document.addEventListener('click', event => { if (!$('[data-sort]').contains(event.target)) closeSort(); });
-    $('[data-volume]').addEventListener('input', event => { audio.volume = Number(event.target.value); audio.muted = false; rangeFill(event.target, audio.volume); updateButtons(); save(); });
+    $('[data-volume]').addEventListener('input', event => { const volume = Number(event.target.value); audio.volume = volume; if (volume > 0) audibleVolume = volume; audio.muted = volume === 0; syncVolume(); save(); });
+    audio.addEventListener('volumechange', syncVolume);
     $('[data-seek]').addEventListener('input', event => { seekActive = true; const fraction = Number(event.target.value) / 1000; rangeFill(event.target,fraction); $('[data-elapsed]').textContent = formatTime(audio.duration * fraction); });
     $('[data-seek]').addEventListener('change', event => { if (Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(event.target.value) / 1000; seekActive = false; drawProgress(); save(); });
     $('[data-audio-files]').addEventListener('change', event => uploadFiles([...event.target.files]));
@@ -606,14 +679,31 @@
     audio.addEventListener('waiting', () => { setBuffering(true); });
     audio.addEventListener('stalled', () => { if (audio.readyState < 3) setBuffering(true); });
     audio.addEventListener('canplay', () => { if (audio.readyState >= 3) setBuffering(false); });
-    audio.addEventListener('progress', drawProgress);
-    audio.addEventListener('seeking', () => { if (audio.readyState < 3) setBuffering(true); drawProgress(); });
-    audio.addEventListener('pause', () => { setBuffering(false); stopMeters(); save(); });
-    audio.addEventListener('timeupdate', () => { drawProgress(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
+    audio.addEventListener('progress', () => { drawProgress(); prepareUpcoming(); });
+    audio.addEventListener('seeking', () => { preloader.cancel(); if (audio.readyState < 3) setBuffering(true); drawProgress(); });
+    audio.addEventListener('pause', () => { preloader.cancel(); setBuffering(false); stopMeters(); save(); });
+    audio.addEventListener('timeupdate', () => { drawProgress(); prepareUpcoming(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
     audio.addEventListener('seeked', () => { drawProgress(); syncMirror(); });
     audio.addEventListener('ratechange', syncMirror);
     audio.addEventListener('ended', () => { setBuffering(false); stopMeters(); drawProgress(); next(true); });
-    audio.addEventListener('error', () => { if (!current) return; setBuffering(false); toast(activeTrack()?.source === 'drive' ? 'Не удалось открыть Google Drive. Проверьте подключение аккаунта и доступ к файлу.' : 'Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); });
+    let errorProbe = -1;
+    audio.addEventListener('error', async () => {
+        if (!current) return; preloader.cancel(); setBuffering(false); stopMeters(true);
+        const t = activeTrack(), version = generation;
+        if (t?.source !== 'drive') { toast('Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); return; }
+        if (errorProbe === version) return; errorProbe = version;
+        let message = 'Не удалось загрузить песню из Google Drive. Повторите воспроизведение или проверьте подключение.';
+        const controller = new AbortController(), timeout = setTimeout(() => controller.abort(),10000);
+        try {
+            const response = await fetch(t.url,{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-1'},signal:controller.signal});
+            if (response.redirected) message = 'Сессия завершена. Обновите страницу и войдите в CMS.';
+            else if (!response.ok && response.headers.get('Content-Type')?.startsWith('text/plain')) message = (await response.text()).slice(0,500) || message;
+            else if (response.status === 401) message = 'Сессия завершена. Обновите страницу и войдите в CMS.';
+            else if (response.ok && [3,4].includes(audio.error?.code)) message = 'Файл Google Drive доступен, но браузер не смог прочитать аудио. Проверьте кодек файла.';
+            else if (response.ok) message = 'Соединение с Google Drive прервалось. Нажмите воспроизведение, чтобы повторить.';
+        } catch (_) {} finally { clearTimeout(timeout); }
+        if (version === generation) toast(message,true);
+    });
     $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== config.defaultCover) event.target.src = config.defaultCover; });
     let dragDepth = 0;
     window.addEventListener('dragenter', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) { event.preventDefault(); dragDepth++; $('[data-drop-overlay]').hidden = false; } });
@@ -643,7 +733,7 @@
     document.addEventListener('visibilitychange', () => {
         save();
         if (document.hidden) {
-            cancelAnimationFrame(frameId); frameId = 0; frameTime = 0; stopMeters(true);
+            preloader.cancel(); cancelAnimationFrame(frameId); frameId = 0; frameTime = 0; stopMeters(true);
         } else {
             drawProgress(); updateButtons();
             if (!audio.paused) { configureAudioSession(); resumeMeters(); startAnimation(); }
@@ -789,7 +879,7 @@
     }
     dialog.addEventListener('close', () => { $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
-    audio.muted = Boolean(saved.muted); $('[data-volume]').value = audio.volume; rangeFill($('[data-volume]'),audio.volume);
+    audio.muted = Boolean(saved.muted); syncVolume();
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;
     applyTheme();
     render();

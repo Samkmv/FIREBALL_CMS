@@ -5,6 +5,8 @@ namespace Fireball\ReelPlayer\Services;
 /** OAuth credentials and refresh tokens stay outside the updatable plugin directory. */
 final class GoogleDrive
 {
+    private bool $meterStream = false;
+    private int $meterSpeed = 524288;
     private const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
     private string $directory;
     private string $root;
@@ -75,6 +77,7 @@ final class GoogleDrive
         $token = $account['refresh_token'] ?? $account['access_token'] ?? '';
         // Always remove local access, even if Google's revocation service is unavailable.
         $this->write([]);
+        DriveCache::clearOwner($this->root, $this->owner);
         if ($token !== '') {
             try { $this->request('https://oauth2.googleapis.com/revoke', ['token' => $token]); } catch (\Throwable) {}
         }
@@ -143,12 +146,14 @@ final class GoogleDrive
             if (empty($account['refresh_token'])) throw new \InvalidArgumentException('Настройки Google изменились. Подключите свой аккаунт снова.');
             $tokens = $this->request('https://oauth2.googleapis.com/token', ['client_id' => $account['client_id'], 'client_secret' => $account['client_secret'], 'refresh_token' => $account['refresh_token'], 'grant_type' => 'refresh_token']);
             if (empty($tokens['access_token'])) throw new \InvalidArgumentException('Переподключите Google Drive.');
+            $latest = $this->read();
+            if (($latest['refresh_token'] ?? '') !== $account['refresh_token'] || $this->binding($latest) !== $this->binding($account)) throw new \InvalidArgumentException('Подключение Google Drive изменилось. Войдите снова.');
             $this->write([...$account, 'access_token' => $tokens['access_token'], 'expires_at' => time() + (int)($tokens['expires_in'] ?? 3600)]);
             return $tokens['access_token'];
         } finally { flock($lock, LOCK_UN); fclose($lock); }
     }
 
-    private function request(string $url, ?array $post = null, ?string $token = null): array
+    private function request(string $url, ?array $post = null, ?string $token = null, bool $retry = true): array
     {
         $curl = curl_init($url);
         curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 30,
@@ -156,6 +161,15 @@ final class GoogleDrive
         if ($post !== null) curl_setopt_array($curl, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => http_build_query($post)]);
         $body = curl_exec($curl); $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE); curl_close($curl);
         if ($body === false) throw new \InvalidArgumentException('Google Drive недоступен. Проверьте соединение сервера с Google.');
+        if ($status === 401 && $token && $retry) {
+            $this->expireAccess($token);
+            return $this->request($url,$post,$this->token(),false);
+        }
+        if ($status >= 400 && $post !== null) {
+            $reason = json_decode((string)$body,true)['error'] ?? '';
+            if ($reason === 'invalid_grant') throw new \InvalidArgumentException('Доступ Google Drive истёк или отозван. Войдите в Google Drive снова.');
+            if ($reason === 'invalid_client') throw new \InvalidArgumentException('Google отклонил настройки приложения. Создателю сайта нужно проверить Client ID и Client Secret.');
+        }
         if ($status < 200 || $status >= 300) throw new \InvalidArgumentException(match ($status) {
             401 => 'Доступ Google Drive истёк. Подключите аккаунт снова.',
             403 => 'Google Drive не разрешил доступ. Проверьте Drive API, OAuth-разрешения и доступность файла.',
@@ -163,6 +177,12 @@ final class GoogleDrive
             default => 'Google отклонил запрос. Проверьте настройки подключения и повторите попытку.',
         });
         return json_decode((string)$body, true) ?: [];
+    }
+
+    private function expireAccess(string $token): void
+    {
+        $account = $this->read();
+        if (($account['access_token'] ?? '') === $token) $this->write([...$account,'expires_at'=>0]);
     }
 
     private static function id(string $id): string
@@ -221,11 +241,30 @@ final class GoogleDrive
         return ['files' => [...$folders, ...$audio['files']], 'nextPageToken' => $audio['nextPageToken']];
     }
 
-    public function file(string $id): array
+    private function cacheKey(): string
     {
-        return $this->request('https://www.googleapis.com/drive/v3/files/' . rawurlencode(self::id($id)) . '?' . http_build_query([
-            'fields' => 'id,name,mimeType,size,capabilities(canDownload)', 'supportsAllDrives' => 'true',
+        $account = $this->read();
+        if (empty($account['refresh_token']) && empty($account['access_token'])) throw new \InvalidArgumentException('Войдите в Google Drive снова.');
+        return hash('sha256', $this->binding($account) . ':' . ($account['refresh_token'] ?? $account['access_token']));
+    }
+
+    private function cache(): DriveCache { return new DriveCache($this->root,$this->owner,$this->cacheKey()); }
+
+    public function file(string $id, bool $refresh = false): array
+    {
+        $id = self::id($id); $cache = $this->cache();
+        if (!$refresh) {
+            try { if ($file = $cache->metadata($id)) return $file; } catch (\Throwable) { /* Optional cache. */ }
+        }
+        $file = $this->request('https://www.googleapis.com/drive/v3/files/' . rawurlencode($id) . '?' . http_build_query([
+            'fields' => 'id,name,mimeType,size,headRevisionId,md5Checksum,modifiedTime,capabilities(canDownload)', 'supportsAllDrives' => 'true',
         ]), null, $this->token());
+        // Folders are useful during import but do not belong in the audio cache.
+        if (($file['mimeType'] ?? '') !== 'application/vnd.google-apps.folder') {
+            $audio = self::assertAudio($file);
+            try { $cache->saveMetadata($audio); } catch (\Throwable) { /* Optional cache. */ }
+        }
+        return $file;
     }
 
     public static function linkId(string $url): array
@@ -273,41 +312,108 @@ final class GoogleDrive
         return array_values($files);
     }
 
-    public function stream(string $id): never
+    private function pipeline(): DriveStream
     {
+        $key = $this->cacheKey();
+        return new DriveStream(new DriveCache($this->root,$this->owner,$key),function() use ($key): bool {
+            try { return hash_equals($key,$this->cacheKey()); } catch (\Throwable) { return false; }
+        });
+    }
+
+    /** Bounded warm-up; response contains only readiness, never private URLs. */
+    public function prepare(string $id): array
+    {
+        session()->close(); $this->token();
         $file = self::assertAudio($this->file($id));
-        $size = (int)$file['size']; $range = MediaStorage::range($size, (string)($_SERVER['HTTP_RANGE'] ?? ''));
-        if ($range === null) { http_response_code(416); header('Content-Range: bytes */' . $size); exit; }
-        [$start, $end, $partial] = $range;
-        $token = $this->token(); session()->close();
-        while (ob_get_level() > 0) ob_end_clean();
-        $started = false; $upstreamCode = 0;
-        $curl = curl_init('https://www.googleapis.com/drive/v3/files/' . rawurlencode(self::id($id)) . '?alt=media&supportsAllDrives=true');
-        curl_setopt_array($curl, [CURLOPT_CONNECTTIMEOUT => 15, CURLOPT_TIMEOUT => 0, CURLOPT_LOW_SPEED_LIMIT => 1, CURLOPT_LOW_SPEED_TIME => 45,
-            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
-            CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_UNRESTRICTED_AUTH => false,
-            CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, "Range: bytes={$start}-{$end}"],
-            CURLOPT_HEADERFUNCTION => static function ($curl, string $header) use (&$upstreamCode): int {
-                if (preg_match('~^HTTP/\S+ (\d+)~', $header, $m)) $upstreamCode = (int)$m[1];
-                return strlen($header);
+        try { return $this->pipeline()->prepare($file,$this->download(...)); }
+        catch (\RuntimeException $error) {
+            if (!empty($file['headRevisionId']) && in_array($error->getCode(),[403,404],true)) {
+                // Some shared files permit current content but not revisions.
+                // Continue through files.get; do not splice an unpinned version.
+                unset($file['headRevisionId']);
+                try { $this->cache()->saveMetadata($file); } catch (\Throwable) {}
+                return ['ready'=>false,'reason'=>'revision-unavailable'];
+            }
+            throw $error;
+        }
+    }
+
+    private function download(array $file, int $start, int $end, bool $warming, callable $head, callable $body, bool $retry = true): void
+    {
+        $token = $this->token(); $status = 0; $fields = []; $cancelled = false;
+        $url = 'https://www.googleapis.com/drive/v3/files/' . rawurlencode(self::id($file['id']));
+        if (!empty($file['headRevisionId'])) $url .= '/revisions/' . rawurlencode($file['headRevisionId']);
+        $curl = curl_init($url . '?alt=media&supportsAllDrives=true');
+        curl_setopt_array($curl,[CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>$warming ? 15 : 0,
+            CURLOPT_LOW_SPEED_LIMIT=>1024,CURLOPT_LOW_SPEED_TIME=>$warming ? 8 : 45,
+            CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTPS,
+            CURLOPT_FOLLOWLOCATION=>true,CURLOPT_MAXREDIRS=>3,CURLOPT_UNRESTRICTED_AUTH=>false,
+            CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token,"Range: bytes={$start}-{$end}",'Accept-Encoding: identity'],
+            CURLOPT_HEADERFUNCTION=>static function($curl,string $line) use (&$status,&$fields,$head): int {
+                if (preg_match('~^HTTP/\S+ (\d+)~',$line,$m)) { $status = (int)$m[1]; $fields = []; }
+                elseif (trim($line) === '' && $status >= 200 && !($status >= 300 && $status < 400)) $head($status,$fields);
+                elseif (str_contains($line,':')) { [$name,$value] = explode(':',$line,2); $fields[strtolower(trim($name))] = trim($value); }
+                return strlen($line);
             },
-            CURLOPT_WRITEFUNCTION => static function ($curl, string $bytes) use (&$started, &$upstreamCode, $file, $start, $end, $size, $partial): int {
-                if ($upstreamCode >= 300 && $upstreamCode < 400) return strlen($bytes);
-                if (!in_array($upstreamCode, [200, 206], true)) return 0;
-                // Never label a full upstream response as a partial response.
-                if ($upstreamCode === 200 && ($start !== 0 || $end !== $size - 1)) return 0;
-                if (!$started) {
-                    http_response_code($partial ? 206 : 200); header('Content-Type: ' . $file['mimeType']); header('Accept-Ranges: bytes');
-                    header('Content-Length: ' . ($end - $start + 1)); header('Cache-Control: private, no-store, max-age=0'); header('X-Content-Type-Options: nosniff');
-                    if ($partial) header("Content-Range: bytes {$start}-{$end}/{$size}");
-                    $started = true;
-                }
-                if (connection_aborted()) return 0;
-                echo $bytes; flush(); return strlen($bytes);
+            CURLOPT_WRITEFUNCTION=>static function($curl,string $bytes) use (&$status,&$cancelled,$body,$warming): int {
+                if ($status >= 300 && $status < 400) return strlen($bytes);
+                if (connection_aborted()) { $cancelled = true; return 0; }
+                $more = $body($bytes);
+                // A whitespace heartbeat keeps the JSON valid and lets PHP
+                // notice AbortController cancellation during a warm-up.
+                if ($warming && PHP_SAPI !== 'cli') { echo ' '; flush(); }
+                if (!$more) { $cancelled = true; return 0; }
+                return strlen($bytes);
             },
         ]);
-        curl_exec($curl); curl_close($curl);
-        if (!$started) { http_response_code(502); header('Content-Type: text/plain; charset=utf-8'); echo 'Не удалось воспроизвести файл Google Drive. Проверьте доступ к файлу и переподключите аккаунт.'; }
+        if ($warming) curl_setopt($curl,CURLOPT_MAX_RECV_SPEED_LARGE,262144);
+        elseif ($this->meterStream) curl_setopt($curl,CURLOPT_MAX_RECV_SPEED_LARGE,$this->meterSpeed);
+        try {
+            $ok = curl_exec($curl); $error = curl_errno($curl);
+            if ($ok === false && !($cancelled && $error === CURLE_WRITE_ERROR)) throw new \RuntimeException('Соединение с Google Drive прервалось. Повторите воспроизведение.',502);
+        } catch (\RuntimeException $error) {
+            if ($error->getCode() !== 401 || !$retry) throw $error;
+            $this->expireAccess($token);
+            $this->download($file,$start,$end,$warming,$head,$body,false);
+        } finally { curl_close($curl); }
+    }
+
+    public function stream(string $id, bool $meterStream = false, float $duration = 0): never
+    {
+        $this->meterStream = $meterStream;
+        session()->close(); $this->token();
+        $file = self::assertAudio($this->file($id)); $started = false;
+        if ($meterStream && $duration > 0) $this->meterSpeed = (int)min(2097152,max(524288,ceil((int)$file['size']/$duration*1.5)));
+        while (ob_get_level() > 0) ob_end_clean();
+        header('Cache-Control: private, no-store, max-age=0'); header('X-Content-Type-Options: nosniff'); header('X-Accel-Buffering: no');
+        $headers = static function(int $status,array $fields) use (&$started): void {
+            http_response_code($status); foreach ($fields as $name=>$value) header($name.': '.$value); $started = true;
+        };
+        $output = static function(string $bytes): bool { if (connection_aborted()) return false; echo $bytes; flush(); return !connection_aborted(); };
+        try {
+            for ($attempt=0; $attempt<2; $attempt++) {
+                try { $this->pipeline()->serve($file,(string)($_SERVER['HTTP_RANGE'] ?? ''),$this->download(...),$headers,$output); break; }
+                catch (\RuntimeException $error) {
+                    if ($started || $attempt > 0 || !in_array($error->getCode(),[403,404,416],true)) throw $error;
+                    $wasRevision = !empty($file['headRevisionId']);
+                    $file = self::assertAudio($this->file($id,true));
+                    if ($wasRevision && in_array($error->getCode(),[403,404],true)) {
+                        unset($file['headRevisionId']);
+                        try { $this->cache()->saveMetadata($file); } catch (\Throwable) {}
+                    }
+                }
+            }
+        } catch (\Throwable $error) {
+            if (!connection_aborted() && in_array($error->getCode(),[401,403,404,416],true)) {
+                try { $this->cache()->invalidate($id); } catch (\Throwable) {}
+            }
+            // Never append an error message to audio bytes already sent.
+            if (!$started) {
+                http_response_code(in_array($error->getCode(),[401,403,404,416,429],true) ? $error->getCode() : 502);
+                if ($error->getCode() === 416) { header('Content-Range: bytes */'.(int)$file['size']); header('Content-Length: 0'); }
+                else { header('Content-Type: text/plain; charset=utf-8'); echo $error->getMessage(); }
+            } elseif (!connection_aborted()) log_error_details('Tape Room Drive stream interrupted',[], $error);
+        }
         exit;
     }
 }

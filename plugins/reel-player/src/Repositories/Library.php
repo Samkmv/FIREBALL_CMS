@@ -10,7 +10,7 @@ final class Library
 
     public function state(): array
     {
-        $tracks = db()->query('SELECT id, title, artist, filename, duration, file_size, cover_path, source, favorite, created_at FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
+        $tracks = db()->query('SELECT id, title, artist, filename, duration, file_size, cover_path, cover_mime, source, favorite, created_at FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
         foreach ($tracks as &$track) {
             $track['id'] = (int)$track['id'];
             $track['duration'] = (float)$track['duration'];

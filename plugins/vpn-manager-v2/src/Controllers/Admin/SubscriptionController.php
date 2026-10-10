@@ -240,6 +240,7 @@ final class SubscriptionController
                 'checked_at' => date('Y-m-d H:i:s'),
             ],
             'subscriptionUrl' => $subscriptionUrl,
+            'smartConnectSettings' => (new \Fireball\VpnManagerV2\Services\SettingsService())->current(),
             'subscriptionQr' => $subscriptionQr,
             'effectiveStatus' => $effectiveStatus,
             'dependencyItems' => $itemRepository->itemsForParent((int)$subscription['id']),

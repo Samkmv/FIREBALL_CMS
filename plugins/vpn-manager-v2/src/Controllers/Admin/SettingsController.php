@@ -14,6 +14,14 @@ final class SettingsController
     {
         Permissions::authorize(Permissions::MANAGE_SETTINGS);
         $settings = (new SettingsService())->current();
+        $servers = (new \Fireball\VpnManagerV2\Repositories\ServerRepository())->all();
+        $health = [];
+        $healthReady = true;
+        try {
+            $health = (new \Fireball\VpnManagerV2\Repositories\ServerHealthRepository())->all();
+        } catch (\Throwable) {
+            $healthReady = false; // Migration is applied by install/update, never by this HTTP request.
+        }
         try {
             $mailEnabled = (new MailService())->isEnabled();
         } catch (\Throwable) {
@@ -27,6 +35,9 @@ final class SettingsController
                 'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_title'),
                 'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_subtitle'),
                 'settings' => $settings,
+                'smartServers' => $servers,
+                'serverHealth' => $health,
+                'healthReady' => $healthReady,
                 'mailEnabled' => $mailEnabled,
                 'templateVariables' => SettingsValidator::TEMPLATE_VARIABLES,
             ])

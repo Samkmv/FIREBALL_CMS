@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
   "name_i18n": {
@@ -16,30 +16,40 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Creator-only shared Google app settings, with personal Google Drive sign-in for each administrator.",
-    "Recover stereo meters after track changes and interruptions; styled cover picker with a preview.",
-    "Previous and next track controls on the iPhone lock screen instead of timed seeking."
+    "Prepare the first 2 MiB of the next two Google Drive tracks while prioritizing current playback.",
+    "Bounded private cache, validated HTTP ranges and safe continuation of the same file revision.",
+    "Fewer repeated Google requests; cloud meters unlock with Play and recover after normal buffering cancellation.",
+    "Mobile track covers, prominent playback buttons and default PNG artwork for iPhone system playback.",
+    "Round controls, separated shuffle/repeat/mute buttons, highlighted return button and a zero slider when muted."
   ],
   "release_notes_i18n": {
     "ru": [
-      "Общие настройки Google доступны только создателю через шестерёнку; каждый администратор входит в собственный Google Drive.",
-      "Восстановление стереоиндикаторов после смены песни и прерывания; выбор обложки в стиле плеера с предварительным просмотром.",
-      "Переключение предыдущей и следующей песни на экране блокировки iPhone вместо перемотки на несколько секунд."
+      "Предварительная подготовка первых 2 МБ двух следующих песен Google Drive с приоритетом текущего воспроизведения.",
+      "Приватный ограниченный кэш, проверка HTTP Range и безопасное продолжение потока одной ревизии файла.",
+      "Уменьшение повторных обращений к Google; облачные индикаторы запускаются нажатием Play и восстанавливаются после штатной отмены при буферизации.",
+      "Обложки песен на телефоне, заметные кнопки воспроизведения и стандартная PNG-обложка для системного плеера iPhone.",
+      "Круглые кнопки, промежутки у случайного порядка, повтора и звука, выделенное возвращение в CMS и нулевая шкала при отключении звука."
     ],
     "en": [
-      "Creator-only shared Google app settings, with personal Google Drive sign-in for each administrator.",
-      "Recover stereo meters after track changes and interruptions; styled cover picker with a preview.",
-      "Previous and next track controls on the iPhone lock screen instead of timed seeking."
+      "Prepare the first 2 MiB of the next two Google Drive tracks while prioritizing current playback.",
+      "Bounded private cache, validated HTTP ranges and safe continuation of the same file revision.",
+      "Fewer repeated Google requests; cloud meters unlock with Play and recover after normal buffering cancellation.",
+      "Mobile track covers, prominent playback buttons and default PNG artwork for iPhone system playback.",
+      "Round controls, separated shuffle/repeat/mute buttons, highlighted return button and a zero slider when muted."
     ],
     "de": [
-      "Gemeinsame Google-App-Einstellungen nur für den Website-Ersteller; jeder Administrator meldet sich bei seinem eigenen Google Drive an.",
-      "Wiederherstellung der Stereoanzeigen nach Titelwechseln und Unterbrechungen; gestaltete Coverauswahl mit Vorschau.",
-      "Vorheriger und nächster Titel auf dem iPhone-Sperrbildschirm statt zeitlichem Vor- und Zurückspringen."
+      "Die ersten 2 MiB der nächsten zwei Google-Drive-Titel vorbereiten; die aktuelle Wiedergabe hat Vorrang.",
+      "Begrenzter privater Cache, geprüfte HTTP-Bereiche und Fortsetzung derselben Dateiversion.",
+      "Weniger wiederholte Google-Anfragen; Cloud-Pegelanzeigen starten mit Play und erholen sich nach Pufferunterbrechungen.",
+      "Cover auf Mobilgeräten, hervorgehobene Wiedergabetasten und PNG-Standardcover für die iPhone-Systemwiedergabe.",
+      "Runde Bedienelemente, Abstand zwischen Zufallswiedergabe, Wiederholung und Stummschaltung, hervorgehobene Rückkehr und Nullanzeige bei Stummschaltung."
     ],
     "zh-cn": [
-      "Google 应用设置由网站创建者统一管理；每位管理员登录自己的 Google Drive。",
-      "修复切换曲目或中断后电平指示器停止的问题；新增符合播放器风格的封面选择与预览。",
-      "iPhone 锁屏控制改为切换上一首和下一首，而非按秒快进或快退。"
+      "优先保障当前播放，同时准备后续两首 Google Drive 曲目的前 2 MiB。",
+      "受限的私有缓存、HTTP Range 验证，以及同一文件版本的安全连续播放。",
+      "减少重复 Google 请求；云端电平指示器随 Play 启动，并在缓冲取消后恢复。",
+      "显示移动端曲目封面、突出播放按钮，并为 iPhone 系统播放器提供默认 PNG 封面。",
+      "圆形控制按钮、随机/重复/静音按钮间距、突出的返回按钮，以及静音时归零的音量滑块。"
     ]
   },
   "update": {

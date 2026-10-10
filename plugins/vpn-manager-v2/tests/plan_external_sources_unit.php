@@ -140,7 +140,7 @@ namespace {
     $check(db()->sources[$shared]['plan_id'] === 1 && db()->sources[$shared]['parent_subscription_id'] === null, 'Plan source has exactly its plan owner');
     $check(db()->subscriptions[14]['revision'] === 2 && db()->subscriptions[15]['revision'] === 2, 'Plan source invalidates all subscribers');
     $check(db()->subscriptions[16]['revision'] === 1 && db()->subscriptions[17]['revision'] === 1, 'Other plan and deleted subscriber unaffected');
-    $check(count(cache()->removed) === 8, 'Old and new public cache formats invalidated');
+    $check(count(cache()->removed) === 12, 'Old and new public cache formats invalidated');
     $check(!str_contains(db()->sources[$shared]['encrypted_source'], $uri) && !str_contains(db()->sources[$shared]['encrypted_snapshot'], $uri), 'Encrypted credentials and snapshot at rest');
     $check(!str_contains(json_encode($planService->itemsForParent(1)), '00000000-0000-4000'), 'Admin list hides credentials');
     $check($personalService->urisForParent(14) === [$uri] && $personalService->urisForParent(15) === [$uri], 'Existing subscriptions inherit shared source');

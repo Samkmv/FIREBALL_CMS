@@ -38,8 +38,19 @@ final class VpnSubscriptionMetadataService
         if ($this->httpUrl($supportUrl)) {
             $headers['support-url'] = $supportUrl;
         }
+        // Standard Happ parameter: UI visibility/export only, never tunnel authentication.
+        $visibility = match ($settings['happ_server_settings_policy'] ?? 'default') {
+            'hide' => '1',
+            'show' => '0',
+            default => null,
+        };
+        if ($visibility !== null) {
+            $headers['hide-settings'] = $visibility;
+        }
 
-        return array_replace($headers, (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->headers($settings));
+        return array_replace($headers,
+            (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->headers($settings),
+            (new \Fireball\VpnManagerV2\Support\HappSmartConnect())->headers($settings));
     }
 
     private function timestamp(mixed $value): ?int

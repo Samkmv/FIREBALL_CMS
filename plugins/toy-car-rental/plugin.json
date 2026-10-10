@@ -1,10 +1,11 @@
 {
   "name": "Прокат машинок",
   "slug": "toy-car-rental",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Прокат детских машинок: компактная панель, фиксированные и поминутные поездки, таймеры, оплата и push-уведомления.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Added a dedicated background expiry runner for phone push notifications while the CMS is closed, with the shared scheduler lock and no unrelated plugin jobs.",
     "Cars can be deleted with CMS confirmation while preserving ride and payment history; active rides block deletion. Fleet and history tables use the CMS mobile card layout.",
     "Opening an already overdue ride waits for the native CMS toast engine; start buttons, timers and stop buttons stay aligned across cards with different title lengths.",
     "Overdue alerts from the notification center now use the standard CMS warning toast in light and dark themes and retain the link to the rental panel.",
@@ -20,6 +21,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Добавлен отдельный фоновый запуск проверки поездок для push при закрытой CMS: используется блокировка общего планировщика, задачи других плагинов не запускаются.",
       "Добавлено удаление машинок с подтверждением CMS и сохранением истории поездок и оплат; активную машинку удалить нельзя. Таблицы парка и истории используют мобильные карточки CMS.",
       "При открытии уже просроченной поездки сообщение дожидается штатных уведомлений CMS; кнопки запуска, таймеры и кнопки завершения выровнены в карточках с названиями разной длины.",
       "Уведомления о просрочке из центра уведомлений используют обычное предупреждение CMS в светлой и тёмной темах с переходом к панели проката.",
@@ -34,6 +36,7 @@
       "При повторной активации плагин теперь восстанавливает отсутствующие таблицы проката и платёжные поля."
     ],
     "en": [
+      "Added a dedicated background expiry runner for phone push notifications while the CMS is closed, with the shared scheduler lock and no unrelated plugin jobs.",
       "Cars can be deleted with CMS confirmation while preserving ride and payment history; active rides block deletion. Fleet and history tables use the CMS mobile card layout.",
       "Opening an already overdue ride waits for the native CMS toast engine; start buttons, timers and stop buttons stay aligned across cards with different title lengths.",
       "Overdue alerts from the notification center now use the standard CMS warning toast in light and dark themes and retain the link to the rental panel.",
@@ -48,6 +51,7 @@
       "Reactivating the plugin now recreates missing rental database tables and billing columns."
     ],
     "de": [
+      "Ein eigener Hintergrundstart prüft abgelaufene Fahrten für Push-Nachrichten bei geschlossenem CMS; er nutzt die gemeinsame Scheduler-Sperre und führt keine Aufgaben anderer Plugins aus.",
       "Autos können mit CMS-Bestätigung gelöscht werden, ohne den Fahrt- und Zahlungsverlauf zu verlieren; aktive Fahrten verhindern das Löschen. Fuhrpark- und Verlaufstabellen nutzen die mobile Kartenansicht des CMS.",
       "Beim Öffnen einer bereits überfälligen Fahrt wartet die Meldung auf die CMS-Benachrichtigungen; Starttasten, Timer und Stopptasten bleiben bei unterschiedlich langen Fahrzeugnamen ausgerichtet.",
       "Überfälligkeitsmeldungen aus der Benachrichtigungszentrale verwenden die CMS-Warnmeldung in hellen und dunklen Designs mit Link zum Verleihpanel.",
@@ -62,6 +66,7 @@
       "Bei erneuter Aktivierung stellt das Plugin fehlende Verleihtabellen und Abrechnungsspalten wieder her."
     ],
     "zh-cn": [
+      "新增独立的后台行程到期检查入口，可在 CMS 关闭时发送手机推送，使用共享调度锁且不运行其他插件的任务。",
       "新增车辆删除功能，使用 CMS 确认弹窗并保留行程和付款记录；正在使用的车辆不可删除。车队和历史记录表格采用 CMS 移动卡片布局。",
       "打开已超时行程时，提示会等待 CMS 原生通知就绪；不同长度的车辆名称不会影响启动按钮、计时器和停止按钮的对齐。",
       "通知中心的超时提醒使用 CMS 标准警告样式，支持明暗主题，并保留前往租赁面板的链接。",

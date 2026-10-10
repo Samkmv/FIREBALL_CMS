@@ -18,8 +18,14 @@ final class SettingsService
         'support_url',
         'happ_routing_enabled',
         'happ_routing_link',
+        'happ_server_settings_policy',
+        'smart_connect_enabled', 'smart_connect_mode', 'smart_connect_happ_enabled',
+        'smart_connect_happ_provider_id', 'smart_connect_happ_ping_on_open',
+        'smart_connect_happ_sort_ping', 'smart_connect_happ_autoconnect', 'smart_connect_happ_ping_type',
+        'smart_connect_singbox_enabled', 'smart_connect_test_url',
+        'smart_connect_interval_seconds', 'smart_connect_tolerance_ms', 'smart_connect_server_priorities',
     ];
-    private const SECRET_MARKERS = ['password', 'secret', 'token', 'cookie', 'authorization'];
+    private const SECRET_MARKERS = ['password', 'secret', 'token', 'cookie', 'authorization', 'provider_id'];
 
     public function __construct(
         private readonly ?SettingsRepository $repository = null,
@@ -33,7 +39,7 @@ final class SettingsService
 
     public static function defaults(): array
     {
-        return [
+        return array_replace([
             'subscription_name' => 'VPN V2',
             'service_name' => 'VPN V2',
             'server_name_template' => '{flag} {service} · {country} {city} · {server} · {protocol}',
@@ -64,7 +70,8 @@ final class SettingsService
             'show_qr_in_profile' => true,
             'happ_routing_enabled' => false,
             'happ_routing_link' => '',
-        ];
+            'happ_server_settings_policy' => 'default',
+        ], \Fireball\VpnManagerV2\DTO\SmartConnectData::defaults());
     }
 
     public function current(): array

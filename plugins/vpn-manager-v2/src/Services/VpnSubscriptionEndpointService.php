@@ -29,7 +29,7 @@ final class VpnSubscriptionEndpointService
         $headers = $this->baseHeaders();
         $token = strtolower(trim($token));
         $format = strtolower(trim($format));
-        if (!in_array($format, ['base64', 'plain'], true)) {
+        if (!in_array($format, ['base64', 'plain', 'singbox'], true)) {
             return new SubscriptionEndpointResponse(400, '', $headers);
         }
         if (preg_match('/^[a-f0-9]{64}$/', $token) !== 1) {
@@ -42,6 +42,12 @@ final class VpnSubscriptionEndpointService
             return new SubscriptionEndpointResponse(404, '', $headers);
         }
         $settings = ($this->settings ?? new SettingsService())->current();
+        if ($format === 'singbox') {
+            $headers['Content-Type'] = 'application/json; charset=utf-8';
+            if (empty($settings['smart_connect_enabled']) || empty($settings['smart_connect_singbox_enabled'])) {
+                return new SubscriptionEndpointResponse(404, '', $headers);
+            }
+        }
         if ($this->expired($subscription)) {
             if (($settings['expired_subscription_behavior'] ?? 'inactive') === 'not_found') {
                 return new SubscriptionEndpointResponse(404, '', $headers);
@@ -80,6 +86,10 @@ final class VpnSubscriptionEndpointService
             $headers,
             $metadata->headers($subscription, $settings, $repository->trafficBreakdown((int)$subscription['id']))
         );
+        if ($format === 'singbox') {
+            // A full JSON profile is exportable; do not imply Happ UI restrictions apply to it.
+            unset($headers['hide-settings']);
+        }
         $revision = max(1, (int)$subscription['revision']);
         $etag = $this->etag($token, $revision, $format);
         $modifiedTimestamp = $this->modifiedTimestamp($subscription);
@@ -116,6 +126,27 @@ final class VpnSubscriptionEndpointService
 
         $plain = implode("\n", $uris) . "\n";
         $body = $format === 'base64' ? base64_encode($plain) : $plain;
+        if ($format === 'singbox') {
+            try {
+                $priorities = [];
+                $builder = $this->builder ?? new VpnSubscriptionBuilder(settings: $this->settings);
+                foreach ($effectiveNodes as $node) {
+                    $id = (int)($node['server_id'] ?? 0);
+                    if (isset($settings['smart_connect_server_priorities'][$id])) {
+                        foreach ($builder->buildFromNodes($subscription, [$node]) as $uri) {
+                            $priorities[$uri] = (int)$settings['smart_connect_server_priorities'][$id];
+                        }
+                    }
+                }
+                $body = (new SingBoxSubscriptionBuilder())->build($uris, $settings, $priorities);
+            } catch (VpnManagerV2Exception) {
+                unset($headers['ETag'], $headers['Last-Modified']);
+                $headers['Cache-Control'] = 'private, no-store';
+                $headers['X-Fireball-VPN-Config'] = 'unsupported';
+                return new SubscriptionEndpointResponse(422,
+                    json_encode(['error' => 'unsupported_singbox_configuration', 'message' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_smart_export_unsupported')], JSON_UNESCAPED_UNICODE), $headers);
+            }
+        }
         $cache->set($token, $revision, $format, $body, count($uris));
 
         return new SubscriptionEndpointResponse(200, $body, $headers, count($uris), false);
@@ -167,21 +198,28 @@ final class VpnSubscriptionEndpointService
         // Preserve the profile identity and real expiration, but do not apply
         // routing rules from a subscription that no longer grants access.
         $inactiveHeaders = $metadata->headers($subscription, $settings);
-        unset($inactiveHeaders['routing'], $inactiveHeaders['routing-enable']);
+        unset($inactiveHeaders['routing'], $inactiveHeaders['routing-enable'],
+            $inactiveHeaders['subscription-autoconnect-type'], $inactiveHeaders['ping-type'], $inactiveHeaders['check-url-via-proxy']);
+        $inactiveHeaders = array_replace($inactiveHeaders,
+            (new \Fireball\VpnManagerV2\Support\HappSmartConnect())->headers($settings, false));
         $headers = array_replace($headers, $inactiveHeaders);
+        if ($format === 'singbox') {
+            unset($headers['hide-settings']);
+        }
         $headers['profile-title'] = 'base64:' . base64_encode($metadata->profileTitle($subscription, $settings));
         $headers['Cache-Control'] = 'private, no-store, must-revalidate';
         $headers['X-Fireball-VPN-Status'] = 'inactive';
 
         $placeholder = 'vless://00000000-0000-4000-8000-000000000000@192.0.2.1:1?encryption=none&security=none&type=tcp#%E2%9B%94%20VPN-%D0%BF%D0%BE%D0%B4%D0%BF%D0%B8%D1%81%D0%BA%D0%B0%20%D0%BD%D0%B5%D0%B0%D0%BA%D1%82%D0%B8%D0%B2%D0%BD%D0%B0';
         $plain = $placeholder . "\n";
-        $body = $format === 'base64' ? base64_encode($plain) : $plain;
+        $body = $format === 'singbox' ? (new SingBoxSubscriptionBuilder())->inactive()
+            : ($format === 'base64' ? base64_encode($plain) : $plain);
 
         return new SubscriptionEndpointResponse(
             200,
             $body,
             $headers,
-            1,
+            $format === 'singbox' ? 0 : 1,
             false
         );
     }

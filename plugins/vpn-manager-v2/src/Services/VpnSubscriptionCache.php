@@ -5,7 +5,7 @@ namespace Fireball\VpnManagerV2\Services;
 final class VpnSubscriptionCache
 {
     private const DEFAULT_TTL = 300;
-    private const FORMATS = ['base64', 'plain'];
+    private const FORMATS = ['base64', 'plain', 'singbox'];
     private const PAYLOAD_SCHEMA_VERSION = 2;
 
     public function get(string $token, int $revision, string $format): ?array

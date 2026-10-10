@@ -56,7 +56,7 @@ $button = static function (string $action, string $label, string $name, string $
 </defs></svg>
 <main class="rp-app" data-player>
     <header class="rp-header">
-        <a class="rp-back" href="<?= htmlSC(base_href('/admin')) ?>" aria-label="Вернуться в CMS"><?= $icon('back') ?><span>FIREBALL</span></a>
+        <a class="rp-back" href="<?= htmlSC(base_href('/admin')) ?>" aria-label="Вернуться в CMS" title="Вернуться в CMS"><span class="rp-icon-button rp-back-control"><?= $icon('back') ?></span><span class="rp-back-label">FIREBALL</span></a>
         <div class="rp-brand">TAPE ROOM<span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
         <div class="rp-header-actions">
             <?php if (!empty($config['drive']['canManage'])): ?><?= $button('player-settings', 'Настройки плеера', 'settings') ?><?php endif; ?>
@@ -178,6 +178,7 @@ $button = static function (string $action, string $label, string $name, string $
     </dialog>
 </main>
 <script type="application/json" data-player-config><?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?></script>
+<script src="<?= htmlSC($preload_url) ?>" defer></script>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>
 </html>

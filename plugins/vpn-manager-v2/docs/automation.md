@@ -11,6 +11,7 @@ Registered jobs are available through `FireballPluginVpnManagerV2::jobs()`, the 
 - daily: `Fireball\VpnManagerV2\Jobs\VpnV2SendExpirationNotificationsJob`;
 - every 10 minutes: `Fireball\VpnManagerV2\Jobs\VpnV2RetryFailedOperationsJob`;
 - every minute: `Fireball\VpnManagerV2\Jobs\VpnV2ReconcilePlanSubscriptionsJob`;
+- every minute: `Fireball\VpnManagerV2\Jobs\VpnV2ServerHealthJob` (opt-in, one due server per run, diagnostics only);
 - every 10 minutes, offset after discovery: `Fireball\VpnManagerV2\Jobs\VpnV2ProvisionMissingClientsJob`;
 - daily: `Fireball\VpnManagerV2\Jobs\VpnV2FullReconcileJob`.
 
@@ -47,3 +48,5 @@ updates are not rolled back. The daily full reconciliation recalculates all
 stored effective statuses after configuration and plan reconciliation.
 It also refreshes a bounded batch of enabled external subscription URLs. Failed
 refreshes record `sync_error` without erasing the previous confirmed snapshot.
+
+Smart Connect infrastructure diagnostics can also run through `cron.php --health-only`. The normal CLI cron includes this job when monitoring is enabled. No health checks are attached to web requests. See [Smart Connect](smart-connect.md) for client-side selection, limits and administrator setup.
