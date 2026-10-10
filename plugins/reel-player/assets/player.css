@@ -227,3 +227,7 @@
 
 .rp-meter-recovery{text-align:center;margin:12px 0 0}.rp-meter-recovery .rp-button{color:var(--rp-ink);border-color:var(--rp-accent);font-size:11px}.rp-meter-recovery .rp-button:hover{background:var(--rp-line)}.rp-meter-recovery .rp-button:focus-visible{outline:2px solid var(--rp-accent);outline-offset:3px}
 [data-playlist-actions]{display:flex;align-items:center;gap:12px}.rp-library-actions{gap:12px}
+
+/* Version and local diagnostics remain available to every listener. */
+.rp-about{align-self:flex-start;border:0;border-bottom:1px dashed var(--rp-line);background:transparent;color:inherit;font:inherit;letter-spacing:1px;padding:0 0 4px;cursor:pointer;white-space:nowrap}
+.rp-about:hover,.rp-about:focus-visible{color:var(--rp-ink);border-bottom-color:currentColor}

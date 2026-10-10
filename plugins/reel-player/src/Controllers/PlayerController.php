@@ -17,9 +17,11 @@ final class PlayerController
     {
         header('Cache-Control: private, no-store');
         $assets = dirname(__DIR__, 2) . '/assets';
+        $manifest = json_decode((string)file_get_contents(dirname($assets) . '/plugin.json'), true, 512, JSON_THROW_ON_ERROR);
         $pwa = function_exists('pwa_head_data') ? pwa_head_data() : [];
         return plugin_view('reel-player', 'player', [
             'config' => [
+                'version' => (string)$manifest['version'],
                 'api' => base_href('/admin/reel-player/api'),
                 'csrf' => (string)session()->get('needCSRFToken', ''),
                 'storageKey' => 'fireball-tape-room:' . (int)get_user()['id'],

@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
   "name_i18n": {
@@ -16,35 +16,35 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Activate Safari audio analysis directly in the Play gesture with a silent scheduled source.",
-    "Recover hung resume promises and frozen audio clocks with one bounded automatic rebuild; allow manual activation without interrupting the song.",
-    "Fall back when capture exposes no live audio track; handle local and cloud analysis failures consistently.",
-    "Separate playlist edit and delete buttons by 12 pixels on desktop and mobile."
+    "Keep Safari analysis at a steady playback rate and resynchronise persistent drift with a bounded seek cooldown.",
+    "Keep real meters active during current-data streaming; distinguish download stalls from playback buffering.",
+    "Measure a longer audio window with fast attack and a short decay; clear stale readings after 180 ms, pause, mute or user seek.",
+    "Show the installed version and offer a local, bounded meter report without track or account data."
   ],
   "release_notes_i18n": {
     "en": [
-      "Activate Safari audio analysis directly in the Play gesture with a silent scheduled source.",
-      "Recover hung resume promises and frozen audio clocks with one bounded automatic rebuild; allow manual activation without interrupting the song.",
-      "Fall back when capture exposes no live audio track; handle local and cloud analysis failures consistently.",
-      "Separate playlist edit and delete buttons by 12 pixels on desktop and mobile."
+      "Keep Safari analysis at a steady playback rate and resynchronise persistent drift with a bounded seek cooldown.",
+      "Keep real meters active during current-data streaming; distinguish download stalls from playback buffering.",
+      "Measure a longer audio window with fast attack and a short decay; clear stale readings after 180 ms, pause, mute or user seek.",
+      "Show the installed version and offer a local, bounded meter report without track or account data."
     ],
     "ru": [
-      "Анализатор Safari активируется прямо при нажатии Play с помощью неслышного запланированного источника.",
-      "Зависший запуск и остановившийся звуковой движок восстанавливаются одной автоматической попыткой; повторное включение индикаторов не прерывает песню.",
-      "Если захват не отдаёт живой аудиоканал, используется отдельный анализатор; ошибки загруженной и облачной музыки обрабатываются одинаково.",
-      "Между кнопками редактирования и удаления плейлиста добавлено 12 пикселей на телефонах и компьютерах."
+      "Анализатор Safari работает на постоянной скорости; устойчивая рассинхронизация исправляется без непрерывных перемоток.",
+      "Индикаторы не выключаются из-за кратких изменений буфера; задержка загрузки отделена от остановки воспроизведения.",
+      "Более длинное окно настоящего сигнала и плавное затухание; старые показания сбрасываются через 180 мс, при паузе, отключении звука или перемотке пользователем.",
+      "Отображается версия плеера и доступен локальный ограниченный отчёт об индикаторах без данных песен и аккаунта."
     ],
     "de": [
-      "Safari-Audioanalyse direkt beim Drücken von Play mit einer stummen geplanten Quelle aktivieren.",
-      "Hängende Resume-Vorgänge und eingefrorene Audiotakte mit einem begrenzten Neuaufbau wiederherstellen; manuelle Aktivierung unterbricht den Titel nicht.",
-      "Ohne aktive Audiospur auf separate Analyse wechseln; lokale und Cloud-Fehler gleich behandeln.",
-      "12 Pixel Abstand zwischen Bearbeiten und Löschen von Wiedergabelisten auf Desktop und Mobilgeräten."
+      "Safari-Analyse mit konstanter Geschwindigkeit; anhaltende Abweichungen mit begrenzten Suchvorgängen korrigieren.",
+      "Echte Pegel bleiben bei Streaming aktiv; Downloadverzögerungen von Wiedergabepufferung unterscheiden.",
+      "Längeres Messfenster mit kurzem Abfall; alte Werte nach 180 ms, Pause, Stummschaltung oder Benutzersuche löschen.",
+      "Installierte Version und lokaler, begrenzter Pegelbericht ohne Titel- oder Kontodaten."
     ],
     "zh-cn": [
-      "按下播放时使用静音计划音源直接激活 Safari 音频分析。",
-      "通过一次有限的自动重建恢复挂起的启动和冻结的音频时钟；手动激活不会中断歌曲。",
-      "捕获未提供有效音轨时使用独立分析；统一处理本地与云端分析错误。",
-      "桌面和手机上的播放列表编辑与删除按钮之间增加 12 像素间距。"
+      "Safari 分析使用固定播放速度，仅在持续不同步时进行有限的定位。",
+      "短暂的缓冲状态变化不再关闭真实电平；区分下载停顿与播放缓冲。",
+      "使用更长的真实采样窗口和短暂衰减；180 毫秒后或暂停、静音、用户跳转时清除旧读数。",
+      "显示已安装版本，并提供不含歌曲或账户数据的本地有限电平报告。"
     ]
   },
   "update": {

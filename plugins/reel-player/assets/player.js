@@ -27,7 +27,9 @@
     let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
     let meterBufferTimer, progressFrame = -Infinity, meterFrame = -Infinity, packRadii = [174,78], positionKey = '';
     const meterLevels = [0,0];
+    const meterSignal = {generation:-1, values:[0,0], rms:[0,0], sampled:[-Infinity,-Infinity], drawn:0};
     const meterRecovery = {generation:-1, rebuilds:0, blocked:false, forceMirror:false};
+    const meterReport = {samples:[], time:-Infinity, status:null};
     let mutationQueue = Promise.resolve();
     let futureBag = [], shuffleCycleStarted = false;
     const preloader = new window.TapeRoomPreloader({url:`${config.api}/prepare`,csrf:config.csrf});
@@ -299,12 +301,14 @@
             context = new (window.AudioContext || window.webkitAudioContext)();
             const splitter = context.createChannelSplitter(2);
             const analysers = [context.createAnalyser(), context.createAnalyser()];
-            analysers.forEach((a,i) => { a.fftSize = 256; a.smoothingTimeConstant = .78; splitter.connect(a, i); });
+            // Time-domain data is not smoothed by smoothingTimeConstant. A
+            // longer real-sample window and explicit release below avoid flicker.
+            analysers.forEach((a,i) => { a.fftSize = 2048; splitter.connect(a, i); });
             // Keep both analysis branches pulled by the audio engine. The sink
             // is silent; native HTML Audio remains the only audible output.
             const silent = context.createGain(); silent.gain.value = 0;
             analysers.forEach(a => a.connect(silent)); silent.connect(context.destination);
-            graph = {context, splitter, analysers, source:null, capturedTrack:null, samples:new Float32Array(256), capture:meterRecovery.forceMirror ? null : capture, captureGeneration:-1};
+            graph = {context, splitter, analysers, source:null, capturedTrack:null, samples:new Float32Array(2048), capture:meterRecovery.forceMirror ? null : capture, captureGeneration:-1};
             context.addEventListener('statechange', () => { if (graph?.context === context && !graph.resumePending && !document.hidden && !audio.paused && !audio.ended) resumeMeters(); });
             if (graph.capture) { try { refreshCapture(); } catch (_) { initMirror(); } }
             else initMirror();
@@ -415,7 +419,7 @@
         const progressing = audio.currentTime - watch.native > .05;
         // Use clocks, not sample amplitudes: a genuinely silent song is valid.
         const stoppedEngine = progressing && clock - watch.clock < .01;
-        const requested = active.mirror?.hasAttribute('src') && (audio.readyState >= 3 || bufferedAhead() >= .25);
+        const requested = active.mirror?.hasAttribute('src');
         const stoppedMirror = progressing && requested && active.mirror.readyState >= 2 && !active.mirror.seeking && active.mirror.currentTime - watch.mirror < .01;
         const stuckRequest = progressing && requested && now - active.mirrorLoadStarted > 15000 && (active.mirror.readyState < 2 || active.mirror.seeking);
         if (stoppedEngine || stoppedMirror || stuckRequest) {
@@ -447,10 +451,13 @@
         const enough = audio.readyState >= 3 || bufferedAhead() >= .25;
         // Unlock Safari's analysis element in the same user gesture as native
         // play(). Later resumes yield while the main player is actually waiting.
-        const waiting = userGesture !== true && (loading || audio.seeking || !enough);
+        // HAVE_CURRENT_DATA may fluctuate during perfectly audible streaming.
+        // Only delay a new cloud request for low buffer; an existing decoder
+        // yields when native playback actually waits or the user seeks.
+        const waiting = userGesture !== true && (loading || audio.seeking || (!enough && !mirror.hasAttribute('src')));
         if (document.hidden || (userGesture !== true && (audio.paused || audio.ended)) || (cloud && (connection?.saveData || ['slow-2g','2g'].includes(connection?.effectiveType)))) {
             mirror.pause();
-            if (mirror.hasAttribute('src')) { graph.mirrorAligned = ''; mirror.removeAttribute('src'); mirror.load(); }
+            if (mirror.hasAttribute('src')) { graph.mirrorAligned = ''; graph.mirrorDriftSince = null; mirror.removeAttribute('src'); mirror.load(); }
             return;
         }
         if (cloud && waiting) {
@@ -460,16 +467,26 @@
             return;
         }
         const url = new URL(audio.src,location.href); if (cloud) url.searchParams.set('meter','1');
-        if (mirror.src !== url.href) { graph.mirrorAligned = ''; graph.mirrorLoadStarted = performance.now(); mirror.src = url.href; mirror.load(); }
+        if (mirror.src !== url.href) { graph.mirrorAligned = ''; graph.mirrorDriftSince = null; graph.mirrorLastSeek = -Infinity; graph.mirrorLoadStarted = performance.now(); mirror.src = url.href; mirror.load(); }
         const drift = audio.currentTime - mirror.currentTime;
+        const now = performance.now(), align = graph.mirrorAligned !== url.href || mirror.ended;
+        const drifting = !align && !mirror.seeking && !mirror.paused && mirror.readyState >= 2 && Math.abs(drift) > .75;
+        if (!drifting) graph.mirrorDriftSince = null;
+        else if (graph.mirrorDriftSince == null) graph.mirrorDriftSince = now;
+        // Ignore brief differences between independently reported media clocks.
+        // A persistent drift gets one seek, followed by a decoding cooldown.
+        const resync = drifting && now - graph.mirrorDriftSince >= 1000 && now - graph.mirrorLastSeek >= 4000;
         // Align once at metadata, then let a pending seek finish decoding. A
         // moving target at every canplay/timer used to repeatedly discard it.
-        if (mirror.readyState >= 1 && !mirror.seeking && (graph.mirrorAligned !== url.href || (mirror.readyState >= 3 && !mirror.paused && !graph.mirrorStarting && Math.abs(drift) > 1))) {
-            try { if (Math.abs(drift) > .1) mirror.currentTime = audio.currentTime; graph.mirrorAligned = url.href; } catch (_) {}
+        if (mirror.readyState >= 1 && !mirror.seeking && (align || resync)) {
+            try {
+                if (Math.abs(drift) > .1 || mirror.ended) { mirror.currentTime = audio.currentTime; graph.mirrorLastSeek = now; }
+                graph.mirrorAligned = url.href; graph.mirrorDriftSince = null; graph.watch = null;
+            } catch (_) {}
         }
-        // Small drift is caught up by the silent copy without another Range
-        // request. Never change the audible player's position or speed.
-        mirror.playbackRate = audio.playbackRate * (Math.abs(drift) < 1 ? 1 + Math.max(-.1,Math.min(.1,drift * .2)) : 1);
+        // WebKit forwards rate assignments to its decoder even when unchanged.
+        // Keep the copy at the native rate instead of retuning it every 500 ms.
+        if (mirror.playbackRate !== audio.playbackRate) mirror.playbackRate = audio.playbackRate;
         if (mirror.paused && !graph.mirrorStarting) {
             const active = graph, version = generation;
             const pending = mirror.play().catch(error => { if (error.name !== 'AbortError' && graph === active && active.mirrorStarting === pending && version === generation && mirror.src === url.href) blockMeters(); }).finally(() => { if (active.mirrorStarting === pending) active.mirrorStarting = null; });
@@ -480,21 +497,61 @@
         try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
     }
     function drawMeters(playing) {
+        const now = performance.now();
+        const active = playing && !document.hidden && !audio.seeking && !audio.muted && audio.volume > 0 && graph?.context.state === 'running';
+        if (!active || meterSignal.generation !== generation) { meterSignal.values.fill(0); meterSignal.rms.fill(0); meterSignal.sampled.fill(-Infinity); meterSignal.generation = generation; }
+        const available = active && (!graph.mirror || (!graph.mirror.paused && !graph.mirror.seeking && graph.mirror.readyState >= 2 && !graph.mirror.ended));
+        const elapsed = Math.max(0, Math.min(250, now - meterSignal.drawn)); meterSignal.drawn = now;
         visuals.reels.forEach((reel,i) => {
-            let level = 0;
-            if (playing && graph?.context.state === 'running' && !audio.muted && audio.volume > 0 && (!graph.mirror || (!graph.mirror.paused && !graph.mirror.seeking && graph.mirror.readyState >= 2 && Math.abs(graph.mirror.currentTime-audio.currentTime) < .75))) {
+            let level = 0, measured = false;
+            if (available) {
                 try {
-                    graph.analysers[i].getFloatTimeDomainData(graph.samples);
-                    let sum = 0; for (let n=0; n<graph.samples.length; n++) sum += graph.samples[n] * graph.samples[n];
-                    const rms = Math.sqrt(sum / graph.samples.length) * audio.volume;
+                    const samples = graph.samples;
+                    graph.analysers[i].getFloatTimeDomainData(samples);
+                    let sum = 0; for (let n=0; n<samples.length; n++) sum += samples[n] * samples[n];
+                    const rms = Math.sqrt(sum / samples.length) * audio.volume;
+                    meterSignal.rms[i] = rms;
                     level = Math.max(0, Math.min(15, (20 * Math.log10(Math.max(rms, .00001)) + 45) / 3));
+                    measured = true;
                 } catch (_) {}
             }
+            // Fast attack and a short release use only measured music. A brief
+            // analysis seek can decay the last reading, never invent a signal.
+            if (active && (measured || now - meterSignal.sampled[i] <= 180)) level = Math.max(level,meterSignal.values[i] * Math.exp(-elapsed / 90));
+            meterSignal.values[i] = level;
+            if (measured) meterSignal.sampled[i] = now;
+            if (level < .15) level = 0;
             const lit = Math.ceil(level);
             if (lit === meterLevels[i]) return;
             reel.bars.forEach((bar,n) => { if ((n < lit) !== (n < meterLevels[i])) bar.classList.toggle('is-lit',n < lit); });
             meterLevels[i] = lit;
         });
+        recordMeterDiagnostic();
+    }
+    function recordMeterDiagnostic(force = false) {
+        const now = performance.now();
+        if (!force && now - meterReport.time < 500) return;
+        meterReport.time = now;
+        // A bounded, memory-only report. Never include track URLs, names, IDs,
+        // cookies, OAuth credentials or account details; nothing is uploaded.
+        const copy = graph?.mirror;
+        meterReport.samples.push({ms:Math.round(now), hidden:document.hidden,
+            native:{time:audio.currentTime,paused:audio.paused,ended:audio.ended,ready:audio.readyState,seeking:audio.seeking,waiting:loading,rate:audio.playbackRate,muted:audio.muted,volume:audio.volume},
+            analysis:{mode:copy ? 'copy' : graph?.capture ? 'capture' : 'none',state:graph?.context.state || 'absent',clock:graph?.context.currentTime,resuming:Boolean(graph?.resumePending),levels:[...meterLevels],rms:[...meterSignal.rms],sampleAgeMs:meterSignal.sampled.map(time => Number.isFinite(time) ? Math.round(now-time) : null),rebuilds:meterRecovery.rebuilds,blocked:meterRecovery.blocked,
+                copy:copy ? {time:copy.currentTime,paused:copy.paused,ended:copy.ended,ready:copy.readyState,seeking:copy.seeking,rate:copy.playbackRate} : undefined}});
+        while (meterReport.samples.length > 180 || now - meterReport.samples[0].ms > 90000) meterReport.samples.shift();
+        if (meterReport.status && dialog.open && meterReport.status.isConnected) meterReport.status.textContent = audio.paused ? 'Музыка на паузе.' : loading ? 'Музыка буферизуется.' : meterRecovery.blocked ? 'Анализатор остановлен. Нажмите «Включить индикаторы».' : meterLevels.some(level => level > 0) ? 'Индикаторы получают сигнал музыки.' : 'Музыка играет. Сейчас анализатор не показывает уровень сигнала.';
+    }
+    function openMeterReport() {
+        openDialog('Проверка индикаторов', `<div class="rp-settings-section"><h3>Tape Room ${esc(config.version || '')}</h3><p data-meter-report-status></p><button type="button" class="rp-button" data-action="meters">Включить индикаторы</button></div><div class="rp-settings-section"><p>Если индикаторы пропадают, сохраните отчёт во время воспроизведения. Файл остаётся на устройстве и содержит только состояние плеера за последние 90 секунд, без данных аккаунта и названий песен.</p><button type="button" class="rp-button" data-action="meter-report-download">Сохранить отчёт</button></div>`, async () => {}, '', 'Готово');
+        meterReport.status = $('[data-meter-report-status]'); recordMeterDiagnostic(true);
+    }
+    function downloadMeterReport() {
+        recordMeterDiagnostic(true);
+        const report = {version:config.version || '',browser:navigator.userAgent,standalone:matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,samples:meterReport.samples};
+        const url = URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+        const link = document.createElement('a'); link.href = url; link.download = `tape-room-${config.version || 'report'}-meters.json`; document.body.append(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url),60000);
     }
     function animate(time) {
         frameId = 0;
@@ -705,6 +762,8 @@
                 case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); break;
                 case 'mute': toggleMute(); break;
                 case 'meters': if (!audio.paused && !audio.ended) resumeMeters(true); break;
+                case 'meter-report': openMeterReport(); break;
+                case 'meter-report-download': downloadMeterReport(); break;
                 case 'theme': theme = theme === 'dark' ? 'light' : 'dark'; applyTheme(); break;
                 case 'select-playlist': selected = id; $('[data-search]').value = ''; render(); save(); break;
                 case 'favorite': control.disabled = true; await action('track.favorite',{id,favorite:track(id).favorite ? 0 : 1}); break;
@@ -804,7 +863,8 @@
     audio.addEventListener('play', () => { setBuffering(audio.readyState < 3); startAnimation(); });
     audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); });
     audio.addEventListener('waiting', () => { setBuffering(true); });
-    audio.addEventListener('stalled', () => { if (audio.readyState < 3) setBuffering(true); });
+    // stalled concerns downloading; only waiting proves playback is starved.
+    audio.addEventListener('stalled', () => { drawProgress(); });
     audio.addEventListener('canplay', () => { if (audio.readyState >= 3) setBuffering(false); });
     audio.addEventListener('progress', () => { drawProgress(); prepareUpcoming(); });
     audio.addEventListener('seeking', () => { preloader.cancel(); if (audio.readyState < 3) setBuffering(true); drawProgress(); });

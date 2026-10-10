@@ -169,7 +169,7 @@ $button = static function (string $action, string $label, string $name, string $
             <div class="rp-drop-hint">Перетащите музыку в эту область · <span data-upload-limit></span> на файл</div>
         </div>
     </section>
-    <footer class="rp-footer"><span>TAPE ROOM</span><span>Пробел — пауза · ← / → — перемотка · Shift + ← / → — трек</span><span>СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ</span></footer>
+    <footer class="rp-footer"><button type="button" class="rp-about" data-action="meter-report" aria-label="Проверить индикаторы и версию плеера">TAPE ROOM · <?= htmlSC($config['version'] ?? '') ?></button><span>Пробел — пауза · ← / → — перемотка · Shift + ← / → — трек</span><span>СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ</span></footer>
     <div class="rp-drop-overlay" hidden data-drop-overlay><?= $icon('upload') ?><strong>Положите музыку на ленту</strong><span>Файлы добавятся в открытый плейлист</span></div>
     <div class="rp-upload-progress" hidden data-upload-progress><span data-upload-message></span><progress max="100" value="0"></progress></div>
     <div class="rp-toast" role="status" data-toast hidden></div>

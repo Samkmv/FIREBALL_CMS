@@ -26,7 +26,9 @@ class Context extends Events {
     close(){ this.state='closed'; return Promise.resolve(); }
 }
 class Mirror extends Events {
-    constructor(){ super(); this.src=''; this.readyState=0; this.currentTime=0; this.paused=true; this.ended=false; this.seeking=false; this.playCount=0; this.loadCount=0; }
+    constructor(){ super(); this.src=''; this.readyState=0; this.currentTime=0; this.paused=true; this.ended=false; this.seeking=false; this.playCount=0; this.loadCount=0; this.rate=1; this.rateWrites=0; }
+    get playbackRate(){return this.rate;}
+    set playbackRate(value){this.rate=value;this.rateWrites++;}
     setAttribute(){}
     hasAttribute(name){return name==='src'&&Boolean(this.src);}
     removeAttribute(name){ if(name==='src')this.src=''; }
@@ -79,7 +81,19 @@ function setup(capture){
     // of being reset to the audible player's continually moving position.
     startup.audio.currentTime=20;analysis.readyState=1;s.syncMirror();assert.equal(analysis.currentTime,20);
     analysis.seeking=true;startup.audio.currentTime=21;analysis.readyState=3;s.syncMirror();assert.equal(analysis.currentTime,20,'Do not chase a moving target while a seek is decoding');
-    analysis.seeking=false;analysis.currentTime=20.8;s.syncMirror();assert.equal(analysis.currentTime,20.8);assert.ok(analysis.playbackRate>startup.audio.playbackRate);assert.equal(startup.audio.playbackRate,1);
+    analysis.seeking=false;analysis.currentTime=20.8;s.syncMirror();assert.equal(analysis.currentTime,20.8);assert.equal(analysis.playbackRate,startup.audio.playbackRate);assert.equal(startup.audio.playbackRate,1);
+    // Streaming can keep sounding at HAVE_CURRENT_DATA. Repeated callbacks
+    // must neither pause the decoder nor continuously retune its speed.
+    s.bufferedAhead=()=>0;startup.audio.readyState=2;analysis.readyState=2;s.loading=false;
+    for(let n=0;n<120;n++){startup.advance(500);analysis.currentTime=startup.audio.currentTime-.2;s.resumeMeters();}
+    assert.equal(analysis.paused,false);assert.equal(analysis.rateWrites,0);assert.equal(s.graph.mirror,analysis);assert.equal(s.meterRecovery.rebuilds,0);
+    startup.audio.playbackRate=1.25;s.syncMirror();s.syncMirror();assert.equal(analysis.rateWrites,1);assert.equal(analysis.playbackRate,1.25);assert.equal(startup.audio.playbackRate,1.25);
+    startup.audio.playbackRate=1;s.syncMirror();
+    const beforeSeek=analysis.currentTime;analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();assert.equal(analysis.currentTime,startup.audio.currentTime-1,'A transient clock difference does not seek');
+    startup.advance(1000);analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();assert.equal(analysis.currentTime,startup.audio.currentTime,'Persistent drift receives one alignment');
+    assert.equal(s.graph.watch,null,'Alignment resets the stall baseline');
+    startup.advance(1000);analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();startup.advance(1000);analysis.currentTime=startup.audio.currentTime-1;s.syncMirror();assert.equal(analysis.currentTime,startup.audio.currentTime-1,'Cooldown lets a decoder finish instead of chasing every tick');
+    assert.ok(beforeSeek>20);
     s.setBuffering(true);startup.intervals.get(s.meterBufferTimer)();assert.equal(analysis.src,'','Persistent buffering yields the secondary download');s.setBuffering(false);
     s.stopMeters(true);analysis.play=()=>Promise.reject(Object.assign(new Error('cancelled'),{name:'AbortError'}));
     s.loading=false;s.bufferedAhead=()=>1;s.resumeMeters();await s.graph.mirrorStarting;assert.equal(s.graph.mirrorFailedGeneration,undefined);
@@ -133,6 +147,13 @@ function setup(capture){
     const economical=setup(false), k=economical.context;k.activeTrack=()=>({source:'drive'});k.resumeMeters();await k.graph.mirrorStarting;
     k.navigator.connection={saveData:true};k.resumeMeters();const idle=k.graph;economical.advance(20000);k.resumeMeters();assert.equal(k.graph,idle,'An intentionally unloaded analysis stream is not treated as hung');assert.equal(k.meterRecovery.blocked,false);
     f.setMeterBlocked(true);f.document.hidden=true;f.resumeMeters();assert.equal(frozen.notice.hidden,true);f.document.hidden=false;f.resumeMeters();assert.equal(frozen.notice.hidden,false,'Recovery action returns with the foreground app');
+    const playbackEvents=new Events(), waits=[];
+    Object.assign(playbackEvents,{paused:false,ended:false,readyState:2,currentTime:15});
+    const eventsContext=vm.createContext({audio:playbackEvents,setBuffering:value=>waits.push(value),drawProgress(){},resumeMeters(){},startAnimation(){},preloader:{cancel(){}},stopMeters(){},save(){},prepareUpcoming(){},Date,lastSave:0,graph:undefined,syncMirror(){},next(){}});
+    vm.runInContext(source.slice(source.indexOf("    audio.addEventListener('playing'"),source.indexOf('    let errorProbe =')),eventsContext);
+    playbackEvents.emit('stalled');assert.deepEqual(waits,[],'A download stall does not mean the native song stopped sounding');
+    playbackEvents.emit('waiting');assert.deepEqual(waits,[true],'An actual playback wait still shows buffering');
+    playbackEvents.emit('playing');assert.deepEqual(waits,[true,false]);
     const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),source.indexOf("    window.addEventListener('pagehide', save);"));
     const navigation=source.slice(source.indexOf('    function next(automatic = false)'),source.indexOf('    function applyState(result)'));
     const actions=new Map(); const audio={duration:200,currentTime:75,paused:false,pause(){this.paused=true;}};
