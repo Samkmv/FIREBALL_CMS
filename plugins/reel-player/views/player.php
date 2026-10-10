@@ -89,7 +89,16 @@ $button = static function (string $action, string $label, string $name, string $
                     <circle cx="210" cy="210" r="197" fill="url(#rp-glass)" stroke="#b4afa6" stroke-width="1.5" filter="url(#rp-shadow)"/>
                     <circle cx="210" cy="210" r="<?= $side === 'left' ? 174 : 78 ?>" fill="url(#rp-tape)" data-pack="<?= $side ?>"/>
                     <g clip-path="url(#rp-pack-<?= $side ?>)" opacity=".45"><?php for ($r = 80; $r < 180; $r += 2): ?><circle cx="210" cy="210" r="<?= $r ?>" fill="none" stroke="<?= $r % 4 ? '#645747' : '#151512' ?>" stroke-width=".6"/><?php endfor; ?></g>
-                    <g class="rp-rotor" data-rotor="<?= $side ?>">
+                    <circle cx="210" cy="210" r="195" fill="none" stroke="#fffefa" stroke-opacity=".9" stroke-width="2"/>
+                </svg>
+                <?php endforeach; ?>
+                <?php foreach ([378, 822] as $x): ?><g class="rp-roller"><circle cx="<?= $x ?>" cy="425" r="28" fill="#252623" stroke="#9b978d" stroke-width="2"/><circle cx="<?= $x ?>" cy="425" r="22" fill="url(#rp-metal)" stroke="#d7d1c7" stroke-width="2"/><circle cx="<?= $x ?>" cy="425" r="3" fill="#8e897e"/></g><?php endforeach; ?>
+            </svg>
+            <?php foreach (['left','right'] as $side): ?>
+                <!-- Transform an independent HTML layer, keeping the tape,
+                     shadows and changing pack out of its repaint area. -->
+                <div class="rp-rotor-mount rp-rotor-mount--<?= $side ?>" aria-hidden="true"><div class="rp-rotor" data-rotor="<?= $side ?>">
+                    <svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="210" cy="210" r="190" fill="none" stroke="url(#rp-metal)" stroke-width="11" opacity=".84"/>
                         <?php
                         for ($angle = -86; $angle < 240; $angle += 120) {
@@ -101,12 +110,10 @@ $button = static function (string $action, string $label, string $name, string $
                         <circle cx="210" cy="210" r="65" fill="url(#rp-hub)" stroke="#0e100e" stroke-width="2"/>
                         <circle cx="210" cy="210" r="68" fill="none" stroke="#f3f0e9" stroke-width="1.2"/>
                         <?php foreach ([0, 120, 240] as $angle): ?><g transform="rotate(<?= $angle ?> 210 210)"><rect x="204" y="134" width="12" height="6" rx="2" fill="#8c8880" stroke="#282825" stroke-width="1"/><circle cx="210" cy="281" r="1.8" fill="#161916"/></g><?php endforeach; ?>
-                    </g>
                     <circle cx="210" cy="210" r="195" fill="none" stroke="#fffefa" stroke-opacity=".9" stroke-width="2"/>
-                </svg>
-                <?php endforeach; ?>
-                <?php foreach ([378, 822] as $x): ?><g class="rp-roller"><circle cx="<?= $x ?>" cy="425" r="28" fill="#252623" stroke="#9b978d" stroke-width="2"/><circle cx="<?= $x ?>" cy="425" r="22" fill="url(#rp-metal)" stroke="#d7d1c7" stroke-width="2"/><circle cx="<?= $x ?>" cy="425" r="3" fill="#8e897e"/></g><?php endforeach; ?>
-            </svg>
+                    </svg>
+                </div></div>
+            <?php endforeach; ?>
             <div class="rp-now-playing">
                 <button type="button" class="rp-cover-button" data-action="edit-current" title="Изменить название и обложку" aria-label="Изменить название и обложку">
                     <img data-cover src="<?= htmlSC($config['defaultCover']) ?>" alt="Обложка текущей композиции" width="280" height="280">

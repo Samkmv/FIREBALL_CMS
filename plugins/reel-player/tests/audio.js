@@ -24,20 +24,22 @@ class Context extends Events {
     close(){ this.state='closed'; return Promise.resolve(); }
 }
 class Mirror extends Events {
-    constructor(){ super(); this.src=''; this.readyState=0; this.currentTime=0; this.paused=true; this.ended=false; this.playCount=0; }
+    constructor(){ super(); this.src=''; this.readyState=0; this.currentTime=0; this.paused=true; this.ended=false; this.seeking=false; this.playCount=0; this.loadCount=0; }
     setAttribute(){}
     hasAttribute(name){return name==='src'&&Boolean(this.src);}
     removeAttribute(name){ if(name==='src')this.src=''; }
-    load(){ this.readyState=0; this.paused=true; }
+    load(){ this.loadCount++; this.readyState=0; this.paused=true; }
     pause(){ this.paused=true; }
     play(){ this.playCount++; this.paused=false; return Promise.resolve(); }
 }
 function stream(){ const track=new Events(); track.readyState='live'; track.stop=()=>{track.readyState='ended';}; const result=new Events(); result.getTracks=result.getAudioTracks=()=>[track]; return result; }
 function setup(capture){
     const intervals=new Map(); let intervalId=0, nativePauses=0;
-    const audio={src:'https://fixture.invalid/song-1',currentTime:0,playbackRate:1,paused:false,ended:false,pause(){nativePauses++;},...(capture?{captureStream:()=>stream()}:{})};
-    const context=vm.createContext({audio,loading:false,bufferedAhead:()=>20,navigator:{},location:{href:'https://fixture.invalid/player'},URL,activeTrack:()=>({source:'local'}),graph:undefined,generation:1,meterTimer:undefined,document:{hidden:false},window:{AudioContext:Context},Audio:Mirror,MediaStream:class {constructor(tracks){this.tracks=tracks;}},Float32Array,setInterval(callback){intervals.set(++intervalId,callback);return intervalId;},clearInterval(id){intervals.delete(id);},drawMeters(){}});
+    const audio={src:'https://fixture.invalid/song-1',currentTime:0,readyState:4,seeking:false,playbackRate:1,paused:false,ended:false,pause(){nativePauses++;},...(capture?{captureStream:()=>stream()}:{})};
+    const context=vm.createContext({audio,current:1,loading:false,bufferVisible:false,bufferTimer:undefined,meterBufferTimer:undefined,bufferedAhead:()=>20,navigator:{},location:{href:'https://fixture.invalid/player'},URL,activeTrack:()=>({source:'local'}),graph:undefined,generation:1,meterTimer:undefined,document:{hidden:false},window:{AudioContext:Context},Audio:Mirror,MediaStream:class {constructor(tracks){this.tracks=tracks;}},Float32Array,setInterval(callback){intervals.set(++intervalId,callback);return intervalId;},clearInterval(id){intervals.delete(id);},setTimeout(callback){intervals.set(++intervalId,callback);return intervalId;},clearTimeout(id){intervals.delete(id);},drawMeters(){},updateButtons(){},prepareUpcoming(){}});
     vm.runInContext(meters,context);
+    context.syncReels=()=>{};
+    vm.runInContext(source.slice(source.indexOf('    function setBuffering('),source.indexOf('    function drawBuffered(')),context);
     return {context,audio,intervals,nativePauses:()=>nativePauses};
 }
 (async()=>{
@@ -60,18 +62,31 @@ function setup(capture){
     mirror.paused=true; [...mirrored.intervals.values()][0](); await m.graph.mirrorStarting; assert.equal(mirror.paused,false); assert.equal(mirror.playCount,3);
     m.document.hidden=true; m.stopMeters(true); assert.equal(mirror.src,''); assert.equal(mirrored.nativePauses(),0);
     m.document.hidden=false; m.resumeMeters(); await m.graph.mirrorStarting; assert.equal(mirror.src,mirrored.audio.src); assert.equal(mirror.paused,false);
-    m.activeTrack=()=>({source:'drive'});m.bufferedAhead=()=>0;m.resumeMeters();assert.equal(mirror.src,'');assert.equal(mirrored.nativePauses(),0);
+    m.stopMeters(true);m.activeTrack=()=>({source:'drive'});mirrored.audio.readyState=2;m.bufferedAhead=()=>0;m.resumeMeters();assert.equal(mirror.src,'');assert.equal(mirrored.nativePauses(),0);
     m.bufferedAhead=()=>20;m.resumeMeters();await m.graph.mirrorStarting;assert.equal(mirror.src,mirrored.audio.src+'?meter=1');assert.equal(mirror.paused,false);
-    m.loading=true;m.resumeMeters();assert.equal(mirror.src,'');m.loading=false;m.navigator.connection={saveData:true};m.resumeMeters();assert.equal(mirror.src,'');m.navigator.connection={};
+    m.loading=true;m.resumeMeters();assert.equal(mirror.src,mirrored.audio.src+'?meter=1');assert.equal(mirror.paused,true);m.loading=false;m.navigator.connection={saveData:true};m.resumeMeters();assert.equal(mirror.src,'');m.navigator.connection={};
     m.resumeMeters();await m.graph.mirrorStarting;mirror.error={code:2};mirror.emit('error');m.resumeMeters();assert.equal(mirror.src,'');mirror.error=null;
     m.generation++;m.resumeMeters();await m.graph.mirrorStarting;assert.equal(mirror.src,mirrored.audio.src+'?meter=1');m.document.hidden=true;m.stopMeters(true);assert.equal(mirror.src,'');assert.equal(mirrored.nativePauses(),0);
     c.activeTrack=()=>({source:'drive'}); c.resumeMeters(); assert.ok(c.graph?.capture); assert.equal(captured.nativePauses(),0);
-    const startup=setup(false), s=startup.context;s.activeTrack=()=>({source:'drive'});s.bufferedAhead=()=>0;s.loading=true;
+    const startup=setup(false), s=startup.context;s.activeTrack=()=>({source:'drive'});startup.audio.readyState=0;s.bufferedAhead=()=>0;s.loading=true;
     s.resumeMeters();assert.equal(s.graph.mirror.src,'');s.resumeMeters(true);await s.graph.mirrorStarting;assert.ok(s.graph.mirror.src.endsWith('?meter=1'));
-    const analysis=s.graph.mirror;s.stopMeters(true);analysis.play=()=>Promise.reject(Object.assign(new Error('cancelled'),{name:'AbortError'}));
+    const analysis=s.graph.mirror, initialLoads=analysis.loadCount;
+    s.setBuffering(true);analysis.emit('loadedmetadata');s.resumeMeters();assert.equal(analysis.loadCount,initialLoads);assert.equal(analysis.paused,false,'Brief startup buffering preserves gesture-unlocked request');
+    const grace=s.meterBufferTimer;s.setBuffering(false);startup.audio.readyState=3;s.bufferedAhead=()=>0;s.resumeMeters();assert.equal(analysis.loadCount,initialLoads);assert.equal(startup.intervals.has(grace),false);
+    // Once metadata has aligned the mirror, a pending seek may finish instead
+    // of being reset to the audible player's continually moving position.
+    startup.audio.currentTime=20;analysis.readyState=1;s.syncMirror();assert.equal(analysis.currentTime,20);
+    analysis.seeking=true;startup.audio.currentTime=21;analysis.readyState=3;s.syncMirror();assert.equal(analysis.currentTime,20,'Do not chase a moving target while a seek is decoding');
+    analysis.seeking=false;analysis.currentTime=20.8;s.syncMirror();assert.equal(analysis.currentTime,20.8);assert.ok(analysis.playbackRate>startup.audio.playbackRate);assert.equal(startup.audio.playbackRate,1);
+    s.setBuffering(true);startup.intervals.get(s.meterBufferTimer)();assert.equal(analysis.src,'','Persistent buffering yields the secondary download');s.setBuffering(false);
+    s.stopMeters(true);analysis.play=()=>Promise.reject(Object.assign(new Error('cancelled'),{name:'AbortError'}));
     s.loading=false;s.bufferedAhead=()=>1;s.resumeMeters();await s.graph.mirrorStarting;assert.equal(s.graph.mirrorFailedGeneration,undefined);
     analysis.play=Mirror.prototype.play;s.resumeMeters();await s.graph.mirrorStarting;assert.equal(analysis.paused,false);
     s.graph.mirrorFailedGeneration=s.generation;s.resumeMeters(true);assert.equal(s.graph.mirrorFailedGeneration,undefined);assert.equal(startup.nativePauses(),0);
+    s.stopMeters(true);let rejectOld;analysis.play=()=>new Promise((resolve,reject)=>{rejectOld=reject;});s.resumeMeters(true);const oldPlay=s.graph.mirrorStarting;
+    s.stopMeters(true);analysis.play=Mirror.prototype.play;s.resumeMeters(true);await s.graph.mirrorStarting;
+    rejectOld(Object.assign(new Error('old request'),{name:'NotAllowedError'}));await oldPlay;
+    assert.equal(s.graph.mirrorFailedGeneration,undefined,'Old rejected play cannot disable a newer request for the same song');assert.equal(analysis.paused,false);
     const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),source.indexOf("    window.addEventListener('pagehide', save);"));
     const navigation=source.slice(source.indexOf('    function next(automatic = false)'),source.indexOf('    function applyState(result)'));
     const actions=new Map(); const audio={duration:200,currentTime:75,paused:false,pause(){this.paused=true;}};

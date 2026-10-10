@@ -49,6 +49,19 @@ final class FireballPluginToyCarRental implements PluginInterface
 
     public function boot(): void
     {
+        add_filter('profile_menu', static function (array $items, array $user = []): array {
+            if (self::canOperate($user)) {
+                $items[] = [
+                    'key' => self::SLUG,
+                    'label' => self::t('toy_rental_menu'),
+                    'href' => base_href('/profile/toy-rental'),
+                    'icon' => 'ci-ticket',
+                    'order' => 35,
+                ];
+            }
+            return $items;
+        });
+
         add_filter('admin_menu', function (array $menu): array {
             $menu[] = [
                 'group' => 'applications',
@@ -113,7 +126,9 @@ final class FireballPluginToyCarRental implements PluginInterface
             'currency' => '₽',
             'sound_enabled' => true,
             'overdue_push_enabled' => true,
+            'creator_notifications_enabled' => true,
             'auto_refresh_seconds' => 0,
+            'operator_role_id' => 0,
         ];
     }
 
@@ -140,13 +155,19 @@ final class FireballPluginToyCarRental implements PluginInterface
         $settings['currency'] = trim((string)$settings['currency']) ?: '₽';
         $settings['sound_enabled'] = (bool)$settings['sound_enabled'];
         $settings['overdue_push_enabled'] = (bool)$settings['overdue_push_enabled'];
+        $settings['creator_notifications_enabled'] = (bool)$settings['creator_notifications_enabled'];
         $settings['auto_refresh_seconds'] = max(0, (int)$settings['auto_refresh_seconds']);
+        $settings['operator_role_id'] = max(0, (int)$settings['operator_role_id']);
 
         return $settings;
     }
 
     public static function saveSettings(array $data): void
     {
+        $roleId = filter_var($data['operator_role_id'] ?? 0, FILTER_VALIDATE_INT);
+        if ($roleId === false || $roleId < 0 || ($roleId > 0 && !self::operatorRole($roleId))) {
+            throw new RuntimeException(self::t('toy_rental_error_operator_role'));
+        }
         $durations = self::fixedDurations($data['fixed_durations'] ?? [5, 10, 15, 30], true);
         $defaultDuration = max(1, min(1440, (int)($data['default_duration'] ?? 10)));
         if (!in_array($defaultDuration, $durations, true)) {
@@ -164,7 +185,9 @@ final class FireballPluginToyCarRental implements PluginInterface
             'currency' => mb_substr(trim((string)($data['currency'] ?? '₽')), 0, 12),
             'sound_enabled' => !empty($data['sound_enabled']),
             'overdue_push_enabled' => !empty($data['overdue_push_enabled']),
+            'creator_notifications_enabled' => !empty($data['creator_notifications_enabled']),
             'auto_refresh_seconds' => max(0, min(3600, (int)($data['auto_refresh_seconds'] ?? 0))),
+            'operator_role_id' => $roleId,
         ];
 
         if ($settings['currency'] === '') {
@@ -174,6 +197,65 @@ final class FireballPluginToyCarRental implements PluginInterface
         foreach ($settings as $key => $value) {
             plugin_setting_set(self::SLUG, $key, $value);
         }
+    }
+
+    public static function operatorRoles(): array
+    {
+        return db()->query("SELECT id, name, slug FROM user_roles WHERE slug NOT IN ('creator', 'admin') ORDER BY name ASC, id ASC")->get() ?: [];
+    }
+
+    public static function operatorRoleLabel(array $role): string
+    {
+        return match ((string)($role['slug'] ?? '')) {
+            'moderator' => self::t('toy_rental_role_moderator'),
+            'user' => self::t('toy_rental_role_user'),
+            default => (string)($role['name'] ?? ''),
+        };
+    }
+
+    public static function operatorRole(?int $id = null): ?array
+    {
+        $id ??= max(0, (int)plugin_setting(self::SLUG, 'operator_role_id', 0));
+        if ($id <= 0) return null;
+        $role = db()->query("SELECT id, name, slug FROM user_roles WHERE id = ? AND slug NOT IN ('creator', 'admin') LIMIT 1", [$id])->getOne();
+        return is_array($role) ? $role : null;
+    }
+
+    public static function canOperate(?array $user = null): bool
+    {
+        $user ??= get_user() ?: [];
+        if ((int)($user['id'] ?? 0) <= 0) return false;
+        if (in_array((string)($user['role'] ?? ''), ['creator', 'admin'], true)) return true;
+        $role = self::operatorRole();
+        return $role !== null && (string)($user['role'] ?? '') === (string)$role['slug'];
+    }
+
+    public static function requireOperator(): void
+    {
+        if (!self::canOperate()) {
+            if (request()->isAjax()) response()->json(['status' => false, 'message' => self::t('toy_rental_error_operator_access')], 403);
+            abort(self::t('toy_rental_error_operator_access'), 403);
+        }
+    }
+
+    public static function operatorBasePath(): string
+    {
+        $path = '/' . ltrim((string)uri_without_lang(), '/');
+        return $path === '/profile/toy-rental' || str_starts_with($path, '/profile/toy-rental/')
+            ? '/profile/toy-rental' : '/admin/toy-rental';
+    }
+
+    public static function operatorViewData(array $data = []): array
+    {
+        $assetPath = __DIR__ . '/assets';
+        $assetBase = base_href('/profile/toy-rental/assets/');
+        return array_merge([
+            'title' => self::t('toy_rental_dashboard_title'),
+            'rentalSettings' => self::settings(),
+            'operatorProfile' => true,
+            'styles' => [$assetBase . 'toy-rental.css?v=' . filemtime($assetPath . '/toy-rental.css')],
+            'footer_scripts' => [$assetBase . 'toy-rental.js?v=' . filemtime($assetPath . '/toy-rental.js')],
+        ], $data);
     }
 
     public static function fixedDurations(mixed $value, bool $strict = false): array
@@ -216,7 +298,9 @@ final class FireballPluginToyCarRental implements PluginInterface
                 'html' => plugin_view(self::SLUG, 'car-card', ['car' => $car, 'settings' => $settings], false),
             ];
         }
-        return ['status' => true, 'cards' => $cards, 'stats' => self::todayStats(), 'max_ride_minutes' => $settings['max_ride_minutes']];
+        $state = ['status' => true, 'cards' => $cards, 'max_ride_minutes' => $settings['max_ride_minutes']];
+        if (check_admin()) $state['stats'] = self::todayStats();
+        return $state;
     }
 
     public static function tabs(string $active): array
@@ -746,7 +830,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             );
             if (db()->rowCount() > 0) {
                 $updated++;
-                self::notifyAdminsAboutOverdueRide($ride);
+                self::notifyOperatorsAboutOverdueRide($ride);
             }
         }
         return $updated;
@@ -767,7 +851,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             if (self::completeRide((int)$ride['id'], [], $end)) {
                 $updated++;
                 if ($notify) {
-                    self::notifyAdminsAboutOverdueRide($ride, true);
+                    self::notifyOperatorsAboutOverdueRide($ride, true);
                 }
             }
         }
@@ -784,27 +868,40 @@ final class FireballPluginToyCarRental implements PluginInterface
         }
     }
 
-    protected static function notifyAdminsAboutOverdueRide(array $ride, bool $limitReached = false): void
+    protected static function notifyOperatorsAboutOverdueRide(array $ride, bool $limitReached = false): void
     {
         try {
             $carLabel = trim((string)($ride['car_name'] ?? '') . ' №' . (string)($ride['car_number'] ?? ''));
 
-            \App\Services\NotificationService::createForAdmins([
-                'title' => self::t($limitReached ? 'toy_rental_notification_limit_title' : 'toy_rental_notification_overdue_title'),
-                'message' => self::t($limitReached ? 'toy_rental_notification_limit_text' : 'toy_rental_time_up_message', [
-                    'car' => $carLabel,
-                ]),
-                'type' => 'toy_rental',
-                'action_url' => '/admin/toy-rental',
-                'source' => self::SLUG,
-                'priority' => 'high',
-                'metadata' => [
-                    'ride_id' => (int)($ride['id'] ?? 0),
-                    'car_id' => (int)($ride['car_id'] ?? 0),
-                ],
-                'store_unread' => true,
-                'push_notification' => (bool)self::settings()['overdue_push_enabled'],
-            ]);
+            $role = self::operatorRole();
+            $settings = self::settings();
+            $conditions = $role ? ['role = ?'] : [];
+            if ($settings['creator_notifications_enabled']) $conditions[] = "role = 'creator'";
+            if (!$conditions) return;
+            $operators = db()->query('SELECT id, locale FROM users WHERE ' . implode(' OR ', $conditions) . ' ORDER BY id ASC', $role ? [$role['slug']] : [])->get() ?: [];
+            $byLocale = [];
+            foreach ($operators as $operator) {
+                $locale = \FBL\Localization::normalizeLocale((string)($operator['locale'] ?? '')) ?: \FBL\Localization::siteLocale();
+                $byLocale[$locale][] = (int)$operator['id'];
+            }
+            foreach ($byLocale as $locale => $userIds) {
+                \App\Services\NotificationService::createForUsers($userIds, [
+                    'title' => self::t($limitReached ? 'toy_rental_notification_limit_title' : 'toy_rental_notification_overdue_title', [], $locale),
+                    'message' => self::t($limitReached ? 'toy_rental_notification_limit_text' : 'toy_rental_time_up_message', ['car' => $carLabel], $locale),
+                    'type' => 'toy_rental',
+                    'action_url' => '/profile/toy-rental',
+                    'source' => self::SLUG,
+                    'priority' => 'high',
+                    'metadata' => [
+                        'ride_id' => (int)($ride['id'] ?? 0),
+                        'car_id' => (int)($ride['car_id'] ?? 0),
+                        'event' => $limitReached ? 'limit_reached' : 'time_up',
+                        'car_label' => $carLabel,
+                    ],
+                    'store_unread' => true,
+                    'push_notification' => (bool)$settings['overdue_push_enabled'],
+                ]);
+            }
         } catch (Throwable $exception) {
             log_error_details('Toy rental overdue notification dispatch failed', [
                 'ride_id' => (int)($ride['id'] ?? 0),
@@ -816,6 +913,14 @@ final class FireballPluginToyCarRental implements PluginInterface
     {
         if ((string)($row['source'] ?? $item['source'] ?? '') === self::SLUG) {
             $item['source_label'] = self::t('toy_rental_notification_source');
+            $item['url'] = base_href('/profile/toy-rental');
+            $metadata = $row['metadata'] ?? [];
+            if (is_string($metadata)) $metadata = json_decode($metadata, true);
+            if (is_array($metadata) && in_array($metadata['event'] ?? '', ['time_up', 'limit_reached'], true) && isset($metadata['car_label'])) {
+                $limitReached = $metadata['event'] === 'limit_reached';
+                $item['title'] = self::t($limitReached ? 'toy_rental_notification_limit_title' : 'toy_rental_notification_overdue_title');
+                $item['text'] = self::t($limitReached ? 'toy_rental_notification_limit_text' : 'toy_rental_time_up_message', ['car' => (string)$metadata['car_label']]);
+            }
         }
         return $item;
     }
@@ -909,11 +1014,11 @@ final class FireballPluginToyCarRental implements PluginInterface
         ][self::paymentStatus($status)] ?? $status;
     }
 
-    public static function t(string $key, array $replace = []): string
+    public static function t(string $key, array $replace = [], ?string $locale = null): string
     {
-        $value = \FBL\Language::get($key);
+        $value = $locale === null ? \FBL\Language::get($key) : $key;
         if ($value === $key) {
-            $translations = self::translations();
+            $translations = self::translations($locale);
             $value = (string)($translations[$key] ?? $key);
         }
 
@@ -924,11 +1029,11 @@ final class FireballPluginToyCarRental implements PluginInterface
         return $value;
     }
 
-    protected static function translations(): array
+    protected static function translations(?string $code = null): array
     {
         static $cache = [];
 
-        $code = \FBL\Localization::currentLocale();
+        $code ??= \FBL\Localization::currentLocale();
         $cacheKey = $code !== '' ? $code : 'fallback';
         if (array_key_exists($cacheKey, $cache)) {
             return $cache[$cacheKey];

@@ -1,10 +1,14 @@
 {
   "name": "Прокат машинок",
   "slug": "toy-car-rental",
-  "version": "1.1.5",
+  "version": "1.1.9",
   "description": "Прокат детских машинок: компактная панель, фиксированные и поминутные поездки, таймеры, оплата и push-уведомления.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Hovering over the duration selector in the public panel smoothly highlights its entire border in the CMS theme color.",
+    "Rental expiry alerts go only to the selected operator role, with an optional creator copy enabled for testing. Administrators are no longer included automatically. System role labels and remaining captions are localized, all sections and settings are checked in four languages, and push uses the recipient’s language. The duration selector in the public operator panel shows a thin CMS theme-colored line on hover.",
+    "Choose the operator role from CMS roles in rental settings. Users open only the start, timer and completion panel from their profiles; history, statistics, fleet management and settings remain administrator-only. CMS and push alerts reach the selected role and administrators.",
+    "Moderators can access only rental administration, with a dedicated entrance and limited menus and commands; ride expiry and limit alerts reach them in the CMS and through push.",
     "Added a dedicated background expiry runner for phone push notifications while the CMS is closed, with the shared scheduler lock and no unrelated plugin jobs.",
     "Cars can be deleted with CMS confirmation while preserving ride and payment history; active rides block deletion. Fleet and history tables use the CMS mobile card layout.",
     "Opening an already overdue ride waits for the native CMS toast engine; start buttons, timers and stop buttons stay aligned across cards with different title lengths.",
@@ -21,6 +25,10 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "В публичной панели выбор длительности плавно подсвечивает рамку по всему периметру при наведении, в цвете темы CMS.",
+      "Уведомления об окончании проката получают только пользователи выбранной роли; создателю включена отключаемая копия для проверки. Администраторы больше не добавляются автоматически. Исправлены переводы системных ролей и отдельных подписей, все разделы и настройки проверены на четырёх языках; push отправляется на языке получателя. В публичной операторской панели при наведении на выбор длительности появляется тонкая линия в цвете темы CMS.",
+      "Роль операторов выбирается в настройках проката из ролей CMS. Пользователи открывают из профиля только панель запуска, таймеров и завершения поездок; история, статистика, машинки и настройки остаются у администраторов. Уведомления CMS и push получают выбранная роль и администраторы.",
+      "Модераторы получили доступ только к прокату в админке, с отдельным входом, ограниченными меню и командами; уведомления о завершении и пределе поездки приходят им в CMS и через push.",
       "Добавлен отдельный фоновый запуск проверки поездок для push при закрытой CMS: используется блокировка общего планировщика, задачи других плагинов не запускаются.",
       "Добавлено удаление машинок с подтверждением CMS и сохранением истории поездок и оплат; активную машинку удалить нельзя. Таблицы парка и истории используют мобильные карточки CMS.",
       "При открытии уже просроченной поездки сообщение дожидается штатных уведомлений CMS; кнопки запуска, таймеры и кнопки завершения выровнены в карточках с названиями разной длины.",
@@ -36,6 +44,10 @@
       "При повторной активации плагин теперь восстанавливает отсутствующие таблицы проката и платёжные поля."
     ],
     "en": [
+      "Hovering over the duration selector in the public panel smoothly highlights its entire border in the CMS theme color.",
+      "Rental expiry alerts go only to the selected operator role, with an optional creator copy enabled for testing. Administrators are no longer included automatically. System role labels and remaining captions are localized, all sections and settings are checked in four languages, and push uses the recipient’s language. The duration selector in the public operator panel shows a thin CMS theme-colored line on hover.",
+      "Choose the operator role from CMS roles in rental settings. Users open only the start, timer and completion panel from their profiles; history, statistics, fleet management and settings remain administrator-only. CMS and push alerts reach the selected role and administrators.",
+      "Moderators can access only rental administration, with a dedicated entrance and limited menus and commands; ride expiry and limit alerts reach them in the CMS and through push.",
       "Added a dedicated background expiry runner for phone push notifications while the CMS is closed, with the shared scheduler lock and no unrelated plugin jobs.",
       "Cars can be deleted with CMS confirmation while preserving ride and payment history; active rides block deletion. Fleet and history tables use the CMS mobile card layout.",
       "Opening an already overdue ride waits for the native CMS toast engine; start buttons, timers and stop buttons stay aligned across cards with different title lengths.",
@@ -51,6 +63,10 @@
       "Reactivating the plugin now recreates missing rental database tables and billing columns."
     ],
     "de": [
+      "Beim Darüberfahren über die Fahrtdauerauswahl im öffentlichen Bedienfeld wird der gesamte Rahmen sanft in der CMS-Themenfarbe hervorgehoben.",
+      "Meldungen zum Ablauf der Mietzeit gehen nur an die gewählte Bedienerrolle; eine abschaltbare Kopie an den Ersteller ist zum Testen aktiviert. Administratoren werden nicht mehr automatisch einbezogen. Systemrollen und übrige Beschriftungen sind übersetzt, alle Bereiche und Einstellungen in vier Sprachen geprüft; Push nutzt die Sprache des Empfängers. Die Fahrtdauerauswahl im öffentlichen Bedienfeld zeigt beim Darüberfahren eine dünne Linie in der CMS-Themenfarbe.",
+      "Die Bedienerrolle wird in den Verleiheinstellungen aus den CMS-Rollen gewählt. Benutzer öffnen in ihrem Profil nur das Panel zum Starten, Überwachen und Beenden von Fahrten; Verlauf, Statistik, Fuhrparkverwaltung und Einstellungen bleiben Administratoren vorbehalten. CMS- und Push-Meldungen erreichen die gewählte Rolle und Administratoren.",
+      "Moderatoren erhalten nur Zugriff auf die Verleihverwaltung mit eigenem Einstieg sowie begrenzten Menüs und Befehlen; Fahrtablauf- und Zeitlimitmeldungen erreichen sie im CMS und per Push.",
       "Ein eigener Hintergrundstart prüft abgelaufene Fahrten für Push-Nachrichten bei geschlossenem CMS; er nutzt die gemeinsame Scheduler-Sperre und führt keine Aufgaben anderer Plugins aus.",
       "Autos können mit CMS-Bestätigung gelöscht werden, ohne den Fahrt- und Zahlungsverlauf zu verlieren; aktive Fahrten verhindern das Löschen. Fuhrpark- und Verlaufstabellen nutzen die mobile Kartenansicht des CMS.",
       "Beim Öffnen einer bereits überfälligen Fahrt wartet die Meldung auf die CMS-Benachrichtigungen; Starttasten, Timer und Stopptasten bleiben bei unterschiedlich langen Fahrzeugnamen ausgerichtet.",
@@ -66,6 +82,10 @@
       "Bei erneuter Aktivierung stellt das Plugin fehlende Verleihtabellen und Abrechnungsspalten wieder her."
     ],
     "zh-cn": [
+      "公共面板的时长选择框在悬停时，以 CMS 主题色平滑高亮整个边框。",
+      "租赁到期提醒仅发送给所选操作员角色，默认向创建者发送可关闭的测试副本，不再自动包含管理员。已翻译系统角色和剩余标签，并检查全部页面及设置的四种语言；推送使用接收者的语言。 公共操作面板的时长选择框在悬停时显示使用 CMS 主题色的细线。",
+      "在租赁设置中从 CMS 角色选择操作员角色。用户从个人资料仅进入行程启动、计时和结束面板；历史记录、统计、车辆管理和设置仅管理员可用。CMS 通知和推送发送给所选角色和管理员。",
+      "版主现在只能访问后台的车辆租赁模块，拥有独立入口及受限菜单和命令；行程到期和时长上限提醒会发送到 CMS 通知中心和手机推送。",
       "新增独立的后台行程到期检查入口，可在 CMS 关闭时发送手机推送，使用共享调度锁且不运行其他插件的任务。",
       "新增车辆删除功能，使用 CMS 确认弹窗并保留行程和付款记录；正在使用的车辆不可删除。车队和历史记录表格采用 CMS 移动卡片布局。",
       "打开已超时行程时，提示会等待 CMS 原生通知就绪；不同长度的车辆名称不会影响启动按钮、计时器和停止按钮的对齐。",

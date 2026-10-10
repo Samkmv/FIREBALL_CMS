@@ -2,6 +2,7 @@
 $currency = (string)$settings['currency'];
 $t = static fn(string $key): string => htmlSC(FireballPluginToyCarRental::t($key));
 $activeOnly = !empty($operatorActiveOnly);
+$operatorBase = FireballPluginToyCarRental::operatorBasePath();
 $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $car): bool => !empty($car['active_ride']))) : $cars;
 ?>
 <div class="toy-rental-grid" data-toy-rental-grid data-active-only="<?= $activeOnly ? 'true' : 'false' ?>">
@@ -11,13 +12,13 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
 </div>
 <div class="fb-card p-4 text-center text-body-secondary <?= $visibleCars ? 'd-none' : '' ?>" data-toy-rental-empty>
     <?= $t($activeOnly ? 'toy_rental_active_empty' : 'toy_rental_empty_cars_text') ?>
-    <?php if (!$activeOnly): ?>
+    <?php if (!$activeOnly && empty($operatorProfile)): ?>
         <a class="btn btn-primary ms-2" href="<?= base_href('/admin/toy-rental/cars/create') ?>"><?= $t('toy_rental_add_car') ?></a>
     <?php endif; ?>
 </div>
 <div class="modal fade" id="toyCompleteRide" tabindex="-1" aria-labelledby="toyCompleteRideLabel" aria-hidden="true" data-toy-rental-complete-modal>
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content fb-card" action="<?= base_href('/admin/toy-rental/rides/complete') ?>" method="post" data-toy-rental-payment-form>
+        <form class="modal-content fb-card" action="<?= base_href($operatorBase . '/rides/complete') ?>" method="post" data-toy-rental-payment-form>
             <?= get_csrf_field() ?>
             <input type="hidden" name="id" value="">
             <div class="modal-header">
@@ -69,8 +70,8 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
     window.toyRentalSettings = <?= json_encode([
         'soundEnabled' => (bool)$settings['sound_enabled'],
         'autoRefreshSeconds' => (int)$settings['auto_refresh_seconds'],
-        'stateUrl' => base_href('/admin/toy-rental/state'),
-        'syncOverdueUrl' => base_href('/admin/toy-rental/rides/sync-overdue'),
+        'stateUrl' => base_href($operatorBase . '/state'),
+        'syncOverdueUrl' => base_href($operatorBase . '/rides/sync-overdue'),
         'maxRideMinutes' => (int)$settings['max_ride_minutes'],
         'currency' => $currency,
         'labels' => [

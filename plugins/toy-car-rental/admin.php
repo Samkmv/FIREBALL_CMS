@@ -232,6 +232,7 @@ $router->get('/admin/toy-rental/stats', static function (): string {
 $router->get('/admin/toy-rental/settings', static function (): string {
     return plugin_view('toy-car-rental', 'settings', FireballPluginToyCarRental::viewData('settings', [
         'title' => FireballPluginToyCarRental::t('toy_rental_settings_title'),
+        'operatorRoles' => FireballPluginToyCarRental::operatorRoles(),
     ]));
 })->middleware(['auth', 'admin']);
 

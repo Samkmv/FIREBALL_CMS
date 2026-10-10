@@ -9,6 +9,16 @@
         <?= get_csrf_field() ?>
         <div class="row g-3">
             <div class="col-12">
+                <label class="form-label" for="toyOperatorRole"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_operator_role')) ?></label>
+                <select class="form-select" id="toyOperatorRole" name="operator_role_id">
+                    <option value="0"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_operator_role_none')) ?></option>
+                    <?php foreach ($operatorRoles as $role): ?>
+                        <option value="<?= (int)$role['id'] ?>" <?= (int)$settings['operator_role_id'] === (int)$role['id'] ? 'selected' : '' ?>><?= htmlSC(FireballPluginToyCarRental::operatorRoleLabel($role)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_operator_role_hint')) ?></div>
+            </div>
+            <div class="col-12">
                 <label class="form-label" for="toyFixedDurations"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_fixed_durations')) ?></label>
                 <input class="form-control" id="toyFixedDurations" type="text" name="fixed_durations" required value="<?= htmlSC(implode(', ', $settings['fixed_durations'])) ?>" placeholder="5, 10, 15, 30">
                 <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_fixed_durations_hint')) ?></div>
@@ -49,6 +59,14 @@
                     <input class="form-check-input" type="checkbox" name="overdue_push_enabled" value="1" id="toyOverduePush" <?= !empty($settings['overdue_push_enabled']) ? 'checked' : '' ?>>
                     <label class="form-check-label fw-medium" for="toyOverduePush"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_overdue_push')) ?></label>
                     <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_overdue_push_hint')) ?></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
+                <div class="form-check form-switch mb-0 py-2">
+                    <input class="form-check-input" type="checkbox" name="creator_notifications_enabled" value="1" id="toyCreatorNotifications" <?= !empty($settings['creator_notifications_enabled']) ? 'checked' : '' ?>>
+                    <label class="form-check-label fw-medium" for="toyCreatorNotifications"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_creator_notifications')) ?></label>
+                    <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_creator_notifications_hint')) ?></div>
                 </div>
             </div>
         </div>

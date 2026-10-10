@@ -1,3 +1,29 @@
+.toy-rental-profile {
+    --fb-space-4: 1rem;
+    --fb-transition-base: .2s ease;
+    --fb-radius-pill: 50rem;
+    --fb-color-text: var(--cz-body-color);
+    --fb-color-text-secondary: var(--cz-secondary-color);
+    --fb-color-border: var(--cz-border-color);
+    --fb-color-border-strong: var(--cz-border-color);
+    --fb-color-surface-secondary: var(--cz-tertiary-bg);
+    --fb-color-primary: var(--cz-primary);
+    --fb-color-primary-hover: color-mix(in srgb, var(--cz-primary) 88%, #000);
+    --fb-color-primary-active: color-mix(in srgb, var(--cz-primary) 78%, #000);
+    --fb-color-primary-soft: color-mix(in srgb, var(--cz-primary) 12%, transparent);
+    --fb-color-success: var(--cz-success);
+    --fb-color-success-soft: color-mix(in srgb, var(--cz-success) 12%, transparent);
+    --fb-color-warning: var(--cz-warning);
+    --fb-color-warning-soft: color-mix(in srgb, var(--cz-warning) 12%, transparent);
+    --fb-color-danger: var(--cz-danger);
+    --fb-color-danger-soft: color-mix(in srgb, var(--cz-danger) 12%, transparent);
+}
+.toy-rental-profile .fb-card { background: var(--cz-body-bg); border: 1px solid var(--fb-color-border); border-radius: 1rem; }
+.toy-rental-profile .toy-rental-car-name { margin: 0; font-size: .9375rem; font-weight: 700; }
+.toy-rental-profile .toy-rental-duration { transition: border-color var(--fb-transition-base); }
+@media (hover: hover) {
+    .toy-rental-profile .toy-rental-duration:hover { border-color: var(--fb-color-primary); }
+}
 .toy-rental-tabs { gap: .5rem; }
 .toy-rental-stats { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; font-size: .875rem; }
 .toy-rental-stats strong { margin-inline-start: .3rem; font-variant-numeric: tabular-nums; }

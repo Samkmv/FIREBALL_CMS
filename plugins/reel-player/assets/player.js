@@ -6,6 +6,13 @@
     const $ = selector => app.querySelector(selector);
     const audio = $('[data-audio]');
     const dialog = $('[data-dialog]');
+    // These elements stay in the page for its lifetime. Keep DOM searches out
+    // of the animation loop, including the 120 Hz loop on newer displays.
+    const visuals = {
+        seek:$('[data-seek]'), elapsed:$('[data-elapsed]'), duration:$('[data-duration]'),
+        reels:['left','right'].map(side => ({rotor:$(`[data-rotor="${side}"]`), pack:$(`[data-pack="${side}"]`), clip:$(`[data-pack-clip="${side}"]`), bars:[...$(`[data-meter="${side}"]`).querySelectorAll('i')]})),
+        tape:[$('[data-tape-left]'),$('[data-tape-right]')]
+    };
     let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     let data = config.state, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
@@ -18,6 +25,8 @@
     let shuffle = Boolean(saved.shuffle), bag = [], history = [], seekActive = false, restoreTime = 0;
     let toastTimer, frameId = 0, frameTime = 0, angles = [0, 0], graph, meterTimer, uploading = false, dialogHandler, dialogSubmitting = false;
     let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
+    let meterBufferTimer, progressFrame = -Infinity, meterFrame = -Infinity, packRadii = [174,78], positionKey = '';
+    const meterLevels = [0,0];
     let mutationQueue = Promise.resolve();
     let futureBag = [], shuffleCycleStarted = false;
     const preloader = new window.TapeRoomPreloader({url:`${config.api}/prepare`,csrf:config.csrf});
@@ -185,15 +194,20 @@
     }
     function setBuffering(active) {
         loading = Boolean(active && current && !audio.paused && !audio.ended);
-        if (!loading) { clearTimeout(bufferTimer); bufferTimer = undefined; bufferVisible = false; }
+        if (!loading) { clearTimeout(bufferTimer); bufferTimer = undefined; bufferVisible = false; clearTimeout(meterBufferTimer); meterBufferTimer = undefined; }
         else if (!bufferVisible && !bufferTimer) {
             bufferTimer = setTimeout(() => {
                 bufferTimer = undefined;
                 if (loading && !audio.paused) { bufferVisible = true; updateButtons(); }
             }, 350);
         }
-        if (loading) stopMeters(true);
-        updateButtons(); prepareUpcoming();
+        if (loading) {
+            drawMeters(false);
+            // A brief initial wait must not cancel Safari's just-unlocked
+            // analysis request and restart its metadata download from scratch.
+            if (!meterBufferTimer) meterBufferTimer = setTimeout(() => { meterBufferTimer = undefined; if (loading) stopMeters(true); }, 1500);
+        }
+        syncReels(); updateButtons(); prepareUpcoming();
     }
     function drawBuffered(duration, progress) {
         let end = audio.currentTime; const buffered = audio.buffered;
@@ -201,22 +215,20 @@
             if (buffered.start(i) <= audio.currentTime + .25 && buffered.end(i) >= audio.currentTime) end = buffered.end(i);
         }
         const fraction = duration > 0 ? Math.max(progress,Math.min(1,end/duration)) : 0;
-        $('[data-seek]').style.setProperty('--buffered', `${fraction * 100}%`);
+        const value = `${(fraction * 100).toFixed(2)}%`;
+        if (visuals.seek.style.getPropertyValue('--buffered') !== value) visuals.seek.style.setProperty('--buffered',value);
     }
-    function drawProgress() {
+    function drawProgress(forcePosition = false) {
         const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
         const progress = duration > 0 ? Math.max(0, Math.min(1, audio.currentTime / duration)) : 0;
-        if (!seekActive) { $('[data-seek]').value = Math.round(progress * 1000); rangeFill($('[data-seek]'), progress); }
-        drawBuffered(duration,seekActive ? Number($('[data-seek]').value)/1000 : progress);
-        $('[data-seek]').disabled = !current || !duration;
-        $('[data-elapsed]').textContent = formatTime(audio.currentTime);
-        $('[data-duration]').textContent = formatTime(duration);
+        if (!seekActive) { visuals.seek.value = Math.round(progress * 1000); rangeFill(visuals.seek, progress); }
+        drawBuffered(duration,seekActive ? Number(visuals.seek.value)/1000 : progress);
+        visuals.seek.disabled = !current || !duration;
+        const elapsed = formatTime(audio.currentTime), total = formatTime(duration);
+        if (!seekActive && visuals.elapsed.textContent !== elapsed) visuals.elapsed.textContent = elapsed;
+        if (visuals.duration.textContent !== total) visuals.duration.textContent = total;
         const inner = 78, outer = 174;
         const radii = [Math.sqrt(inner ** 2 + (outer ** 2 - inner ** 2) * (1 - progress)), Math.sqrt(inner ** 2 + (outer ** 2 - inner ** 2) * progress)];
-        ['left','right'].forEach((side, i) => {
-            $(`[data-pack="${side}"]`).setAttribute('r', radii[i].toFixed(2));
-            $(`[data-pack-clip="${side}"]`).setAttribute('r', radii[i].toFixed(2));
-        });
         // A common outer tangent keeps the tape taut against both the changing
         // pack and the guide. These branches match counterclockwise reel motion:
         // the left reel pays out below, and the right reel takes up on its right.
@@ -235,12 +247,44 @@
             const sweep = direction === 1 ? 0 : 1;
             return `M${start[0].toFixed(2)} ${start[1].toFixed(2)} L${end[0].toFixed(2)} ${end[1].toFixed(2)} A${rollerRadius} ${rollerRadius} 0 0 ${sweep} ${innerX} 425 L${rollerX} 425`;
         };
-        $('[data-tape-left]').setAttribute('d', run(230, radii[0], 1));
-        $('[data-tape-right]').setAttribute('d', run(970, radii[1], -1));
-        if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && duration > 0) {
+        visuals.reels.forEach((reel,i) => {
+            const radius = radii[i].toFixed(2);
+            if (reel.pack.getAttribute('r') === radius) return;
+            reel.pack.setAttribute('r',radius); reel.clip.setAttribute('r',radius);
+            visuals.tape[i].setAttribute('d',run(i ? 970 : 230,radii[i],i ? -1 : 1));
+        });
+        packRadii = radii;
+        syncReels();
+        const key = `${generation}:${duration}:${Math.floor(audio.currentTime)}:${audio.playbackRate}`;
+        if ((forcePosition || key !== positionKey) && 'mediaSession' in navigator && navigator.mediaSession.setPositionState && duration > 0) {
             try { navigator.mediaSession.setPositionState({duration, playbackRate:audio.playbackRate, position:Math.min(duration,audio.currentTime)}); } catch (_) {}
+            positionKey = key;
         }
         return radii;
+    }
+    function syncReels() {
+        const playing = !audio.paused && !audio.ended && !loading && !document.hidden && !reducedMotion.matches;
+        visuals.reels.forEach((reel,i) => {
+            if (!reel.motionInitialized) {
+                reel.motionInitialized = true;
+                try {
+                    if (typeof reel.rotor.animate === 'function') {
+                        reel.motion = reel.rotor.animate([{transform:'rotate(0deg)'},{transform:'rotate(-360deg)'}],{duration:360 / 95 * 1000,iterations:Infinity});
+                        reel.motion.pause();
+                    }
+                } catch (_) { /* Older browsers retain the frame-based fallback. */ }
+            }
+            if (!reel.motion) return;
+            const rate = 126 / packRadii[i] * audio.playbackRate;
+            // updatePlaybackRate preserves the angle as the pack changes size.
+            // The compositor then rotates without waiting for JS meter samples.
+            if (Math.abs(reel.motion.playbackRate - rate) > .001) {
+                if (reel.motion.updatePlaybackRate) reel.motion.updatePlaybackRate(rate);
+                else reel.motion.playbackRate = rate;
+            }
+            if (playing) { if (reel.motion.playState === 'paused' && !reel.motion.pending) reel.motion.play(); }
+            else if (reel.motion.playState !== 'paused') reel.motion.pause();
+        });
     }
     function initGraph() {
         const capture = audio.captureStream || audio.mozCaptureStream;
@@ -266,11 +310,11 @@
             } else {
                 // Safari: the silent analysis copy is separate from the audible
                 // player and is unloaded when hidden. It cannot gate native sound.
-                const mirror = new Audio(); mirror.preload = 'metadata'; mirror.setAttribute('playsinline','');
+                const mirror = new Audio(); mirror.preload = 'auto'; mirror.setAttribute('playsinline','');
                 const source = context.createMediaElementSource(mirror);
                 source.channelCount = 2; source.channelCountMode = 'explicit'; source.connect(splitter);
                 graph.mirror = mirror; graph.source = source;
-                for (const event of ['loadedmetadata','canplay','playing','ended']) mirror.addEventListener(event, syncMirror);
+                for (const event of ['loadedmetadata','canplay','playing','seeked','ended']) mirror.addEventListener(event, syncMirror);
                 mirror.addEventListener('error', () => { if (graph?.mirror === mirror && mirror.error && mirror.error.code !== 1) { graph.mirrorFailedGeneration = generation; stopMeters(true); } });
             }
         } catch (_) { graph = null; context?.close().catch(() => {}); }
@@ -322,38 +366,49 @@
         }
         if (userGesture === true && graph.mirrorFailedGeneration === generation) delete graph.mirrorFailedGeneration;
         syncMirror(userGesture === true);
-        if (!meterTimer) meterTimer = setInterval(resumeMeters, 1500);
+        if (!meterTimer) meterTimer = setInterval(resumeMeters, 500);
     }
     function stopMeters(unload = false) {
         unload ||= activeTrack()?.source === 'drive';
         clearInterval(meterTimer); meterTimer = undefined;
         if (graph?.mirror) {
             graph.mirror.pause();
-            if (unload) { graph.mirrorStarting = null; graph.mirror.removeAttribute('src'); graph.mirror.load(); }
+            if (unload) { graph.mirrorStarting = null; graph.mirrorAligned = ''; graph.mirror.removeAttribute('src'); graph.mirror.load(); }
         }
         drawMeters(false);
     }
     function syncMirror(userGesture = false) {
         const mirror = graph?.mirror; if (!mirror) return;
         const cloud = activeTrack()?.source === 'drive', connection = navigator.connection;
-        const enough = bufferedAhead() >= 1 || (audio.readyState >= 3 && audio.currentTime >= 1);
+        const enough = audio.readyState >= 3 || bufferedAhead() >= .25;
         // Unlock Safari's analysis element in the same user gesture as native
         // play(). Later resumes yield while the main player is actually waiting.
         const waiting = userGesture !== true && (loading || audio.seeking || !enough);
-        if (document.hidden || audio.paused || audio.ended || (cloud && (waiting || connection?.saveData || ['slow-2g','2g'].includes(connection?.effectiveType) || graph.mirrorFailedGeneration === generation))) {
+        if (document.hidden || audio.paused || audio.ended || (cloud && (connection?.saveData || ['slow-2g','2g'].includes(connection?.effectiveType) || graph.mirrorFailedGeneration === generation))) {
             mirror.pause();
-            if (cloud && mirror.hasAttribute('src')) { mirror.removeAttribute('src'); mirror.load(); }
+            if (mirror.hasAttribute('src')) { graph.mirrorAligned = ''; mirror.removeAttribute('src'); mirror.load(); }
+            return;
+        }
+        if (cloud && waiting) {
+            // Preserve the initial request during a short main-player wait.
+            // Persistent buffering unloads it after the grace period above.
+            if (!loading || !meterBufferTimer || audio.seeking) mirror.pause();
             return;
         }
         const url = new URL(audio.src,location.href); if (cloud) url.searchParams.set('meter','1');
-        if (mirror.src !== url.href) { mirror.src = url.href; mirror.load(); }
-        mirror.playbackRate = audio.playbackRate;
-        if (mirror.readyState && Math.abs(mirror.currentTime - audio.currentTime) > .35) {
-            try { mirror.currentTime = audio.currentTime; } catch (_) {}
+        if (mirror.src !== url.href) { graph.mirrorAligned = ''; mirror.src = url.href; mirror.load(); }
+        const drift = audio.currentTime - mirror.currentTime;
+        // Align once at metadata, then let a pending seek finish decoding. A
+        // moving target at every canplay/timer used to repeatedly discard it.
+        if (mirror.readyState >= 1 && !mirror.seeking && (graph.mirrorAligned !== url.href || (mirror.readyState >= 3 && !mirror.paused && !graph.mirrorStarting && Math.abs(drift) > 1))) {
+            try { if (Math.abs(drift) > .1) mirror.currentTime = audio.currentTime; graph.mirrorAligned = url.href; } catch (_) {}
         }
+        // Small drift is caught up by the silent copy without another Range
+        // request. Never change the audible player's position or speed.
+        mirror.playbackRate = audio.playbackRate * (Math.abs(drift) < 1 ? 1 + Math.max(-.1,Math.min(.1,drift * .2)) : 1);
         if (mirror.paused && !graph.mirrorStarting) {
             const active = graph, version = generation;
-            const pending = mirror.play().catch(error => { if (error.name !== 'AbortError' && graph === active && version === generation && mirror.src === url.href) { active.mirrorFailedGeneration = version; mirror.pause(); mirror.removeAttribute('src'); mirror.load(); } }).finally(() => { if (active.mirrorStarting === pending) active.mirrorStarting = null; });
+            const pending = mirror.play().catch(error => { if (error.name !== 'AbortError' && graph === active && active.mirrorStarting === pending && version === generation && mirror.src === url.href) { active.mirrorFailedGeneration = version; mirror.pause(); mirror.removeAttribute('src'); mirror.load(); } }).finally(() => { if (active.mirrorStarting === pending) active.mirrorStarting = null; });
             active.mirrorStarting = pending;
         }
     }
@@ -361,29 +416,36 @@
         try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
     }
     function drawMeters(playing) {
-        ['left','right'].forEach((side,i) => {
+        visuals.reels.forEach((reel,i) => {
             let level = 0;
-            if (playing && graph?.context.state === 'running' && !audio.muted && audio.volume > 0 && (!graph.mirror || (!graph.mirror.paused && graph.mirror.readyState >= 2 && Math.abs(graph.mirror.currentTime-audio.currentTime) < .5))) {
+            if (playing && graph?.context.state === 'running' && !audio.muted && audio.volume > 0 && (!graph.mirror || (!graph.mirror.paused && !graph.mirror.seeking && graph.mirror.readyState >= 2 && Math.abs(graph.mirror.currentTime-audio.currentTime) < .75))) {
                 try {
                     graph.analysers[i].getFloatTimeDomainData(graph.samples);
-                    const rms = Math.sqrt(graph.samples.reduce((sum,value) => sum + value * value, 0) / graph.samples.length) * audio.volume;
+                    let sum = 0; for (let n=0; n<graph.samples.length; n++) sum += graph.samples[n] * graph.samples[n];
+                    const rms = Math.sqrt(sum / graph.samples.length) * audio.volume;
                     level = Math.max(0, Math.min(15, (20 * Math.log10(Math.max(rms, .00001)) + 45) / 3));
                 } catch (_) {}
             }
-            $(`[data-meter="${side}"]`).querySelectorAll('i').forEach((bar, n) => bar.classList.toggle('is-lit', n < level));
+            const lit = Math.ceil(level);
+            if (lit === meterLevels[i]) return;
+            reel.bars.forEach((bar,n) => { if ((n < lit) !== (n < meterLevels[i])) bar.classList.toggle('is-lit',n < lit); });
+            meterLevels[i] = lit;
         });
     }
     function animate(time) {
         frameId = 0;
         const playing = !audio.paused && !audio.ended;
         const elapsed = frameTime ? Math.min(.1, (time - frameTime) / 1000) : 0; frameTime = time;
-        const radii = drawProgress(); drawMeters(playing && !loading);
+        // Rotation follows the display cadence; geometry and audio sampling do
+        // not need to repaint the entire deck on every display frame.
+        if (time - progressFrame >= 100) { drawProgress(); progressFrame = time; }
+        if (time - meterFrame >= 1000 / 30) { drawMeters(playing && !loading); meterFrame = time; }
         if (playing && !loading && !reducedMotion.matches) {
-            ['left','right'].forEach((side,i) => { angles[i] = (angles[i] - elapsed * 95 * 126 / radii[i] * audio.playbackRate) % 360; $(`[data-rotor="${side}"]`).style.transform = `rotate(${angles[i]}deg)`; });
+            visuals.reels.forEach((reel,i) => { if (!reel.motion) { angles[i] = (angles[i] - elapsed * 95 * 126 / packRadii[i] * audio.playbackRate) % 360; reel.rotor.style.transform = `rotate(${angles[i]}deg)`; } });
         }
         if (playing && !document.hidden) frameId = requestAnimationFrame(animate);
     }
-    function startAnimation() { frameTime = 0; if (!frameId && !document.hidden) frameId = requestAnimationFrame(animate); }
+    function startAnimation() { syncReels(); if (!frameId && !document.hidden) { frameTime = 0; progressFrame = meterFrame = -Infinity; frameId = requestAnimationFrame(animate); } }
     async function play() {
         if (!current) {
             const first = selectedTracks()[0]; if (!first) return;
@@ -683,8 +745,8 @@
     audio.addEventListener('seeking', () => { preloader.cancel(); if (audio.readyState < 3) setBuffering(true); drawProgress(); });
     audio.addEventListener('pause', () => { preloader.cancel(); setBuffering(false); stopMeters(); save(); });
     audio.addEventListener('timeupdate', () => { drawProgress(); prepareUpcoming(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
-    audio.addEventListener('seeked', () => { drawProgress(); syncMirror(); });
-    audio.addEventListener('ratechange', syncMirror);
+    audio.addEventListener('seeked', () => { if (graph) graph.mirrorAligned = ''; drawProgress(true); syncMirror(); });
+    audio.addEventListener('ratechange', () => { drawProgress(true); syncMirror(); });
     audio.addEventListener('ended', () => { setBuffering(false); stopMeters(); drawProgress(); next(true); });
     let errorProbe = -1;
     audio.addEventListener('error', async () => {
@@ -731,7 +793,7 @@
     }
     window.addEventListener('pagehide', save);
     document.addEventListener('visibilitychange', () => {
-        save();
+        save(); syncReels();
         if (document.hidden) {
             preloader.cancel(); cancelAnimationFrame(frameId); frameId = 0; frameTime = 0; stopMeters(true);
         } else {
@@ -739,6 +801,7 @@
             if (!audio.paused) { configureAudioSession(); resumeMeters(); startAnimation(); }
         }
     });
+    reducedMotion.addEventListener('change',syncReels);
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });
     window.addEventListener('focus', () => { if (!audio.paused) { resumeMeters(); startAnimation(); } });
     if (config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {

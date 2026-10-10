@@ -62,7 +62,23 @@ if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|preload\.js|cove
         if (getenv('REEL_PLAYER_MIRROR_PREVIEW') === '1' || ($_GET['mirror'] ?? '') === '1') $source = str_replace('const capture = audio.captureStream || audio.mozCaptureStream;', 'const capture = null;', $source);
         $source = str_replace('if (mirror.paused) mirror.play().catch(() => {});', 'if (mirror.paused) mirror.play().catch(error => { graph.mirrorError = error.name; });', $source);
         $diagnostic = <<<'JS'
-    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorError:graph?.mirrorError, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState, preloadActive:preloader.active, preloadDone:[...preloader.done.keys()], upcoming:upcoming().map(t=>t.id)}); }, 500);
+    // Opt-in, DOM-visible measurements for browser QA, absent in production.
+    let previewStart = 0, previewFirstMeter = null, previewFrames = 0, previewGeometry = 0, previewFrameTime = 0, previewMaxGap = 0;
+    audio.addEventListener('play', () => { previewStart = performance.now(); previewFirstMeter = null; previewFrames = previewGeometry = previewFrameTime = previewMaxGap = 0; });
+    new MutationObserver(records => {
+        if (!previewStart || audio.paused) return;
+        previewGeometry += records.filter(record => ['r','d'].includes(record.attributeName)).length;
+        if (previewFirstMeter === null && app.querySelector('[data-meter] i.is-lit')) previewFirstMeter = performance.now() - previewStart;
+    }).observe(app.querySelector('.rp-machine'), {subtree:true,attributes:true,attributeFilter:['r','d','class']});
+    const previewFrame = time => {
+        if (previewStart && !audio.paused && !document.hidden) {
+            if (previewFrameTime) previewMaxGap = Math.max(previewMaxGap,time-previewFrameTime);
+            previewFrameTime = time; previewFrames++;
+        }
+        requestAnimationFrame(previewFrame);
+    };
+    requestAnimationFrame(previewFrame);
+    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorError:graph?.mirrorError, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState, preloadActive:preloader.active, preloadDone:[...preloader.done.keys()], upcoming:upcoming().map(t=>t.id), sampleMs:previewStart ? performance.now()-previewStart : 0, firstMeterMs:previewFirstMeter, frames:previewFrames, geometryWrites:previewGeometry, maxFrameGapMs:previewMaxGap, rotors:visuals.reels.map(reel=>({state:reel.motion?.playState,rate:reel.motion?.playbackRate,time:reel.motion?.currentTime}))}); }, 500);
 JS;
         echo preg_replace('/\}\)\(\);\s*$/', $diagnostic . "\n})();", $source); exit;
     }

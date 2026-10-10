@@ -14,6 +14,7 @@ $started = $ride ? (strtotime((string)$ride['started_at']) ?: time()) : 0;
 $end = $ride ? (strtotime((string)$ride['planned_end_at']) ?: time()) : 0;
 $seconds = $isMetered ? max(0, time() - $started) : $end - time();
 $timerText = ($seconds < 0 ? '+' : '') . sprintf('%02d:%02d', intdiv(abs($seconds), 60), abs($seconds) % 60);
+$operatorBase = FireballPluginToyCarRental::operatorBasePath();
 ?>
 <article class="card fb-card toy-rental-car-card <?= $isOverdue ? 'is-overdue' : ($isRented ? 'is-rented' : '') ?>"
          data-toy-rental-card data-car-id="<?= (int)$car['id'] ?>" data-ride-id="<?= (int)($ride['id'] ?? 0) ?>"
@@ -40,7 +41,7 @@ $timerText = ($seconds < 0 ? '+' : '') . sprintf('%02d:%02d', intdiv(abs($second
                       data-price-per-minute="<?= htmlSC((string)$ride['price_per_minute']) ?>"
                       data-estimated-minutes="<?= (int)($ride['estimated_minutes'] ?? 0) ?>"><?= $timerText ?></span>
             </div>
-            <form action="<?= base_href('/admin/toy-rental/rides/complete') ?>" method="post" data-toy-rental-complete-form>
+            <form action="<?= base_href($operatorBase . '/rides/complete') ?>" method="post" data-toy-rental-complete-form>
                 <?= get_csrf_field() ?>
                 <input type="hidden" name="id" value="<?= (int)$ride['id'] ?>">
                 <div class="toy-rental-action">
@@ -61,7 +62,7 @@ $timerText = ($seconds < 0 ? '+' : '') . sprintf('%02d:%02d', intdiv(abs($second
         <div class="toy-rental-time-up small text-danger <?= $isOverdue ? '' : 'd-none' ?>" data-toy-rental-time-up><?= $t('toy_rental_time_up') ?></div>
     <?php elseif ($status === 'available'): ?>
         <div class="toy-rental-start-actions">
-            <form action="<?= base_href('/admin/toy-rental/rides/start') ?>" method="post" data-toy-rental-start-form>
+            <form action="<?= base_href($operatorBase . '/rides/start') ?>" method="post" data-toy-rental-start-form>
                 <?= get_csrf_field() ?>
                 <input type="hidden" name="car_id" value="<?= (int)$car['id'] ?>">
                 <input type="hidden" name="billing_type" value="fixed">
@@ -77,7 +78,7 @@ $timerText = ($seconds < 0 ? '+' : '') . sprintf('%02d:%02d', intdiv(abs($second
                     <?php endforeach; ?>
                 </select>
             </form>
-            <form action="<?= base_href('/admin/toy-rental/rides/start') ?>" method="post" data-toy-rental-start-form>
+            <form action="<?= base_href($operatorBase . '/rides/start') ?>" method="post" data-toy-rental-start-form>
                 <?= get_csrf_field() ?>
                 <input type="hidden" name="car_id" value="<?= (int)$car['id'] ?>">
                 <input type="hidden" name="billing_type" value="metered">

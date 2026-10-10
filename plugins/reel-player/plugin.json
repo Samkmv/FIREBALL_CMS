@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
   "name_i18n": {
@@ -16,40 +16,35 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Prepare the first 2 MiB of the next two Google Drive tracks while prioritizing current playback.",
-    "Bounded private cache, validated HTTP ranges and safe continuation of the same file revision.",
-    "Fewer repeated Google requests; cloud meters unlock with Play and recover after normal buffering cancellation.",
-    "Mobile track covers, prominent playback buttons and default PNG artwork for iPhone system playback.",
-    "Round controls, separated shuffle/repeat/mute buttons, highlighted return button and a zero slider when muted."
+    "Faster cloud meter startup: keep short buffering requests and finish pending seeks before resynchronizing.",
+    "Independent native reel animations preserve rotation phase while tape size and speed change.",
+    "Limit progress geometry to 10 Hz, meters to 30 Hz and system position to once per second; avoid unchanged DOM writes.",
+    "Publish the complete private 2 MiB prefix during playback so concurrent analysis can reuse it immediately."
   ],
   "release_notes_i18n": {
-    "ru": [
-      "Предварительная подготовка первых 2 МБ двух следующих песен Google Drive с приоритетом текущего воспроизведения.",
-      "Приватный ограниченный кэш, проверка HTTP Range и безопасное продолжение потока одной ревизии файла.",
-      "Уменьшение повторных обращений к Google; облачные индикаторы запускаются нажатием Play и восстанавливаются после штатной отмены при буферизации.",
-      "Обложки песен на телефоне, заметные кнопки воспроизведения и стандартная PNG-обложка для системного плеера iPhone.",
-      "Круглые кнопки, промежутки у случайного порядка, повтора и звука, выделенное возвращение в CMS и нулевая шкала при отключении звука."
-    ],
     "en": [
-      "Prepare the first 2 MiB of the next two Google Drive tracks while prioritizing current playback.",
-      "Bounded private cache, validated HTTP ranges and safe continuation of the same file revision.",
-      "Fewer repeated Google requests; cloud meters unlock with Play and recover after normal buffering cancellation.",
-      "Mobile track covers, prominent playback buttons and default PNG artwork for iPhone system playback.",
-      "Round controls, separated shuffle/repeat/mute buttons, highlighted return button and a zero slider when muted."
+      "Faster cloud meter startup: keep short buffering requests and finish pending seeks before resynchronizing.",
+      "Independent native reel animations preserve rotation phase while tape size and speed change.",
+      "Limit progress geometry to 10 Hz, meters to 30 Hz and system position to once per second; avoid unchanged DOM writes.",
+      "Publish the complete private 2 MiB prefix during playback so concurrent analysis can reuse it immediately."
+    ],
+    "ru": [
+      "Более быстрый запуск облачных индикаторов: короткая буферизация не сбрасывает загрузку, незавершённая перемотка не запускается заново.",
+      "Катушки вращаются отдельной браузерной анимацией с сохранением угла при изменении намотки и скорости.",
+      "Геометрия и прогресс обновляются до 10 раз в секунду, индикаторы до 30, системная позиция раз в секунду; неизменённые элементы не перерисовываются.",
+      "Готовые первые 2 МБ приватного кэша доступны во время воспроизведения для повторного использования анализатором."
     ],
     "de": [
-      "Die ersten 2 MiB der nächsten zwei Google-Drive-Titel vorbereiten; die aktuelle Wiedergabe hat Vorrang.",
-      "Begrenzter privater Cache, geprüfte HTTP-Bereiche und Fortsetzung derselben Dateiversion.",
-      "Weniger wiederholte Google-Anfragen; Cloud-Pegelanzeigen starten mit Play und erholen sich nach Pufferunterbrechungen.",
-      "Cover auf Mobilgeräten, hervorgehobene Wiedergabetasten und PNG-Standardcover für die iPhone-Systemwiedergabe.",
-      "Runde Bedienelemente, Abstand zwischen Zufallswiedergabe, Wiederholung und Stummschaltung, hervorgehobene Rückkehr und Nullanzeige bei Stummschaltung."
+      "Schnellerer Start der Cloud-Pegelanzeigen: kurze Pufferpausen erhalten die Anfrage; laufende Suchvorgänge werden nicht neu gestartet.",
+      "Separate Browseranimationen der Spulen erhalten den Drehwinkel bei wechselnder Bandmenge und Geschwindigkeit.",
+      "Fortschritt und Geometrie bis 10 Hz, Pegel bis 30 Hz und Systemposition einmal pro Sekunde; unveränderte DOM-Elemente bleiben bestehen.",
+      "Der vollständige private 2-MiB-Anfang wird bereits während der Wiedergabe für die Analyse verfügbar."
     ],
     "zh-cn": [
-      "优先保障当前播放，同时准备后续两首 Google Drive 曲目的前 2 MiB。",
-      "受限的私有缓存、HTTP Range 验证，以及同一文件版本的安全连续播放。",
-      "减少重复 Google 请求；云端电平指示器随 Play 启动，并在缓冲取消后恢复。",
-      "显示移动端曲目封面、突出播放按钮，并为 iPhone 系统播放器提供默认 PNG 封面。",
-      "圆形控制按钮、随机/重复/静音按钮间距、突出的返回按钮，以及静音时归零的音量滑块。"
+      "加快云端电平指示器启动：短暂缓冲不重置请求，未完成的定位不会重复启动。",
+      "卷轴使用独立浏览器动画，在磁带量和速度变化时保持旋转角度。",
+      "进度和几何更新不超过 10 Hz，电平不超过 30 Hz，系统位置每秒更新一次，避免重复 DOM 更新。",
+      "播放期间即可发布完整的私有 2 MiB 文件开头，供分析流立即复用。"
     ]
   },
   "update": {

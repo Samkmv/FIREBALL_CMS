@@ -100,16 +100,23 @@ final class DriveStream
             try { $lock = $this->cache->lock($file['id']); } catch (\Throwable) { /* A full/unwritable disk must not prevent streaming. */ }
         }
         $cacheBytes = ''; $target = min(DriveCache::PREFIX_BYTES,$size);
+        $publish = function() use (&$lock,&$cacheBytes,$target,$file): void {
+            if (!$lock || strlen($cacheBytes) !== $target) return;
+            // Publish the complete prefix as soon as it is delivered. Safari's
+            // analysis copy must not wait for the entire current song to finish
+            // before it can reuse these bytes. Cache errors never gate sound.
+            try { if (($this->validAccount)()) $this->cache->savePrefix($file,$cacheBytes); } catch (\Throwable) {}
+            DriveCache::unlock($lock); $lock = null; $cacheBytes = '';
+        };
         try {
-            self::read($file,$cursor,$end,$reader,function(string $bytes) use ($begin,$output,$lock,&$cacheBytes,$target): bool {
+            self::read($file,$cursor,$end,$reader,function(string $bytes) use ($begin,$output,&$lock,&$cacheBytes,$target,$publish): bool {
                 if ($lock && strlen($cacheBytes) < $target) $cacheBytes .= substr($bytes,0,$target-strlen($cacheBytes));
-                $begin(); return $output($bytes) !== false;
+                $begin(); $more = $output($bytes) !== false;
+                $publish(); return $more;
             },false);
         } finally {
             // A broken/aborted stream can still leave a complete, bounded prefix.
-            if ($lock && strlen($cacheBytes) === $target && ($this->validAccount)()) {
-                try { $this->cache->savePrefix($file,$cacheBytes); } catch (\Throwable) { /* Cache failure never stops native sound. */ }
-            }
+            $publish();
             DriveCache::unlock($lock);
         }
     }

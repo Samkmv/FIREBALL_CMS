@@ -60,6 +60,20 @@ try {
     $valid=false; $reject(fn()=>$pipe->prepare($file,$reader),403,'Disconnect during warm prevents publishing cache'); $assert($cache->prefix($file)===null,'No prefix saved after disconnect'); $valid=true;
     $broken=static function(array $f,int $s,int $e,bool $w,callable $h,callable $b):void { $h(206,['content-range'=>"bytes {$s}-{$e}/{$f['size']}"]); $b('short'); };
     $reject(fn()=>$pipe->prepare($file,$broken),502,'Truncated warm rejected'); $assert($cache->prefix($file)===null,'Partial warm not published');
+    // The audible stream publishes a complete prefix before its tail finishes.
+    // A simultaneous mirror can reuse it, with the per-file lock released.
+    $earlyReader=static function(array $f,int $s,int $e,bool $w,callable $h,callable $b) use ($bytes,$cache,$assert):void {
+        $h(206,['content-range'=>"bytes {$s}-{$e}/{$f['size']}",'content-length'=>(string)($e-$s+1)]);
+        $b(substr($bytes,0,DriveCache::PREFIX_BYTES));
+        $assert($cache->prefix($f)!==null,'Prefix published before upstream tail completes');
+        $released=$cache->lock($f['id']);$assert($released!==null,'Prefix lock released before upstream tail completes');DriveCache::unlock($released);
+        $b(substr($bytes,DriveCache::PREFIX_BYTES));
+    };
+    $earlyBody='';$pipe->serve($file,'',$earlyReader,static function(){},static function(string $chunk)use(&$earlyBody):void{$earlyBody.=$chunk;});
+    $assert($earlyBody===$bytes,'Early cache publication preserves native byte stream');
+    $cache->invalidate($file['id'],false);$valid=false;$earlyBody='';
+    $pipe->serve($file,'',$reader,static function(){},static function(string $chunk)use(&$earlyBody):void{$earlyBody.=$chunk;});
+    $assert($cache->prefix($file)===null && $earlyBody===$bytes,'Disconnected stream does not publish early prefix or stop native bytes');$valid=true;
     $mode=206; $pipe->prepare($file,$reader); $path=$cache->prefix($file); touch(substr($path,0,-4).'.info',time()-DriveCache::TTL-1); $assert($cache->prefix($file)===null,'Expired prefix not served');
     foreach (glob(dirname($path).'/*.meta') as $meta) touch($meta,time()-DriveCache::METADATA_TTL-1);
     $assert($cache->metadata($file['id'])===null,'Expired metadata is refreshed');
