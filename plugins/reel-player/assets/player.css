@@ -178,3 +178,25 @@
 .is-buffering .rp-machine-caption .rp-status-dot{background:var(--rp-accent)}
 @keyframes rp-buffer-turn{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.is-buffering .rp-play::after,.rp-drive-loading::before{animation:none}}
+
+.rp-header{display:grid;grid-template-columns:1fr auto 1fr;gap:12px}
+.rp-header-actions{display:flex;justify-self:end;gap:2px}
+.rp-header-actions .rp-icon-button{width:36px;height:36px}
+.rp-header-actions .rp-icon{width:20px;height:20px}
+.rp-settings-section h3{margin:0;font-size:15px;font-weight:500}
+.rp-settings-section p{margin:7px 0 18px}
+.rp-cover-field{margin:0 0 16px;min-width:0}
+.rp-field-label{display:block;font-size:11px;color:var(--rp-muted);margin-bottom:9px}
+.rp-cover-picker{position:relative;display:flex;align-items:center;gap:15px;padding:13px;border:1px solid var(--rp-line);border-radius:9px;background:#f2ede3;cursor:pointer;transition:background .15s,border-color .15s;min-width:0}
+.rp-cover-picker:hover{background:#eae2d3;border-color:#ac9573}
+.rp-cover-picker:focus-within{outline:2px solid var(--rp-accent);outline-offset:3px}
+.rp-cover-picker .rp-file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);border:0;white-space:nowrap}
+.rp-cover-picker>img{width:74px;height:74px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#252d30}
+.rp-cover-picker-info{display:flex;flex-direction:column;gap:8px;min-width:0}
+.rp-cover-picker-button{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:var(--rp-ink)}
+.rp-cover-picker-button .rp-icon{width:17px;height:17px;flex-shrink:0}
+.rp-cover-picker-info>[data-cover-filename]{font-size:10px;line-height:1.5;color:var(--rp-muted);overflow-wrap:anywhere}
+[data-theme=dark] .rp-cover-picker{background:#1c211a;border-color:#515744}
+[data-theme=dark] .rp-cover-picker:hover{background:#333b2d;border-color:#a78f6b}
+.rp-google-button:disabled{opacity:.5;cursor:default}
+@media(max-width:480px){.rp-header{gap:6px}.rp-header-actions .rp-icon-button{width:32px;height:36px}.rp-brand{letter-spacing:3px}.rp-cover-picker{padding:10px;gap:10px}.rp-cover-picker>img{width:62px;height:62px}.rp-cover-picker-button{font-size:11px}}

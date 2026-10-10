@@ -7,10 +7,12 @@ final class GoogleDrive
 {
     private const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
     private string $directory;
+    private string $root;
 
-    public function __construct(private int $owner, ?string $root = null)
+    public function __construct(private int $owner, ?string $root = null, private bool $canManage = false)
     {
-        $this->directory = ($root ?? STORAGE . '/reel-player') . '/' . $owner;
+        $this->root = $root ?? STORAGE . '/reel-player';
+        $this->directory = $this->root . '/' . $owner;
     }
 
     public function status(): array
@@ -18,21 +20,20 @@ final class GoogleDrive
         $account = $this->read();
         return ['configured' => !empty($account['client_id']) && !empty($account['client_secret']),
             'connected' => !empty($account['refresh_token']) || !empty($account['access_token']),
-            'clientId' => $account['client_id'] ?? '', 'callback' => $this->callbackUrl()];
+            'canManage' => $this->canManage,
+            'clientId' => $this->canManage ? ($account['client_id'] ?? '') : '', 'callback' => $this->callbackUrl()];
     }
 
     public function settings(string $id, string $secret): void
     {
+        if (!$this->canManage) throw new \InvalidArgumentException('Настройки подключения доступны только создателю сайта.');
         $id = trim($id); $secret = trim($secret);
         if (!preg_match('/^[a-zA-Z0-9._-]{10,450}\.apps\.googleusercontent\.com$/D', $id)) throw new \InvalidArgumentException('Проверьте OAuth Client ID Google.');
         if (strlen($secret) > 500 || preg_match('/[\x00-\x1f]/', $secret)) throw new \InvalidArgumentException('Проверьте Client Secret.');
-        $account = $this->read();
-        $nextSecret = $secret ?: ($account['client_secret'] ?? '');
+        $app = $this->sharedApp();
+        $nextSecret = $secret ?: ($app['client_secret'] ?? '');
         if (!$nextSecret) throw new \InvalidArgumentException('Введите OAuth Client Secret.');
-        if ($id !== ($account['client_id'] ?? '') || $nextSecret !== ($account['client_secret'] ?? '')) {
-            $account = ['client_id' => $id, 'client_secret' => $nextSecret];
-        }
-        $this->write($account);
+        $this->writeFile($this->root . '/drive-app.json', ['client_id' => $id, 'client_secret' => $nextSecret]);
     }
 
     public function callbackUrl(): string { return base_url('/admin/reel-player/drive/callback'); }
@@ -40,9 +41,9 @@ final class GoogleDrive
     public function authorizationUrl(): string
     {
         $account = $this->read();
-        if (empty($account['client_id']) || empty($account['client_secret'])) throw new \InvalidArgumentException('Сначала сохраните OAuth-настройки.');
+        if (empty($account['client_id']) || empty($account['client_secret'])) throw new \InvalidArgumentException('Создатель сайта ещё не настроил подключение Google Drive.');
         $state = bin2hex(random_bytes(32));
-        session()->set('reel_drive_oauth', ['state' => $state, 'owner' => $this->owner, 'created' => time()]);
+        session()->set('reel_drive_oauth', ['state' => $state, 'owner' => $this->owner, 'created' => time(), 'app_binding' => $this->binding($account)]);
         return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
             'client_id' => $account['client_id'], 'redirect_uri' => $this->callbackUrl(), 'response_type' => 'code',
             'scope' => self::SCOPE, 'access_type' => 'offline', 'prompt' => 'consent', 'state' => $state,
@@ -58,6 +59,7 @@ final class GoogleDrive
             throw new \InvalidArgumentException('Подключение устарело. Попробуйте снова.');
         }
         $account = $this->read();
+        if (!hash_equals((string)($pending['app_binding'] ?? ''), $this->binding($account))) throw new \InvalidArgumentException('Настройки Google изменились. Начните подключение заново.');
         $tokens = $this->request('https://oauth2.googleapis.com/token', [
             'code' => $code, 'client_id' => $account['client_id'], 'client_secret' => $account['client_secret'],
             'redirect_uri' => $this->callbackUrl(), 'grant_type' => 'authorization_code',
@@ -72,7 +74,7 @@ final class GoogleDrive
         $account = $this->read();
         $token = $account['refresh_token'] ?? $account['access_token'] ?? '';
         // Always remove local access, even if Google's revocation service is unavailable.
-        $this->write(array_intersect_key($account, array_flip(['client_id', 'client_secret'])));
+        $this->write([]);
         if ($token !== '') {
             try { $this->request('https://oauth2.googleapis.com/revoke', ['token' => $token]); } catch (\Throwable) {}
         }
@@ -80,17 +82,52 @@ final class GoogleDrive
 
     private function read(): array
     {
-        $file = $this->directory . '/drive.json';
-        return is_file($file) ? (json_decode((string)file_get_contents($file), true) ?: []) : [];
+        $account = $this->readFile($this->directory . '/drive.json');
+        $app = $this->sharedApp();
+        // Promote only the creator's legacy app credentials. Tokens belong to
+        // the same owner and remain valid when the OAuth client is unchanged.
+        if (!$app && $this->canManage && !empty($account['client_id']) && !empty($account['client_secret'])) {
+            $app = array_intersect_key($account, array_flip(['client_id','client_secret']));
+            $this->writeFile($this->root . '/drive-app.json', $app);
+            $this->write($account);
+        }
+        $binding = $account['app_binding'] ?? (!empty($account['client_id']) && !empty($account['client_secret']) ? $this->binding($account) : '');
+        $tokens = $app && hash_equals($this->binding($app), (string)$binding)
+            ? array_intersect_key($account, array_flip(['access_token','refresh_token','expires_at'])) : [];
+        return [...$app, ...$tokens];
     }
 
     private function write(array $account): void
     {
-        if (!is_dir($this->directory) && !mkdir($this->directory, 0700, true) && !is_dir($this->directory)) throw new \RuntimeException('Не удалось сохранить настройки Google Drive.');
-        $tmp = $this->directory . '/drive-' . bin2hex(random_bytes(8)) . '.tmp';
+        $tokens = array_intersect_key($account, array_flip(['access_token','refresh_token','expires_at']));
+        if ($tokens) $tokens['app_binding'] = $this->binding($account);
+        $this->writeFile($this->directory . '/drive.json', $tokens);
+    }
+
+    private function sharedApp(): array
+    {
+        return array_intersect_key($this->readFile($this->root . '/drive-app.json'), array_flip(['client_id','client_secret']));
+    }
+
+    private function binding(array $app): string
+    {
+        return hash('sha256', ($app['client_id'] ?? '') . "\0" . ($app['client_secret'] ?? ''));
+    }
+
+    private function readFile(string $file): array
+    {
+        $value = is_file($file) ? json_decode((string)file_get_contents($file), true) : [];
+        return is_array($value) ? $value : [];
+    }
+
+    private function writeFile(string $file, array $account): void
+    {
+        $directory = dirname($file);
+        if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new \RuntimeException('Не удалось сохранить настройки Google Drive.');
+        $tmp = $directory . '/drive-' . bin2hex(random_bytes(8)) . '.tmp';
         if (file_put_contents($tmp, json_encode($account, JSON_THROW_ON_ERROR), LOCK_EX) === false) throw new \RuntimeException('Не удалось сохранить подключение.');
         chmod($tmp, 0600);
-        if (!rename($tmp, $this->directory . '/drive.json')) { @unlink($tmp); throw new \RuntimeException('Не удалось сохранить подключение.'); }
+        if (!rename($tmp, $file)) { @unlink($tmp); throw new \RuntimeException('Не удалось сохранить подключение.'); }
     }
 
     private function token(): string
@@ -103,6 +140,7 @@ final class GoogleDrive
         try {
             $account = $this->read();
             if (!empty($account['access_token']) && (int)($account['expires_at'] ?? 0) > time() + 90) return $account['access_token'];
+            if (empty($account['refresh_token'])) throw new \InvalidArgumentException('Настройки Google изменились. Подключите свой аккаунт снова.');
             $tokens = $this->request('https://oauth2.googleapis.com/token', ['client_id' => $account['client_id'], 'client_secret' => $account['client_secret'], 'refresh_token' => $account['refresh_token'], 'grant_type' => 'refresh_token']);
             if (empty($tokens['access_token'])) throw new \InvalidArgumentException('Переподключите Google Drive.');
             $this->write([...$account, 'access_token' => $tokens['access_token'], 'expires_at' => time() + (int)($tokens['expires_in'] ?? 3600)]);

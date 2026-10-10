@@ -10,7 +10,7 @@ use Fireball\ReelPlayer\Services\GoogleDrive;
 final class PlayerController
 {
     private function library(): Library { return new Library((int)get_user()['id']); }
-    private function drive(): GoogleDrive { return new GoogleDrive((int)get_user()['id']); }
+    private function drive(): GoogleDrive { return new GoogleDrive((int)get_user()['id'], null, check_creator()); }
 
     public function index(): string
     {
@@ -49,6 +49,7 @@ final class PlayerController
                 $drive = $this->drive();
                 switch ($action) {
                     case 'drive.settings':
+                        if (!check_creator()) response()->json(['status' => false, 'message' => 'Настройки доступны только создателю сайта.'], 403);
                         $drive->settings((string)($data['client_id'] ?? ''), (string)($data['client_secret'] ?? ''));
                         return ['drive' => $drive->status()];
                     case 'drive.connect': return ['authUrl' => $drive->authorizationUrl()];

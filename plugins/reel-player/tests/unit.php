@@ -10,11 +10,14 @@ function session(): object {
     static $session;
     return $session ??= new class {
         public function has(string $key): bool { return $key === 'user' && isset($GLOBALS['reelTestUser']); }
-        public function get(string $key): mixed { return $key === 'user' ? ($GLOBALS['reelTestUser'] ?? null) : null; }
+        public function get(string $key, mixed $default = null): mixed { return $key === 'user' ? ($GLOBALS['reelTestUser'] ?? null) : ($GLOBALS['reelTestSession'][$key] ?? $default); }
+        public function set(string $key, mixed $value): void { $GLOBALS['reelTestSession'][$key] = $value; }
+        public function remove(string $key): void { unset($GLOBALS['reelTestSession'][$key]); }
     };
 }
 function check_admin(): bool { return \FBL\Auth::isAdmin(); }
 function base_href(string $path): string { return $path; }
+function base_url(string $path): string { return 'https://reel-unit.invalid' . $path; }
 function add_filter(string $hook, callable $callback): void { $GLOBALS['reelTestFilters'][$hook] = $callback; }
 use Fireball\ReelPlayer\Services\MediaStorage;
 use Fireball\ReelPlayer\Services\GoogleDrive;
@@ -58,6 +61,42 @@ $browse = GoogleDrive::browsePage(['nextPageToken'=>'next-folder-page','files'=>
 ]]);
 $assert(array_column($browse['files'],'name') === ['Альбомы','Night.MP3'], 'Drive folder browser keeps navigable folders and audio, excluding unrelated files');
 $assert($browse['nextPageToken'] === 'next-folder-page', 'Drive folder browser preserves pagination');
+$driveRoot = sys_get_temp_dir() . '/reel-drive-unit-' . bin2hex(random_bytes(8));
+mkdir($driveRoot . '/1',0700,true);
+$client = 'unit-test-client-12345.apps.googleusercontent.com';
+$legacy = ['client_id'=>$client,'client_secret'=>'unit-test-secret','access_token'=>'creator-access','refresh_token'=>'creator-refresh','expires_at'=>time()+3600];
+file_put_contents($driveRoot . '/1/drive.json', json_encode($legacy));
+try {
+    $creatorDrive = new GoogleDrive(1,$driveRoot,true);
+    $creatorStatus = $creatorDrive->status();
+    $assert($creatorStatus['configured'] && $creatorStatus['connected'] && $creatorStatus['canManage'],'Creator legacy app migration preserves connection');
+    $appFile = $driveRoot . '/drive-app.json';
+    $assert((fileperms($appFile) & 0777) === 0600,'Shared Google app credentials remain private');
+    $creatorFile = json_decode(file_get_contents($driveRoot . '/1/drive.json'),true);
+    $assert(!isset($creatorFile['client_secret']) && $creatorFile['refresh_token']==='creator-refresh','Personal tokens are separated from shared app credentials');
+    $adminDrive = new GoogleDrive(2,$driveRoot);
+    $adminStatus = $adminDrive->status();
+    $assert($adminStatus['configured'] && !$adminStatus['connected'] && !$adminStatus['canManage'] && $adminStatus['clientId']==='','Admin uses configured site app without creator settings or another user tokens');
+    $originalApp = file_get_contents($appFile);
+    try { $adminDrive->settings($client,'admin-change'); $assert(false,'Admin cannot change OAuth app'); } catch (InvalidArgumentException) { $assert(file_get_contents($appFile)===$originalApp,'Admin settings rejection leaves site app unchanged'); }
+    mkdir($driveRoot . '/2',0700);
+    file_put_contents($driveRoot . '/2/drive.json', json_encode([...$legacy,'refresh_token'=>'admin-refresh','access_token'=>'admin-access']));
+    $assert($adminDrive->status()['connected'] && $creatorDrive->status()['connected'],'Matching legacy clients keep separate existing user connections');
+    $assert(!(new GoogleDrive(3,$driveRoot))->status()['connected'],'Another user never inherits a Google connection');
+    $creatorDrive->settings($client,'');
+    $assert($creatorDrive->status()['connected'] && $adminDrive->status()['connected'],'Resaving unchanged app with blank secret keeps connections');
+    $creatorDrive->authorizationUrl();
+    $assert(($GLOBALS['reelTestSession']['reel_drive_oauth']['owner'] ?? 0) === 1,'OAuth pending state stays bound to the current owner');
+    $pending = $GLOBALS['reelTestSession']['reel_drive_oauth'];
+    try { $adminDrive->finish($pending['state'],'unit-code'); $assert(false,'OAuth callback rejects different owner'); } catch (InvalidArgumentException) { $assert(true,'OAuth callback rejects different owner before contacting Google'); }
+    $creatorDrive->authorizationUrl(); $pending = $GLOBALS['reelTestSession']['reel_drive_oauth'];
+    $creatorDrive->settings('unit-test-new-client-12345.apps.googleusercontent.com','new-unit-secret');
+    $assert(!$creatorDrive->status()['connected'] && !$adminDrive->status()['connected'],'Changing site app requires fresh per-user OAuth');
+    try { $creatorDrive->finish($pending['state'],'unit-code'); $assert(false,'OAuth callback rejects changed site app'); } catch (InvalidArgumentException $error) { $assert(str_contains($error->getMessage(),'Настройки Google изменились'),'OAuth callback rejects changed site app before contacting Google'); }
+} finally {
+    foreach ([1,2] as $owner) { @unlink($driveRoot . '/' . $owner . '/drive.json'); @rmdir($driveRoot . '/' . $owner); }
+    @unlink($driveRoot . '/drive-app.json'); @rmdir($driveRoot);
+}
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__).'/plugin.json'),true,512,JSON_THROW_ON_ERROR);
 $assert($manifest['update']['enabled'] && $manifest['update']['path']==='plugins/reel-player','CMS update source');
 $router = new class {

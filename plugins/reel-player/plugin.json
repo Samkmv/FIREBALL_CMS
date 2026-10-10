@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "type": "system",
   "description": "A private reel-to-reel music player with a persistent library and playlists.",
   "name_i18n": {
@@ -16,25 +16,30 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Google Drive folder navigation, audio-only selection and a clearer import dialog.",
-    "More space below library filters; subtle buffering indicator and loaded-audio progress."
+    "Creator-only shared Google app settings, with personal Google Drive sign-in for each administrator.",
+    "Recover stereo meters after track changes and interruptions; styled cover picker with a preview.",
+    "Previous and next track controls on the iPhone lock screen instead of timed seeking."
   ],
   "release_notes_i18n": {
     "ru": [
-      "Навигация по папкам Google Drive, выбор только аудиофайлов и удобное окно добавления музыки.",
-      "Отступ под поиском и сортировкой, спокойный индикатор буферизации и загруженная часть аудио на шкале."
+      "Общие настройки Google доступны только создателю через шестерёнку; каждый администратор входит в собственный Google Drive.",
+      "Восстановление стереоиндикаторов после смены песни и прерывания; выбор обложки в стиле плеера с предварительным просмотром.",
+      "Переключение предыдущей и следующей песни на экране блокировки iPhone вместо перемотки на несколько секунд."
     ],
     "en": [
-      "Google Drive folder navigation, audio-only selection and a clearer import dialog.",
-      "More space below library filters; subtle buffering indicator and loaded-audio progress."
+      "Creator-only shared Google app settings, with personal Google Drive sign-in for each administrator.",
+      "Recover stereo meters after track changes and interruptions; styled cover picker with a preview.",
+      "Previous and next track controls on the iPhone lock screen instead of timed seeking."
     ],
     "de": [
-      "Google-Drive-Ordnernavigation, Auswahl von Audiodateien und ein übersichtlicher Importdialog.",
-      "Mehr Abstand unter den Bibliotheksfiltern sowie eine dezente Pufferanzeige und Fortschritt der geladenen Audiodaten."
+      "Gemeinsame Google-App-Einstellungen nur für den Website-Ersteller; jeder Administrator meldet sich bei seinem eigenen Google Drive an.",
+      "Wiederherstellung der Stereoanzeigen nach Titelwechseln und Unterbrechungen; gestaltete Coverauswahl mit Vorschau.",
+      "Vorheriger und nächster Titel auf dem iPhone-Sperrbildschirm statt zeitlichem Vor- und Zurückspringen."
     ],
     "zh-cn": [
-      "新增 Google Drive 文件夹导航、音频文件选择和更清晰的导入窗口。",
-      "音乐列表与筛选控件之间增加间距，新增缓冲提示和已加载音频进度。"
+      "Google 应用设置由网站创建者统一管理；每位管理员登录自己的 Google Drive。",
+      "修复切换曲目或中断后电平指示器停止的问题；新增符合播放器风格的封面选择与预览。",
+      "iPhone 锁屏控制改为切换上一首和下一首，而非按秒快进或快退。"
     ]
   },
   "update": {

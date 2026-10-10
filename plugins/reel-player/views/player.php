@@ -52,12 +52,16 @@ $button = static function (string $action, string $label, string $name, string $
     <symbol id="rp-i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="rp-i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/></symbol>
     <symbol id="rp-i-heart" viewBox="0 0 24 24"><path d="M20.3 5.4a5.3 5.3 0 0 0-7.5 0L12 6.2l-.8-.8a5.3 5.3 0 0 0-7.5 7.5L12 21l8.3-8.1a5.3 5.3 0 0 0 0-7.5Z"/></symbol>
+    <symbol id="rp-i-settings" viewBox="0 0 24 24"><path d="m10 3-.5 2-2 .9-1.8-.6-2 3.4 1.4 1.5v2.3L3.7 14l2 3.4 1.8-.6 2 .9.5 2.3h4l.5-2.3 2-.9 1.8.6 2-3.4-1.4-1.5v-2.3l1.4-1.5-2-3.4-1.8.6-2-.9L14 3z"/><circle cx="12" cy="11.5" r="3"/></symbol>
 </defs></svg>
 <main class="rp-app" data-player>
     <header class="rp-header">
         <a class="rp-back" href="<?= htmlSC(base_href('/admin')) ?>" aria-label="Вернуться в CMS"><?= $icon('back') ?><span>FIREBALL</span></a>
         <div class="rp-brand">TAPE ROOM<span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
-        <?= $button('theme', 'Включить тёмную тему', 'moon') ?>
+        <div class="rp-header-actions">
+            <?php if (!empty($config['drive']['canManage'])): ?><?= $button('player-settings', 'Настройки плеера', 'settings') ?><?php endif; ?>
+            <?= $button('theme', 'Включить тёмную тему', 'moon') ?>
+        </div>
     </header>
     <section class="rp-machine" aria-label="Катушечный аудиоплеер">
         <div class="rp-machine-caption"><span class="rp-status-dot"></span><span data-play-status>ГОТОВ К ПРОСЛУШИВАНИЮ</span><span class="rp-model">STEREO / 01</span></div>

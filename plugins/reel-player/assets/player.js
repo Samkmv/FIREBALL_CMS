@@ -15,8 +15,8 @@
     let playlistSort = ['playlist','new','old'].includes(saved.playlistSort) ? saved.playlistSort : 'playlist';
     let queueSort = ['playlist','new','old'].includes(saved.queueSort) ? saved.queueSort : (queuePlaylist > 0 ? 'playlist' : librarySort);
     let shuffle = Boolean(saved.shuffle), bag = [], history = [], seekActive = false, restoreTime = 0;
-    let toastTimer, frameId = 0, frameTime = 0, angles = [0, 0], graph, uploading = false, dialogHandler, dialogSubmitting = false;
-    let loading = false, bufferVisible = false, bufferTimer, generation = 0, lastSave = 0, mutations = 0;
+    let toastTimer, frameId = 0, frameTime = 0, angles = [0, 0], graph, meterTimer, uploading = false, dialogHandler, dialogSubmitting = false;
+    let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
     let mutationQueue = Promise.resolve();
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const formatTime = value => {
@@ -223,7 +223,8 @@
         return radii;
     }
     function initGraph() {
-        if (graph) { if (graph.stream) bindCapture(); return; }
+        if (graph?.context.state === 'closed') { releaseGraph(); }
+        if (graph) { if (graph.capture) refreshCapture(); return; }
         const capture = audio.captureStream || audio.mozCaptureStream;
         if (!(window.AudioContext || window.webkitAudioContext)) return;
         let context;
@@ -234,32 +235,56 @@
             const splitter = context.createChannelSplitter(2);
             const analysers = [context.createAnalyser(), context.createAnalyser()];
             analysers.forEach((a,i) => { a.fftSize = 256; a.smoothingTimeConstant = .78; splitter.connect(a, i); });
-            graph = {context, splitter, analysers, source:null, capturedTrack:null, samples:new Float32Array(256)};
+            // Keep both analysis branches pulled by the audio engine. The sink
+            // is silent; native HTML Audio remains the only audible output.
+            const silent = context.createGain(); silent.gain.value = 0;
+            analysers.forEach(a => a.connect(silent)); silent.connect(context.destination);
+            graph = {context, splitter, analysers, source:null, capturedTrack:null, samples:new Float32Array(256), capture, captureGeneration:-1};
+            context.addEventListener('statechange', () => { if (!document.hidden && !audio.paused && !audio.ended) resumeMeters(); });
             if (capture) {
-                graph.stream = capture.call(audio);
-                graph.stream.addEventListener('addtrack', bindCapture);
-                graph.stream.addEventListener('removetrack', bindCapture);
-                bindCapture();
+                refreshCapture();
             } else {
                 // Safari: the silent analysis copy is separate from the audible
                 // player and is unloaded when hidden. It cannot gate native sound.
                 const mirror = new Audio(); mirror.preload = 'metadata'; mirror.setAttribute('playsinline','');
                 const source = context.createMediaElementSource(mirror);
                 source.channelCount = 2; source.channelCountMode = 'explicit'; source.connect(splitter);
-                const silent = context.createGain(); silent.gain.value = 0;
-                analysers.forEach(a => a.connect(silent)); silent.connect(context.destination);
                 graph.mirror = mirror; graph.source = source;
-                mirror.addEventListener('loadedmetadata', syncMirror);
-                mirror.addEventListener('playing', syncMirror);
+                for (const event of ['loadedmetadata','canplay','playing','ended']) mirror.addEventListener(event, syncMirror);
             }
         } catch (_) { graph = null; context?.close().catch(() => {}); }
+    }
+    function detachCapture() {
+        if (!graph?.stream) return;
+        graph.stream.removeEventListener('addtrack', bindCapture);
+        graph.stream.removeEventListener('removetrack', bindCapture);
+        graph.capturedTrack?.removeEventListener('ended', bindCapture);
+        graph.source?.disconnect(); graph.source = null; graph.capturedTrack = null;
+        graph.stream.getTracks().forEach(track => track.stop()); graph.stream = null;
+    }
+    function releaseGraph() {
+        if (!graph) return;
+        detachCapture();
+        if (graph.mirror) { graph.mirror.pause(); graph.mirror.removeAttribute('src'); graph.mirror.load(); }
+        graph.source?.disconnect(); graph.context.close().catch(() => {}); graph = null;
+    }
+    function refreshCapture() {
+        if (!graph?.capture) return;
+        if (graph.captureGeneration === generation && graph.stream?.getAudioTracks().some(track => track.readyState === 'live')) { bindCapture(); return; }
+        detachCapture();
+        graph.stream = graph.capture.call(audio); graph.captureGeneration = generation;
+        graph.stream.addEventListener('addtrack', bindCapture);
+        graph.stream.addEventListener('removetrack', bindCapture);
+        bindCapture();
     }
     function bindCapture() {
         if (!graph?.stream) return;
         const capturedTrack = graph.stream.getAudioTracks().find(t => t.readyState === 'live');
         if (capturedTrack === graph.capturedTrack) return;
+        graph.capturedTrack?.removeEventListener('ended', bindCapture);
         graph.source?.disconnect(); graph.source = null; graph.capturedTrack = capturedTrack;
         if (!capturedTrack) return;
+        capturedTrack.addEventListener('ended', bindCapture);
         try {
             const source = graph.context.createMediaStreamSource(new MediaStream([capturedTrack]));
             source.channelCount = 2; source.channelCountMode = 'explicit';
@@ -267,18 +292,29 @@
         } catch (_) { graph.capturedTrack = null; }
     }
     function resumeMeters() {
-        if (document.hidden) return;
-        initGraph();
-        if (graph && graph.context.state !== 'running') graph.context.resume().catch(() => {});
+        if (document.hidden || audio.paused || audio.ended) { stopMeters(); return; }
+        try { initGraph(); } catch (_) { return; }
+        if (graph && graph.context.state !== 'running' && !graph.resuming) {
+            const active = graph;
+            active.resuming = active.context.resume().then(() => { if (graph === active) syncMirror(); }).catch(() => {}).finally(() => { active.resuming = null; });
+        }
         syncMirror();
+        if (!meterTimer) meterTimer = setInterval(resumeMeters, 1500);
+    }
+    function stopMeters(unload = false) {
+        clearInterval(meterTimer); meterTimer = undefined;
+        if (graph?.mirror) {
+            graph.mirror.pause();
+            if (unload) { graph.mirror.removeAttribute('src'); graph.mirror.load(); }
+        }
+        drawMeters(false);
     }
     function syncMirror() {
         const mirror = graph?.mirror; if (!mirror) return;
         if (document.hidden || audio.paused || audio.ended) { mirror.pause(); return; }
-        if (mirror.src !== audio.src) { mirror.src = audio.src; return; }
-        if (!mirror.readyState) return;
+        if (mirror.src !== audio.src) { mirror.src = audio.src; mirror.load(); }
         mirror.playbackRate = audio.playbackRate;
-        if (Math.abs(mirror.currentTime - audio.currentTime) > .2) {
+        if (mirror.readyState && Math.abs(mirror.currentTime - audio.currentTime) > .35) {
             try { mirror.currentTime = audio.currentTime; } catch (_) {}
         }
         if (mirror.paused) mirror.play().catch(() => {});
@@ -289,10 +325,12 @@
     function drawMeters(playing) {
         ['left','right'].forEach((side,i) => {
             let level = 0;
-            if (playing && graph && !audio.muted && audio.volume > 0) {
-                graph.analysers[i].getFloatTimeDomainData(graph.samples);
-                const rms = Math.sqrt(graph.samples.reduce((sum,value) => sum + value * value, 0) / graph.samples.length) * audio.volume;
-                level = Math.max(0, Math.min(15, (20 * Math.log10(Math.max(rms, .00001)) + 45) / 3));
+            if (playing && graph?.context.state === 'running' && !audio.muted && audio.volume > 0) {
+                try {
+                    graph.analysers[i].getFloatTimeDomainData(graph.samples);
+                    const rms = Math.sqrt(graph.samples.reduce((sum,value) => sum + value * value, 0) / graph.samples.length) * audio.volume;
+                    level = Math.max(0, Math.min(15, (20 * Math.log10(Math.max(rms, .00001)) + 45) / 3));
+                } catch (_) {}
             }
             $(`[data-meter="${side}"]`).querySelectorAll('i').forEach((bar, n) => bar.classList.toggle('is-lit', n < level));
         });
@@ -375,6 +413,7 @@
         return mutate(async () => { const result = await api('action', form); if (result.tracks) applyState(result); return result; });
     }
     function openDialog(title, fields, handler, description = '', submit = 'Сохранить', danger = false) {
+        if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
         dialogSubmitting = false;
         dialog.classList.remove('rp-dialog--drive');
         $('[data-dialog-title]').textContent = title;
@@ -390,7 +429,21 @@
     }
     function editTrack(id) {
         const t = track(id); if (!t) return;
-        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + '<label class="rp-field">Обложка · JPG, PNG, WebP<input type="file" name="cover" accept="image/jpeg,image/png,image/webp"></label>', form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
+        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку"><img data-cover-preview src="${esc(t.cover || config.defaultCover)}" alt="Предварительный просмотр обложки"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
+        dialog.querySelector('[name="cover"]').addEventListener('change', event => {
+            const file = event.target.files[0]; if (!file) return;
+            if (file.size > 8 * 1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+                event.target.value = '';
+                if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
+                dialog.querySelector('[data-cover-preview]').src = t.cover || config.defaultCover;
+                dialog.querySelector('[data-cover-filename]').textContent = 'JPG, PNG или WebP · до 8 МБ';
+                toast('Выберите JPG, PNG или WebP размером до 8 МБ.',true); return;
+            }
+            if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+            coverPreviewUrl = URL.createObjectURL(file);
+            dialog.querySelector('[data-cover-preview]').src = coverPreviewUrl;
+            dialog.querySelector('[data-cover-filename]').textContent = file.name;
+        });
     }
     function readDuration(source) {
         return new Promise(resolve => {
@@ -476,8 +529,9 @@
                 }
                 case 'drive': await openDrive(); break;
                 case 'drive-settings': await driveSettings(); break;
+                case 'player-settings': await driveSettings(); break;
                 case 'drive-connect': {
-                    if (!config.drive?.configured) { await driveSettings(true); break; }
+                    if (!config.drive?.configured) { toast('Создатель сайта ещё не настроил подключение Google Drive.',true); break; }
                     control.disabled = true; const result = await action('drive.connect'); location.assign(result.authUrl); break;
                 }
                 case 'drive-disconnect': openDialog('Отключить Google Drive?', '', async () => { await action('drive.disconnect'); config.drive.connected = false; toast('Google Drive отключён.'); }, 'Ленты сохранятся. Чтобы слушать облачные треки, подключите аккаунт снова.', 'Отключить'); break;
@@ -554,11 +608,11 @@
     audio.addEventListener('canplay', () => { if (audio.readyState >= 3) setBuffering(false); });
     audio.addEventListener('progress', drawProgress);
     audio.addEventListener('seeking', () => { if (audio.readyState < 3) setBuffering(true); drawProgress(); });
-    audio.addEventListener('pause', () => { setBuffering(false); graph?.mirror?.pause(); drawMeters(false); save(); });
+    audio.addEventListener('pause', () => { setBuffering(false); stopMeters(); save(); });
     audio.addEventListener('timeupdate', () => { drawProgress(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
     audio.addEventListener('seeked', () => { drawProgress(); syncMirror(); });
     audio.addEventListener('ratechange', syncMirror);
-    audio.addEventListener('ended', () => { setBuffering(false); drawProgress(); drawMeters(false); next(true); });
+    audio.addEventListener('ended', () => { setBuffering(false); stopMeters(); drawProgress(); next(true); });
     audio.addEventListener('error', () => { if (!current) return; setBuffering(false); toast(activeTrack()?.source === 'drive' ? 'Не удалось открыть Google Drive. Проверьте подключение аккаунта и доступ к файлу.' : 'Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); });
     $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== config.defaultCover) event.target.src = config.defaultCover; });
     let dragDepth = 0;
@@ -576,21 +630,27 @@
         }
     });
     if ('mediaSession' in navigator) {
-        const handlers = {play, pause:() => audio.pause(), previoustrack:previous, nexttrack:() => next(), seekto:event => { if (Number.isFinite(audio.duration)) audio.currentTime = Math.max(0,Math.min(audio.duration,event.seekTime)); }, seekbackward:event => { audio.currentTime = Math.max(0,audio.currentTime-(event.seekOffset || 10)); }, seekforward:event => { if (Number.isFinite(audio.duration)) audio.currentTime = Math.min(audio.duration,audio.currentTime+(event.seekOffset || 10)); }};
+        // iOS uses the same lock-screen slots for track skipping and timed
+        // seeking. Disable timed seek actions so this music player shows tracks.
+        const handlers = {
+            seekbackward:null, seekforward:null,
+            play, pause:() => audio.pause(), previoustrack:previous, nexttrack:() => next(),
+            seekto:event => { if (Number.isFinite(audio.duration)) audio.currentTime = Math.max(0,Math.min(audio.duration,event.seekTime)); }
+        };
         for (const [name,handler] of Object.entries(handlers)) { try { navigator.mediaSession.setActionHandler(name,handler); } catch (_) {} }
     }
     window.addEventListener('pagehide', save);
     document.addEventListener('visibilitychange', () => {
         save();
         if (document.hidden) {
-            cancelAnimationFrame(frameId); frameId = 0; frameTime = 0; drawMeters(false);
-            if (graph?.mirror) { graph.mirror.pause(); graph.mirror.removeAttribute('src'); graph.mirror.load(); }
+            cancelAnimationFrame(frameId); frameId = 0; frameTime = 0; stopMeters(true);
         } else {
             drawProgress(); updateButtons();
             if (!audio.paused) { configureAudioSession(); resumeMeters(); startAnimation(); }
         }
     });
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });
+    window.addEventListener('focus', () => { if (!audio.paused) { resumeMeters(); startAnimation(); } });
     if (config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {
         navigator.serviceWorker.register(config.pwa.worker, {scope:'/', updateViaCache:'none'}).catch(() => {});
     }
@@ -642,9 +702,9 @@
                 <ol>
                     <li>Откройте <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console ↗</a> и создайте проект <strong>Tape Room</strong>.</li>
                     <li>В выбранном проекте откройте <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer">Google Drive API ↗</a> и нажмите <strong>Enable / Включить</strong>.</li>
-                    <li>В <strong>Google Auth Platform</strong> укажите название приложения и свою почту. Выберите <strong>External</strong>; в <strong>Audience → Test users</strong> добавьте почту своего Google-аккаунта. В <strong>Data Access</strong> добавьте разрешение <strong>drive.readonly</strong> для чтения файлов.</li>
+                    <li>В <strong>Google Auth Platform</strong> укажите название приложения и свою почту. Выберите <strong>External</strong>; в <strong>Audience → Test users</strong> добавьте почты Google-аккаунтов, которые будут пользоваться плеером, включая администраторов. В <strong>Data Access</strong> добавьте разрешение <strong>drive.readonly</strong> для чтения файлов.</li>
                     <li>В <strong>Clients → Create client</strong> выберите <strong>Web application</strong>. В <strong>Authorized redirect URIs</strong> вставьте адрес, показанный выше.</li>
-                    <li>Вставьте полученные <strong>Client ID</strong> и <strong>Client Secret</strong> в поля этой формы. Нажмите <strong>Сохранить</strong>, затем <strong>Войти через Google</strong>, либо сразу <strong>Сохранить и войти</strong>.</li>
+                    <li>Вставьте полученные <strong>Client ID</strong> и <strong>Client Secret</strong> в поля этой формы и нажмите <strong>Сохранить</strong>. Это общая настройка сайта. В плеере каждый пользователь нажимает <strong>Войти в Google Drive</strong> и выбирает свой аккаунт.</li>
                     <li>Выберите аккаунт и разрешите чтение Drive. Затем отметьте песни в списке или вставьте ссылку на папку и нажмите <strong>Добавить</strong>.</li>
                 </ol>
                 <p>В режиме Testing Google выдаёт доступ на 7 дней, затем нужно подключиться снова. Для постоянного использования настройте публикацию приложения в Google Auth Platform.</p>
@@ -652,23 +712,23 @@
             </details>
         </div>`;
     }
-    async function driveSettings(connectAfter = false) {
+    async function driveSettings() {
         const status = await api('drive/status'); config.drive = status.drive;
-        openDialog('Разовая настройка Google', field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label>' + driveSetupHelp(status.drive.callback), async form => {
+        if (!status.drive.canManage) { toast('Настройки доступны только создателю сайта.',true); return; }
+        openDialog('Настройки плеера', '<div class="rp-settings-section"><h3>Google Drive</h3><p>Подключение для всего сайта. Каждый администратор входит в собственный Google-аккаунт.</p></div>' + field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label>' + driveSetupHelp(status.drive.callback), async form => {
             const result = await action('drive.settings',{client_id:form.get('client_id'),client_secret:form.get('client_secret')}); config.drive = result.drive;
-            if (connectAfter) { const connection = await action('drive.connect'); location.assign(connection.authUrl); }
-            else toast('Настройки сохранены. Теперь можно войти через Google.');
-        }, 'Google просит зарегистрировать приложение один раз. Дальше вы будете входить обычной кнопкой через свой аккаунт.', connectAfter ? 'Сохранить и войти' : 'Сохранить');
+            toast('Настройки сайта сохранены. Теперь можно войти в Google Drive.');
+        }, 'Эти настройки доступны только создателю сайта и сохраняются один раз для всех пользователей.');
     }
     async function openDrive() {
         const status = await api('drive/status'); config.drive = status.drive;
         if (!status.drive.connected) {
-            openDialog('Музыка из Google Drive', '<button type="button" class="rp-button rp-google-button" data-action="drive-connect"><span class="rp-google-mark" aria-hidden="true">G</span>Войти через Google</button>' + (!status.drive.configured ? '<p>Для первого входа потребуется разовая настройка подключения этого сайта к Google.</p>' : '') + '<button type="button" class="rp-drive-settings-link" data-action="drive-settings">Настройки подключения</button>', async () => {}, 'Выберите свой Google-аккаунт и разрешите чтение Drive. Затем добавьте любимую музыку прямо из облака.');
+            openDialog('Музыка из Google Drive', '<button type="button" class="rp-button rp-google-button" data-action="drive-connect"' + (!status.drive.configured ? ' disabled' : '') + '><span class="rp-google-mark" aria-hidden="true">G</span>Войти в Google Drive</button>' + (!status.drive.configured ? '<p>' + (status.drive.canManage ? 'Откройте шестерёнку «Настройки плеера» и настройте подключение Google для сайта.' : 'Создатель сайта ещё не настроил подключение Google Drive.') + '</p>' : ''), async () => {}, 'Ваша музыка доступна только вашему аккаунту в плеере. Выберите свой Google-аккаунт и разрешите чтение Drive.');
             $('[data-dialog-submit]').hidden = true;
             return;
         }
         driveSelection = new Set(); drivePath = [{id:'root',name:'Мой Drive'}];
-        openDialog('Добавить музыку из Drive', '<div class="rp-drive-location"><nav class="rp-drive-path" data-drive-path aria-label="Папки Google Drive"></nav><button type="button" class="rp-drive-settings-link" data-action="drive-all">Вся музыка</button></div><div class="rp-drive-heading"><span>Папки и музыка</span><small data-drive-count>Загрузка…</small></div><button type="button" class="rp-button rp-drive-add-folder" data-action="drive-add-folder" hidden>Добавить эту папку целиком</button><div class="rp-drive-selection"><span data-drive-selected>Выбрано: 0</span><div class="rp-drive-selection-buttons"><button type="button" class="rp-drive-settings-link" data-action="drive-clear" hidden>Сбросить</button><button type="button" class="rp-button" data-action="drive-select-all" disabled>Выбрать показанные</button></div></div><div class="rp-drive-files" data-drive-files aria-live="polite">Загружаем папки и музыку…</div><label class="rp-field rp-drive-link-field">Или вставьте ссылку на песню / папку<input name="link" type="url" placeholder="https://drive.google.com/…" inputmode="url" autocomplete="off"><small>Ссылка на папку добавит все поддерживаемые песни из самой папки.</small></label><div class="rp-drive-account-actions"><button type="button" class="rp-drive-settings-link" data-action="drive-settings">Настройки подключения</button><button type="button" class="rp-drive-settings-link" data-action="drive-disconnect">Отключить аккаунт</button></div>', async form => {
+        openDialog('Добавить музыку из Drive', '<div class="rp-drive-location"><nav class="rp-drive-path" data-drive-path aria-label="Папки Google Drive"></nav><button type="button" class="rp-drive-settings-link" data-action="drive-all">Вся музыка</button></div><div class="rp-drive-heading"><span>Папки и музыка</span><small data-drive-count>Загрузка…</small></div><button type="button" class="rp-button rp-drive-add-folder" data-action="drive-add-folder" hidden>Добавить эту папку целиком</button><div class="rp-drive-selection"><span data-drive-selected>Выбрано: 0</span><div class="rp-drive-selection-buttons"><button type="button" class="rp-drive-settings-link" data-action="drive-clear" hidden>Сбросить</button><button type="button" class="rp-button" data-action="drive-select-all" disabled>Выбрать показанные</button></div></div><div class="rp-drive-files" data-drive-files aria-live="polite">Загружаем папки и музыку…</div><label class="rp-field rp-drive-link-field">Или вставьте ссылку на песню / папку<input name="link" type="url" placeholder="https://drive.google.com/…" inputmode="url" autocomplete="off"><small>Ссылка на папку добавит все поддерживаемые песни из самой папки.</small></label><div class="rp-drive-account-actions"><button type="button" class="rp-drive-settings-link" data-action="drive-disconnect">Отключить аккаунт</button></div>', async form => {
             if (!driveSelection.size && !form.get('link').trim()) throw new Error('Выберите хотя бы один трек или вставьте ссылку.');
             const result = await action('drive.import',{ids:[...driveSelection],link:form.get('link'),playlist_id:selected > 0 ? selected : 0});
             if (selected === -1) { selected = 0; render(); save(); }
@@ -727,7 +787,7 @@
         if (result.nextPageToken) { const next = element('button','rp-button rp-drive-more','Показать ещё'); next.type = 'button'; next.dataset.action = 'drive-more'; next.dataset.page = result.nextPageToken; list.append(next); }
         updateDriveSelection();
     }
-    dialog.addEventListener('close', () => { $('[data-dialog-submit]').hidden = false; });
+    dialog.addEventListener('close', () => { $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
     audio.muted = Boolean(saved.muted); $('[data-volume]').value = audio.volume; rangeFill($('[data-volume]'),audio.volume);
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;

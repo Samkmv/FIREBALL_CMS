@@ -10,9 +10,13 @@ require dirname(__DIR__) . '/Plugin.php';
 function htmlSC(mixed $value): string { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
 function base_href(string $path): string { return $path; }
 function base_url(string $path): string { return 'http://127.0.0.1:8897' . $path; }
-function get_user(): array { return ['id'=>1,'role'=>'creator']; }
+function get_user(): array { $admin = getenv('REEL_PLAYER_ROLE_PREVIEW') === 'admin'; return ['id'=>$admin ? 2 : 1,'role'=>$admin ? 'admin' : 'creator']; }
+function check_creator(): bool { return get_user()['role'] === 'creator'; }
 function session(): object { static $session; return $session ??= new class {
-    public function get(string $key,mixed $default=null): mixed { return $key==='needCSRFToken' ? 'reel-browser-fixture' : $default; }
+    private array $values = [];
+    public function get(string $key,mixed $default=null): mixed { return $key==='needCSRFToken' ? 'reel-browser-fixture' : ($this->values[$key] ?? $default); }
+    public function set(string $key,mixed $value): void { $this->values[$key] = $value; }
+    public function remove(string $key): void { unset($this->values[$key]); }
     public function close(): void {}
 }; }
 function abort(string $message='',int $status=404): never { http_response_code($status); exit($message); }
@@ -49,12 +53,21 @@ if (str_starts_with($path,'/assets/')) {
 }
 if (preg_match('~^/plugins/reel-player/assets/(player\.(css|js)|cover\.svg)$~',$path,$match)) {
     header('Content-Type:'.match(pathinfo($match[1],PATHINFO_EXTENSION)) {'css'=>'text/css','js'=>'application/javascript',default=>'image/svg+xml'});
+    if ($match[1] === 'player.js' && getenv('REEL_PLAYER_METERS_PREVIEW') === '1') {
+        $source = file_get_contents(dirname(__DIR__).'/assets/player.js');
+        if (getenv('REEL_PLAYER_MIRROR_PREVIEW') === '1') $source = str_replace('const capture = audio.captureStream || audio.mozCaptureStream;', 'const capture = null;', $source);
+        $source = str_replace('if (mirror.paused) mirror.play().catch(() => {});', 'if (mirror.paused) mirror.play().catch(error => { graph.mirrorError = error.name; });', $source);
+        $diagnostic = <<<'JS'
+    setInterval(() => { app.dataset.meterDiagnostics = JSON.stringify({context:graph?.context.state, nativeTime:audio.currentTime, mirrorTime:graph?.mirror?.currentTime, mirrorPaused:graph?.mirror?.paused, mirrorEnded:graph?.mirror?.ended, mirrorReady:graph?.mirror?.readyState, mirrorError:graph?.mirrorError, mirrorSrc:graph?.mirror?.currentSrc, captureTrack:graph?.capturedTrack?.readyState}); }, 500);
+JS;
+        echo preg_replace('/\}\)\(\);\s*$/', $diagnostic . "\n})();", $source); exit;
+    }
     readfile(dirname(__DIR__).'/assets/'.$match[1]); exit;
 }
 if ($_SERVER['REQUEST_METHOD']==='POST' && ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '') !== 'reel-browser-fixture') { response()->json(['status'=>false,'message'=>'Invalid CSRF'],419); }
 // Opt-in UI fixture for the Drive picker; never reads or changes a Google account.
 if (getenv('REEL_PLAYER_DRIVE_PREVIEW') === '1') {
-    if ($path === '/admin/reel-player/api/drive/status') response()->json(['status'=>true,'drive'=>['configured'=>true,'connected'=>true,'clientId'=>'','callback'=>base_url('/admin/reel-player/drive/callback')]]);
+    if ($path === '/admin/reel-player/api/drive/status') response()->json(['status'=>true,'drive'=>['configured'=>true,'connected'=>true,'canManage'=>check_creator(),'clientId'=>'','callback'=>base_url('/admin/reel-player/drive/callback')]]);
     if ($path === '/admin/reel-player/api/drive/files') {
         $files = match ($_GET['page'] ?? '') {
             'audio-page' => [
