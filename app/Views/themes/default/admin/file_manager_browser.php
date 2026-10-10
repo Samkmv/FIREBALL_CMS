@@ -139,7 +139,7 @@ $renderFileActions = static function (array $item, bool $isDirectory, string $do
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
-                <button class="dropdown-item text-danger d-inline-flex align-items-center gap-2<?= empty($item['can_delete']) ? ' disabled' : '' ?>" type="button" data-file-manager-row-action="delete" <?= empty($item['can_delete']) ? 'disabled aria-disabled="true"' : '' ?> title="<?= htmlSC((string)($item['protection_reason'] ?? '')) ?>">
+                <button class="dropdown-item d-inline-flex align-items-center gap-2<?= empty($item['can_delete']) ? ' disabled' : ' text-danger' ?>" type="button" data-file-manager-row-action="delete" <?= empty($item['can_delete']) ? 'disabled aria-disabled="true"' : '' ?> title="<?= htmlSC((string)($item['protection_reason'] ?? '')) ?>">
                     <i class="ci-trash"></i><?= print_translation('admin_files_delete_selected') ?>
                 </button>
             </li>

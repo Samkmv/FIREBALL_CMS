@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Материалы и публикации</title><desc id="desc">Демонстрационная иллюстрация редактора с текстом, изображением и блоками.</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#1a203a"/><stop offset="1" stop-color="#0d1423"/></linearGradient><linearGradient id="art" x2="1" y2="1"><stop stop-color="#8b79ff"/><stop offset="1" stop-color="#4f7cff"/></linearGradient></defs>
+  <rect width="1200" height="900" fill="url(#bg)"/><circle cx="120" cy="820" r="360" fill="#7c5cff" opacity=".1"/>
+  <rect x="255" y="105" width="690" height="690" rx="32" fill="#edf1f9"/><rect x="292" y="143" width="616" height="220" rx="20" fill="url(#art)"/>
+  <circle cx="764" cy="213" r="34" fill="#dce4ff" opacity=".8"/><path d="M292 334l175-115 138 99 106-66 197 111H292Z" fill="#202e58" opacity=".55"/>
+  <rect x="310" y="400" width="394" height="25" rx="10" fill="#202c47"/>
+  <g fill="#98a8bf"><rect x="310" y="451" width="580" height="12" rx="6"/><rect x="310" y="480" width="541" height="12" rx="6"/><rect x="310" y="509" width="566" height="12" rx="6"/><rect x="310" y="538" width="337" height="12" rx="6"/></g>
+  <g fill="#dce3ee"><rect x="310" y="592" width="178" height="130" rx="18"/><rect x="511" y="592" width="178" height="130" rx="18"/><rect x="712" y="592" width="178" height="130" rx="18"/></g>
+  <g fill="#7c5cff"><rect x="337" y="618" width="67" height="12" rx="6"/><rect x="538" y="618" width="67" height="12" rx="6"/><rect x="739" y="618" width="67" height="12" rx="6"/></g>
+  <g stroke="#a0b0c7" stroke-width="9" stroke-linecap="round"><path d="M342 660h112m-112 23h90M543 660h112m-112 23h90M744 660h112m-112 23h90"/></g>
+  <rect x="120" y="245" width="202" height="127" rx="22" fill="#273757" stroke="#4e5e87" stroke-width="2"/><path d="M157 292h126m-126 30h85" stroke="#c9d2eb" stroke-width="10" stroke-linecap="round"/>
+  <rect x="882" y="558" width="198" height="146" rx="22" fill="#263651" stroke="#4e5e87" stroke-width="2"/><path d="M929 629l30 30 61-64" stroke="#41d6a4" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

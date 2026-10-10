@@ -20,10 +20,17 @@ final class SqlFileRunner
         }
     }
 
-    public function executeDatabase(string $sql): void
+    public function executeDatabase(string $sql, array $params = []): void
     {
         foreach ($this->split($sql) as $statement) {
-            db()->query($statement);
+            $bindings = [];
+            foreach ($params as $key => $value) {
+                $name = ltrim((string)$key, ':');
+                if (str_contains($statement, ':' . $name)) {
+                    $bindings[$name] = $value;
+                }
+            }
+            db()->query($statement, $bindings);
         }
     }
 

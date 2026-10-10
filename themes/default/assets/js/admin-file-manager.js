@@ -425,18 +425,57 @@ $(function () {
         deleteSelectedCount.text(String(selectedCount));
         actionToggle.prop('disabled', selectedCount === 0);
         deleteSelectedButton
-            .prop('disabled', selectedCount === 0)
+            .prop('disabled', selectedCount === 0 || hasProtectedDeleteRows(selectedRows()))
             .toggleClass('d-none', selectedCount === 0)
             .toggleClass('d-inline-flex', selectedCount > 0);
         toggleAll
             .prop('checked', visibleRows.length > 0 && selectedCount === visibleRows.length)
             .prop('indeterminate', selectedCount > 0 && selectedCount < visibleRows.length);
+        refreshActionAvailability(selectedRows());
+    }
+
+    function refreshActionAvailability(rows) {
+        const single = rows.length === 1;
+        const row = rows.first();
+        const messages = currentMessages();
+        const availability = {
+            open: single && !!row.data('openUrl'),
+            download: single && String(row.data('type') || '') !== 'directory'
+                && !!(row.data('downloadUrl') || row.data('openUrl')),
+            rename: single && String(row.data('canRename') ?? '1') === '1',
+            copy: rows.length > 0 && !hasProtectedTransferRows(rows),
+            move: rows.length > 0 && !hasProtectedTransferRows(rows),
+            delete: rows.length > 0 && !hasProtectedDeleteRows(rows)
+        };
+        const reasons = {
+            open: messages.openSingle,
+            download: single && String(row.data('type') || '') !== 'directory'
+                ? messages.downloadUnavailable : messages.downloadSingle,
+            rename: single ? protectionMessage(rows, messages.renameProtected) : messages.renameSingle,
+            copy: protectionMessage(rows, messages.transferProtected),
+            move: protectionMessage(rows, messages.transferProtected),
+            delete: protectionMessage(rows, messages.deleteProtected)
+        };
+
+        page.find('[data-file-manager-action]').each(function () {
+            const button = $(this);
+            const action = String(button.data('fileManagerAction') || '');
+            const enabled = availability[action] === true;
+            button.toggleClass('disabled', !enabled)
+                .prop('disabled', !enabled)
+                .attr('aria-disabled', enabled ? 'false' : 'true')
+                .attr('title', enabled ? '' : (rows.length ? reasons[action] : messages.selectionRequired));
+            if (action === 'delete') {
+                button.toggleClass('text-danger', enabled);
+            }
+        });
     }
 
     function currentMessages() {
         return {
             selectionRequired: String(page.data('fmSelectionRequired') || 'Select at least one item.'),
             renameSingle: String(page.data('fmRenameSingle') || 'Select one item to rename.'),
+            renameProtected: String(page.data('fmRenameProtected') || 'This item cannot be renamed through the file manager.'),
             openSingle: String(page.data('fmOpenSingle') || 'Select one item to open.'),
             downloadSingle: String(page.data('fmDownloadSingle') || 'Select one file to download.'),
             downloadUnavailable: String(page.data('fmDownloadUnavailable') || 'This file cannot be downloaded.'),
@@ -919,7 +958,11 @@ $(function () {
     });
 
     page.on('click', '[data-file-manager-action]', function () {
-        const action = String($(this).data('fileManagerAction') || '');
+        const button = $(this);
+        if (button.hasClass('disabled') || button.prop('disabled') || button.attr('aria-disabled') === 'true') {
+            return;
+        }
+        const action = String(button.data('fileManagerAction') || '');
         const rows = selectedRows();
         const messages = currentMessages();
 

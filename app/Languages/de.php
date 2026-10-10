@@ -395,7 +395,7 @@ return [
     'admin_maintenance_action_full_reset' => 'Vollstaendiger CMS-Reset',
     'admin_maintenance_action_full_reset_desc' => 'Erstellt ein Backup und leert das CMS. Nur das aktuelle Creator-Konto und die Creator-Rolle bleiben erhalten; Demo-Inhalte, andere Benutzer und zusaetzliche Rollen werden entfernt. Installierte Plugins bleiben erhalten.',
     'admin_maintenance_action_demo_reset' => 'CMS-Demo-Reset',
-    'admin_maintenance_action_demo_reset_desc' => 'Erstellt ein Backup und eine saubere Demo: Das aktuelle Creator-Konto bleibt erhalten, die Rollen Creator, Admin und Moderator sowie eine Demo-Kategorie und ein Demo-Beitrag werden erstellt. Die User-Rolle und alle weiteren Inhalte werden entfernt.',
+    'admin_maintenance_action_demo_reset_desc' => 'Erstellt ein Backup und eine neue Demo: Das aktuelle Creator-Konto bleibt erhalten. Erstellt die Rollen Creator, Admin und Moderator, 3 Kategorien, 8 Beiträge (davon 1 Entwurf) und 4 Seiten mit Galerie, Tabelle, FAQ und Checkliste. Andere Benutzer und Inhalte werden entfernt; installierte Plugins bleiben erhalten.',
     'admin_stat_posts' => 'Beitraege',
     'admin_stat_pages' => 'Seiten',
     'admin_stat_contacts' => 'Anfragen',

@@ -396,7 +396,7 @@ return [
     'admin_maintenance_action_full_reset' => 'Полный сброс CMS',
     'admin_maintenance_action_full_reset_desc' => 'Создаёт backup и очищает CMS. Остаются только текущий аккаунт Creator и роль Creator — без демо-контента, других пользователей и лишних ролей. Установленные плагины сохраняются.',
     'admin_maintenance_action_demo_reset' => 'Демо-сброс CMS',
-    'admin_maintenance_action_demo_reset_desc' => 'Создаёт backup и чистую демо-версию: сохраняет текущий аккаунт Creator, создаёт роли Creator, Admin и Moderator, одну демо-категорию и одну демо-запись. Роль User и прочий контент удаляются.',
+    'admin_maintenance_action_demo_reset_desc' => 'Создаёт backup и новую демо-версию: сохраняет текущий аккаунт Creator, создаёт роли Creator, Admin и Moderator, 3 категории, 8 записей (включая 1 черновик) и 4 страницы. Добавляет примеры галереи, таблицы, FAQ и чек-листа. Остальные пользователи и контент удаляются; плагины сохраняются.',
     'admin_stat_posts' => 'Записи',
     'admin_stat_pages' => 'Страницы',
     'admin_stat_contacts' => 'Заявки',

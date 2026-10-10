@@ -450,6 +450,13 @@
             overflow-y: auto;
         }
 
+        [data-file-manager-page] .dropdown-item:is(.disabled, :disabled),
+        .fm-row-menu-floating .dropdown-item:is(.disabled, :disabled) {
+            color: var(--cz-dropdown-link-disabled-color, var(--fb-color-text-secondary));
+            background-color: transparent;
+            pointer-events: none;
+        }
+
         [data-file-manager-actions-menu] > .btn {
             width: 2.25rem;
             height: 2.25rem;

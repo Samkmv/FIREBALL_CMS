@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Рабочее пространство</title><desc id="desc">Демонстрационная иллюстрация панели управления с карточками и графиком.</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#172334"/><stop offset="1" stop-color="#0c121d"/></linearGradient><linearGradient id="accent" x2="1" y2="1"><stop stop-color="#ff8a65"/><stop offset="1" stop-color="#ff5a3c"/></linearGradient></defs>
+  <rect width="1200" height="900" fill="url(#bg)"/><circle cx="1110" cy="90" r="330" fill="#ff5a3c" opacity=".08"/>
+  <rect x="100" y="145" width="1000" height="610" rx="32" fill="#202e40" stroke="#405068" stroke-width="2"/>
+  <path d="M100 205h1000" stroke="#405068" stroke-width="2"/><g fill="#75879f"><circle cx="138" cy="175" r="7"/><circle cx="162" cy="175" r="7"/><circle cx="186" cy="175" r="7"/></g>
+  <rect x="132" y="239" width="176" height="482" rx="18" fill="#152032"/><rect x="154" y="268" width="126" height="14" rx="7" fill="#e5ecf7"/>
+  <rect x="150" y="321" width="136" height="42" rx="12" fill="#ff5a3c" opacity=".22"/><g fill="#637b96"><rect x="164" y="385" width="106" height="12" rx="6"/><rect x="164" y="432" width="86" height="12" rx="6"/><rect x="164" y="479" width="116" height="12" rx="6"/></g>
+  <g fill="#2d3c52"><rect x="342" y="239" width="226" height="125" rx="20"/><rect x="588" y="239" width="226" height="125" rx="20"/><rect x="834" y="239" width="232" height="125" rx="20"/></g>
+  <g fill="#a6b5cc"><rect x="370" y="274" width="110" height="12" rx="6"/><rect x="616" y="274" width="110" height="12" rx="6"/><rect x="862" y="274" width="110" height="12" rx="6"/></g>
+  <g fill="#edf3fc"><rect x="370" y="307" width="74" height="22" rx="7"/><rect x="616" y="307" width="84" height="22" rx="7"/><rect x="862" y="307" width="70" height="22" rx="7"/></g>
+  <rect x="342" y="390" width="724" height="331" rx="20" fill="#152032"/><g stroke="#2d3c52" stroke-width="2"><path d="M382 630h644M382 570h644M382 510h644M382 450h644"/></g>
+  <path d="M382 625c70-10 78-78 146-66s90 41 154-12 90 28 155-33 108 0 189-72v227H382Z" fill="#ff5a3c" opacity=".13"/>
+  <path d="M382 625c70-10 78-78 146-66s90 41 154-12 90 28 155-33 108 0 189-72" fill="none" stroke="url(#accent)" stroke-width="7" stroke-linecap="round"/>
+</svg>

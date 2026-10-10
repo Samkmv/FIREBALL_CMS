@@ -206,6 +206,10 @@ final class DatabaseMaintenanceService
     private function resetCms(array $actor, bool $withDemoContent): array
     {
         $now = date('Y-m-d H:i:s');
+        if ($withDemoContent && (!is_readable(ROOT . '/database/demo.sql')
+            || trim((string)file_get_contents(ROOT . '/database/demo.sql')) === '')) {
+            throw new \RuntimeException('Demo content SQL file is unavailable.');
+        }
         $this->ensureCoreSchemas();
         $creatorId = (int)($actor['id'] ?? 0);
         $creator = $creatorId > 0
@@ -251,7 +255,7 @@ final class DatabaseMaintenanceService
             : ['creator'];
         $roleProfile = $withDemoContent ? 'demo' : 'creator_only';
         $description = $withDemoContent
-            ? 'Minimal FIREBALL CMS demo installation.'
+            ? 'Демонстрационный сайт FIREBALL CMS: публикации, страницы, галерея и примеры работы с контентом.'
             : 'Clean FIREBALL CMS installation after reset.';
 
         $this->upsertDefaultSettings('FIREBALL CMS', $description, $now, $roleProfile);
@@ -260,16 +264,19 @@ final class DatabaseMaintenanceService
 
         $demoContent = null;
         if ($withDemoContent) {
-            $demoContent = $this->createMinimalDemoContent($creator, $now);
+            $demoContent = $this->createDemoContent($creator, $now);
         }
 
         PostImageService::clearGeneratedCache();
         Post::clearPublicCache();
         Page::clearPublicCache();
+        if ($withDemoContent) {
+            SearchMaintenance::rebuild();
+        }
 
         return [
             'message' => $withDemoContent
-                ? 'Demo reset completed. Minimal demo content and administrative roles were created.'
+                ? 'Demo reset completed. Three categories, eight posts (including one draft), four pages, and administrative roles were created.'
                 : 'Full CMS reset completed. Only the current Creator account and role were preserved.',
             'mode' => $withDemoContent ? 'demo' : 'full',
             'account' => [
@@ -283,62 +290,32 @@ final class DatabaseMaintenanceService
         ];
     }
 
-    private function createMinimalDemoContent(array $creator, string $now): array
+    private function createDemoContent(array $creator, string $now): array
     {
-        db()->query(
-            'INSERT INTO post_categories
-                (name, name_ru, name_en, slug, seo_title, seo_description, seo_keywords, seo_image, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                'Демо',
-                'Демо',
-                'Demo',
-                'demo',
-                'Демо FIREBALL CMS',
-                'Минимальная демонстрационная категория FIREBALL CMS.',
-                'fireball cms, demo',
-                '',
-                $now,
-            ]
-        );
-        $categoryId = (int)db()->getInsertId();
+        $sql = @file_get_contents(ROOT . '/database/demo.sql');
+        if (!is_string($sql) || trim($sql) === '') {
+            throw new \RuntimeException('Demo content SQL file is unavailable.');
+        }
+        // Installation and demo reset share the same dataset and preserve the real Creator ID.
+        (new SqlFileRunner())->executeDatabase($sql, [
+            'now' => $now,
+            'creator_id' => (int)$creator['id'],
+            'base_path' => rtrim((string)parse_url(PATH, PHP_URL_PATH), '/'),
+        ]);
 
-        $title = 'Добро пожаловать в FIREBALL CMS';
-        $excerpt = 'Минимальная демонстрационная запись для проверки сайта после сброса.';
-        db()->query(
-            'INSERT INTO posts
-                (title, slug, category, category_id, excerpt, content, image,
-                 seo_title, seo_description, seo_keywords, seo_image,
-                 hide_placeholder_image, show_on_home, priority,
-                 author_id, author_name, author_role, views_count, published_at, is_published)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                $title,
-                'welcome-to-fireball-cms',
-                'Демо',
-                $categoryId,
-                $excerpt,
-                '<p>Это минимальный демо-контент FIREBALL CMS. Отредактируйте или удалите запись перед запуском сайта.</p>',
-                '',
-                $title,
-                $excerpt,
-                'fireball cms, demo, welcome',
-                '',
-                0,
-                1,
-                10,
-                (int)$creator['id'],
-                trim((string)($creator['name'] ?? 'Creator')) ?: 'Creator',
-                'creator',
-                0,
-                $now,
-                1,
-            ]
-        );
+        $categories = db()->query("SELECT id, slug FROM post_categories WHERE slug IN ('demo', 'guides', 'ideas') ORDER BY id")->get() ?: [];
+        $posts = db()->query('SELECT id, slug FROM posts ORDER BY id')->get() ?: [];
+        $pages = db()->query('SELECT id, slug FROM pages ORDER BY id')->get() ?: [];
 
         return [
-            'category_id' => $categoryId,
-            'post_id' => (int)db()->getInsertId(),
+            'category_id' => (int)($categories[0]['id'] ?? 0),
+            'post_id' => (int)($posts[0]['id'] ?? 0),
+            'category_ids' => array_map(static fn(array $row): int => (int)$row['id'], $categories),
+            'post_ids' => array_map(static fn(array $row): int => (int)$row['id'], $posts),
+            'page_ids' => array_map(static fn(array $row): int => (int)$row['id'], $pages),
+            'categories_count' => count($categories),
+            'posts_count' => count($posts),
+            'pages_count' => count($pages),
         ];
     }
 

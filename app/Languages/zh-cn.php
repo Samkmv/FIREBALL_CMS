@@ -395,7 +395,7 @@ return [
     'admin_maintenance_action_full_reset' => '完整 CMS 重置',
     'admin_maintenance_action_full_reset_desc' => '创建备份并清空 CMS。仅保留当前 Creator 账户和 Creator 角色；演示内容、其他用户和多余角色都会删除。已安装插件会保留。',
     'admin_maintenance_action_demo_reset' => 'CMS 演示重置',
-    'admin_maintenance_action_demo_reset_desc' => '创建备份和干净的演示版本：保留当前 Creator 账户，创建 Creator、Admin、Moderator 三个角色、一项演示分类和一篇演示文章。User 角色及其他内容都会删除。',
+    'admin_maintenance_action_demo_reset_desc' => '创建备份和新的演示版本：保留当前 Creator 账户，创建 Creator、Admin、Moderator 角色、3 个分类、8 篇文章（含 1 篇草稿）和 4 个页面，提供图库、表格、FAQ 和清单示例。删除其他用户和内容；保留已安装的插件。',
     'admin_stat_posts' => '文章',
     'admin_stat_pages' => '页面',
     'admin_stat_contacts' => '请求',

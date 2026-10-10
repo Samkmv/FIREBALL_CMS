@@ -126,10 +126,14 @@ final class InstallService
             $pdo->beginTransaction();
             $this->runSqlFile($pdo, ROOT . '/database/seed.sql', ['now' => $now]);
             $this->insertSiteSettings($pdo, $site, $locale, $now);
-            $this->insertCreator($pdo, $admin, $now);
+            $creatorId = $this->insertCreator($pdo, $admin, $now);
 
             if ($demo) {
-                $this->runSqlFile($pdo, ROOT . '/database/demo.sql', ['now' => $now]);
+                $this->runSqlFile($pdo, ROOT . '/database/demo.sql', [
+                    'now' => $now,
+                    'creator_id' => $creatorId,
+                    'base_path' => rtrim((string)parse_url((string)($site['url'] ?? ''), PHP_URL_PATH), '/'),
+                ]);
             }
 
             if (!@rename($temporaryConfig, $finalConfig)) {
@@ -304,7 +308,7 @@ final class InstallService
         }
     }
 
-    private function insertCreator(PDO $pdo, array $admin, string $now): void
+    private function insertCreator(PDO $pdo, array $admin, string $now): int
     {
         $stmt = $pdo->prepare(
             'INSERT INTO users (name, login, email, password, avatar, role, last_seen_at, created_at)
@@ -321,6 +325,14 @@ final class InstallService
             null,
             $now,
         ]);
+
+        $lookup = $pdo->prepare('SELECT id FROM users WHERE login = ? AND role = ? LIMIT 1');
+        $lookup->execute([make_slug((string)($admin['login'] ?? 'creator'), 'creator'), 'creator']);
+        $creatorId = (int)$lookup->fetchColumn();
+        if ($creatorId <= 0) {
+            throw new \RuntimeException('Installation Creator account was not found.');
+        }
+        return $creatorId;
     }
 
     private function writeTemporaryLocalConfig(string $path, array $db, array $site, string $locale): void
