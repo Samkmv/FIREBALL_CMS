@@ -16,16 +16,11 @@ $categoryUrl = static function (?string $category = null): string {
 };
 
 $posts = array_values($posts ?? []);
-$allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($category['total'] ?? 0), $categories ?? []));
-if ($allPostsTotal <= 0) {
-    $allPostsTotal = (int)$total_posts;
-}
 
 $paginationMarkup = !empty($pagination)
         ? str_replace('class="pagination"', 'class="pagination justify-content-center"', $pagination)
         : '';
 
-$socialLinks = site_social_links();
 $buildExcerpt = static function (array $post, int $limit = 170): string {
     $excerpt = trim((string)($post['excerpt'] ?? ''));
     if ($excerpt === '') {
@@ -130,61 +125,14 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl, $re
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#blogSidebar" aria-label="Close"></button>
                 </div>
                 <div class="offcanvas-body d-block pt-2 py-lg-0">
-                    <h4 class="h6 mb-4"><?= htmlSC($postsTranslate('index_sidebar_categories')) ?></h4>
-                    <div class="d-flex flex-wrap gap-3">
-                        <a class="btn <?= empty($current_category) ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl() ?>">
-                            <?= htmlSC($postsTranslate('index_all_categories')) ?> (<?= (int)$allPostsTotal ?>)
-                        </a>
-                        <?php foreach ($categories as $category): ?>
-                            <a class="btn <?= ($current_category ?? '') === $category['slug'] ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl($category['slug']) ?>">
-                                <?= htmlSC($category['label'] ?? $category['name']) ?> (<?= (int)($category['total'] ?? 0) ?>)
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <?php if (!empty($trending_posts)): ?>
-                        <h4 class="h6 pt-5 mb-0"><?= htmlSC($postsTranslate('index_sidebar_trending')) ?></h4>
-
-                        <?php foreach ($trending_posts as $index => $post): ?>
-                            <article class="hover-effect-scale position-relative d-flex align-items-center <?= $index < count($trending_posts) - 1 ? 'border-bottom ' : '' ?>py-4">
-                                <div class="w-100 pe-3">
-                                    <h3 class="h6 lh-base fs-sm mb-1">
-                                        <a class="hover-effect-underline stretched-link" href="<?= $postUrl($post) ?>">
-                                            <?php if (isset($post['subscription_access']) && empty($post['subscription_access']['allowed'])): ?><i class="ci-lock me-1" aria-hidden="true"></i><?php endif; ?>
-                                            <?= htmlSC($post['title']) ?>
-                                        </a>
-                                    </h3>
-                                    <div class="text-body-tertiary fs-xs">
-                                        <?= date('d.m.Y', strtotime($post['published_at'])) ?>
-                                        <span class="mx-1">•</span>
-                                        <?= htmlSC($postsTranslate('show_views')) ?> <?= (int)$post['views_count'] ?>
-                                    </div>
-                                </div>
-                                <div class="ratio w-100" style="max-width: 86px; --cz-aspect-ratio: calc(64 / 86 * 100%)">
-                                    <img src="<?= htmlSC($post['image_mobile'] ?? get_image($post['image'])) ?>" srcset="<?= htmlSC($post['image_srcset'] ?? '') ?>" sizes="86px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-2" width="86" height="64" alt="<?= htmlSC($post['title']) ?>" loading="lazy" decoding="async" style="object-fit: cover;">
-                                </div>
-                            </article>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-
-                    <?php if (!empty($socialLinks)): ?>
-                        <h4 class="h6 pt-4"><?= htmlSC($postsTranslate('index_follow')) ?></h4>
-                        <div class="d-flex gap-2 pb-2">
-                            <?php foreach ($socialLinks as $link): ?>
-                                <a
-                                    class="btn btn-icon fs-base btn-outline-secondary border-0"
-                                    href="<?= htmlSC($link['href']) ?>"
-                                    <?= !empty($link['external']) ? 'target="_blank" rel="noopener noreferrer"' : '' ?>
-                                    data-bs-toggle="tooltip"
-                                    data-bs-template="<div class=&quot;tooltip fs-xs mb-n2&quot; role=&quot;tooltip&quot;><div class=&quot;tooltip-inner bg-transparent text-body p-0&quot;></div></div>"
-                                    aria-label="<?= htmlSC($link['label']) ?>"
-                                    data-bs-original-title="<?= htmlSC($link['label']) ?>"
-                                >
-                                    <i class="<?= htmlSC($link['icon']) ?>"></i>
-                                </a>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+                    <?= render_widget_area('posts.sidebar', new \App\Widgets\WidgetContext('posts.index', [
+                        'categories' => $categories ?? [],
+                        'trending_posts' => $trending_posts ?? [],
+                        'post' => [],
+                        'current_category' => $current_category ?? '',
+                        'total_posts' => $total_posts ?? 0,
+                        'posts_translation_prefix' => $posts_translation_prefix ?? 'posts',
+                    ])) ?>
                 </div>
             </div>
         </aside>

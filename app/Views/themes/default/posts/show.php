@@ -5,9 +5,7 @@ $categoryUrl = static fn(?string $category = null): string => $category === null
     ? base_href('/posts')
     : base_href('/posts') . '?category=' . rawurlencode($category);
 $shareUrl = base_href('/posts/' . $post['slug']);
-$socialLinks = site_social_links();
 $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '');
-$allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($category['total'] ?? 0), $categories ?? []));
 ?>
 
 <nav class="container pt-3 my-3 my-md-4" aria-label="breadcrumb">
@@ -92,60 +90,14 @@ $allPostsTotal = array_sum(array_map(static fn(array $category): int => (int)($c
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#blogSidebar" aria-label="Close"></button>
                 </div>
                 <div class="offcanvas-body d-block pt-2 py-lg-0">
-                    <h4 class="h6 mb-4"><?= print_translation('posts_show_categories') ?></h4>
-                    <div class="d-flex flex-wrap gap-3">
-                        <a class="btn btn-outline-secondary px-3" href="<?= $categoryUrl() ?>">
-                            <?= print_translation('posts_show_back') ?> (<?= (int)$allPostsTotal ?>)
-                        </a>
-                        <?php foreach ($categories as $category): ?>
-                            <a class="btn <?= $currentCategorySlug === (string)$category['slug'] ? 'btn-dark' : 'btn-outline-secondary' ?> px-3" href="<?= $categoryUrl($category['slug']) ?>">
-                                <?= htmlSC($category['label'] ?? $category['name']) ?> (<?= (int)$category['total'] ?>)
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <?php if (!empty($trending_posts)): ?>
-                        <h4 class="h6 pt-5 mb-0"><?= print_translation('posts_show_recent') ?></h4>
-
-                        <?php foreach ($trending_posts as $index => $item): ?>
-                            <article class="hover-effect-scale position-relative d-flex align-items-center <?= $index < count($trending_posts) - 1 ? 'border-bottom ' : '' ?>py-4">
-                                <div class="w-100 pe-3">
-                                    <h3 class="h6 lh-base fs-sm mb-1">
-                                        <a class="hover-effect-underline stretched-link" href="<?= $postUrl($item) ?>">
-                                            <?= htmlSC($item['title']) ?>
-                                        </a>
-                                    </h3>
-                                    <div class="text-body-tertiary fs-xs">
-                                        <?= date('d.m.Y', strtotime($item['published_at'])) ?>
-                                        <span class="mx-1">•</span>
-                                        <?= print_translation('posts_show_views') ?> <?= (int)$item['views_count'] ?>
-                                    </div>
-                                </div>
-                                <div class="ratio w-100" style="max-width: 86px; --cz-aspect-ratio: calc(64 / 86 * 100%)">
-                                    <img src="<?= htmlSC($item['image_mobile'] ?? get_image($item['image'])) ?>" srcset="<?= htmlSC($item['image_srcset'] ?? '') ?>" sizes="86px" data-image-fallback="<?= htmlSC(base_url('/assets/img/no-image.png')) ?>" onerror="this.onerror=null;this.removeAttribute('srcset');this.src=this.dataset.imageFallback;" class="rounded-2" width="86" height="64" alt="<?= htmlSC($item['title']) ?>" loading="lazy" decoding="async" style="object-fit: cover;">
-                                </div>
-                            </article>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-
-                    <?php if (!empty($socialLinks)): ?>
-                        <h4 class="h6 pt-4"><?= print_translation('posts_show_follow') ?></h4>
-                        <div class="d-flex gap-2 pb-2">
-                            <?php foreach ($socialLinks as $link): ?>
-                                <a
-                                    class="btn btn-icon fs-base btn-outline-secondary border-0"
-                                    href="<?= htmlSC($link['href']) ?>"
-                                    <?= !empty($link['external']) ? 'target="_blank" rel="noopener noreferrer"' : '' ?>
-                                    data-bs-toggle="tooltip"
-                                    data-bs-template="<div class=&quot;tooltip fs-xs mb-n2&quot; role=&quot;tooltip&quot;><div class=&quot;tooltip-inner bg-transparent text-body p-0&quot;></div></div>"
-                                    aria-label="<?= htmlSC($link['label']) ?>"
-                                    data-bs-original-title="<?= htmlSC($link['label']) ?>"
-                                >
-                                    <i class="<?= htmlSC($link['icon']) ?>"></i>
-                                </a>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+                    <?= render_widget_area('posts.sidebar', new \App\Widgets\WidgetContext('posts.show', [
+                        'categories' => $categories ?? [],
+                        'trending_posts' => $trending_posts ?? [],
+                        'post' => $post ?? [],
+                        'current_category' => $current_category ?? '',
+                        'total_posts' => $total_posts ?? 0,
+                        'posts_translation_prefix' => $posts_translation_prefix ?? 'posts',
+                    ])) ?>
                 </div>
             </div>
         </aside>

@@ -1,0 +1,8 @@
+{
+    "available": true,
+    "city": "Берлин",
+    "forecast_days": 3,
+    "cache_reused": true,
+    "coordinate_forecast_available": true,
+    "coordinate_cache_reused": true
+}

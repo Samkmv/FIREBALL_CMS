@@ -1,0 +1,198 @@
+{
+  "passed": 48,
+  "checked": 48,
+  "checks": [
+    {
+      "file": "app/Controllers/PostsController.php",
+      "passed": true
+    },
+    {
+      "file": "app/Controllers/WidgetsController.php",
+      "passed": true
+    },
+    {
+      "file": "app/Languages/de.php",
+      "passed": true
+    },
+    {
+      "file": "app/Languages/en.php",
+      "passed": true
+    },
+    {
+      "file": "app/Languages/ru.php",
+      "passed": true
+    },
+    {
+      "file": "app/Languages/zh-cn.php",
+      "passed": true
+    },
+    {
+      "file": "app/Models/Post.php",
+      "passed": true
+    },
+    {
+      "file": "app/Services/MigrationRunner.php",
+      "passed": true
+    },
+    {
+      "file": "app/Services/WeatherService.php",
+      "passed": true
+    },
+    {
+      "file": "app/Views/themes/default/admin/nav.php",
+      "passed": true
+    },
+    {
+      "file": "app/Views/themes/default/admin/widget_instance.php",
+      "passed": true
+    },
+    {
+      "file": "app/Views/themes/default/admin/widgets.php",
+      "passed": true
+    },
+    {
+      "file": "app/Views/themes/default/admin/widgets_editor.php",
+      "passed": true
+    },
+    {
+      "file": "app/Views/themes/default/posts/index.php",
+      "passed": true
+    },
+    {
+      "file": "app/Views/themes/default/posts/show.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/AbstractWidget.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/Types/CategoriesWidget.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/Types/HtmlWidget.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/Types/LatestPostsWidget.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/Types/SocialWidget.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/Types/TrendingWidget.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/Types/WeatherWidget.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetAreaRegistry.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetConflictException.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetContext.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetHtml.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetInstanceRepository.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetInterface.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetManager.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetRegistry.php",
+      "passed": true
+    },
+    {
+      "file": "app/Widgets/WidgetRenderer.php",
+      "passed": true
+    },
+    {
+      "file": "config/routes.php",
+      "passed": true
+    },
+    {
+      "file": "config/version.php",
+      "passed": true
+    },
+    {
+      "file": "core/Plugins/HookManager.php",
+      "passed": true
+    },
+    {
+      "file": "helpers/helpers.php",
+      "passed": true
+    },
+    {
+      "file": "tests/widgets.php",
+      "passed": true
+    },
+    {
+      "file": "tests/widgets_bootstrap.php",
+      "passed": true
+    },
+    {
+      "file": "tests/widgets_http.php",
+      "passed": true
+    },
+    {
+      "file": "tests/widgets_http_checks.php",
+      "passed": true
+    },
+    {
+      "file": "tests/widgets_weather_live.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/partials/widgets/categories.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/partials/widgets/html.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/partials/widgets/post-list.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/partials/widgets/social.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/partials/widgets/weather-icon.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/partials/widgets/weather.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/templates/post.php",
+      "passed": true
+    },
+    {
+      "file": "themes/default/templates/posts.php",
+      "passed": true
+    }
+  ]
+}

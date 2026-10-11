@@ -88,6 +88,7 @@ $menuGroups = [
         'order' => 40,
         'items' => [
             ['href' => base_href('/admin/themes'), 'label' => return_translation('admin_nav_themes'), 'icon' => 'ci-monitor', 'order' => 10],
+            ['href' => base_href('/admin/widgets'), 'label' => return_translation('admin_nav_widgets'), 'icon' => 'ci-grid', 'order' => 15],
             [
                 'href' => base_href('/admin/plugins'),
                 'label' => return_translation('admin_nav_plugins'),
