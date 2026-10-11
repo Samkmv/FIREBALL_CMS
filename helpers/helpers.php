@@ -247,6 +247,22 @@ function theme(): \FBL\ThemeManager
     return app()->theme;
 }
 
+/** Lazy initialization runs after active plugins have registered their hooks. */
+function widgets(): \App\Widgets\WidgetManager
+{
+    $manager = app()->get('widgets');
+    if (!$manager instanceof \App\Widgets\WidgetManager) {
+        $manager = new \App\Widgets\WidgetManager();
+        app()->set('widgets', $manager);
+    }
+    return $manager;
+}
+
+function render_widget_area(string $area, \App\Widgets\WidgetContext $context): string
+{
+    return widgets()->renderer->render($area, $context);
+}
+
 function theme_asset($path): string
 {
     return theme()->asset($path);

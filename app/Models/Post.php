@@ -279,6 +279,31 @@ class Post extends Model
         return $items;
     }
 
+    /** Date-sorted widget feed; raw published data is cached before user access filters. */
+    public function getWidgetLatestPosts(int $limit = 5, ?string $category = null, string $order = 'desc', ?string $excludeSlug = null): array
+    {
+        $limit = max(1, min(20, $limit));
+        $category = $this->normalizeCategoryFilter($category);
+        $order = $order === 'asc' ? 'ASC' : 'DESC';
+        $excludeSlug = trim((string)$excludeSlug);
+        $key = $this->publicCacheKey('widget.latest:' . hash('sha256', json_encode([$limit, $category, $order, $excludeSlug])));
+        $cached = cache()->get($key);
+        if (is_array($cached)) return $cached;
+        $this->ensureSchema();
+        [$where, $params] = $this->buildPublishedWhereClause($category);
+        $where .= ' AND p.published_at <= CURRENT_TIMESTAMP';
+        if ($excludeSlug !== '') {
+            $where .= ' AND p.slug != ?';
+            $params[] = $excludeSlug;
+        }
+        $rows = db()->query("SELECT {$this->publicPostSelectColumns()} FROM {$this->table} p
+            LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id {$where}
+            ORDER BY p.published_at {$order}, p.id {$order} LIMIT {$limit}", $params)->get() ?: [];
+        $items = $this->normalizePosts($rows);
+        cache()->set($key, $items, 60);
+        return $items;
+    }
+
     /**
      * Возвращает самые просматриваемые опубликованные посты.
      */
@@ -538,7 +563,7 @@ class Post extends Model
     /**
      * Возвращает категории, в которых есть опубликованные посты.
      */
-    protected function getCategories(): array
+    public function getCategories(): array
     {
         $cacheKey = $this->publicCacheKey('sidebar_categories');
         $cached = cache()->get($cacheKey);

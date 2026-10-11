@@ -45,7 +45,10 @@ class PostsController extends BaseController
         return Theme::render('posts', [
             'title' => return_translation('posts_index_title'),
             'posts' => $publicPosts,
-            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
+            'footer_scripts' => [
+                asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js'),
+                asset_versioned_url(base_url('/assets/default/js/widgets-weather.js'), WWW . '/assets/default/js/widgets-weather.js'),
+            ],
             'total_posts' => $postsData['total'],
             'pagination' => $postsData['pagination'],
             'current_category' => $postsData['current_category'],
@@ -169,7 +172,10 @@ class PostsController extends BaseController
         return Theme::render('post', [
             'title' => $post['title'],
             'post' => $post,
-            'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],
+            'footer_scripts' => [
+                asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js'),
+                asset_versioned_url(base_url('/assets/default/js/widgets-weather.js'), WWW . '/assets/default/js/widgets-weather.js'),
+            ],
             'categories' => $sidebarData['categories'],
             'trending_posts' => $this->filterPublicPosts((array)$sidebarData['trending_posts']),
             'popular_posts' => $this->filterPublicPosts($popularPosts),
