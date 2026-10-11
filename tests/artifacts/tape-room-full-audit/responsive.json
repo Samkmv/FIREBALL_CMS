@@ -1,0 +1,212 @@
+[
+  {
+    "buttons": [
+      {
+        "height": 32,
+        "label": "",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Настройки плеера",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Включить тёмную тему",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Случайный порядок: выключен",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Повтор: плейлиста",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Выключить звук",
+        "radius": "50%",
+        "width": 32
+      }
+    ],
+    "documentWidth": 280,
+    "width": 280
+  },
+  {
+    "buttons": [
+      {
+        "height": 32,
+        "label": "",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Настройки плеера",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Включить тёмную тему",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Случайный порядок: выключен",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Повтор: плейлиста",
+        "radius": "50%",
+        "width": 32
+      },
+      {
+        "height": 32,
+        "label": "Выключить звук",
+        "radius": "50%",
+        "width": 32
+      }
+    ],
+    "documentWidth": 393,
+    "width": 393
+  },
+  {
+    "buttons": [
+      {
+        "height": 36,
+        "label": "",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Настройки плеера",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Включить тёмную тему",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Случайный порядок: выключен",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Повтор: плейлиста",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Выключить звук",
+        "radius": "50%",
+        "width": 36
+      }
+    ],
+    "documentWidth": 481,
+    "width": 481
+  },
+  {
+    "buttons": [
+      {
+        "height": 36,
+        "label": "",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Настройки плеера",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Включить тёмную тему",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Случайный порядок: выключен",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Повтор: плейлиста",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Выключить звук",
+        "radius": "50%",
+        "width": 36
+      }
+    ],
+    "documentWidth": 760,
+    "width": 760
+  },
+  {
+    "buttons": [
+      {
+        "height": 36,
+        "label": "",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Настройки плеера",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 36,
+        "label": "Включить тёмную тему",
+        "radius": "50%",
+        "width": 36
+      },
+      {
+        "height": 44,
+        "label": "Случайный порядок: выключен",
+        "radius": "50%",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Повтор: плейлиста",
+        "radius": "50%",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Выключить звук",
+        "radius": "50%",
+        "width": 44
+      }
+    ],
+    "documentWidth": 1280,
+    "width": 1280
+  }
+]
