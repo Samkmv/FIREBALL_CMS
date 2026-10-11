@@ -69,38 +69,46 @@ $button = static function (string $action, string $label, string $name, string $
             <svg class="rp-deck-svg" viewBox="0 0 1200 460" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <defs>
                     <linearGradient id="rp-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a8a5a0"/><stop offset=".18" stop-color="#f5f3ee"/><stop offset=".34" stop-color="#c2beb7"/><stop offset=".51" stop-color="#faf8f3"/><stop offset=".72" stop-color="#b8b4ad"/><stop offset=".89" stop-color="#eeeae3"/><stop offset="1" stop-color="#a8a39b"/></linearGradient>
-                    <linearGradient id="rp-spoke-metal" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#b7b3ab"/><stop offset=".18" stop-color="#d7d3cb"/><stop offset=".43" stop-color="#f0eee8"/><stop offset=".62" stop-color="#dedad2"/><stop offset="1" stop-color="#bbb6ac"/></linearGradient>
+                    <linearGradient id="rp-clear-spoke" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#eeeae0" stop-opacity=".06"/><stop offset=".2" stop-color="#fffdf6" stop-opacity=".2"/><stop offset=".45" stop-color="#f9f5eb" stop-opacity=".04"/><stop offset=".72" stop-color="#fffdf8" stop-opacity=".13"/><stop offset="1" stop-color="#bbb7aa" stop-opacity=".1"/></linearGradient>
+                    <linearGradient id="rp-clear-face" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffdf7" stop-opacity=".04"/><stop offset=".18" stop-color="#fffdf9" stop-opacity=".12"/><stop offset=".4" stop-color="#e9e5db" stop-opacity=".015"/><stop offset=".7" stop-color="#eeeae0" stop-opacity=".025"/><stop offset="1" stop-color="#fffdf7" stop-opacity=".08"/></linearGradient>
+                    <linearGradient id="rp-clear-edge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffef9" stop-opacity=".85"/><stop offset=".35" stop-color="#dedad0" stop-opacity=".35"/><stop offset=".7" stop-color="#88877e" stop-opacity=".48"/><stop offset="1" stop-color="#fffef9" stop-opacity=".75"/></linearGradient>
                     <linearGradient id="rp-hub" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3f4140"/><stop offset="1" stop-color="#161918"/></linearGradient>
-                    <radialGradient id="rp-tape"><stop stop-color="#29231e"/><stop offset=".65" stop-color="#40362b"/><stop offset="1" stop-color="#26231f"/></radialGradient>
-                    <radialGradient id="rp-glass"><stop offset=".65" stop-color="#faf8f3" stop-opacity="0"/><stop offset=".9" stop-color="#d2cdc3" stop-opacity=".16"/><stop offset="1" stop-color="#e5e0d7" stop-opacity=".7"/></radialGradient>
+                    <radialGradient id="rp-tape"><stop stop-color="#211810"/><stop offset=".46" stop-color="#302419"/><stop offset=".75" stop-color="#3b2e21"/><stop offset="1" stop-color="#1f1812"/></radialGradient>
+                    <radialGradient id="rp-glass"><stop offset=".65" stop-color="#faf8f3" stop-opacity="0"/><stop offset=".9" stop-color="#d2cdc3" stop-opacity=".06"/><stop offset="1" stop-color="#e5e0d7" stop-opacity=".18"/></radialGradient>
                     <filter id="rp-shadow" x="-30%" y="-20%" width="170%" height="165%"><feDropShadow dx="6" dy="17" stdDeviation="12" flood-color="#6a5b42" flood-opacity=".21"/></filter>
                     <mask id="rp-tape-visible" maskUnits="userSpaceOnUse" x="0" y="0" width="1200" height="460">
                         <rect width="1200" height="460" fill="white"/>
-                        <circle cx="230" cy="210" r="198" fill="black"/>
-                        <circle cx="970" cy="210" r="198" fill="black"/>
+                        <circle cx="230" cy="210" r="174" fill="black" data-tape-mask="left"/>
+                        <circle cx="970" cy="210" r="78" fill="black" data-tape-mask="right"/>
                     </mask>
                 </defs>
                 <g mask="url(#rp-tape-visible)">
-                    <path data-tape-left d="M168.01 376.86 L368.25 451.25 A28 28 0 0 0 406 425 L378 425" class="rp-tape-line"/>
-                    <path data-tape-right d="M1026.46 269.46 L841.28 445.30 A28 28 0 0 1 794 425 L822 425" class="rp-tape-line"/>
+                    <path data-tape-left d="M165.74 373.58 C199.30 386.77 232.87 407.95 266.43 421.14 C300.00 434.32 333.56 439.51 367.12 452.69 A29.75 29.75 0 0 0 407.75 425 L378 425" class="rp-tape-line"/>
+                    <path data-tape-right d="M1025.81 266.97 C995.31 296.85 964.81 334.73 934.32 364.61 C903.82 394.49 873.32 416.37 842.82 446.25 A29.75 29.75 0 0 1 792.25 425 L822 425" class="rp-tape-line"/>
                 </g>
                 <?php foreach (['left' => 20, 'right' => 760] as $side => $x): ?>
                 <svg x="<?= $x ?>" y="0" width="420" height="420" viewBox="0 0 420 420" class="rp-reel" data-reel="<?= $side ?>">
-                    <defs><clipPath id="rp-pack-<?= $side ?>"><circle cx="210" cy="210" r="<?= $side === 'left' ? 174 : 78 ?>" data-pack-clip="<?= $side ?>"/></clipPath></defs>
+                    <defs>
+                        <clipPath id="rp-pack-<?= $side ?>"><circle cx="210" cy="210" r="<?= $side === 'left' ? 174 : 78 ?>" data-pack-clip="<?= $side ?>"/></clipPath>
+                        <mask id="rp-pack-annulus-<?= $side ?>" maskUnits="userSpaceOnUse" x="0" y="0" width="420" height="420"><circle cx="210" cy="210" r="180" fill="white"/><circle cx="210" cy="210" r="78" fill="black"/></mask>
+                    </defs>
                     <circle cx="210" cy="210" r="197" fill="url(#rp-glass)" stroke="#b4afa6" stroke-width="1.5" filter="url(#rp-shadow)"/>
-                    <circle cx="210" cy="210" r="<?= $side === 'left' ? 174 : 78 ?>" fill="url(#rp-tape)" data-pack="<?= $side ?>"/>
-                    <g clip-path="url(#rp-pack-<?= $side ?>)" opacity=".45"><?php for ($r = 80; $r < 180; $r += 2): ?><circle cx="210" cy="210" r="<?= $r ?>" fill="none" stroke="<?= $r % 4 ? '#645747' : '#151512' ?>" stroke-width=".6"/><?php endfor; ?></g>
+                    <circle cx="210" cy="210" r="78" fill="url(#rp-metal)" stroke="#817c70" stroke-width="1"/>
+                    <g mask="url(#rp-pack-annulus-<?= $side ?>)">
+                        <circle cx="210" cy="210" r="<?= $side === 'left' ? 174 : 78 ?>" fill="url(#rp-tape)" data-pack="<?= $side ?>"/>
+                        <g clip-path="url(#rp-pack-<?= $side ?>)" opacity=".5"><?php for ($n = 0; $n < 88; $n++): ?><circle cx="210" cy="210" r="<?= 79 + $n * 1.08 ?>" fill="none" stroke="<?= $n % 3 ? '#6a5036' : '#15120e' ?>" stroke-width=".35"/><?php endfor; ?></g>
+                    </g>
                 </svg>
                 <?php endforeach; ?>
                 <?php foreach ([378, 822] as $x): ?><g class="rp-roller"><circle cx="<?= $x ?>" cy="425" r="28" fill="#252623" stroke="#9b978d" stroke-width="2"/><circle cx="<?= $x ?>" cy="425" r="22" fill="url(#rp-metal)" stroke="#d7d1c7" stroke-width="2"/><circle cx="<?= $x ?>" cy="425" r="3" fill="#8e897e"/></g><?php endforeach; ?>
             </svg>
             <?php foreach (['left','right'] as $side): ?>
-                <!-- Rotate only the balanced spokes and hub. The rim stays in
-                     one fixed layer, above the spoke joints, without duplicate edges. -->
+                <!-- Clear reinforced arms rotate above the real tape annulus.
+                     Face reflections and the single acrylic rim stay in the light. -->
                 <div class="rp-rotor-mount rp-rotor-mount--<?= $side ?>" aria-hidden="true"><div class="rp-rotor" data-rotor="<?= $side ?>">
                     <svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
                         <?php foreach ([22.5, 142.5, 262.5] as $angle): ?>
-                        <path class="rp-reel-spoke" transform="rotate(<?= $angle ?> 210 210)" d="M187.79 143.62 L149.71 29.81 A190 190 0 0 1 270.29 29.81 L232.21 143.62 A70 70 0 0 0 187.79 143.62 Z" fill="url(#rp-spoke-metal)" stroke="#e4e0d8" stroke-width="1" stroke-linejoin="round"/>
+                        <path class="rp-reel-spoke" transform="rotate(<?= $angle ?> 210 210)" d="M187.79 143.62 L149.71 29.81 A190 190 0 0 1 270.29 29.81 L232.21 143.62 A70 70 0 0 0 187.79 143.62 Z" fill="url(#rp-clear-spoke)" stroke="#f4f0e5" stroke-opacity=".23" stroke-width="1.2" stroke-linejoin="round"/>
                         <?php endforeach; ?>
                         <circle cx="210" cy="210" r="74" fill="url(#rp-metal)" stroke="#77756e" stroke-width="1.5"/>
                         <circle cx="210" cy="210" r="65" fill="url(#rp-hub)" stroke="#0e100e" stroke-width="2"/>
@@ -109,8 +117,10 @@ $button = static function (string $action, string $label, string $name, string $
                     </svg>
                 </div>
                     <svg class="rp-reel-rim" viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="210" cy="210" r="190" fill="none" stroke="url(#rp-metal)" stroke-width="11" opacity=".84"/>
-                        <circle cx="210" cy="210" r="195" fill="none" stroke="#fffefa" stroke-opacity=".9" stroke-width="2"/>
+                        <circle cx="210" cy="210" r="193" fill="url(#rp-clear-face)" stroke="url(#rp-clear-edge)" stroke-width="5"/>
+                        <circle cx="210" cy="210" r="188" fill="none" stroke="#e6e3d8" stroke-opacity=".28" stroke-width=".8"/>
+                        <circle cx="210" cy="210" r="195" fill="none" stroke="#fffefa" stroke-opacity=".65" stroke-width="1.2"/>
+                        <path d="M76 109 A166 166 0 0 1 213 45" fill="none" stroke="#fffef9" stroke-opacity=".24" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             <?php endforeach; ?>
@@ -208,6 +218,7 @@ $button = static function (string $action, string $label, string $name, string $
 <script src="<?= htmlSC($preload_url) ?>" defer></script>
 <script src="<?= htmlSC($meters_url) ?>" defer></script>
 <?php if (!empty($chapters_url)): ?><script src="<?= htmlSC($chapters_url) ?>" defer></script><?php endif; ?>
+<script src="<?= htmlSC($transport_url) ?>" defer></script>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>
 </html>

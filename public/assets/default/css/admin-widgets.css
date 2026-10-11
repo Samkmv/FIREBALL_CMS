@@ -1,4 +1,4 @@
-#widget-editor { color: var(--fb-color-text); }
+#widget-editor { position: relative; color: var(--fb-color-text); }
 #widget-editor .widget-editor-hint {
     display: flex; align-items: flex-start; gap: .65rem;
     margin-bottom: 1.25rem; color: var(--fb-color-text-secondary);
@@ -47,13 +47,19 @@
 #widget-editor .widget-drag-handle:active { cursor: grabbing; }
 #widget-editor .widget-instance.widget-dragging { opacity: .55; border-color: var(--fb-color-primary); }
 #widget-editor .widget-dropzone.widget-drop-active { outline: 2px dashed var(--fb-color-primary); outline-offset: 5px; border-radius: 1rem; }
+#widget-editor .widget-drop-indicator {
+    position: absolute; z-index: 30; height: 3px; border-radius: var(--fb-radius-pill);
+    background: var(--fb-color-primary); transform: translateY(-50%); pointer-events: none;
+    box-shadow: 0 0 0 3px var(--fb-color-primary-soft);
+}
 #widget-editor .widget-settings-panel {
     border: 1px solid var(--fb-color-border); border-radius: var(--fb-radius-md);
     background: var(--fb-color-surface-secondary);
 }
 #widget-editor .widget-settings-panel > summary {
     display: flex; align-items: center; gap: .6rem; padding: .8rem 1rem;
-    border-radius: inherit; color: var(--fb-color-text-secondary);
+    /* Native details/summary does not reliably inherit the frame radius. */
+    border-radius: calc(var(--fb-radius-md) - 1px); color: var(--fb-color-text-secondary);
     cursor: pointer; list-style: none; font-size: .8rem; font-weight: 650;
 }
 #widget-editor .widget-settings-panel > summary::-webkit-details-marker { display: none; }
@@ -62,7 +68,7 @@
 #widget-editor .widget-settings-panel > summary:focus-visible { outline: 2px solid var(--fb-color-primary); outline-offset: 3px; }
 #widget-editor .widget-settings-panel > summary > span { flex: 1; }
 #widget-editor .widget-settings-chevron { transition: transform var(--fb-transition-fast); }
-#widget-editor .widget-settings-panel[open] > summary { border-radius: var(--fb-radius-md) var(--fb-radius-md) 0 0; border-bottom: 1px solid var(--fb-color-border); color: var(--fb-color-primary); }
+#widget-editor .widget-settings-panel[open] > summary { border-radius: calc(var(--fb-radius-md) - 1px) calc(var(--fb-radius-md) - 1px) 0 0; border-bottom: 1px solid var(--fb-color-border); color: var(--fb-color-primary); }
 #widget-editor .widget-settings-panel[open] .widget-settings-chevron { transform: rotate(180deg); }
 #widget-editor [data-widget-settings] { padding: 1rem; }
 #widget-editor .widget-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: end; }

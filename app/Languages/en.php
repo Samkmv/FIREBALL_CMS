@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'admin_ui_kit_title' => 'UI components',
+    'admin_ui_kit_description' => 'Shared admin elements, states and reusable code.',
     'account_sessions_all_revoked' => 'All sessions have ended. Sign in again.',
     'account_favorites' => 'Favorites',
     'account_favorite_add' => 'Add to favorites',

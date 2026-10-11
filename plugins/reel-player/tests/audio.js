@@ -102,7 +102,9 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     let nativePlays=0,analysisErrors=0;
     const isolated=vm.createContext({current:1,generation:1,audio:{paused:true,ended:false,error:null,play(){nativePlays++;this.paused=false;return Promise.resolve();}},meterController:{engine:null,resume(){throw new Error('analysis fault');},state(phase){assert.equal(phase,'unavailable');analysisErrors++;}},configureAudioSession(){},toast(){throw new Error('Analysis must not be misreported as native audio failure');},graph:null});
     vm.runInContext(wrapper+playback,isolated);await isolated.play('user',{isTrusted:true,type:'click'});assert.equal(nativePlays,1);assert.equal(isolated.audio.paused,false);assert.equal(analysisErrors,1,'Analysis command exceptions do not reject native play');
-    const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),source.indexOf("    window.addEventListener('pagehide', save);"));
+    const controlsEnd=source.indexOf("    window.addEventListener('pagehide',");
+    assert.ok(controlsEnd>source.indexOf("    if ('mediaSession' in navigator) {"),'Media Session harness must end before visual page lifecycle');
+    const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),controlsEnd);
     const navigation=source.slice(source.indexOf('    function next(automatic = false,'),source.indexOf('    function applyState(result)'));
     const seekCode=source.slice(source.indexOf('    function seekTo('),source.indexOf('    function jumpChapter('));
     const actions=new Map(); const audio={duration:200,currentTime:75,paused:false,pause(){this.paused=true;}};

@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'admin_ui_kit_title' => 'UI 组件',
+    'admin_ui_kit_description' => '通用管理界面元素、状态和可复用代码。',
     'account_sessions_all_revoked' => '所有会话已退出，请重新登录。',
     'account_favorites' => '收藏',
     'account_favorite_add' => '加入收藏',

@@ -134,6 +134,7 @@ $app->router->post('/widgets/weather/(?P<id>\d+)/?', [WidgetsController::class, 
 
 // Admin pages ---------- //
 $app->router->get('/admin', [AdminController::class, 'dashboard'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/ui-kit', [\App\Controllers\AdminUiController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/analytics', [AnalyticsController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/analytics/data', [AnalyticsController::class, 'dashboardData'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/analytics/refresh', [AnalyticsController::class, 'refresh'])->middleware(['auth', 'admin']);

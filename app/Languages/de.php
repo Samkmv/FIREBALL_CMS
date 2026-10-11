@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'admin_ui_kit_title' => 'UI-Komponenten',
+    'admin_ui_kit_description' => 'Gemeinsame Admin-Elemente, Zustände und wiederverwendbarer Code.',
     'account_sessions_all_revoked' => 'Alle Sitzungen wurden beendet. Melden Sie sich erneut an.',
     'account_favorites' => 'Favoriten',
     'account_favorite_add' => 'Zu Favoriten hinzufügen',

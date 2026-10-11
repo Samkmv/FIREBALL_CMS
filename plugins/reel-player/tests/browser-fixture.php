@@ -113,6 +113,10 @@ JS;
         $diagnostic = <<<'JS'
     // Opt-in, DOM-visible measurements for browser QA, absent in production.
     let previewStart = 0, previewFirstMeter = null, previewFrames = 0, previewGeometry = 0, previewFrameTime = 0, previewMaxGap = 0;
+    let previewMotionStart = 0, previewMotionPhase = 'idle', previewMotionTrace = [];
+    for (const phase of ['play','pause']) audio.addEventListener(phase, () => {
+        previewMotionStart = performance.now(); previewMotionPhase = phase; previewMotionTrace = [];
+    });
     audio.addEventListener('play', () => { previewStart = performance.now(); previewFirstMeter = null; previewFrames = previewGeometry = previewFrameTime = previewMaxGap = 0; });
     new MutationObserver(records => {
         if (!previewStart || audio.paused) return;
@@ -120,6 +124,9 @@ JS;
         if (previewFirstMeter === null && app.querySelector('[data-meter] i.is-lit')) previewFirstMeter = performance.now() - previewStart;
     }).observe(app.querySelector('.rp-machine'), {subtree:true,attributes:true,attributeFilter:['r','d','class']});
     const previewFrame = time => {
+        if (previewMotionStart && time - previewMotionStart < 1800 && previewMotionTrace.length < 240) {
+            previewMotionTrace.push({ms:time-previewMotionStart,speed:transport.speed,slack:transport.slack,rates:visuals.reels.map(reel=>reel.motion?.playbackRate ?? null)});
+        }
         if (previewStart && !audio.paused && !document.hidden) {
             if (previewFrameTime) previewMaxGap = Math.max(previewMaxGap,time-previewFrameTime);
             previewFrameTime = time; previewFrames++;
@@ -129,6 +136,7 @@ JS;
     requestAnimationFrame(previewFrame);
     let previewGeneration=-1,previewCurrent=null;const previewTransitions=[];
     setInterval(() => {
+        app.dataset.transportDiagnostics = JSON.stringify({phase:previewMotionPhase,speed:transport.speed,slack:transport.slack,moving:transport.moving,trace:previewMotionTrace});
         if(previewGeneration!==generation){previewGeneration=generation;previewCurrent={generation,phase:meterController.phase,firstSignalMs:null,maxRms:[0,0],track:current};previewTransitions.push(previewCurrent);if(previewTransitions.length>100)previewTransitions.shift();}
         if(previewCurrent){previewCurrent.phase=meterController.phase;previewCurrent.firstSignalMs=meterController.firstSignal;previewCurrent.maxRms=previewCurrent.maxRms.map((v,i)=>Math.max(v,meterController.rms[i]));}
         app.dataset.meterDiagnostics = JSON.stringify({health:meterController.snapshot(),nativeTime:audio.currentTime,nativePaused:audio.paused,nativeReady:audio.readyState,waiting:loading,captureTrack:graph?.capturedTrack?.readyState,preloadActive:preloader.active,preloadDone:preloader.done.size,firstMeterMs:previewFirstMeter,frames:previewFrames,geometryWrites:previewGeometry,maxFrameGapMs:previewMaxGap,transitions:previewTransitions,rotors:visuals.reels.map(reel=>({state:reel.motion?.playState,rate:reel.motion?.playbackRate,time:reel.motion?.currentTime}))});

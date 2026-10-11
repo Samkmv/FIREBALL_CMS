@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'admin_ui_kit_title' => 'UI-компоненты',
+    'admin_ui_kit_description' => 'Все общие элементы админки, их состояния и код для повторного использования.',
     'account_favorites' => 'Избранное',
     'account_favorite_add' => 'В избранное',
     'account_favorite_saved' => 'В избранном',

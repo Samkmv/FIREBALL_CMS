@@ -10,7 +10,7 @@
     // of the animation loop, including the 120 Hz loop on newer displays.
     const visuals = {
         seek:$('[data-seek]'), elapsed:$('[data-elapsed]'), duration:$('[data-duration]'),
-        reels:['left','right'].map(side => ({rotor:$(`[data-rotor="${side}"]`), pack:$(`[data-pack="${side}"]`), clip:$(`[data-pack-clip="${side}"]`), bars:[...$(`[data-meter="${side}"]`).querySelectorAll('i')]})),
+        reels:['left','right'].map(side => ({rotor:$(`[data-rotor="${side}"]`), pack:$(`[data-pack="${side}"]`), clip:$(`[data-pack-clip="${side}"]`), tapeMask:$(`[data-tape-mask="${side}"]`), bars:[...$(`[data-meter="${side}"]`).querySelectorAll('i')]})),
         tape:[$('[data-tape-left]'),$('[data-tape-right]')]
     };
     let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
@@ -24,9 +24,10 @@
     let playlistSort = ['playlist','new','old'].includes(saved.playlistSort) ? saved.playlistSort : 'playlist';
     let queueSort = ['playlist','new','old'].includes(saved.queueSort) ? saved.queueSort : (queuePlaylist > 0 ? 'playlist' : librarySort);
     let shuffle = Boolean(saved.shuffle), bag = [], history = [], seekActive = false, restoreTime = 0;
-    let toastTimer, frameId = 0, frameTime = 0, angles = [0, 0], graph, uploading = false, dialogHandler, dialogSubmitting = false;
+    let toastTimer, frameId = 0, frameTime = 0, frameInProgress = false, angles = [0, 0], graph, uploading = false, dialogHandler, dialogSubmitting = false;
     let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
-    let progressFrame = -Infinity, meterFrame = -Infinity, packRadii = [174,78], positionKey = '';
+    let progressFrame = -Infinity, meterFrame = -Infinity, tapeFrame = -Infinity, packRadii = [174,78], positionKey = '';
+    const transport = new window.TapeRoomTransport();
     const meterLevels = [0,0];
     const meterSignal = {generation:-1, values:[0,0], rms:[0,0], sampled:[-Infinity,-Infinity], drawn:0};
     const meterReport = {samples:[], time:-Infinity, status:null};
@@ -237,32 +238,13 @@
         syncChapter(duration);
         const inner = 78, outer = 174;
         const radii = [Math.sqrt(inner ** 2 + (outer ** 2 - inner ** 2) * (1 - progress)), Math.sqrt(inner ** 2 + (outer ** 2 - inner ** 2) * progress)];
-        // A common outer tangent keeps the tape taut against both the changing
-        // pack and the guide. These branches match counterclockwise reel motion:
-        // the left reel pays out below, and the right reel takes up on its right.
-        const run = (cx, radius, direction) => {
-            const rollerX = direction === 1 ? 378 : 822;
-            const rollerRadius = 28, tapeRadius = radius + 4;
-            const dx = rollerX - cx, dy = 425 - 210, length = Math.hypot(dx, dy);
-            const ux = dx / length, uy = dy / length;
-            const along = (tapeRadius - rollerRadius) / length;
-            const across = direction * Math.sqrt(1 - along ** 2);
-            const nx = along * ux - across * uy, ny = along * uy + across * ux;
-            const start = [cx + tapeRadius * nx, 210 + tapeRadius * ny];
-            const end = [rollerX + rollerRadius * nx, 425 + rollerRadius * ny];
-            // Wrap around the lower guide rim; the remaining head path is hidden.
-            const innerX = rollerX + direction * rollerRadius;
-            const sweep = direction === 1 ? 0 : 1;
-            return `M${start[0].toFixed(2)} ${start[1].toFixed(2)} L${end[0].toFixed(2)} ${end[1].toFixed(2)} A${rollerRadius} ${rollerRadius} 0 0 ${sweep} ${innerX} 425 L${rollerX} 425`;
-        };
         visuals.reels.forEach((reel,i) => {
             const radius = radii[i].toFixed(2);
             if (reel.pack.getAttribute('r') === radius) return;
-            reel.pack.setAttribute('r',radius); reel.clip.setAttribute('r',radius);
-            visuals.tape[i].setAttribute('d',run(i ? 970 : 230,radii[i],i ? -1 : 1));
+            reel.pack.setAttribute('r',radius); reel.clip.setAttribute('r',radius); reel.tapeMask.setAttribute('r',radius);
         });
         packRadii = radii;
-        syncReels();
+        syncReels(); drawTape();
         const key = `${generation}:${duration}:${Math.floor(position)}:${audio.playbackRate}`;
         if ((forcePosition || key !== positionKey) && 'mediaSession' in navigator && navigator.mediaSession.setPositionState && duration > 0) {
             try { navigator.mediaSession.setPositionState({duration, playbackRate:audio.playbackRate, position:Math.min(duration,position)}); } catch (_) {}
@@ -270,8 +252,17 @@
         }
         return radii;
     }
+    function drawTape() {
+        const slack = reducedMotion.matches ? 0 : transport.slack;
+        visuals.tape.forEach((path,i) => {
+            const value = window.TapeRoomTransport.tapePath(i ? 970 : 230,packRadii[i],i ? -1 : 1,slack);
+            if (path.getAttribute('d') !== value) path.setAttribute('d',value);
+        });
+    }
     function syncReels() {
-        const playing = !audio.paused && !audio.ended && !loading && !document.hidden && !reducedMotion.matches;
+        const visible = !document.hidden && !reducedMotion.matches;
+        if (visible) transport.setRunning(!audio.paused && !audio.ended && !loading && !audio.error);
+        else transport.reset();
         visuals.reels.forEach((reel,i) => {
             if (!reel.motionInitialized) {
                 reel.motionInitialized = true;
@@ -283,16 +274,17 @@
                 } catch (_) { /* Older browsers retain the frame-based fallback. */ }
             }
             if (!reel.motion) return;
-            const rate = 126 / packRadii[i] * audio.playbackRate;
+            const rate = 126 / packRadii[i] * audio.playbackRate * transport.speed;
             // updatePlaybackRate preserves the angle as the pack changes size.
             // The compositor then rotates without waiting for JS meter samples.
-            if (Math.abs(reel.motion.playbackRate - rate) > .001) {
+            if ((rate === 0 && reel.motion.playbackRate !== 0) || Math.abs(reel.motion.playbackRate - rate) > .001) {
                 if (reel.motion.updatePlaybackRate) reel.motion.updatePlaybackRate(rate);
                 else reel.motion.playbackRate = rate;
             }
-            if (playing) { if (reel.motion.playState === 'paused' && !reel.motion.pending) reel.motion.play(); }
+            if (visible && transport.speed > 0) { if (reel.motion.playState === 'paused' && !reel.motion.pending) reel.motion.play(); }
             else if (reel.motion.playState !== 'paused') reel.motion.pause();
         });
+        if (visible && transport.moving && !frameInProgress) startAnimation();
     }
     const meterController = new window.TapeRoomMeters({audio,generation:()=>generation,source:()=>activeTrack()?.source,bufferedAhead,changed:()=>{
         graph = meterController.engine;
@@ -372,19 +364,22 @@
         setTimeout(() => URL.revokeObjectURL(url),60000);
     }
     function animate(time) {
-        frameId = 0;
-        const playing = !audio.paused && !audio.ended;
-        const elapsed = frameTime ? Math.min(.1, (time - frameTime) / 1000) : 0; frameTime = time;
+        frameId = 0; frameInProgress = true;
+        const playing = !audio.paused && !audio.ended && !audio.error;
+        const elapsed = frameTime ? Math.max(0,Math.min(1, (time - frameTime) / 1000)) : 0; frameTime = time;
         // Rotation follows the display cadence; geometry and audio sampling do
         // not need to repaint the entire deck on every display frame.
         if (time - progressFrame >= 100) { drawProgress(); progressFrame = time; }
         if (time - meterFrame >= 1000 / 30) { drawMeters(playing && !loading); meterFrame = time; }
-        if (playing && !loading && !reducedMotion.matches) {
-            visuals.reels.forEach((reel,i) => { if (!reel.motion) { angles[i] = (angles[i] - elapsed * 95 * 126 / packRadii[i] * audio.playbackRate) % 360; reel.rotor.style.transform = `rotate(${angles[i]}deg)`; } });
+        transport.step(elapsed); syncReels();
+        if (time - tapeFrame >= 1000 / 30 || !transport.moving) { drawTape(); tapeFrame = time; }
+        if (!document.hidden && !reducedMotion.matches && transport.speed > 0) {
+            visuals.reels.forEach((reel,i) => { if (!reel.motion) { angles[i] = (angles[i] - elapsed * 95 * 126 / packRadii[i] * audio.playbackRate * transport.speed) % 360; reel.rotor.style.transform = `rotate(${angles[i]}deg)`; } });
         }
-        if (playing && !document.hidden) frameId = requestAnimationFrame(animate);
+        frameInProgress = false;
+        if ((playing || transport.moving) && !document.hidden) frameId = requestAnimationFrame(animate);
     }
-    function startAnimation() { syncReels(); if (!frameId && !document.hidden) { frameTime = 0; progressFrame = meterFrame = -Infinity; frameId = requestAnimationFrame(animate); } }
+    function startAnimation() { if (!frameId && !frameInProgress && !document.hidden) { frameTime = 0; progressFrame = meterFrame = tapeFrame = -Infinity; frameId = requestAnimationFrame(animate); } }
     async function play(origin = 'automatic', event) {
         if (!current) {
             const first = selectedTracks()[0]; if (!first) return;
@@ -915,7 +910,10 @@
         };
         for (const [name,handler] of Object.entries(handlers)) { try { navigator.mediaSession.setActionHandler(name,handler); } catch (_) {} }
     }
-    window.addEventListener('pagehide', save);
+    window.addEventListener('pagehide', () => {
+        save(); transport.reset(); visuals.reels.forEach(reel => reel.motion?.pause());
+        cancelAnimationFrame(frameId); frameId = 0; frameTime = 0;
+    });
     document.addEventListener('visibilitychange', () => {
         save(); syncReels();
         if (document.hidden) {
@@ -925,7 +923,7 @@
             if (!audio.paused) { configureAudioSession(); resumeMeters(); startAnimation(); }
         }
     });
-    reducedMotion.addEventListener('change',syncReels);
+    reducedMotion.addEventListener('change', () => { syncReels(); drawTape(); });
     window.addEventListener('offline', () => { preloader.connectivity(false); meterController.network(false); });
     window.addEventListener('online', () => { preloader.connectivity(true); meterController.network(true); prepareUpcoming(); if (!audio.paused) resumeMeters(); });
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });

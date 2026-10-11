@@ -8,6 +8,14 @@
     let dragging = null;
     let dragOrigin = null;
     let touchPointer = null;
+    let dropTarget = null;
+    // Keep the marker outside the lists so it never becomes part of the saved layout.
+    const dropIndicator = document.createElement('div');
+    dropIndicator.className = 'widget-drop-indicator';
+    dropIndicator.hidden = true;
+    dropIndicator.setAttribute('aria-hidden', 'true');
+    root.append(dropIndicator);
+    const clearDropIndicator = () => { dropIndicator.hidden = true; dropTarget = null; };
     // Release the CMS select components before replacing their forms through AJAX.
     const selects = new Map();
     const syncAddButtons = () => content.querySelectorAll('[data-widget-add]').forEach(form => {
@@ -134,22 +142,39 @@
         const allowed = JSON.parse(card.dataset.allowedAreas);
         return allowed.includes(zone.dataset.widgetArea) || (allowed.length === 0 && card.parentElement === zone);
     };
-    const place = (card, zone, y) => {
-        if (!canDrop(card, zone)) return;
+    const previewDrop = (card, zone, y) => {
+        if (!canDrop(card, zone)) { clearDropIndicator(); return; }
         const next = [...zone.children].find(item => item !== card && y < item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2);
-        zone.insertBefore(card, next || null);
-        const select = card.querySelector('[data-widget-move]');
-        if (select) setSelectValue(select, zone.dataset.widgetArea);
+        const rootRect = root.getBoundingClientRect();
+        const zoneRect = zone.getBoundingClientRect();
+        const gap = parseFloat(window.getComputedStyle(zone).rowGap) || 0;
+        const last = zone.children[zone.children.length - 1];
+        const top = next ? next.getBoundingClientRect().top - (next.previousElementSibling ? gap / 2 : 0)
+            : last ? last.getBoundingClientRect().bottom + gap / 2 : zoneRect.top;
+        dropIndicator.style.top = `${top - rootRect.top}px`;
+        dropIndicator.style.left = `${zoneRect.left - rootRect.left}px`;
+        dropIndicator.style.width = `${zoneRect.width}px`;
+        dropIndicator.hidden = false;
+        dropTarget = { zone, next: next || null };
     };
     const finishDrag = async save => {
         if (!dragging) return;
-        dragging.classList.remove('widget-dragging');
+        const card = dragging;
+        card.classList.remove('widget-dragging');
         const previous = dragOrigin;
+        const target = dropTarget;
         dragging = null;
         dragOrigin = null;
         touchPointer = null;
+        clearDropIndicator();
         content.querySelectorAll('.widget-drop-active').forEach(zone => zone.classList.remove('widget-drop-active'));
-        if (save) await saveOrder(previous); else rollback(previous);
+        if (save && target && canDrop(card, target.zone)) {
+            const before = JSON.stringify(layout());
+            target.zone.insertBefore(card, target.next);
+            const select = card.querySelector('[data-widget-move]');
+            if (select) setSelectValue(select, target.zone.dataset.widgetArea);
+            if (JSON.stringify(layout()) !== before) await saveOrder(previous);
+        }
     };
     root.addEventListener('submit', event => {
         const form = event.target;
@@ -203,16 +228,17 @@
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', dragging.dataset.widgetId);
     });
-    root.addEventListener('dragover', event => {
+    document.addEventListener('dragover', event => {
+        if (!dragging) return;
         const zone = event.target.closest('[data-widget-area]');
-        if (!dragging || !zone || !canDrop(dragging, zone)) return;
+        if (!zone || !content.contains(zone) || !canDrop(dragging, zone)) { clearDropIndicator(); return; }
         event.preventDefault();
-        place(dragging, zone, event.clientY);
+        previewDrop(dragging, zone, event.clientY);
     });
     root.addEventListener('drop', event => {
         if (!dragging) return;
         event.preventDefault();
-        finishDrag(true);
+        finishDrag(!dropIndicator.hidden);
     });
     root.addEventListener('dragend', () => finishDrag(false));
     root.addEventListener('pointerdown', event => {
@@ -228,10 +254,12 @@
     root.addEventListener('pointermove', event => {
         if (event.pointerId !== touchPointer || !dragging) return;
         const zone = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-widget-area]');
-        if (zone) place(dragging, zone, event.clientY);
+        if (zone && content.contains(zone)) previewDrop(dragging, zone, event.clientY);
+        else clearDropIndicator();
     });
-    root.addEventListener('pointerup', event => { if (event.pointerId === touchPointer) finishDrag(true); });
+    root.addEventListener('pointerup', event => { if (event.pointerId === touchPointer) finishDrag(!dropIndicator.hidden); });
     root.addEventListener('pointercancel', event => { if (event.pointerId === touchPointer) finishDrag(false); });
+    root.addEventListener('lostpointercapture', event => { if (event.pointerId === touchPointer) finishDrag(false); });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enhanceSelects, { once: true });
     else enhanceSelects();
 })();

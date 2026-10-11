@@ -41,6 +41,7 @@ final class PlayerController
             'meters_url' => base_href('/plugins/reel-player/assets/meters.js?v=' . substr(hash_file('sha256',$assets . '/meters.js'),0,16)),
             'preload_url' => base_href('/plugins/reel-player/assets/preload.js?v=' . substr(hash_file('sha256',$assets . '/preload.js'),0,16)),
             'chapters_url' => base_href('/plugins/reel-player/assets/chapters.js?v=' . substr(hash_file('sha256',$assets . '/chapters.js'),0,16)),
+            'transport_url' => base_href('/plugins/reel-player/assets/transport.js?v=' . substr(hash_file('sha256',$assets . '/transport.js'),0,16)),
         ], false);
     }
 

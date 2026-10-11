@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "type": "system",
   "description": "Private reel-to-reel player with playlists, audio chapters and CUE import.",
   "name_i18n": {
@@ -16,20 +16,23 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Add persistent audio chapters, timeline markers, search and chapter navigation without splitting the original audio.",
-    "Add a timestamp editor, CUE preview with encoding and source matching, and signal-based boundary suggestions.",
-    "Keep local and private Google Drive playback, Media Session controls and responsive mobile dialogs."
+    "Add smooth reel acceleration and inertial braking, including playback and buffering transitions.",
+    "Animate tape tension with a restrained release and settling motion while preserving guide tangents.",
+    "Use clear acrylic reel flanges, visible tape layers and winding-dependent ribbon masking.",
+    "Suspend mechanical effects in the background and respect reduced-motion preferences without changing native audio."
   ],
   "release_notes_i18n": {
     "en": [
-      "Add persistent audio chapters, timeline markers, search and chapter navigation without splitting the original audio.",
-      "Add a timestamp editor, CUE preview with encoding and source matching, and signal-based boundary suggestions.",
-      "Keep local and private Google Drive playback, Media Session controls and responsive mobile dialogs."
+      "Add smooth reel acceleration and inertial braking, including playback and buffering transitions.",
+      "Animate tape tension with a restrained release and settling motion while preserving guide tangents.",
+      "Use clear acrylic reel flanges, visible tape layers and winding-dependent ribbon masking.",
+      "Suspend mechanical effects in the background and respect reduced-motion preferences without changing native audio."
     ],
     "ru": [
-      "Главы и таймкоды с хранением в БД, отметками на шкале, поиском и переключением внутри одной записи.",
-      "Редактор таймкодов, предпросмотр CUE с проверкой исходного файла и кодировок, предложения переходов по аудиосигналу.",
-      "Сохранены локальное воспроизведение, защищённый Google Drive, системные кнопки и адаптивные окна."
+      "Плавный разгон катушек и инерционное торможение при паузе и буферизации.",
+      "Эффект натяжения ленты с мягким ослаблением и затуханием, без отрыва от катушек и роликов.",
+      "Прозрачные катушки, видимые витки намотки и тонкая лента с масками по её настоящему радиусу.",
+      "Механические эффекты выключаются в фоне и при уменьшении движения; системное аудио работает независимо."
     ]
   },
   "update": {
