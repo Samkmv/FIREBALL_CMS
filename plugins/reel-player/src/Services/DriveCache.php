@@ -88,7 +88,10 @@ final class DriveCache
     public function lock(string $id, bool $warming = false): mixed
     {
         $this->directory();
-        $path = $warming ? $this->directory . '/warming.lock' : $this->path($id, 'lock');
+        // A bounded pool keeps lock inodes stable. Unlinking an idle per-file
+        // lock can split it from a descriptor another request already opened.
+        // A collision only skips optional warming; playback never waits here.
+        $path = $this->directory . '/' . ($warming ? 'warming.lock' : 'prefix-' . substr($this->key($id),0,2) . '.lock');
         $handle = fopen($path, 'c'); @chmod($path, 0600);
         if (!$handle || !flock($handle, LOCK_EX | LOCK_NB)) { if ($handle) fclose($handle); return null; }
         return $handle;
@@ -129,16 +132,11 @@ final class DriveCache
             if (isset($removed[$entry['path']])) continue;
             $this->evict($entry['path']); $totalBytes -= $entry['size'];
         }
-        // Small metadata and idle file locks also have a bounded count per owner.
+        // Small metadata also has a bounded count per owner. The 256 prefix
+        // lock slots are permanent, including while audio cache entries expire.
         $metadata = glob($this->directory . '/*.meta') ?: [];
         usort($metadata, static fn(string $a, string $b): int => filemtime($a) <=> filemtime($b));
         foreach (array_slice($metadata, 0, max(0, count($metadata) - 127)) as $path) @unlink($path);
-        foreach (glob($this->directory . '/*.lock') ?: [] as $path) {
-            if (filemtime($path) >= time() - self::TTL || basename($path) === 'warming.lock') continue;
-            $lock = fopen($path, 'c');
-            if ($lock && flock($lock, LOCK_EX | LOCK_NB)) { @unlink($path); flock($lock, LOCK_UN); }
-            if ($lock) fclose($lock);
-        }
     }
 
     private function evict(string $path): void { @unlink($path); @unlink(substr($path, 0, -4) . '.info'); }

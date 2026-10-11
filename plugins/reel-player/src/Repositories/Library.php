@@ -11,10 +11,12 @@ final class Library
     public function state(): array
     {
         $tracks = db()->query('SELECT id, title, artist, filename, duration, file_size, cover_path, cover_mime, source, favorite, created_at FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
+        $chapters = (new Chapters($this->owner))->all();
         foreach ($tracks as &$track) {
             $track['id'] = (int)$track['id'];
             $track['duration'] = (float)$track['duration'];
             $track['favorite'] = (bool)$track['favorite'];
+            $track['chapters'] = $chapters[$track['id']] ?? [];
             $track['url'] = base_href('/admin/reel-player/media/' . $track['id']);
             $track['cover'] = $track['cover_path'] ? base_href('/admin/reel-player/cover/' . $track['id']) . '?v=' . basename($track['cover_path']) : '';
             unset($track['cover_path']);
@@ -29,9 +31,9 @@ final class Library
         return ['tracks' => $tracks, 'playlists' => $playlists];
     }
 
-    public function track(int $id): array
+    public function track(int $id, bool $lock = false): array
     {
-        $row = db()->query('SELECT * FROM reel_tracks WHERE id = ? AND owner_id = ?', [$id, $this->owner])->getOne();
+        $row = db()->query('SELECT * FROM reel_tracks WHERE id = ? AND owner_id = ?' . ($lock ? ' FOR UPDATE' : ''), [$id, $this->owner])->getOne();
         if (!$row) throw new \InvalidArgumentException('Трек не найден.');
         return $row;
     }
@@ -101,13 +103,12 @@ final class Library
     {
         if ($playlist) $this->playlist($playlist);
         foreach ($files as $file) {
-            $id = (int)db()->query('SELECT id FROM reel_tracks WHERE owner_id = ? AND source = ? AND source_id = ?', [$this->owner, 'drive', $file['id']])->getColumn();
-            if (!$id) {
-                $parts = explode(' - ', pathinfo($file['name'], PATHINFO_FILENAME), 2);
-                db()->query('INSERT INTO reel_tracks (owner_id, title, artist, filename, mime, file_size, source, source_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$this->owner, mb_substr(trim(count($parts) > 1 ? $parts[1] : $parts[0]) ?: 'Без названия', 0, 240), mb_substr(count($parts) > 1 ? trim($parts[0]) : '', 0, 240), mb_substr($file['name'], 0, 240), $file['mimeType'], (int)($file['size'] ?? 0), 'drive', $file['id'], date('Y-m-d H:i:s')]);
-                $id = (int)db()->getInsertId();
-            }
+            $parts = explode(' - ', pathinfo($file['name'], PATHINFO_FILENAME), 2);
+            // The unique owner/source/file key also protects simultaneous imports.
+            // LAST_INSERT_ID keeps existing edits, covers and favorites intact.
+            db()->query('INSERT INTO reel_tracks (owner_id, title, artist, filename, mime, file_size, source, source_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)',
+                [$this->owner, mb_substr(trim(count($parts) > 1 ? $parts[1] : $parts[0]) ?: 'Без названия', 0, 240), mb_substr(count($parts) > 1 ? trim($parts[0]) : '', 0, 240), mb_substr($file['name'], 0, 240), $file['mimeType'], (int)($file['size'] ?? 0), 'drive', $file['id'], date('Y-m-d H:i:s')]);
+            $id = (int)db()->getInsertId();
             if ($playlist) $this->add($playlist, $id);
         }
         return count($files);
@@ -117,6 +118,22 @@ final class Library
     {
         $id = (int)($data['id'] ?? 0);
         switch ($action) {
+            case 'chapter.create':
+                return (new Chapters($this->owner))->create((int)($data['track_id'] ?? 0),$data);
+            case 'chapter.update':
+                (new Chapters($this->owner))->update((int)($data['track_id'] ?? 0),$id,$data);
+                break;
+            case 'chapter.delete':
+                (new Chapters($this->owner))->delete((int)($data['track_id'] ?? 0),$id);
+                break;
+            case 'chapter.import':
+                $entries = $data['chapters'] ?? null;
+                if (!is_string($entries)) throw new \InvalidArgumentException('Некорректный список глав.');
+                try { $entries = json_decode($entries,true,512,JSON_THROW_ON_ERROR); }
+                catch (\JsonException) { throw new \InvalidArgumentException('Некорректный JSON глав.'); }
+                if (!is_array($entries)) throw new \InvalidArgumentException('Некорректный список глав.');
+                (new Chapters($this->owner))->import((int)($data['track_id'] ?? 0),$entries,(string)($data['mode'] ?? 'replace'),($data['confirmed'] ?? '')==='1',isset($data['revision']) ? (string)$data['revision'] : null);
+                break;
             case 'playlist.create':
                 $name = self::text($data['name'] ?? '', 160, 'Название плейлиста');
                 db()->query('INSERT INTO reel_playlists (owner_id, name, created_at) VALUES (?, ?, ?)', [$this->owner, $name, date('Y-m-d H:i:s')]);
@@ -152,21 +169,32 @@ final class Library
                 } catch (\Throwable $error) { db()->rollBack(); throw $error; }
                 break;
             case 'track.update':
-                $track = $this->track($id);
-                $title = self::text($data['title'] ?? $track['title'], 240, 'Название');
-                $artist = self::text($data['artist'] ?? $track['artist'], 240, 'Исполнитель', false);
-                $duration = self::duration($data['duration'] ?? $track['duration']);
-                $storage = new MediaStorage();
-                $saved = $cover && (int)$cover['error'] !== UPLOAD_ERR_NO_FILE ? $storage->upload($cover, $this->owner, true) : null;
+                $storage = new MediaStorage(); $saved = null;
+                db()->beginTransaction();
                 try {
+                    // Serialize cover replacement with edits and deletion, so
+                    // every request cleans up the actual previous cover.
+                    $track = $this->track($id,true);
+                    $title = self::text($data['title'] ?? $track['title'], 240, 'Название');
+                    $artist = self::text($data['artist'] ?? $track['artist'], 240, 'Исполнитель', false);
+                    $duration = self::duration($data['duration'] ?? $track['duration']);
+                    Chapters::validateEntries((new Chapters($this->owner))->list($id),$duration);
+                    $saved = $cover && (int)$cover['error'] !== UPLOAD_ERR_NO_FILE ? $storage->upload($cover, $this->owner, true) : null;
                     db()->query('UPDATE reel_tracks SET title = ?, artist = ?, duration = ?, cover_path = ?, cover_mime = ? WHERE id = ? AND owner_id = ?',
                         [$title, $artist, $duration, $saved['path'] ?? $track['cover_path'], $saved['mime'] ?? $track['cover_mime'], $id, $this->owner]);
-                } catch (\Throwable $error) { if ($saved) $storage->delete($saved['path']); throw $error; }
+                    db()->commit();
+                } catch (\Throwable $error) { db()->rollBack(); if ($saved) $storage->delete($saved['path']); throw $error; }
                 if ($saved) $storage->delete($track['cover_path']);
                 break;
             case 'track.duration':
-                $this->track($id);
-                db()->query('UPDATE reel_tracks SET duration = ? WHERE id = ? AND owner_id = ?', [self::duration($data['duration'] ?? null), $id, $this->owner]);
+                db()->beginTransaction();
+                try {
+                    $this->track($id,true);
+                    $duration = self::duration($data['duration'] ?? null);
+                    Chapters::validateEntries((new Chapters($this->owner))->list($id),$duration);
+                    db()->query('UPDATE reel_tracks SET duration = ? WHERE id = ? AND owner_id = ?', [$duration, $id, $this->owner]);
+                    db()->commit();
+                } catch (\Throwable $error) { db()->rollBack(); throw $error; }
                 break;
             case 'track.favorite':
                 $this->track($id);
@@ -175,8 +203,12 @@ final class Library
                 db()->query('UPDATE reel_tracks SET favorite = ? WHERE id = ? AND owner_id = ?', [(int)$favorite, $id, $this->owner]);
                 break;
             case 'track.delete':
-                $track = $this->track($id);
-                db()->query('DELETE FROM reel_tracks WHERE id = ? AND owner_id = ?', [$id, $this->owner]);
+                db()->beginTransaction();
+                try {
+                    $track = $this->track($id,true);
+                    db()->query('DELETE FROM reel_tracks WHERE id = ? AND owner_id = ?', [$id, $this->owner]);
+                    db()->commit();
+                } catch (\Throwable $error) { db()->rollBack(); throw $error; }
                 $storage = new MediaStorage();
                 $storage->delete($track['file_path']);
                 $storage->delete($track['cover_path']);

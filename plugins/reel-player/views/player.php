@@ -131,8 +131,12 @@ $button = static function (string $action, string $label, string $name, string $
             </div>
             <?php endforeach; ?>
             <div class="rp-main-controls">
-                <label class="rp-seek-wrap"><span class="rp-sr-only">Позиция воспроизведения</span><input class="rp-range rp-seek" data-seek type="range" min="0" max="1000" value="0" disabled></label>
+                <div class="rp-timeline">
+                    <label class="rp-seek-wrap"><span class="rp-sr-only">Позиция воспроизведения</span><input class="rp-range rp-seek" data-seek type="range" min="0" max="1000" value="0" disabled></label>
+                    <div class="rp-chapter-markers" data-chapter-markers data-action="chapter-marker-seek" role="group" aria-label="Таймкоды треков в аудиофайле" hidden></div>
+                </div>
                 <div class="rp-times"><span data-elapsed>0:00</span><span data-duration>0:00</span></div>
+                <p class="rp-chapter-current" data-chapter-current aria-live="polite" aria-atomic="true" hidden></p>
                 <div class="rp-play-controls"><?= $button('prev', 'Предыдущий трек', 'prev') ?><?= $button('play', 'Воспроизвести', 'play', 'rp-play') ?><?= $button('next', 'Следующий трек', 'next') ?></div>
             </div>
         </div>
@@ -142,6 +146,21 @@ $button = static function (string $action, string $label, string $name, string $
             <div class="rp-volume"><?= $button('mute', 'Выключить звук', 'volume') ?><label><span class="rp-sr-only">Громкость</span><input type="range" class="rp-range" data-volume min="0" max="1" step="0.01" value="0.8"></label></div>
         </div>
         <div class="rp-meter-recovery" data-meter-recovery hidden><button type="button" class="rp-button" data-action="meters">Включить индикаторы</button></div>
+    </section>
+    <section class="rp-chapter-panel" data-chapter-panel aria-labelledby="rp-chapter-heading" hidden>
+        <div class="rp-chapter-toolbar">
+            <div class="rp-chapter-heading">
+                <h2 id="rp-chapter-heading">Список треков</h2>
+                <p class="rp-chapter-source"><span class="rp-sr-only">Исходный аудиофайл: </span><span data-chapter-source></span></p>
+            </div>
+            <div class="rp-chapter-tools">
+                <button type="button" class="rp-upload-button" data-action="chapter-add"><?= $icon('plus') ?><span>Добавить таймкод</span></button>
+                <button type="button" class="rp-button" data-action="chapter-tools">CUE и автопоиск</button>
+            </div>
+        </div>
+        <label class="rp-search rp-chapter-search"><?= $icon('search') ?><input type="search" data-chapter-search placeholder="Найти трек или исполнителя" aria-label="Найти трек внутри аудиофайла"></label>
+        <div class="rp-chapter-list" data-chapter-list></div>
+        <p class="rp-chapter-empty" data-chapter-empty hidden>Ничего не найдено. Попробуйте другое название или имя исполнителя.</p>
     </section>
     <section class="rp-library" aria-label="Музыкальная библиотека">
         <aside class="rp-playlists">
@@ -169,15 +188,15 @@ $button = static function (string $action, string $label, string $name, string $
             <div class="rp-drop-hint">Перетащите музыку в эту область · <span data-upload-limit></span> на файл</div>
         </div>
     </section>
-    <footer class="rp-footer"><button type="button" class="rp-about" data-action="meter-report" aria-label="Проверить индикаторы и версию плеера">TAPE ROOM · <?= htmlSC($config['version'] ?? '') ?></button><span>Пробел — пауза · ← / → — перемотка · Shift + ← / → — трек</span><span>СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ</span></footer>
+    <footer class="rp-footer"><button type="button" class="rp-about" data-action="meter-report" aria-label="Проверить индикаторы и версию плеера">TAPE ROOM · <?= htmlSC($config['version'] ?? '') ?></button><span>Пробел — пауза · ← / → — перемотка · Shift + ← / → — глава / трек</span><span>СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ</span></footer>
     <div class="rp-drop-overlay" hidden data-drop-overlay><?= $icon('upload') ?><strong>Положите музыку на ленту</strong><span>Файлы добавятся в открытый плейлист</span></div>
-    <div class="rp-upload-progress" hidden data-upload-progress><span data-upload-message></span><progress max="100" value="0"></progress></div>
+    <div class="rp-upload-progress" hidden data-upload-progress><span data-upload-message></span><progress max="100" value="0" aria-label="Загрузка музыки"></progress></div>
     <div class="rp-toast" role="status" data-toast hidden></div>
     <audio data-audio preload="auto" playsinline></audio>
     <input class="rp-sr-only" tabindex="-1" aria-hidden="true" type="file" data-audio-files accept=".mp3,.wav,.flac,.m4a,.ogg,.opus,.aac,.webm" multiple>
-    <dialog class="rp-dialog" data-dialog>
+    <dialog class="rp-dialog" data-dialog aria-labelledby="rp-dialog-title">
         <form data-dialog-form>
-            <div class="rp-dialog-header"><h2 data-dialog-title></h2><?= $button('close-dialog', 'Закрыть', 'close') ?></div>
+            <div class="rp-dialog-header"><h2 id="rp-dialog-title" data-dialog-title></h2><?= $button('close-dialog', 'Закрыть', 'close') ?></div>
             <p data-dialog-description hidden></p>
             <div data-dialog-fields></div>
             <p class="rp-dialog-error" role="alert" data-dialog-error hidden></p>
@@ -188,6 +207,7 @@ $button = static function (string $action, string $label, string $name, string $
 <script type="application/json" data-player-config><?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?></script>
 <script src="<?= htmlSC($preload_url) ?>" defer></script>
 <script src="<?= htmlSC($meters_url) ?>" defer></script>
+<?php if (!empty($chapters_url)): ?><script src="<?= htmlSC($chapters_url) ?>" defer></script><?php endif; ?>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>
 </html>

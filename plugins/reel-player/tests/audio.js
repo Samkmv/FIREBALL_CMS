@@ -104,10 +104,11 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     vm.runInContext(wrapper+playback,isolated);await isolated.play('user',{isTrusted:true,type:'click'});assert.equal(nativePlays,1);assert.equal(isolated.audio.paused,false);assert.equal(analysisErrors,1,'Analysis command exceptions do not reject native play');
     const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),source.indexOf("    window.addEventListener('pagehide', save);"));
     const navigation=source.slice(source.indexOf('    function next(automatic = false,'),source.indexOf('    function applyState(result)'));
+    const seekCode=source.slice(source.indexOf('    function seekTo('),source.indexOf('    function jumpChapter('));
     const actions=new Map(); const audio={duration:200,currentTime:75,paused:false,pause(){this.paused=true;}};
-    const context=vm.createContext({audio,current:2,queue:[1,2,3],repeat:'off',shuffle:false,bag:[],futureBag:[],history:[],playOrigins:[],navigator:{mediaSession:{setActionHandler(name,handler){actions.set(name,handler);}}},drawProgress(){}});
+    const context=vm.createContext({audio,current:2,queue:[1,2,3],repeat:'off',shuffle:false,bag:[],futureBag:[],history:[],playOrigins:[],navigator:{mediaSession:{setActionHandler(name,handler){actions.set(name,handler);}}},drawProgress(){},save(){},seekChapter(){return false;}});
     vm.runInContext('function load(id){current=id;audio.currentTime=0;} function play(origin){playOrigins.push(origin);audio.paused=false;}',context);
-    vm.runInContext(navigation+controls,context);
+    vm.runInContext(navigation+seekCode+controls,context);
     assert.equal(actions.get('seekbackward'),null); assert.equal(actions.get('seekforward'),null);
     actions.get('nexttrack')(); assert.equal(context.current,3); assert.equal(audio.currentTime,0);
     actions.get('previoustrack')(); assert.equal(context.current,2);

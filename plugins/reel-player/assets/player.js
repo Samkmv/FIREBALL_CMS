@@ -16,6 +16,7 @@
     let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     let data = config.state, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
     let audibleVolume = Number(saved.audibleVolume) > 0 ? Math.min(1, Number(saved.audibleVolume)) : Number(saved.volume) > 0 ? Math.min(1, Number(saved.volume)) : .8;
     let selected = Number(saved.playlist) || 0;
     let current = 0, queue = [], queueName = '', queuePlaylist = Number(saved.queuePlaylist) || 0, repeat = ['off', 'all', 'one'].includes(saved.repeat) ? saved.repeat : 'off';
@@ -30,6 +31,7 @@
     const meterSignal = {generation:-1, values:[0,0], rms:[0,0], sampled:[-Infinity,-Infinity], drawn:0};
     const meterReport = {samples:[], time:-Infinity, status:null};
     let mutationQueue = Promise.resolve();
+    let dialogRequest = 0;
     let futureBag = [], shuffleCycleStarted = false;
     const preloader = new window.TapeRoomPreloader({url:`${config.api}/prepare`,csrf:config.csrf});
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -44,6 +46,11 @@
     const track = id => data.tracks.find(t => t.id === Number(id));
     const playlist = id => data.playlists.find(p => p.id === Number(id));
     const activeTrack = () => track(current);
+    const chapters = window.TapeRoomChapters;
+    const currentChapters = () => activeTrack()?.chapters || [];
+    const playbackPosition = () => audio.readyState === 0 && restoreTime ? restoreTime : audio.currentTime || 0;
+    let chapterKey = '', chapterIndex = -2, chapterDuration = -1, chapterRows = [], chapterMarkers = [];
+    let chapterJob = null;
     const collectionName = id => id === -1 ? 'Избранное' : playlist(id)?.name || 'Вся музыка';
     const collectionTracks = id => id === -1 ? data.tracks.filter(t => t.favorite) : id > 0 ? (playlist(id)?.tracks || []).map(track).filter(Boolean) : data.tracks;
     const sortedTracks = (tracks, mode) => mode === 'playlist' ? [...tracks] : [...tracks].sort((a,b) => mode === 'old' ? a.id - b.id : b.id - a.id);
@@ -70,7 +77,7 @@
         clearTimeout(toastTimer); toastTimer = setTimeout(() => { node.hidden = true; }, error ? 7000 : 3500);
     }
     function save() {
-        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:audio.currentTime || 0, volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
+        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:playbackPosition(), volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
     }
     function closeSort() {
         const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
@@ -146,7 +153,7 @@
         $('[data-action="prev"]').disabled = !current;
         $('[data-action="next"]').disabled = !current;
         $('[data-action="edit-current"]').disabled = !current;
-        updateNow(); updateButtons(); prepareUpcoming();
+        updateNow(); updateButtons(); renderChapters(); prepareUpcoming();
     }
     function updateNow() {
         const t = activeTrack();
@@ -158,7 +165,8 @@
         if (t && 'mediaSession' in navigator && 'MediaMetadata' in window) {
             const artwork = t.cover ? {src:new URL(t.cover,location.href).href,...(t.cover_mime ? {type:t.cover_mime} : {})}
                 : {src:new URL(config.defaultArtwork || config.defaultCover,location.href).href,sizes:'512x512',type:'image/png'};
-            try { navigator.mediaSession.metadata = new MediaMetadata({title:t.title, artist:t.artist, album:queueName || 'Tape Room', artwork:[artwork]}); } catch (_) {}
+            const chapter = t.chapters?.length ? t.chapters[window.TapeRoomChapters.indexAt(t.chapters,playbackPosition())] : null;
+            try { navigator.mediaSession.metadata = new MediaMetadata({title:chapter?.title || t.title, artist:chapter?.artist || t.artist, album:chapter ? t.title : queueName || 'Tape Room', artwork:[artwork]}); } catch (_) {}
         }
     }
     function syncVolume() {
@@ -218,13 +226,15 @@
     }
     function drawProgress(forcePosition = false) {
         const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
-        const progress = duration > 0 ? Math.max(0, Math.min(1, audio.currentTime / duration)) : 0;
+        const position = playbackPosition();
+        const progress = duration > 0 ? Math.max(0, Math.min(1, position / duration)) : 0;
         if (!seekActive) { visuals.seek.value = Math.round(progress * 1000); rangeFill(visuals.seek, progress); }
         drawBuffered(duration,seekActive ? Number(visuals.seek.value)/1000 : progress);
         visuals.seek.disabled = !current || !duration;
-        const elapsed = formatTime(audio.currentTime), total = formatTime(duration);
+        const elapsed = formatTime(position), total = formatTime(duration);
         if (!seekActive && visuals.elapsed.textContent !== elapsed) visuals.elapsed.textContent = elapsed;
         if (visuals.duration.textContent !== total) visuals.duration.textContent = total;
+        syncChapter(duration);
         const inner = 78, outer = 174;
         const radii = [Math.sqrt(inner ** 2 + (outer ** 2 - inner ** 2) * (1 - progress)), Math.sqrt(inner ** 2 + (outer ** 2 - inner ** 2) * progress)];
         // A common outer tangent keeps the tape taut against both the changing
@@ -253,9 +263,9 @@
         });
         packRadii = radii;
         syncReels();
-        const key = `${generation}:${duration}:${Math.floor(audio.currentTime)}:${audio.playbackRate}`;
+        const key = `${generation}:${duration}:${Math.floor(position)}:${audio.playbackRate}`;
         if ((forcePosition || key !== positionKey) && 'mediaSession' in navigator && navigator.mediaSession.setPositionState && duration > 0) {
-            try { navigator.mediaSession.setPositionState({duration, playbackRate:audio.playbackRate, position:Math.min(duration,audio.currentTime)}); } catch (_) {}
+            try { navigator.mediaSession.setPositionState({duration, playbackRate:audio.playbackRate, position:Math.min(duration,position)}); } catch (_) {}
             positionKey = key;
         }
         return radii;
@@ -381,7 +391,7 @@
             setQueue(); load(first.id);
         }
         configureAudioSession();
-        if (audio.error) load(current,audio.currentTime || 0);
+        if (audio.error) load(current,playbackPosition());
         if (audio.ended) audio.currentTime = 0;
         const version = generation;
         // Keep play() inside the tap's activation; meter setup never gates sound.
@@ -425,11 +435,15 @@
     function load(id, time = 0) {
         const t = track(id); if (!t) return;
         preloader.cancel(); generation++; audio.pause(); stopMeters('track-change'); current = t.id; restoreTime = time; setBuffering(false);
+        chapterKey = ''; chapterIndex = -2; chapterDuration = -1;
         audio.src = t.url; audio.load(); render(); drawProgress(); save();
     }
     function next(automatic = false, origin = 'automatic', event) {
-        if (!current || !queue.length) return;
+        if (!current) return;
+        if (!automatic && seekChapter(1,origin,event)) return;
+        if (!queue.length) return;
         if (automatic && repeat === 'one') { audio.currentTime = 0; play(origin,event); return; }
+        if (automatic && repeat === 'off' && queue.length === 1 && queue[0] === current) return;
         let id;
         if (shuffle) {
             if (!bag.length) {
@@ -447,6 +461,7 @@
     }
     function previous(origin = 'automatic', event) {
         if (!current) return;
+        if (seekChapter(-1,origin,event)) return;
         if (audio.currentTime > 3) { audio.currentTime = 0; drawProgress(); return; }
         const id = shuffle && history.length ? history.pop() : queue[(Math.max(0, queue.indexOf(current)) - 1 + queue.length) % queue.length];
         if (id) { futureBag = []; load(id); play(origin,event); }
@@ -460,8 +475,8 @@
         mutationQueue = pending.catch(() => {});
         return pending.finally(() => { mutations--; });
     }
-    async function api(path, form) {
-        const response = await fetch(`${config.api}/${path}`, {method:form ? 'POST' : 'GET', credentials:'same-origin', headers:form ? {'X-CSRF-Token':config.csrf,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'} : {'Accept':'application/json'}, body:form});
+    async function api(path, form, signal) {
+        const response = await fetch(`${config.api}/${path}`, {method:form ? 'POST' : 'GET', credentials:'same-origin', headers:form ? {'X-CSRF-Token':config.csrf,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'} : {'Accept':'application/json'}, body:form,signal});
         let result;
         try { result = await response.json(); } catch (_) { throw new Error(response.status === 401 || response.status === 403 || response.redirected ? 'Сессия завершена. Обновите страницу и войдите в CMS.' : 'Сервер не ответил. Попробуйте ещё раз.'); }
         if (!response.ok || !result.status) throw new Error(result.message || (response.status === 419 ? 'Обновите страницу: срок действия сессии истёк.' : 'Не удалось выполнить действие.'));
@@ -476,23 +491,175 @@
         return mutate(async () => { const result = await api('action', form); if (result.tracks) applyState(result); return result; });
     }
     function openDialog(title, fields, handler, description = '', submit = 'Сохранить', danger = false) {
+        dialogRequest++;
+        chapterJob?.abort(); chapterJob = null;
         if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
         dialogSubmitting = false;
-        dialog.classList.remove('rp-dialog--drive');
+        dialog.classList.remove('rp-dialog--drive','rp-dialog--chapters');
         $('[data-dialog-title]').textContent = title;
         $('[data-dialog-fields]').innerHTML = fields;
         $('[data-dialog-description]').textContent = description; $('[data-dialog-description]').hidden = !description;
         $('[data-dialog-error]').hidden = true;
         const control = $('[data-dialog-submit]'); control.textContent = submit; control.disabled = false; control.hidden = false; control.classList.toggle('rp-button--danger', danger);
-        dialogHandler = handler; dialog.showModal();
+        dialogHandler = handler; syncDialogViewport(); dialog.showModal();
     }
+    function syncDialogViewport() {
+        const viewport = window.visualViewport;
+        const height = Math.min(window.innerHeight,viewport?.height || window.innerHeight);
+        dialog.style.setProperty('--rp-dialog-viewport-height',`${height}px`);
+        dialog.style.setProperty('--rp-dialog-viewport-top',`${viewport?.offsetTop || 0}px`);
+        dialog.classList.toggle('is-compact',height < 520);
+        dialog.classList.toggle('is-short',height < 340);
+    }
+    window.visualViewport?.addEventListener('resize',() => { if (dialog.open) syncDialogViewport(); });
+    window.visualViewport?.addEventListener('scroll',() => { if (dialog.open) syncDialogViewport(); });
+    window.addEventListener('resize',() => { if (dialog.open) syncDialogViewport(); });
     const field = (name, label, value = '', max = 240) => `<label class="rp-field">${label}<input name="${name}" value="${esc(value)}" maxlength="${max}" ${name === 'artist' ? '' : 'required'}></label>`;
+
+    function renderChapters() {
+        const t = activeTrack(), items = currentChapters(), panel = $('[data-chapter-panel]');
+        if (!panel) return;
+        const key = `${current}:${JSON.stringify(items)}`;
+        if (key !== chapterKey) {
+            chapterKey = key; chapterIndex = -2; chapterDuration = -1;
+            $('[data-chapter-search]').value = '';
+        }
+        panel.hidden = !items.length;
+        $('[data-chapter-source]').textContent = t?.filename || t?.title || '';
+        const query = $('[data-chapter-search]').value.trim().toLocaleLowerCase();
+        const visible = items.map((item,index) => ({item,index})).filter(({item}) => `${item.title} ${item.artist || ''}`.toLocaleLowerCase().includes(query));
+        $('[data-chapter-list]').innerHTML = visible.map(({item,index}) => `<article class="rp-chapter-row" data-chapter-row="${item.id}"><button type="button" class="rp-chapter-play" data-action="chapter-play" data-id="${item.id}" aria-label="Воспроизвести ${esc(item.title)} с ${chapters.formatTime(item.start)}"><span class="rp-chapter-number">${index+1}</span><span class="rp-chapter-info"><span class="rp-chapter-title">${esc(item.title)}</span>${item.artist ? `<span class="rp-chapter-artist">${esc(item.artist)}</span>` : ''}</span><span class="rp-chapter-start">${chapters.formatTime(item.start)}</span></button><div class="rp-chapter-actions">${button('chapter-edit','Изменить таймкод','edit',item.id)}${button('chapter-delete','Удалить таймкод','trash',item.id)}</div></article>`).join('');
+        chapterRows = [...$('[data-chapter-list]').children];
+        if ($('[data-chapter-empty]')) $('[data-chapter-empty]').hidden = visible.length !== 0;
+        chapterIndex = -2;
+        syncChapter(Number.isFinite(audio.duration) ? audio.duration : t?.duration || 0);
+    }
+    function syncChapter(duration) {
+        const items = currentChapters(), markerContainer = $('[data-chapter-markers]'), status = $('[data-chapter-current]');
+        if (!markerContainer || !status) return;
+        markerContainer.hidden = !items.length || !duration;
+        status.hidden = !items.length;
+        if (chapterDuration !== duration) {
+            chapterDuration = duration;
+            markerContainer.innerHTML = duration > 0 ? items.filter(item => item.start < duration).map(item => `<button type="button" class="rp-chapter-marker" data-action="chapter-play" data-id="${item.id}" style="--chapter-position:${Math.max(0,Math.min(100,item.start/duration*100))}%" title="${esc(item.title)} · ${chapters.formatTime(item.start)}" aria-label="${esc(item.title)} · ${chapters.formatTime(item.start)}"></button>`).join('') : '';
+            chapterMarkers = [...markerContainer.children];
+            chapterIndex = -2;
+        }
+        const index = chapters.indexAt(items,playbackPosition());
+        if (index === chapterIndex) return;
+        chapterIndex = index;
+        const item = items[index];
+        status.textContent = item ? `Трек ${index+1} из ${items.length} · ${item.title}` : items.length ? 'До первого таймкода' : '';
+        for (const row of chapterRows) {
+            const active = Number(row.dataset.chapterRow) === item?.id;
+            row.classList.toggle('is-current',active);
+            const control = row.querySelector('[data-action="chapter-play"]');
+            if (active) control.setAttribute('aria-current','true'); else control.removeAttribute('aria-current');
+        }
+        for (const marker of chapterMarkers) {
+            const active = Number(marker.dataset.id) === item?.id;
+            marker.classList.toggle('is-current',active);
+            if (active) marker.setAttribute('aria-current','true'); else marker.removeAttribute('aria-current');
+        }
+        for (const [action,label] of [['prev','Предыдущая'],['next','Следующая']]) {
+            const control = $(`[data-action="${action}"]`), text = items.length ? `${label} глава` : action === 'prev' ? 'Предыдущий трек' : 'Следующий трек';
+            control.title = text; control.setAttribute('aria-label',text);
+        }
+        updateNow();
+    }
+    function seekTo(time) {
+        if (!current || !Number.isFinite(Number(time))) return;
+        const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
+        const position = Math.max(0,duration > 0 ? Math.min(duration,Number(time)) : Number(time));
+        if (audio.readyState === 0) restoreTime = position; else audio.currentTime = position;
+        drawProgress(); save();
+    }
+    function jumpChapter(time, origin = 'user', event) {
+        seekTo(time); play(origin,event);
+    }
+    function seekChapter(direction, origin, event) {
+        const destination = chapters.destination(currentChapters(),playbackPosition(),direction);
+        if (destination === null) return false;
+        jumpChapter(destination,origin,event); return true;
+    }
+    function chapterTrack(control) { return Number(control.dataset.trackId) || current; }
+    function chapterAtPointer(event) {
+        const container = $('[data-chapter-markers]'), duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
+        const bounds = container.getBoundingClientRect();
+        const time = bounds.width ? Math.max(0,Math.min(1,(event.clientX-bounds.left)/bounds.width))*duration : 0;
+        return chapters.nearest(currentChapters().filter(item => item.start < duration),time);
+    }
+    function editChapter(trackId, chapterId = 0) {
+        const t = track(trackId); if (!t) return;
+        const item = t.chapters?.find(item => item.id === chapterId);
+        if (chapterId && !item) return;
+        const start = item?.start ?? (current === trackId ? playbackPosition() : 0);
+        openDialog(item ? 'Изменить таймкод' : 'Добавить таймкод',
+            field('title','Название композиции',item?.title || '') + field('artist','Исполнитель (необязательно)',item?.artist || '') +
+            `<label class="rp-field">Время начала<input name="start" value="${chapters.formatTime(start)}" placeholder="03:25 или 1:03:25" maxlength="20" inputmode="text" required></label><button type="button" class="rp-button" data-action="chapter-current-time" data-track-id="${trackId}" ${current !== trackId ? 'disabled' : ''}>Использовать текущее время</button>`,
+            async form => {
+                const start = chapters.parseTime(form.get('start'));
+                await action(item ? 'chapter.update' : 'chapter.create',{track_id:trackId,id:chapterId,title:form.get('title'),artist:form.get('artist'),start});
+                if (!current) { setQueue(); load(trackId); }
+                toast(item ? 'Таймкод изменён.' : 'Таймкод добавлен.');
+            }, `Исходная запись: ${t.title}. Аудиофайл остаётся целым.`);
+    }
+    function chapterTools(trackId) {
+        const t = track(trackId); if (!t) return;
+        openDialog('Главы записи', `<div class="rp-settings-section"><h3>Импорт CUE</h3><p>В CUE должен быть указан этот файл: <strong>${esc(t.filename)}</strong>. Сначала вы увидите список для проверки.</p><label class="rp-cue-picker rp-button">${icon('upload')}<span>Выбрать .cue</span><input type="file" name="cue" accept=".cue" class="rp-file-input" aria-label="Выбрать файл CUE" data-chapter-cue data-track-id="${trackId}"></label></div><div class="rp-settings-section"><h3>Найти переходы</h3><p>Поиск пауз в аудиосигнале предложит возможные границы. Переходы в непрерывном DJ-миксе могут быть пропущены. Названия и исполнителей нужно указать самостоятельно.</p><button type="button" class="rp-button" data-action="chapter-analyze" data-track-id="${trackId}">Анализировать запись</button><p data-chapter-job-status role="status" hidden></p></div><p>Распознавание названий требует отдельного сервиса. Сервис не подключён; ваша музыка ему не передаётся.</p>`,async () => {},`Исходная запись: ${t.title}`,'Готово');
+        dialog.querySelector('[data-chapter-cue]').addEventListener('change',async event => {
+            const file = event.target.files[0]; if (!file) return;
+            if (!/\.cue$/i.test(file.name) || file.size > 1048576) { toast('Выберите .cue размером до 1 МБ.',true); event.target.value = ''; return; }
+            await requestChapterPreview(trackId,'chapters/cue',file);
+        });
+    }
+    async function requestChapterPreview(trackId,path,file) {
+        if (chapterJob) return;
+        const request = dialogRequest, controller = new AbortController(); chapterJob = controller;
+        const form = new FormData(); form.set('track_id',trackId); form.set('needCSRFToken',config.csrf); if (file) form.set('cue',file);
+        $('[data-dialog-error]').hidden = true;
+        const status = $('[data-chapter-job-status]');
+        if (status) { status.hidden = false; status.textContent = file ? 'Читаем CUE…' : 'Анализируем сигнал. Это может занять до минуты. Окно можно закрыть, чтобы отменить.'; }
+        dialog.querySelectorAll('[data-chapter-cue],[data-action="chapter-analyze"]').forEach(control => { control.disabled = true; });
+        const timeout = setTimeout(() => controller.abort(),90000);
+        try {
+            const result = await api(path,form,controller.signal);
+            if (request !== dialogRequest || !dialog.open) return;
+            const entries = result.entries || result.chapters || [];
+            if (!entries.length) { if (status) status.textContent = 'Подходящие паузы не найдены. Добавьте таймкоды вручную или импортируйте CUE.'; return; }
+            showChapterPreview(trackId,entries,result.warnings || [],Boolean(file),result.revision);
+        } catch (error) {
+            if (request === dialogRequest && dialog.open) {
+                if (status) status.hidden = true;
+                const message = error.name === 'AbortError' ? 'Анализ отменён или превышено время ожидания. Сохранённая разметка не изменена.' : error.message;
+                $('[data-dialog-error]').textContent = message; $('[data-dialog-error]').hidden = false;
+            }
+        } finally {
+            clearTimeout(timeout); if (chapterJob === controller) chapterJob = null;
+            if (request === dialogRequest) dialog.querySelectorAll('[data-chapter-cue],[data-action="chapter-analyze"]').forEach(control => { control.disabled = false; });
+        }
+    }
+    function showChapterPreview(trackId,entries,warnings,isCue,revision) {
+        const t = track(trackId); if (!t) return;
+        const existing = t.chapters || [], mode = existing.length ? 'merge' : 'replace';
+        const rows = entries.map((item,index) => `<div class="rp-chapter-preview-row"><label class="rp-chapter-selection"><input type="checkbox" name="chapter-selected" value="${index}" checked aria-label="Импортировать главу ${index+1}"><span>${index+1}</span></label><label class="rp-field">Начало<input name="chapter-start-${index}" value="${chapters.formatTime(item.start)}" maxlength="20" inputmode="text" aria-label="Начало главы ${index+1}"></label><label class="rp-field">Название<input name="chapter-title-${index}" value="${esc(item.title || '')}" maxlength="240" placeholder="Укажите название" aria-label="Название главы ${index+1}"></label><label class="rp-field">Исполнитель<input name="chapter-artist-${index}" value="${esc(item.artist || '')}" maxlength="240" aria-label="Исполнитель главы ${index+1}"></label></div>`).join('');
+        openDialog(isCue ? 'Проверка CUE' : 'Возможные переходы', `<p>${esc(t.title)} · Найдено: ${entries.length}</p>${warnings.length ? `<ul class="rp-chapter-warnings">${warnings.map(warning => `<li>${esc(warning)}</li>`).join('')}</ul>` : ''}${!isCue ? '<p>Это предположения по сигналу. Исправьте время и заполните названия выбранных композиций.</p>' : ''}<div class="rp-chapter-import-mode"><label><input type="radio" name="chapter-mode" value="merge" ${mode === 'merge' ? 'checked' : ''}>Добавить к существующим</label><label><input type="radio" name="chapter-mode" value="replace" ${mode === 'replace' ? 'checked' : ''}>Заменить все таймкоды этой записи</label></div><div class="rp-chapter-preview">${rows}</div>`,async form => {
+            const selected = form.getAll('chapter-selected').map(Number);
+            if (!selected.length) throw new Error('Отметьте хотя бы одну композицию.');
+            const selectedEntries = selected.map(index => ({title:String(form.get(`chapter-title-${index}`) || '').trim(),artist:String(form.get(`chapter-artist-${index}`) || '').trim(),start:chapters.parseTime(form.get(`chapter-start-${index}`))}));
+            if (selectedEntries.some(item => !item.title)) throw new Error('Укажите название каждой выбранной композиции.');
+            await action('chapter.import',{track_id:trackId,chapters:JSON.stringify(selectedEntries),mode:form.get('chapter-mode'),confirmed:'1',revision});
+            if (!current) { setQueue(); load(trackId); }
+            toast(`Сохранено таймкодов: ${selectedEntries.length}.`);
+        },'Разметка сохранится только после нажатия «Сохранить таймкоды».','Сохранить таймкоды');
+        dialog.classList.add('rp-dialog--chapters'); syncDialogViewport();
+    }
     function createPlaylist() {
         openDialog('Новая лента', field('name','Название плейлиста','',160), async form => { const result = await action('playlist.create',{name:form.get('name')}); selected = result.id; render(); save(); });
     }
     function editTrack(id) {
         const t = track(id); if (!t) return;
-        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку"><img data-cover-preview src="${esc(t.cover || config.defaultCover)}" alt="Предварительный просмотр обложки"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
+        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку"><img data-cover-preview src="${esc(t.cover || config.defaultCover)}" alt="Предварительный просмотр обложки"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
         dialog.querySelector('[name="cover"]').addEventListener('change', event => {
             const file = event.target.files[0]; if (!file) return;
             if (file.size > 8 * 1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) {
@@ -559,6 +726,7 @@
 
     app.addEventListener('click', async event => {
         const control = event.target.closest('[data-action]'); if (!control || control.disabled) return;
+        if (dialogSubmitting && dialog.contains(control)) return;
         const name = control.dataset.action, id = Number(control.dataset.id);
         try {
             switch (name) {
@@ -580,6 +748,20 @@
                 case 'close-dialog': if (!dialogSubmitting) dialog.close(); break;
                 case 'edit-current': editTrack(current); break;
                 case 'edit-track': editTrack(id); break;
+                case 'chapter-play': { const item = control.classList.contains('rp-chapter-marker') && event.detail > 0 ? chapterAtPointer(event) : currentChapters().find(item => item.id === id); if (item) jumpChapter(item.start,'user',event); break; }
+                case 'chapter-marker-seek': { const item = chapterAtPointer(event); if (item) jumpChapter(item.start,'user',event); break; }
+                case 'chapter-add': editChapter(chapterTrack(control)); break;
+                case 'chapter-edit': editChapter(current,id); break;
+                case 'chapter-tools': chapterTools(chapterTrack(control)); break;
+                case 'chapter-current-time': {
+                    if (chapterTrack(control) === current) dialog.querySelector('[name="start"]').value = chapters.formatTime(playbackPosition());
+                    break;
+                }
+                case 'chapter-analyze': await requestChapterPreview(chapterTrack(control),'chapters/analyze'); break;
+                case 'chapter-delete': {
+                    const t = activeTrack(), item = currentChapters().find(item => item.id === id); if (!item) break;
+                    openDialog('Удалить таймкод?', '', () => action('chapter.delete',{track_id:t.id,id}), `«${item.title}» будет удалён из разметки. Исходная запись останется целой.`, 'Удалить', true); break;
+                }
                 case 'rename-playlist': openDialog('Название ленты', field('name','Название плейлиста',playlist(selected).name,160), form => action('playlist.rename',{id:selected,name:form.get('name')})); break;
                 case 'delete-playlist': openDialog('Удалить ленту?', '', () => action('playlist.delete',{id:selected}), `Плейлист «${playlist(selected).name}» будет удалён. Музыка останется в общей библиотеке.`, 'Удалить', true); break;
                 case 'delete-track': openDialog('Удалить композицию?', '', () => action('track.delete',{id}), `«${track(id).title}» будет удалена из библиотеки и всех плейлистов.${track(id).source === 'drive' ? ' Файл на Google Drive останется.' : ' Загруженный аудиофайл будет удалён с сервера.'}`, 'Удалить', true); break;
@@ -624,13 +806,21 @@
     });
     $('[data-dialog-form]').addEventListener('submit', async event => {
         event.preventDefault(); const control = $('[data-dialog-submit]'); if (control.disabled) return;
+        const request = dialogRequest;
         dialogSubmitting = true; control.disabled = true; $('[data-dialog-error]').hidden = true;
-        try { await dialogHandler(new FormData(event.currentTarget)); dialog.close(); }
-        catch (error) { $('[data-dialog-error]').textContent = error.message; $('[data-dialog-error]').hidden = false; }
-        finally { dialogSubmitting = false; control.disabled = false; }
+        try { await dialogHandler(new FormData(event.currentTarget)); if (request === dialogRequest) dialog.close(); }
+        catch (error) { if (request === dialogRequest) { $('[data-dialog-error]').textContent = error.message; $('[data-dialog-error]').hidden = false; } }
+        finally { if (request === dialogRequest) { dialogSubmitting = false; control.disabled = false; } }
     });
     dialog.addEventListener('cancel', event => { if (dialogSubmitting) event.preventDefault(); });
     $('[data-search]').addEventListener('input', render);
+    $('[data-chapter-search]')?.addEventListener('input',renderChapters);
+    $('[data-chapter-markers]')?.addEventListener('pointermove',event => {
+        if (event.pointerType !== 'mouse') return;
+        const control = event.target.closest('.rp-chapter-marker'), item = chapterAtPointer(event);
+        if (control && item) { const label = `${item.title} · ${chapters.formatTime(item.start)}`; if (control.title !== label) control.title = label; }
+    });
+    $('[data-chapter-markers]')?.addEventListener('focusin',event => { const label = event.target.getAttribute('aria-label'); if (label) event.target.title = label; });
     $('[data-sort]').addEventListener('click', event => {
         if (event.target.closest('[data-sort-trigger]')) {
             $('[data-sort-options]').hidden ? openSort() : closeSort();
@@ -653,8 +843,8 @@
     document.addEventListener('click', event => { if (!$('[data-sort]').contains(event.target)) closeSort(); });
     $('[data-volume]').addEventListener('input', event => { const volume = Number(event.target.value); audio.volume = volume; if (volume > 0) audibleVolume = volume; audio.muted = volume === 0; syncVolume(); save(); });
     audio.addEventListener('volumechange', syncVolume);
-    $('[data-seek]').addEventListener('input', event => { seekActive = true; const fraction = Number(event.target.value) / 1000; rangeFill(event.target,fraction); $('[data-elapsed]').textContent = formatTime(audio.duration * fraction); });
-    $('[data-seek]').addEventListener('change', event => { if (Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(event.target.value) / 1000; seekActive = false; drawProgress(); save(); });
+    $('[data-seek]').addEventListener('input', event => { seekActive = true; const fraction = Number(event.target.value) / 1000; rangeFill(event.target,fraction); $('[data-elapsed]').textContent = formatTime((Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0) * fraction); });
+    $('[data-seek]').addEventListener('change', event => { const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0; seekActive = false; if (duration) seekTo(duration * Number(event.target.value) / 1000); });
     $('[data-audio-files]').addEventListener('change', event => uploadFiles([...event.target.files]));
     audio.addEventListener('loadedmetadata', () => {
         if (restoreTime) {
@@ -712,7 +902,7 @@
         if (['ArrowLeft','ArrowRight'].includes(event.code)) {
             event.preventDefault();
             if (event.shiftKey) event.code === 'ArrowLeft' ? previous('user',event) : next(false,'user',event);
-            else if (Number.isFinite(audio.duration)) { audio.currentTime = Math.max(0,Math.min(audio.duration,audio.currentTime + (event.code === 'ArrowLeft' ? -5 : 5))); drawProgress(); }
+            else seekTo(playbackPosition() + (event.code === 'ArrowLeft' ? -5 : 5));
         }
     });
     if ('mediaSession' in navigator) {
@@ -721,7 +911,7 @@
         const handlers = {
             seekbackward:null, seekforward:null,
             play:() => play('system'), pause:() => audio.pause(), previoustrack:() => previous('system'), nexttrack:() => next(false,'system'),
-            seekto:event => { if (Number.isFinite(audio.duration)) audio.currentTime = Math.max(0,Math.min(audio.duration,event.seekTime)); }
+            seekto:event => seekTo(event.seekTime)
         };
         for (const [name,handler] of Object.entries(handlers)) { try { navigator.mediaSession.setActionHandler(name,handler); } catch (_) {} }
     }
@@ -801,8 +991,18 @@
             </details>
         </div>`;
     }
+    async function driveDialogStatus(request) {
+        try {
+            const status = await api('drive/status');
+            return request === dialogRequest ? status : null;
+        } catch (error) {
+            if (request === dialogRequest) throw error;
+            return null;
+        }
+    }
     async function driveSettings() {
-        const status = await api('drive/status'); config.drive = status.drive;
+        const status = await driveDialogStatus(++dialogRequest); if (!status) return;
+        config.drive = status.drive;
         if (!status.drive.canManage) { toast('Настройки доступны только создателю сайта.',true); return; }
         openDialog('Настройки плеера', '<div class="rp-settings-section"><h3>Google Drive</h3><p>Подключение для всего сайта. Каждый администратор входит в собственный Google-аккаунт.</p></div>' + field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label>' + driveSetupHelp(status.drive.callback), async form => {
             const result = await action('drive.settings',{client_id:form.get('client_id'),client_secret:form.get('client_secret')}); config.drive = result.drive;
@@ -810,7 +1010,8 @@
         }, 'Эти настройки доступны только создателю сайта и сохраняются один раз для всех пользователей.');
     }
     async function openDrive() {
-        const status = await api('drive/status'); config.drive = status.drive;
+        const status = await driveDialogStatus(++dialogRequest); if (!status) return;
+        config.drive = status.drive;
         if (!status.drive.connected) {
             openDialog('Музыка из Google Drive', '<button type="button" class="rp-button rp-google-button" data-action="drive-connect"' + (!status.drive.configured ? ' disabled' : '') + '><span class="rp-google-mark" aria-hidden="true">G</span>Войти в Google Drive</button>' + (!status.drive.configured ? '<p>' + (status.drive.canManage ? 'Откройте шестерёнку «Настройки плеера» и настройте подключение Google для сайта.' : 'Создатель сайта ещё не настроил подключение Google Drive.') + '</p>' : ''), async () => {}, 'Ваша музыка доступна только вашему аккаунту в плеере. Выберите свой Google-аккаунт и разрешите чтение Drive.');
             $('[data-dialog-submit]').hidden = true;
@@ -843,7 +1044,7 @@
                 token = next;
             } while (++attempts < 3);
         } catch (error) {
-            if ($('[data-drive-files]') !== list || browseGeneration !== driveBrowseGeneration) return;
+            if ($('[data-drive-files]') !== list || !dialog.open || browseGeneration !== driveBrowseGeneration) return;
             if (more) { more.disabled = false; more.textContent = 'Повторить загрузку'; }
             else { list.replaceChildren(element('p','rp-drive-empty',error.message)); const retry = element('button','rp-button','Повторить загрузку'); retry.type = 'button'; retry.dataset.action = 'drive-more'; list.append(retry); }
             throw error;
@@ -876,7 +1077,7 @@
         if (result.nextPageToken) { const next = element('button','rp-button rp-drive-more','Показать ещё'); next.type = 'button'; next.dataset.action = 'drive-more'; next.dataset.page = result.nextPageToken; list.append(next); }
         updateDriveSelection();
     }
-    dialog.addEventListener('close', () => { $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
+    dialog.addEventListener('close', () => { dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
     audio.muted = Boolean(saved.muted); syncVolume();
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;

@@ -8,7 +8,9 @@ use Fireball\ReelPlayer\Services\GoogleDrive;
 $checks = 0;
 $assert = static function(bool $value,string $label) use (&$checks): void { $checks++; if (!$value) throw new RuntimeException($label); };
 $reject = static function(callable $operation,int $code,string $label) use ($assert): void { try { $operation(); } catch (RuntimeException $e) { $assert($e->getCode() === $code,$label); return; } $assert(false,$label); };
-$root = sys_get_temp_dir().'/reel-stream-'.bin2hex(random_bytes(8)); mkdir($root,0700);
+$temporary = dirname(__DIR__,3).'/tests/.tmp';
+if (!is_dir($temporary)) mkdir($temporary,0700,true);
+$root = $temporary.'/reel-stream-'.bin2hex(random_bytes(8)); mkdir($root,0700);
 $account = hash('sha256','test-account'); $cache = new DriveCache($root,1,$account);
 $file = ['id'=>'fixture_audio_001','name'=>'Fixture.mp3','size'=>(string)(DriveCache::PREFIX_BYTES+1000),'mimeType'=>'audio/mpeg','headRevisionId'=>'fixture-revision'];
 $bytes = str_repeat('0123456789abcdef',intdiv((int)$file['size']+15,16)); $bytes = substr($bytes,0,(int)$file['size']);
@@ -58,6 +60,16 @@ try {
     $cache->invalidate($file['id'],false); $lock=$cache->lock($file['id']); $before=count($calls);
     $assert($pipe->prepare($file,$reader)['reason']==='busy' && count($calls)===$before,'Single flight prevents duplicate background download'); DriveCache::unlock($lock);
     $ownerLock=$cache->lock('another-file',true); $assert($pipe->prepare($file,$reader)['reason']==='busy','One warm request per owner'); DriveCache::unlock($ownerLock);
+    // A request may have opened a descriptor before cleanup examines an idle
+    // lock. That descriptor and the next request must keep sharing one inode.
+    $slot = $cache->lock($file['id']); $slotPath = stream_get_meta_data($slot)['uri']; DriveCache::unlock($slot);
+    $alreadyOpened = fopen($slotPath,'c'); touch($slotPath,time()-DriveCache::TTL-1); $cache->cleanup();
+    $assert(is_file($slotPath),'Cleanup never unlinks a lock inode already opened by another request');
+    flock($alreadyOpened,LOCK_EX);
+    $assert($cache->lock($file['id'])===null,'Previously opened descriptor still blocks simultaneous warming after cleanup');
+    DriveCache::unlock($alreadyOpened);
+    for ($n=0;$n<1024;$n++) { $slot=$cache->lock('slot-budget-'.$n); DriveCache::unlock($slot); }
+    $assert(count(glob($root.'/1/drive-cache/prefix-*.lock'))<=256,'Lock pool remains bounded across more than 1000 file IDs');
     $valid=false; $reject(fn()=>$pipe->prepare($file,$reader),403,'Disconnect during warm prevents publishing cache'); $assert($cache->prefix($file)===null,'No prefix saved after disconnect'); $valid=true;
     $broken=static function(array $f,int $s,int $e,bool $w,callable $h,callable $b):void { $h(206,['content-range'=>"bytes {$s}-{$e}/{$f['size']}"]); $b('short'); };
     $reject(fn()=>$pipe->prepare($file,$broken),502,'Truncated warm rejected'); $assert($cache->prefix($file)===null,'Partial warm not published');

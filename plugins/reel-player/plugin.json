@@ -2,39 +2,34 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.2.13",
+  "version": "1.3.0",
   "type": "system",
-  "description": "A private reel-to-reel music player with a persistent library and playlists.",
+  "description": "Private reel-to-reel player with playlists, audio chapters and CUE import.",
   "name_i18n": {
     "ru": "Tape Room · Аудиоплеер",
     "en": "Tape Room"
   },
   "description_i18n": {
-    "ru": "Личный катушечный аудиоплеер с загрузкой музыки, живыми индикаторами и плейлистами.",
-    "en": "A private reel-to-reel music player with a persistent library and playlists."
+    "ru": "Личный катушечный аудиоплеер с плейлистами, таймкодами, главами и импортом CUE.",
+    "en": "Private reel-to-reel player with playlists, audio chapters and CUE import."
   },
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Draw straight, symmetrical reel spokes with a shared centre and equal 120-degree spacing.",
-    "Join the spokes to the stationary rim and retain a single outer contour for stable rotation."
+    "Add persistent audio chapters, timeline markers, search and chapter navigation without splitting the original audio.",
+    "Add a timestamp editor, CUE preview with encoding and source matching, and signal-based boundary suggestions.",
+    "Keep local and private Google Drive playback, Media Session controls and responsive mobile dialogs."
   ],
   "release_notes_i18n": {
     "en": [
-      "Draw straight, symmetrical reel spokes with a shared centre and equal 120-degree spacing.",
-      "Join the spokes to the stationary rim and retain a single outer contour for stable rotation."
+      "Add persistent audio chapters, timeline markers, search and chapter navigation without splitting the original audio.",
+      "Add a timestamp editor, CUE preview with encoding and source matching, and signal-based boundary suggestions.",
+      "Keep local and private Google Drive playback, Media Session controls and responsive mobile dialogs."
     ],
     "ru": [
-      "Спицы катушек стали ровными и симметричными: общий центр и одинаковый шаг 120 градусов.",
-      "Спицы соединены с неподвижным ободом, оставлен единый внешний контур для ровного вращения."
-    ],
-    "de": [
-      "Gerade, symmetrische Spulenspeichen mit gemeinsamem Mittelpunkt und gleichen Abständen von 120 Grad.",
-      "Speichen mit dem festen Rand verbunden; eine einzige Außenkontur sorgt für eine gleichmäßige Drehung."
-    ],
-    "zh-cn": [
-      "卷盘辐条改为笔直、对称的形状，共用中心并保持相等的 120 度间距。",
-      "辐条与固定外圈连接，仅保留一条外轮廓，使旋转更加平稳。"
+      "Главы и таймкоды с хранением в БД, отметками на шкале, поиском и переключением внутри одной записи.",
+      "Редактор таймкодов, предпросмотр CUE с проверкой исходного файла и кодировок, предложения переходов по аудиосигналу.",
+      "Сохранены локальное воспроизведение, защищённый Google Drive, системные кнопки и адаптивные окна."
     ]
   },
   "update": {

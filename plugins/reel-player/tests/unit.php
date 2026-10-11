@@ -26,8 +26,11 @@ $assert = static function (bool $condition, string $message) use (&$checks): voi
 foreach ([['', [0,99,false]], ['bytes=0-9',[0,9,true]], ['bytes=30-',[30,99,true]], ['bytes=-20',[80,99,true]], ['bytes=90-1000',[90,99,true]], ['bytes=-200',[0,99,true]]] as [$header,$expected]) $assert(MediaStorage::range(100,$header) === $expected,'Range: '.$header);
 foreach (['bytes=100-', 'bytes=9-2', 'bytes=-0', 'bytes=-', 'bytes=0-2,4-6', 'items=1-2', "bytes=0-1\r\nX-Test: 1"] as $header) $assert(MediaStorage::range(100,$header) === null,'Reject invalid range');
 $assert(MediaStorage::range(0,'') === null,'Empty file');
-$storage = new MediaStorage('/tmp/reel-unit');
-$assert($storage->path('12/' . str_repeat('a',40) . '.mp3') === '/tmp/reel-unit/12/' . str_repeat('a',40) . '.mp3','Private storage path');
+$temporary = dirname(__DIR__,3) . '/tests/.tmp';
+if (!is_dir($temporary)) mkdir($temporary,0700,true);
+$storageRoot = $temporary . '/reel-unit-path-only';
+$storage = new MediaStorage($storageRoot);
+$assert($storage->path('12/' . str_repeat('a',40) . '.mp3') === $storageRoot . '/12/' . str_repeat('a',40) . '.mp3','Private storage path');
 foreach (['../config.php','12/../../config.php','12/drive.json','0/'.str_repeat('a',40).'.mp3','1/x.php'] as $path) {
     try { $storage->path($path); $assert(false,'Reject traversal'); } catch (InvalidArgumentException) { $assert(true,'Reject traversal'); }
 }
@@ -61,7 +64,7 @@ $browse = GoogleDrive::browsePage(['nextPageToken'=>'next-folder-page','files'=>
 ]]);
 $assert(array_column($browse['files'],'name') === ['Альбомы','Night.MP3'], 'Drive folder browser keeps navigable folders and audio, excluding unrelated files');
 $assert($browse['nextPageToken'] === 'next-folder-page', 'Drive folder browser preserves pagination');
-$driveRoot = sys_get_temp_dir() . '/reel-drive-unit-' . bin2hex(random_bytes(8));
+$driveRoot = $temporary . '/reel-drive-unit-' . bin2hex(random_bytes(8));
 mkdir($driveRoot . '/1',0700,true);
 $client = 'unit-test-client-12345.apps.googleusercontent.com';
 $legacy = ['client_id'=>$client,'client_secret'=>'unit-test-secret','access_token'=>'creator-access','refresh_token'=>'creator-refresh','expires_at'=>time()+3600];
@@ -85,6 +88,8 @@ try {
     $assert(!(new GoogleDrive(3,$driveRoot))->status()['connected'],'Another user never inherits a Google connection');
     $creatorDrive->settings($client,'');
     $assert($creatorDrive->status()['connected'] && $adminDrive->status()['connected'],'Resaving unchanged app with blank secret keeps connections');
+    try { $creatorDrive->settings('unit-test-new-client-12345.apps.googleusercontent.com',''); $assert(false,'Changed OAuth client requires its own secret'); }
+    catch (InvalidArgumentException) { $assert(file_get_contents($appFile)===$originalApp,'New OAuth client without secret leaves working app unchanged'); }
     $creatorDrive->authorizationUrl();
     $assert(($GLOBALS['reelTestSession']['reel_drive_oauth']['owner'] ?? 0) === 1,'OAuth pending state stays bound to the current owner');
     $pending = $GLOBALS['reelTestSession']['reel_drive_oauth'];
@@ -93,9 +98,63 @@ try {
     $creatorDrive->settings('unit-test-new-client-12345.apps.googleusercontent.com','new-unit-secret');
     $assert(!$creatorDrive->status()['connected'] && !$adminDrive->status()['connected'],'Changing site app requires fresh per-user OAuth');
     try { $creatorDrive->finish($pending['state'],'unit-code'); $assert(false,'OAuth callback rejects changed site app'); } catch (InvalidArgumentException $error) { $assert(str_contains($error->getMessage(),'Настройки Google изменились'),'OAuth callback rejects changed site app before contacting Google'); }
+    // A late 401 from an older audio request must not invalidate a fresh token.
+    $creatorDrive->settings($client,'unit-test-secret');
+    $binding = hash('sha256',$client."\0unit-test-secret");
+    file_put_contents($driveRoot.'/1/drive.json',json_encode(['access_token'=>'fresh-access','refresh_token'=>'creator-refresh','expires_at'=>time()+3600,'app_binding'=>$binding]));
+    $expire = new ReflectionMethod(GoogleDrive::class,'expireAccess');
+    $expire->invoke($creatorDrive,'stale-access');
+    $afterExpiry = json_decode(file_get_contents($driveRoot.'/1/drive.json'),true);
+    $assert($afterExpiry['access_token']==='fresh-access' && $afterExpiry['expires_at']>time(),'Late 401 does not expire a replacement token');
+    $assert((fileperms($driveRoot.'/1/drive.lock')&0777)===0600,'OAuth refresh lock remains private');
+    // Real parallel processes exercise the disconnect/refresh lock without any
+    // network request or real Google credentials. Empty tokens avoid revocation.
+    if (function_exists('pcntl_fork')) {
+        file_put_contents($driveRoot.'/1/drive.json','[]');
+        $accountLock = new ReflectionMethod(GoogleDrive::class,'withAccountLock');
+        $signal = $driveRoot.'/disconnect-started'; $result = $driveRoot.'/disconnect-finished';
+        $accountLock->invoke($creatorDrive,function() use ($creatorDrive,$driveRoot,$binding,$signal,$result,$assert): void {
+            $pid = pcntl_fork();
+            if ($pid < 0) throw new RuntimeException('Cannot fork OAuth race test');
+            if ($pid === 0) {
+                file_put_contents($signal,'started');
+                $creatorDrive->disconnect();
+                file_put_contents($result,'finished');
+                exit(0);
+            }
+            $deadline = microtime(true)+2;
+            while (!is_file($signal) && microtime(true)<$deadline) usleep(1000);
+            usleep(50000);
+            $assert(is_file($signal) && !is_file($result),'Disconnect waits for the in-flight account write');
+            // Simulate the refresh result being published while the lock is held.
+            file_put_contents($driveRoot.'/1/drive.json',json_encode(['access_token'=>'','expires_at'=>time()+3600,'app_binding'=>$binding]));
+            $GLOBALS['reelDisconnectChild'] = $pid;
+        });
+        pcntl_waitpid($GLOBALS['reelDisconnectChild'],$childStatus);
+        $assert(pcntl_wexitstatus($childStatus)===0 && is_file($result),'Disconnect resumes when refresh releases its lock');
+        $disconnected = json_decode(file_get_contents($driveRoot.'/1/drive.json'),true);
+        $assert(!isset($disconnected['access_token']) && !isset($disconnected['refresh_token']) && !empty($disconnected['account_epoch']),'Disconnect removes the earlier refresh and invalidates pending authorizations');
+        @unlink($signal); @unlink($result); unset($GLOBALS['reelDisconnectChild']);
+    }
+    // Pending state may live in another browser session. It must not reconnect
+    // the account after disconnect, even with the same shared OAuth client.
+    file_put_contents($driveRoot.'/1/drive.json','[]'); // Avoid revocation on PHP builds without pcntl.
+    $creatorDrive->authorizationUrl(); $pending = $GLOBALS['reelTestSession']['reel_drive_oauth'];
+    $creatorDrive->disconnect();
+    $GLOBALS['reelTestSession']['reel_drive_oauth'] = $pending;
+    try { $creatorDrive->finish($pending['state'],'unit-code'); $assert(false,'Cancelled cross-session callback must be rejected'); }
+    catch (InvalidArgumentException $error) { $assert(str_contains($error->getMessage(),'отменено'),'Cancelled callback is rejected before contacting Google'); }
+    $creatorDrive->authorizationUrl(); $nextPending = $GLOBALS['reelTestSession']['reel_drive_oauth'];
+    $currentEpoch = json_decode(file_get_contents($driveRoot.'/1/drive.json'),true)['account_epoch'];
+    $assert($nextPending['account_epoch']===$currentEpoch && $nextPending['account_epoch']!==$pending['account_epoch'],'New explicit sign-in captures the current epoch after disconnect');
+    $assert(!$creatorDrive->status()['connected'],'Cancellation metadata is never considered a connected account');
+    $writeAccount = new ReflectionMethod(GoogleDrive::class,'write');
+    $writeAccount->invoke($creatorDrive,['client_id'=>$client,'client_secret'=>'unit-test-secret','access_token'=>'','expires_at'=>0]);
+    $assert(json_decode(file_get_contents($driveRoot.'/1/drive.json'),true)['account_epoch']===$currentEpoch,'Token updates preserve the authorization cancellation epoch');
 } finally {
-    foreach ([1,2] as $owner) { @unlink($driveRoot . '/' . $owner . '/drive.json'); @rmdir($driveRoot . '/' . $owner); }
-    @unlink($driveRoot . '/drive-app.json'); @rmdir($driveRoot);
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($driveRoot,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);
+    foreach ($files as $entry) $entry->isDir() ? rmdir($entry->getPathname()) : unlink($entry->getPathname());
+    rmdir($driveRoot);
 }
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__).'/plugin.json'),true,512,JSON_THROW_ON_ERROR);
 $assert($manifest['update']['enabled'] && $manifest['update']['path']==='plugins/reel-player','CMS update source');
@@ -107,11 +166,11 @@ $router = new class {
 };
 require dirname(__DIR__) . '/routes.php';
 $assetPattern = array_values(array_filter($router->routes, static fn(array $route): bool => str_starts_with($route['path'],'/plugins/reel-player/assets/')))[0]['path'];
-foreach (['player.css','preload.js','meters.js','player.js'] as $asset) $assert(preg_match('~^'.$assetPattern.'$~','/plugins/reel-player/assets/'.$asset)===1,'Real CMS route exposes required asset '.$asset);
+foreach (['player.css','preload.js','meters.js','chapters.js','player.js'] as $asset) $assert(preg_match('~^'.$assetPattern.'$~','/plugins/reel-player/assets/'.$asset)===1,'Real CMS route exposes required asset '.$asset);
 $assert(preg_match('~^'.$assetPattern.'$~','/plugins/reel-player/assets/../src/Services/GoogleDrive.php')===0,'Asset route cannot expose private PHP');
 
 $privateRoutes = array_values(array_filter($router->routes, static fn(array $route): bool => str_starts_with($route['path'],'/admin/reel-player')));
-$assert(count($privateRoutes) === 10, 'Player, API, preparation, media, covers and Google callback are registered');
+$assert(count($privateRoutes) === 12, 'Player, API, chapters, preparation, media, covers and Google callback are registered');
 foreach ($privateRoutes as $route) $assert($route['guard'] === ['auth','admin'],'Authenticated admin guard: ' . $route['path']);
 (new FireballPluginReelPlayer())->boot();
 foreach (['creator'=>true,'admin'=>true,'moderator'=>false,'user'=>false,'unknown'=>false,'guest'=>false] as $role=>$allowed) {
