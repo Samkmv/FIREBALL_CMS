@@ -38,6 +38,7 @@ storage/.assets-*
 # Local schema inspection, update locks and editor backups.
 storage/schema-manifest.json
 storage/update.lock
+storage/update-intent.lock
 storage/install.lock
 storage/update.maintenance
 storage/update-recovery.json*

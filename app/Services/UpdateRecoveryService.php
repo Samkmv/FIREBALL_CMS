@@ -151,7 +151,7 @@ final class UpdateRecoveryService
         foreach ($iterator as $item) {
             if (!$item->isFile() || $item->isLink()) continue;
             $relative = substr($item->getPathname(), strlen($stage) + 1);
-            if (in_array($relative, ['storage/update.lock', 'storage/update.maintenance', 'storage/update-recovery.json'], true)) continue;
+            if (in_array($relative, ['storage/update.lock', 'storage/update-intent.lock', 'storage/update.maintenance', 'storage/update-recovery.json'], true)) continue;
             $target = $this->root . '/' . $relative;
             if (!is_dir(dirname($target)) && !mkdir(dirname($target), 0755, true)) throw new RuntimeException('Unable to create recovery directory.');
             $parent = realpath(dirname($target));

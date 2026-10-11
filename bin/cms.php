@@ -8,9 +8,15 @@ if (PHP_SAPI !== 'cli') {
 $command = $argv[1] ?? 'help';
 $cmsStorage = dirname(__DIR__) . '/storage';
 if (is_file($cmsStorage . '/update.maintenance')) { fwrite(STDERR, "Update maintenance is active. Use offline recovery.\n"); exit(1); }
+$cmsIntentLock = @fopen($cmsStorage . '/update-intent.lock', 'c+');
+if (!is_resource($cmsIntentLock) || !flock($cmsIntentLock, LOCK_SH | LOCK_NB)) {
+    fwrite(STDERR, "Update in progress.\n"); exit(1);
+}
 $GLOBALS['fireball_runtime_lock'] = @fopen($cmsStorage . '/update.lock', 'c+');
 if (!is_resource($GLOBALS['fireball_runtime_lock']) || !flock($GLOBALS['fireball_runtime_lock'], LOCK_SH | LOCK_NB)
     || is_file($cmsStorage . '/update.maintenance')) { fwrite(STDERR, "Update in progress.\n"); exit(1); }
+flock($cmsIntentLock, LOCK_UN);
+fclose($cmsIntentLock);
 define('FIREBALL_CLI', true);
 require dirname(__DIR__) . '/config/config.php';
 require ROOT . '/vendor/autoload.php';

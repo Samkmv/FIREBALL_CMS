@@ -46,9 +46,15 @@ $fireballUnavailable = static function () use ($fireballStorage): never {
     exit;
 };
 if (is_file($fireballStorage . '/update.maintenance')) $fireballUnavailable();
+// Hold the short entrance lock until the runtime reader is established. A
+// pending updater stops new requests here, without discarding existing readers.
+$fireballIntentLock = @fopen($fireballStorage . '/update-intent.lock', 'c+');
+if (!is_resource($fireballIntentLock) || !flock($fireballIntentLock, LOCK_SH | LOCK_NB)) $fireballUnavailable();
 $GLOBALS['fireball_runtime_lock'] = @fopen($fireballStorage . '/update.lock', 'c+');
 if (!is_resource($GLOBALS['fireball_runtime_lock']) || !flock($GLOBALS['fireball_runtime_lock'], LOCK_SH | LOCK_NB)) $fireballUnavailable();
 if (is_file($fireballStorage . '/update.maintenance')) $fireballUnavailable();
+flock($fireballIntentLock, LOCK_UN);
+fclose($fireballIntentLock);
 register_shutdown_function(static function (): void {
     if (is_resource($GLOBALS['fireball_runtime_lock'] ?? null)) {
         flock($GLOBALS['fireball_runtime_lock'], LOCK_UN);

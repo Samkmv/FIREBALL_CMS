@@ -2212,7 +2212,7 @@ class UpdateCenter
                 if (!file_exists($absolute)) {
                     continue;
                 }
-                $this->addPathToZip($zip, $absolute, $relative, ['storage/backups', 'storage/update.lock', 'storage/update.maintenance', 'storage/update-recovery.json', 'storage/plugin-updates', 'storage/update-checks']);
+                $this->addPathToZip($zip, $absolute, $relative, ['storage/backups', 'storage/update.lock', 'storage/update-intent.lock', 'storage/update.maintenance', 'storage/update-recovery.json', 'storage/plugin-updates', 'storage/update-checks']);
             }
 
             $closeAttempted = true;
@@ -2367,40 +2367,12 @@ class UpdateCenter
 
     protected function acquireUpdateLock()
     {
-        if (is_resource($GLOBALS['fireball_runtime_lock'] ?? null)) {
-            flock($GLOBALS['fireball_runtime_lock'], LOCK_UN);
-            fclose($GLOBALS['fireball_runtime_lock']);
-            $GLOBALS['fireball_runtime_lock'] = null;
-        }
-        $path = STORAGE . '/update.lock';
-        $handle = @fopen($path, 'c+');
-        if (!is_resource($handle) || !flock($handle, LOCK_EX | LOCK_NB)) {
-            if (is_resource($handle)) {
-                fclose($handle);
-            }
-            throw new RuntimeException('Another CMS update is already running.');
-        }
-
-        if (is_file(STORAGE . '/update.maintenance')) {
-            flock($handle, LOCK_UN);
-            fclose($handle);
-            throw new RuntimeException('A previous update requires recovery before another update can start.');
-        }
-        $payload = json_encode(['started_at' => date('c'), 'pid' => getmypid()], JSON_THROW_ON_ERROR);
-        if (!ftruncate($handle, 0) || fwrite($handle, $payload) !== strlen($payload) || !fflush($handle)) {
-            $this->releaseUpdateLock($handle);
-            throw new RuntimeException('Unable to persist update lock.');
-        }
-
-        return $handle;
+        return \FBL\UpdateLock::acquire(STORAGE);
     }
 
     protected function releaseUpdateLock($handle): void
     {
-        if (is_resource($handle)) {
-            flock($handle, LOCK_UN);
-            fclose($handle);
-        }
+        if ($handle instanceof \FBL\UpdateLock) $handle->release();
     }
 
     protected function enableMaintenanceMode(array $user): void
