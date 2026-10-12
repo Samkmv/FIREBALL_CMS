@@ -166,11 +166,11 @@ $router = new class {
 };
 require dirname(__DIR__) . '/routes.php';
 $assetPattern = array_values(array_filter($router->routes, static fn(array $route): bool => str_starts_with($route['path'],'/plugins/reel-player/assets/')))[0]['path'];
-foreach (['player.css','preload.js','meters.js','chapters.js','player.js'] as $asset) $assert(preg_match('~^'.$assetPattern.'$~','/plugins/reel-player/assets/'.$asset)===1,'Real CMS route exposes required asset '.$asset);
+foreach (['player.css','preload.js','meters.js','chapters.js','player.js','transport.js','quality.js','cover-light.png','cover-dark.png'] as $asset) $assert(preg_match('~^'.$assetPattern.'$~','/plugins/reel-player/assets/'.$asset)===1,'Real CMS route exposes required asset '.$asset);
 $assert(preg_match('~^'.$assetPattern.'$~','/plugins/reel-player/assets/../src/Services/GoogleDrive.php')===0,'Asset route cannot expose private PHP');
 
 $privateRoutes = array_values(array_filter($router->routes, static fn(array $route): bool => str_starts_with($route['path'],'/admin/reel-player')));
-$assert(count($privateRoutes) === 12, 'Player, API, chapters, preparation, media, covers and Google callback are registered');
+$assert(count($privateRoutes) === 13, 'Player, API, quality, chapters, preparation, media, covers and Google callback are registered');
 foreach ($privateRoutes as $route) $assert($route['guard'] === ['auth','admin'],'Authenticated admin guard: ' . $route['path']);
 (new FireballPluginReelPlayer())->boot();
 foreach (['creator'=>true,'admin'=>true,'moderator'=>false,'user'=>false,'unknown'=>false,'guest'=>false] as $role=>$allowed) {

@@ -110,7 +110,10 @@ try {
     $sum=array_sum(array_map('filesize',glob($root.'/*/drive-cache/*.bin')?:[])); $assert($sum<=DriveCache::TOTAL_BYTES,'Global disk budget');
     DriveCache::clearOwner($root,5); $assert(!(glob($root.'/5/drive-cache/*.bin')?:[]),'Disconnect purges only owner cache');
     $assert((bool)(glob($root.'/4/drive-cache/*.bin')?:[]),'Other owner cache survives disconnect');
-    $png=getimagesize(dirname(__DIR__).'/assets/cover.png'); $assert($png[0]===512 && $png[1]===512 && $png['mime']==='image/png','System cover is a real square 512px PNG');
+    foreach (['light','dark'] as $theme) {
+        $png=getimagesize(dirname(__DIR__).'/assets/cover-'.$theme.'.png');
+        $assert($png!==false && $png[0]===1254 && $png[1]===1254 && $png['mime']==='image/png','System '.$theme.' cover is a real square 1254px PNG');
+    }
     $blocked=$root.'/blocked'; file_put_contents($blocked,'not-a-directory');
     $unwritable=new DriveStream(new DriveCache($blocked,1,$account),static fn():bool=>true); $body='';
     set_error_handler(static fn():bool=>true);

@@ -73,6 +73,17 @@ final class MediaStorage
 
     public function stream(string $relative, string $mime): never
     {
+        $this->sendFile($relative, $mime, false);
+    }
+
+    /** The controller must check the current user's ownership before this call. */
+    public function streamCover(string $relative, string $mime): never
+    {
+        $this->sendFile($relative, $mime, in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true));
+    }
+
+    private function sendFile(string $relative, string $mime, bool $cacheCover): never
+    {
         $path = $this->path($relative);
         if (!is_file($path)) abort('Файл не найден.', 404);
         $size = (int)filesize($path);
@@ -80,8 +91,33 @@ final class MediaStorage
         session()->close();
         while (ob_get_level() > 0) ob_end_clean();
         header('Accept-Ranges: bytes');
-        header('Cache-Control: private, no-store, max-age=0');
+        header('Cache-Control: ' . ($cacheCover ? 'private, no-cache, max-age=0, must-revalidate' : 'private, no-store, max-age=0'));
         header('X-Content-Type-Options: nosniff');
+        if ($cacheCover) {
+            // A browser may retain image bytes, but every reuse must pass the
+            // authenticated controller again. Audio never enters this branch.
+            $etag = '"' . hash_file('sha256', $path) . '"';
+            $modified = (int)filemtime($path);
+            header('ETag: ' . $etag);
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $modified) . ' GMT');
+            $unchanged = false;
+            if (isset($_SERVER['HTTP_IF_NONE_MATCH'])) {
+                foreach (explode(',', (string)$_SERVER['HTTP_IF_NONE_MATCH']) as $candidate) {
+                    $candidate = trim($candidate);
+                    if ($candidate === '*' || preg_replace('/^W\//', '', $candidate) === $etag) {
+                        $unchanged = true;
+                        break;
+                    }
+                }
+            } elseif (isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])) {
+                $since = strtotime((string)$_SERVER['HTTP_IF_MODIFIED_SINCE']);
+                $unchanged = $since !== false && $since >= $modified;
+            }
+            if ($unchanged && in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) {
+                http_response_code(304);
+                exit;
+            }
+        }
         if ($range === null) {
             http_response_code(416);
             header('Content-Range: bytes */' . $size);

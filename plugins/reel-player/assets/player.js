@@ -14,6 +14,7 @@
         tape:[$('[data-tape-left]'),$('[data-tape-right]')]
     };
     let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    const defaultCover = () => config.defaultCovers?.[theme] || config.defaultCover;
     let data = config.state, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
@@ -74,6 +75,8 @@
         control.setAttribute('aria-pressed', String(dark));
         setIcon(control, dark ? 'sun' : 'moon');
         try { localStorage.setItem(`${config.storageKey}:theme`, theme); } catch (_) {}
+        app.querySelectorAll('[data-default-cover]').forEach(image => { image.src = defaultCover(); });
+        updateNow();
     }
 
     function toast(message, error = false) {
@@ -137,7 +140,8 @@
             const play = element('button', 'rp-track-play'); play.type = 'button'; play.dataset.action = 'play-track'; play.dataset.id = t.id;
             play.setAttribute('aria-label', `Воспроизвести ${t.title}`);
             play.innerHTML = `<span class="rp-track-number">${String(index + 1).padStart(2, '0')}</span>${icon(t.id === current && !audio.paused ? 'pause' : 'play')}`;
-            const cover = element('img', 'rp-track-cover'); cover.src = t.cover || config.defaultCover; cover.alt = ''; cover.loading = 'lazy';
+            const cover = element('img', 'rp-track-cover'); cover.src = t.cover || defaultCover(); cover.alt = ''; cover.loading = 'lazy';
+            if (!t.cover) cover.dataset.defaultCover = '';
             const info = element('div', 'rp-track-info');
             info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : ''}`));
             const actions = element('div', 'rp-track-actions');
@@ -192,12 +196,12 @@
         drawAudioQuality();
         $('[data-title]').textContent = t?.title || 'Ваша первая лента';
         $('[data-artist]').textContent = t?.artist || (t ? 'НЕИЗВЕСТНЫЙ ИСПОЛНИТЕЛЬ' : 'ДОБАВЬТЕ ЛЮБИМУЮ МУЗЫКУ');
-        const cover = t?.cover || config.defaultCover;
+        const cover = t?.cover || defaultCover();
         if ($('[data-cover]').getAttribute('src') !== cover) $('[data-cover]').src = cover;
         $('[data-source]').textContent = current ? (queueName || 'Вся музыка') + (t?.source === 'drive' ? ' · GOOGLE DRIVE' : ' · STEREO') : 'ВАША МУЗЫКА. ВАШ РИТМ.';
         if (t && 'mediaSession' in navigator && 'MediaMetadata' in window) {
             const artwork = t.cover ? {src:new URL(t.cover,location.href).href,...(t.cover_mime ? {type:t.cover_mime} : {})}
-                : {src:new URL(config.defaultArtwork || config.defaultCover,location.href).href,sizes:'512x512',type:'image/png'};
+                : {src:new URL(config.defaultCovers?.[theme] || config.defaultArtwork || config.defaultCover,location.href).href,sizes:config.defaultArtworkSize || '512x512',type:'image/png'};
             const chapter = t.chapters?.length ? t.chapters[window.TapeRoomChapters.indexAt(t.chapters,playbackPosition())] : null;
             try { navigator.mediaSession.metadata = new MediaMetadata({title:chapter?.title || t.title, artist:chapter?.artist || t.artist, album:chapter ? t.title : queueName || 'Tape Room', artwork:[artwork]}); } catch (_) {}
         }
@@ -706,19 +710,21 @@
     }
     function editTrack(id) {
         const t = track(id); if (!t) return;
-        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку"><img data-cover-preview src="${esc(t.cover || config.defaultCover)}" alt="Предварительный просмотр обложки"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
+        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку"><img data-cover-preview ${t.cover ? '' : 'data-default-cover'} src="${esc(t.cover || defaultCover())}" alt="Предварительный просмотр обложки"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
         dialog.querySelector('[name="cover"]').addEventListener('change', event => {
             const file = event.target.files[0]; if (!file) return;
             if (file.size > 8 * 1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) {
                 event.target.value = '';
                 if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
-                dialog.querySelector('[data-cover-preview]').src = t.cover || config.defaultCover;
+                const preview = dialog.querySelector('[data-cover-preview]');
+                preview.src = t.cover || defaultCover(); preview.toggleAttribute('data-default-cover', !t.cover);
                 dialog.querySelector('[data-cover-filename]').textContent = 'JPG, PNG или WebP · до 8 МБ';
                 toast('Выберите JPG, PNG или WebP размером до 8 МБ.',true); return;
             }
             if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
             coverPreviewUrl = URL.createObjectURL(file);
-            dialog.querySelector('[data-cover-preview]').src = coverPreviewUrl;
+            const preview = dialog.querySelector('[data-cover-preview]');
+            preview.removeAttribute('data-default-cover'); preview.src = coverPreviewUrl;
             dialog.querySelector('[data-cover-filename]').textContent = file.name;
         });
     }
@@ -937,7 +943,7 @@
         } catch (_) {} finally { clearTimeout(timeout); }
         if (version === generation) toast(message,true);
     });
-    $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== config.defaultCover) event.target.src = config.defaultCover; });
+    $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== defaultCover()) event.target.src = defaultCover(); });
     let dragDepth = 0;
     window.addEventListener('dragenter', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) { event.preventDefault(); dragDepth++; $('[data-drop-overlay]').hidden = false; } });
     window.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });

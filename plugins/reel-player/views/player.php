@@ -69,11 +69,11 @@ $button = static function (string $action, string $label, string $name, string $
             <svg class="rp-deck-svg" viewBox="0 0 1200 460" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <defs>
                     <linearGradient id="rp-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a8a5a0"/><stop offset=".18" stop-color="#f5f3ee"/><stop offset=".34" stop-color="#c2beb7"/><stop offset=".51" stop-color="#faf8f3"/><stop offset=".72" stop-color="#b8b4ad"/><stop offset=".89" stop-color="#eeeae3"/><stop offset="1" stop-color="#a8a39b"/></linearGradient>
-                    <linearGradient id="rp-clear-face" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffdf7" stop-opacity=".04"/><stop offset=".18" stop-color="#fffdf9" stop-opacity=".12"/><stop offset=".4" stop-color="#e9e5db" stop-opacity=".015"/><stop offset=".7" stop-color="#eeeae0" stop-opacity=".025"/><stop offset="1" stop-color="#fffdf7" stop-opacity=".08"/></linearGradient>
+                    <linearGradient id="rp-clear-face" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7e3da" stop-opacity=".10"/><stop offset=".18" stop-color="#e7e3da" stop-opacity=".16"/><stop offset=".4" stop-color="#dedbd1" stop-opacity=".11"/><stop offset=".7" stop-color="#e2ded4" stop-opacity=".12"/><stop offset="1" stop-color="#e7e3da" stop-opacity=".14"/></linearGradient>
                     <linearGradient id="rp-clear-edge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffef9" stop-opacity=".85"/><stop offset=".35" stop-color="#dedad0" stop-opacity=".35"/><stop offset=".7" stop-color="#88877e" stop-opacity=".48"/><stop offset="1" stop-color="#fffef9" stop-opacity=".75"/></linearGradient>
                     <linearGradient id="rp-hub" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3f4140"/><stop offset="1" stop-color="#161918"/></linearGradient>
                     <radialGradient id="rp-tape"><stop stop-color="#211810"/><stop offset=".46" stop-color="#302419"/><stop offset=".75" stop-color="#3b2e21"/><stop offset="1" stop-color="#1f1812"/></radialGradient>
-                    <radialGradient id="rp-glass"><stop offset=".65" stop-color="#faf8f3" stop-opacity="0"/><stop offset=".9" stop-color="#d2cdc3" stop-opacity=".06"/><stop offset="1" stop-color="#e5e0d7" stop-opacity=".18"/></radialGradient>
+                    <radialGradient id="rp-glass"><stop offset=".65" stop-color="#e7e3da" stop-opacity=".04"/><stop offset=".9" stop-color="#d2cdc3" stop-opacity=".12"/><stop offset="1" stop-color="#e5e0d7" stop-opacity=".22"/></radialGradient>
                     <filter id="rp-shadow" x="-30%" y="-20%" width="170%" height="165%"><feDropShadow dx="6" dy="17" stdDeviation="12" flood-color="#6a5b42" flood-opacity=".21"/></filter>
                     <linearGradient id="rp-tape-feed-left" data-tape-fade="left" gradientUnits="userSpaceOnUse" x1="163.88" y1="372.85" x2="180.63" y2="379.43"><stop class="rp-tape-ink" stop-opacity="0"/><stop class="rp-tape-ink" offset=".55" stop-opacity=".75"/><stop class="rp-tape-ink" offset="1" stop-opacity="1"/></linearGradient>
                     <linearGradient id="rp-tape-feed-right" data-tape-fade="right" gradientUnits="userSpaceOnUse" x1="1027.24" y1="265.57" x2="1014.38" y2="278.16"><stop class="rp-tape-ink" stop-opacity="0"/><stop class="rp-tape-ink" offset=".55" stop-opacity=".75"/><stop class="rp-tape-ink" offset="1" stop-opacity="1"/></linearGradient>
@@ -109,7 +109,7 @@ $button = static function (string $action, string $label, string $name, string $
                 <div class="rp-rotor-mount rp-rotor-mount--<?= $side ?>" aria-hidden="true"><div class="rp-rotor" data-rotor="<?= $side ?>">
                     <svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
                         <?php foreach ([22.5, 142.5, 262.5] as $angle): ?>
-                        <path class="rp-reel-spoke" transform="rotate(<?= $angle ?> 210 210)" d="M187.79 143.62 L149.71 29.81 A190 190 0 0 1 270.29 29.81 L232.21 143.62 A70 70 0 0 0 187.79 143.62 Z" fill="#e8e3d7" fill-opacity=".035"/>
+                        <path class="rp-reel-spoke" transform="rotate(<?= $angle ?> 210 210)" d="M187.79 143.62 L149.71 29.81 A190 190 0 0 1 270.29 29.81 L232.21 143.62 A70 70 0 0 0 187.79 143.62 Z" fill="#e8e3d7" fill-opacity=".09"/>
                         <?php endforeach; ?>
                         <circle cx="210" cy="210" r="74" fill="url(#rp-metal)" stroke="#77756e" stroke-width="1.5"/>
                         <circle cx="210" cy="210" r="65" fill="url(#rp-hub)" stroke="#0e100e" stroke-width="2"/>
@@ -126,7 +126,11 @@ $button = static function (string $action, string $label, string $name, string $
             <?php endforeach; ?>
             <div class="rp-now-playing">
                 <button type="button" class="rp-cover-button" data-action="edit-current" title="Изменить название и обложку" aria-label="Изменить название и обложку">
-                    <img data-cover src="<?= htmlSC($config['defaultCover']) ?>" alt="Обложка текущей композиции" width="280" height="280">
+                    <img data-cover alt="Обложка текущей композиции" width="280" height="280">
+                    <script>
+                        // Choose the saved theme before downloading the first cover.
+                        document.currentScript.previousElementSibling.src = <?= json_encode($config['defaultCovers'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>[document.documentElement.dataset.theme] || <?= json_encode($config['defaultCover'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+                    </script>
                     <span class="rp-cover-edit"><?= $icon('edit') ?></span>
                 </button>
                 <h1 data-title>Ваша первая лента</h1>

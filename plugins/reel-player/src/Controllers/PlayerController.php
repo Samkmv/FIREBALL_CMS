@@ -22,6 +22,11 @@ final class PlayerController
         header('Cache-Control: private, no-store');
         $assets = dirname(__DIR__, 2) . '/assets';
         $manifest = json_decode((string)file_get_contents(dirname($assets) . '/plugin.json'), true, 512, JSON_THROW_ON_ERROR);
+        $defaultCovers = [];
+        foreach (['light', 'dark'] as $theme) {
+            $file = 'cover-' . $theme . '.png';
+            $defaultCovers[$theme] = base_href('/plugins/reel-player/assets/' . $file . '?v=' . substr(hash_file('sha256', $assets . '/' . $file), 0, 16));
+        }
         $pwa = function_exists('pwa_head_data') ? pwa_head_data() : [];
         return plugin_view('reel-player', 'player', [
             'config' => [
@@ -29,8 +34,10 @@ final class PlayerController
                 'api' => base_href('/admin/reel-player/api'),
                 'csrf' => (string)session()->get('needCSRFToken', ''),
                 'storageKey' => 'fireball-tape-room:' . (int)get_user()['id'],
-                'defaultCover' => base_href('/plugins/reel-player/assets/cover.svg'),
-                'defaultArtwork' => base_href('/plugins/reel-player/assets/cover.png'),
+                'defaultCover' => $defaultCovers['light'],
+                'defaultArtwork' => $defaultCovers['light'],
+                'defaultCovers' => $defaultCovers,
+                'defaultArtworkSize' => '1254x1254',
                 'maxUpload' => UploadPolicy::limits()['effective'],
                 'state' => $this->library()->state(),
                 'drive' => $this->drive()->status(),
@@ -213,6 +220,8 @@ final class PlayerController
         }
         $path = $cover ? $track['cover_path'] : $track['file_path'];
         if (!$path) abort('Обложка не найдена.', 404);
-        (new MediaStorage())->stream($path, $cover ? $track['cover_mime'] : $track['mime']);
+        $storage = new MediaStorage();
+        if ($cover) $storage->streamCover($path, $track['cover_mime']);
+        $storage->stream($path, $track['mime']);
     }
 }
