@@ -51,5 +51,7 @@ storage/update-recovery.json*
 dist/fireball-cms-*.zip*
 
 # Agent-created test scratch data and local verification artifacts.
+/tests/
 /tests/.tmp/
 /tests/artifacts/
+/tests/
