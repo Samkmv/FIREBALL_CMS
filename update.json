@@ -1,5 +1,5 @@
 {
-  "version": "1.8.9",
+  "version": "1.8.10",
   "minVersion": "1.8.0",
   "type": "patch",
   "migrations": true,
