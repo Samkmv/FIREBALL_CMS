@@ -1,0 +1,636 @@
+{
+  "health": {
+    "generation": 57,
+    "phase": "sampling",
+    "reason": "",
+    "needsGesture": false,
+    "origin": "lifecycle",
+    "playOrigin": "automatic",
+    "activation": false,
+    "lastActivationMs": 84338.39999999851,
+    "online": true,
+    "mediaError": 0,
+    "nativeError": 0,
+    "driveStatus": null,
+    "lastFailure": null,
+    "counts": {
+      "contexts": 1,
+      "copies": 0,
+      "loads": 0,
+      "seeks": 0,
+      "rateWrites": 0,
+      "rebuilds": 0,
+      "retries": 0,
+      "activations": 1,
+      "sampleErrors": 0
+    },
+    "firstSignalMs": 204.10000000149012,
+    "firstSignalWaitMs": null,
+    "sampleAgeMs": 35,
+    "rms": [
+      0.1274674809451282,
+      0.02832602101050824
+    ],
+    "context": "running",
+    "clock": 119.40861678004535,
+    "resumeWaitMs": null,
+    "loadWaitMs": null,
+    "seekWaitMs": null,
+    "copy": null
+  },
+  "nativeTime": 1.666649,
+  "nativePaused": false,
+  "nativeReady": 4,
+  "waiting": false,
+  "captureTrack": "live",
+  "preloadActive": "",
+  "preloadDone": 1,
+  "firstMeterMs": 198.40000000596046,
+  "frames": 108,
+  "geometryWrites": 132,
+  "maxFrameGapMs": 18.89999999999418,
+  "transitions": [
+    {
+      "generation": 1,
+      "phase": "sampling",
+      "firstSignalMs": 180.39999999850988,
+      "maxRms": [
+        0.1274688118954608,
+        0.02832638409666766
+      ],
+      "track": 4
+    },
+    {
+      "generation": 2,
+      "phase": "sampling",
+      "firstSignalMs": 151.70000000298023,
+      "maxRms": [
+        0.08498421755288932,
+        0.08498421755288932
+      ],
+      "track": 3
+    },
+    {
+      "generation": 3,
+      "phase": "sampling",
+      "firstSignalMs": 171.89999999850988,
+      "maxRms": [
+        0.009915218465062546,
+        0.0049571655718238725
+      ],
+      "track": 2
+    },
+    {
+      "generation": 4,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 5,
+      "phase": "sampling",
+      "firstSignalMs": 148.79999999701977,
+      "maxRms": [
+        0.12747695963847427,
+        0.028328086095277146
+      ],
+      "track": 4
+    },
+    {
+      "generation": 6,
+      "phase": "sampling",
+      "firstSignalMs": 4.800000004470348,
+      "maxRms": [
+        0.08498503120991024,
+        0.08498503120991024
+      ],
+      "track": 3
+    },
+    {
+      "generation": 7,
+      "phase": "sampling",
+      "firstSignalMs": 154,
+      "maxRms": [
+        0.009914944161544719,
+        0.004957172404571853
+      ],
+      "track": 2
+    },
+    {
+      "generation": 8,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 9,
+      "phase": "sampling",
+      "firstSignalMs": 143.20000000298023,
+      "maxRms": [
+        0.1274767810228182,
+        0.028328145868799646
+      ],
+      "track": 4
+    },
+    {
+      "generation": 10,
+      "phase": "sampling",
+      "firstSignalMs": 221.29999999701977,
+      "maxRms": [
+        0.08498484177398358,
+        0.08498484177398358
+      ],
+      "track": 3
+    },
+    {
+      "generation": 11,
+      "phase": "sampling",
+      "firstSignalMs": 173.69999999552965,
+      "maxRms": [
+        0.009915127908088274,
+        0.00495719698858109
+      ],
+      "track": 2
+    },
+    {
+      "generation": 12,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 13,
+      "phase": "sampling",
+      "firstSignalMs": 139.29999999701977,
+      "maxRms": [
+        0.12747648490991853,
+        0.0283280543947422
+      ],
+      "track": 4
+    },
+    {
+      "generation": 14,
+      "phase": "sampling",
+      "firstSignalMs": 190.20000000298023,
+      "maxRms": [
+        0.08497115472081826,
+        0.08497115472081826
+      ],
+      "track": 3
+    },
+    {
+      "generation": 15,
+      "phase": "sampling",
+      "firstSignalMs": 172.19999999552965,
+      "maxRms": [
+        0.009915123838795883,
+        0.004957213408028803
+      ],
+      "track": 2
+    },
+    {
+      "generation": 16,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 17,
+      "phase": "sampling",
+      "firstSignalMs": 194.70000000298023,
+      "maxRms": [
+        0.12746454203520569,
+        0.028325395703604324
+      ],
+      "track": 4
+    },
+    {
+      "generation": 18,
+      "phase": "sampling",
+      "firstSignalMs": 136.89999999850988,
+      "maxRms": [
+        0.08496680261569671,
+        0.08496680261569671
+      ],
+      "track": 3
+    },
+    {
+      "generation": 19,
+      "phase": "sampling",
+      "firstSignalMs": 174.20000000298023,
+      "maxRms": [
+        0.009915129398455168,
+        0.00495712424628451
+      ],
+      "track": 2
+    },
+    {
+      "generation": 20,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 21,
+      "phase": "sampling",
+      "firstSignalMs": 157.09999999403954,
+      "maxRms": [
+        0.1274688118954608,
+        0.02832638409666766
+      ],
+      "track": 4
+    },
+    {
+      "generation": 22,
+      "phase": "sampling",
+      "firstSignalMs": 171.5,
+      "maxRms": [
+        0.08498466531673436,
+        0.08498466531673436
+      ],
+      "track": 3
+    },
+    {
+      "generation": 23,
+      "phase": "sampling",
+      "firstSignalMs": 178.89999999850988,
+      "maxRms": [
+        0.009914035005214953,
+        0.004956531059360806
+      ],
+      "track": 2
+    },
+    {
+      "generation": 24,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 25,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": 148.10000000149012,
+      "maxRms": [
+        0.1274776200335039,
+        0.028328254977489527
+      ],
+      "track": 4
+    },
+    {
+      "generation": 26,
+      "phase": "sampling",
+      "firstSignalMs": 179.70000000298023,
+      "maxRms": [
+        0.08498423856935858,
+        0.08498423856935858
+      ],
+      "track": 3
+    },
+    {
+      "generation": 27,
+      "phase": "sampling",
+      "firstSignalMs": 247.79999999701977,
+      "maxRms": [
+        0.009914769501001045,
+        0.004957004062132337
+      ],
+      "track": 2
+    },
+    {
+      "generation": 28,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 29,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": 156,
+      "maxRms": [
+        0.1274776200335039,
+        0.028328254977489527
+      ],
+      "track": 4
+    },
+    {
+      "generation": 30,
+      "phase": "sampling",
+      "firstSignalMs": 169.5,
+      "maxRms": [
+        0.08497966719980715,
+        0.08497966719980715
+      ],
+      "track": 3
+    },
+    {
+      "generation": 31,
+      "phase": "sampling",
+      "firstSignalMs": 144.5,
+      "maxRms": [
+        0.00991463179797728,
+        0.004956846042326638
+      ],
+      "track": 2
+    },
+    {
+      "generation": 32,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 33,
+      "phase": "sampling",
+      "firstSignalMs": 235.10000000149012,
+      "maxRms": [
+        0.1274770147136136,
+        0.028328118860655793
+      ],
+      "track": 4
+    },
+    {
+      "generation": 34,
+      "phase": "sampling",
+      "firstSignalMs": 202.5,
+      "maxRms": [
+        0.08498507137348048,
+        0.08498507137348048
+      ],
+      "track": 3
+    },
+    {
+      "generation": 35,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": 186.5,
+      "maxRms": [
+        0.009914958906900011,
+        0.004956740656986255
+      ],
+      "track": 2
+    },
+    {
+      "generation": 36,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 37,
+      "phase": "sampling",
+      "firstSignalMs": 173.60000000149012,
+      "maxRms": [
+        0.12747642371129547,
+        0.028328067418434723
+      ],
+      "track": 4
+    },
+    {
+      "generation": 38,
+      "phase": "sampling",
+      "firstSignalMs": 141.5,
+      "maxRms": [
+        0.08498459514989166,
+        0.08498459514989166
+      ],
+      "track": 3
+    },
+    {
+      "generation": 39,
+      "phase": "sampling",
+      "firstSignalMs": 160.79999999701977,
+      "maxRms": [
+        0.009913505782321932,
+        0.004956309463543056
+      ],
+      "track": 2
+    },
+    {
+      "generation": 40,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 41,
+      "phase": "sampling",
+      "firstSignalMs": 127,
+      "maxRms": [
+        0.12747253883559187,
+        0.028327177976111558
+      ],
+      "track": 4
+    },
+    {
+      "generation": 42,
+      "phase": "sampling",
+      "firstSignalMs": 165.39999999850988,
+      "maxRms": [
+        0.08498421755288932,
+        0.08498421755288932
+      ],
+      "track": 3
+    },
+    {
+      "generation": 43,
+      "phase": "sampling",
+      "firstSignalMs": 139.60000000149012,
+      "maxRms": [
+        0.009914545813330433,
+        0.004956931409441416
+      ],
+      "track": 2
+    },
+    {
+      "generation": 44,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 45,
+      "phase": "sampling",
+      "firstSignalMs": 156,
+      "maxRms": [
+        0.12747235136551271,
+        0.028327163708409958
+      ],
+      "track": 4
+    },
+    {
+      "generation": 46,
+      "phase": "sampling",
+      "firstSignalMs": 172.70000000298023,
+      "maxRms": [
+        0.08498433913552948,
+        0.08498433913552948
+      ],
+      "track": 3
+    },
+    {
+      "generation": 47,
+      "phase": "sampling",
+      "firstSignalMs": 187.09999999403954,
+      "maxRms": [
+        0.009915192441407289,
+        0.004957116722346278
+      ],
+      "track": 2
+    },
+    {
+      "generation": 48,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 49,
+      "phase": "sampling",
+      "firstSignalMs": 177.10000000149012,
+      "maxRms": [
+        0.12747695963847427,
+        0.028328086095277146
+      ],
+      "track": 4
+    },
+    {
+      "generation": 50,
+      "phase": "sampling",
+      "firstSignalMs": 186.39999999850988,
+      "maxRms": [
+        0.08498256015424265,
+        0.08498256015424265
+      ],
+      "track": 3
+    },
+    {
+      "generation": 51,
+      "phase": "sampling",
+      "firstSignalMs": 174.69999999552965,
+      "maxRms": [
+        0.009914354002500316,
+        0.00495668874961125
+      ],
+      "track": 2
+    },
+    {
+      "generation": 52,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 53,
+      "phase": "sampling",
+      "firstSignalMs": 157.79999999701977,
+      "maxRms": [
+        0.12747581376566444,
+        0.028327865288757876
+      ],
+      "track": 4
+    },
+    {
+      "generation": 54,
+      "phase": "sampling",
+      "firstSignalMs": 189.60000000149012,
+      "maxRms": [
+        0.08498496953077446,
+        0.08498496953077446
+      ],
+      "track": 3
+    },
+    {
+      "generation": 55,
+      "phase": "sampling",
+      "firstSignalMs": 191,
+      "maxRms": [
+        0.009915051482160132,
+        0.00495719698858109
+      ],
+      "track": 2
+    },
+    {
+      "generation": 56,
+      "phase": "zero-or-unavailable",
+      "firstSignalMs": null,
+      "maxRms": [
+        0,
+        0
+      ],
+      "track": 1
+    },
+    {
+      "generation": 57,
+      "phase": "sampling",
+      "firstSignalMs": 204.10000000149012,
+      "maxRms": [
+        0.12747818304047298,
+        0.028328380903277883
+      ],
+      "track": 4
+    }
+  ],
+  "rotors": [
+    {
+      "state": "running",
+      "rate": 1.2399744536357722,
+      "time": 113753.21689527575
+    },
+    {
+      "state": "running",
+      "rate": 0.7809025149612457,
+      "time": 119203.96829256942
+    }
+  ]
+}

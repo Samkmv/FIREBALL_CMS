@@ -1,0 +1,29 @@
+{
+  "passed": 6,
+  "checks": [
+    "Shared CMS modal opens with the selected widget name; no native browser confirmation",
+    "Opening and cancelling confirmation sends no deletion request and leaves both widgets intact",
+    "Unavailable widget deletion uses the same CMS modal and deletes only widget 2",
+    "Deletion from inside widget settings deletes only widget 1 after confirmation",
+    "Confirmed AJAX deletion closes the modal and refreshes the widget list",
+    "Each confirmation sends exactly one delete request with valid CSRF and revision"
+  ],
+  "requests": [
+    {
+      "payload": {
+        "action": "delete",
+        "id": 2,
+        "revision": 1
+      },
+      "valid": true
+    },
+    {
+      "payload": {
+        "action": "delete",
+        "id": 1,
+        "revision": 1
+      },
+      "valid": true
+    }
+  ]
+}
