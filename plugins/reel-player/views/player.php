@@ -21,6 +21,7 @@ $button = static function (string $action, string $label, string $name, string $
             let theme = 'light';
             try { if (localStorage.getItem(<?= json_encode($config['storageKey'] . ':theme', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>) === 'dark') theme = 'dark'; } catch (_) {}
             document.documentElement.dataset.theme = theme;
+            if (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches) document.documentElement.classList.add('pwa-standalone');
             document.querySelector('meta[name="color-scheme"]').content = theme;
             document.querySelectorAll('meta[name="theme-color"]').forEach(meta => { meta.content = theme === 'dark' ? '#191c1a' : '#f7f5f0'; });
         })();
@@ -51,6 +52,9 @@ $button = static function (string $action, string $label, string $name, string $
     <symbol id="rp-i-moon" viewBox="0 0 24 24"><path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z"/></symbol>
     <symbol id="rp-i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="rp-i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/></symbol>
+    <symbol id="rp-i-microphone" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="13" rx="4"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></symbol>
+    <symbol id="rp-i-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M7 7a7 7 0 0 1 5-2m0 14a7 7 0 0 0 5-2"/></symbol>
+    <symbol id="rp-i-trending" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-11M15 4h6v6"/></symbol>
     <symbol id="rp-i-heart" viewBox="0 0 24 24"><path d="M20.3 5.4a5.3 5.3 0 0 0-7.5 0L12 6.2l-.8-.8a5.3 5.3 0 0 0-7.5 7.5L12 21l8.3-8.1a5.3 5.3 0 0 0 0-7.5Z"/></symbol>
     <symbol id="rp-i-settings" viewBox="0 0 24 24"><path d="m10 3-.5 2-2 .9-1.8-.6-2 3.4 1.4 1.5v2.3L3.7 14l2 3.4 1.8-.6 2 .9.5 2.3h4l.5-2.3 2-.9 1.8.6 2-3.4-1.4-1.5v-2.3l1.4-1.5-2-3.4-1.8.6-2-.9L14 3z"/><circle cx="12" cy="11.5" r="3"/></symbol>
 </defs></svg>
@@ -127,8 +131,9 @@ $button = static function (string $action, string $label, string $name, string $
             <div class="rp-now-playing">
                 <button type="button" class="rp-cover-button" data-action="edit-current" title="Изменить название и обложку" aria-label="Изменить название и обложку">
                     <img class="rp-custom-cover" data-cover alt="Обложка текущей композиции" width="280" height="280">
-                    <img class="rp-theme-cover rp-theme-cover--light" data-theme-cover src="<?= htmlSC($config['defaultCovers']['light']) ?>" alt="Стандартная обложка" width="280" height="280" decoding="async">
-                    <img class="rp-theme-cover rp-theme-cover--dark" data-theme-cover src="<?= htmlSC($config['defaultCovers']['dark']) ?>" alt="Стандартная обложка" width="280" height="280" decoding="async">
+                    <?php foreach (['light','dark'] as $coverTheme): $variants = $config['defaultCoverVariants'][$coverTheme] ?? []; ?>
+                    <img class="rp-theme-cover rp-theme-cover--<?= $coverTheme ?>" data-theme-cover src="<?= htmlSC($variants[320] ?? $config['defaultCovers'][$coverTheme]) ?>" <?php if (!empty($variants[320]) && !empty($variants[640])): ?>srcset="<?= htmlSC($variants[320]) ?> 1x, <?= htmlSC($variants[640]) ?> 2x"<?php endif; ?> alt="Стандартная обложка" width="280" height="280" decoding="async" fetchpriority="<?= $coverTheme === 'light' ? 'high' : 'auto' ?>">
+                    <?php endforeach; ?>
                     <span class="rp-cover-edit"><?= $icon('edit') ?></span>
                 </button>
                 <h1 data-title>Ваша первая лента</h1>
@@ -180,9 +185,9 @@ $button = static function (string $action, string $label, string $name, string $
             <nav class="rp-catalog-nav" data-catalog-nav aria-label="Музыкальный каталог">
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="overview"><?= $icon('music') ?><span>Обзор</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="albums"><?= $icon('folder') ?><span>Альбомы</span><span class="rp-catalog-nav-count" data-catalog-album-count></span></button>
-                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="artists"><?= $icon('music') ?><span>Артисты</span></button>
-                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="new"><?= $icon('plus') ?><span>Новинки</span></button>
-                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="popular"><?= $icon('play') ?><span>Популярное</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="artists"><?= $icon('microphone') ?><span>Артисты</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="new"><?= $icon('disc') ?><span>Новинки</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="popular"><?= $icon('trending') ?><span>Популярное</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="mine"><?= $icon('heart') ?><span>Моя музыка</span><span class="rp-catalog-nav-count" data-catalog-saved-count></span></button>
             </nav>
             <div class="rp-section-heading rp-personal-heading"><h2>Мои ленты</h2><?= $button('create-playlist', 'Создать плейлист', 'plus') ?></div>
@@ -233,6 +238,7 @@ $button = static function (string $action, string $label, string $name, string $
 <script src="<?= htmlSC($transport_url) ?>" defer></script>
 <script src="<?= htmlSC($quality_url) ?>" defer></script>
 <script src="<?= htmlSC($collections_url) ?>" defer></script>
+<script src="<?= htmlSC($images_url) ?>" defer></script>
 <script src="<?= htmlSC($catalog_url) ?>" defer></script>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>

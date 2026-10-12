@@ -18,11 +18,13 @@
     // This module owns only the library below the deck. Playback, queues,
     // editing and network requests remain in the existing player controller.
     class TapeRoomCatalogUI {
-        constructor({app, icon, escape, defaultCover, canPublish = false}) {
+        constructor({app, icon, escape, defaultCover, defaultArtist = () => '', imageSources, canPublish = false}) {
             this.app = app;
             this.icon = icon;
             this.escape = escape;
             this.defaultCover = typeof defaultCover === 'function' ? defaultCover : () => defaultCover || '';
+            this.defaultArtist = typeof defaultArtist === 'function' ? defaultArtist : () => defaultArtist || '';
+            this.imageSources = imageSources || ((source,kind) => ({src:source || (kind === 'artist' ? this.defaultArtist() : this.defaultCover()),srcset:''}));
             this.canPublish = Boolean(canPublish);
             this.content = app.querySelector('[data-catalog-content]');
             this.latest = null;
@@ -62,7 +64,7 @@
                     result = this.cardsPage(publicAlbums, 'Альбомы', 'Каталог сайта', 'В каталоге пока нет альбомов', 'Опубликованные альбомы появятся здесь. Собрать свой альбом можно из уже добавленной музыки.');
                     break;
                 case 'mine':
-                    result = this.cardsPage(personalAlbums, 'Моя музыка', 'Ваша коллекция', 'Ваша коллекция альбомов пока пуста', 'Откройте альбом в каталоге и нажмите «В коллекцию» или создайте альбом из своих песен.', `<button class="rp-catalog-text-button" type="button" data-action="catalog-view" data-view="songs">Все мои песни ${this.icon('next')}</button>`);
+                    result = this.cardsPage(personalAlbums, 'Моя музыка', 'Ваша коллекция', 'Ваша коллекция альбомов пока пуста', 'Откройте альбом в каталоге и нажмите «В коллекцию» или создайте альбом из своих песен.', `<button class="rp-catalog-text-button" type="button" data-action="catalog-view" data-view="songs">Все мои песни</button>`);
                     break;
                 case 'artists': result = this.artistsPage(); break;
                 case 'new': result = this.newPage(); break;
@@ -104,8 +106,11 @@
             return (album?.tracks || []).map(item => this.latest.trackMap.get(Number(typeof item === 'object' ? item.id : item))).filter(Boolean);
         }
 
-        image(source, className = '') {
-            return `<img class="${className}" src="${this.escape(source || this.defaultCover())}" ${source ? '' : 'data-default-cover'} alt="" loading="lazy" decoding="async" width="240" height="240">`;
+        image(source, className = '', kind = 'cover', eager = false) {
+            const compact = className === 'rp-catalog-song-cover', value = this.imageSources(source,kind,compact);
+            const placeholder = kind === 'artist' ? `<span class="rp-artist-placeholder" ${value.src ? 'hidden' : ''} aria-hidden="true">${this.icon('microphone')}</span>` : '';
+            if (!value.src) return placeholder;
+            return `<img class="${className}" ${value.srcset ? `srcset="${this.escape(value.srcset)}"` : ''} src="${this.escape(value.src)}" data-library-image="${kind}" ${compact ? 'data-compact-image' : ''} ${source ? '' : `data-default-${kind}`} alt="" loading="${eager ? 'eager' : 'lazy'}" decoding="async" width="240" height="240">${placeholder}`;
         }
 
         albumCover(album) {
@@ -143,7 +148,7 @@
         }
 
         viewLink(view, title) {
-            return `<button class="rp-catalog-text-button" type="button" data-action="catalog-view" data-view="${this.escape(view)}">${this.escape(title)} ${this.icon('next')}</button>`;
+            return `<button class="rp-catalog-text-button" type="button" data-action="catalog-view" data-view="${this.escape(view)}">${this.escape(title)}</button>`;
         }
 
         cardsPage(albums, title, summary, emptyTitle, emptyDescription, extra = '') {
@@ -186,11 +191,12 @@
 
         artists() {
             const groups = new Map();
+            const profiles = new Map((this.latest.data.catalog?.artistProfiles || []).map(profile => [normalized(profile.key || profile.name),profile]));
             const ensure = value => {
                 const name = String(value || '').trim();
                 if (!name) return null;
                 const key = normalized(name);
-                if (!groups.has(key)) groups.set(key,{name,albums:[],tracks:[],cover:''});
+                if (!groups.has(key)) groups.set(key,{name,albums:[],tracks:[],cover:profiles.get(key)?.image || '',profile:profiles.get(key)});
                 return groups.get(key);
             };
             for (const album of this.latest.publicAlbums) {
@@ -198,20 +204,18 @@
                 if (!artist) continue;
                 artist.albums.push(album);
                 for (const track of this.tracksFor(album)) if (!artist.tracks.some(item=>Number(item.id)===Number(track.id))) artist.tracks.push(track);
-                if (!artist.cover) artist.cover = this.albumCover(album);
             }
             for (const track of this.latest.publicTracks) {
                 const artist = ensure(track.artist);
                 if (!artist) continue;
                 if (!artist.tracks.some(item=>Number(item.id)===Number(track.id))) artist.tracks.push(track);
-                if (!artist.cover) artist.cover = track.cover || '';
             }
             return [...groups.values()].sort((a,b) => a.name.localeCompare(b.name,'ru'));
         }
 
         artistsPage() {
             const artists = this.artists(), visible = artists.filter(artist => !this.latest.search || normalized(artist.name).includes(this.latest.search));
-            this.content.innerHTML = visible.length ? `<div class="rp-artist-grid">${visible.map(artist => `<button type="button" class="rp-artist-card" data-action="catalog-artist" data-artist="${this.escape(artist.name)}"><span class="rp-artist-artwork">${this.image(artist.cover)}</span><strong>${this.escape(artist.name)}</strong><span>${this.escape([countLabel(artist.albums.length,'альбом','альбома','альбомов'),countLabel(artist.tracks.length,'песня','песни','песен')].join(' · '))}</span></button>`).join('')}</div>` : this.empty(this.latest.search ? 'Артист не найден' : 'Артисты появятся вместе с музыкой',this.latest.search ? 'Попробуйте другое имя.' : 'Укажите исполнителей в песнях и альбомах общего каталога.');
+            this.content.innerHTML = visible.length ? `<div class="rp-artist-grid">${visible.map(artist => `<button type="button" class="rp-artist-card" data-action="catalog-artist" data-artist="${this.escape(artist.name)}"><span class="rp-artist-artwork">${this.image(artist.cover,'','artist')}</span><strong>${this.escape(artist.name)}</strong><span>${this.escape([countLabel(artist.albums.length,'альбом','альбома','альбомов'),countLabel(artist.tracks.length,'песня','песни','песен')].join(' · '))}</span></button>`).join('')}</div>` : this.empty(this.latest.search ? 'Артист не найден' : 'Артисты появятся вместе с музыкой',this.latest.search ? 'Попробуйте другое имя.' : 'Укажите исполнителей в песнях и альбомах общего каталога.');
             return {listMode:false,title:'Артисты',summary:countLabel(artists.length,'артист','артиста','артистов')};
         }
 
@@ -225,12 +229,12 @@
             const meta = [year,countLabel(tracks.length,'трек','трека','треков'),total ? duration(total) : ''].filter(Boolean).join(' · ');
             const canPublish = this.canPublish || this.latest.canPublish || Boolean(this.latest.data.canPublish);
             this.content.innerHTML = `<div class="rp-catalog-detail-back">${this.viewLink(album.published ? 'albums' : 'mine','К альбомам')}</div>
-                <section class="rp-album-detail"><div class="rp-album-detail-cover">${this.image(this.albumCover(album))}</div><div class="rp-album-detail-info">
+                <section class="rp-album-detail"><div class="rp-album-detail-cover">${this.image(this.albumCover(album),'','cover',true)}</div><div class="rp-album-detail-info">
                 <span class="rp-catalog-eyebrow">${album.published ? 'Альбом · каталог сайта' : 'Личный альбом'}</span><h3>${esc(album.title)}</h3>
                 ${album.artist ? `<button class="rp-catalog-artist-link" type="button" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : ''}<p class="rp-album-detail-meta">${esc(meta)}</p>
                 ${album.description ? `<p class="rp-album-description">${esc(album.description)}</p>` : ''}
                 <div class="rp-album-detail-actions"><button type="button" class="rp-button rp-button--primary rp-catalog-play" data-action="catalog-play-album" data-id="${Number(album.id)}" ${tracks.length ? '' : 'disabled'}>${this.icon('play')}<span>Слушать альбом</span></button><button type="button" class="rp-button rp-catalog-save${album.saved ? ' is-saved' : ''}" data-action="catalog-save" data-id="${Number(album.id)}" aria-pressed="${Boolean(album.saved)}">${this.icon(album.saved ? 'heart' : 'plus')}<span>${album.saved ? 'В коллекции' : 'В коллекцию'}</span></button>${album.editable ? `<button class="rp-icon-button" type="button" data-action="catalog-edit" data-id="${Number(album.id)}" title="Изменить альбом" aria-label="Изменить альбом">${this.icon('edit')}</button>` : ''}</div>
-                ${canPublish && album.editable ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.published ? 0 : 1}">${album.published ? 'Снять с публикации' : 'Опубликовать для всех'}</button>` : ''}
+                ${album.editable ? `<div class="rp-album-detail-management">${canPublish ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.published ? 0 : 1}">${album.published ? 'Снять с публикации' : 'Опубликовать для всех'}</button>` : ''}<button type="button" class="rp-catalog-delete" data-action="catalog-delete" data-id="${Number(album.id)}">${this.icon('trash')}Удалить альбом</button></div>` : ''}
                 </div></section><div class="rp-catalog-track-heading"><h3>Песни альбома</h3><span>Порядок альбома</span></div>`;
             return {listMode:true,title:'Альбом',summary:'',tracks,emptyTitle:'В альбоме пока нет песен',emptyDescription:album.editable ? 'Откройте редактор альбома и выберите песни из своей библиотеки.' : 'Песни появятся после добавления владельцем альбома.'};
         }
@@ -242,7 +246,8 @@
                 return {listMode:false,title:name || 'Артист',summary:''};
             }
             const albums = artist.albums.filter(album => this.matches(album));
-            this.content.innerHTML = `<div class="rp-catalog-detail-back">${this.viewLink('artists','Все артисты')}</div><div class="rp-artist-detail"><span class="rp-artist-detail-cover">${this.image(artist.cover)}</span><div><span class="rp-catalog-eyebrow">Артист · каталог сайта</span><h3>${this.escape(artist.name)}</h3><p>${this.escape(countLabel(artist.albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(artist.tracks.length,'песня','песни','песен'))}</p></div></div>
+            const canEdit = this.canPublish || this.latest.canPublish || Boolean(this.latest.data.catalog?.canPublish);
+            this.content.innerHTML = `<div class="rp-catalog-detail-back">${this.viewLink('artists','Все артисты')}</div><div class="rp-artist-detail"><span class="rp-artist-detail-cover">${this.image(artist.cover,'','artist',true)}</span><div><span class="rp-catalog-eyebrow">Артист · каталог сайта</span><h3>${this.escape(artist.name)}</h3><p>${this.escape(countLabel(artist.albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(artist.tracks.length,'песня','песни','песен'))}</p>${canEdit ? `<button type="button" class="rp-button" data-action="artist-edit" data-artist="${this.escape(artist.name)}">${this.icon('edit')}Изображение артиста</button>` : ''}</div></div>
                 ${albums.length ? `<section class="rp-catalog-section">${this.sectionHeading('Альбомы')}${this.albumGrid(albums)}</section>` : ''}${artist.tracks.length ? `<div class="rp-catalog-track-heading"><h3>Песни артиста</h3></div>` : ''}`;
             return {listMode:artist.tracks.length > 0,title:artist.name,summary:'Дискография',tracks:artist.tracks,emptyTitle:'Песни не найдены',emptyDescription:'Попробуйте другое название.'};
         }

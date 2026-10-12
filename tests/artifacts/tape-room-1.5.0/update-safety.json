@@ -1,0 +1,40 @@
+{
+    "result": "passed",
+    "checks": 112,
+    "php": "8.4.7",
+    "pipeline": "Unmodified PluginUpdateService::update, PluginManager, MySQL migrations, private storage, database/file backups, rollback and cleanup",
+    "transfers": "Only GitHub cURL responses replaced with local metadata and ZIP fixtures; no outbound requests",
+    "http_fixture_transfers": 20,
+    "migration_ledger": 7,
+    "catalog_tables": [
+        "reel_albums",
+        "reel_album_tracks",
+        "reel_album_saves",
+        "reel_catalog_favorites",
+        "reel_track_stats",
+        "reel_listening_sessions"
+    ],
+    "scenarios": [
+        "1.2.14 fixture to 1.3.0 with automatic chapter migration",
+        "1.3.0 to synthetic fixture 1.3.1 with existing chapters",
+        "1.3.1 fixture to historical 1.4.0 with six empty catalog tables and listening credits",
+        "Explicit album create/publication/save and actual elapsed listening after update",
+        "Populated 1.4.0 fixture to actual 1.5.0 with independent empty artist profiles",
+        "Existing artist photo reopening and name/link preservation",
+        "Rejected synthetic 1.5.1 migration with 1.5.0 file rollback and unchanged catalog/artist rows"
+    ],
+    "preserved": [
+        "OAuth app settings and per-owner tokens: byte equality and 0600 permissions",
+        "Local audio, album/song artwork and independent artist photo bytes",
+        "Local and Google Drive DB tracks, favorites, playlists, order",
+        "Chapter IDs, associations and timestamps",
+        "Catalog album IDs, track order, user saves/favorites, counts and credited tokens",
+        "Artist profile IDs, canonical names and independent photo references",
+        "Plugin settings and active status"
+    ],
+    "limitations": [
+        "Synthetic OAuth and audio bytes; no actual Google authentication or audio decoder playback",
+        "GitHub network transport mocked; live hosting and external API behavior not exercised",
+        "Failed migration fixture makes no preceding schema changes; this is not a test of database rollback after arbitrary DDL"
+    ]
+}
